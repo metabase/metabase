@@ -11,9 +11,13 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { useProvisionWorkspaceMutation } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
+import {
+  useGetWorkspaceQuery,
+  useProvisionWorkspaceMutation,
+} from "metabase-enterprise/api";
+import type { Workspace, WorkspaceId } from "metabase-types/api";
 
+import { POLLING_INTERVAL } from "../../../constants";
 import {
   getStatusMessage,
   isProvisioned,
@@ -22,16 +26,14 @@ import {
 } from "../../../utils";
 import { StatusDetails } from "../StatusDetails";
 
-type ProvisionStep = "confirm" | "progress" | "success";
-
 type ProvisionModalProps = {
-  workspace: Workspace;
+  workspaceId: WorkspaceId;
   opened: boolean;
   onClose: () => void;
 };
 
 export function ProvisionModal({
-  workspace,
+  workspaceId,
   opened,
   onClose,
 }: ProvisionModalProps) {
@@ -42,72 +44,74 @@ export function ProvisionModal({
       padding="xl"
       onClose={onClose}
     >
-      <ProvisionModalBody workspace={workspace} onClose={onClose} />
+      <ProvisionModalBody workspaceId={workspaceId} onClose={onClose} />
     </Modal>
   );
 }
 
-function getInitialStep(workspace: Workspace): ProvisionStep {
-  if (isProvisioned(workspace)) {
-    return "success";
-  }
-  if (isProvisioning(workspace)) {
-    return "progress";
-  }
-  return "confirm";
-}
-
 type ProvisionModalBodyProps = {
-  workspace: Workspace;
+  workspaceId: WorkspaceId;
   onClose: () => void;
 };
 
-function ProvisionModalBody({ workspace, onClose }: ProvisionModalBodyProps) {
+function ProvisionModalBody({ workspaceId, onClose }: ProvisionModalBodyProps) {
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
   const [provisionWorkspace, { isLoading }] = useProvisionWorkspaceMutation();
-  const [step, setStep] = useState(() => getInitialStep(workspace));
+  const { data: workspace } = useGetWorkspaceQuery(workspaceId, {
+    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+  });
 
   useEffect(() => {
-    if (step === "progress" && isProvisioned(workspace)) {
-      setStep("success");
-    }
-  }, [step, workspace]);
+    setIsPolling(workspace != null && isProvisioning(workspace));
+  }, [workspace]);
 
   const handleProvision = () => {
-    setStep("progress");
-    provisionWorkspace(workspace.id);
+    setIsConfirmed(true);
+    provisionWorkspace(workspaceId);
   };
 
-  switch (step) {
-    case "confirm":
-      return (
-        <ConfirmProvision onProvision={handleProvision} onCancel={onClose} />
-      );
-    case "progress":
-      return (
-        <ProvisionProgress
-          workspace={workspace}
-          isProvisioning={isLoading}
-          onProvision={handleProvision}
-          onClose={onClose}
-        />
-      );
-    case "success":
-      return <ProvisionSuccess workspace={workspace} onDone={onClose} />;
+  if (!isConfirmed || workspace == null) {
+    return (
+      <ConfirmProvision
+        disabled={workspace == null}
+        onProvision={handleProvision}
+        onCancel={onClose}
+      />
+    );
   }
+
+  if (isProvisioned(workspace)) {
+    return <ProvisionSuccess workspace={workspace} onDone={onClose} />;
+  }
+
+  return (
+    <ProvisionProgress
+      workspace={workspace}
+      isProvisioning={isLoading}
+      onProvision={handleProvision}
+      onClose={onClose}
+    />
+  );
 }
 
 type ConfirmProvisionProps = {
+  disabled: boolean;
   onProvision: () => void;
   onCancel: () => void;
 };
 
-function ConfirmProvision({ onProvision, onCancel }: ConfirmProvisionProps) {
+function ConfirmProvision({
+  disabled,
+  onProvision,
+  onCancel,
+}: ConfirmProvisionProps) {
   return (
     <Stack gap="lg">
       <Text>{t`This will set up temporary database users and schemas and a workspace instance.`}</Text>
       <Group justify="flex-end">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
-        <Button variant="filled" onClick={onProvision}>
+        <Button variant="filled" disabled={disabled} onClick={onProvision}>
           {t`Provision`}
         </Button>
       </Group>

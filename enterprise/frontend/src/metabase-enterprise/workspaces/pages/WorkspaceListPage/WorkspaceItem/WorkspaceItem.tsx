@@ -238,17 +238,17 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
         onClose={closeRename}
       />
       <ProvisionModal
-        workspace={workspace}
+        workspaceId={workspace.id}
         opened={isProvisionOpen}
         onClose={closeProvision}
       />
       <DeprovisionModal
-        workspace={workspace}
+        workspaceId={workspace.id}
         opened={isDeprovisionOpen}
         onClose={closeDeprovision}
       />
       <DeleteModal
-        workspace={workspace}
+        workspaceId={workspace.id}
         opened={isDeleteOpen}
         onClose={closeDelete}
       />

@@ -10,9 +10,13 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { useDeprovisionWorkspaceMutation } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
+import {
+  useDeprovisionWorkspaceMutation,
+  useGetWorkspaceQuery,
+} from "metabase-enterprise/api";
+import type { Workspace, WorkspaceId } from "metabase-types/api";
 
+import { POLLING_INTERVAL } from "../../../constants";
 import {
   getStatusMessage,
   isDeprovisioned,
@@ -21,16 +25,14 @@ import {
 } from "../../../utils";
 import { StatusDetails } from "../StatusDetails";
 
-type DeprovisionStep = "confirm" | "progress" | "success";
-
 type DeprovisionModalProps = {
-  workspace: Workspace;
+  workspaceId: WorkspaceId;
   opened: boolean;
   onClose: () => void;
 };
 
 export function DeprovisionModal({
-  workspace,
+  workspaceId,
   opened,
   onClose,
 }: DeprovisionModalProps) {
@@ -41,73 +43,69 @@ export function DeprovisionModal({
       padding="xl"
       onClose={onClose}
     >
-      <DeprovisionModalBody workspace={workspace} onClose={onClose} />
+      <DeprovisionModalBody workspaceId={workspaceId} onClose={onClose} />
     </Modal>
   );
 }
 
-function getInitialStep(workspace: Workspace): DeprovisionStep {
-  if (isDeprovisioned(workspace)) {
-    return "success";
-  }
-  if (isDeprovisioning(workspace)) {
-    return "progress";
-  }
-  return "confirm";
-}
-
 type DeprovisionModalBodyProps = {
-  workspace: Workspace;
+  workspaceId: WorkspaceId;
   onClose: () => void;
 };
 
 function DeprovisionModalBody({
-  workspace,
+  workspaceId,
   onClose,
 }: DeprovisionModalBodyProps) {
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
   const [deprovisionWorkspace, { isLoading }] =
     useDeprovisionWorkspaceMutation();
-  const [step, setStep] = useState(() => getInitialStep(workspace));
+  const { data: workspace } = useGetWorkspaceQuery(workspaceId, {
+    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+  });
 
   useEffect(() => {
-    if (step === "progress" && isDeprovisioned(workspace)) {
-      setStep("success");
-    }
-  }, [step, workspace]);
+    setIsPolling(workspace != null && isDeprovisioning(workspace));
+  }, [workspace]);
 
   const handleDeprovision = () => {
-    setStep("progress");
-    deprovisionWorkspace(workspace.id);
+    setIsConfirmed(true);
+    deprovisionWorkspace(workspaceId);
   };
 
-  switch (step) {
-    case "confirm":
-      return (
-        <ConfirmDeprovision
-          onDeprovision={handleDeprovision}
-          onCancel={onClose}
-        />
-      );
-    case "progress":
-      return (
-        <DeprovisionProgress
-          workspace={workspace}
-          isDeprovisioning={isLoading}
-          onDeprovision={handleDeprovision}
-          onClose={onClose}
-        />
-      );
-    case "success":
-      return <DeprovisionSuccess onDone={onClose} />;
+  if (!isConfirmed || workspace == null) {
+    return (
+      <ConfirmDeprovision
+        disabled={workspace == null}
+        onDeprovision={handleDeprovision}
+        onCancel={onClose}
+      />
+    );
   }
+
+  if (isDeprovisioned(workspace)) {
+    return <DeprovisionSuccess onDone={onClose} />;
+  }
+
+  return (
+    <DeprovisionProgress
+      workspace={workspace}
+      isDeprovisioning={isLoading}
+      onDeprovision={handleDeprovision}
+      onClose={onClose}
+    />
+  );
 }
 
 type ConfirmDeprovisionProps = {
+  disabled: boolean;
   onDeprovision: () => void;
   onCancel: () => void;
 };
 
 function ConfirmDeprovision({
+  disabled,
   onDeprovision,
   onCancel,
 }: ConfirmDeprovisionProps) {
@@ -119,6 +117,7 @@ function ConfirmDeprovision({
         <Button
           variant="filled"
           color="feedback-negative"
+          disabled={disabled}
           onClick={onDeprovision}
         >
           {t`Deprovision`}
