@@ -482,20 +482,23 @@
 (defn- fetch-subscription
   "Dashboard subscriptions are a dual-source read: live Pulse rows (the only kind writes create
    today) and rows already migrated to the notification API as `payload_type:
-   notification/dashboard`. The pulse source wins when both id spaces match."
+   notification/dashboard`. A Pulse that exists in the pulse id space owns the id — including
+   when the caller cannot read it, which collapses to not-found rather than falling through to
+   an unrelated notification that happens to share the numeric id."
   [id-or-eid]
-  (or (when-let [pulse-id (subscription-pulse-id id-or-eid)]
-        (when (t2/exists? :model/Pulse :id pulse-id :alert_condition nil)
-          (let [pulse-row (pulse/retrieve-pulse pulse-id)]
-            (when (and pulse-row (mi/can-read? pulse-row))
-              (subscription-pulse-row pulse-row)))))
-      (when (int? id-or-eid)
-        (let [notification (t2/select-one :model/Notification
-                                          :id id-or-eid
-                                          :payload_type :notification/dashboard)]
-          (when (and notification (mi/can-read? notification))
-            (notification-content-row (hydrate-notification-row notification)))))
-      (common/throw-not-found :subscription id-or-eid)))
+  (let [pulse-id (subscription-pulse-id id-or-eid)]
+    (if (and pulse-id (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
+      (let [pulse-row (pulse/retrieve-pulse pulse-id)]
+        (if (and pulse-row (mi/can-read? pulse-row))
+          (subscription-pulse-row pulse-row)
+          (common/throw-not-found :subscription id-or-eid)))
+      (or (when (int? id-or-eid)
+            (let [notification (t2/select-one :model/Notification
+                                              :id id-or-eid
+                                              :payload_type :notification/dashboard)]
+              (when (and notification (mi/can-read? notification))
+                (notification-content-row (hydrate-notification-row notification)))))
+          (common/throw-not-found :subscription id-or-eid)))))
 
 (def ^:private subscription-pulse-concise-keys
   [:id :name :dashboard_id :channels :cards :skip_if_empty :archived :creator_id])

@@ -265,3 +265,50 @@
       (mt/with-test-user :crowberto
         (let [row (content-one #{"agent:resource:read"} {:items [{:type "transform" :id id}]})]
           (is (re-find #"agent:transforms:read" (:error row))))))))
+
+(defn- migrate-notification-to-dashboard!
+  "Repoint a payload-less notification row to :notification/dashboard via raw SQL, bypassing the
+   model lifecycle — which validates a schema (and a create fn) that has no branch for dashboard
+   payloads. Those rows only ever arrive by migration, so this stands in for that history. The
+   row must carry no payload_id, so the before-delete dispatch is never exercised at teardown."
+  [notif-id]
+  (t2/query-one {:update :notification
+                 :set    {:payload_type "notification/dashboard"}
+                 :where  [:= :id notif-id]}))
+
+(deftest get-content-subscription-migrated-notification-test
+  (testing "GHY-4140: a subscription migrated to the notification API reads by numeric id"
+    (mt/with-temp [:model/Notification {notif-id :id} {:payload_type :notification/card
+                                                       :creator_id   (mt/user->id :crowberto)
+                                                       :active       true}]
+      (migrate-notification-to-dashboard! notif-id)
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items           [{:type "subscription" :id notif-id}]
+                                :response_format "detailed"})]
+          (is (nil? (:error row)))
+          (is (= "notification/dashboard" (:payload_type row))))))))
+
+(deftest get-content-subscription-denied-pulse-does-not-fall-through-test
+  (testing "GHY-4140: an unreadable Pulse must not fall through to a Notification that happens to
+            share its numeric id — that would hand back a different entity than was requested,
+            across the permission boundary"
+    ;; The Pulse takes the notification's id explicitly, so both temps keep their real ids for
+    ;; teardown while sharing one integer across the two id spaces.
+    (mt/with-temp [:model/Collection   {coll-id :id}  {}
+                   :model/Dashboard    {dash-id :id}  {}
+                   :model/Notification {notif-id :id} {:payload_type :notification/card
+                                                       :creator_id   (mt/user->id :rasta)
+                                                       :active       true}
+                   :model/Pulse        {pulse-id :id} {:id            notif-id
+                                                       :name          "Private"
+                                                       :dashboard_id  dash-id
+                                                       :collection_id coll-id
+                                                       :creator_id    (mt/user->id :crowberto)}]
+      (migrate-notification-to-dashboard! notif-id)
+      (mt/with-non-admin-groups-no-collection-perms coll-id
+        (mt/with-test-user :rasta
+          (let [row (content-one {:items           [{:type "subscription" :id pulse-id}]
+                                  :response_format "detailed"})]
+            (is (some? (:error row))
+                "an unreadable pulse must produce not-found, never another entity's content")
+            (is (not= "notification/dashboard" (:payload_type row)))))))))
