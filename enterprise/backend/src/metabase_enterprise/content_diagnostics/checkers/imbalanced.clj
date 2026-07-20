@@ -1,34 +1,38 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced
-  "The imbalanced Content Diagnostics checker - one count pass over the app-db powering three finding
-  types (`empty`/`sparse`/`crowded`); counting always excludes archived rows:
+  "The imbalanced family of Content Diagnostics checkers - `empty`, `sparse`, and `crowded` as three
+  **independent** checkers (each its own registry entry, supersession scope, and threshold reads);
+  counting always excludes archived rows. There is no cross-type precedence: each checker applies its
+  own rule knowing nothing of the other two, so one entity can legitimately carry several of these
+  finding types at once (a collection of 150 empty dashboards is `crowded` AND `empty`; a 6-tab
+  dashboard holding 2 dashcards is `crowded` AND `sparse`).
 
-  - **Collection:** `empty` = 0 non-empty items *recursively* (cascade: an item counts only if this
-    same scan didn't flag it empty, so a collection holding only empty dashboards IS empty);
-    `crowded`/`sparse` use the **raw** direct item count (empty items still count). Items = direct
-    non-archived child collections + cards/dashboards/documents (collection-items semantics:
-    dashboard/document-internal cards don't count). Personal collections are scanned (the scan is
-    permission-agnostic; serve-time filters handle exclusion).
-  - **Dashboard:** `empty` = 0 dashcards; `crowded` = too many dashcards on one tab, or - only if that
-    passes - too many tabs (deterministic precedence, one finding per entity); `sparse` = non-empty
-    with too few dashcards **total** across tabs. A tabless dashboard counts as one implicit tab.
-  - **Document:** `empty` = no content of any kind (fail closed - an unknown node type counts as
-    content); `crowded` = too many embedded cards.
-  - **Card** (`empty` only): the latest clean (unparameterized, unsandboxed, non-cache-hit, error-free)
-    execution returned 0 rows. Never run cleanly -> skipped (unknown, not empty); a newer parameterized,
-    sandboxed, cache-hit, or errored run is outside the evidence set - it neither flags nor clears.
-    `as_of` = the deciding run's start.
-  - **Transform** (`empty` only): the target table's synced `estimated_row_count` is literally 0 and
-    the table is still active (a dropped target is inactive; nil estimate = unknown -> skipped).
-    `as_of` = the table row's `updated_at` (sync-freshness proxy). No live warehouse counting.
+  - **`empty`** - no content at all. Collection = 0 non-empty items *recursively* (a cascade over this
+    same pass's leaf verdicts: a collection holding only empty dashboards IS empty). Dashboard =
+    0 dashcards. Document = no content of any kind (fail closed - an unknown node type counts as
+    content). Card = the latest clean (unparameterized, unsandboxed, non-cache-hit, error-free)
+    execution returned 0 rows; never run cleanly -> skipped (unknown, not empty), and a newer run
+    outside the evidence set neither flags nor clears; `as_of` = the deciding run's start. Transform =
+    the target table's synced `estimated_row_count` is literally 0 and the table is still active (a
+    dropped target is inactive; nil estimate = unknown -> skipped); `as_of` = the table row's
+    `updated_at` (sync-freshness proxy). No live warehouse counting.
+  - **`sparse`** - a little content, not none: the rule floors at 1, so a zero-count subject is the
+    `empty` checker's alone. Collection = 0 < raw direct item count < bound (empty items still
+    count). Dashboard = 0 < dashcards **total** across tabs < bound.
+  - **`crowded`** - too much content. Collection = raw direct item count > bound. Dashboard = too
+    many dashcards on one tab, or - only if that passes - too many tabs (within-type precedence: at
+    most one `crowded` finding per entity). Document = too many embedded cards.
 
-  `empty` and `sparse` are mutually exclusive by construction (sparse requires non-empty); precedence
-  (empty, then crowded, then sparse) guarantees at most one imbalanced finding per entity per scan.
+  Collection direct items = non-archived child collections + cards/dashboards/documents
+  (collection-items semantics: dashboard/document-internal cards live inside their container, not the
+  collection). Personal collections are scanned (the scan is permission-agnostic; serve-time filters
+  handle exclusion). A tabless dashboard counts as one implicit tab.
+
   Every finding stamps its measured magnitude in the top-level `:content-count` (0 on every `empty`)
   and freezes `{threshold, unit}` (+ `as_of` on the two evidence-dated empties) in `details` at scan
-  time; thresholds are read once at checker start. Every detector is **set-based** (a fixed handful of
-  grouped queries plus app-side merges over id-sized rows; no per-entity loop) and reads only the
-  app-db. The denormalized display attrs are stamped by `common/attach-entity-attrs`;
-  `:duration-ms`/`:last-active-at` are left unset."
+  time. Every detector is **set-based** (a fixed handful of grouped queries plus app-side merges over
+  id-sized rows; no per-entity loop) and reads only the app-db; the checkers share substrate *helpers*
+  but run their queries independently. The denormalized display attrs are stamped by
+  `common/attach-entity-attrs`; `:duration-ms`/`:last-active-at` are left unset."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -50,15 +54,76 @@
    :content-count content-count
    :details       details})
 
-(defn- empty-ids
-  "Ids of one entity-type's `empty` findings - the emptiness verdicts the collection cascade consumes."
-  [findings entity-type]
-  (into #{}
-        (comp (filter #(and (= entity-type (:entity-type %)) (= :empty (:finding-type %))))
-              (map :entity-id))
-        findings))
+;;; ------------------------------------------------ substrate ------------------------------------------------
+;;; Shared query helpers. Each checker calls only what it needs and runs its own queries - independence
+;;; over result reuse (these are cheap app-db aggregates).
 
-;;; -------------------------------------------------- cards --------------------------------------------------
+(defn- collection-item-cards
+  "Non-archived cards that count as direct collection items, as `{:id :collection_id}` rows -
+  dashboard/document-internal cards live inside their container, not the collection."
+  []
+  (t2/query {:select [:id :collection_id]
+             :from   [:report_card]
+             :where  [:and
+                      [:= :archived false]
+                      [:= :dashboard_id nil]
+                      [:= :document_id nil]]}))
+
+(defn- active-dashboards
+  "Non-archived dashboards as `{:id :collection_id}` rows."
+  []
+  (t2/query {:select [:id :collection_id]
+             :from   [:report_dashboard]
+             :where  [:= :archived false]}))
+
+(defn- document-items
+  "Non-archived documents as `{:id :collection_id}` rows - the light form for collection counting
+  (no AST fetch)."
+  []
+  (t2/query {:select [:id :collection_id]
+             :from   [(t2/table-name :model/Document)]
+             :where  [:= :archived false]}))
+
+(defn- active-documents
+  "Non-archived documents with their AST - for the document verdicts, which parse `:document`."
+  []
+  (t2/select [:model/Document :id :collection_id :document :content_type] :archived false))
+
+(defn- dashboard-dashcard-totals
+  "`{dashboard-id -> primary dashcard count across all tabs}`; no row = 0. Primary dashcards only:
+  a series card layers onto one dashcard's visualization without occupying a layout slot (slow counts
+  series because they run queries on render - a different semantic)."
+  []
+  (u/index-by :dashboard_id :cnt
+              (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
+                         :from     [:report_dashboardcard]
+                         :group-by [:dashboard_id]})))
+
+(defn- eligible-collections
+  "Collection subjects (and the recursion substrate): non-archived, default-namespace only
+  (snippet/analytics-namespace collections are internal), never the Trash collection (that's
+  `trash-not-emptied`'s subject) and never instance-analytics collections. Personal collections ARE
+  included."
+  []
+  (t2/select [:model/Collection :id :location]
+             {:where [:and
+                      [:= :archived false]
+                      [:= :namespace nil]
+                      [:or
+                       [:= :type nil]
+                       [:not-in :type [collection/trash-collection-type
+                                       collection/instance-analytics-collection-type]]]]}))
+
+(defn- direct-item-counts
+  "`{collection-id -> raw direct item count}` over `collections`: child collections plus the
+  card/dashboard/document items. Empty items still count - only the `empty` cascade looks deeper."
+  [collections]
+  (merge-with +
+              (frequencies (keep (comp collection/location-path->parent-id :location) collections))
+              (frequencies (keep :collection_id
+                                 (concat (collection-item-cards) (active-dashboards) (document-items))))))
+
+;;; ------------------------------------------- emptiness evidence --------------------------------------------
 
 (defn- empty-card-id->as-of
   "`{card-id -> started_at of the deciding run}` for every **non-archived** card whose latest clean
@@ -88,45 +153,6 @@
                                    :ranked]]
                          :where  [:and [:= :rn 1] [:= :result_rows 0]]})))
 
-(defn- card-findings
-  "Leaf card `empty` findings, `as_of` frozen to the deciding run's start."
-  [empty-card-as-of]
-  (for [[card-id as-of] empty-card-as-of]
-    (finding :card card-id :empty 0 {:threshold 0 :unit "rows" :as_of as-of})))
-
-;;; ------------------------------------------------ dashboards -----------------------------------------------
-
-(defn- dashboard-findings
-  "One verdict per **non-archived** dashboard: empty (0 dashcards), else crowded (dashcards on one tab
-  first, then tab count - deterministic precedence), else sparse (dashcards **total** across tabs).
-  `dashcard-groups` is `{dashboard-id -> [{:dashboard_tab_id :cnt} ...]}`; `tab-counts`
-  `{dashboard-id -> tab-count}` (no row = tabless = one implicit tab)."
-  [dashboards dashcard-groups tab-counts
-   {:keys [crowded-dashcards-per-tab crowded-tabs sparse-dashboard-dashcards]}]
-  (for [{:keys [id]} dashboards
-        :let [tab-rows    (get dashcard-groups id)
-              total       (transduce (map :cnt) + 0 tab-rows)
-              max-per-tab (transduce (map :cnt) max 0 tab-rows)
-              tabs        (max 1 (long (get tab-counts id 0)))
-              verdict     (cond
-                            (zero? total)
-                            (finding :dashboard id :empty 0 {:threshold 0 :unit "dashcards"})
-
-                            (> max-per-tab crowded-dashcards-per-tab)
-                            (finding :dashboard id :crowded max-per-tab
-                                     {:threshold crowded-dashcards-per-tab :unit "dashcards"})
-
-                            (> tabs crowded-tabs)
-                            (finding :dashboard id :crowded tabs {:threshold crowded-tabs :unit "tabs"})
-
-                            (< total sparse-dashboard-dashcards)
-                            (finding :dashboard id :sparse total
-                                     {:threshold sparse-dashboard-dashcards :unit "dashcards"}))]
-        :when verdict]
-    verdict))
-
-;;; ------------------------------------------------ documents ------------------------------------------------
-
 (def ^:private structural-node-types
   "Prose-mirror node types that are pure structure/layout - a document made only of these (with no
   non-blank text or reference label) has no content. `text` is here because a text node's substance is
@@ -148,23 +174,6 @@
                        (and (some? type) (not (structural-node-types type))))
                node)))))
 
-(defn- document-findings
-  "One verdict per **non-archived** prose-mirror document: empty (no content), else crowded (embedded
-  card count). A document with any other content type can't be parsed - unknown, so neither."
-  [documents {:keys [crowded-document-cards]}]
-  (for [doc   documents
-        :when (= (:content_type doc) prose-mirror/prose-mirror-content-type)
-        :let  [verdict (if (document-empty? doc)
-                         (finding :document (:id doc) :empty 0 {:threshold 0 :unit "cards"})
-                         (let [n (count (prose-mirror/card-ids doc))]
-                           (when (> n crowded-document-cards)
-                             (finding :document (:id doc) :crowded n
-                                      {:threshold crowded-document-cards :unit "cards"}))))]
-        :when verdict]
-    verdict))
-
-;;; ------------------------------------------------ transforms -----------------------------------------------
-
 (defn- transform-findings
   "Leaf transform `empty` findings: the target table's synced row-count estimate is literally 0 and the
   table is still active. A never-run/synced transform has no `target_table_id` and a nil estimate is
@@ -177,23 +186,6 @@
                                                [:= :mt.estimated_row_count 0]
                                                [:= :mt.active true]]})]
     (finding :transform id :empty 0 {:threshold 0 :unit "rows" :as_of as_of})))
-
-;;; ------------------------------------------------ collections ----------------------------------------------
-
-(defn- eligible-collections
-  "Collection subjects (and the recursion substrate): non-archived, default-namespace only
-  (snippet/analytics-namespace collections are internal), never the Trash collection (that's
-  `trash-not-emptied`'s subject) and never instance-analytics collections. Personal collections ARE
-  included."
-  []
-  (t2/select [:model/Collection :id :location]
-             {:where [:and
-                      [:= :archived false]
-                      [:= :namespace nil]
-                      [:or
-                       [:= :type nil]
-                       [:not-in :type [collection/trash-collection-type
-                                       collection/instance-analytics-collection-type]]]]}))
 
 (defn- non-empty-collection-ids
   "Cascade the leaf emptiness verdicts up the tree: a collection is non-empty iff some collection in
@@ -208,87 +200,114 @@
                       (cons id (collection/location-path->ids location)))))
           leaf-coll-ids)))
 
-(defn- collection-findings
-  "One verdict per eligible collection: empty (per the recursive cascade - `content-count` is 0 by
-  definition, whatever the raw count of empty items), else crowded/sparse on the **raw** direct item
-  count (empty items still count)."
-  [collections direct-counts non-empty-colls {:keys [crowded-collection-items sparse-collection-items]}]
-  (for [{:keys [id]} collections
-        :let [n       (long (get direct-counts id 0))
-              verdict (cond
-                        (not (contains? non-empty-colls id))
-                        (finding :collection id :empty 0 {:threshold 0 :unit "items"})
+;;; ------------------------------------------------- checkers ------------------------------------------------
 
-                        (> n crowded-collection-items)
-                        (finding :collection id :crowded n {:threshold crowded-collection-items :unit "items"})
-
-                        (< n sparse-collection-items)
-                        (finding :collection id :sparse n {:threshold sparse-collection-items :unit "items"}))]
-        :when verdict]
-    verdict))
-
-;;; ------------------------------------------------- checker -------------------------------------------------
-
-(defn checker
-  "Instance-wide `empty`/`sparse`/`crowded` finding maps across collection, card, dashboard, document,
-  and transform. Thresholds are read once here and frozen into each finding's `details`; the dashboard/
-  document emptiness verdicts (and the card-empty probe) feed the collection cascade. The denormalized
-  display attrs are stamped by `common/attach-entity-attrs`."
+(defn empty-checker
+  "Instance-wide `empty` finding maps across collection, card, dashboard, document, and transform.
+  The leaf verdicts (the card probe, 0-dashcard dashboards, no-content documents) feed the collection
+  cascade computed in the same pass."
   []
-  (let [thresholds       {:crowded-collection-items   (cd.settings/content-diagnostics-crowded-collection-threshold-items)
-                          :crowded-dashcards-per-tab  (cd.settings/content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab)
-                          :crowded-tabs               (cd.settings/content-diagnostics-crowded-dashboard-threshold-tabs)
-                          :crowded-document-cards     (cd.settings/content-diagnostics-crowded-document-threshold-cards)
-                          :sparse-collection-items    (cd.settings/content-diagnostics-sparse-collection-threshold-items)
-                          :sparse-dashboard-dashcards (cd.settings/content-diagnostics-sparse-dashboard-threshold-dashcards)}
-        empty-card-as-of (empty-card-id->as-of)
-        ;; collection "items" - direct non-archived children of the 4 leaf kinds + child collections
-        ;; (collection-items semantics: dashboard/document-internal cards live inside their container,
-        ;; not the collection)
-        cards            (t2/query {:select [:id :collection_id]
-                                    :from   [:report_card]
-                                    :where  [:and
-                                             [:= :archived false]
-                                             [:= :dashboard_id nil]
-                                             [:= :document_id nil]]})
-        dashboards       (t2/query {:select [:id :collection_id]
-                                    :from   [:report_dashboard]
-                                    :where  [:= :archived false]})
-        ;; primary dashcards only: crowding measures layout slots, and a series card layers onto one
-        ;; dashcard's visualization without occupying one (slow counts series because they run queries
-        ;; on render - a different semantic)
-        dashcard-groups  (group-by :dashboard_id
-                                   (t2/query {:select   [:dashboard_id :dashboard_tab_id [[:count :*] :cnt]]
-                                              :from     [:report_dashboardcard]
-                                              :group-by [:dashboard_id :dashboard_tab_id]}))
-        tab-counts       (u/index-by :dashboard_id :cnt
-                                     (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
-                                                :from     [:dashboard_tab]
-                                                :group-by [:dashboard_id]}))
-        documents        (t2/select [:model/Document :id :collection_id :document :content_type]
-                                    :archived false)
+  (let [empty-card-as-of (empty-card-id->as-of)
+        cards            (collection-item-cards)
+        dashboards       (active-dashboards)
+        dashcard-totals  (dashboard-dashcard-totals)
+        documents        (active-documents)
         collections      (eligible-collections)
-        dashboard-fs     (dashboard-findings dashboards dashcard-groups tab-counts thresholds)
-        document-fs      (document-findings documents thresholds)
-        ;; leaf emptiness verdicts feed the collection cascade: an item counts as non-empty unless this
-        ;; same scan flagged it empty (a card with no run signal counts as non-empty)
         empty-cards      (set (keys empty-card-as-of))
-        empty-dashboards (empty-ids dashboard-fs :dashboard)
-        empty-documents  (empty-ids document-fs :document)
+        empty-dashboards (into #{}
+                               (keep #(when (zero? (long (get dashcard-totals (:id %) 0))) (:id %)))
+                               dashboards)
+        ;; only a parseable (prose-mirror) document can be judged empty - any other content type is
+        ;; unknown, so it counts as a non-empty leaf below
+        empty-documents  (into #{}
+                               (keep #(when (and (= (:content_type %) prose-mirror/prose-mirror-content-type)
+                                                 (document-empty? %))
+                                        (:id %)))
+                               documents)
+        ;; an item counts as a non-empty leaf unless this same pass flagged it empty (a card with no
+        ;; run signal counts as non-empty)
         leaf-coll-ids    (into #{}
                                (concat
                                 (keep #(when-not (empty-cards (:id %)) (:collection_id %)) cards)
                                 (keep #(when-not (empty-dashboards (:id %)) (:collection_id %)) dashboards)
                                 (keep #(when-not (empty-documents (:id %)) (:collection_id %)) documents)))
-        non-empty-colls  (non-empty-collection-ids collections leaf-coll-ids)
-        direct-counts    (merge-with +
-                                     (frequencies (keep (comp collection/location-path->parent-id :location)
-                                                        collections))
-                                     (frequencies (keep :collection_id (concat cards dashboards documents))))]
+        non-empty-colls  (non-empty-collection-ids collections leaf-coll-ids)]
     (common/attach-entity-attrs
      (concat
-      (collection-findings collections direct-counts non-empty-colls thresholds)
-      (card-findings empty-card-as-of)
-      dashboard-fs
-      document-fs
+      (for [{:keys [id]} collections
+            :when (not (contains? non-empty-colls id))]
+        (finding :collection id :empty 0 {:threshold 0 :unit "items"}))
+      (for [[card-id as-of] empty-card-as-of]
+        (finding :card card-id :empty 0 {:threshold 0 :unit "rows" :as_of as-of}))
+      (for [id empty-dashboards]
+        (finding :dashboard id :empty 0 {:threshold 0 :unit "dashcards"}))
+      (for [id empty-documents]
+        (finding :document id :empty 0 {:threshold 0 :unit "cards"}))
       (transform-findings)))))
+
+(defn sparse-checker
+  "Instance-wide `sparse` finding maps across collection and dashboard. Sparse means a little
+  content, not none: the rule floors at 1, so a zero-count subject is the `empty` checker's alone."
+  []
+  (let [sparse-collection-items    (cd.settings/content-diagnostics-sparse-collection-threshold-items)
+        sparse-dashboard-dashcards (cd.settings/content-diagnostics-sparse-dashboard-threshold-dashcards)
+        dashcard-totals            (dashboard-dashcard-totals)]
+    (common/attach-entity-attrs
+     (concat
+      (let [collections (eligible-collections)
+            counts      (direct-item-counts collections)]
+        (for [{:keys [id]} collections
+              :let  [n (long (get counts id 0))]
+              :when (< 0 n sparse-collection-items)]
+          (finding :collection id :sparse n {:threshold sparse-collection-items :unit "items"})))
+      (for [{:keys [id]} (active-dashboards)
+            :let  [total (long (get dashcard-totals id 0))]
+            :when (< 0 total sparse-dashboard-dashcards)]
+        (finding :dashboard id :sparse total
+                 {:threshold sparse-dashboard-dashcards :unit "dashcards"}))))))
+
+(defn crowded-checker
+  "Instance-wide `crowded` finding maps across collection, dashboard, and document. The dashboard rule
+  keeps its within-type precedence - dashcards-on-one-tab first, then tab count - so an entity gets at
+  most one `crowded` finding; a tabless dashboard counts as one implicit tab."
+  []
+  (let [crowded-collection-items  (cd.settings/content-diagnostics-crowded-collection-threshold-items)
+        crowded-dashcards-per-tab (cd.settings/content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab)
+        crowded-tabs              (cd.settings/content-diagnostics-crowded-dashboard-threshold-tabs)
+        crowded-document-cards    (cd.settings/content-diagnostics-crowded-document-threshold-cards)
+        dashcard-groups           (group-by :dashboard_id
+                                            (t2/query {:select   [:dashboard_id :dashboard_tab_id
+                                                                  [[:count :*] :cnt]]
+                                                       :from     [:report_dashboardcard]
+                                                       :group-by [:dashboard_id :dashboard_tab_id]}))
+        tab-counts                (u/index-by :dashboard_id :cnt
+                                              (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
+                                                         :from     [:dashboard_tab]
+                                                         :group-by [:dashboard_id]}))]
+    (common/attach-entity-attrs
+     (concat
+      (let [collections (eligible-collections)
+            counts      (direct-item-counts collections)]
+        (for [{:keys [id]} collections
+              :let  [n (long (get counts id 0))]
+              :when (> n crowded-collection-items)]
+          (finding :collection id :crowded n {:threshold crowded-collection-items :unit "items"})))
+      (for [{:keys [id]} (active-dashboards)
+            :let  [tab-rows    (get dashcard-groups id)
+                   max-per-tab (transduce (map :cnt) max 0 tab-rows)
+                   tabs        (max 1 (long (get tab-counts id 0)))
+                   verdict     (cond
+                                 (> max-per-tab crowded-dashcards-per-tab)
+                                 (finding :dashboard id :crowded max-per-tab
+                                          {:threshold crowded-dashcards-per-tab :unit "dashcards"})
+
+                                 (> tabs crowded-tabs)
+                                 (finding :dashboard id :crowded tabs
+                                          {:threshold crowded-tabs :unit "tabs"}))]
+            :when verdict]
+        verdict)
+      (for [doc   (active-documents)
+            :when (= (:content_type doc) prose-mirror/prose-mirror-content-type)
+            :let  [n (count (prose-mirror/card-ids doc))]
+            :when (> n crowded-document-cards)]
+        (finding :document (:id doc) :crowded n {:threshold crowded-document-cards :unit "cards"}))))))

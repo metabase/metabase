@@ -27,8 +27,11 @@
   all-clean scan still resolves the previous scan's findings."
   [{:finding-types #{:stale} :run stale/checker}
    {:finding-types #{:slow}  :run slow/checker}
-   ;; one checker, three finding types sharing one count pass - an all-clean scan supersedes all three
-   {:finding-types #{:empty :sparse :crowded} :run imbalanced/checker}])
+   ;; the imbalanced family: three independent checkers with no cross-type precedence, so one entity
+   ;; can carry several of these finding types at once; each declared type scopes its own supersession
+   {:finding-types #{:empty}   :run imbalanced/empty-checker}
+   {:finding-types #{:sparse}  :run imbalanced/sparse-checker}
+   {:finding-types #{:crowded} :run imbalanced/crowded-checker}])
 
 (defn covered-finding-types
   "The set of finding-types the registered checkers own - the supersession scope for post-scan invalidation."
