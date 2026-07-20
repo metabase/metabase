@@ -36,10 +36,34 @@ for (const file of files) {
   if (ported.has(rel)) continue;
   const content = fs.readFileSync(file, "utf8");
   const lines = content.split("\n").length;
+  // Tags are per-DESCRIBE, but a whole-file keyword scan cannot see that. A
+  // spec where only one of three describes is @external looks identical to one
+  // where all three are, and an agent that gates the file then silently skips
+  // the ungated tests — ported, green, and not executing. That cost 9 of 11
+  // tests on dashboard-filters-source before the gate-off control caught it
+  // (FINDINGS #121). So for describe-level tags, report the coverage as n/N.
+  const describeCount = (content.match(/^\s*describe(?:\.\w+)?\(/gm) || [])
+    .length;
+  const taggedDescribes = (tag) =>
+    (content.match(new RegExp(`\\{[^}]*tags:[^}]*${tag}`, "g")) || []).length;
+
   const tags = [];
-  if (/@external/.test(content)) tags.push("external");
-  if (/@mongo/.test(content)) tags.push("mongo");
-  if (/@OSS/.test(content)) tags.push("oss");
+  const scoped = (tag, label) => {
+    if (!new RegExp(tag).test(content)) return;
+    const n = taggedDescribes(tag);
+    // n === 0 means the tag appears somewhere other than a describe's tags
+    // option (a comment, a test-level tag, a helper name) — still worth
+    // flagging, but explicitly not a describe-level gate.
+    tags.push(
+      n > 0 && describeCount > 0 && n < describeCount
+        ? `${label}(${n}/${describeCount} describes)`
+        : label,
+    );
+  };
+
+  scoped("@external", "external");
+  scoped("@mongo", "mongo");
+  scoped("@OSS", "oss");
   if (/@skip/.test(content)) tags.push("has-skips");
   if (/snowplow/i.test(content)) tags.push("snowplow");
   if (/setupSMTP|getInbox|maildev/i.test(content)) tags.push("email");
