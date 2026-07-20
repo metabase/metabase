@@ -153,6 +153,10 @@
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
 
+        ;; before the scalar clause below — a one-row, one-column custom viz is still a custom viz
+        (render.util/custom-viz-static-support? display-type)
+        (chart-type :javascript_visualization "display-type is a custom visualization with static support")
+
         map-type
         (chart-type map-type "card is a map renderable as %s" (name map-type))
 
@@ -195,6 +199,9 @@
 
         (= :pivot display-type)
         (chart-type :pivot "display-type is pivot")
+
+        (render.util/custom-viz-display? display-type)
+        (chart-type :table "display-type is a custom visualization without static support, falling back to table")
 
         :else
         (chart-type :table "no other chart types match")))))

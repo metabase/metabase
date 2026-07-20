@@ -503,6 +503,7 @@
            appearance
            collections
            config
+           custom-viz-plugin
            dashboards
            driver
            events
@@ -527,7 +528,8 @@
            types
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
-   :model-imports #{:model/Dashboard
+   :model-imports #{:model/CustomVizPlugin
+                    :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/Database
@@ -698,6 +700,12 @@
   {:team "UX West"
    :api  #{}
    :uses :any}
+
+  custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase.custom-viz-plugin.core}
+   :uses #{premium-features}
+   :friends #{enterprise/custom-viz-plugin}}
 
   dashboards
   {:team "UX West"
