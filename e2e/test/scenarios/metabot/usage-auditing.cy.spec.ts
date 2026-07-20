@@ -783,6 +783,15 @@ describe("scenarios > metabot > usage auditing", () => {
 
   it("shows token usage stats charts", () => {
     visitUsageStatsPage();
+
+    // Anchor on the tab bar being mounted with its default selection settled
+    // before switching. Without this, realClick can fire before the Tabs
+    // onClick handler is wired up, so navigation never happens and
+    // `metric=tokens` never lands in the URL (the observed flake).
+    H.main()
+      .findByRole("tab", { name: "Conversations" })
+      .should("have.attr", "aria-selected", "true");
+
     H.main().findByRole("tab", { name: "Tokens" }).realClick();
 
     cy.url().should("include", "metric=tokens");
