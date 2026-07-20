@@ -2093,3 +2093,51 @@ open item, not as evidence.
 
     Worth tracking as a **coverage-recovery candidate**: specs where an accurate
     tag hides tests that could execute without containers. This is the second.
+
+### 🔴 The queue's gate column is per-FILE; tags are per-DESCRIBE
+
+121. **Gating this spec at the file level would have silently skipped 9 of its 11
+    tests** (`dashboard-filters-source`). The queue reports `@external`, but only
+    the **second** describe carries that tag — the first is `@slow` and runs on
+    plain H2.
+
+    Measured: `PW_QA_DB_ENABLED=1` → **11 executed / 0 skipped**; gate off →
+    **9 executed / 2 skipped**.
+
+    This is a defect in `scripts/build-queue.mjs`, not in the spec. The gate
+    column is a **keyword scan over the whole file**, so a tag on any one
+    describe colours the entire entry, and an agent that trusts it applies a
+    file-wide gate. The result is the worst kind of failure this spike has:
+    **ported, green, and silently not executing** — indistinguishable from
+    success unless someone runs the gate-off control.
+
+    **Consequence for briefs: "probe the gate" must mean per-describe, not
+    per-file.** The gate-OFF control is what catches this, which is why it is
+    mandatory. Owed: either make the generator emit per-describe gates, or label
+    the column explicitly as "any describe in this file mentions…".
+
+    Related: `dashboard-filters-boolean` (#120) is the inverse — an accurate
+    file-level tag where 6 of 9 tests still don't need the container.
+
+### Three brief warnings that did not apply, reported rather than banked
+
+122. **`dashboard-filters-source` reported three of my warnings as inapplicable**
+    — the second agent in a row to do so, after #117.
+    - **Virtualization:** every dropdown here holds 3–4 options, and the
+      `toHaveCount(0)` mutants failed by *finding* elements, not by
+      under-rendering.
+    - **The `cy.wait` queue rule:** the `/api/dataset` intercept is registered
+      and **never awaited anywhere in the file**, so there was no queue to port.
+    - **The 1280×720 viewport defect:** nothing observed was layout- or
+      popover-position-dependent.
+
+    Recording this because the briefs have grown long and carry an increasing
+    number of hazards that are real *somewhere*. An agent that quietly treats
+    every listed hazard as present will manufacture work and, worse, may "fix"
+    something that was never broken. **A warning being inapplicable is a
+    result, and saying so is the correct behaviour.**
+
+    Also settled, as a by-product of a mutation: flipping
+    `ORDER BY ID ASC`→`DESC` killed both label tests, which **answers the
+    ordering question the brief raised** — that list's order is guaranteed by
+    the query, not incidental.
