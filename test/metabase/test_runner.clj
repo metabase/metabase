@@ -132,6 +132,7 @@
   ([options]
    (hawk/find-tests-with-options (parse-options options))))
 
+;; runs once at runner startup before any tests execute, so the thread-safety naming rule is moot
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- initialize-all-fixtures []
   (let [steps (initialize/all-components)]
