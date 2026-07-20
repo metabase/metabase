@@ -14,6 +14,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
+   ;; this ns is itself the legacy compat layer; it reads the store the legacy pipeline fills
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as-alias add]
    [metabase.util.i18n :refer [tru]]
