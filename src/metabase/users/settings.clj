@@ -136,7 +136,7 @@
   :default    [])
 
 (defsetting user-visibility
-  (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  (deferred-tru "Note: Users with row or column security restrictions will never see suggestions.")
   :visibility   :authenticated
   :feature      :email-restrict-recipients
   :type         :keyword
