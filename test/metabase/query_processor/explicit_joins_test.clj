@@ -879,7 +879,8 @@
                   ;; differences, this is just a sanity check for a few known drivers. So it's okay to hardcode driver
                   ;; names here.
                   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-                  (when (#{#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres :h2} driver/*driver*)
+                  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+                  (when (#{:postgres :h2} driver/*driver*)
                     (is (= ["Category" "Count" "Q2 → Category" "Q2 → Sum of Price" "Q3 → Category" "Q3 → Average of Rating"]
                            (map :display_name (get-in results [:data :results_metadata :columns])))))
                   (is (= [["Doohickey" 42 "Doohickey" 2185.89 "Doohickey" 3.73]
@@ -912,7 +913,8 @@
               ;; any differences, this is just a sanity check for a few known drivers. So it's okay to hardcode
               ;; driver names here.
               ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-              (when (#{:h2 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres} driver/*driver*)
+              #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+              (when (#{:h2 :postgres} driver/*driver*)
                 (is (= ["ID"
                         "User ID"
                         "Product ID"

@@ -614,6 +614,7 @@
              (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
                ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+               ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
                              appearance.settings/site-name (constantly "test")]
@@ -765,6 +766,7 @@
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
         ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name (constantly "test")]
@@ -972,6 +974,7 @@
          (fn []
            ;; Mock the saml-response->attributes function to return mixed attribute types.
            ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
            (with-redefs [saml.p/saml-response->attributes
                          (fn [_]
@@ -1093,6 +1096,7 @@
                      (is (successful-login? response)))))
                (testing "an existing user also fails to log in"
                  ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
@@ -1114,6 +1118,7 @@
                                                         :is_active false}
                          :model/User {existing-email :email} {:tenant_id tenant-id}]
             ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+            ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
             #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)]
               (do-with-some-validators-disabled!
@@ -1150,6 +1155,7 @@
              (fn []
                (testing "tenant -> other tenant fails with correct error message"
                  ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
@@ -1174,6 +1180,7 @@
                (fn []
                  ;; Use the regular new-user response which doesn't have tenant attribute.
                  ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
@@ -1196,6 +1203,7 @@
               (do-with-some-validators-disabled!
                (fn []
                  ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]

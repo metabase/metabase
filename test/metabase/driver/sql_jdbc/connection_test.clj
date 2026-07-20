@@ -291,10 +291,10 @@
             ;; to [[driver.u/supports?]].
             original-supports?       driver.u/supports?
             supports?-fn             (fn [driver feature database]
-                                       (if (and
-                                            ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-                                            (= driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :clickhouse)
-                                            (= feature :connection-impersonation))
+                                       ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                                       (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+                                            (= driver :clickhouse)
+                                                (= feature :connection-impersonation))
                                          true
                                          (original-supports? driver feature database)))]
         (try
@@ -340,6 +340,8 @@
             (t2/update! :model/Database (mt/id) {:details (:details db)})))))))
 
 ;;; Postgres-specific, so ok to hardcode driver names below.
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest connection-pool-invalidated-on-details-change-postgres-secrets-are-stable-test
   (testing "postgres secrets are stable (#23034)"
     (mt/with-temp [:model/Secret secret {:name       "file based secret"
@@ -348,8 +350,7 @@
                                          :value      (.getBytes "super secret")
                                          :creator_id (mt/user->id :crowberto)}]
       (let [db {:lib/type :metadata/database
-                ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-                :engine   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
+                :engine   :postgres
                 :details  {:ssl                      true
                            :ssl-mode                 "verify-ca"
                            :ssl-root-cert-options    "uploaded"
@@ -358,8 +359,7 @@
                            :ssl-root-cert-id         (:id secret)
                            :ssl-root-cert-created-at "2022-07-25T15:57:51.556-05:00"}}]
         (is (instance? java.io.File
-                       ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-                       (:sslrootcert (#'sql-jdbc.conn/connection-details->spec #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
+                       (:sslrootcert (#'sql-jdbc.conn/connection-details->spec :postgres
                                                                                (:details db))))
             "Secrets not loaded for db connections")
         (is (= (#'sql-jdbc.conn/jdbc-spec-hash db)
@@ -487,10 +487,11 @@
 
 ;;; TODO Not clear why we're only testing Postgres here, do we support Azure Managed Identity for any other app DB type?
 ;;; Needs a comment please.
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest test-auth-provider-connection
   (mt/with-premium-features #{:database-auth-providers}
-    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-    (mt/test-driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
+    (mt/test-driver :postgres
       (testing "Azure Managed Identity connections can be created and expired passwords get renewed"
         (let [db-details (:details (mt/db))
               oauth-db-details (-> db-details
@@ -522,11 +523,12 @@
                 ;; we must have created more than one connection
                 (is (> @connection-creations 1))))))))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest test-aws-iam-auth-provider-connection
   (mt/with-premium-features #{:database-auth-providers}
     (testing "AWS IAM authentication for Postgres"
-      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-      (mt/test-driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
+      (mt/test-driver :postgres
         (let [db-details (:details (mt/db))
               iam-db-details (-> db-details
                                  (dissoc :password)
@@ -534,14 +536,12 @@
                                         :auth-provider :aws-iam
                                         :ssl true))]
           (testing "Connection spec is configured with AWS wrapper"
-            ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-            (let [spec (sql-jdbc.conn/connection-details->spec #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres iam-db-details)]
+            (let [spec (sql-jdbc.conn/connection-details->spec :postgres iam-db-details)]
               (is (= "aws-wrapper:postgresql" (:subprotocol spec)))
               (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
               (is (= "iam" (:wrapperPlugins spec))))))))
     (testing "AWS IAM authentication for MySQL"
-      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-      (mt/test-driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mysql
+      (mt/test-driver :mysql
         (let [db-details (:details (mt/db))
               iam-db-details (-> db-details
                                  (dissoc :password)
@@ -549,21 +549,21 @@
                                         :auth-provider :aws-iam
                                         :ssl true))]
           (testing "Connection spec is configured with AWS wrapper"
-            ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-            (let [spec (sql-jdbc.conn/connection-details->spec #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mysql iam-db-details)]
+            (let [spec (sql-jdbc.conn/connection-details->spec :mysql iam-db-details)]
               (is (= "aws-wrapper:mysql" (:subprotocol spec)))
               (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
               (is (= "iam" (:wrapperPlugins spec)))
               (is (= "VERIFY_CA" (:sslMode spec))))))))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel test-aws-iam-requires-ssl
   (testing "AWS IAM authentication requires SSL to be enabled"
     (testing "Postgres throws error when SSL is disabled"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You must enable SSL in order to use AWS IAM authentication"
-           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-           (sql-jdbc.conn/connection-details->spec #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
+           (sql-jdbc.conn/connection-details->spec :postgres
                                                    {:host "localhost"
                                                     :port 5432
                                                     :user "cam"
@@ -574,8 +574,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You must enable SSL in order to use AWS IAM authentication"
-           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-           (sql-jdbc.conn/connection-details->spec #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mysql
+           (sql-jdbc.conn/connection-details->spec :mysql
                                                    {:host "localhost"
                                                     :port 3306
                                                     :user "root"
@@ -585,8 +584,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"sslMode must be VERIFY_CA in order to use AWS IAM authentication"
-           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-           (sql-jdbc.conn/connection-details->spec #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mysql
+           (sql-jdbc.conn/connection-details->spec :mysql
                                                    {:host "localhost"
                                                     :port 3306
                                                     :user "root"
@@ -746,6 +744,8 @@
                   (check-data))))
             (finally (.stop ^Server server))))))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest postgres-aws-iam-can-connect
   (if (config/config-bool :mb-postgres-aws-iam-test)
     (let [host   (config/config-str :mb-postgres-aws-iam-test-host)
@@ -760,16 +760,17 @@
           (is (string? dbname)))
         (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
           (is
-           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-           (driver.u/can-connect-with-details? #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres {:host   host
-                                                                                                                                     :port   port
-                                                                                                                                     :dbname dbname
-                                                                                                                                     :user   user
-                                                                                                                                     :use-auth-provider true
-                                                                                                                                     :auth-provider :aws-iam
-                                                                                                                                     :ssl true})))))
+           (driver.u/can-connect-with-details? :postgres {:host   host
+                                                          :port   port
+                                                          :dbname dbname
+                                                          :user   user
+                                                          :use-auth-provider true
+                                                          :auth-provider :aws-iam
+                                                          :ssl true})))))
     (log/info "Skipping test: MB_POSTGRES_AWS_IAM_TEST not set")))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest mysql-aws-iam-can-connect
   (if (config/config-bool :mb-mysql-aws-iam-test)
     (let [host   (config/config-str :mb-mysql-aws-iam-test-host)
@@ -786,17 +787,16 @@
           (is (string? ssl-cert)))
         (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
           (is
-           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-           (driver.u/can-connect-with-details? #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mysql {:host   host
-                                                                                                                                  :port   port
-                                                                                                                                  :dbname dbname
-                                                                                                                                  :user   user
-                                                                                                                                  :additional-options (if (= ssl-cert "trust")
-                                                                                                                                                        "trustServerCertificate=true"
-                                                                                                                                                        (str "serverSslCert=" ssl-cert))
-                                                                                                                                  :use-auth-provider true
-                                                                                                                                  :auth-provider :aws-iam
-                                                                                                                                  :ssl true})))))
+           (driver.u/can-connect-with-details? :mysql {:host   host
+                                                       :port   port
+                                                       :dbname dbname
+                                                       :user   user
+                                                       :additional-options (if (= ssl-cert "trust")
+                                                                             "trustServerCertificate=true"
+                                                                             (str "serverSslCert=" ssl-cert))
+                                                       :use-auth-provider true
+                                                       :auth-provider :aws-iam
+                                                       :ssl true})))))
     (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set")))
 
 (defn- count-swapped-pools-for-db
