@@ -1,7 +1,6 @@
 export * from "./actions";
 export * from "./activity";
 export * from "./admin";
-export * from "./advanced-config";
 export * from "./advanced-permission";
 export * from "./ai-entity-analysis";
 export * from "./alert";
@@ -17,6 +16,7 @@ export * from "./comments";
 export * from "./content-translation";
 export * from "./custom-viz-plugin";
 export * from "./dashboard";
+export * from "./data-app";
 export * from "./database";
 export * from "./dataset";
 export * from "./dependencies";

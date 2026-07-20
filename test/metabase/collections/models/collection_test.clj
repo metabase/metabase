@@ -1441,7 +1441,6 @@
              (group->perms [a b c] group))))))
 
 (deftest ^:parallel valid-location-path?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [path expected] (= expected
                           (#'collection/valid-location-path? path))
     nil       false

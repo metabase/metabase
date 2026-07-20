@@ -2301,6 +2301,25 @@
           "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.version-range"
         }
       },
+      "metabase-enterprise.security-center.schema.download-jar-url" : {
+        "description" : "A downloadable JAR for a given fixed version.",
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string"
+          },
+          "version" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
+          }
+        },
+        "required" : [ "version", "url" ]
+      },
+      "metabase-enterprise.security-center.schema.download-jar-urls" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-url"
+        }
+      },
       "metabase-enterprise.security-center.schema.match-status" : {
         "type" : "string",
         "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
@@ -5014,7 +5033,13 @@
             }
           },
           "required" : [ "channel_type", "details" ]
-        }, { } ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "channel_type" : { }
+          },
+          "required" : [ "channel_type" ]
+        } ]
       },
       "metabase.channel.models.channel.ChannelTemplateEmailDetails" : {
         "oneOf" : [ {
@@ -5083,7 +5108,13 @@
             }
           },
           "required" : [ "channel_type", "details" ]
-        }, { } ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "channel_type" : { }
+          },
+          "required" : [ "channel_type" ]
+        } ]
       },
       "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
@@ -12015,60 +12046,59 @@
           }
         } ]
       },
-      "metabase.metabot.schema.message" : {
+      "metabase.metabot.schema.state" : {
         "type" : "object",
         "properties" : {
-          "content" : {
-            "oneOf" : [ {
+          "chart-configs" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
+          "charts" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
+          "link-registry" : {
+            "type" : "object",
+            "additionalProperties" : {
               "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+            }
           },
-          "role" : {
-            "$ref" : "#/components/schemas/metabase.metabot.schema.role"
+          "queries" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
           },
-          "tool_call_id" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+          "todos" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : { }
+            }
           },
-          "tool_calls" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "arguments" : {
-                    "type" : "string"
-                  },
-                  "id" : {
-                    "type" : "string"
-                  },
-                  "name" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "id", "name", "arguments" ]
-              }
-            }, {
-              "type" : "null"
-            } ]
+          "transforms" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
           }
-        },
-        "required" : [ "role" ]
-      },
-      "metabase.metabot.schema.messages" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.metabot.schema.message"
         }
       },
-      "metabase.metabot.schema.role" : {
-        "type" : "string",
-        "enum" : [ "system", "user", "assistant", "tool" ]
+      "metabase.metabot.schema.state-map-key" : {
+        "description" : "A dynamic state-map key, normalized to its canonical string representation.",
+        "anyOf" : [ {
+          "type" : "string"
+        }, {
+          "type" : "string"
+        } ]
       },
       "metabase.metrics.api.BreakoutValuesResponse" : {
         "type" : "object",
@@ -25612,7 +25642,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
           }
         } ],
         "responses" : {
@@ -25663,7 +25693,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
           }
         } ],
         "responses" : {
@@ -28753,6 +28783,32 @@
                       "type" : "string",
                       "format" : "date-time"
                     },
+                    "messages" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "id" : {
+                            "type" : "string"
+                          },
+                          "parent_message_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "role" : {
+                            "type" : "string",
+                            "enum" : [ "user", "agent" ]
+                          },
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "parent_message_id", "role", "type" ]
+                      }
+                    },
                     "ip_address" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -28781,16 +28837,9 @@
                       }, {
                         "type" : "null"
                       } ]
-                    },
-                    "chat_messages" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : { }
-                      }
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "chat_messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
+                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
                 }
               }
             }
@@ -28899,7 +28948,7 @@
       "post" : {
         "operationId" : "post-api-ee-mfa-admin-remove",
         "summary" : "POST /api/ee/mfa/admin/remove",
-        "description" : "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost\n  authenticator with no recovery codes. Never feature-gated (a lapsed license must not make\n  lockouts permanent). The affected user is notified by email. They re-enroll from scratch —\n  there is nothing to \"reset\", the secret lives on their device.",
+        "description" : "Admin: remove *another* user's two-factor enrollment entirely — the lockout escape hatch for a\n  lost authenticator with no recovery codes. Never feature-gated (a lapsed license must not make\n  lockouts permanent). The affected user is notified by email. They re-enroll from scratch — there\n  is nothing to \"reset\", the secret lives on their device.\n\n  Removing your *own* enrollment is deliberately refused here: this is a user-management endpoint\n  that takes no second factor (the target can't produce one — that's why an admin is removing it),\n  and the admin UI never collects a code. Self-removal goes through the normal Security page, which\n  re-auths with a fresh factor via `/disable`. Without this guard a hijacked admin session could\n  strip its own 2FA with only a cookie, turning transient access into a permanent password bypass.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -31177,6 +31226,9 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "download_jar_urls" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-urls"
+                          },
                           "published_at" : {
                             "type" : "string",
                             "format" : "date-time"
@@ -31253,7 +31305,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "advisory_id", "title", "severity", "description", "advisory_url", "remediation", "published_at", "match_status", "last_evaluated_at", "acknowledged_by", "acknowledged_at", "affected_versions" ]
+                        "required" : [ "advisory_id", "title", "severity", "description", "advisory_url", "remediation", "published_at", "match_status", "last_evaluated_at", "acknowledged_by", "acknowledged_at", "affected_versions", "download_jar_urls" ]
                       }
                     },
                     "last_checked_at" : {
@@ -33690,7 +33742,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-workspace-manager-id",
         "summary" : "DELETE /api/ee/workspace-manager/{id}",
-        "description" : "Delete a Workspace. Tears down each `:provisioned` database's warehouse isolation\n  first (blocking). Refuses with a 409 if any database is still `:provisioning`/\n  `:deprovisioning` unless `ignore_pending=true`, in which case those databases are\n  left in the warehouse and only their app-DB rows are removed. If the warehouse was\n  unreachable for some `:provisioned` databases, the response includes\n  `:orphaned_resources` and a `:message` describing the inert schema/user objects\n  left behind for manual cleanup.",
+        "description" : "Delete a Workspace. Tears down every database's warehouse isolation first\n  (blocking, any state). Each database is either fully torn down (its row is\n  deleted) or kept; when any teardown fails the workspace is kept too — with the\n  failed rows, so the delete can be retried — and the combined failure is\n  returned as the error. 204 on success, no response body.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -33700,18 +33752,6 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "ignore-pending",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
         } ],
         "responses" : {
           "2XX" : {
@@ -33719,56 +33759,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "deleted" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "message" : {
-                      "type" : "string"
-                    },
-                    "orphaned_resources" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database_id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "driver" : {
-                            "type" : "string"
-                          },
-                          "reason" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "schema" : {
-                            "type" : "string"
-                          },
-                          "user" : {
-                            "type" : "string"
-                          },
-                          "workspace_database_id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          }
-                        },
-                        "required" : [ "workspace_database_id", "database_id", "driver", "schema", "user" ]
-                      }
-                    }
-                  },
-                  "required" : [ "id", "deleted" ]
+                  "type" : "null"
                 }
               }
             }
@@ -37174,7 +37165,7 @@
       "post" : {
         "operationId" : "post-api-measure",
         "summary" : "POST /api/measure",
-        "description" : "Create a new `Measure`.",
+        "description" : "Create a new `Measure`. The Measure's table is derived from its `definition`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -37215,14 +37206,9 @@
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
-                  },
-                  "table_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
                   }
                 },
-                "required" : [ "name", "table_id", "definition" ]
+                "required" : [ "name", "definition" ]
               }
             }
           }
@@ -37577,6 +37563,24 @@
                     "type" : "string",
                     "minLength" : 1
                   },
+                  "parent_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "retry_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "metabot_id" : {
                     "type" : "string"
                   },
@@ -37596,6 +37600,15 @@
                   "context" : {
                     "$ref" : "#/components/schemas/metabase.metabot.context.context"
                   },
+                  "user_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "debug" : {
                     "oneOf" : [ {
                       "type" : "boolean"
@@ -37606,9 +37619,11 @@
                   "profile_id" : {
                     "type" : "string"
                   },
-                  "history" : {
+                  "assistant_message_id" : {
                     "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.metabot.schema.messages"
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     }, {
                       "type" : "null"
                     } ]
@@ -37617,26 +37632,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  },
-                  "state" : {
-                    "type" : "object",
-                    "properties" : {
-                      "chart-configs" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      },
-                      "charts" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      },
-                      "queries" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      }
-                    }
                   }
                 },
-                "required" : [ "message", "context", "conversation_id", "history", "state" ]
+                "required" : [ "message", "context", "conversation_id" ]
               }
             }
           }
@@ -37774,6 +37772,13 @@
                     "created_at" : {
                       "type" : "string",
                       "format" : "date-time"
+                    },
+                    "state" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "summary" : {
                       "oneOf" : [ {
@@ -44297,7 +44302,7 @@
       "get" : {
         "operationId" : "get-api-search",
         "summary" : "GET /api/search",
-        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  `context` identifies the surface issuing the search; it selects the ranking weights and filter defaults.\n  It defaults to `api`, the value for programmatic callers.\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filter_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine: `hnsw` (approximate index search, default),\n    `brute-force` (exact filter-first search), or `hnsw-iterative-relaxed` / `hnsw-iterative-strict`\n    (index-backed iterative scans with inline filters); ignored by other engines\n  - `vector_search_ef_search`: override pgvector's `hnsw.ef_search` (1-1000) for the iterative strategies; (admin only)\n  - `vector_search_max_scan_tuples`: override pgvector's `hnsw.max_scan_tuples` for the iterative strategies; (admin only)\n  - `vector_search_explain`: set to true to record vector-scan instrumentation for this search (expensive); (admin only)\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
+        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  `context` identifies the surface issuing the search; it selects the ranking weights and filter defaults.\n  It defaults to `api`, the value for programmatic callers.\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filter_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine: `hnsw` (approximate index search, default),\n    `brute-force` (exact filter-first search), or `hnsw-iterative-relaxed` / `hnsw-iterative-strict`\n    (index-backed iterative scans with inline filters); ignored by other engines\n  - `vector_search_ef_search`: override pgvector's `hnsw.ef_search` (1-1000) for the iterative strategies; (admin only)\n  - `vector_search_max_scan_tuples`: override pgvector's `hnsw.max_scan_tuples` for the iterative strategies; (admin only)\n  - `vector_search_explain`: set to true to record vector-scan instrumentation for this search (expensive); (admin only)\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
           "name" : "q",
@@ -44593,29 +44598,6 @@
           "required" : false,
           "schema" : {
             "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "non_temporal_dim_ids",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "has_temporal_dim",
-          "required" : false,
-          "schema" : {
             "oneOf" : [ {
               "type" : "boolean"
             }, {
@@ -44945,29 +44927,6 @@
           }
         }, {
           "in" : "query",
-          "name" : "non_temporal_dim_ids",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "has_temporal_dim",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
           "name" : "expected_result_type",
           "required" : true,
           "schema" : {
@@ -45114,7 +45073,7 @@
       "post" : {
         "operationId" : "post-api-segment",
         "summary" : "POST /api/segment",
-        "description" : "Create a new `Segment`.",
+        "description" : "Create a new `Segment`. The Segment's table is derived from its `definition`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -45148,14 +45107,9 @@
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
-                  },
-                  "table_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
                   }
                 },
-                "required" : [ "name", "table_id", "definition" ]
+                "required" : [ "name", "definition" ]
               }
             }
           }

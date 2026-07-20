@@ -18,13 +18,21 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.test-util :as mq.tu]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private backend-kinds
   "Backend kinds exercised by the parity scenarios. `:memory` covers the
-  fast async in-process backend."
+  fast async in-process backend.
+
+  Quartz is not here, and can't easily be: it fires jobs on its own worker
+  threads, which don't inherit the dynamic bindings `with-test-mq` relies on
+  for isolation (see `metabase.mq.queue.quartz-test`, which drives that
+  backend directly instead). So a scenario passing here proves parity across
+  the *poll* backends, and pins the contract for the next one added — it does
+  not by itself prove Quartz agrees."
   [:memory])
 
 (def ^:private delivery-modes
@@ -96,6 +104,48 @@
        (is (>= (get @calls-by-msg "retry-me" 0) 2)
            "Message delivered at least twice (retry-after-failure or chaos duplication)")
        (mq/unlisten! queue-name)))))
+
+(deftest exclusive-queue-runs-one-batch-at-a-time-test
+  (testing "an :exclusive queue never has two batches in its listener at once, on any backend.
+
+            This is the parity scenario most worth having, because `:exclusive` is the one guarantee
+            each backend must implement *itself* — Quartz with @DisallowConcurrentExecution on the job
+            class, the memory backend by not fetching a second batch while one is in flight. The shared
+            poll driver implements it not at all, by design. So a backend that simply forgets the flag
+            keeps working, delivers everything, and quietly offers no mutual exclusion whatsoever —
+            which is exactly what the memory backend did until this was noticed. Nothing but a
+            behavioral test catches that."
+    (run-parity!
+     :queue/parity-exclusive
+     (fn [ctx queue-name]
+       (let [in-flight (atom 0)
+             peak      (atom 0)
+             received  (atom [])]
+         ;; one message per batch, so "batches at once" is what the listener actually observes
+         (q.registry/register-queue! queue-name {:transactional      :try
+                                                 :exclusive          true
+                                                 :max-batch-messages 1})
+         (mq.tu/listen! queue-name
+                        (fn [msg]
+                          (swap! peak max (swap! in-flight inc))
+                          ;; hold the batch long enough that an overlapping delivery would be seen
+                          (Thread/sleep 50)
+                          (swap! received conj msg)
+                          (swap! in-flight dec)))
+         (mq/with-queue queue-name [q]
+           (mq/put q "a")
+           (mq/put q "b")
+           (mq/put q "c"))
+         (mq.tu/eventually! ctx
+                            #(= #{"a" "b" "c"} (set @received))
+                            scenario-timeout-ms)
+         (is (= 1 @peak)
+             "never two batches of an exclusive queue in the listener at the same time")
+         ;; set, not sequence: exclusivity buys mutual exclusion, not ordering — and under
+         ;; :duplicate delivery each message legitimately arrives more than once.
+         (is (= #{"a" "b" "c"} (set @received))
+             "and every message is still delivered — exclusivity serializes, it doesn't drop")
+         (mq/unlisten! queue-name))))))
 
 (deftest queue-normalizes-message-shape-test
   (testing "Every backend delivers messages in the same canonical JSON-normalized shape:

@@ -59,14 +59,14 @@ const setup = ({
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <CollectionsNavTree
           // Unjustified type cast. FIXME
           collections={collections as any}
           selectedId={undefined}
           onSelect={jest.fn()}
         />
-      )}
+      }
     />,
     {
       storeInitialState: createMockState({

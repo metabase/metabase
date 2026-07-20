@@ -1,0 +1,99 @@
+import { t } from "ttag";
+
+import {
+  hasFeature,
+  hasWorkspacesEnabled,
+} from "metabase/common/utils/database";
+import type {
+  Database,
+  Workspace,
+  WorkspaceDatabase,
+  WorkspaceStatus,
+} from "metabase-types/api";
+
+export function getDatabaseName(workspaceDatabase: WorkspaceDatabase) {
+  return (
+    workspaceDatabase.database?.name ??
+    t`Database ${workspaceDatabase.database_id}`
+  );
+}
+
+export function getEligibleDatabases(databases: Database[]) {
+  return databases.filter(
+    (database) =>
+      hasFeature(database, "workspace") && hasWorkspacesEnabled(database),
+  );
+}
+
+export function isProvisioningFailed(workspace: Workspace) {
+  return (
+    workspace.status === "database-provisioning-failure" ||
+    workspace.status === "branch-provisioning-failure" ||
+    workspace.status === "instance-provisioning-failure"
+  );
+}
+
+export function isDeprovisioningFailed(workspace: Workspace) {
+  return (
+    workspace.status === "instance-deprovisioning-failure" ||
+    workspace.status === "branch-deprovisioning-failure" ||
+    workspace.status === "database-deprovisioning-failure"
+  );
+}
+
+export function isProvisioned(workspace: Workspace) {
+  return workspace.status === "provisioned";
+}
+
+export function isDeprovisioned(workspace: Workspace) {
+  return workspace.status === "unprovisioned";
+}
+
+export function isProvisioning(workspace: Workspace) {
+  return (
+    workspace.status === "database-provisioning" ||
+    workspace.status === "branch-provisioning" ||
+    workspace.status === "instance-provisioning"
+  );
+}
+
+export function isDeprovisioning(workspace: Workspace) {
+  return (
+    workspace.status === "instance-deprovisioning" ||
+    workspace.status === "branch-deprovisioning" ||
+    workspace.status === "database-deprovisioning"
+  );
+}
+
+export function getStatusMessage(status: WorkspaceStatus): string {
+  switch (status) {
+    case "unprovisioned":
+      return t`Not provisioned`;
+    case "database-provisioning":
+      return t`Setting up databases…`;
+    case "database-provisioning-failure":
+      return t`Failed to set up databases`;
+    case "branch-provisioning":
+      return t`Creating the git branch…`;
+    case "branch-provisioning-failure":
+      return t`Failed to create the git branch`;
+    case "instance-provisioning":
+      return t`Setting up the instance…`;
+    case "instance-provisioning-failure":
+      return t`Failed to set up the instance`;
+    case "provisioned":
+      return t`Provisioned`;
+    case "instance-deprovisioning":
+      return t`Deprovisioning the instance…`;
+    case "instance-deprovisioning-failure":
+      return t`Failed to deprovision the instance`;
+    case "branch-deprovisioning":
+      return t`Deleting the git branch…`;
+    case "branch-deprovisioning-failure":
+      return t`Failed to delete the git branch`;
+    case "database-deprovisioning":
+      return t`Deprovisioning databases…`;
+    case "database-deprovisioning-failure":
+      return t`Failed to deprovision databases`;
+  }
+}

@@ -5,7 +5,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.instance :as ws.instance]
+   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
@@ -34,12 +35,12 @@
   [db-id output-schema f]
   (mt/with-premium-features #{:workspaces}
     (try
-      (ws/set-instance-workspace! {:name "table-remapping-test-ws"
-                                   :databases {db-id {:input_schemas ["_"]
-                                                      :output        {:schema output-schema}}}})
+      (ws.instance/set-instance-workspace! {:name "table-remapping-test-ws"
+                                            :databases {db-id {:input_schemas ["_"]
+                                                               :output        {:schema output-schema}}}})
       (f)
       (finally
-        (ws/clear-instance-workspace!)))))
+        (ws.instance/clear-instance-workspace!)))))
 
 (deftest remap-table-returns-nil-when-no-mapping-test
   (clean-db-fixture!
@@ -143,12 +144,12 @@
   [db-id output-namespace f]
   (mt/with-premium-features #{:workspaces}
     (try
-      (ws/set-instance-workspace! {:name "ws-3-slot"
-                                   :databases {db-id {:input_schemas ["_"]
-                                                      :output        output-namespace}}})
+      (ws.instance/set-instance-workspace! {:name "ws-3-slot"
+                                            :databases {db-id {:input_schemas ["_"]
+                                                               :output        output-namespace}}})
       (f)
       (finally
-        (ws/clear-instance-workspace!)))))
+        (ws.instance/clear-instance-workspace!)))))
 
 (deftest add-transform-target-mapping!-flows-both-slots-from-namespace-test
   (testing "When the workspace output namespace populates :db, both slots flow into the TableRemapping row"
@@ -994,8 +995,8 @@
 (deftest engine-namespace-positions-unknown-driver-defaults-to-schema-table-test
   (testing "Unknown engine gets the default :schema-table shape -- no throw, no surprise"
     (is (= {:db nil :schema "public"}
-           (ws/engine-namespace-positions {:engine ::ws-test-unknown-driver :name "x"}
-                                          {:schema "public" :name "orders"})))))
+           (provisioning.database/engine-namespace-positions {:engine ::ws-test-unknown-driver :name "x"}
+                                                             {:schema "public" :name "orders"})))))
 
 ;;; -------------------------- GHY-3553: MySQL-shape sentinel-leak regressions --------------------------
 ;;;

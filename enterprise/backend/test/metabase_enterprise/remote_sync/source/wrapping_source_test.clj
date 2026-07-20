@@ -23,6 +23,9 @@
   (create-branch [_ _branch _base]
     nil)
 
+  (delete-branch [_ _branch]
+    nil)
+
   (branches [_]
     ["main"])
 

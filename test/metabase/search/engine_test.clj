@@ -22,7 +22,6 @@
   the additional-search-engines setting value."
   [{:keys [supported configured additional]} & body]
   ;; with-redefs is required: supported-engine? is a multimethod, which with-dynamic-fn-redefs cannot proxy.
-  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
   `(with-redefs [search.engine/supported-engine?            ~supported
                  search.engine/known-engine?                all-engines
                  search.settings/configured-search-engine   (constantly ~configured)
@@ -59,13 +58,13 @@
         (with-engines {:supported all-engines}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Set MB_SEARCH_ENGINE=appdb to keep semantic search off"
+               #"To keep semantic search off, set MB_SEARCH_ENGINE=appdb"
                (search/check-for-removed-env-vars!))))
         (testing "the fallback follows precedence, not a hardcoded engine"
           (with-engines {:supported #{:search.engine/semantic :search.engine/in-place}}
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"Set MB_SEARCH_ENGINE=in-place"
+                 #"set MB_SEARCH_ENGINE=in-place"
                  (search/check-for-removed-env-vars!)))))
         (testing "when semantic is the only supported engine there is nothing to fall back to"
           (with-engines {:supported #{:search.engine/semantic}}
@@ -73,12 +72,25 @@
                  clojure.lang.ExceptionInfo
                  #"only supported engine and cannot be disabled"
                  (search/check-for-removed-env-vars!))))))
-      (testing "with a plain remove-it message when another engine already serves search"
-        (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}}
+      (testing "naming both settings when semantic is the default and also force-enabled as additional"
+        (with-engines {:supported all-engines :additional ["semantic"]}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"remove it from your configuration"
+               #"set MB_SEARCH_ENGINE=appdb and remove semantic from additional-search-engines"
                (search/check-for-removed-env-vars!)))))
+      (testing "pointing at additional-search-engines when semantic is only force-enabled through it"
+        (with-engines {:supported all-engines :configured :appdb :additional ["semantic"]}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"To keep semantic search off, remove semantic from additional-search-engines"
+               (search/check-for-removed-env-vars!)))))
+      (testing "startup proceeds with just a warning when another engine already serves search"
+        (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}}
+          (is (=? [{:level   :warn
+                    :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. Remove it from your configuration."}]
+                  (mt/with-log-messages-for-level [messages :warn]
+                    (search/check-for-removed-env-vars!)
+                    (messages))))))
       (testing "the check runs as a startup validation so a throw aborts the boot"
         (is (contains? (methods startup/def-startup-validation!)
                        :metabase.search.core/check-for-removed-env-vars)))))

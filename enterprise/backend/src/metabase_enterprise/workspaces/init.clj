@@ -10,6 +10,7 @@
    app-db. See `metabase-enterprise.core.init` docstring for the broader
    pattern."
   (:require
+   [metabase-enterprise.workspaces.instance]
    [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.query-processor.middleware]

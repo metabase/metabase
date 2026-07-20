@@ -6,13 +6,32 @@ export type WorkspaceId = number;
 export type WorkspaceDatabaseStatus =
   | "unprovisioned"
   | "provisioning"
+  | "provisioning-failure"
   | "provisioned"
-  | "deprovisioning";
+  | "deprovisioning"
+  | "deprovisioning-failure";
+
+export type WorkspaceStatus =
+  | "unprovisioned"
+  | "database-provisioning"
+  | "database-provisioning-failure"
+  | "branch-provisioning"
+  | "branch-provisioning-failure"
+  | "instance-provisioning"
+  | "instance-provisioning-failure"
+  | "provisioned"
+  | "instance-deprovisioning"
+  | "instance-deprovisioning-failure"
+  | "branch-deprovisioning"
+  | "branch-deprovisioning-failure"
+  | "database-deprovisioning"
+  | "database-deprovisioning-failure";
 
 export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
   status: WorkspaceDatabaseStatus;
+  status_details: string | null;
 
   database?: Database | null;
 };
@@ -20,6 +39,11 @@ export type WorkspaceDatabase = {
 export type Workspace = {
   id: WorkspaceId;
   name: string;
+  target_branch: string | null;
+  status: WorkspaceStatus;
+  status_details: string | null;
+  instance_id: string | null;
+  instance_url: string | null;
   created_at: string;
   creator_id: UserId;
 
@@ -29,36 +53,11 @@ export type Workspace = {
 
 export type CreateWorkspaceRequest = {
   name: string;
+  target_branch?: string;
   database_ids: DatabaseId[];
 };
 
 export type UpdateWorkspaceRequest = {
   id: WorkspaceId;
   name?: string;
-};
-
-export type OrphanedWorkspaceResource = {
-  workspace_database_id: number;
-  database_id: DatabaseId;
-  driver: string;
-  schema: string;
-  user: string;
-  reason?: string | null;
-};
-
-export type DeleteWorkspaceRequest = {
-  id: WorkspaceId;
-  // When the workspace has databases still provisioning/deprovisioning, the
-  // backend refuses unless this is set — then it leaves those databases'
-  // warehouse resources in place and removes only the app-DB rows.
-  ignorePending?: boolean;
-};
-
-export type DeleteWorkspaceResponse = {
-  id: WorkspaceId;
-  deleted: boolean;
-  // Present only when the warehouse was unreachable during teardown: the workspace
-  // is still deleted, but these inert schema/user objects were left behind.
-  message?: string;
-  orphaned_resources?: OrphanedWorkspaceResource[];
 };

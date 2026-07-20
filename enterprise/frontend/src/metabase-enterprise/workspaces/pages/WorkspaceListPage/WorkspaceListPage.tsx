@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -9,16 +10,32 @@ import { Stack } from "metabase/ui";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
+import { POLLING_INTERVAL } from "../../constants";
+import { isDeprovisioning, isProvisioning } from "../../utils";
+
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceItem } from "./WorkspaceItem";
 
+function shouldPoll(workspaces: Workspace[] | undefined) {
+  return (workspaces ?? []).some(
+    (workspace) => isProvisioning(workspace) || isDeprovisioning(workspace),
+  );
+}
+
 export function WorkspaceListPage() {
+  const [isPolling, setIsPolling] = useState(false);
   const {
     data: workspaces,
     isLoading: isLoadingWorkspaces,
     error: workspacesError,
-  } = useListWorkspacesQuery();
+  } = useListWorkspacesQuery(undefined, {
+    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+  });
+
+  useEffect(() => {
+    setIsPolling(shouldPoll(workspaces));
+  }, [workspaces]);
   const {
     data: databasesResponse,
     isLoading: isLoadingDatabases,

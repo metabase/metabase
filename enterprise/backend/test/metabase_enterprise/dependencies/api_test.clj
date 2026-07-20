@@ -999,14 +999,12 @@
                 ;; Create measure A (base measure) via API
                 {measure-a-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure A"
-                                                          :table_id products-id
                                                           :definition (-> (lib/query mp products)
                                                                           (lib/aggregate (lib/sum price)))})
                 mp' (mt/metadata-provider)
                 ;; Create measure B that depends on measure A
                 {measure-b-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure B"
-                                                          :table_id products-id
                                                           :definition (-> (lib/query mp' products)
                                                                           (lib/aggregate (lib/* (lib.metadata/measure mp' measure-a-id)
                                                                                                 2)))})
@@ -1014,7 +1012,6 @@
                 ;; Create measure C that depends on measure B
                 {measure-c-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure C"
-                                                          :table_id products-id
                                                           :definition (-> (lib/query mp'' products)
                                                                           (lib/aggregate (lib/+ (lib.metadata/measure mp'' measure-b-id)
                                                                                                 100)))})]

@@ -46,7 +46,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :once ssh-test/do-with-mock-servers)
 
-;;; this is mostly testing [[h2/*allow-testing-h2-connections*]] so it's ok to hardcode driver names below.
+;;; this is mostly testing [[h2/*allow-testing-h2-connections*]] so it's ok to hardcode driver names below. [kondo-keep]
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel can-connect-with-details?-test
   (testing "Should not be able to connect without setting h2/*allow-testing-h2-connections*"
@@ -291,6 +291,7 @@
             ;; to [[driver.u/supports?]].
             original-supports?       driver.u/supports?
             supports?-fn             (fn [driver feature database]
+                                       ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                                        (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
                                             (= driver :clickhouse)
                                                 (= feature :connection-impersonation))
@@ -339,6 +340,7 @@
             (t2/update! :model/Database (mt/id) {:details (:details db)})))))))
 
 ;;; Postgres-specific, so ok to hardcode driver names below.
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest connection-pool-invalidated-on-details-change-postgres-secrets-are-stable-test
   (testing "postgres secrets are stable (#23034)"
@@ -485,6 +487,7 @@
 
 ;;; TODO Not clear why we're only testing Postgres here, do we support Azure Managed Identity for any other app DB type?
 ;;; Needs a comment please.
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest test-auth-provider-connection
   (mt/with-premium-features #{:database-auth-providers}
@@ -520,6 +523,7 @@
                 ;; we must have created more than one connection
                 (is (> @connection-creations 1))))))))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest test-aws-iam-auth-provider-connection
   (mt/with-premium-features #{:database-auth-providers}
@@ -551,6 +555,7 @@
               (is (= "iam" (:wrapperPlugins spec)))
               (is (= "VERIFY_CA" (:sslMode spec))))))))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel test-aws-iam-requires-ssl
   (testing "AWS IAM authentication requires SSL to be enabled"
@@ -739,6 +744,7 @@
                   (check-data))))
             (finally (.stop ^Server server))))))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest postgres-aws-iam-can-connect
   (if (config/config-bool :mb-postgres-aws-iam-test)
@@ -763,6 +769,7 @@
                                                           :ssl true})))))
     (log/info "Skipping test: MB_POSTGRES_AWS_IAM_TEST not set")))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest mysql-aws-iam-can-connect
   (if (config/config-bool :mb-mysql-aws-iam-test)

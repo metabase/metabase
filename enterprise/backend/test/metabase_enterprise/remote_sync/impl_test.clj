@@ -23,7 +23,6 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
                         (test-helpers/clean-remote-sync-state f))))
@@ -483,7 +482,7 @@
                   (is (= :success (:status result)))
                   (is (pos? (count @progress-calls)))
                   (is (= task-id (:task-id (first @progress-calls))))
-                  (is (= 0.3 (:progress (first @progress-calls)))))))))))))
+                  (is (= 0.33 (:progress (first @progress-calls)))))))))))))
 
 (deftest import!-resets-remote-sync-object-table-test
   (testing "import! deletes and recreates RemoteSyncObject table with synced status"
@@ -1794,6 +1793,7 @@ serdes/meta:
          (replace-all! [_] nil)
          (empty-commit? [_] empty?)
          (finish-commit! [_ _] "written-version")
+         (finish-commit! [_ _ report-progress] (when report-progress (report-progress 0.8)) "written-version")
          (abort-commit! [_] nil))))))
 
 (defn- export-test-source
@@ -1802,6 +1802,7 @@ serdes/meta:
   (reify source.p/Source
     (branches [_] ["main"])
     (create-branch [_ _ _] nil)
+    (delete-branch [_ _] nil)
     (default-branch [_] "main")
     (snapshot [_] (export-test-snapshot "remote-R"))
     (snapshot-at [_ v] (export-test-snapshot v))))
@@ -1886,6 +1887,7 @@ serdes/meta:
             no-resolve-source (reify source.p/Source
                                 (branches [_] ["main"])
                                 (create-branch [_ _ _] nil)
+                                (delete-branch [_ _] nil)
                                 (default-branch [_] "main")
                                 (snapshot [_] (export-test-snapshot "remote-R"))
                                 (snapshot-at [_ _] nil))]
@@ -2003,6 +2005,7 @@ serdes/meta:
     (let [no-base-source (reify source.p/Source
                            (branches [_] ["main"])
                            (create-branch [_ _ _] nil)
+                           (delete-branch [_ _] nil)
                            (default-branch [_] "main")
                            (snapshot [_] (export-test-snapshot "remote-R"))
                            (snapshot-at [_ _] nil))]

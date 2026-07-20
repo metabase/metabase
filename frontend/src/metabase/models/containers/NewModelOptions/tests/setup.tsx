@@ -2,7 +2,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -11,6 +11,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import NewModelOptions from "../NewModelOptions";
+
+const RoutedNewModelOptions = withRouteProps(NewModelOptions);
 
 export interface SetupOpts {
   canCreateQueries?: boolean;
@@ -44,8 +46,11 @@ export function setup({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  renderWithProviders(<Route path="*" component={NewModelOptions}></Route>, {
-    withRouter: true,
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <Route path="*" element={<RoutedNewModelOptions />}></Route>,
+    {
+      withRouter: true,
+      storeInitialState: state,
+    },
+  );
 }

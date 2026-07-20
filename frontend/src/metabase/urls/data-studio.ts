@@ -337,10 +337,6 @@ export function dataStudioArchivedSnippets() {
   return `${dataStudioLibrary()}/snippets/archived`;
 }
 
-export function dataStudioSegment(segmentId: SegmentId) {
-  return `${dataStudioLibrary()}/segments/${segmentId}`;
-}
-
 export function dataStudioSettings() {
   return `${dataStudio()}/settings`;
 }
