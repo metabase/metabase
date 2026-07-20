@@ -47,8 +47,8 @@
            (vec (encryption/secret-key->hash "Toucans"))))))
 
 (deftest ^:parallel unique-hashes-test
-  (testing (is (not= (vec secret)
-                     (vec secret-2)))))
+  (is (not= (vec secret)
+            (vec secret-2))))
 
 (deftest ^:parallel hash-pattern-test
   (is (re= #"^[0-9A-Za-z/+]+=*$"

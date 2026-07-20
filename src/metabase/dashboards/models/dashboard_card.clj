@@ -40,7 +40,7 @@
 (t2/define-after-select :model/DashboardCard
   [dashcard]
   (if (contains? dashcard :visualization_settings)
-    (update dashcard :visualization_settings serdes/import-visualizer-settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
     dashcard))
 
 (declare series)
@@ -76,6 +76,20 @@
                (-> dashboard-card
                    (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
+
+(defn virtual-card-settings
+  "`visualization_settings` for a virtual dashcard — a dashcard with no backing card, such as a text
+  card or heading. `display` is the virtual display type as a string (\"text\", \"heading\", ...).
+  Mirrors the shape the frontend saves; see `createVirtualCard` in
+  frontend/src/metabase/common/utils/dashboard.ts."
+  [display text]
+  (cond-> {:virtual_card {:name                   nil
+                          :display                display
+                          :visualization_settings {}
+                          :archived               false}
+           :text         text}
+    ;; headings render without a card background, matching the frontend default
+    (= display "heading") (assoc :dashcard.background false)))
 
 (defmethod serdes/hash-fields :model/DashboardCard
   [_dashboard-card]

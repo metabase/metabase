@@ -3,9 +3,10 @@ import { useMemo } from "react";
 import type { SdkQuestionProps } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { deserializeCard, parseHash } from "metabase/common/utils/card";
-import * as Urls from "metabase/urls";
 
 import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
+
+import { resolveQuestionId } from "./utils";
 
 interface SdkAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
@@ -60,9 +61,6 @@ export const SdkAdHocQuestion = ({
     [questionPath],
   );
 
-  // If we cannot extract an entity ID from the slug, assume we are creating a new question.
-  const questionId = Urls.extractEntityId(params.slug) ?? null;
-
   const { options, deserializedCard } = useMemo(() => {
     const { options, serializedCard } = parseHash(location.hash);
     const deserializedCard = serializedCard
@@ -71,6 +69,12 @@ export const SdkAdHocQuestion = ({
 
     return { options, deserializedCard };
   }, [location.hash]);
+
+  const questionId = resolveQuestionId(
+    params.slug,
+    // Unjustified type cast. FIXME
+    deserializedCard as { dataset_query?: { type?: string } } | undefined,
+  );
 
   return (
     <SdkQuestion

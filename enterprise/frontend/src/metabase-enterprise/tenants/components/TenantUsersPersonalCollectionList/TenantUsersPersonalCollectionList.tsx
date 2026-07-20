@@ -1,20 +1,17 @@
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
+import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { useGetTenantQuery } from "metabase-enterprise/api";
 import type { IconName } from "metabase-types/api";
 
-interface TenantUsersPersonalCollectionListProps {
-  params: { tenantId: string };
-}
-
-export const TenantUsersPersonalCollectionList = ({
-  params,
-}: TenantUsersPersonalCollectionListProps) => {
-  const tenantId = parseInt(params.tenantId, 10);
+export const TenantUsersPersonalCollectionList = () => {
+  const { tenantId: tenantIdParam } = useParams();
+  const tenantId = parseInt(checkNotNull(tenantIdParam), 10);
 
   const { data: tenant } = useGetTenantQuery(tenantId);
   const { data, isLoading } = useListUsersQuery({ tenant_id: tenantId });

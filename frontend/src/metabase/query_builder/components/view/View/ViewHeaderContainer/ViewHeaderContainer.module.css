@@ -1,5 +1,5 @@
 .BorderedViewTitleHeader {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   padding-top: 8px;
   padding-bottom: 8px;
   min-height: 4.25rem; /* Give some extra space so various verisons of the header have a consistent height (saved question, ad-hoc, etc) */
@@ -7,7 +7,7 @@
 
 .QueryBuilderViewHeaderContainer {
   flex-shrink: 0;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   position: relative;
   z-index: 3;
   container-name: query-builder;

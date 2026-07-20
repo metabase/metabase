@@ -3,7 +3,7 @@
 
   &[data-variant="default"] {
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
 
     &[data-active] {
@@ -33,7 +33,7 @@
 
   &[data-variant="mb-light"] {
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
 
     &[data-active] {
@@ -42,13 +42,13 @@
         color: var(--mb-color-text-primary);
       }
 
-      background-color: var(--mb-color-background-tertiary);
+      background-color: var(--mb-color-background_page-tertiary);
     }
   }
 
   &[data-variant="admin-nav"] {
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
 
     .NavLinkLabel {
@@ -60,7 +60,7 @@
 
       &,
       &:hover {
-        background-color: var(--mb-color-background-selected);
+        background-color: var(--mb-color-background_surface-selected);
       }
 
       .NavLinkLabel {

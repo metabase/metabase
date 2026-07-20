@@ -20,6 +20,7 @@ import type { MetabotProvider } from "metabase-types/api";
 
 import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import { ApiKeyProviderFields } from "./ApiKeyProviderFields";
+import { AzureProviderFields } from "./AzureProviderFields";
 import { BedrockProviderFields } from "./BedrockProviderFields";
 import {
   API_KEY_SETTING_BY_PROVIDER,
@@ -63,7 +64,7 @@ export function AIProviderConfigurationForm({
   const isCurrentConfigured = connectedProvider === provider && isConfigured;
 
   useEffect(() => {
-    if (isModal) {
+    if (isModal || !connectedProvider) {
       return;
     }
     setProvider(connectedProvider);
@@ -94,7 +95,11 @@ export function AIProviderConfigurationForm({
       "llm-metabot-provider": null,
     };
 
-    if (connectedProvider !== "metabase" && connectedProvider !== "bedrock") {
+    if (
+      connectedProvider !== "metabase" &&
+      connectedProvider !== "bedrock" &&
+      connectedProvider !== "azure"
+    ) {
       const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[connectedProvider];
       const apiKeySetting = providerApiKeyDetails[apiKeySettingKey];
 
@@ -104,12 +109,12 @@ export function AIProviderConfigurationForm({
     }
 
     try {
-      if (connectedProvider === "bedrock") {
-        // Bedrock key material spans several settings; an explicit `credentials: null`
-        // clears them all in one call. It runs before the provider is deselected so a
-        // failure can't leave saved keys behind.
+      if (connectedProvider === "bedrock" || connectedProvider === "azure") {
+        // Bedrock and Azure key material spans several settings; an explicit
+        // `credentials: null` clears them all in one call. It runs before the provider
+        // is deselected so a failure can't leave saved keys behind.
         await updateMetabotSettings({
-          provider: "bedrock",
+          provider: connectedProvider,
           credentials: null,
         }).unwrap();
       }
@@ -125,8 +130,10 @@ export function AIProviderConfigurationForm({
         sendToast({
           message,
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
         });
+      } else {
+        setProvider(undefined);
       }
     } catch (error) {
       const message = getErrorMessage(
@@ -137,7 +144,7 @@ export function AIProviderConfigurationForm({
       sendToast({
         message,
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
       });
     }
   }, [
@@ -229,12 +236,13 @@ export function AIProviderConfigurationForm({
               >
                 <Text
                   lh="1rem"
-                  c={option.disabled ? "text-tertiary" : undefined}
+                  c={option.disabled ? "text-disabled" : undefined}
                 >
                   {option.label}
                 </Text>
+                {/* Unjustified type cast. FIXME */}
                 {!isAvailableProvider(option.value as MetabotProvider) && (
-                  <Text c="text-tertiary" lh="1rem" size="sm">
+                  <Text c="text-disabled" lh="1rem" size="sm">
                     {t`Coming soon`}
                   </Text>
                 )}
@@ -246,6 +254,13 @@ export function AIProviderConfigurationForm({
         {match(provider)
           .with("metabase", () => (
             <MetabaseAIProviderSetup onConnect={onClose} />
+          ))
+          .with("azure", () => (
+            <AzureProviderFields
+              connectedModel={connectedModel}
+              isCurrentConfigured={isCurrentConfigured}
+              isEnvSetting={isEnvSetting}
+            />
           ))
           .with("bedrock", () => (
             <BedrockProviderFields
@@ -284,7 +299,7 @@ export function AIProviderConfigurationForm({
               { isCurrentConfigured: true, isConnectButtonEnabled: false },
               () => (
                 <Button
-                  c="danger"
+                  c="feedback-negative"
                   loading={isMutating}
                   disabled={isMutating}
                   onClick={handleDisconnect}

@@ -45,6 +45,8 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(use-fixtures :each (fn [thunk] (qp.pivot.test-util/do-with-pivot-parity-check thunk)))
+
 (defn- format-response [m]
   (when-not (map? m)
     (throw (ex-info (format "Expected results to be a map! Got: %s" (u/pprint-to-str m))
@@ -131,6 +133,7 @@
                     :started_at       true
                     :running_time     true
                     :embedding_client nil
+                    :embedding_client_identifier nil
                     :embedding_hostname nil
                     :embedding_path nil
                     :embedding_route nil

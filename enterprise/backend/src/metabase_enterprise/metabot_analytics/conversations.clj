@@ -74,40 +74,44 @@
   "Allow-list of API sort keys → vectors of HoneySQL ORDER BY expressions (sans
    direction). A vector lets a single sort key emit multiple ORDER BY terms that
    share the same direction (e.g. user sort orders by first_name then last_name)."
-  {"created_at"    [:c.created_at]
-   "message_count" [:message_count]
-   "total_tokens"  [:total_tokens]
-   "user"          [[:lower [:min :u.first_name]]
-                    [:lower [:min :u.last_name]]]
-   "profile_id"    [:profile_id]
-   "ip_address"    [:c.ip_address]})
+  {"created_at"        [:c.created_at]
+   "message_count"     [:message_count]
+   "total_tokens"      [:total_tokens]
+   "cache_read_tokens" [:cache_read_tokens]
+   "user"              [[:lower [:min :u.first_name]]
+                        [:lower [:min :u.last_name]]]
+   "profile_id"        [:profile_id]
+   "ip_address"        [:c.ip_address]})
 
 (def ^:private list-query
-  "HoneySQL query that selects one row per conversation with the aggregate
-   message stats the frontend needs. Filters, sorting, and paging are applied
-   by [[list-conversations]]."
+  "Conversation rows with aggregate stats, including deleted attempts."
   {:select    [:c.*
                [[:count :m.id] :message_count]
                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
                [[:max :m.created_at] :last_message_at]
-               ;; First assistant message's profile_id, matching the
-               ;; `v_metabot_conversations` analytics view. User messages carry
-               ;; a placeholder `profile_id` and are excluded.
                [{:select   [:mm.profile_id]
                  :from     [[:metabot_message :mm]]
                  :where    [:and
                             [:= :mm.conversation_id :c.id]
-                            [:= :mm.role "assistant"]
-                            [:= :mm.deleted_at nil]]
+                            [:= :mm.role "assistant"]]
                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
                  :limit    1}
-                :profile_id]]
+                :profile_id]
+               ;; Cache tokens are only recorded per LLM call in `ai_usage_log`
+               ;; (`metabot_message` stores prompt+completion only), so this is a
+               ;; correlated subquery rather than another one-to-many join, which
+               ;; would fan out against the `metabot_message` join and inflate
+               ;; every aggregate above.
+               [[:coalesce
+                 {:select [[[:sum :aul.cache_read_tokens]]]
+                  :from   [[:ai_usage_log :aul]]
+                  :where  [:= :aul.conversation_id :c.id]}
+                 0]
+                :cache_read_tokens]]
    :from      [[:metabot_conversation :c]]
-   :left-join [[:metabot_message :m] [:and
-                                      [:= :m.conversation_id :c.id]
-                                      [:= :m.deleted_at nil]]
+   :left-join [[:metabot_message :m] [:= :m.conversation_id :c.id]
                [:core_user :u]       [:= :u.id :c.user_id]]
    :group-by  [:c.id]})
 
@@ -123,6 +127,7 @@
    :user_message_count      (:user_message_count row)
    :assistant_message_count (:assistant_message_count row)
    :total_tokens            (long (:total_tokens row 0))
+   :cache_read_tokens       (long (:cache_read_tokens row 0))
    :last_message_at         (:last_message_at row)
    :profile_id              (:profile_id row)
    :search_count            (:search_count row 0)
@@ -142,9 +147,8 @@
   [rows]
   (let [conversation-ids (map :id rows)
         messages-by-conv (when (seq conversation-ids)
-                           (->> (t2/select [:model/MetabotMessage :conversation_id :data]
-                                           :conversation_id [:in conversation-ids]
-                                           {:where [:= :deleted_at nil]})
+                           (->> (t2/select [:model/MetabotMessage :conversation_id :data :data_version]
+                                           :conversation_id [:in conversation-ids])
                                 (group-by :conversation_id)))]
     (map (fn [row]
            (let [msgs (get messages-by-conv (:id row) [])]
@@ -217,31 +221,28 @@
     (t2/hydrate rows :user)))
 
 (defn fetch-conversation-detail
-  "Fetch a conversation with its user info, the frontend-ready flattened
-   chat messages, the queries the bot generated, and any user-submitted feedback.
-   404s via `api/check-404` if no conversation matches `conversation-id`."
+  "Fetch a conversation detail or throw a 404."
   [conversation-id]
   (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-404 conversation)
-    (let [messages (t2/select :model/MetabotMessage
-                              :conversation_id conversation-id
-                              {:where    [:= :deleted_at nil]
-                               :order-by [[:created_at :asc] [:id :asc]]})
-          hydrated (t2/hydrate conversation :user)]
+    (let [all-messages (t2/select :model/MetabotMessage
+                                  :conversation_id conversation-id
+                                  {:order-by [[:created_at :asc] [:id :asc]]})
+          hydrated     (t2/hydrate conversation :user)]
       {:conversation_id (:id conversation)
        :created_at      (:created_at conversation)
        :summary         (:summary conversation)
        :user            (trim-user (:user hydrated))
-       :message_count   (count messages)
-       :total_tokens    (transduce (keep :total_tokens) + 0 messages)
-       :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
+       :message_count   (count all-messages)
+       :total_tokens    (transduce (keep :total_tokens) + 0 all-messages)
+       :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) all-messages)
        :slack_permalink (slack-permalink conversation)
-       :chat_messages   (metabot-persistence/messages->chat-messages
-                         messages {:include-errored? true})
-       :queries         (analytics.queries/messages->generated-queries messages)
-       :search_count    (analytics.queries/count-tool-invocations messages "search")
+       :messages        (metabot-persistence/messages->flat-messages
+                         all-messages {:include-rewound-errors? true})
+       :queries         (analytics.queries/messages->generated-queries all-messages)
+       :search_count    (analytics.queries/count-tool-invocations all-messages "search")
        :query_count     (analytics.queries/count-tool-invocations
-                         messages metabot.tools/query-generation-tool-names)
+                         all-messages metabot.tools/query-generation-tool-names)
        :ip_address           (:ip_address conversation)
        :embedding_hostname   (:embedding_hostname conversation)
        :embedding_path       (:embedding_path conversation)

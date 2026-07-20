@@ -328,7 +328,7 @@
                            :model/Database db {:engine :redshift, :details details}]
               (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
                 (persist-models!)
-                (let [synced-schemas (set (map :schema (:tables (driver/describe-database :redshift db))))]
+                (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift db)))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
                     (is (some #(re-matches #"20(.*)" %) synced-schemas)))
                   (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -358,7 +358,7 @@
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
               (u/auto-retry 3
-                (let [table-names (set (map :name (:tables (driver/describe-database :redshift database))))]
+                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
                   (when-not (contains? table-names mview-nm)
                     (Thread/sleep 1000)
                     (throw (ex-info "Materialized view not yet visible in describe-database results"
@@ -877,9 +877,9 @@
         (execute! (str
                    (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
                    (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
-        (let [init-result    (driver/init-workspace-isolation! :redshift (mt/db) workspace)
-              iso-user       (-> init-result :database_details :user)
-              workspace+det  (merge workspace init-result)]
+        (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
+              _              (driver/init-workspace-isolation! :redshift (mt/db) workspace+det)
+              iso-user       (-> workspace+det :database_details :user)]
           (try
             ;; Seed the foreign-grantor default-priv: connect as the foreign role
             ;; and issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl

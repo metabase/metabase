@@ -73,6 +73,14 @@ export type RemoteSyncMergeSummary = {
   removed: number;
 };
 
+/** Remote content a force push would discard (vs. a merge, which folds it in). */
+export type ForcePushCasualties = {
+  /** Entities present on the remote but not in this instance's export — removed entirely. */
+  deleted: string[];
+  /** Entities whose remote-side edits since the last sync would be replaced by this instance's version. */
+  overwritten: string[];
+};
+
 /** Dry-run preview of what pushing the current state would do, given the live remote branch. */
 export type ExportPreflightResponse = {
   /** Whether the remote branch has advanced beyond the last synced version. */
@@ -82,6 +90,8 @@ export type ExportPreflightResponse = {
   /** Human-readable labels of the entities that conflict (empty when clean). */
   conflicts: string[];
   summary: RemoteSyncMergeSummary;
+  /** Remote content a force push would permanently discard. */
+  force_push_casualties: ForcePushCasualties;
   /** "history-rewritten" when the remote was force-pushed/rebased so no merge base exists. */
   reason: string | null;
 };
@@ -135,6 +145,17 @@ export type RemoteSyncTaskStatus =
 
 export type RemoteSyncTaskType = "import" | "export" | null;
 
+/**
+ * Structured result of a completed sync task. The UI renders it to a localized message; unrecognized
+ * shapes fall back to generic copy, so this union can grow without breaking older/newer clients.
+ */
+export type RemoteSyncOutcome =
+  | { kind: "pulled"; count: number; branch: string }
+  | { kind: "pull-skipped" }
+  | { kind: "pushed"; count: number; branch: string }
+  | { kind: "push-skipped" }
+  | { kind: "merged"; pulled: number; pushed: number; branch: string };
+
 export type RemoteSyncTask = {
   id: number;
   sync_task_type: RemoteSyncTaskType;
@@ -144,6 +165,7 @@ export type RemoteSyncTask = {
   ended_at: string | null;
   last_progress_report_at: string | null;
   error_message: string | null;
+  outcome?: RemoteSyncOutcome | null;
   initiated_by: UserId;
   conflicts?: string[];
 };
@@ -151,7 +173,7 @@ export type RemoteSyncTask = {
 export type RemoteSyncConflictVariant =
   | "push" // Conflict when pushing (need to pull from remote first)
   | "pull" // Conflict when pulling (need to sync local changes)
-  | "switch-branch" // Conflict when switching branches
+  | "switch-branch" // Local changes present when switching branches (Settings panel)
   | "setup"; // Conflict when setting up or pulling for the first time
 
 export type GetBranchesResponse = {

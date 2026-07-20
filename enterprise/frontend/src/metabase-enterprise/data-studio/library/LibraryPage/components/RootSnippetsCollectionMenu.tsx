@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import { dataStudioArchivedSnippets } from "metabase/urls";
@@ -58,12 +58,11 @@ export const RootSnippetsCollectionMenu = ({
           {t`View archived snippets`}
         </Menu.Item>
       </Menu.Dropdown>
-      {showPermissionsModal && (
-        <SnippetCollectionPermissionsModal
-          collectionId={collectionId}
-          onClose={togglePermissionsModal}
-        />
-      )}
+      <SnippetCollectionPermissionsModal
+        opened={showPermissionsModal}
+        collectionId={collectionId}
+        onClose={togglePermissionsModal}
+      />
     </Menu>
   );
 };

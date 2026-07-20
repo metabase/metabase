@@ -39,6 +39,7 @@ export type SnippetCollectionPickerModalProps = {
 };
 
 export type SnippetCollectionPermissionsModalProps = {
+  opened: boolean;
   collectionId: CollectionId;
   onClose: () => void;
 };
@@ -58,9 +59,12 @@ export type SnippetFoldersPlugin = {
 export const getDefaultPluginSnippetFolders = () => ({
   isEnabled: false,
   CollectionPickerModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
   CollectionPermissionsModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
+  // Unjustified type cast. FIXME
   MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,
 });
 

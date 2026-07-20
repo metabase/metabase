@@ -1,12 +1,14 @@
-import fetchMock from "fetch-mock";
-import { Route } from "react-router";
-
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import {
   setupGetTransformJobEndpoint,
+  setupListTransformJobTransformsEndpoint,
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks/transform";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
+import { Route, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 import {
@@ -15,6 +17,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import { JobPage } from "./JobPage";
+
+const RoutedJobPage = withRouteProps(JobPage);
 
 const TRANSFORMS_DELAY = 1000;
 
@@ -30,13 +34,17 @@ const setup = ({
   setupGetTransformJobEndpoint(job);
   setupDatabaseListEndpoint([createMockDatabase()]);
   setupListTransformTagsEndpoint([]);
-  fetchMock.get(`path:/api/transform-job/${job.id}/transforms`, [], {
+  setupUserMetabotPermissionsEndpoint();
+  setupListTransformJobTransformsEndpoint(job.id, [], {
     delay: transformsDelay,
   });
 
   const path = Urls.transformJob(job.id);
   renderWithProviders(
-    <Route path="/data-studio/transforms/jobs/:jobId" component={JobPage} />,
+    <Route
+      path="/data-studio/transforms/jobs/:jobId"
+      element={<RoutedJobPage />}
+    />,
     { withRouter: true, initialRoute: path },
   );
 };

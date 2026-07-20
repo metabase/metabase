@@ -26,9 +26,9 @@ export function TabPanel({
   };
 
   return (
-    <Box className={S.panel} px="lg" bg="background-primary">
-      <Tabs value={selectedTab} onChange={handleChange}>
-        <Tabs.List className={S.tabs}>
+    <Box className={S.panel} px="lg" bg="background_page-primary">
+      <Tabs value={selectedTab} onChange={handleChange} listBorder={false}>
+        <Tabs.List>
           <Tabs.Tab value="column-mappings">{t`Column comparison`}</Tabs.Tab>
           {canReplace && (
             <Tabs.Tab value="dependents">

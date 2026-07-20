@@ -1198,7 +1198,7 @@
                {:lib/source-column-alias "BODY",       :display-name "Body",       :selected? true}
                {:lib/source-column-alias "CREATED_AT", :display-name "Created At", :selected? true}
                ;; the following two Card 1 → ID should have :selected? true
-               {:lib/source-column-alias "ID",    :display-name "Card 1 → ID", :selected? true} ; FIXME - these should be true
+               {:lib/source-column-alias "ID",    :display-name "Card 1 → ID", :selected? true}
                {:lib/source-column-alias "o__ID", :display-name "Card 1 → ID", :selected? true}
                ;; these are implicitly joinable fields, :selected? false is right
                {:lib/source-column-alias "ID",         :display-name "ID",         :selected? false}

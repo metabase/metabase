@@ -531,7 +531,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText(parameterDetails.name).click();
       });
       H.popover().findByText("UNIT").click();
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       cy.log("verify click behavior with a valid temporal unit");
 

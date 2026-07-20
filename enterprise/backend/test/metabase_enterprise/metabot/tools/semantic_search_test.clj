@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.api.common :as api]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
@@ -27,82 +26,101 @@
   `(do ~@body (with-semantic-search-if-available! ~mock-embeddings ~@body)))
 
 (deftest search-test
+  ;; Fully mocked: each sub-test redefs search-core/search, so no engine or index runs. active-engines is
+  ;; pinned to include semantic so search/search takes the two-engine fusion branch (term queries via the
+  ;; fallback engine, semantic queries via semantic), regardless of whether this instance has pgvector.
   (mt/with-additional-premium-features #{:content-verification}
-    (with-semantic-search-if-available!
-      (mt/with-test-user :rasta
-        (let [order-table {:id 1
-                           :model "table"
-                           :table_name "orders"
-                           :name "Orders"
-                           :description "Order table"
-                           :database_id 42
-                           :table_schema "public"}
-              dashboard {:id 2
-                         :model "dashboard"
-                         :name "Sales Dashboard"
-                         :description "Dashboard for sales"
-                         :verified true}]
-          (with-redefs [perms/impersonated-user? (fn [] false)
-                        perms/sandboxed-user? (fn [] false)
-                        api/*current-user-id* 1]
-            (testing "search returns postprocessed results for term queries"
-              (with-redefs [search-core/search (fn [_] {:data [order-table]})]
-                (let [args {:term-queries ["orders"]
-                            :entity-types ["table"]}
-                      results (search/search args)
-                      expected [(#'search/postprocess-search-result order-table)]]
-                  (is (= expected results)))))
-            (testing "search returns postprocessed results for semantic queries"
-              (with-redefs [search-core/search (fn [_] {:data [dashboard]})]
-                (let [args {:semantic-queries ["sales metrics"]
-                            :entity-types ["dashboard"]}
-                      results (search/search args)
-                      expected [(#'search/postprocess-search-result dashboard)]]
-                  (is (= expected results)))))
-            (testing "search combines term and semantic queries using RRF"
-              (with-redefs [search-core/search (fn [context]
-                                                 (if (= (:search-string context) "orders")
-                                                   {:data [order-table]}
-                                                   {:data [dashboard]}))]
-                (let [args {:term-queries ["orders"]
-                            :semantic-queries ["sales"]
-                            :entity-types ["table" "dashboard"]}
-                      results (search/search args)]
-                  ;; Should return both results combined via RRF
-                  (is (= 2 (count results)))
-                  (is (some #(= (:id %) 1) results))
-                  (is (some #(= (:id %) 2) results)))))
-            (testing "search applies RRF to overlapping results"
-              (with-redefs [search-core/search (fn [_]
-                                                 {:data [order-table dashboard]})]
-                (let [args {:term-queries ["orders" "sales"]
-                            :entity-types ["table" "dashboard"]}
-                      results (search/search args)]
-                  ;; Both queries return same results, RRF should boost them
-                  (is (= 2 (count results)))
-                  (is (some #(= (:id %) 1) results))
-                  (is (some #(= (:id %) 2) results)))))
-            (testing "search handles empty results"
-              (with-redefs [search-core/search (fn [_] {:data []})]
-                (let [args {:term-queries ["nonexistent"]
-                            :entity-types ["table"]}
-                      results (search/search args)]
-                  (is (empty? results)))))
-            (testing "search with metabot verified content flag"
-              (let [metabot {:entity_id "test-bot"
-                             :use_verified_content true}]
-                (with-redefs [t2/select-one (fn [model & _]
-                                              (is (= :model/Metabot model) "Should query for Metabot model")
-                                              metabot)
-                              search-core/search (fn [context]
-                                                   ;; Verify that verified flag is set when metabot has use_verified_content
-                                                   (is (true? (:verified context)))
-                                                   {:data [dashboard]})]
-                  (let [results (search/search {:term-queries ["test"]
-                                                :metabot-id "test-bot"
-                                                :entity-types ["dashboard"]})]
-                    (is (= 1 (count results)))
-                    (is (= 2 (:id (first results))))))))))))))
+    (mt/with-test-user :rasta
+      (let [order-table {:id 1
+                         :model "table"
+                         :table_name "orders"
+                         :name "Orders"
+                         :description "Order table"
+                         :database_id 42
+                         :table_schema "public"}
+            dashboard {:id 2
+                       :model "dashboard"
+                       :name "Sales Dashboard"
+                       :description "Dashboard for sales"
+                       :verified true}]
+        (with-redefs [perms/impersonated-user? (fn [] false)
+                      perms/sandboxed-user? (fn [] false)
+                      search.engine/active-engines (constantly [:search.engine/semantic :search.engine/appdb])]
+          (testing "search returns postprocessed results for term queries"
+            (with-redefs [search-core/search (fn [_] {:data [order-table]})]
+              (let [args {:term-queries ["orders"]
+                          :entity-types ["table"]}
+                    results (search/search args)
+                    expected [(#'search/postprocess-search-result order-table)]]
+                (is (= expected results)))))
+          (testing "search returns postprocessed results for semantic queries"
+            (with-redefs [search-core/search (fn [_] {:data [dashboard]})]
+              (let [args {:semantic-queries ["sales metrics"]
+                          :entity-types ["dashboard"]}
+                    results (search/search args)
+                    expected [(#'search/postprocess-search-result dashboard)]]
+                (is (= expected results)))))
+          (testing "search combines term and semantic queries using RRF"
+            (with-redefs [search-core/search (fn [context]
+                                               (if (= (:search-string context) "orders")
+                                                 {:data [order-table]}
+                                                 {:data [dashboard]}))]
+              (let [args {:term-queries ["orders"]
+                          :semantic-queries ["sales"]
+                          :entity-types ["table" "dashboard"]}
+                    results (search/search args)]
+                ;; Should return both results combined via RRF
+                (is (= 2 (count results)))
+                (is (some #(= (:id %) 1) results))
+                (is (some #(= (:id %) 2) results)))))
+          (testing "with no semantic engine active, semantic queries fold into the default engine"
+            (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                          ;; Pass terms through uncombined: Postgres appdb would OR them into one string,
+                          ;; which breaks the per-query mock keying below. Keeps this deterministic on any app-db.
+                          search.engine/disjunction (fn [_ terms] terms)
+                          search-core/search (fn [context]
+                                               (if (= (:search-string context) "orders")
+                                                 {:data [order-table]}
+                                                 {:data [dashboard]}))]
+              (let [args {:term-queries ["orders"]
+                          :semantic-queries ["sales"]
+                          :entity-types ["table" "dashboard"]}
+                    results (search/search args)]
+                ;; The semantic query is not dropped — it is searched via the default engine and fused in.
+                (is (= 2 (count results)))
+                (is (some #(= (:id %) 1) results))
+                (is (some #(= (:id %) 2) results)))))
+          (testing "search applies RRF to overlapping results"
+            (with-redefs [search-core/search (fn [_]
+                                               {:data [order-table dashboard]})]
+              (let [args {:term-queries ["orders" "sales"]
+                          :entity-types ["table" "dashboard"]}
+                    results (search/search args)]
+                ;; Both queries return same results, RRF should boost them
+                (is (= 2 (count results)))
+                (is (some #(= (:id %) 1) results))
+                (is (some #(= (:id %) 2) results)))))
+          (testing "search handles empty results"
+            (with-redefs [search-core/search (fn [_] {:data []})]
+              (let [args {:term-queries ["nonexistent"]
+                          :entity-types ["table"]}
+                    results (search/search args)]
+                (is (empty? results)))))
+          (testing "search with metabot verified-or-curated content flag"
+            (let [metabot {:entity_id "test-bot"
+                           :use_verified_content true}]
+              (with-redefs [t2/select-one (fn [model & _]
+                                            (is (= :model/Metabot model) "Should query for Metabot model")
+                                            metabot)
+                            search-core/search (fn [context]
+                                                 ;; use_verified_content now drives the curated filter, not :verified
+                                                 (is (true? (:curated? context)))
+                                                 {:data [dashboard]})]
+                (let [results (search/search {:term-queries ["test"]
+                                              :metabot-id "test-bot"
+                                              :entity-types ["dashboard"]})]
+                  (is (= 1 (count results)))
+                  (is (= 2 (:id (first results)))))))))))))
 
 ;; Mock embeddings: similar vectors for semantic synonym pairs, orthogonal vectors for unrelated terms.
 (def ^:private test-mock-embeddings
@@ -120,7 +138,7 @@
     (mt/with-test-user :rasta
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-and-without-semantic-search! test-mock-embeddings
-          (search.tu/with-new-search-and-legacy-search
+          (search.tu/with-appdb-search-and-legacy-search
             (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
               ;; "belligerent" and "bellicose" are semantically similar to our search terms
               ;; ("combative", "quarrelsome") but should NOT match since we're only doing keyword search
@@ -146,7 +164,7 @@
     (mt/with-test-user :rasta
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-semantic-search-if-available! test-mock-embeddings
-          (search.tu/with-new-search-and-legacy-search
+          (search.tu/with-appdb-search-and-legacy-search
             ;; "belligerent" and "baseline" will match via keyword search (exact match in term-queries)
             ;; "ancillary" and "adjunct" will match via semantic search (similar embeddings)
             ;; "bellicose" and "quixotic" should NOT match (not in search terms)

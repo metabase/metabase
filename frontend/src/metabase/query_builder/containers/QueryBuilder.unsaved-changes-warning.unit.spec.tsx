@@ -2,9 +2,6 @@ import userEvent from "@testing-library/user-event";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
-  setupCardCreateEndpoint,
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
 } from "__support__/server-mocks";
@@ -16,13 +13,8 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
-import { serializeCardForUrl } from "metabase/common/utils/card";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
-import registerVisualizations from "metabase/visualizations/register";
-import {
-  createMockCardQueryMetadata,
-  createMockDataset,
-} from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
+import { createMockCardQueryMetadata } from "metabase-types/api/mocks";
 
 import {
   TEST_DB,
@@ -31,10 +23,8 @@ import {
   TEST_MODEL_DATASET,
   TEST_NATIVE_CARD,
   TEST_STRUCTURED_CARD,
-  TEST_UNSAVED_NATIVE_CARD,
   revertNotebookQueryChange,
   setup,
-  startNewNotebookModel,
   triggerMetadataChange,
   triggerNativeQueryChange,
   triggerNotebookQueryChange,
@@ -61,90 +51,6 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
     jest.resetAllMocks();
     setupJestCanvasMock();
-  });
-
-  describe("creating models", () => {
-    it("shows custom warning modal when leaving via SPA navigation", async () => {
-      const { history } = await setup({
-        card: null,
-        initialRoute: "/model/new",
-        newModelOptionsComponent: NewModelOptions,
-      });
-
-      await startNewNotebookModel();
-
-      act(() => {
-        history.push("/redirect");
-      });
-
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
-    });
-
-    it("shows custom warning modal when leaving via Cancel button", async () => {
-      await setup({
-        card: null,
-        initialRoute: "/model/new",
-        newModelOptionsComponent: NewModelOptions,
-      });
-
-      await startNewNotebookModel();
-
-      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
-    });
-
-    it("does not show custom warning modal when saving new model", async () => {
-      await setup({
-        card: null,
-        initialRoute: "/model/new",
-        newModelOptionsComponent: NewModelOptions,
-      });
-      setupCardCreateEndpoint();
-      setupCardEndpoints(TEST_NATIVE_CARD);
-      setupCardQueryEndpoints(TEST_NATIVE_CARD, createMockDataset());
-      setupCardQueryMetadataEndpoint(
-        TEST_NATIVE_CARD,
-        createMockCardQueryMetadata({
-          databases: [TEST_DB],
-        }),
-      );
-
-      await startNewNotebookModel();
-      await waitForSaveToBeEnabled();
-
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      await userEvent.click(
-        within(screen.getByTestId("save-question-modal")).getByText("Save"),
-      );
-
-      await waitFor(() => {
-        expect(
-          screen.queryByTestId("save-question-modal"),
-        ).not.toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByTestId("leave-confirmation"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("shows custom warning modal when user tries to leave an ad-hoc native query", async () => {
-      const { history } = await setup({
-        card: TEST_UNSAVED_NATIVE_CARD,
-        initialRoute: `/question#${serializeCardForUrl(
-          TEST_UNSAVED_NATIVE_CARD,
-        )}`,
-      });
-
-      await triggerNativeQueryChange();
-
-      act(() => {
-        history.push("/redirect");
-      });
-
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
-    });
   });
 
   describe("editing models", () => {

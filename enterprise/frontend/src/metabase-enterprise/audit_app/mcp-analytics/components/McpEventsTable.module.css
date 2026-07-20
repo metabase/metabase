@@ -1,0 +1,40 @@
+.scroll {
+  overflow: auto;
+  /* Cap the body so it scrolls internally and the pagination controls below the card stay in
+     view. The offset must clear the chrome above the card (nav, any banner, page header, tabs)
+     plus the pager below it; sized generously so the pager stays visible even with a banner. */
+  max-height: calc(100vh - 23rem);
+  min-height: 15rem;
+}
+
+.table {
+  width: 100%;
+}
+
+/* Keep the sortable headers reachable while the body scrolls. */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+.table thead th,
+.table thead th * {
+  color: var(--mb-color-core-brand);
+  white-space: nowrap;
+}
+
+.table td,
+.table th {
+  padding-block: 0.75em;
+  white-space: nowrap;
+}
+
+.table td:first-child {
+  font-weight: normal;
+}
+
+.table tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}

@@ -14,9 +14,14 @@ import { AIQuestionAnalysisButton } from "./AIQuestionAnalysisButton";
 
 const mockAgentEndpoint = () =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", {
-    textChunks: [
-      `0:"Here is an analysis of the chart."`,
-      `d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`,
+    events: [
+      { type: "text-start", id: "t1" },
+      {
+        type: "text-delta",
+        id: "t1",
+        delta: "Here is an analysis of the chart.",
+      },
+      { type: "text-end", id: "t1" },
     ],
   });
 
@@ -39,6 +44,7 @@ function setup({
       <AIQuestionAnalysisButton />
     </MetabotProvider>,
     {
+      // Unjustified type cast. FIXME
       storeInitialState: createMockState({
         settings,
         metabot: metabotState,

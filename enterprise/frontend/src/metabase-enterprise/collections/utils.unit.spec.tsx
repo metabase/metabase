@@ -104,7 +104,7 @@ describe("Collections plugin utils", () => {
           getIcon({ model: "collection", authority_level: "official" }),
         ).toEqual({
           name: "official_collection",
-          color: "saturated-yellow",
+          color: "core-yellow-saturated",
           tooltip: "Official collection",
         });
       });

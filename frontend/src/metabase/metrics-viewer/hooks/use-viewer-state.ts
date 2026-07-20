@@ -357,6 +357,7 @@ export function useViewerState({
               MetricDefinition | null
             > = {};
             for (const [id, entry] of Object.entries(prev.definitions)) {
+              // Unjustified type cast. FIXME
               definitionsBySourceId[id as MetricSourceId] =
                 entry.definition ?? null;
             }

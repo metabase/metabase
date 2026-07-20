@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 import { useGetSegmentQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
+import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUser } from "metabase/selectors/user";

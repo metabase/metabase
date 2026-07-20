@@ -1,10 +1,9 @@
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetTableSelectionInfoQuery } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
+import { trackDataStudioTablePublished } from "metabase/common/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
@@ -14,6 +13,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Box,
   Button,
@@ -151,7 +151,7 @@ function ModalBody({
   return (
     <FormProvider<BulkTableRequest>
       enableReinitialize
-      initialValues={{ collection_id: dataCollection.id as number }}
+      initialValues={{ collection_id: dataCollection.id }}
       onSubmit={handleSubmit}
     >
       <Form>

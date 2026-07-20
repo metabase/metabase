@@ -25,7 +25,7 @@
   top: 0.75rem;
   bottom: 0.75rem;
   width: 1px;
-  background: var(--mb-color-border);
+  background: var(--mb-color-border-neutral);
   pointer-events: none;
 }
 
@@ -43,5 +43,5 @@
 }
 
 .link:hover .text {
-  color: var(--mb-color-text-hover);
+  color: var(--mb-color-text-brand-hover);
 }

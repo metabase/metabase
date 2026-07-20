@@ -22,6 +22,14 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (workspaces = []) => provideWorkspaceListTags(workspaces),
     }),
+    getWorkspace: builder.query<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace-manager/${id}`,
+      }),
+      providesTags: (workspace) =>
+        workspace ? [idTag("workspace", workspace.id)] : [],
+    }),
     createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
       query: (body) => ({
         method: "POST",
@@ -53,6 +61,8 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListWorkspacesQuery,
+  useLazyListWorkspacesQuery,
+  useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,

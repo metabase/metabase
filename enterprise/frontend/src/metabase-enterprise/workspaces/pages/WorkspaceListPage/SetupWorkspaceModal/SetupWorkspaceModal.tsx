@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import {
@@ -9,6 +8,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Button,
   Code,

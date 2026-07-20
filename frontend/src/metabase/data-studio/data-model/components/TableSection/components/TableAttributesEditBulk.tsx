@@ -6,7 +6,7 @@ import { useEditTablesMutation } from "metabase/api";
 import {
   trackDataStudioBulkAttributeUpdated,
   trackDataStudioBulkSyncSettingsClicked,
-} from "metabase/data-studio/analytics";
+} from "metabase/common/data-studio/analytics";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -176,7 +176,7 @@ export function TableAttributesEditBulk({
       <Stack gap="md">
         <Group
           align="center"
-          c="text-tertiary"
+          c="text-disabled"
           gap={10}
           flex="1"
           fs="lg"

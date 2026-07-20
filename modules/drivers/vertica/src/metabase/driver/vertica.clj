@@ -1,7 +1,6 @@
 (ns metabase.driver.vertica
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -26,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :vertica, :parent #{:sql-jdbc
+(driver/register! :vertica, :parent #{:sql-mbql5 :sql-jdbc
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
@@ -141,7 +140,7 @@
   (sql.qp/adjust-day-of-week :vertica [:dayofweek_iso expr]))
 
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr         (cast-timestamp (sql.qp/->honeysql driver arg))
         timestamptz? (or (sql.qp.u/field-with-tz? arg)
                          (h2x/is-of-type? expr "timestamptz"))]
@@ -153,7 +152,7 @@
         (h2x/with-database-type-info "timestamp"))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
-  [driver [_ & args]]
+  [driver [_ _opts & args]]
   (transduce
    (map #(sql.qp/->honeysql driver %))
    (completing (fn [x y]
@@ -215,7 +214,7 @@
   "DOUBLE PRECISION")
 
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- format-percentile
@@ -234,13 +233,11 @@
 (sql/register-fn! ::percentile #'format-percentile)
 
 (defmethod sql.qp/->honeysql [:vertica :percentile]
-  [driver [_ arg p]]
-  (let [arg (sql.qp/->honeysql driver arg)
-        p   (sql.qp/->honeysql driver p)]
-    [::percentile arg p]))
+  [driver [_ _opts arg p]]
+  [::percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:vertica :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approximate_median (sql.qp/->honeysql driver arg)])
 
 (defmethod sql.qp/->honeysql [:vertica java.time.LocalDate]
@@ -273,7 +270,7 @@
   (sql.qp/->honeysql driver (t/offset-date-time t)))
 
 (defmethod sql.qp/->honeysql [:vertica ::sql.qp/expression-literal-text-value]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast "long varchar")))
 
@@ -301,8 +298,10 @@
 
 (defmethod driver/describe-database* :vertica
   [driver database]
+  ;; the JDBC default returns `:tables` as a reducible; fold it (and the materialized views) into a
+  ;; set rather than `set/union`, which would call `count` on the reducible
   (-> ((get-method driver/describe-database* :sql-jdbc) driver database)
-      (update :tables set/union (materialized-views database))))
+      (update :tables #(into (materialized-views database) %))))
 
 (defmethod driver/db-default-timezone :vertica
   [_driver _database]
@@ -342,8 +341,14 @@
           t)))))
 
 (defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+
+(defmethod sql.qp/->honeysql [:vertica :value]
+  [driver [_ {:keys [base-type effective-type]} value]]
+  ((get-method sql.qp/->honeysql [::sql.qp.empty-string-is-null/empty-string-is-null :value])
+   driver
+   [:value value {:base_type base-type :effective_type effective-type}]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :vertica
   [_ e]

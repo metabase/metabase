@@ -25,15 +25,19 @@
   (let [document-id->timestamp (update-vals (group-by :id document-id-timestamps)
                                             (fn [xs] (apply t/max (map :timestamp xs))))]
     (try
-      (cluster-lock/with-cluster-lock document-statistics-lock
-        ;; use `t2/table-name` to avoid triggering `after-update` hooks and creating a revision
-        (t2/update! (t2/table-name :model/Document)
-                    :id [:in (keys document-id->timestamp)]
-                    {:last_viewed_at (into [:case]
-                                           (mapcat (fn [[id timestamp]]
-                                                     [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
-                                                   document-id->timestamp))
-                     :updated_at :updated_at})) ;; setting last_viewed_at should not update the updated_at column
+      ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+      ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+      (cluster-lock/with-cluster-lock {:lock document-statistics-lock :retry-transient? true}
+        ;; Use t2/query (raw SQL) instead of t2/update! so we don't trigger Toucan2 model hooks — the
+        ;; :model/Document after-update publishes :event/document-update and syncs card collections, which
+        ;; are side effects outside the tx and must not re-fire when :retry-transient? re-runs the body.
+        (t2/query {:update (t2/table-name :model/Document)
+                   :set    {:last_viewed_at (into [:case]
+                                                  (mapcat (fn [[id timestamp]]
+                                                            [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                          document-id->timestamp))
+                            :updated_at :updated_at} ;; setting last_viewed_at should not update the updated_at column
+                   :where  [:in :id (keys document-id->timestamp)]}))
       (catch Exception e
         (log/error e "Failed to update document last_viewed_at")))))
 

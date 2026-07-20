@@ -1,9 +1,8 @@
-import { Route } from "react-router";
-
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
@@ -24,14 +23,15 @@ function setup({ table }: SetupOpts) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <NewMeasurePage
+          // Unjustified type cast. FIXME
           route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<div />}
           getSuccessUrl={() => "/success"}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

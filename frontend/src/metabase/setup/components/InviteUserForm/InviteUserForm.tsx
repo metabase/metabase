@@ -2,10 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
 import type { InviteInfo, UserInfo } from "metabase/redux/store";
+import { Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import S from "./InviteUserForm.module.css";
@@ -46,28 +50,28 @@ export const InviteUserForm = ({
       validationContext={user}
       onSubmit={onSubmit}
     >
-      <Form data-testid="invite-user-form">
+      <Form as={Stack} gap="md" data-testid="invite-user-form">
         <div className={S.UserFieldGroup}>
-          <FormInput
+          <FormTextInput
             name="first_name"
-            title={t`First name`}
+            label={t`First name`}
             placeholder={t`Johnny`}
             nullable
             autoFocus
           />
-          <FormInput
+          <FormTextInput
             name="last_name"
-            title={t`Last name`}
+            label={t`Last name`}
             placeholder={t`Appleseed`}
             nullable
           />
         </div>
-        <FormInput
+        <FormTextInput
           name="email"
-          title={t`Email`}
+          label={t`Email`}
           placeholder={"nicetoseeyou@email.com"}
         />
-        <FormSubmitButton title={t`Send invitation`} primary />
+        <FormSubmitButton label={t`Send invitation`} variant="filled" />
       </Form>
     </FormProvider>
   );

@@ -10,6 +10,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
@@ -91,14 +92,16 @@
   (let [db                 (atom nil)
         dataset-definition (tx/map->DatabaseDefinition (into {} (tx/get-dataset-definition dataset-definition)))
         dataset-definition (update dataset-definition :database-name #(str % "-" (u.random/random-name)))]
-    (try
-      (data/dataset dataset-definition
-        (reset! db (data/db))
-        (thunk))
-      (finally
-        (when-let [{driver :engine, db-id :id} @db]
-          (tx/destroy-db! driver dataset-definition)
-          (t2/delete! :model/Database :id db-id))))))
+    (when (or (nil? driver/*driver*)
+              (driver.u/supports? driver/*driver* :test/dynamic-dataset-loading nil))
+      (try
+        (data/dataset dataset-definition
+          (reset! db (data/db))
+          (thunk))
+        (finally
+          (when-let [{driver :engine, db-id :id} @db]
+            (tx/destroy-db! driver dataset-definition)
+            (t2/delete! :model/Database :id db-id)))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table

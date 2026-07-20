@@ -1,5 +1,4 @@
-import { Fragment, type ReactNode, useCallback } from "react";
-import { push } from "react-router-redux";
+import { Fragment, useCallback } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -8,6 +7,7 @@ import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/perm
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { Outlet, push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 
@@ -67,7 +67,6 @@ const mapStateToProps = (
 interface DatabasesPermissionsPageInnerProps {
   sidebar: DataSidebarProps | null;
   params: RawDataRouteParams;
-  children: ReactNode;
   navigateToItem: (item: any) => void;
   navigateToDatabaseList: () => void;
   switchView: (entityType: string) => void;
@@ -79,7 +78,6 @@ interface DatabasesPermissionsPageInnerProps {
 function DatabasesPermissionsPageInner({
   sidebar,
   params,
-  children,
   navigateToItem,
   navigateToDatabaseList,
   switchView,
@@ -192,7 +190,7 @@ function DatabasesPermissionsPageInner({
         />
       )}
 
-      {children}
+      <Outlet />
     </Fragment>
   );
 }

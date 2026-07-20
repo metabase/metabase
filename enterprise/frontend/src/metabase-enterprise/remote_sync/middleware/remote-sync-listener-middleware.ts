@@ -41,6 +41,8 @@ const ALL_INVALIDATION_TAGS = [
   tag("collection"),
   tag("collection-tree"),
   tag("content-translation"),
+  // data apps are materialized as part of the import, so refresh their list too
+  tag("data-app"),
   tag("dashboard"),
   tag("dashboard-question-candidates"),
   tag("document"),
@@ -135,9 +137,8 @@ remoteSyncListenerMiddleware.startListening({
         const isSuccessful = task.status === "successful";
 
         if (isSuccessful) {
-          setTimeout(() => {
-            dispatch(modalDismissed());
-          }, 500);
+          // Leave the modal open showing the success confirmation; the user dismisses it explicitly
+          // (the sync can take a while, so we want to acknowledge completion rather than silently close).
 
           // Both import and a merged export change local content, so refresh everything. A plain push
           // doesn't change local data, but the extra refetch is harmless and keeps this simple.

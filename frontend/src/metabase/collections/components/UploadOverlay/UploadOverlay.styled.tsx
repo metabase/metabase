@@ -13,7 +13,7 @@ export const DragOverlay = styled.div<{ isDragActive: boolean }>`
   justify-content: center;
   align-items: center;
   gap: 1rem;
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
   opacity: ${(props) => (props.isDragActive ? 0.9 : 0)};
   transition: opacity 0.2s;
   border: 1px dashed var(--mb-color-core-brand);

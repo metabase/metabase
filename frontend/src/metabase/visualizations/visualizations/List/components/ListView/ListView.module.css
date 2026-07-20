@@ -13,7 +13,7 @@
   width: 100%;
   padding-block: 0.75rem;
   padding-inline: var(--item-padding);
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .listBody {
@@ -28,12 +28,12 @@
 .listItem {
   width: 100%;
   height: 4rem;
-  border-bottom: 1px solid var(--mb-color-border-subtle);
-  background: var(--mb-color-background-primary);
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+  background: var(--mb-color-background_page-primary);
   padding-inline: var(--item-padding, var(--mantine-spacing-md));
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   /* Columns rendering */
@@ -41,7 +41,7 @@
     cursor: inherit;
     padding-inline: var(--mantine-spacing-sm);
     color: var(--mb-color-text-secondary);
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
   }
 }
 
@@ -66,7 +66,7 @@
 .categoryValue {
   padding: 4px 8px;
   border-radius: 100px;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   max-width: 100%;
   display: inline-block;
   overflow: hidden;
@@ -81,14 +81,14 @@
     );
   gap: var(--mantine-spacing-sm);
   align-items: start;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   padding: var(--mantine-spacing-md);
 }
 
 .listEntityIcon {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 
   &:hover {
     color: var(--mb-color-core-brand);
@@ -98,10 +98,10 @@
 .iconMenuButtonContainer {
   width: 3rem;
   height: 3rem;
-  background: var(--mb-color-background-brand);
+  background: var(--mb-color-background_surface-brand-subtle);
   justify-content: center;
   align-items: center;
-  border: 1px dashed var(--mb-color-saturated-blue);
+  border: 1px dashed var(--mb-color-core-blue-saturated);
   border-radius: 50%;
   overflow: hidden;
   padding: 0.5rem;
@@ -113,7 +113,7 @@
   display: flex;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
@@ -126,7 +126,7 @@
 }
 
 .imageColumn {
-  outline: 1px solid var(--mb-color-border);
+  outline: 1px solid var(--mb-color-border-neutral);
 }
 
 .selected {

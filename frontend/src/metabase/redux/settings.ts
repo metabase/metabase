@@ -5,11 +5,15 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { sessionApi } from "metabase/api";
+import { sessionApi, settingsApi } from "metabase/api";
 import type { State } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
-import { SettingsApi } from "metabase/services";
-import type { Settings, UserSettings } from "metabase-types/api";
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettingValue,
+  Settings,
+  UserSettings,
+} from "metabase-types/api";
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 
@@ -51,7 +55,9 @@ export const updateUserSetting = createAsyncThunk(
       value,
     };
     try {
-      await SettingsApi.put(setting);
+      await dispatch(
+        settingsApi.endpoints.updateSetting.initiate(setting),
+      ).unwrap();
       if (!shouldRefresh) {
         // When we aren't refreshing all the settings, we need to put the setting into the state
         return setting;
@@ -73,7 +79,17 @@ export const updateSetting = createThunkAction(
   function (setting: { key: string; value: unknown }) {
     return async function (dispatch: any) {
       try {
-        await SettingsApi.put(setting);
+        // This admin thunk takes a loosely-typed setting; the RTK mutation is
+        // strict, so narrow it here.
+        await dispatch(
+          settingsApi.endpoints.updateSetting.initiate(
+            // Unjustified type cast. FIXME
+            setting as {
+              key: EnterpriseSettingKey;
+              value: EnterpriseSettingValue<EnterpriseSettingKey>;
+            },
+          ),
+        ).unwrap();
       } catch (error) {
         console.error("error updating setting", setting, error);
         throw error;
@@ -109,7 +125,9 @@ export const updateSettings = createThunkAction(
   function (settings) {
     return async function (dispatch) {
       try {
-        await SettingsApi.putAll(settings);
+        await dispatch(
+          settingsApi.endpoints.updateSettings.initiate(settings),
+        ).unwrap();
       } catch (error) {
         console.error("error updating settings", settings, error);
         throw error;

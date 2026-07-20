@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
@@ -13,6 +12,8 @@ import { checkNotNull } from "metabase/utils/types";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
+
+import { useExternalCardData } from "./ExternalCardDataContext";
 
 type ExternalDocumentCardMenuProps = {
   card: Card;

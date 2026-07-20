@@ -24,6 +24,9 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
+    ;; serdes path nests under that entity, so it has no generated entity_id.
+    :model/OsiAiContext
     ;; Settings have human-selected unique names.
     :model/Setting
     ;; Glossary items have unique `term` key
@@ -51,6 +54,7 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataApp
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
@@ -60,7 +64,10 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpFeedback
     :model/McpQueryHandle
+    :model/McpSessionLog
+    :model/McpToolCallLog
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotFeedback
@@ -117,7 +124,9 @@
     :model/SourceMetricDaily
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
+    :model/SsoRelayState
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     :model/Tenant

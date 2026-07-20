@@ -9,6 +9,7 @@ import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 
 import { getGroupsDataPermissionEditor } from ".";
 
+// Unjustified type cast. FIXME
 const stateWithoutLegacyValues = mockState as unknown as State;
 
 // adding legacy no self-service in the graph will prevent getGroupsDataPermissionEditor
@@ -76,13 +77,13 @@ describe("getGroupsDataPermissionEditor", () => {
     expect(accessPermission.options).toEqual([
       {
         icon: "eye",
-        iconColor: "success",
+        iconColor: "feedback-positive",
         label: "Can view",
         value: DataPermissionValue.UNRESTRICTED,
       },
       {
         icon: "permissions_limited",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         label: "Granular",
         value: DataPermissionValue.CONTROLLED,
       },
@@ -102,25 +103,25 @@ describe("getGroupsDataPermissionEditor", () => {
         label: `Query builder and native`,
         value: DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
         icon: "check",
-        iconColor: "success",
+        iconColor: "feedback-positive",
       },
       {
         label: `Query builder only`,
         value: DataPermissionValue.QUERY_BUILDER,
         icon: "permissions_limited",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
       },
       {
         label: `Granular`,
         value: DataPermissionValue.CONTROLLED,
         icon: "permissions_limited",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
       },
       {
         label: `No`,
         value: DataPermissionValue.NO,
         icon: "close",
-        iconColor: "danger",
+        iconColor: "feedback-negative",
       },
     ]);
 

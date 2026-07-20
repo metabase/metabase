@@ -10,12 +10,12 @@
   padding: 0.25rem 0.5rem;
   border-radius: 0.5rem;
   color: var(--mb-color-text-primary-inverse);
-  background-color: var(--mb-color-metabase-brand);
+  background-color: var(--mb-color-core-metabase_brand);
   text-decoration: none;
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-metabase-brand-hover);
+    background-color: var(--mb-color-core-metabase_brand-hover);
   }
 
   &.Medium {

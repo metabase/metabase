@@ -82,10 +82,10 @@
 ;;; -------------------------------------------------- OpenAI ---------------------------------------------------
 
 (defsetting llm-openai-model
-  (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
+  (deferred-tru "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')")
   :encryption       :no
   :visibility       :settings-manager
-  :default          "gpt-4.1-mini"
+  :default          "gpt-5.4"
   :export?          false
   :deprecated-name  :ee-openai-model
   :doc              false)
@@ -185,6 +185,34 @@
   :getter     #(boolean (and (trimmed-string (llm-bedrock-access-key-id))
                              (trimmed-string (llm-bedrock-secret-access-key))))
   :doc        false)
+
+;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
+
+(defsetting llm-azure-api-key
+  (deferred-tru "The API key for the Azure resource hosting your models.")
+  ;; Azure data-plane keys are unprefixed, so unlike the direct-provider keys there is no format validation.
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-azure-api-key))
+
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
+  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
+  [value]
+  (some-> (trimmed-string value)
+          (str/replace #"/+$" "")
+          not-empty))
+
+(defsetting llm-azure-api-base-url
+  (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. https://<resource>.services.ai.azure.com/openai.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (fn [new-value]
+                 (setting/set-value-of-type! :string :llm-azure-api-base-url (normalize-llm-base-url new-value))))
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 

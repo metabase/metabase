@@ -82,6 +82,12 @@
   []
   (t2/exists? :model/AnalysisFinding :stale true))
 
+(defn stale-entity-count
+  "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
+  detect whether it is still making progress."
+  []
+  (t2/count :model/AnalysisFinding :stale true))
+
 (defn instances-for-analysis
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,
   or stale AnalysisFindings.
@@ -102,6 +108,8 @@
                         [:<                               ; missing or outdated analysis
                          [:coalesce :analysis_finding.analysis_version 0]
                          *current-analysis-finding-version*]]
-                ;; stale entities first
-                :order-by [[[:case [:= :analysis_finding.stale true] [:inline 0] :else [:inline 1]]]]
+                ;; stale first, then oldest-analyzed first so a sub-backlog batch round-robins through
+                ;; the stale set instead of starving a DB-arbitrary subset.
+                :order-by [[[:case [:= :analysis_finding.stale true] [:inline 0] :else [:inline 1]]]
+                           [:analysis_finding.analyzed_at :asc]]
                 :limit batch-size})))

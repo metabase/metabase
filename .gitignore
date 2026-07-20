@@ -57,6 +57,16 @@ cypress.env.json
 /e2e/tmp/db_dumps/*
 !/e2e/tmp/db_dumps/.gitkeep
 /e2e/support/assets/example_custom_viz_plugin*.tgz
+# Coverage artifacts
+/e2e/coverage-manifest-raw
+/e2e/coverage-manifest
+/e2e/coverage/analysis
+/e2e/coverage/spec-file-manifest.json
+/e2e/support/.nyc_output
+/e2e/support/coverage
+/e2e/support/e2e
+/.nyc_output
+
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -79,6 +89,7 @@ cypress.env.json
 /resources/frontend_client/app/embedding-sdk.js.map
 /resources/frontend_client/app/embedding-sdk/
 /resources/frontend_client/tmp-*/
+/resources/frontend_client/data-app.html
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
 /resources/frontend_client/embed-mcp.html
@@ -92,6 +103,7 @@ cypress.env.json
 /resources/metabase/config/modules.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
+!/resources/sample-database.*
 /resources/version.properties
 /screenshots
 /sqlite.db
@@ -139,6 +151,7 @@ mise.local.toml
 **/.clj-kondo/*
 !**/.clj-kondo/README.md
 !**/.clj-kondo/config.edn
+!**/.clj-kondo/ratchets.edn
 !**/.clj-kondo/config/
 !**/.clj-kondo/src/
 !**/.clj-kondo/test/
@@ -190,3 +203,7 @@ __pycache__/
 .claude/scheduled_tasks.lock
 .playwright-mcp
 .ci_reports/
+
+# dependency-cruiser output
+dependency-graph.json
+.playwright-cli/

@@ -1,10 +1,9 @@
-import { Route } from "react-router";
-
 import {
   setupListTransformJobTransformsEndpoint,
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";
 
@@ -18,14 +17,14 @@ function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <JobEditor
           job={job}
           onNameChange={jest.fn()}
           onScheduleChange={jest.fn()}
           onTagListChange={jest.fn()}
         />
-      )}
+      }
     />,
     { withRouter: true, initialRoute: "/" },
   );

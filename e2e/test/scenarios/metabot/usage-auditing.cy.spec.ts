@@ -43,6 +43,13 @@ const ROBERT_TENANT = {
 };
 const TENANT_CONVERSATIONS_CHART_TITLE = "Tenants with most conversations";
 
+// The usage-stats page only waits for the audit metadata before rendering; each
+// chart then fires its own adhoc /api/dataset query and mounts ECharts. With six
+// charts rendering at once, the [data-testid="chart-container"] mount can blow
+// past Cypress's default 4s under CI CPU contention. Give the container readiness
+// assertion a generous budget rather than racing the render.
+const CHART_RENDER_TIMEOUT = 12000;
+
 const METRIC_CHART_TITLES: Record<UsageStatsMetric, string[]> = {
   conversations: [
     "Conversations by day",
@@ -176,7 +183,9 @@ function getChartCard(title: string): Cypress.Chainable<JQuery<HTMLElement>> {
 
 function assertChartRendered(title: string): void {
   getChartCard(title).within(() => {
-    cy.findByTestId(/^(chart|row-chart)-container$/)
+    cy.findByTestId(/^(chart|row-chart)-container$/, {
+      timeout: CHART_RENDER_TIMEOUT,
+    })
       .should("be.visible")
       .find("svg")
       .should("exist");
@@ -225,7 +234,14 @@ function selectGroupFilter(groupName: string): void {
 function selectUserFilter(userName: string, waitAlias = "@dataset"): void {
   H.main().findByTestId("conversation-filters-user-select").realClick();
   H.selectDropdown().findByText(userName).realClick();
-  cy.url().should("include", "user=");
+  // Anchor on the select reflecting the newly chosen user before waiting. A bare
+  // `url includes "user="` check is a no-op after a drill-through (the URL already
+  // carries the drilled user), so it doesn't gate on the filter actually switching
+  // and the conversations request/table can be read mid-transition. Mirrors
+  // selectDateFilter.
+  H.main()
+    .findByTestId("conversation-filters-user-select")
+    .should("have.value", userName);
   cy.wait(waitAlias);
 }
 
@@ -318,6 +334,11 @@ function assertHourDateFilterInUrl(): void {
 }
 
 function clickLastTimeseriesChartDot(title: string): void {
+  // Anchor on the chart being fully rendered before drilling: the page only
+  // waits for the audit metadata, so the chart's dataset query + ECharts render
+  // can still be in flight. Without this, cartesianChartCircle() races the
+  // render and times out looking for [data-testid="chart-container"].
+  assertChartRendered(title);
   getChartCard(title).within(() => {
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle()
@@ -328,16 +349,37 @@ function clickLastTimeseriesChartDot(title: string): void {
 }
 
 function clickRowChartBarForLabel(title: string, label: string): void {
+  // Drill by clicking the bar element itself rather than coordinate-clicking the
+  // container at a fixed offset from the axis label. Two things made the old
+  // `labelRect.right + 30` approach flaky:
+  //   - The page only waits for the audit metadata, so the chart's dataset query
+  //     + ECharts render could still be in flight.
+  //   - Row charts measure their size asynchronously (ExplicitSize, throttled),
+  //     so they first render with zero-width bars before re-laying out at the
+  //     final geometry — and assertChartRendered only proves the <svg> exists,
+  //     it passes in both the unmeasured and measured states.
+  // A pixel coordinate computed in either window lands off the bar: the
+  // drill-through never fires and cy.wait("@conversations") times out, or a
+  // near-miss drills a neighboring group. Instead wait for the measured
+  // (non-zero-width) bar whose vertical band contains the label's midpoint and
+  // realClick it — Cypress re-resolves its center at click time and retries for
+  // actionability, so the click can't miss.
+  assertChartRendered(title);
   getChartCard(title).within(() => {
-    cy.findByTestId("row-chart-container").then(($container) => {
-      cy.findByText(label).then(($label) => {
-        const containerRect = $container[0].getBoundingClientRect();
-        const labelRect = $label[0].getBoundingClientRect();
-        const x = labelRect.right - containerRect.left + 30;
-        const y = labelRect.top - containerRect.top + labelRect.height / 2;
-
-        cy.wrap($container).realClick({ x, y, scrollBehavior: false });
-      });
+    cy.findByText(label).then(([labelEl]) => {
+      cy.findAllByRole("graphics-symbol")
+        .filter((_index, barEl) => {
+          const labelRect = labelEl.getBoundingClientRect();
+          const labelMidY = labelRect.top + labelRect.height / 2;
+          const barRect = barEl.getBoundingClientRect();
+          return (
+            barRect.width > 0 &&
+            barRect.top <= labelMidY &&
+            labelMidY <= barRect.bottom
+          );
+        })
+        .should("have.length", 1)
+        .realClick({ scrollBehavior: false });
     });
   });
 }

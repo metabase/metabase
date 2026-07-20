@@ -2,12 +2,11 @@ import {
   getActionErrorMessage,
   getActionExecutionMessage,
 } from "metabase/actions/utils";
-import { actionApi } from "metabase/api";
+import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import type { Dispatch } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { PublicApi } from "metabase/services";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -44,7 +43,11 @@ export const executeRowAction = async ({
   try {
     const result =
       getDashboardType(dashboard.id) === "public"
-        ? await PublicApi.executeDashcardAction(executeActionRequest)
+        ? await runRtkEndpoint(
+            executeActionRequest,
+            dispatch,
+            publicApi.endpoints.executePublicDashcardAction,
+          )
         : await runRtkEndpoint(
             executeActionRequest,
             dispatch,
@@ -52,6 +55,7 @@ export const executeRowAction = async ({
           );
 
     const message = getActionExecutionMessage(
+      // Unjustified type cast. FIXME
       dashcard.action as WritebackAction,
       result,
     );
@@ -59,7 +63,7 @@ export const executeRowAction = async ({
     if (shouldToast) {
       dispatch(
         addUndo({
-          toastColor: "success",
+          toastColor: "feedback-positive",
           message,
         }),
       );
@@ -73,7 +77,7 @@ export const executeRowAction = async ({
       dispatch(
         addUndo({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message,
         }),
       );

@@ -21,6 +21,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
+   [metabase.app-db.transient-error :as transient-error]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
@@ -36,6 +37,7 @@
 (def ^:private cluster-lock-timeout-seconds 1)
 
 (defn- retryable?
+  "Errors that mean we failed to *acquire* the lock and should retry acquisition."
   [^Throwable e]
   ;; We can retry getting the cluster lock if either we tried to concurrently insert the pk
   ;; for the lock resulting in a SQLIntegrityConstraintViolationException or if the query
@@ -45,6 +47,17 @@
       ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
       (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
+
+(defn- retry-if-error?
+  "Should we retry after exception `e`? Always retry lock-acquisition failures. When `retry-transient?`
+  is set, *also* retry transient db errors (deadlocks, lock timeouts, serialization failures) — on
+  multi-master appdbs like MariaDB Galera row locks aren't replicated across nodes, so the lock can't
+  serialize writers and the conflicting commit surfaces as a deadlock. Only callers whose locked body is
+  safe to re-run from scratch (idempotent, no side effects outside the appdb transaction) should opt in."
+  [retry-transient? ^Throwable e]
+  (or (retryable? e)
+      (and retry-transient?
+           (transient-error/transient-error? (mdb.connection/db-type) e))))
 
 (def ^:private default-retry-config
   {:max-retries 4
@@ -165,17 +178,18 @@
     {:locks [(normalize-lock-spec opts)]}
 
     (map? opts)
-    (let [{:keys [lock locks timeout-seconds retry-config]} opts]
+    (let [{:keys [lock locks timeout-seconds retry-config retry-transient?]} opts]
       (when (and lock locks)
         (throw (ex-info "Cluster-lock opts must specify exactly one of :lock or :locks"
                         {:opts opts})))
       (when-not (or lock locks)
         (throw (ex-info "Cluster-lock opts must specify :lock or :locks" {:opts opts})))
-      (cond-> {:locks (if lock
-                        [(normalize-lock-spec (if (map? lock)
-                                                lock
-                                                {:lock lock :mode (or (:mode opts) :exclusive)}))]
-                        (mapv normalize-lock-spec locks))}
+      (cond-> {:locks            (if lock
+                                   [(normalize-lock-spec (if (map? lock)
+                                                           lock
+                                                           {:lock lock :mode (or (:mode opts) :exclusive)}))]
+                                   (mapv normalize-lock-spec locks))
+               :retry-transient? (boolean retry-transient?)}
         timeout-seconds (assoc :timeout-seconds timeout-seconds)
         retry-config    (assoc :retry-config retry-config)))
 
@@ -191,11 +205,12 @@
   - a keyword `lock-name` — shorthand for exclusive lock on that name with default
     timeout and retry config.
   - a map with `:lock` (a keyword) or `:locks` (a seq of specs), plus optional
-    `:mode`, `:timeout-seconds`, and `:retry-config`:
+    `:mode`, `:timeout-seconds`, `:retry-config`, and `:retry-transient?`:
 
       {:lock ::foo}                                     ; exclusive on ::foo
       {:lock ::foo :mode :share}                        ; shared on ::foo
       {:lock ::foo :timeout-seconds 5}                  ; with timeout override
+      {:lock ::foo :retry-transient? true}              ; also retry deadlocks (see below)
       {:locks [::foo ::bar]}                            ; two exclusive locks
       {:locks [{:lock ::root :mode :share}              ; intent-lock pattern:
                {:lock ::leaf :mode :exclusive}]         ;  shared root + exclusive
@@ -204,21 +219,30 @@
   In the `:locks` form, each element is either a bare keyword (exclusive) or a
   map `{:lock, :mode}`. Per-element timeout/retry config is not supported —
   those live on the top-level opts map. All locks are acquired in order inside
-  a single transaction."
+  a single transaction.
+
+  `:retry-transient?` (default false) additionally retries transient db errors —
+  deadlocks, lock timeouts, serialization failures — that surface from inside the
+  locked body. On multi-master appdbs (e.g. MariaDB Galera) row locks aren't
+  replicated across nodes, so the lock can't serialize writers and the conflicting
+  commit comes back as a deadlock. Only opt in when the body is safe to re-run from
+  scratch — idempotent, with no side effects outside the appdb transaction (a
+  rolled-back deadlock undoes only the db writes, not external calls)."
   [opts :- [:or
             :keyword
             [:map
-             [:lock            {:optional true} :keyword]
-             [:locks           {:optional true} [:sequential
-                                                 [:or :keyword
-                                                  [:map
-                                                   [:lock :keyword]
-                                                   [:mode {:optional true} [:enum :exclusive :share]]]]]]
-             [:mode            {:optional true} [:enum :exclusive :share]]
-             [:timeout-seconds {:optional true} :int]
-             [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]]
+             [:lock             {:optional true} :keyword]
+             [:locks            {:optional true} [:sequential
+                                                  [:or :keyword
+                                                   [:map
+                                                    [:lock :keyword]
+                                                    [:mode {:optional true} [:enum :exclusive :share]]]]]]
+             [:mode             {:optional true} [:enum :exclusive :share]]
+             [:timeout-seconds  {:optional true} :int]
+             [:retry-config     {:optional true} [:ref ::retry/retry-overrides]]
+             [:retry-transient? {:optional true} :boolean]]]
    thunk :- ifn?]
-  (let [{:keys [locks timeout-seconds retry-config]
+  (let [{:keys [locks timeout-seconds retry-config retry-transient?]
          :or   {timeout-seconds cluster-lock-timeout-seconds}} (parse-opts opts)]
     (cond
       ;; h2 does not respect the query timeout when taking the lock and is not cross-process,
@@ -227,11 +251,14 @@
       (do-with-h2-cluster-locks* locks thunk)
 
       :else
-      (let [config (merge default-retry-config retry-config)]
+      (let [config (assoc (merge default-retry-config retry-config)
+                          :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))]
         (try
           (retry/with-retry config
             (do-with-cluster-locks* locks timeout-seconds thunk))
           (catch Throwable e
+            ;; only a genuine lock-acquisition failure gets the "Failed to obtain cluster lock" wrapper;
+            ;; an exhausted transient body error (e.g. deadlock) propagates raw so the message stays truthful.
             (if (retryable? e)
               (throw (ex-info (str "Failed to obtain cluster lock: "
                                    (str/join ", " (map :lock-name-str locks)))
@@ -244,9 +271,9 @@
   "Run `body` in a transaction that tries to take a lock from the metabase_cluster_lock table of
   the specified name to coordinate concurrency with other metabase instances sharing the appdb.
 
-  `lock-options` may be a lock-name keyword, an options map
-  `{:lock-name, :mode, :timeout-seconds, :retry-config}`, or a vector of such specs
-  (all acquired in order inside one transaction)."
+  `lock-options` may be a lock-name keyword, or an options map
+  `{:lock, :locks, :mode, :timeout-seconds, :retry-config, :retry-transient?}` —
+  see [[do-with-cluster-lock]] for the full description of each."
   ([lock-options & body]
    `(do-with-cluster-lock ~lock-options (fn [] ~@body))))
 

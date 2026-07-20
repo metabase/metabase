@@ -1,10 +1,13 @@
 import { isValidElement } from "react";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { formatValue } from "metabase/visualizations/lib/formatting";
-import type { DashboardId, Parameter } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  DashboardId,
+  Parameter,
+} from "metabase-types/api";
 
 import RemappedValue from "./RemappedValue";
 
@@ -19,7 +22,7 @@ export const Value = ({
   parameter?: Parameter;
   cardId?: number;
   dashboardId?: DashboardId;
-} & OptionsType) => {
+} & ColumnSettings) => {
   const tc = useTranslateContent<unknown>();
   const { uuid, token } = useEmbeddingEntityContext();
 

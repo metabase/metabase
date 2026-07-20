@@ -4,7 +4,7 @@
 
   &:before {
     content: " ";
-    border-bottom: 2px solid var(--mb-color-border);
+    border-bottom: 2px solid var(--mb-color-border-neutral);
     position: absolute;
     bottom: 0;
     width: 100%;

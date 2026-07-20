@@ -9,15 +9,15 @@
 }
 
 .compactChartTypeButton {
-  background: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  background: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.75rem;
   color: var(--mb-color-text-primary);
   height: 2.5rem;
   width: 2.5rem;
 
   &.compactChartTypeButton:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -32,14 +32,14 @@
   min-height: 2rem;
 
   &.compactChartMenuItem:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
 .compactChartMenuItemSelected,
 .compactChartMenuItemSelected.compactChartMenuItem:hover {
-  background-color: var(--mb-color-background-selected);
-  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background_surface-selected);
+  color: var(--mb-color-core-brand);
 }
 
 @container metric-controls (max-width: 56rem) {

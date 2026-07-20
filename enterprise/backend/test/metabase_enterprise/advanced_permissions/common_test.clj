@@ -7,6 +7,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
@@ -55,7 +56,24 @@
         (testing "can_access_db_details is true if a user has any details perms"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
             (is (partial= {:can_access_db_details true}
-                          (user-permissions :rasta)))))))))
+                          (user-permissions :rasta)))))
+        (testing "can_access_transforms requires the transforms permission, not just view-data"
+          (perms.test-util/with-data-analyst-role! (mt/user->id :rasta)
+            (testing "false when the user has view-data but no transforms permission on any database"
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                             :create-queries :query-builder-and-native
+                                                             :transforms     :no}}
+                (is (partial= {:can_access_transforms false}
+                              (user-permissions :rasta)))))
+            (testing "true when the user has the transforms permission on a database"
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                             :create-queries :query-builder-and-native
+                                                             :transforms     :yes}}
+                (is (partial= {:can_access_transforms true}
+                              (user-permissions :rasta)))))))
+        (testing "can_access_transforms is true for superusers regardless of the transforms permission"
+          (is (partial= {:can_access_transforms true}
+                        (user-permissions :crowberto))))))))
 
 (deftest current-user-query-permissions-published-table-test
   (testing "GET /api/user/current can_create_queries respects published tables"

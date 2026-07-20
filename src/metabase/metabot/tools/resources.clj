@@ -17,6 +17,11 @@
   - metabase://collections?tree=true - flat list of all collections (hierarchy via :location)
   - metabase://user/recent-items - current user's recent items
 
+  Pagination:
+  List responses are capped at page-size items per page. When :truncated is true, use ?page=N to
+  fetch subsequent pages, e.g. metabase://database/1/tables?page=2. The response includes
+  :page (current, 1-indexed) and :pages (total).
+
   Database drill-down:
   - metabase://database/{id} - one database
   - metabase://database/{id}/tables - tables in the database
@@ -45,6 +50,8 @@
   - metabase://metric/{id} - basic metric info
   - metabase://metric/{id}/dimensions - metric with dimensions
   - metabase://metric/{id}/dimensions/{dimension_id} - specific dimension details
+  - metabase://measure/{id} - measure detail (definition + parent table)
+  - metabase://segment/{id} - segment detail (definition + parent table)
   - metabase://transform/{id} - transform details
   - metabase://transform/{id}/sources - tables/databases this transform reads from
   - metabase://transform/{id}/target - table this transform writes to
@@ -64,6 +71,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
+   [metabase.warehouses.core :as warehouses]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -73,31 +81,43 @@
   "Maximum number of URIs that can be fetched in a single call."
   5)
 
-(def ^:private max-list-items
-  "Maximum number of items returned in a single list response. When exceeded the response
-   includes :truncated true and :total so the agent knows there are more items it can drill into."
+(def ^:private page-size
+  "Page size for list responses."
   25)
 
-(defn- truncate-list
-  "Cap a sequence of items at `max-list-items`, returning {:items :total :truncated}."
-  [items]
+(defn- paginate-list
+  "Return one page of items. `page-str` is a 1-indexed string (from a URI query param), defaults to 1.
+   Page size is always `page-size`. Throws if `page-str` parses to a page number outside [1, pages]
+   rather than silently clamping, so a caller (the agent) finds out it passed a bad value."
+  [items page-str]
   (let [items (vec items)
-        total (count items)]
-    {:items     (vec (take max-list-items items))
-     :total     total
-     :truncated (> total max-list-items)}))
+        total (count items)
+        pages (max 1 (int (Math/ceil (/ (double total) page-size))))
+        page  (or (some-> page-str parse-long) 1)
+        _     (when (or (< page 1) (> page pages))
+                (throw (ex-info (str "Invalid page " page ". This list has " pages
+                                     (if (= pages 1) " page." " pages."))
+                                {:page page :pages pages})))
+        start (* (dec page) page-size)]
+    {:items (vec (take page-size (drop start items)))
+     :total total
+     :page  page
+     :pages pages}))
 
 (defn- list-result
   "Build a structured-output map for a list of items.
-   `list-type` is a keyword like :databases, :collection-items, :recents, etc."
-  [list-type items]
-  (let [{:keys [items total truncated]} (truncate-list items)]
-    {:structured-output
-     {:result-type :metabot-list
-      :list-type   list-type
-      :items       items
-      :total       total
-      :truncated   truncated}}))
+   `list-type` is a keyword like :databases, :collection-items, :recents, etc.
+   `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string)."
+  ([list-type items] (list-result list-type items nil))
+  ([list-type items query-params]
+   (let [{:keys [items total page pages]} (paginate-list items (:page query-params))]
+     {:structured-output
+      {:result-type :metabot-list
+       :list-type   list-type
+       :items       items
+       :total       total
+       :page        page
+       :pages       pages}})))
 
 (defn- entity-result
   "Build a structured-output map for a single entity (databases, collections, etc.)."
@@ -247,17 +267,18 @@
 
 ;; ----- Fetch handlers (one per URI shape) -----
 
-(defn- fetch-databases-list []
+(defn- fetch-databases-list [query-params]
   (let [dbs (->> (t2/select [:model/Database :id :name :engine :description :is_audit]
                             :is_audit false
+                            :router_database_id nil
                             {:order-by [[:%lower.name :asc]]})
                  (filter mi/can-read?)
                  (mapv present-database))]
-    (list-result :databases dbs)))
+    (list-result :databases dbs query-params)))
 
 (defn- fetch-collections-list
   "metabase://collections (root only) and metabase://collections?tree=true (flat list of all)."
-  [{:keys [tree] :as _query-params}]
+  [{:keys [tree] :as query-params}]
   (let [tree?    (= "true" tree)
         where    (cond-> [:and
                           [:= :archived false]
@@ -280,8 +301,14 @@
         path-of  (fn [coll]
                    (str/join "/" (concat (keep id->name (ancestors coll))
                                          [(:name coll)])))
-        items    (mapv (fn [c] (present-collection c (when tree? (path-of c)))) colls)]
-    (list-result (if tree? :collections-tree :collections-root) items)))
+        ;; Build items and, for tree mode, re-sort by computed path name.
+        ;; The DB ORDER BY location ASC sorts path strings lexicographically — "/10/" sorts
+        ;; before "/2/", interleaving children of high-ID parents incorrectly. Sorting by
+        ;; the human-readable path ("Analytics/Reports") is stable and groups children
+        ;; directly under their parents.
+        items    (cond-> (mapv (fn [c] (present-collection c (when tree? (path-of c)))) colls)
+                   tree? (->> (sort-by :path) vec))]
+    (list-result (if tree? :collections-tree :collections-root) items query-params)))
 
 (defn- fetch-user-recents []
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
@@ -303,23 +330,23 @@
 ;; ----- Database drill-down -----
 
 (defn- fetch-database [id-str]
-  (let [db (api/read-check :model/Database (parse-long id-str))]
+  (let [db (warehouses/get-database (parse-long id-str))]
     (entity-result (present-database db))))
 
-(defn- fetch-database-tables [id-str]
+(defn- fetch-database-tables [id-str query-params]
   (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
+        _      (warehouses/get-database db-id)
         tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
                                :db_id  db-id
                                :active true
                                {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})
                     (filter mi/can-read?)
                     (mapv present-table))]
-    (list-result :database-tables tables)))
+    (list-result :database-tables tables query-params)))
 
-(defn- fetch-database-models [id-str]
+(defn- fetch-database-models [id-str query-params]
   (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
+        _      (warehouses/get-database db-id)
         models (->> (t2/select [:model/Card :id :name :type :description :card_schema
                                 :collection_id :database_id :table_id]
                                :type        :model
@@ -328,11 +355,11 @@
                                {:order-by [[:%lower.name :asc]]})
                     (filter mi/can-read?)
                     (mapv present-card))]
-    (list-result :database-models models)))
+    (list-result :database-models models query-params)))
 
-(defn- fetch-database-schemas [id-str]
+(defn- fetch-database-schemas [id-str query-params]
   (let [db-id   (parse-long id-str)
-        _       (api/read-check :model/Database db-id)
+        _       (warehouses/get-database db-id)
         rows    (t2/query
                  {:select-distinct [:schema]
                   :from            [:metabase_table]
@@ -345,11 +372,11 @@
                               :name        s
                               :database_id db-id
                               :uri         (llm-shape/metabase-uri :database db-id "schemas" s "tables")})))]
-    (list-result :database-schemas schemas)))
+    (list-result :database-schemas schemas query-params)))
 
-(defn- fetch-database-schema-tables [id-str schema-name]
+(defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
+        _      (warehouses/get-database db-id)
         tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
                                :db_id  db-id
                                :schema schema-name
@@ -357,7 +384,7 @@
                                {:order-by [[:%lower.name :asc]]})
                     (filter mi/can-read?)
                     (mapv present-table))]
-    (list-result :database-schema-tables tables)))
+    (list-result :database-schema-tables tables query-params)))
 
 ;; ----- Collection drill-down -----
 
@@ -365,7 +392,7 @@
   (let [coll (api/read-check :model/Collection (parse-long id-str))]
     (entity-result (present-collection coll))))
 
-(defn- fetch-collection-items [id-str]
+(defn- fetch-collection-items [id-str query-params]
   (let [coll-id        (parse-long id-str)
         coll           (api/read-check :model/Collection coll-id)
         cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
@@ -387,9 +414,9 @@
         items          (concat (map present-collection subcollections)
                                (map present-card cards)
                                (map present-dashboard dashboards))]
-    (list-result :collection-items items)))
+    (list-result :collection-items items query-params)))
 
-(defn- fetch-collection-subcollections [id-str]
+(defn- fetch-collection-subcollections [id-str query-params]
   (let [coll-id (parse-long id-str)
         coll    (api/read-check :model/Collection coll-id)
         subs    (->> (t2/select [:model/Collection :id :name :location :authority_level
@@ -399,14 +426,37 @@
                                 {:order-by [[:%lower.name :asc]]})
                      (filter mi/can-read?)
                      (mapv present-collection))]
-    (list-result :collection-subcollections subs)))
+    (list-result :collection-subcollections subs query-params)))
 
 ;; ----- Table -----
+
+(defn- check-resource-database
+  "Require that a resource's backing database is addressable as a Metabot resource.
+   Routed destination databases are routing internals here: users should navigate via
+   the router database, not direct destination-backed resource URIs."
+  [db-id]
+  (when db-id
+    (warehouses/get-database db-id)))
+
+(defn- check-table-resource-database [table-id]
+  (when-let [table (api/read-check :model/Table table-id)]
+    (check-resource-database (:db_id table))))
+
+(defn- check-card-resource-database [card-id]
+  (when-let [card (api/read-check :model/Card card-id)]
+    (check-resource-database (:database_id card))))
+
+(defn- check-measure-or-segment-resource-database [model id]
+  (when-let [table-id (t2/select-one-fn :table_id model :id id)]
+    (check-table-resource-database table-id)))
 
 (defn- table-details
   "Shared `entity-details/get-table-details` call for both /table/{id} and /table/{id}/fields.
    `entity-type` is :table, :model, or :question."
   [entity-type id with-fields?]
+  (case entity-type
+    :table (check-table-resource-database id)
+    (:model :question) (check-card-resource-database id))
   (entity-details/get-table-details {:entity-type          entity-type
                                      :entity-id            id
                                      :with-fields?         with-fields?
@@ -422,15 +472,18 @@
   (table-details :table (parse-long id-str) true))
 
 (defn- fetch-table-field [id-str field-id]
-  (field-stats/field-values {:entity-type "table"
-                             :entity-id   (parse-long id-str)
-                             :field-id    field-id
-                             :limit       30}))
+  (let [table-id (parse-long id-str)]
+    (check-table-resource-database table-id)
+    (field-stats/field-values {:entity-type "table"
+                               :entity-id   table-id
+                               :field-id    field-id
+                               :limit       30})))
 
-(defn- fetch-table-derived [id-str]
+(defn- fetch-table-derived [id-str query-params]
   (let [table-id   (parse-long id-str)
         table      (api/read-check :model/Table table-id)
         db-id      (:db_id table)
+        _          (check-resource-database db-id)
         cards      (->> (t2/select [:model/Card :id :name :type :description :card_schema
                                     :collection_id :database_id :table_id]
                                    :table_id table-id
@@ -450,7 +503,7 @@
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
                           (filter mi/can-read?)
                           (mapv present-transform)))]
-    (list-result :table-derived (concat cards transforms))))
+    (list-result :table-derived (concat cards transforms) query-params)))
 
 ;; ----- Card (model / question) -----
 
@@ -463,32 +516,53 @@
   (table-details (keyword type-str) (parse-long id-str) true))
 
 (defn- fetch-card-field [type-str id-str field-id]
-  (field-stats/field-values {:entity-type type-str
-                             :entity-id   (parse-long id-str)
-                             :field-id    field-id
-                             :limit       30}))
+  (let [card-id (parse-long id-str)]
+    (check-card-resource-database card-id)
+    (field-stats/field-values {:entity-type type-str
+                               :entity-id   card-id
+                               :field-id    field-id
+                               :limit       30})))
 
 (defn- fetch-card-sources [id-str]
   (let [card (api/read-check :model/Card (parse-long id-str))]
+    (check-resource-database (:database_id card))
     (list-result :card-sources (card-sources-items card))))
 
 ;; ----- Metric -----
 
 (defn- fetch-metric [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions false
-                                      :with-field-values         false}))
+  (let [metric-id (parse-long id-str)]
+    (check-card-resource-database metric-id)
+    (entity-details/get-metric-details {:metric-id                 metric-id
+                                        :with-queryable-dimensions false
+                                        :with-field-values         false})))
 
 (defn- fetch-metric-dimensions [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions true
-                                      :with-field-values         false}))
+  (let [metric-id (parse-long id-str)]
+    (check-card-resource-database metric-id)
+    (entity-details/get-metric-details {:metric-id                 metric-id
+                                        :with-queryable-dimensions true
+                                        :with-field-values         false})))
 
 (defn- fetch-metric-dimension [id-str dim-id]
-  (field-stats/field-values {:entity-type "metric"
-                             :entity-id   (parse-long id-str)
-                             :field-id    dim-id
-                             :limit       30}))
+  (let [metric-id (parse-long id-str)]
+    (check-card-resource-database metric-id)
+    (field-stats/field-values {:entity-type "metric"
+                               :entity-id   metric-id
+                               :field-id    dim-id
+                               :limit       30})))
+
+;; ----- Measure / Segment -----
+
+(defn- fetch-measure [id-str]
+  (let [measure-id (parse-long id-str)]
+    (check-measure-or-segment-resource-database :model/Measure measure-id)
+    (entity-details/get-measure-details {:measure-id measure-id})))
+
+(defn- fetch-segment [id-str]
+  (let [segment-id (parse-long id-str)]
+    (check-measure-or-segment-resource-database :model/Segment segment-id)
+    (entity-details/get-segment-details {:segment-id segment-id})))
 
 ;; ----- Transform -----
 
@@ -536,24 +610,102 @@
       {:structured-output (assoc dashboard :result-type :entity)}
       {:status-code 404 :output (:output result)})))
 
-(defn- fetch-dashboard-items [id-str]
+(defn- present-non-question-dashcard
+  "Dashcards not rendered as a saved question — virtual cards (headings, text, links, ...) and
+   action buttons (which may reference a backing model via `card_id` but render as a button).
+   They carry their `dashcard_id` — the handle `update_dashboard` remove/move/update_text
+   mutations take. The card's text (or a link card's target) renders as the item body via
+   `:description`."
+  [{:keys [id action_id visualization_settings]}]
+  (let [display (some-> (get-in visualization_settings [:virtual_card :display]) name)]
+    ;; action_id wins over the virtual display: frontend-created action buttons carry BOTH an
+    ;; action_id and a virtual_card with display "action", and should read as one type.
+    {:type        (cond
+                    action_id "action"
+                    display   (str "virtual_" display)
+                    :else     "virtual_dashcard")
+     :dashcard_id id
+     ;; action buttons carry their visible label here; nil for virtual cards
+     :name        (:button.label visualization_settings)
+     ;; external link URLs only: an entity link's stored :link :entity snapshot (name etc.) may
+     ;; describe something this user can't read, so rendering it would bypass the read-check the
+     ;; REST path applies via the :dashcard/linkcard-info hydration
+     :description (or (:text visualization_settings)
+                      (get-in visualization_settings [:link :url]))}))
+
+(defn- fetch-dashboard-items
+  "One item per dashcard in row/col (layout) order, each carrying the `dashcard_id` that
+   `update_dashboard` remove/move/update_text mutations take. On a tabbed dashboard the items come
+   grouped by tab (nil-tab dashcards belong to the first tab, where the frontend renders them),
+   each carries its `tab_id`, and the response's `:tabs` lists every tab — empty ones included —
+   in display order. Card-backed dashcards keep the card fields; virtual dashcards (headings,
+   text, links, ...) render their text; action buttons keep a `uri` to their backing model when
+   it's readable. Dashcards whose card is archived or unreadable are omitted."
+  [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        cards        (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                      :collection_id :database_id :table_id]
-                                     {:where    [:and
-                                                 [:= :archived false]
-                                                 [:exists {:select 1
-                                                           :from   [[:report_dashboardcard :dc]]
-                                                           :where  [:and
-                                                                    [:= :dc.card_id :report_card.id]
-                                                                    [:= :dc.dashboard_id dashboard-id]]}]]
-                                      :order-by [[:%lower.name :asc]]})
-                          (filter mi/can-read?)
-                          (mapv present-card))]
-    (list-result :dashboard-items cards)))
+        tabs         (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
+                                {:order-by [[:position :asc] [:id :asc]]})
+        dashcards    (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id
+                                 :visualization_settings]
+                                :dashboard_id dashboard-id
+                                {:order-by [[:row :asc] [:col :asc]]})
+        card-ids     (into #{} (keep :card_id) dashcards)
+        readable     (when (seq card-ids)
+                       (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                        :collection_id :database_id :table_id]
+                                       :id [:in card-ids]
+                                       :archived false)
+                            (filter mi/can-read?)
+                            (into {} (map (juxt :id identity)))))
+        ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
+                       ;; action_id wins over card_id: an action button may reference its backing
+                       ;; model through card_id but renders as a button — with a uri to that model
+                       ;; so it stays drillable.
+                       (if (and card_id (not action_id))
+                         (when-let [card (get readable card_id)]
+                           (assoc (present-card card) :dashcard_id id))
+                         (cond-> (present-non-question-dashcard dashcard)
+                           (get readable card_id) (assoc :uri (:uri (present-card (get readable card_id)))))))
+        items        (if (seq tabs)
+                       ;; group by tab without emitting tab pseudo-items — those would inflate the
+                       ;; paginated total; the tab list rides on the response as `:tabs` instead.
+                       ;; `sort-by` is stable, so the SQL row/col ordering survives within each
+                       ;; tab; a nil tab id means the frontend renders the card on the first tab.
+                       (let [tab-pos (into {} (map-indexed (fn [i {:keys [id]}] [id i])) tabs)
+                             eff-tab #(or (:dashboard_tab_id %) (:id (first tabs)))]
+                         (into []
+                               (keep (fn [dashcard]
+                                       (some-> (->item dashcard) (assoc :tab_id (eff-tab dashcard)))))
+                               (sort-by (comp tab-pos eff-tab) dashcards)))
+                       (into [] (keep ->item) dashcards))]
+    (cond-> (list-result :dashboard-items items query-params)
+      (seq tabs) (update :structured-output assoc :tabs (mapv #(select-keys % [:id :name]) tabs)))))
 
 ;; ----- Dispatch -----
+
+(def ^:private numeric-id-uri-types
+  "URI entity-type segments whose next segment must be a numeric id (see `dispatch`)."
+  #{"database" "collection" "table" "model" "question" "metric"
+    "measure" "segment" "transform" "dashboard"})
+
+(defn- check-numeric-id-segment!
+  "Entity URIs take numeric ids only. The common miss is the LLM pasting a 21-char entity id
+   where the numeric id belongs; without this check that fails downstream as a bare 404 the
+   LLM misreads as a permissions problem. Throw a directive error instead so it
+   self-corrects in one step."
+  [uri [type-seg id-seg]]
+  (when (and (numeric-id-uri-types type-seg)
+             (some? id-seg)
+             (nil? (parse-long id-seg)))
+    (throw (ex-info
+            (str "Invalid id `" id-seg "` in URI. read_resource URIs use the numeric entity "
+                 "id — copy the `uri` attribute from a search result, or build the URI from "
+                 "its numeric `id` attribute, e.g. metabase://" type-seg "/42.")
+            {:agent-error? true
+             :status-code  400
+             :uri          uri
+             :id-segment   id-seg}))))
 
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
@@ -563,29 +715,30 @@
    ones (with rest-binding) so the exact-length match wins for the no-extra-segments case."
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
+    (check-numeric-id-segment! uri segments)
     (match/match-one segments
       ;; Navigation
-      ["databases"]                                    (fetch-databases-list)
+      ["databases"]                                    (fetch-databases-list query-params)
       ["collections"]                                  (fetch-collections-list query-params)
       ["user" "recent-items"]                          (fetch-user-recents)
 
       ;; Database drill-down
       ["database" id]                                  (fetch-database id)
-      ["database" id "tables"]                         (fetch-database-tables id)
-      ["database" id "models"]                         (fetch-database-models id)
-      ["database" id "schemas"]                        (fetch-database-schemas id)
-      ["database" id "schemas" schema "tables"]        (fetch-database-schema-tables id schema)
+      ["database" id "tables"]                         (fetch-database-tables id query-params)
+      ["database" id "models"]                         (fetch-database-models id query-params)
+      ["database" id "schemas"]                        (fetch-database-schemas id query-params)
+      ["database" id "schemas" schema "tables"]        (fetch-database-schema-tables id schema query-params)
 
       ;; Collection drill-down
       ["collection" id]                                (fetch-collection id)
-      ["collection" id "items"]                        (fetch-collection-items id)
-      ["collection" id "subcollections"]               (fetch-collection-subcollections id)
+      ["collection" id "items"]                        (fetch-collection-items id query-params)
+      ["collection" id "subcollections"]               (fetch-collection-subcollections id query-params)
 
       ;; Table
       ["table" id]                                     (fetch-table id)
       ["table" id "fields"]                            (fetch-table-fields id)
       ["table" id "fields" & rst]                      (fetch-table-field id (str/join "/" rst))
-      ["table" id "derived"]                           (fetch-table-derived id)
+      ["table" id "derived"]                           (fetch-table-derived id query-params)
 
       ;; Card (model / question — share handlers, dispatch on the type segment)
       [(t :guard #{"model" "question"}) id]            (fetch-card t id)
@@ -598,6 +751,10 @@
       ["metric" id "dimensions"]                       (fetch-metric-dimensions id)
       ["metric" id "dimensions" & rst]                 (fetch-metric-dimension id (str/join "/" rst))
 
+      ;; Measure / Segment
+      ["measure" id]                                   (fetch-measure id)
+      ["segment" id]                                   (fetch-segment id)
+
       ;; Transform
       ["transform" id]                                 (fetch-transform id)
       ["transform" id "sources"]                       (fetch-transform-sources id)
@@ -605,7 +762,7 @@
 
       ;; Dashboard
       ["dashboard" id]                                 (fetch-dashboard id)
-      ["dashboard" id "items"]                         (fetch-dashboard-items id)
+      ["dashboard" id "items"]                         (fetch-dashboard-items id query-params)
 
       ;; Default — required to make match non-recursive
       _ (throw (ex-info (str "Unsupported URI: " uri)
@@ -698,11 +855,12 @@
            :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
-  the instance and drill into specific entities. URIs returned by `search` and other
-  read_resource calls can be fed directly back here.
+  the instance and drill into specific entities. URIs returned by `search` can be fed directly
+  back here. Only numeric IDs accepted, never alphanumeric entity-id's.
 
-  Up to 5 URIs may be requested in one call. List responses are capped at 25 items; if
-  truncated, drill into individual items via their URIs or refine via `search`.
+  Up to 5 URIs may be requested in one call. List responses are capped at 25 items per page.
+  When :truncated is true, append ?page=N to fetch the next page (e.g. metabase://database/1/tables?page=2).
+  The response includes :page (current, 1-indexed) and :pages (total page count).
 
   NAVIGATION (top-level lists):
   - metabase://databases - all databases
@@ -727,6 +885,8 @@
   - metabase://model/{id}[/fields[/{field_id}]] [/sources]
   - metabase://question/{id}[/fields[/{field_id}]] [/sources]
   - metabase://metric/{id}[/dimensions[/{dim_id}]]
+  - metabase://measure/{id}
+  - metabase://segment/{id}
   - metabase://transform/{id}[/sources|/target]
   - metabase://dashboard/{id}[/items]"
   [{:keys [uris]} :- [:map {:closed true}

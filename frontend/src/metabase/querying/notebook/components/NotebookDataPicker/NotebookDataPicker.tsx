@@ -113,6 +113,7 @@ export function NotebookDataPicker({
           query={query}
           stageIndex={stageIndex}
           table={table}
+          title={title}
           placeholder={placeholder}
           canChangeDatabase={canChangeDatabase}
           isDisabled={isDisabled}
@@ -199,9 +200,11 @@ function ModernDataPicker({
       return Boolean(
         // @ts-expect-error - Please fix 🥺
         shouldDisableBasedOnDb({ ...item, database_id: dbId }) ||
+        // Unjustified type cast. FIXME
         shouldDisableItem?.(item as OmniPickerItem) ||
         (isObjectWithModel(item) &&
           item.model === "database" &&
+          // Unjustified type cast. FIXME
           shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
       );
     };

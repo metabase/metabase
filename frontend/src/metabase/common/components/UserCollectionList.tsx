@@ -2,7 +2,7 @@ import { useListUsersQuery } from "metabase/api";
 import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
-} from "metabase/collections/constants";
+} from "metabase/common/collections/constants";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";

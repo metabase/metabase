@@ -1,21 +1,10 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
-import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import {
-  PaneHeader,
-  PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
-import { Group, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { Stack } from "metabase/ui";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
-import { NAME_MAX_LENGTH } from "../../constants";
-import { LockedTransformsHoverCard } from "../LockedTransformsHoverCard/LockedTransformsHoverCard";
-import { TransformBadge } from "../TransformBadge/TransformBadge";
+import { JobHeader } from "../JobHeader";
 
 import { ScheduleSection } from "./ScheduleSection";
 import { TagSection } from "./TagSection";
@@ -26,8 +15,10 @@ type JobEditorProps = {
   job: TransformJobInfo;
   menu?: ReactNode;
   actions?: ReactNode;
+  tabs?: ReactNode;
   readOnly?: boolean;
   isCheckingPermissions?: boolean;
+  showMetabotButton?: boolean;
   onNameChange: (name: string) => void;
   onScheduleChange: (
     schedule: string,
@@ -40,49 +31,24 @@ export function JobEditor({
   job,
   menu,
   actions,
+  tabs,
   readOnly,
   isCheckingPermissions,
+  showMetabotButton,
   onNameChange,
   onScheduleChange,
   onTagListChange,
 }: JobEditorProps) {
-  const isMeterLocked = useSetting("transforms-meter-locked");
-
   return (
     <PageContainer data-testid="transforms-job-editor" gap="2.5rem">
-      <PaneHeader
-        title={
-          <Group align="center" gap="sm" wrap="nowrap">
-            <PaneHeaderInput
-              initialValue={job.name}
-              maxLength={NAME_MAX_LENGTH}
-              onChange={onNameChange}
-              readOnly={readOnly}
-            />
-            {isMeterLocked && (
-              <LockedTransformsHoverCard>
-                <TransformBadge bg="background-warning-secondary">{t`Disabled`}</TransformBadge>
-              </LockedTransformsHoverCard>
-            )}
-            {!isMeterLocked && !job.active && (
-              <TransformBadge bg="background-warning-secondary">
-                {t`Disabled`}
-              </TransformBadge>
-            )}
-          </Group>
-        }
-        py={0}
-        breadcrumbs={
-          <DataStudioBreadcrumbs>
-            <Link key="transform-job-list" to={Urls.transformJobList()}>
-              {t`Jobs`}
-            </Link>
-            {job.name}
-          </DataStudioBreadcrumbs>
-        }
+      <JobHeader
+        job={job}
         menu={menu}
         actions={actions}
-        data-testid="jobs-header"
+        tabs={tabs}
+        readOnly={readOnly}
+        showMetabotButton={showMetabotButton}
+        onNameChange={onNameChange}
       />
       <Stack gap="3.5rem">
         <ScheduleSection

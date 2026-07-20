@@ -1,7 +1,8 @@
 {:min-bb-version "1.12.212"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
+ ;; dev/src is here for tasks whose logic is shared with JVM tests (e.g. dev.kondo-ratchet)
+ :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src"]
  ;; use Git version of dep temporarily until a new release > 0.16.4 is cut
  :deps {dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"
                                 :git/url "https://github.com/weavejester/cljfmt"} ;; run cljfmt from bb
@@ -265,6 +266,39 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
+  fix-modules-config
+  {:doc "Regenerate .clj-kondo/config/modules/config.edn so it passes metabase.core.modules-test."
+   :examples [["./bin/mage fix-modules-config" "Fix the modules config (uses the running dev REPL if available, else a JVM)"]
+              ["./bin/mage fix-modules-config --port 59498" "Use the dev REPL on a specific nREPL port"]]
+   ;; Cold-JVM fallback invokes `clojure -X:dev dev.modules-config/fix-config!`.
+   :options [["-p" "--port PORT" "nREPL port to use, defaults to value in .nrepl-port"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
+
+  fix-kondo-ratchets
+  {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
+   :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
+              ["./bin/mage fix-kondo-ratchets --seed :some-linter" "Also set :some-linter's budget to its actual count, for landing a new linter"]]
+   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+
+  kondo-redundant-ignores
+  {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
+   :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]
+              ["./bin/mage kondo-redundant-ignores --fix" "Also remove them from source"]]
+   :options [["-f" "--fix" "Remove the candidate ignores from source"]]
+   :requires [[mage.kondo-ratchet]]
+   :task (task! (mage.kondo-ratchet/redundant-ignores parsed))}
+
+  kondo-insert-ignores
+  {:doc "Insert inline ignores at every site a linter flags -- for landing a new linter without a big-bang fix."
+   :examples [["./bin/mage kondo-insert-ignores :metabase/new-linter" "Insert ignores everywhere the linter fires, then seed its budget"]
+              ["./bin/mage kondo-insert-ignores :equals-true test/metabase/pulse" "Only under the given paths"]]
+   :arg-schema [:sequential [:string {:name "linter-then-paths"}]]
+   :requires [[mage.kondo-ratchet]]
+   :task (task! (mage.kondo-ratchet/insert-ignores (:arguments parsed)))}
+
   ls
   {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]
@@ -373,9 +407,9 @@
                         ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
                         ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
                         ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["4"    "Configured status = skip"                "SKIP" "driver is quarantined"]
+                        ["4"    "Configured status = skip (PR branches)" "SKIP" "driver is quarantined"]
                         ["4(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
-                        ["5"    "On master or release branch"             "RUN"  "master/release branch"]
+                        ["5"    "On master or release branch"             "RUN"  "master/release branch (quarantine ignored)"]
                         ["6"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
                         ["7"
                          "Cloud driver + its files changed"
@@ -391,6 +425,8 @@
                         ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
         "\nThis table decides only WHETHER a driver runs. A driver's configured status then\n"
         "applies to that decision (see 'Driver Status' below) and never overrides it.\n"
+        "\nNote: the remote quarantine list (status = skip) is ignored entirely on master and\n"
+        "release-* branches -- every driver runs and gates there (Priority 4 is bypassed).\n"
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
         "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"

@@ -20,6 +20,13 @@
       (as-> xs (filter #(str/starts-with? % (str directive " ")) xs))
       first))
 
+(defn- csp-directive-from-response
+  [response directive]
+  (-> (get-in response [:headers "Content-Security-Policy"])
+      (str/split #"; *")
+      (as-> xs (filter #(str/starts-with? % (str directive " ")) xs))
+      first))
+
 (defn- x-frame-options-header
   []
   (get (mw.security/security-headers) "X-Frame-Options"))
@@ -79,6 +86,114 @@
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))
 
+(defn- headers-for-uri
+  "Run the security-headers middleware for a request to `uri` and return its headers."
+  [uri]
+  (let [handler (mw.security/add-security-headers
+                 (fn [_request respond _raise] (respond {:status 200 :headers {} :body "ok"})))]
+    (:headers (handler {:uri uri :headers {}} identity identity))))
+
+(defn- frame-ancestors-for [uri]
+  (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
+       (filter #(str/starts-with? % "frame-ancestors "))
+       first))
+
+(deftest data-app-frame-ancestors-test
+  (testing "the internal data-app iframe is framable only by the same-origin host"
+    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales")))
+    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales/sub/route")))
+    (is (= "SAMEORIGIN" (get (headers-for-uri "/embed/apps/sales") "X-Frame-Options"))))
+  (testing "other /embed and /public pages keep open framing (unchanged)"
+    (doseq [uri ["/embed/dashboard/abc" "/public/question/abc"]]
+      (is (= "frame-ancestors *" (frame-ancestors-for uri)))
+      (is (nil? (get (headers-for-uri uri) "X-Frame-Options")))))
+  (testing "the top-level /apps page itself is not framable"
+    (mt/with-temporary-setting-values [enable-embedding-interactive false]
+      (is (= "frame-ancestors 'none'" (frame-ancestors-for "/apps/sales")))
+      (is (= "DENY" (get (headers-for-uri "/apps/sales") "X-Frame-Options"))))))
+
+(defn- csp-directive-for [uri directive]
+  (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
+       (filter #(str/starts-with? % (str directive " ")))
+       first))
+
+(deftest data-app-form-action-test
+  (testing "with no allowed_hosts, native <form action> submits are blocked (client-side onSubmit still works)"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= "form-action 'none'" (csp-directive-for "/embed/apps/sales" "form-action")))
+      (is (= "form-action 'none'"
+             (csp-directive-for "/embed/apps/sales/sub/route" "form-action")))))
+  (testing "form-action mirrors the app's allowed_hosts (like connect-src)"
+    (with-redefs [mw.security/data-app-connect-src-hosts
+                  (constantly ["https://api.example.com" "https://*.trusted.test"])]
+      (is (= "form-action https://api.example.com https://*.trusted.test"
+             (csp-directive-for "/embed/apps/sales" "form-action")))))
+  (testing "other documents leave form-action unset (falls through to no restriction)"
+    (doseq [uri ["/embed/dashboard/abc" "/public/question/abc" "/apps/sales"]]
+      (is (nil? (csp-directive-for uri "form-action"))))))
+
+(deftest data-app-frame-src-test
+  (testing "a data app's frame-src is a per-app allowlist: only 'self' + its allowed_hosts"
+    ;; A global iframe host (wikipedia) is configured but must NOT leak into a data
+    ;; app's frame-src — the app can only frame what it declares.
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        ;; Both the top page and the iframe doc: the top page's `frame-src` gates
+        ;; what the iframe below it may navigate to.
+        (doseq [uri ["/apps/sales" "/embed/apps/sales"]]
+          (let [frame-src (csp-directive-for uri "frame-src")]
+            (is (str/includes? frame-src "'self'") uri)
+            (is (str/includes? frame-src "https://example.com") uri)
+            (is (not (str/includes? frame-src "wikipedia"))
+                (str uri " must not include the instance-wide iframe hosts")))))))
+  (testing "with no allowed_hosts, a data app can only frame 'self'"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= "frame-src 'self'" (csp-directive-for "/embed/apps/sales" "frame-src")))))
+  (testing "non-data-app documents keep the instance-wide iframe hosts, not app hosts"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        (let [frame-src (csp-directive-for "/embed/dashboard/abc" "frame-src")]
+          (is (str/includes? frame-src "wikipedia"))
+          (is (not (str/includes? frame-src "https://example.com"))))))))
+
+(deftest data-app-instance-origin-excluded-test
+  (testing "the Metabase instance origin is dropped from a data app's allowlist even if listed"
+    (mt/with-temporary-setting-values [site-url "https://mymetabase.example"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://mymetabase.example" "https://api.allowed.test"])]
+        (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
+          (testing "the genuinely-external host survives"
+            (is (str/includes? form-action "https://api.allowed.test"))
+            (is (str/includes? frame-src "https://api.allowed.test"))
+            (is (str/includes? connect-src "https://api.allowed.test")))
+          (testing "the instance origin is filtered out (no native form/frame/fetch to Metabase)"
+            (is (not (str/includes? form-action "mymetabase.example")))
+            (is (not (str/includes? frame-src "https://mymetabase.example")))
+            (is (not (str/includes? connect-src "https://mymetabase.example")))))))))
+
+(deftest data-app-connect-src-test
+  (testing "a data app's allowed_hosts are added to the iframe document's connect-src"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (str/includes? (csp-directive-for "/embed/apps/sales" "connect-src")
+                         "https://api.example.com"))))
+  (testing "with no allowed_hosts, the iframe connect-src has no app hosts (same as any doc)"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= (csp-directive-for "/embed/apps/sales" "connect-src")
+             (csp-directive-for "/embed/dashboard/abc" "connect-src")))))
+  (testing "the top-level /data-app page keeps a tight connect-src — hosts go to the iframe doc, not here"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (not (str/includes? (csp-directive-for "/apps/sales" "connect-src")
+                              "https://api.example.com")))
+      ;; ...but the top page still gets them in frame-src (it gates the iframe's nav).
+      (is (str/includes? (csp-directive-for "/apps/sales" "frame-src")
+                         "https://api.example.com"))))
+  (testing "non-data-app documents don't get app hosts in connect-src"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "connect-src")
+                              "https://api.example.com"))))))
+
 (deftest nonce-test
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
     (let [nonceJSON (atom nil)
@@ -105,6 +220,61 @@
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
 
+(deftest data-app-inline-style-csp-test
+  (testing "Only data-app iframe responses allow inline styles"
+    (with-redefs [config/is-dev? false]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            app-response    (wrapped-handler {:uri "/"
+                                              :headers {}}
+                                             identity
+                                             identity)
+            data-response   (wrapped-handler {:uri "/embed/apps/boba"
+                                              :headers {}}
+                                             identity
+                                             identity)
+            app-style-src   (csp-directive-from-response app-response "style-src")
+            data-style-src  (csp-directive-from-response data-response "style-src")
+            data-script-src (csp-directive-from-response data-response "script-src")]
+        (is (str/includes? app-style-src "'nonce-"))
+        (is (not (str/includes? app-style-src "'unsafe-inline'")))
+        (is (str/includes? data-style-src "'unsafe-inline'"))
+        (is (not (str/includes? data-style-src "'nonce-")))
+        (is (str/includes? data-script-src "'nonce-"))
+        (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
+
+(deftest data-app-unsafe-eval-csp-test
+  (testing "Only data-app iframe responses allow 'unsafe-eval' in script-src"
+    ;; Data apps run their uploaded bundle through a Near-Membrane sandbox whose
+    ;; same-origin child iframe inherits this document's CSP and evaluates the
+    ;; bundle source via `eval`, so the data-app entrypoint must permit
+    ;; 'unsafe-eval' while the main app CSP stays strict.
+    (with-redefs [config/is-dev? false]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            script-src-for  (fn [uri]
+                              (-> (wrapped-handler {:uri uri :headers {}} identity identity)
+                                  (csp-directive-from-response "script-src")))]
+        (is (not (str/includes? (script-src-for "/") "'unsafe-eval'")))
+        (is (str/includes? (script-src-for "/embed/apps/boba") "'unsafe-eval'"))
+        ;; sub-routes under the data-app entrypoint are the same SPA shell
+        (is (str/includes? (script-src-for "/embed/apps/boba/sub/route") "'unsafe-eval'"))))))
+
+(deftest data-app-blob-img-csp-test
+  (testing "Only data-app iframe responses allow the blob: scheme in img-src"
+    (with-redefs [config/is-dev? false]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            img-src-for     (fn [uri]
+                              (-> (wrapped-handler {:uri uri :headers {}} identity identity)
+                                  (csp-directive-from-response "img-src")))]
+        (is (not (str/includes? (img-src-for "/") "blob:")))
+        (is (str/includes? (img-src-for "/embed/apps/boba") "blob:"))
+        (is (str/includes? (img-src-for "/embed/apps/boba/sub/route") "blob:"))))))
+
 (deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"
     (are [url expected] (= expected
@@ -116,11 +286,22 @@
       "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
       "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
       "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
+  (testing "Should parse arbitrary schemes, not just a closed allowlist (MCP clients use e.g. vscode-webview, electron, chrome-extension)"
+    (are [url expected] (= expected
+                           (mw.security/parse-url url))
+      "electron://example.com"         {:protocol "electron" :domain "example.com" :port nil}
+      "vscode-webview://abc123"        {:protocol "vscode-webview" :domain "abc123" :port nil}
+      "chrome-extension://abc123"      {:protocol "chrome-extension" :domain "abc123" :port nil}
+      "ftp://example.com"              {:protocol "ftp" :domain "example.com" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
-      "ftp://example.com"
       "://example.com"
-      "example:com")))
+      "example:com"
+      ;; scheme must start with a letter (RFC 3986)
+      "1abc://example.com"
+      ;; domain may not contain characters outside hostname/IPv4/wildcard syntax
+      "http://exa mple.com"
+      "http://exa@mple.com")))
 
 (deftest ^:parallel test-parse-approved-origins
   (testing "Should not break on multiple spaces in a row"
@@ -128,7 +309,13 @@
     (is (= 2 (count (mw.security/parse-approved-origins "   example.com      example.org   ")))))
   (testing "Should filter out invalid origins without throwing"
     (is (= 1 (count (mw.security/parse-approved-origins "example.org ://example.com"))))
-    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com"))))))
+    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com")))))
+  (testing "A trailing slash or path should have no effect (#75839)"
+    (is (= [{:protocol "http" :domain "localhost" :port "6274"}]
+           (mw.security/parse-approved-origins "http://localhost:6274/")))
+    (is (= (mw.security/parse-approved-origins "http://localhost:6274")
+           (mw.security/parse-approved-origins "http://localhost:6274/")
+           (mw.security/parse-approved-origins "http://localhost:6274/some/path")))))
 
 (deftest ^:parallel test-approved-domain?
   (testing "Exact match"
@@ -191,6 +378,12 @@
       (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
     (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
+  (testing "Should allow custom schemes used by MCP clients, not just a closed allowlist"
+    (is (mw.security/approved-origin? "electron://example.com" "electron://example.com"))
+    (is (mw.security/approved-origin? "chrome-extension://abc123" "chrome-extension://abc123"))
+    (is (not (mw.security/approved-origin? "electron://example.com" "app://example.com"))))
+  (testing "A trailing slash on an approved origin should have no effect (#75839)"
+    (is (mw.security/approved-origin? "http://localhost:6274" "http://localhost:6274/")))
   (testing "Origins without protocol should accept only http and https"
     (let [approved "example.com"]
       (is (mw.security/approved-origin? "http://example.com" approved))
@@ -550,19 +743,38 @@
     (mt/with-temporary-setting-values [csp-img-enabled false
                                        csp-img-allowed-hosts "example.com"]
       (is (= "img-src * 'self' data:" (csp-directive "img-src")))))
-  (testing "with csp-img-enabled, img-src is restricted to 'self' and data: by default"
+  (testing "with csp-img-enabled, img-src is restricted to 'self', data: and the tile server by default"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts ""]
-      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+                                       csp-img-allowed-hosts ""
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))))
   (testing "nil csp-img-allowed-hosts behaves like empty input"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts nil]
-      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+                                       csp-img-allowed-hosts nil
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))))
   (testing "csp-img-allowed-hosts widens img-src (with wildcard expansion)"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"]
-      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com"
+                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com https://*.tile.openstreetmap.org"
              (csp-directive "img-src"))))))
+
+(deftest csp-header-img-src-tile-server-tests
+  (testing "img-src always allows the configured map tile server"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts ""]
+      (testing "{s} subdomain placeholder is replaced with wildcard"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+          (is (= "img-src 'self' data: https://*.tile.openstreetmap.org"
+                 (csp-directive "img-src")))))
+      (testing "custom tile server host and port are allowed; path and query (e.g. api keys) are dropped"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://tiles.example.com:8443/{z}/{x}/{y}.png?apikey=SECRET"]
+          (is (= "img-src 'self' data: https://tiles.example.com:8443"
+                 (csp-directive "img-src")))))
+      (testing "a relative tile template contributes no host"
+        (mt/with-temporary-setting-values [map-tile-server-url "/local/{z}/{x}/{y}.png"]
+          (is (= "img-src 'self' data:" (csp-directive "img-src"))))))))
 
 (deftest csp-header-font-src-tests
   (testing "font-src is restricted to 'self' and data: when no custom fonts are configured"
@@ -598,9 +810,10 @@
         (is (str/includes? (csp-directive "img-src") @#'mw.security/frontend-address))
         (is (str/includes? (csp-directive "font-src") @#'mw.security/frontend-address)))))
   (testing "in prod the dev server origin is not added"
-    (mt/with-temporary-setting-values [csp-img-enabled true]
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
       (with-redefs [config/is-dev? false]
-        (is (= "img-src 'self' data:" (csp-directive "img-src")))
+        (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))
         (is (= "font-src 'self' data:" (csp-directive "font-src")))))))
 
 (deftest ^:parallel parse-allowed-resource-hosts-test

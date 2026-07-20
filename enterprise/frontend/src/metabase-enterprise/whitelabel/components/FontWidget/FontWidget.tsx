@@ -56,6 +56,7 @@ export const FontWidget = () => {
             name="application-font"
             inputType="select"
             searchable
+            // Unjustified type cast. FIXME
             onChange={(newValue) => handleChange(newValue as string)}
             options={fontOptions}
           />

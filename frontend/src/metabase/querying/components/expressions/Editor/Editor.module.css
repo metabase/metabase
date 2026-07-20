@@ -1,16 +1,16 @@
 .wrapper {
   position: relative;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   display: flex;
   flex-direction: column;
 
   &.formatting {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_page-tertiary);
   }
 }
 
 .error {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
   margin: 0.5rem 0;
   white-space: pre-wrap;
 }

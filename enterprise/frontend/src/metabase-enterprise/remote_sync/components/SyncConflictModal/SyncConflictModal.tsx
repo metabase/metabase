@@ -18,6 +18,7 @@ import {
 } from "metabase-enterprise/remote_sync/constants";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
+  ForcePushCasualties,
   RemoteSyncConfigurationSettings,
   RemoteSyncConflictVariant,
 } from "metabase-types/api";
@@ -27,6 +28,7 @@ import { CommitMessageSection } from "../PushChangesModal/CommitMessageSection";
 
 import { BranchNameInput } from "./BranchNameInput";
 import { ConflictingChangesList } from "./ConflictingChangesList";
+import { ForcePushWarning } from "./ForcePushWarning";
 import { OutOfSyncOptions } from "./OutOfSyncOptions";
 import { SetupConflictInfo } from "./SetupConflictInfo";
 import {
@@ -44,6 +46,7 @@ import {
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
+  /** switch-branch variant only: the branch to switch to once the chosen action resolves local changes. */
   nextBranch?: string | null;
   onClose: VoidFunction;
   variant: RemoteSyncConflictVariant;
@@ -51,11 +54,23 @@ interface UnsyncedWarningModalProps {
   canMerge?: boolean;
   /** Push variant only: labels of entities that conflict (shown when the merge isn't clean). */
   conflicts?: string[];
+  /** Remote content a force push would discard; surfaced when the force-push option is selected. */
+  forcePushCasualties?: ForcePushCasualties;
+  /** Whether the remote history was rewritten (no merge base); adds context to the force-push warning. */
+  historyRewritten?: boolean;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
-  const { onClose, currentBranch, nextBranch, variant, canMerge, conflicts } =
-    props;
+  const {
+    onClose,
+    currentBranch,
+    nextBranch,
+    variant,
+    canMerge,
+    conflicts,
+    forcePushCasualties,
+    historyRewritten,
+  } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
   // The push variant collects a commit message here, since merge/force/new-branch all push.
@@ -85,6 +100,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const markLibraryAndTransformsAsSynced = useCallback(async () => {
     try {
       const remoteSyncSettings: RemoteSyncConfigurationSettings = {
+        // Unjustified type cast. FIXME
         [COLLECTIONS_KEY]: (settingValues as RemoteSyncConfigurationSettings)[
           COLLECTIONS_KEY
         ],
@@ -144,8 +160,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "discard") {
-      // nextBranch is set on a switch-branch discard; currentBranch is the branch we're on now and is
-      // asserted against the setting to catch a stale tab.
+      // nextBranch is set on a switch-branch discard (the branch we're switching to); otherwise we discard
+      // and reload the current branch. currentBranch is the expected-branch assertion (caught if a stale tab
+      // switched under us).
       await discardChangesAndImport(
         nextBranch || currentBranch,
         currentBranch,
@@ -198,6 +215,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           canMerge={canMerge}
         />
 
+        {optionValue === "force-push" && forcePushCasualties && (
+          <ForcePushWarning
+            casualties={forcePushCasualties}
+            branch={currentBranch}
+            historyRewritten={historyRewritten}
+          />
+        )}
+
         {optionValue === "new-branch" && (
           <BranchNameInput
             existingBranches={existingBranches}
@@ -221,7 +246,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
             {t`Cancel`}
           </Button>
           <Button
-            color={optionValue === "discard" ? "error" : "core-brand"}
+            color={
+              optionValue === "discard" ? "feedback-negative" : "core-brand"
+            }
             disabled={isButtonDisabled}
             leftSection={
               optionValue === "force-push" ? <Icon name="warning" /> : undefined

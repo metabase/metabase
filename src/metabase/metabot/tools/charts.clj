@@ -2,6 +2,7 @@
   "Chart tool wrappers."
   (:require
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
@@ -21,7 +22,7 @@
          "<instructions>\n" (instructions/chart-created-instructions chart-id) "\n</instructions>")))
 
 (def ^:private chart-type-enum
-  [:enum "table" "bar" "line" "pie" "sunburst" "area" "combo"
+  [:enum "table" "bar" "line" "pie" "sunburst" "treemap" "area" "combo"
    "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
    "smartscalar" "gauge" "progress" "funnel" "object" "map"])
 
@@ -93,8 +94,7 @@
           structured (assoc result :result-type :chart)]
       ;; Add the new chart to memory so it can be referenced in the conversation going forward.
       (when (and (:chart_id new-chart-data) shared/*memory-atom*)
-        (swap! shared/*memory-atom* assoc-in [:state :charts (:chart_id new-chart-data)]
-               new-chart-data))
+        (swap! shared/*memory-atom* memory/set-chart (:chart_id new-chart-data) new-chart-data))
       {:output            (format-chart-output structured)
        :structured-output structured
        :data-parts        [(streaming/viz-part

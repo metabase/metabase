@@ -1,8 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { getStore } from "__support__/entities-store";
-import { Api } from "metabase/api";
-import { mainReducers } from "metabase/reducers-main";
+import { getMainStore } from "__support__/entities-store";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import {
@@ -80,11 +78,7 @@ const mockReplaceCSV = (valid = true) => {
 
 describe("csv uploads", () => {
   describe("actions", () => {
-    const store = getStore(
-      { ...mainReducers, [Api.reducerPath]: Api.reducer },
-      createMockState(),
-      [Api.middleware],
-    );
+    const store = getMainStore(createMockState());
     const dispatch = jest.spyOn(store, "dispatch");
 
     const file = new File(

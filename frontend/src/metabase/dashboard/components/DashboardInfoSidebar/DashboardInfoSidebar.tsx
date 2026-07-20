@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useListRevisionsQuery } from "metabase/api";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import {
@@ -14,10 +14,10 @@ import {
   SidesheetCard,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
-import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
+import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/common/utils/dashboard";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import {
@@ -206,7 +206,7 @@ const OverviewTab = ({
           onBlur={handleDescriptionBlur}
         />
         {!!descriptionError && (
-          <Text color="error" size="xs" mt="xs">
+          <Text color="feedback-negative" size="xs" mt="xs">
             {descriptionError}
           </Text>
         )}

@@ -20,6 +20,9 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
+/**
+ * @inline
+ */
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
 
@@ -85,6 +88,7 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+  should_index?: boolean;
 
   remapping?: Map<RowValue, string | number>;
 }

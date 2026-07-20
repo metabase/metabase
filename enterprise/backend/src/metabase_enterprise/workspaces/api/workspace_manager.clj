@@ -64,8 +64,8 @@
    [:creator     [:maybe CreatorResponse]]
    [:created_at  DateTimeWithTimeZone]
    [:updated_at  DateTimeWithTimeZone]
-   ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
-   ;; The list endpoint omits it — clients should treat a missing array as `[]`.
+   ;; Both the list and GET /:id endpoints hydrate `:databases`; it stays
+   ;; optional so clients treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
@@ -121,13 +121,16 @@
     (t2/update! :model/Workspace :id id {:name (:name params)}))
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
-(api.macros/defendpoint :delete "/:id"
-  :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
-  "Delete a Workspace. Deprovisions all databases first (blocking)."
+(api.macros/defendpoint :delete "/:id" :- :nil
+  "Delete a Workspace. Tears down every database's warehouse isolation first
+  (blocking, any state). Each database is either fully torn down (its row is
+  deleted) or kept; when any teardown fails the workspace is kept too — with the
+  failed rows, so the delete can be retried — and the combined failure is
+  returned as the error. 204 on success, no response body."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
-  {:id id :deleted true})
+  nil)
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import { getCollectionPathAsString } from "metabase/collections/utils";
+import { getCollectionPathAsString } from "metabase/common/collections/utils";
 
 import type { CacheableItem } from "../types";
 

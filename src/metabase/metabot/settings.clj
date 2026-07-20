@@ -104,7 +104,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "bedrock" "openai" "openrouter"})
+  #{"anthropic" "azure" "bedrock" "openai" "openrouter"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -113,6 +113,16 @@
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
+
+(def ^:private default-openai-llm-metabot-model
+  "Default OpenAI model used for Metabot when no explicit model is selected."
+  "gpt-5.4")
+
+(def ^:private default-openrouter-llm-metabot-model
+  "Default OpenRouter model used for Metabot when no explicit model is selected.
+  Note that OpenRouter model IDs use dots in version numbers (`claude-sonnet-4.6`),
+  unlike the Anthropic API's hyphenated IDs (`claude-sonnet-4-6`)."
+  "anthropic/claude-sonnet-4.6")
 
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
@@ -125,6 +135,8 @@
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "openai"                               default-openai-llm-metabot-model
+   "openrouter"                           default-openrouter-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -140,6 +152,26 @@
 (def supported-metabot-providers
   "Set of supported LLM provider prefixes for the `llm-metabot-provider` setting."
   (conj direct-providers provider-util/metabase-provider-prefix))
+
+(def azure-model-families
+  "Wire-protocol families for models hosted on Azure: the first segment of the azure model
+  string `{family}/{deployment-name}`, selecting the Anthropic or OpenAI wire protocol."
+  #{"anthropic" "openai"})
+
+(defn validate-azure-model!
+  "Validate the model segment of an `azure/{family}/{deployment-name}` provider string:
+  a supported wire family followed by a non-blank deployment name without slashes
+  (Azure deployment names cannot contain `/`). Throws on invalid input."
+  [value model]
+  (let [[family deployment] (str/split (str model) #"/" 2)]
+    (when-not (and (contains? azure-model-families family)
+                   (not (str/blank? deployment))
+                   (not (str/includes? deployment "/")))
+      (throw (ex-info (tru "Invalid Azure model {0}. Expected format: azure/<family>/<deployment-name> where <family> is one of: {1}"
+                           (pr-str value)
+                           (str/join ", " (sort azure-model-families)))
+                      {:status-code 400
+                       :value       value})))))
 
 (defn- validate-direct-provider!
   "Validate that `value` is a `provider/model` string for one of the [[direct-providers]]
@@ -162,7 +194,9 @@
     (when (str/blank? model)
       (throw (ex-info (tru "Model name is required. Expected format: provider/model, e.g. \"anthropic/claude-haiku-4-5\"")
                       {:status-code 400
-                       :value       value})))))
+                       :value       value})))
+    (when (= provider "azure")
+      (validate-azure-model! value model))))
 
 (defn- validate-metabase-managed-provider!
   "Validate that `value` is a `metabase/provider/model` string whose inner provider and
@@ -221,7 +255,7 @@
     (validate-direct-provider! value)))
 
 (defsetting llm-metabot-provider
-  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
+  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.")
   :type             :string
   :encryption       :no
   :default          default-llm-metabot-provider
@@ -248,12 +282,17 @@
 (defn configured-provider-credentials
   "Returns the configured credentials map for the given provider, or nil if unrecognized or unconfigured.
 
-  The shape of the map varies by provider: API-key providers return `{:api-key ...}`, while Bedrock returns
-  `:access-key-id`, `:secret-access-key`, `:session-token`, and `:region` from the `llm-bedrock-*` settings. Bedrock
-  counts as configured only when both the access key ID and secret access key are set."
+  The shape of the map varies by provider: API-key providers return `{:api-key ...}`, Azure returns `:api-key` and
+  `:base-url` from the `llm-azure-*` settings, and Bedrock returns `:access-key-id`, `:secret-access-key`,
+  `:session-token`, and `:region` from the `llm-bedrock-*` settings. Azure counts as configured only when both the
+  API key and base URL are set; Bedrock only when both the access key ID and secret access key are set."
   [provider]
   (case provider
     "anthropic"  (configured-api-key-credentials (llm.settings/llm-anthropic-api-key))
+    "azure"      (let [api-key  (non-blank (llm.settings/llm-azure-api-key))
+                       base-url (non-blank (llm.settings/llm-azure-api-base-url))]
+                   (when (and api-key base-url)
+                     {:api-key api-key :base-url base-url}))
     "bedrock"    (when (llm.settings/llm-bedrock-configured?)
                    {:access-key-id     (non-blank (llm.settings/llm-bedrock-access-key-id))
                     :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
@@ -265,12 +304,15 @@
 
 (defn provider-credentials-complete?
   "Whether a credentials map carries everything `provider` needs to make requests: both the AWS access key ID and
-  secret access key for Bedrock, an `:api-key` for the other direct providers."
+  secret access key for Bedrock, both the API key and base URL for Azure, an `:api-key` for the other direct
+  providers."
   [provider credentials]
   (boolean
-   (if (= provider "bedrock")
-     (and (non-blank (:access-key-id credentials))
-          (non-blank (:secret-access-key credentials)))
+   (case provider
+     "bedrock" (and (non-blank (:access-key-id credentials))
+                    (non-blank (:secret-access-key credentials)))
+     "azure"   (and (non-blank (:api-key credentials))
+                    (non-blank (:base-url credentials)))
      (non-blank (:api-key credentials)))))
 
 (defn- llm-provider-configured?

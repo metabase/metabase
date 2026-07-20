@@ -13,7 +13,7 @@ export const LocaleGroup = styled.ol`
   padding: 0.5rem;
   max-height: 17.5rem;
   overflow-y: scroll;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.25rem;
 `;
 
@@ -39,9 +39,9 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
     color(props.checked ? "text-primary-inverse" : "text-primary")};
   border-radius: 0.25rem;
   background-color: ${(props) =>
-    props.checked ? color("core-brand") : color("background-primary")};
+    props.checked ? color("core-brand") : color("background_page-primary")};
   font-weight: 700;
-  border: 2px solid var(--mb-color-white);
+  border: 2px solid var(--mb-color-core-white);
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
