@@ -20,21 +20,42 @@
     (is (= "#_{:clj-kondo/ignore [:x]}\n(a)"
            (#'kondo-ratchet/insert-ignore-lines "(a)" {1 [:x]})))))
 
-(deftest insert-inline-ignores-test
-  (testing "splices directly before the flagged token, wherever it sits on the line"
-    (is (= "{:engine #_{:clj-kondo/ignore [:x]} :postgres}\n"
-           (#'kondo-ratchet/insert-inline-ignores "{:engine :postgres}\n" {[1 10] [:x]} {}))))
-  (testing "multiple tokens on one line each get their own splice, right-to-left"
-    (is (= "(disj drivers #_{:clj-kondo/ignore [:x]} :presto #_{:clj-kondo/ignore [:x]} :databricks)\n"
-           (#'kondo-ratchet/insert-inline-ignores "(disj drivers :presto :databricks)\n"
-                                                  {[1 15] [:x], [1 23] [:x]}
-                                                  {}))))
-  (testing "a comment goes above the row at its indentation; same-site linters merge sorted"
-    (is (= "(f\n  ;; why\n  #_{:clj-kondo/ignore [:x :y]} :mysql)\n"
-           (#'kondo-ratchet/insert-inline-ignores "(f\n  :mysql)\n" {[2 3] [:y :x :y]} {2 ";; why"}))))
-  (testing "a file without a trailing newline doesn't gain one"
-    (is (= "#_{:clj-kondo/ignore [:x]} (a)"
-           (#'kondo-ratchet/insert-inline-ignores "(a)" {[1 1] [:x]} {})))))
+(deftest reinsert-ignores-test
+  (testing "a whole-line removal returns as its original line(s), comment above at its indentation"
+    (is (= {:text          "(defn f [x]\n  ;; why\n  #_{:clj-kondo/ignore [:equals-true]}\n  (= true x))\n"
+            :inserted-rows [2 2]}
+           (#'kondo-ratchet/reinsert-ignores
+            "(defn f [x]\n  (= true x))\n"
+            [{:row 2, :comment ";; why"
+              :original {:whole-line? true, :text "  #_{:clj-kondo/ignore [:equals-true]}"}}]))))
+  (testing "a multi-line whole-line removal returns verbatim, one coarse form -- never several narrow ones"
+    (is (= {:text          ";; why\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(a)\n"
+            :inserted-rows [1 1 1]}
+           (#'kondo-ratchet/reinsert-ignores
+            "(a)\n"
+            [{:row 1, :comment ";; why"
+              :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x\n                      :y]}"}}]))))
+  (testing "an inline removal splices back at its original column"
+    (is (= {:text          "(do #_{:clj-kondo/ignore [:x]} (foo))\n"
+            :inserted-rows []}
+           (#'kondo-ratchet/reinsert-ignores
+            "(do (foo))\n"
+            [{:row 1, :comment nil
+              :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}}]))))
+  (testing "an inline restore's comment sits above at the target line's indentation"
+    (is (= {:text          "(f\n  ;; why\n  #_{:clj-kondo/ignore [:x]} :mysql)\n"
+            :inserted-rows [2]}
+           (#'kondo-ratchet/reinsert-ignores
+            "(f\n  :mysql)\n"
+            [{:row 2, :comment ";; why"
+              :original {:whole-line? false, :col 3, :text "#_{:clj-kondo/ignore [:x]}"}}]))))
+  (testing "multiple sites in one file restore bottom-up"
+    (is (= {:text          "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
+            :inserted-rows [2 1]}
+           (#'kondo-ratchet/reinsert-ignores
+            "(a)\n(b)\n"
+            [{:row 1, :comment nil, :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
+             {:row 2, :comment nil, :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:y]}"}}])))))
 
 (deftest strip-orphan-keep-comments-test
   (let [stamp-line @#'kondo-ratchet/keep-comment
@@ -101,30 +122,53 @@
     (is (false? (#'kondo-ratchet/marker-on-line? (str "(= c \\;) (def s \"" kondo-ratchet/keep-marker "\")"))))
     (is (false? (#'kondo-ratchet/marker-on-line? (str "(def s \"a\\\";b " kondo-ratchet/keep-marker "\")"))))))
 
+(defn- remove-ignores-at'
+  "[[remove-ignores-at]] with `:original` stripped from `:sites`; [[remove-ignores-at-originals-test]]
+  covers the originals."
+  [text rows]
+  (update (#'kondo-ratchet/remove-ignores-at text rows)
+          :sites (partial mapv #(dissoc % :original))))
+
+(deftest remove-ignores-at-originals-test
+  (testing "each site captures its removed form verbatim, so a restore puts back exactly what was cut"
+    (is (= [{:whole-line? true, :text "  #_{:clj-kondo/ignore [:equals-true]}"}]
+           (map :original
+                (:sites (#'kondo-ratchet/remove-ignores-at
+                         "(defn f [x]\n  #_{:clj-kondo/ignore [:equals-true]}\n  (= true x))\n"
+                         [2])))))
+    (is (= [{:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}]
+           (map :original
+                (:sites (#'kondo-ratchet/remove-ignores-at "(do #_{:clj-kondo/ignore [:x]} (foo))\n" [1])))))
+    (is (= [{:whole-line? true, :text "#_{:clj-kondo/ignore [:x\n                      :y]}"}]
+           (map :original
+                (:sites (#'kondo-ratchet/remove-ignores-at
+                         "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n"
+                         [2])))))))
+
 (deftest remove-ignores-at-test
   (testing "a standalone ignore line disappears entirely; :sites points at the uncovered form"
     (is (= {:text      "(defn f [x]\n  (= true x))\n"
             :sites     [{:row 2, :linters [:equals-true]}]
             :deletions [[2 1]]
             :skipped   []}
-           (#'kondo-ratchet/remove-ignores-at
+           (remove-ignores-at'
             "(defn f [x]\n  #_{:clj-kondo/ignore [:equals-true]}\n  (= true x))\n"
             [2]))))
   (testing "an inline ignore is cut out of its line, swallowing a doubled space"
     (is (= {:text "(do (foo))\n", :sites [{:row 1, :linters [:x]}], :deletions [[1 0]], :skipped []}
-           (#'kondo-ratchet/remove-ignores-at "(do #_{:clj-kondo/ignore [:x]} (foo))\n" [1]))))
+           (remove-ignores-at' "(do #_{:clj-kondo/ignore [:x]} (foo))\n" [1]))))
   (testing "a multi-line ignore vector goes too"
     (is (= {:text "(a)\n(b)\n", :sites [{:row 2, :linters [:x :y]}], :deletions [[2 2]], :skipped []}
-           (#'kondo-ratchet/remove-ignores-at "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n" [2]))))
+           (remove-ignores-at' "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n" [2]))))
   (testing "an ignore map with extra keys is removed whole, not truncated at the vector"
     (is (= {:text "(a)\n", :sites [{:row 1, :linters [:x]}], :deletions [[1 1]], :skipped []}
-           (#'kondo-ratchet/remove-ignores-at "#_{:clj-kondo/ignore [:x] :reason \"legacy\"}\n(a)\n" [1]))))
+           (remove-ignores-at' "#_{:clj-kondo/ignore [:x] :reason \"legacy\"}\n(a)\n" [1]))))
   (testing "an extra-key map with NESTED braces would be truncated by the regex, so it is skipped whole"
     (is (= {:text      "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
             :sites     []
             :deletions []
             :skipped   [1]}
-           (#'kondo-ratchet/remove-ignores-at
+           (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
             [1]))))
   (testing "a skipped row is reported in post-removal coordinates when removals above it delete lines"
@@ -132,7 +176,7 @@
             :sites     [{:row 1, :linters [:x]}]
             :deletions [[1 1]]
             :skipped   [2]}
-           (#'kondo-ratchet/remove-ignores-at
+           (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
             [1 3]))))
   (testing "any form naming a clojure-lsp/* linter survives — a re-lint could never restore that half"
@@ -142,7 +186,7 @@
             :sites     [{:row 1, :linters [:x]}]
             :deletions [[1 0]]
             :skipped   []}
-           (#'kondo-ratchet/remove-ignores-at
+           (remove-ignores-at'
             (str "(do #_{:clj-kondo/ignore [:x]} #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]} (foo))\n"
                  "#_{:clj-kondo/ignore [:x :clojure-lsp/unused-public-var]}\n"
                  "(bar)\n")
@@ -152,7 +196,7 @@
             :sites     [{:row 3, :linters [:z]} {:row 1, :linters [:x :y]}]
             :deletions [[4 1] [1 1]]
             :skipped   []}
-           (#'kondo-ratchet/remove-ignores-at
+           (remove-ignores-at'
             "(do #_{:clj-kondo/ignore [:x\n                          :y]} (foo))\n(a)\n#_{:clj-kondo/ignore [:z]}\n(b)\n"
             [1 4]))))
   (testing "rows without an ignore are left alone; multiple removals shift later :sites rows up"
@@ -160,6 +204,6 @@
             :sites     [{:row 2, :linters [:y]} {:row 1, :linters [:x]}]
             :deletions [[3 1] [1 1]]
             :skipped   []}
-           (#'kondo-ratchet/remove-ignores-at
+           (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
             [1 2 3])))))

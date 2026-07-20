@@ -79,33 +79,43 @@
                            (sort-by key > row->linters)))
          ending)))
 
-(defn- insert-inline-ignores
-  "`text` with an ignore spliced directly before the token at each 1-based `[row col]` of `sites`
-  (`{[row col] linters}`), plus `row->comment` lines inserted above rows at matching indentation.
-  Kondo reports a finding at its token, which may be a map value or a later form on its line; a
-  line-above ignore only covers the line's first form, so restores must splice inline to be precise."
-  [text sites row->comment]
-  (let [lines    (vec (str/split-lines text))
-        ending   (if (str/ends-with? text "\n") "\n" "")
-        ;; right-to-left within a row so earlier cols stay valid; rows are independent
-        spliced  (reduce (fn [lines [[row col] linters]]
-                           (update lines (dec row)
-                                   (fn [line]
-                                     (str (subs line 0 (dec col))
-                                          "#_{:clj-kondo/ignore ["
-                                          (str/join " " (sort-by str (distinct linters)))
-                                          "]} "
-                                          (subs line (dec col))))))
-                         lines
-                         (sort-by (comp second key) > sites))
-        ;; bottom-up so earlier rows stay valid; splicing above never changed row numbers
-        commented (reduce (fn [lines [row comment]]
-                            (let [indent (re-find #"^\s*" (nth lines (dec row)))]
-                              (into (conj (subvec lines 0 (dec row)) (str indent comment))
-                                    (subvec lines (dec row)))))
-                          spliced
-                          (sort-by key > row->comment))]
-    (str (str/join "\n" commented) ending)))
+(defn- reinsert-ignores
+  "`text` with removed ignore forms put back exactly as they were: each site is a
+  [[remove-ignores-at]] `:sites` entry (`:row` in current coordinates) plus optional `:comment` to
+  stamp above it. A whole-line original returns as its original line(s); an inline original is
+  spliced back at its original column. Returns `{:text _, :inserted-rows [...]}` with one entry per
+  physical line added, for shifting other row bookkeeping past the inserts."
+  [text sites]
+  (let [ending (if (str/ends-with? text "\n") "\n" "")
+        ;; bottom-up so earlier rows stay valid
+        result (reduce
+                (fn [{:keys [lines] :as acc} {:keys [row original comment]}]
+                  (let [{:keys [whole-line? col]} original
+                        original-lines (str/split-lines (:text original))
+                        indent         (if whole-line?
+                                         (re-find #"^\s*" (or (first original-lines) ""))
+                                         (re-find #"^\s*" (get lines (dec row) "")))
+                        comment-lines  (when comment [(str indent comment)])
+                        added          (if whole-line?
+                                         (concat comment-lines original-lines)
+                                         comment-lines)
+                        lines          (cond-> lines
+                                         (not whole-line?)
+                                         (update (dec row)
+                                                 (fn [line]
+                                                   (str (subs line 0 (dec col))
+                                                        (:text original) " "
+                                                        (subs line (dec col))))))
+                        ;; an inline splice adds span-internal newlines as extra physical lines
+                        n-added        (+ (count added)
+                                          (if whole-line? 0 (dec (count original-lines))))]
+                    {:lines    (into (into (subvec lines 0 (dec row)) added)
+                                     (subvec lines (dec row)))
+                     :inserted (into (:inserted acc) (repeat n-added row))}))
+                {:lines (vec (str/split-lines text)), :inserted []}
+                (sort-by :row > sites))]
+    {:text          (str (str/join "\n" (:lines result)) ending)
+     :inserted-rows (:inserted result)}))
 
 (defn- beyond-baseline
   "Findings beyond the per-`[filename row type]` counts of `baseline-freq`.
@@ -217,20 +227,31 @@
                                               (str before after)))
                                ;; an inline removal still deletes the newlines inside a wrapped span;
                                ;; a blank-line removal deletes the remaining physical line on top
-                               (update :deletions conj [line
-                                                        (cond-> (count (filter #(= % \newline) (subs text start end)))
-                                                          blank? inc)
-                                                        linters]))))
+                               (update :deletions conj
+                                       {:line         line
+                                        :rows-deleted (cond-> (count (filter #(= % \newline) (subs text start end)))
+                                                        blank? inc)
+                                        :linters      linters
+                                        ;; enough to put the removal back exactly as it was
+                                        :original     (if blank?
+                                                        {:whole-line? true
+                                                         :text        (subs text line-start (+ end line-end))}
+                                                        {:whole-line? false
+                                                         :col         (inc (- start line-start))
+                                                         :text        (subs text start end)})}))))
                        {:text text, :deletions []}
                        ;; bottom-up so earlier offsets stay valid
                        (sort-by :start > removable))
+        deletions        (:deletions result)
         post-removal-row (fn [line]
-                           (- line (transduce (keep (fn [[l k]] (when (< l line) k))) + (:deletions result))))]
+                           (- line (transduce (keep (fn [{l :line, k :rows-deleted}] (when (< l line) k)))
+                                              + deletions)))]
     {:text      (:text result)
-     :sites     (for [[line _ linters] (:deletions result)]
-                  {:row     (post-removal-row line)
-                   :linters linters})
-     :deletions (mapv (fn [[line k _]] [line k]) (:deletions result))
+     :sites     (for [{:keys [line linters original]} deletions]
+                  {:row      (post-removal-row line)
+                   :linters  linters
+                   :original original})
+     :deletions (mapv (fn [{:keys [line rows-deleted]}] [line rows-deleted]) deletions)
      ;; adjusted like :sites, so warnings point at the rewritten file
      :skipped   (map (comp post-removal-row :line) unbalanced)}))
 
@@ -240,10 +261,9 @@
   Sites whose comment (directly above, or trailing on the ignore's line) carries [[keep-marker]] are
   proven false positives and are skipped too, unless `--audit` rechecks them.
   With `--fix`, remove the candidates, then verify against a pre-removal baseline lint of the touched
-  files: any finding not in the baseline was exposed by a removal, and gets its ignore restored with
-  the marker stamped. An `--audit` removal that sticks takes its stale marker comment with it.
-  Restores are per site, so a broad ignore can come back as several; `fix-kondo-ratchets` flags any
-  budget that ends up exceeded."
+  files: any finding not in the baseline was exposed by a removal, whose ignore is put back exactly as
+  it was -- a coarse form-level ignore returns as the same single form-level ignore -- with the marker
+  stamped above it. An `--audit` removal that sticks takes its stale marker comment with it."
   [parsed]
   (println "Running kondo with :redundant-ignore enabled (full lint, takes a minute or two)...")
   (let [audit?     (get-in parsed [:options :audit])
@@ -285,47 +305,27 @@
                            (- row (transduce (keep (fn [[l k]] (when (< l row) k)))
                                              + (:deletions (removals file)))))
             named        (fn [file] (into #{} (mapcat :linters) (:sites (removals file))))
-            restore!     (fn [exposed]
-                           ;; returns {:inserted {file [comment-rows...]}, :restored [findings...]};
-                           ;; :inserted lets baseline rows shift past the inserts, :restored is what
-                           ;; actually got a splice
-                           (reduce
-                            (fn [acc [file file-exposed]]
-                              (let [text  (slurp file)
-                                    lines (vec (str/split-lines text))
-                                    ;; a site already carrying a spliced ignore wasn't suppressed by
-                                    ;; it; splicing again would stack garbage forms -- leave it for
-                                    ;; the final warning pass
-                                    {stuck true, spliceable false}
-                                    (group-by (fn [{:keys [row col]}]
-                                                (boolean
-                                                 (some->> (get lines (dec row))
-                                                          (#(subs % 0 (min (dec col) (count %))))
-                                                          (re-find #":clj-kondo/ignore\s+\[[^\]]*\]\}\s*$"))))
-                                              file-exposed)
-                                    sites (update-vals (group-by (juxt :row :col) spliceable) #(map :type %))
-                                    ;; the site keeps any marker it already has
-                                    row->comment (into {}
-                                                       (for [row   (distinct (map :row spliceable))
-                                                             :when (not (marked-row? lines row))]
-                                                         [row (if (some :collision? (get (group-by :row spliceable) row))
-                                                                collision-comment
-                                                                keep-comment)]))]
-                                (when (seq spliceable)
-                                  (spit file (insert-inline-ignores text sites row->comment)))
-                                (-> acc
-                                    (assoc-in [:inserted file] (vec (sort (keys row->comment))))
-                                    (update :restored into spliceable)
-                                    (update :stuck into stuck))))
-                            {:inserted {}, :restored [], :stuck []}
-                            (sort-by key (group-by :filename exposed))))
-            _            (println (format "Removed them across %d files; re-linting to verify..." (count files)))]
-        ;; A finding beyond the (row-shifted) baseline was exposed by a removal; restore it when some
-        ;; removed ignore in the file named its type. The baseline is a frequency map so an exposed
-        ;; finding sharing row and type with a pre-existing one still counts as new. Hook linters can
-        ;; report only the first occurrence per form, so each restore round may surface the next one --
-        ;; iterate to a fixpoint.
-        (let [finish! (fn [exposed mismatched restored rounds-run]
+            restore-sites! (fn [file->sites collision-site?]
+                             ;; puts each removed ignore back exactly as it was; returns
+                             ;; {file [inserted-anchor-rows...]} for shifting row bookkeeping
+                             (into {}
+                                   (for [[file sites] (sort-by key file->sites)]
+                                     (let [text  (slurp file)
+                                           lines (vec (str/split-lines text))
+                                           sites (for [s sites]
+                                                   (assoc s :comment
+                                                          (when-not (marked-row? lines (:row s))
+                                                            (if (collision-site? s) collision-comment keep-comment))))
+                                           {:keys [text inserted-rows]} (reinsert-ignores text sites)]
+                                       (spit file text)
+                                       [file inserted-rows]))))
+            _              (println (format "Removed them across %d files; re-linting to verify..." (count files)))]
+        ;; A finding beyond the (row-shifted) baseline was exposed by a removal. Attribute it to the
+        ;; nearest preceding removed site naming its type and put that ignore back verbatim -- a coarse
+        ;; ignore returns as the same coarse ignore, never as several narrow ones. Hook linters can
+        ;; report only the first occurrence per form, so a round may surface findings a restored form
+        ;; already covers; iterate until the lint comes back clean.
+        (let [finish! (fn [exposed mismatched restored covered rounds-run]
                         (doseq [{:keys [filename row type]} (sort-by (juxt :filename :row) exposed)]
                           (println (format "WARNING: %s:%d still exposes %s after %d restore rounds -- re-ignore by hand"
                                            filename row type rounds-run)))
@@ -335,42 +335,64 @@
                         (when audit?
                           (doseq [file files]
                             (spit file (strip-orphan-keep-comments (slurp file)))))
-                        (doseq [{:keys [filename row]} (distinct (map #(select-keys % [:filename :row]) (filter :collision? restored)))]
-                          (println (format "NOTE: %s:%d restored a same-row collision -- one ignore there may cover pre-existing debt; verify by hand"
-                                           filename row)))
+                        (doseq [[file row] (sort (distinct (map (juxt :file :row) (filter :collision? restored))))]
+                          (println (format "NOTE: %s:%d restored over a same-row collision -- it may cover pre-existing debt; verify by hand"
+                                           file row)))
                         (if (empty? restored)
                           (println "Verified: the removals exposed no findings.")
-                          (println (format "Restored ignores at %d sites where a finding reappeared (%s), stamped %s."
-                                           (count (distinct (map (juxt :filename :row) restored)))
-                                           (str/join ", " (sort (distinct (map :type restored))))
+                          (println (format "Restored %d removed ignores covering %d findings (%s), stamped %s."
+                                           (count restored)
+                                           (count covered)
+                                           (str/join ", " (sort (distinct (map :type covered))))
                                            keep-marker)))
                         (println "Now run `./bin/mage fix-kondo-ratchets` to update the budgets, and `./bin/mage kondo` for the final word.")
                         (when (seq exposed)
                           (throw (ex-info "the removals left warnings exposed; re-ignore them by hand and re-run" {:exit-code 1}))))]
           (loop [round         1
+                 pending       (update-vals removals :sites)
                  baseline-freq (frequencies
                                 (map (fn [{:keys [filename row type]}]
                                        [filename (adjusted-row filename row) type])
                                      baseline))
-                 restored      []]
+                 restored      []
+                 covered       []]
             (let [{exposed true, mismatched false}
                   (group-by (fn [{:keys [filename type]}]
                               (boolean (some #{:all type} (named filename))))
-                            (beyond-baseline baseline-freq (filter :row (kondo-findings! nil files))))]
-              (if (and (seq exposed) (< round 10))
-                (let [{:keys [inserted] :as results} (restore! exposed)]
-                  (if (empty? (:restored results))
-                    ;; every remaining site resists splicing; another lint would change nothing
-                    (finish! exposed mismatched restored (dec round))
-                    (do (println (format "Round %d: restored %d sites; re-linting for occurrences the first report shadowed..."
-                                         round (count (distinct (map (juxt :filename :row) (:restored results))))))
-                        (recur (inc round)
-                               (into {}
-                                     (map (fn [[[file row type] n]]
-                                            [[file (shift-past-inserts row (get inserted file [])) type] n]))
-                                     baseline-freq)
-                               (into restored (:restored results))))))
-                (finish! exposed mismatched restored (dec round))))))))))
+                            (beyond-baseline baseline-freq (filter :row (kondo-findings! nil files))))
+                  ;; nearest preceding pending site naming the finding's type; else nearest overall
+                  pick (fn [{:keys [filename row type]}]
+                         (let [match? (fn [s] (boolean (some #{:all type} (:linters s))))
+                               sites  (filter match? (get pending filename))]
+                           (or (last (sort-by :row (filter #(<= (:row %) row) sites)))
+                               (first (sort-by #(abs (- (:row %) row)) sites)))))
+                  picks (map (juxt identity pick) exposed)
+                  attributable (filter second picks)]
+              (if (and (seq attributable) (< round 6))
+                (let [file->sites (into {}
+                                        (for [[file fps] (group-by (comp :filename first) attributable)]
+                                          [file (vec (distinct (map second fps)))]))
+                      collisions  (into #{} (map second) (filter (comp :collision? first) attributable))
+                      inserted    (restore-sites! file->sites collisions)
+                      shift-site  (fn [file s] (update s :row #(shift-past-inserts % (get inserted file []))))]
+                  (println (format "Round %d: put back %d removed ignores covering %d findings; re-linting..."
+                                   round
+                                   (reduce + (map count (vals file->sites)))
+                                   (count attributable)))
+                  (recur (inc round)
+                         (into {}
+                               (for [[file sites] pending
+                                     :let [gone (set (get file->sites file))]]
+                                 [file (vec (for [s sites :when (not (gone s))]
+                                              (shift-site file s)))]))
+                         (into {}
+                               (map (fn [[[file row type] n]]
+                                      [[file (shift-past-inserts row (get inserted file [])) type] n]))
+                               baseline-freq)
+                         (into restored (for [[file sites] file->sites, s sites]
+                                          {:file file, :row (:row s), :collision? (contains? collisions s)}))
+                         (into covered (map first attributable))))
+                (finish! exposed mismatched restored covered (dec round))))))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; kondo-insert-ignores
