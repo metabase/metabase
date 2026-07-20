@@ -21,10 +21,17 @@
   (testing "GHY-4137: agent:snippets:read is advertised for explicit request but kept out of the
             default grant a dynamically-registered client receives — like mb:full — so snippet SQL
             bodies aren't exposed unless a token asks for the scope"
-    (testing "it is advertised in scopes-supported"
+    (testing "it is advertised in the authorization-server metadata (scopes-supported)"
       (is (contains? (set (oauth-server/supported-scopes)) "agent:snippets:read")))
     (testing "it is NOT in the default grant"
-      (is (not (contains? (set (oauth-server/all-agent-scopes)) "agent:snippets:read"))))))
+      (is (not (contains? (set (oauth-server/all-agent-scopes)) "agent:snippets:read"))))
+    (testing "GHY-4137: it is also advertised in the protected-resource metadata (RFC 9728), or a
+              client discovering scopes that way can never learn the scope exists to request it"
+      (is (contains? (set (oauth-server/protected-resource-scopes)) "agent:snippets:read")))
+    (testing "the protected-resource doc omits mb:full — a first-party full-access scope, not
+              specific to the MCP resource; it stays in the authorization-server metadata"
+      (is (contains? (set (oauth-server/supported-scopes)) "mb:full"))
+      (is (not (contains? (set (oauth-server/protected-resource-scopes)) "mb:full"))))))
 
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"
