@@ -71,6 +71,28 @@
       (let [text (str keep-line "\n;; more context\n#_{:clj-kondo/ignore [:x]}\n(a)\n")]
         (is (= text (#'kondo-ratchet/strip-orphan-keep-comments text)))))))
 
+(deftest beyond-baseline-test
+  (let [f (fn [filename row type col] {:filename filename, :row row, :type type, :col col})]
+    (testing "findings with no baseline entry are all beyond it"
+      (is (= [(f "a.clj" 3 :x 1)]
+             (#'kondo-ratchet/beyond-baseline {} [(f "a.clj" 3 :x 1)]))))
+    (testing "a group matching its baseline count is fully absorbed"
+      (is (= []
+             (#'kondo-ratchet/beyond-baseline {["a.clj" 3 :x] 1} [(f "a.clj" 3 :x 1)]))))
+    (testing "a group over its baseline count returns ALL its findings -- an exposed finding can't be
+              told apart from a pre-existing same-row one, so restore conservatively"
+      (is (= [(f "a.clj" 3 :x 1) (f "a.clj" 3 :x 20)]
+             (sort-by :col
+                      (#'kondo-ratchet/beyond-baseline {["a.clj" 3 :x] 1}
+                                                       [(f "a.clj" 3 :x 20) (f "a.clj" 3 :x 1)])))))))
+
+(deftest shift-past-inserts-test
+  (testing "each insertion at or above the row pushes it down one, measured against the original row"
+    (is (= 5 (#'kondo-ratchet/shift-past-inserts 5 [])))
+    (is (= 6 (#'kondo-ratchet/shift-past-inserts 5 [5 6])))
+    (is (= 9 (#'kondo-ratchet/shift-past-inserts 7 [5 6])))
+    (is (= 5 (#'kondo-ratchet/shift-past-inserts 5 [6 7])))))
+
 (deftest marker-on-line-test
   (testing "the marker counts only after a semicolon, so a string literal containing it doesn't mark"
     (is (true? (#'kondo-ratchet/marker-on-line? (str ";; " kondo-ratchet/keep-marker " because"))))

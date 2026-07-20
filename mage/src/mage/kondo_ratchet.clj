@@ -93,6 +93,26 @@
                           (sort-by key > row->comment))]
     (str (str/join "\n" commented) ending)))
 
+(defn- beyond-baseline
+  "Findings beyond the per-`[filename row type]` counts of `baseline-freq`.
+  A group holding more findings than its baseline count returns ALL of them: an exposed finding can't
+  be told apart from a pre-existing one on the same row, and an extra restore is visible in the diff
+  where a silently dropped one is not."
+  [baseline-freq findings]
+  (mapcat (fn [[key key-findings]]
+            (let [n (get baseline-freq key 0)]
+              (cond
+                (zero? n)                    key-findings
+                (> (count key-findings) n)   key-findings
+                :else                        ())))
+          (group-by (fn [{:keys [filename row type]}] [filename row type]) findings)))
+
+(defn- shift-past-inserts
+  "`row` moved down one for each line inserted at or above it, `inserted-rows` being in the same
+  pre-insertion coordinates as `row`."
+  [row inserted-rows]
+  (+ row (count (filter #(<= % row) inserted-rows))))
+
 (defn- strip-orphan-keep-comments
   "`text` minus whole-line [[keep-marker]] comments no longer attached to an ignore form -- what an
   `--audit` removal that stuck leaves behind. Attachment looks past further comment lines, and only
@@ -270,24 +290,16 @@
           (let [{exposed true, mismatched false}
                 (group-by (fn [{:keys [filename type]}]
                             (boolean (some #{:all type} (named filename))))
-                          (mapcat (fn [[key key-findings]]
-                                    (drop (get baseline-freq key 0) (sort-by :col key-findings)))
-                                  (group-by (fn [{:keys [filename row type]}] [filename row type])
-                                            (filter :row (kondo-findings! nil files)))))]
+                          (beyond-baseline baseline-freq (filter :row (kondo-findings! nil files))))]
             (cond
               (and (seq exposed) (< round 5))
               (let [inserted (restore! exposed)]
                 (println (format "Round %d: restored %d sites; re-linting for occurrences the first report shadowed..."
                                  round (count (distinct (map (juxt :filename :row) exposed)))))
                 (recur (inc round)
-                       ;; a comment line inserted above row r pushes baseline rows at or below r down one
                        (into {}
                              (map (fn [[[file row type] n]]
-                                    [[file
-                                      (reduce (fn [r ins] (if (<= ins r) (inc r) r))
-                                              row (sort (get inserted file [])))
-                                      type]
-                                     n]))
+                                    [[file (shift-past-inserts row (get inserted file [])) type] n]))
                              baseline-freq)
                        (into restored exposed)))
 
