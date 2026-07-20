@@ -102,6 +102,7 @@ const RoutedMetabotQueryBuilder = withRouteProps(MetabotQueryBuilder);
 const RoutedNewModelOptions = withRouteProps(NewModelOptions);
 const RoutedBrowseSchemas = withRouteProps(BrowseSchemas);
 const RoutedBrowseTables = withRouteProps(BrowseTables);
+const RoutedTablePermalinkRedirect = withRouteProps(TablePermalinkRedirect);
 const RoutedMetricsViewerPage = withRouteProps(MetricsViewerPage);
 const RoutedTableDetailPage = withRouteProps(TableDetailPage);
 const RoutedUnsubscribePage = withRouteProps(UnsubscribePage);
@@ -287,9 +288,15 @@ export const getRoutes = (store: AppStore) => {
               path="databases/:dbId/schema/:schemaName"
               element={<RoutedBrowseTables />}
             />
+            {/* The schema segment is optional; the v7 pattern syntax has no
+                optional static segments, so the permalink is two routes. */}
             <Route
-              path="databases/:dbName(/schema/:schemaName)/table/:tableName"
-              component={TablePermalinkRedirect}
+              path="databases/:dbName/table/:tableName"
+              element={<RoutedTablePermalinkRedirect />}
+            />
+            <Route
+              path="databases/:dbName/schema/:schemaName/table/:tableName"
+              element={<RoutedTablePermalinkRedirect />}
             />
 
             {PLUGIN_TABLE_EDITING.getRoutes()}
