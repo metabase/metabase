@@ -58,7 +58,6 @@
                    :discouraged-var
                    :equals-true
                    :metabase/defsetting-namespace
-                   :metabase/disallow-hardcoded-driver-names-in-tests
                    :metabase/discourage-millis-duration
                    :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
                    :metabase/modules
