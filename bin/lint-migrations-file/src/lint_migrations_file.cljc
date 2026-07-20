@@ -1,5 +1,6 @@
 (ns lint-migrations-file
   "This is cljc because it is used from both Clojure (:clj) and Babashka (:bb). Not cljs!"
+  ;; kondo also lints cljc as cljs, where the :bb/:clj conditional below hides the only io usage
   #_{:clj-kondo/ignore [:unused-alias :unused-namespace]}
   (:require
    [change-set.strict]

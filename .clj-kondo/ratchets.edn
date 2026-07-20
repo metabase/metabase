@@ -84,7 +84,5 @@
                    :metabase/validate-deftest
                    :missing-docstring
                    :missing-protocol-method
-                   :unused-alias
                    :unused-excluded-var
-                   :unused-namespace
                    :unused-private-var}}
