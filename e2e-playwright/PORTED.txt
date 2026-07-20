@@ -396,3 +396,4 @@ native/native-database-source.cy.spec.js
 data-studio/transforms/template-tags.cy.spec.ts
 dependencies/dependency-checks.cy.spec.ts
 actions/actions-in-object-detail-view.cy.spec.js
+workspaces/workspace-instance.cy.spec.ts

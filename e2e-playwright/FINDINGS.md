@@ -2895,3 +2895,45 @@ open item, not as evidence.
     The same agent **sanity-checked its mutation verifier before using it** —
     confirming it aborts on 0 occurrences and on 3, with the file md5 unchanged.
     That is #146's lesson adopted proactively rather than after a failure.
+
+### 🔴 A token probe left a slot backend contaminated with MORE features
+
+163. **`workspace-instance`'s two-arm token control left `bleeding-edge` active
+    on slot 3**, and the agent declared it as a deliberate residue reasoning that
+    "every `beforeEach` re-activates it". **I verified and it was not benign:**
+    `GET :4103/api/session/properties` reported **53 features ON**, with
+    `workspaces: true` **and `transforms-basic: true`** — the latter being a
+    feature the local `pro-self-hosted` token does **not** carry.
+
+    **The failure mode this creates is the worst kind: a genuinely gated spec
+    would appear ungated on that slot**, producing a confident "this tier runs
+    here" conclusion that is an artifact of the previous agent's probe. That is
+    the same shape as #106, where I wrongly concluded a tier was blocked — only
+    inverted, and harder to catch because everything passes.
+
+    Killed the slot-3 backend (PID confirmed as the `metabase.jar` process on
+    4103) so the next agent gets a clean one.
+
+    **Rule: a token probe must restore the token, not rely on the next spec's
+    `beforeEach`.** The reasoning "every `beforeEach` re-activates it" is only
+    true for specs that activate a token at all — and a spec testing OSS or
+    gated behaviour is precisely the one that won't.
+
+### A green run interrogated rather than accepted
+
+164. **`workspace-instance` flagged its own 4.4s runtimes as a possible #49
+    "ported but never really executed" green, then ruled it out three ways** —
+    a warm-backend restore measured at 0.103s, mutations dying on real
+    warehouse/DOM state, and the sync semantics accounted for.
+
+    Worth recording because #49's whole point is that a fast green is the hardest
+    kind to distrust. Two of its kills also prove **product behaviour rather than
+    port fidelity**: on both engines the canonical path
+    (`Domestic.transform_table` / `writable_db.transform_table`) **does not
+    exist** in the warehouse, while the workspace-qualified path holds exactly 3
+    rows.
+
+    It also found an **assertion subsumed by its successor**: upstream asserts
+    `contain.text "transform_table"` then `"mb__isolation/__transform_table"` —
+    the second string contains the first, so the first **cannot fail
+    independently**. Ported verbatim with the analysis inline.
