@@ -15,6 +15,7 @@ import {
   BrowseModels,
   BrowseSchemas,
   BrowseTables,
+  TablePermalinkRedirect,
 } from "metabase/browse";
 import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
@@ -101,6 +102,7 @@ const RoutedMetabotQueryBuilder = withRouteProps(MetabotQueryBuilder);
 const RoutedNewModelOptions = withRouteProps(NewModelOptions);
 const RoutedBrowseSchemas = withRouteProps(BrowseSchemas);
 const RoutedBrowseTables = withRouteProps(BrowseTables);
+const RoutedTablePermalinkRedirect = withRouteProps(TablePermalinkRedirect);
 const RoutedMetricsViewerPage = withRouteProps(MetricsViewerPage);
 const RoutedTableDetailPage = withRouteProps(TableDetailPage);
 const RoutedUnsubscribePage = withRouteProps(UnsubscribePage);
@@ -285,6 +287,14 @@ export const getRoutes = (store: AppStore) => {
             <Route
               path="databases/:dbId/schema/:schemaName"
               element={<RoutedBrowseTables />}
+            />
+            <Route
+              path="databases/:dbName/schema/:schemaName/table/:tableName"
+              element={<RoutedTablePermalinkRedirect />}
+            />
+            <Route
+              path="databases/:dbName/table/:tableName"
+              element={<RoutedTablePermalinkRedirect />}
             />
 
             {PLUGIN_TABLE_EDITING.getRoutes()}

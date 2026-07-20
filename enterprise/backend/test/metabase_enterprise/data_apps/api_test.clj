@@ -173,18 +173,20 @@
        (snapshot (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "B"})))
       (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))))
 
-(deftest import-keeps-apps-absent-from-snapshot-test
+(deftest import-prunes-apps-absent-from-snapshot-test
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
      (snapshot (merge (app-files "keep" {:name "Keep" :path "index.js" :bundle "KEEP"})
                       (app-files "gone" {:name "Gone" :path "index.js" :bundle "GONE"}))))
     (is (= #{"keep" "gone"} (t2/select-fn-set :name :model/DataApp)))
-    ;; A sync never deletes: an app missing from a later snapshot is kept, not
-    ;; pruned. Removal is an explicit admin action (DELETE /api/apps/:slug).
-    (data-app.sync/import-from-snapshot!
-     (snapshot (app-files "keep" {:name "Keep" :path "index.js" :bundle "KEEP"})))
-    (is (= #{"keep" "gone"} (t2/select-fn-set :name :model/DataApp))
-        "the app absent from the later snapshot is kept")))
+    ;; The connected repo is the source of truth: an app whose directory is gone
+    ;; from a later snapshot is pruned. (An admin can also remove one explicitly
+    ;; via DELETE /api/apps/:slug.)
+    (is (=? {:removed 1}
+            (data-app.sync/import-from-snapshot!
+             (snapshot (app-files "keep" {:name "Keep" :path "index.js" :bundle "KEEP"})))))
+    (is (= #{"keep"} (t2/select-fn-set :name :model/DataApp))
+        "the app absent from the later snapshot is pruned")))
 
 (deftest delete-endpoint-test
   (mt/test-helpers-set-global-values!
@@ -237,18 +239,20 @@
       (is (= #{"one" "two"} (t2/select-fn-set :name :model/DataApp))))))
 
 (deftest import-isolates-bad-config-test
-  (testing "a malformed data_app.yaml is isolated: other apps still sync, the bad one is reported, nothing is pruned"
+  (testing "a malformed data_app.yaml is isolated: sibling apps in the same repo still sync and are not pruned, the bad one is reported"
     (mt/with-model-cleanup [:model/DataApp]
-      ;; pre-existing app that must survive a sync where another config is broken
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "existing" {:name "Existing" :path "i.js" :bundle "E"})))
+      ;; The repo still holds "existing" and adds "good", alongside a broken "bad".
+      ;; The broken config must not abort the others, nor prune its siblings.
       (let [result (data-app.sync/import-from-snapshot!
-                    (snapshot (merge (app-files "good" {:name "Good" :path "i.js" :bundle "GOOD"})
+                    (snapshot (merge (app-files "existing" {:name "Existing" :path "i.js" :bundle "E"})
+                                     (app-files "good" {:name "Good" :path "i.js" :bundle "GOOD"})
                                      {"data_apps/bad/data_app.yaml" "name: [unterminated"})))]
-        (is (=? {:synced 1} result))
+        (is (=? {:synced 2 :removed 0} result))
         (is (= 1 (count (:config-errors result))))
         (is (= #{"existing" "good"} (t2/select-fn-set :name :model/DataApp))
-            "the good app is added and the pre-existing app is NOT pruned despite the bad config")))))
+            "the bad config neither aborts nor prunes its sibling apps, and doesn't materialize itself")))))
 
 (deftest sync-from-snapshot!-never-throws-test
   (testing "a malformed data_app.yaml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
