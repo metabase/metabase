@@ -83,7 +83,7 @@ function CreateWorkspaceSection({ databases }: CreateWorkspaceSectionProps) {
   if (!hasEligibleDatabase) {
     return (
       <Text>
-        {jt`You need to enable workspaces on at least one database. You can do this in ${(
+        {jt`To create a workspace, you need to enable workspaces on at least one database in ${(
           <Anchor
             key="link"
             component={Link}
