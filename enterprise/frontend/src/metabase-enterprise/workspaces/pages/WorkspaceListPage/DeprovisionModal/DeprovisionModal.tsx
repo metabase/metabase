@@ -177,10 +177,7 @@ type DeprovisionSuccessProps = {
 function DeprovisionSuccess({ onDone }: DeprovisionSuccessProps) {
   return (
     <Stack gap="lg">
-      <Group gap="sm" wrap="nowrap">
-        <FixedSizeIcon name="check_filled" c="success" aria-hidden />
-        <Text>{t`The workspace instance and its temporary database users and schemas were removed.`}</Text>
-      </Group>
+      <Text>{t`The workspace instance and its temporary database users and schemas were removed.`}</Text>
       <Group justify="flex-end">
         <Button variant="filled" onClick={onDone}>
           {t`Done`}
