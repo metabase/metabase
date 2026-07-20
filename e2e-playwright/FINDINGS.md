@@ -3519,3 +3519,49 @@ open item, not as evidence.
 
     One deviation stated plainly: `should("exist")` → `toBeVisible()` is a
     **strengthening**, because testing-library matches hidden nodes.
+
+### A test left faithfully FAILING, with the precondition it needs identified
+
+193. **`workspace-manager`'s postgres arm fails with a 412, and it is not port
+    drift.** `writable_db`'s `public` schema grants CREATE to PUBLIC, which
+    workspace isolation refuses.
+
+    Drift was ruled out three ways: the **mysql arm drives the identical helper
+    surface and is green**; a `pw:api` trace shows every click landing; and
+    `CreateWorkspaceParams` is `{:closed true}`, so a hand-built curl reproduced
+    the FE payload exactly.
+
+    **The agent did not fix it, and the reasoning is right:** the one-line REVOKE
+    targets a container shared with four other slots and **never reset**, so it
+    belongs in **provisioning**, not a `beforeEach`. The permission layer also
+    blocked it when tried as a probe — correctly. Test left **faithful and
+    failing with a full FIXME**, which is the honest state.
+
+    **Open question left open:** nothing in the repo establishes that
+    precondition — `resetWritableDb` never touches ACLs, there is no CI step, and
+    the image is stock. With the Cypress cross-check barred, whether upstream
+    passes in CI is **unknown and not claimed**. Recorded as unresolved.
+
+    This is the second spec now sitting in a non-green state on purpose
+    (`datamodel-data-studio-search` is the other), and both are blocked on
+    **warehouse provisioning** rather than on anything about the port.
+
+### An agent that weakened its own claim after measuring it
+
+194. **`workspace-manager` added a positive anchor ahead of a "deleted → not
+    listed" absence assertion and called it a strengthening — then retracted
+    that.** Mutation M2b showed `toHaveCount(0)` **does** pass vacuously in the
+    pre-fetch window, so the anchor is doing real work — **but upstream was
+    already anchored by its very next line**. So the addition changes **where**
+    the failure surfaces, not **whether** it surfaces.
+
+    It amended its own spec header rather than leave the stronger claim standing.
+
+    That is the behaviour I most want from this exercise: the easy move was to
+    bank "found and fixed a vacuous absence assertion" — which would have been
+    the fourth such find today and entirely plausible — and it checked instead.
+
+    It also flagged **M1 as over-determined** (both its anchor and upstream's
+    assertion catch it, so it proves nothing new), designed M2a/M2b to correct
+    for that, and **probed a suspicious ~1.0s runtime** with a `pw:api` trace
+    rather than banking it — the fourth agent to interrogate its own green.
