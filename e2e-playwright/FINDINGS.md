@@ -1865,3 +1865,33 @@ open item, not as evidence.
     block — not triggered by any failure mode I could induce"** rather than
     claimed as coverage. That is the distinction this spike keeps having to make:
     *unkillable by me* is not *vacuous*.
+
+### A stub-fidelity rule that hides in plain sight
+
+109. **`cy.intercept(url, { statusCode: 500 })` sends an EMPTY body** — porting
+    it as a `route.fulfill` with a JSON body is a behavioural change
+    (`data-model-shared-4`). The port supplied
+    `{ message: "Internal Server Error" }`, and Metabase's preview rendered *that
+    string* instead of the generic "Something went wrong".
+
+    What makes this worth recording is how nearly it escaped: the drift was
+    **invisible across 13 of 15 surfaces**, because toast text is FE-constructed
+    and never echoes the response. Only the single place where the app displays
+    the server body went red. A port that happened not to touch that surface
+    would have shipped an error-path stub that silently tests the wrong string.
+
+    **Default to an empty body when porting a bare `statusCode` intercept**, and
+    supply one only where upstream does.
+
+### A `snowplow` gate that was dead setup
+
+110. **`H.resetSnowplow()` present, zero snowplow assertions**
+    (`data-model-shared-4`). The queue tagged this spec `snowplow` because the
+    string appears; the spec asserts no event, has no
+    `expectNoBadSnowplowEvents`, and `e2e/support/e2e.js` has **no global hook** —
+    grepped, not assumed. So the correct vantage was **none at all**.
+
+    This is a sixth distinct way the tag metadata misleads, alongside missing,
+    stale, over-broad and red-herring: **a setup call with no corresponding
+    assertion**. The generated queue's gate column is a keyword scan and cannot
+    tell the difference; only reading the spec can.
