@@ -312,6 +312,10 @@
 
 ;;; ---------------------------------------------- Snippet union ---------------------------------------------------
 
+;; TODO(GHY-4171): snippets are a bolt-on — not in the search engine, so they can't be scored,
+;; ranked, or fused, and must be listed and paged on their own track (the reason the
+;; snippet-exclusivity teaching error exists). Moving them into the engine lets this function, that
+;; error, and the namespace redirect all be deleted.
 (defn- snippet-rows
   "Snippet rows for the server-side union: all (non-)archived snippets the caller can read —
    filtered per row through `mi/can-read?`, so EE snippet-folder permissions and the
