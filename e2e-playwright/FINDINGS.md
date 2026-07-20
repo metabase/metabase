@@ -2608,3 +2608,55 @@ open item, not as evidence.
     Seventh way the tag metadata misleads, and a reminder that **container gating
     and token gating are independent** — a spec can be wrongly tagged for one and
     correctly gated by the other.
+
+### 🔴 #139 CONFIRMED BY MUTATION: the auth footgun makes sandboxing tests pass while measuring nothing
+
+148. **Simulating the `signInWithCredentials` leak leaves two "shows all data
+    before sandboxing" tests passing green while measuring nothing**
+    (`sandboxing-via-ui`, mutation M5). The agent reproduced the bug first — after
+    `signInWithCredentials`, `mb.api` runs as the new user and
+    `mb.signInAsAdmin()` does **not** undo it, while the *browser* correctly
+    becomes admin — then mutated its own guard away to measure the consequence.
+
+    **M5c bounds the damage honestly: the vacuity is one-directional.** It fails
+    loudly on sandboxed-direction tests, so only the "before sandboxing" baseline
+    assertions go hollow. That is a real bound, not a reassurance — a baseline
+    that cannot fail is exactly what makes a subsequent sandboxing assertion look
+    meaningful when it isn't.
+
+    Its own port avoids the bug: `signInAs` does the session POST through a
+    **throwaway request context disposed immediately**, so `mb.api`'s cookie jar
+    stays clean (measured). It added `assertRunningAs` as a **declared
+    strengthening on a security surface**.
+
+    **This raises the priority of the owed audit on `sandboxing-via-api`**, which
+    uses `signInWithCredentials` across 84 `mb.api`/`signInAsAdmin` references and
+    whose green is already marked unverified (#139). We now have a demonstrated
+    mechanism, not just a suspicion. **The shared harness fix is still owed.**
+
+### An `@external` tag that costs 18 tests
+
+149. **`sandboxing-via-ui` restores `postgres-12` but only ever touches database
+    1.** Swapping to `restore("default")` passes all 18. So the tag is **dead
+    setup**, and dropping it would **recover 18 tests on non-QA-DB legs**.
+
+    Recorded, not acted on — changing the restore is a structural change rather
+    than a port. Third entry in the coverage-recovery class after `custom-viz`
+    and `dashboard-filters-boolean`, and by far the largest.
+
+### Data insufficiency that is arguably the upstream intent
+
+150. **The 12 custom-column sandboxing tests cannot detect sandboxing at all**
+    (`sandboxing-via-ui`). A presence probe confirmed the sandbox genuinely
+    filters (`is_sandboxed=true`, Gizmo-only rows), but `limit 20` against **>20
+    products in every category** (minimum 42) makes the `"20 rows"` assertion
+    true in **both** branches.
+
+    The agent then made the judgement call worth recording: this is **data
+    insufficiency, not vacuity**, and it is **arguably upstream's actual intent**
+    — "custom columns don't blow up under sandboxing" rather than "sandboxing
+    filters correctly". Ported **verbatim** on that reading rather than
+    strengthened.
+
+    Third instance of the same shape today (#119 boolean filter, #137 checkpoint
+    `hi`/`lo`), and the first where the weak assertion looks *deliberate*.
