@@ -286,6 +286,7 @@
         (jdbc/get-connection db-or-id-or-spec)))
     ;; otherwise this is either a Database or Database ID.
     (if-let [old-method-impl (get-method
+                              ;; honor drivers still implementing the old connection-with-timezone
                               #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
                               driver)]
       ;; use the deprecated impl for `connection-with-timezone` if one exists.
@@ -968,6 +969,7 @@
 ;;; |                                       Convenience Imports from Old Impl                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; re-exports the old-impl vars so drivers referencing them via this ns keep compiling
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [sql-jdbc.execute.old

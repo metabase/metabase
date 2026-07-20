@@ -210,6 +210,7 @@
   Like `mbql-query`, but runs the query as well."
   {:style/indent :defn, :deprecated "0.61.0"}
   [table-name & [query]]
+  ;; deprecated shim expands to the equally-deprecated mbql-query; they leave together
   #_{:clj-kondo/ignore [:deprecated-var]}
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 

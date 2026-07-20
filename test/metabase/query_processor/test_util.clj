@@ -91,6 +91,7 @@
         (if (qp.store/initialized?)
           (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
               (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
+              ;; QP results :cols are legacy-shaped; convert Lib metadata to legacy for comparison
               #_{:clj-kondo/ignore [:deprecated-var]}
               qp.store/->legacy-metadata
               (dissoc :lib/type))
@@ -417,6 +418,7 @@
                    (assoc outer-query :query {:source-query (:query outer-query)}))]
       (recur nested (dec n-levels)))))
 
+;; tests the deprecated nest-query helper itself
 #_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel nest-query-test
   (testing "MBQL"
