@@ -18,10 +18,10 @@ import type {
 import { LoginAttributeMappingEditor } from "./LoginAttributeMappingEditor";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
-  name: string;
+  name?: string;
   title?: string;
   description?: string;
-  userId?: UserId;
+  userId?: UserId | null;
 }
 
 const isInheritedValue = (

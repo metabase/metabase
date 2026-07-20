@@ -7,7 +7,8 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.metabot.usage :as usage]))
+   [metabase.metabot.usage :as usage]
+   [metabase.util.log.capture :as log.capture]))
 
 (def ^:private chart-config
   "A minimal but well-formed time-series chart-config the lego will accept."
@@ -177,6 +178,19 @@
       (with-llm-configured!
         (fn []
           (is (nil? (call {}))))))))
+
+(deftest score-and-describe-llm-error-code-logged-test
+  (testing "a failure surfaces the ex-data :error-code in the warn log so nil scores are diagnosable"
+    (with-redefs [metabot.self/call-llm-structured
+                  (fn [& _] (throw (ex-info "bad json" {:error-code "structured-output-invalid"})))]
+      (with-llm-configured!
+        (fn []
+          (let [msgs (log.capture/with-log-messages-for-level
+                       [msgs [metabase.contextual-interestingness.llm :warn]]
+                       (is (nil? (call {})))
+                       (msgs))]
+            (is (some #(str/includes? (str (:message %)) "structured-output-invalid") msgs)
+                "the error-code should appear in the failure log")))))))
 
 (deftest parse-response-retains-reasoning-test
   (testing "parse-response surfaces the model's :reasoning field (asked for in the schema, previously dropped)"

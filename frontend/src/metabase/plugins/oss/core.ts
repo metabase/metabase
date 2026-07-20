@@ -150,6 +150,7 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE =
   getDefaultDashboardSubscriptionParametersSectionOverride();
 
 const getDefaultReducers = () => ({
+  advancedPermissionsPlugin: () => null,
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
@@ -158,6 +159,7 @@ const getDefaultReducers = () => ({
 });
 
 export const PLUGIN_REDUCERS: {
+  advancedPermissionsPlugin: any;
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;

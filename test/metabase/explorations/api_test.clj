@@ -6,10 +6,12 @@
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
+   [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -23,6 +25,30 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+(deftest thread-status-test
+  (let [status  #'metabase.explorations.api/thread-status
+        q       (fn [s] {:status s})
+        base    {:started_at :t :completed_at :t}]
+    (testing "not started -> pending"
+      (is (= "pending" (status {:started_at nil :completed_at nil}))))
+    (testing "started, not done -> running"
+      (is (= "running" (status {:started_at :t :completed_at nil}))))
+    (testing "canceled wins even once the completion stamp is set"
+      (is (= "canceled" (status (assoc base :canceled_at :t)))))
+    (testing "planner had nothing applicable -> empty (not an error)"
+      (is (= "empty" (status (assoc base :query_plan_transcript {:outcome :skip-empty} :queries [])))))
+    (testing "planning failed/errored -> failed"
+      (is (= "failed" (status (assoc base :query_plan_transcript {:outcome :failed} :queries []))))
+      (is (= "failed" (status (assoc base :query_plan_transcript {:outcome :error} :queries [])))))
+    (testing "plan ok but every query errored -> failed"
+      (is (= "failed" (status (assoc base :query_plan_transcript {:outcome :ok}
+                                     :queries [(q "error") (q "error")])))))
+    (testing "at least one chart done -> completed"
+      (is (= "completed" (status (assoc base :query_plan_transcript {:outcome :ok}
+                                        :queries [(q "done") (q "error")])))))
+    (testing "terminal with no queries and no usable outcome -> failed"
+      (is (= "failed" (status (assoc base :queries [])))))))
 
 (defn- do-with-sample-metrics-archived
   "Temporarily archive any metric cards belonging to the sample database so they
@@ -269,6 +295,10 @@
         (is (= 1 (count (:threads resp))))
         (is (= "break down by region" (:prompt thread)))
         (is (some? (:started_at thread)))
+        (is (= "running" (:status thread))
+            "a started, not-yet-completed thread reports a derived :status")
+        (is (not (contains? thread :query_plan_transcript))
+            "the internal query-plan transcript is not exposed on the wire")
         (is (= 1 (t2/count :model/ExplorationBlock :exploration_thread_id (:id thread))))
         (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id (:id thread))))
         (is (= 1 (count (:queries thread))))
@@ -1443,6 +1473,38 @@
                                     (str/includes? fname (str filter-value))))
                              (filter-display-names (:dataset_query %)))
                       new-queries)))))))
+
+(deftest exploration-explore-further-enqueues-planning-test
+  (testing "POST /:id/explore-further enqueues a plan message for the new follow-up thread"
+    ;; Regression: the endpoint stamped `started_at` but never called `start-thread!`, so under the
+    ;; persistent-queue model the follow-up thread was created and marked started yet never planned —
+    ;; "Explore further" returned 200 and then did nothing. `started_at` is only a state marker; the
+    ;; plan message enqueued by `start-thread!` is what actually triggers planning (see
+    ;; `metabase.explorations.queues`).
+    (mt/with-temp [:model/User u {:email "explore-further-enqueue@example.com"}
+                   :model/Card metric (assoc (venues-metric-card (:id u)) :name "Number of venues")]
+      (let [body     {:name       "base drill"
+                      :prompt     "why down?"
+                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
+                      :dimensions [{:dimension_id "category" :display_name "Category"}
+                                   {:dimension_id "price"    :display_name "Price"}]}
+            created  (create-exploration! u body)
+            expl-id  (:id created)
+            page-id  (some :id (filter #(str/includes? (:name %) "Price")
+                                       (-> created :threads first :blocks first :pages)))
+            enqueued (atom [])]
+        (with-redefs [explorations.queues/start-thread! (fn [tid] (swap! enqueued conj tid))]
+          (mt/user-http-request u :post 200 (format "exploration/%d/explore-further" expl-id)
+                                {:page_id         page-id
+                                 :explore_filters [{:field_ref     ["field" {} (mt/id :venues :price)]
+                                                    :value         2
+                                                    :display_value "2"}]}))
+        (let [new-thread-id (->> (t2/select :model/ExplorationThread
+                                            :exploration_id expl-id
+                                            {:order-by [[:position :desc] [:id :desc]]})
+                                 first :id)]
+          (is (= [new-thread-id] @enqueued)
+              "explore-further must enqueue planning for the new thread via start-thread!"))))))
 
 (deftest exploration-explore-further-permissions-and-404-test
   (testing "POST /:id/explore-further enforces write-check and 404s unknown pages"

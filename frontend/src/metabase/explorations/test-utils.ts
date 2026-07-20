@@ -193,6 +193,7 @@ export function createThread(
     prompt: null,
     position: 0,
     source_page_id: null,
+    status: "running",
     started_at: "2026-04-30T00:00:00Z",
     completed_at: null,
     entity_id: "thrd00000000000000001",

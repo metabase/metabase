@@ -39,7 +39,7 @@ const setup = ({
   renderWithProviders(
     <Route
       path={initialRoute ? "*" : "/"}
-      component={Palette}
+      element={<Palette />}
       props={routeProps}
     />,
     {

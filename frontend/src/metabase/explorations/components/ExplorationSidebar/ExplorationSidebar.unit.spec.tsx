@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import {
   fireEvent,
@@ -165,10 +166,10 @@ function setup({
     />
   );
 
-  renderWithProviders(
-    <Route path={explorationPath} component={() => sidebar} />,
-    { withRouter: true, initialRoute: explorationPath },
-  );
+  renderWithProviders(<Route path={explorationPath} element={sidebar} />, {
+    withRouter: true,
+    initialRoute: explorationPath,
+  });
   return {
     setSelectedPageId,
     onToggleShowHidden,
@@ -243,6 +244,68 @@ describe("ExplorationSidebar", () => {
       expect(
         within(getRow("Revenue by source")).getByText("Revenue by source"),
       ).toHaveStyle({ fontWeight: 700 });
+    });
+
+    it("updates rows in place when readPageIds changes instead of remounting them", async () => {
+      // The tree's row component is used as a JSX element type, so if its
+      // identity changed with readPageIds (as with a useCallback-defined
+      // component), React would tear down and rebuild every row's DOM here.
+      const exploration = createExploration({ queries: [doneQuery] });
+      const {
+        path,
+        explorationSidebarTabsInfo,
+        selectedSidebarTab,
+        getSelectedSidebarTabUrl,
+        getTree,
+      } = getSidebarTestContext(exploration);
+      const tree = getTree();
+
+      function Harness() {
+        const [readPageIds, setReadPageIds] = useState<ReadonlySet<string>>(
+          new Set(),
+        );
+        return (
+          <>
+            <button onClick={() => setReadPageIds(new Set(["2"]))}>
+              mark read
+            </button>
+            <ExplorationSidebar
+              exploration={exploration}
+              explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+              selectedSidebarTab={selectedSidebarTab}
+              getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+              tree={tree}
+              selectedPageId="2"
+              setSelectedPageId={jest.fn()}
+              getSelectedPageUrl={(pageId) => `${path}/page/${pageId}`}
+              shouldScrollSelectionRef={{ current: false }}
+              isOpen
+              readPageIds={readPageIds}
+              showHidden={false}
+              onToggleShowHidden={jest.fn()}
+              sortOrder={DEFAULT_SORT_ORDER}
+              onChangeSortOrder={jest.fn()}
+            />
+          </>
+        );
+      }
+
+      renderWithProviders(<Route path={path} element={<Harness />} />, {
+        withRouter: true,
+        initialRoute: path,
+      });
+
+      const row = getRow("Revenue by region");
+      expect(within(row).getByText("Revenue by region")).toHaveStyle({
+        fontWeight: 700,
+      });
+
+      await userEvent.click(screen.getByText("mark read"));
+
+      expect(getRow("Revenue by region")).toBe(row);
+      expect(within(row).getByText("Revenue by region")).toHaveStyle({
+        fontWeight: 500,
+      });
     });
   });
 
@@ -635,7 +698,7 @@ describe("ExplorationSidebar", () => {
     );
 
     const { rerender } = renderWithProviders(
-      <Route path={path} component={() => sidebarWith(getTree())} />,
+      <Route path={path} element={sidebarWith(getTree())} />,
       { withRouter: true, initialRoute: path },
     );
 
@@ -647,7 +710,7 @@ describe("ExplorationSidebar", () => {
     expect(heading).toHaveAttribute("aria-expanded", "false");
 
     // Poll delivers a new (deep-different) tree — the collapse must be respected.
-    rerender(<Route path={path} component={() => sidebarWith(reloadedTree)} />);
+    rerender(<Route path={path} element={sidebarWith(reloadedTree)} />);
     expect(screen.getByRole("group", { name: /Revenue/ })).toHaveAttribute(
       "aria-expanded",
       "false",
@@ -730,7 +793,7 @@ describe("ExplorationSidebar", () => {
       const { rerender } = renderWithProviders(
         <Route
           path={path}
-          component={() => sidebarWith(getTree(), initialSelectedId)}
+          element={sidebarWith(getTree(), initialSelectedId)}
         />,
         { withRouter: true, initialRoute: path },
       );
@@ -740,10 +803,7 @@ describe("ExplorationSidebar", () => {
           selectedId: string,
         ) =>
           rerender(
-            <Route
-              path={path}
-              component={() => sidebarWith(tree, selectedId)}
-            />,
+            <Route path={path} element={sidebarWith(tree, selectedId)} />,
           ),
       };
     }
@@ -971,6 +1031,7 @@ describe("ExplorationSidebar", () => {
     // A canceled thread is stamped with both timestamps by the cancel endpoint.
     const canceledThread = {
       id: 1,
+      status: "canceled" as const,
       canceled_at: "2026-04-30T00:01:00Z",
       completed_at: "2026-04-30T00:01:00Z",
     };
@@ -1064,13 +1125,13 @@ describe("ExplorationSidebar", () => {
       });
     });
 
-    it("does not offer Restart when the thread completed without being canceled", async () => {
+    it("does not offer Restart when the thread completed successfully", async () => {
       setup({
         queries: [pendingQuery],
-        thread: { completed_at: "2026-04-30T00:01:00Z" },
+        thread: { status: "completed", completed_at: "2026-04-30T00:01:00Z" },
       });
 
-      // Neither Stop (completed) nor Restart (not canceled) — only Copy link.
+      // Neither Stop (terminal) nor Restart (a successful run has nothing to re-run) — only Copy link.
       const threadHeading = findThreadMenuButton();
       await userEvent.click(within(threadHeading!).getByRole("button"));
 
@@ -1082,6 +1143,23 @@ describe("ExplorationSidebar", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.getByRole("menuitem", { name: /Copy link/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("offers Restart (and no Stop) on a terminally-failed thread", async () => {
+      setup({
+        queries: [pendingQuery],
+        thread: { status: "failed", completed_at: "2026-04-30T00:01:00Z" },
+      });
+
+      const threadHeading = findThreadMenuButton();
+      await userEvent.click(within(threadHeading!).getByRole("button"));
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Stop running/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Restart/ }),
       ).toBeInTheDocument();
     });
 
@@ -1399,7 +1477,7 @@ describe("ExplorationSidebar", () => {
             ],
           }),
         ],
-        selectedPageId: String(1),
+        selectedPageId: "1",
       });
 
       const rows = screen.getAllByRole("treeitem");
@@ -1664,11 +1742,8 @@ describe("ExplorationSidebar", () => {
       });
     });
 
-    function renderNestedSidebar(
-      shouldScrollSelectionRef: { current: boolean },
-      selectedPageId: TestSelectedPageId,
-    ) {
-      const exploration = createExploration({
+    function nestedExploration() {
+      return createExploration({
         blocks: [
           createBlock({
             id: BLOCK_ID,
@@ -1684,6 +1759,11 @@ describe("ExplorationSidebar", () => {
         ],
         queries: [createQuery({ id: 1, name: "Nested query", status: "done" })],
       });
+    }
+
+    it("scrolls the selected page into view and clears the scroll ref", () => {
+      const shouldScrollSelectionRef = { current: true };
+      const exploration = nestedExploration();
       const {
         path,
         explorationSidebarTabsInfo,
@@ -1692,17 +1772,17 @@ describe("ExplorationSidebar", () => {
         getTree,
       } = getSidebarTestContext(exploration);
 
-      return renderWithProviders(
+      renderWithProviders(
         <Route
           path={path}
-          component={() => (
+          element={
             <ExplorationSidebar
               exploration={exploration}
               explorationSidebarTabsInfo={explorationSidebarTabsInfo}
               selectedSidebarTab={selectedSidebarTab}
               getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
               tree={getTree()}
-              selectedPageId={selectedPageId}
+              selectedPageId={String(PAGE_ID)}
               setSelectedPageId={jest.fn()}
               getSelectedPageUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
@@ -1713,82 +1793,74 @@ describe("ExplorationSidebar", () => {
               sortOrder={DEFAULT_SORT_ORDER}
               onChangeSortOrder={jest.fn()}
             />
-          )}
+          }
         />,
         { withRouter: true, initialRoute: path },
       );
-    }
-
-    it("scrolls the selected page into view and clears the scroll ref", () => {
-      const shouldScrollSelectionRef = { current: true };
-      renderNestedSidebar(shouldScrollSelectionRef, String(PAGE_ID));
 
       expect(scrollIntoViewMock).toHaveBeenCalledWith({ block: "nearest" });
       expect(shouldScrollSelectionRef.current).toBe(false);
     });
 
     it("re-expands collapsed ancestors when programmatic navigation arms scrolling", async () => {
+      const exploration = nestedExploration();
+      const {
+        path,
+        explorationSidebarTabsInfo,
+        selectedSidebarTab,
+        getSelectedSidebarTabUrl,
+        getTree,
+      } = getSidebarTestContext(exploration);
       const shouldScrollSelectionRef = { current: false };
-      const { rerender } = renderNestedSidebar(
-        shouldScrollSelectionRef,
-        String(PAGE_ID),
-      );
+
+      // Drives the real reconcile path the app uses: a programmatic update
+      // (poll refetch / arrow-key nav) arms `shouldScrollSelectionRef` and hands
+      // the sidebar a fresh tree, whose effect re-reveals the selection. Using
+      // in-component state rather than a router rerender keeps the sidebar
+      // mounted, so this exercises the effect — not a remount.
+      function Harness() {
+        const [tree, setTree] = useState(() => getTree());
+        return (
+          <>
+            <button
+              onClick={() => {
+                shouldScrollSelectionRef.current = true;
+                setTree(getTree());
+              }}
+            >
+              arm scroll
+            </button>
+            <ExplorationSidebar
+              exploration={exploration}
+              explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+              selectedSidebarTab={selectedSidebarTab}
+              getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+              tree={tree}
+              selectedPageId={String(PAGE_ID)}
+              setSelectedPageId={jest.fn()}
+              getSelectedPageUrl={() => path}
+              shouldScrollSelectionRef={shouldScrollSelectionRef}
+              isOpen
+              readPageIds={new Set<string>()}
+              showHidden={false}
+              onToggleShowHidden={jest.fn()}
+              sortOrder={DEFAULT_SORT_ORDER}
+              onChangeSortOrder={jest.fn()}
+            />
+          </>
+        );
+      }
+
+      renderWithProviders(<Route path={path} element={<Harness />} />, {
+        withRouter: true,
+        initialRoute: path,
+      });
 
       const heading = screen.getByRole("group", { name: /Nested group/ });
       await userEvent.click(heading);
       expect(heading).toHaveAttribute("aria-expanded", "false");
 
-      shouldScrollSelectionRef.current = true;
-      rerender(
-        <Route
-          path={Urls.exploration(1)}
-          component={() => {
-            const exploration = createExploration({
-              blocks: [
-                createBlock({
-                  id: BLOCK_ID,
-                  name: "Nested group",
-                  pages: [
-                    createPage({
-                      id: PAGE_ID,
-                      name: "Nested page",
-                      query_ids: [1],
-                    }),
-                  ],
-                }),
-              ],
-              queries: [
-                createQuery({ id: 1, name: "Nested query", status: "done" }),
-              ],
-            });
-            const {
-              explorationSidebarTabsInfo,
-              selectedSidebarTab,
-              getSelectedSidebarTabUrl,
-              getTree,
-            } = getSidebarTestContext(exploration);
-            return (
-              <ExplorationSidebar
-                exploration={exploration}
-                explorationSidebarTabsInfo={explorationSidebarTabsInfo}
-                selectedSidebarTab={selectedSidebarTab}
-                getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
-                tree={getTree()}
-                selectedPageId={String(PAGE_ID)}
-                setSelectedPageId={jest.fn()}
-                getSelectedPageUrl={() => Urls.exploration(1)}
-                shouldScrollSelectionRef={shouldScrollSelectionRef}
-                isOpen
-                readPageIds={new Set<string>()}
-                showHidden={false}
-                onToggleShowHidden={jest.fn()}
-                sortOrder={DEFAULT_SORT_ORDER}
-                onChangeSortOrder={jest.fn()}
-              />
-            );
-          }}
-        />,
-      );
+      await userEvent.click(screen.getByText("arm scroll"));
 
       expect(
         screen.getByRole("group", { name: /Nested group/ }),

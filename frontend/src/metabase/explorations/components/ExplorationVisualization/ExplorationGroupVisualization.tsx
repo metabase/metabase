@@ -118,11 +118,17 @@ function ExplorationGroupVisualizationBody(
     );
   }
 
+  const erroredQueryMessage = queries.find(
+    (q) => q.status === "error" && q.error_message,
+  )?.error_message;
   if (queries.some((q) => q.status === "error")) {
     return (
       <Message
         groupName={groupName}
-        message={t`We couldn't generate one or more of these charts.`}
+        message={
+          erroredQueryMessage ??
+          t`We couldn't generate one or more of these charts.`
+        }
         iconProps={{ name: "warning", c: "error" }}
       />
     );

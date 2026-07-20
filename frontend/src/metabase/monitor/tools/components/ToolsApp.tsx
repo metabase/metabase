@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
@@ -8,14 +7,14 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
+import { Outlet } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 type ToolsAppProps = {
   location: Location;
-  children?: ReactNode;
 };
 
-export function ToolsApp({ location, children }: ToolsAppProps) {
+export function ToolsApp({ location }: ToolsAppProps) {
   return (
     <AdminSettingsLayout
       maw="100rem"
@@ -67,7 +66,7 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
         </AdminNavWrapper>
       }
     >
-      {children}
+      <Outlet />
     </AdminSettingsLayout>
   );
 }

@@ -123,38 +123,48 @@ export interface ExplorationToolCall {
 }
 
 /**
- * Build a mock streaming SSE body emitting a sequence of tool-call
- * frames followed by a `finish_message` frame, in the format the
- * metabot streaming parser expects (`9:` for tool_call, `a:` for
- * tool_result, `d:` for finish — see `StreamingPartTypeRegistry`
- * in `process-stream.ts`).
+ * Build a mock streaming SSE body emitting a sequence of tool calls in the
+ * AI SDK v5/v6 `UIMessageChunk` wire protocol the client parses (see
+ * `parseSSEStream` + `sse-types.ts` in `metabase/api/ai-streaming`): each
+ * event is a `data: {json}` SSE line, wrapped in the backend's lifecycle
+ * (`start` → `start-step` → events → `finish-step` → `finish` → `[DONE]`).
+ * Tool results are passed as objects — the client JSON-stringifies non-string
+ * outputs before handing them to consumers like `NewExplorationChat`.
  */
 export function buildExplorationStreamingBody(
   toolCalls: ExplorationToolCall[],
 ): string {
-  const lines: string[] = [];
+  const events: unknown[] = [
+    { type: "start", messageId: "mock-message" },
+    { type: "start-step" },
+  ];
   for (const tc of toolCalls) {
-    lines.push(
-      `9:${JSON.stringify({
-        toolCallId: tc.toolCallId,
-        toolName: tc.toolName,
-        args: tc.args ? JSON.stringify(tc.args) : "",
-      })}`,
-    );
-    lines.push(
-      `a:${JSON.stringify({
-        toolCallId: tc.toolCallId,
-        result: JSON.stringify(tc.result),
-      })}`,
-    );
+    events.push({
+      type: "tool-input-available",
+      toolCallId: tc.toolCallId,
+      toolName: tc.toolName,
+      input: tc.args ?? {},
+    });
+    events.push({
+      type: "tool-output-available",
+      toolCallId: tc.toolCallId,
+      output: tc.result,
+    });
   }
-  lines.push(
-    `d:${JSON.stringify({
-      finishReason: "stop",
-      usage: { promptTokens: 100, completionTokens: 10 },
-    })}`,
-  );
-  return lines.join("\n");
+  events.push({ type: "finish-step" });
+  events.push({
+    type: "finish",
+    finishReason: "stop",
+    messageMetadata: {
+      usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
+    },
+  });
+  return [
+    ...events.map((event) => `data: ${JSON.stringify(event)}`),
+    "data: [DONE]",
+  ]
+    .map((line) => `${line}\n\n`)
+    .join("");
 }
 
 /**

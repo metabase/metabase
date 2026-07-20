@@ -30,7 +30,7 @@ function setup(
   );
 
   const { store } = renderWithProviders(
-    <Route path="*" component={TestComponent} />,
+    <Route path="*" element={<TestComponent />} />,
     {
       withRouter: true,
       storeInitialState: createMockState({ metabot: metabotInitialState }),

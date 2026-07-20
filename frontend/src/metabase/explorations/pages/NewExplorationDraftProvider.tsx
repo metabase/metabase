@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { useMetabotAgent } from "metabase/metabot/hooks";
+import { Outlet } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { EXPLORATIONS_AGENT_ID } from "../components/NewExplorationChat/NewExplorationChat";
@@ -35,9 +36,11 @@ export function useNewExplorationDraft(): ExplorationSelection {
  */
 export function NewExplorationDraftProvider(props: {
   location?: Location;
+  // Rendered as an `element` route, so children come from <Outlet/>; the prop
+  // stays for the unit test, which passes the pages in directly.
   children?: ReactNode;
 }) {
-  const { location, children } = props;
+  const { location, children = <Outlet /> } = props;
 
   const [freshKey, setFreshKey] = useState(location?.key);
 

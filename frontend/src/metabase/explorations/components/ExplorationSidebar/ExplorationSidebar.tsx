@@ -1,5 +1,12 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -48,7 +55,11 @@ import type {
   ExplorationQueryStatus,
   ExplorationThreadId,
 } from "metabase-types/api";
-import { isSettledExplorationQueryStatus } from "metabase-types/api";
+import {
+  isRestartableExplorationThreadStatus,
+  isSettledExplorationQueryStatus,
+  isTerminalExplorationThreadStatus,
+} from "metabase-types/api";
 
 import { useCopyLink } from "../../hooks/useCopyLink";
 import type { ExplorationSortOrder } from "../../sidebar-preferences";
@@ -216,18 +227,15 @@ export function ExplorationSidebar({
     shouldScrollSelectionRef,
   ]);
 
-  const TreeNode = useCallback(
-    (props: TreeNodeProps<ExplorationTreeNode>) => (
-      <ExplorationTreeNode
-        {...props}
-        explorationId={exploration.id}
-        canWrite={exploration.can_write}
-        handlePrefetch={handlePrefetch}
-        shouldScrollSelectionRef={shouldScrollSelectionRef}
-        getSelectedPageUrl={getSelectedPageUrl}
-        readPageIds={readPageIds}
-      />
-    ),
+  const treeContextValue = useMemo<ExplorationTreeContextValue>(
+    () => ({
+      explorationId: exploration.id,
+      canWrite: exploration.can_write,
+      handlePrefetch,
+      shouldScrollSelectionRef,
+      getSelectedPageUrl,
+      readPageIds,
+    }),
     [
       exploration.id,
       exploration.can_write,
@@ -280,12 +288,14 @@ export function ExplorationSidebar({
       </Group>
       {tree.length > 0 ? (
         <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
-          <Tree
-            role="tree"
-            tree={treeController}
-            TreeNode={TreeNode}
-            wrapNodesInListItem
-          />
+          <ExplorationTreeContext.Provider value={treeContextValue}>
+            <Tree
+              role="tree"
+              tree={treeController}
+              TreeNode={ExplorationTreeNode}
+              wrapNodesInListItem
+            />
+          </ExplorationTreeContext.Provider>
           {isEmptyDueToHidden && (
             <Text c="text-secondary" fs="italic" px="0.5rem" pl="1.75rem">
               {t`All items have been hidden.`}
@@ -401,7 +411,7 @@ function ShowFilterItem({
   );
 }
 
-interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
+interface ExplorationTreeContextValue {
   explorationId: ExplorationId;
   canWrite: boolean;
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
@@ -410,12 +420,23 @@ interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   readPageIds: ReadonlySet<string>;
 }
 
-function ExplorationTreeNode(props: ExplorationTreeNodeProps) {
-  if (isExplorationTreeHeadingProps(props)) {
-    return <ExplorationTreeHeading {...props} />;
+const ExplorationTreeContext =
+  createContext<ExplorationTreeContextValue | null>(null);
+
+interface ExplorationTreeNodeProps
+  extends TreeNodeProps<ExplorationTreeNode>, ExplorationTreeContextValue {}
+
+function ExplorationTreeNode(props: TreeNodeProps<ExplorationTreeNode>) {
+  const treeContext = useContext(ExplorationTreeContext);
+  if (treeContext == null) {
+    return null;
   }
-  if (isExplorationTreeItemProps(props)) {
-    return <ExplorationTreeItem {...props} />;
+  const nodeProps = { ...props, ...treeContext };
+  if (isExplorationTreeHeadingProps(nodeProps)) {
+    return <ExplorationTreeHeading {...nodeProps} />;
+  }
+  if (isExplorationTreeItemProps(nodeProps)) {
+    return <ExplorationTreeItem {...nodeProps} />;
   }
   return null;
 }
@@ -595,8 +616,14 @@ function ExplorationGroupMenu({
   );
 
   const thread = item.data?.thread;
-  const canStop = canWrite && thread != null && thread.completed_at == null;
-  const canRestart = canWrite && thread != null && thread.canceled_at != null;
+  const canStop =
+    canWrite &&
+    thread != null &&
+    !isTerminalExplorationThreadStatus(thread.status);
+  const canRestart =
+    canWrite &&
+    thread != null &&
+    isRestartableExplorationThreadStatus(thread.status);
 
   return (
     <Menu>
@@ -690,6 +717,9 @@ function ExplorationTreeItem({
 
   const pageData = item.data.type === "page" ? item.data : null;
   const isError = pageData?.status === "error";
+  const erroredQueryMessage = pageData?.queries.find(
+    (query) => query.status === "error" && query.error_message,
+  )?.error_message;
   const isHidden = pageData?.hidden === true;
   const isLoading = isLoadingStatus(item.data?.status);
   const isUnread = pageData != null && !readPageIds.has(pageData.page_id);
@@ -735,7 +765,10 @@ function ExplorationTreeItem({
       )}
       {isError && (
         <ExplorationErrorMarker
-          message={t`We couldn't generate one or more of these charts.`}
+          message={
+            erroredQueryMessage ??
+            t`We couldn't generate one or more of these charts.`
+          }
         />
       )}
     </ForwardRefLink>

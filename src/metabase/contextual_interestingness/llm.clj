@@ -82,7 +82,11 @@ Always return a single object matching the supplied schema. Do not respond with 
 ")
 
 (def ^:private temperature 0.0)
-(def ^:private max-tokens 512)
+;; The response is small (two ≤25-word descriptions, a one-sentence reasoning, and a score), so
+;; this is a safety margin, not a tight budget: a chatty model that overruns would truncate the
+;; JSON mid-object, which parses to nothing and silently costs us the chart's ordering score.
+;; Headroom is nearly free — only actual output tokens are billed.
+(def ^:private max-tokens 1024)
 
 (defn- chart->representation
   "Humanize the chart's stats into a markdown blob the LLM can read. Uses
@@ -152,5 +156,6 @@ Always return a single object matching the supplied schema. Do not respond with 
                          (pr-str response))
               nil)))
     (catch Throwable e
-      (log/warn e "Contextual interestingness: LLM call failed")
+      (log/warnf e "Contextual interestingness: LLM call failed (error-code=%s)"
+                 (:error-code (ex-data e)))
       nil)))

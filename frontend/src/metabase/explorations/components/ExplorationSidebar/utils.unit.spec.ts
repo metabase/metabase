@@ -729,6 +729,23 @@ describe("getExplorationSidebarTree inherits a heading status from its pages", (
     expect(headingStatus(tree)).toBe("done");
     expect(threadStatus(tree)).toBe("done");
   });
+
+  it("uses the terminal server thread status instead of shimmering 'running' when the thread has no queries", () => {
+    const exploration = createExploration({
+      queries: [],
+      thread: { status: "failed", completed_at: "2026-04-30T00:01:00Z" },
+    });
+    const tree = getExplorationSidebarTree(
+      exploration,
+      allTreeFilter,
+      undefined,
+      {
+        keepEmptyInitialThread: true,
+      },
+    );
+    // A finished thread must never read as "running" (which shimmers), even with zero queries.
+    expect(threadStatus(tree)).toBe("error");
+  });
 });
 
 describe("getExplorationSidebarTree last-activity timestamps", () => {

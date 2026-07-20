@@ -60,7 +60,7 @@ function setup({
   const { history, ...utils } = renderWithProviders(
     <Route
       path="*"
-      component={() => <CommentsSidesheet params={{ childTargetId }} />}
+      element={<CommentsSidesheet params={{ childTargetId }} />}
     />,
     {
       withRouter: true,

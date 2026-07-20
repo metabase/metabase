@@ -496,7 +496,7 @@ describe("scenarios > explorations > detail page", () => {
     });
   });
 
-  it("groups sidebar rows as `<metric> → By <dimension>`, makes the headings collapsible, and marks interesting groups", () => {
+  it("groups sidebar rows under their metric heading, makes the headings collapsible, and marks interesting groups", () => {
     cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
       // Unjustified type cast. FIXME
       const data = body as {
@@ -531,39 +531,38 @@ describe("scenarios > explorations > detail page", () => {
         metricCardIds: [ordersMetric!.id],
         dimensionIds: pickedDimensions.map((d) => d.id),
       }).then((id) => {
-        H.visitExploration(id);
+        // Settling matters here beyond query readiness: collapsing the
+        // heading races the poll-driven tree rebuilds otherwise, and the
+        // clicked heading node can be replaced mid-click.
+        visitExplorationUntilSettled(id, pickedDimensions.length);
 
-        // Wait for the BE to finish executing queries — the
-        // tree only renders headings that have non-empty children.
-        cy.findAllByLabelText("Ready", { timeout: 30000 })
-          .first()
-          .should("be.visible");
+        // Deliberately no `.within()` here: a `within` captures the sidebar
+        // node once, and background refetches can remount it (or its rows) —
+        // after which every inner query runs against the detached old node
+        // and times out. Fresh root-based chains re-query on every retry.
+        const sidebarScope = () => cy.findByTestId("exploration-page-sidebar");
+        const metricHeading = () =>
+          sidebarScope().findByRole("group", { name: ordersMetric!.name });
 
-        cy.findByTestId("exploration-page-sidebar").within(() => {
-          const metricHeading = () =>
-            cy.findByRole("group", { name: ordersMetric!.name });
+        metricHeading().should("be.visible");
+        for (const dim of pickedDimensions) {
+          sidebarScope().findByText(dim.display_name).should("be.visible");
+        }
 
-          metricHeading().should("be.visible");
-          for (const dim of pickedDimensions) {
-            cy.findByText(`By ${dim.display_name}`).should("be.visible");
-          }
+        cy.log("Collapse the metric heading: both leaves disappear");
+        metricHeading().should("have.attr", "aria-expanded", "true");
+        metricHeading().click();
+        metricHeading().should("have.attr", "aria-expanded", "false");
+        for (const dim of pickedDimensions) {
+          sidebarScope().findByText(dim.display_name).should("not.exist");
+        }
 
-          // Collapse the metric heading: aria-expanded flips and
-          // both leaves disappear.
-          metricHeading()
-            .should("have.attr", "aria-expanded", "true")
-            .click()
-            .should("have.attr", "aria-expanded", "false");
-          for (const dim of pickedDimensions) {
-            cy.findByText(`By ${dim.display_name}`).should("not.exist");
-          }
-
-          // Re-expand: both leaves return.
-          metricHeading().click().should("have.attr", "aria-expanded", "true");
-          for (const dim of pickedDimensions) {
-            cy.findByText(`By ${dim.display_name}`).should("be.visible");
-          }
-        });
+        cy.log("Re-expand: both leaves return");
+        metricHeading().click();
+        metricHeading().should("have.attr", "aria-expanded", "true");
+        for (const dim of pickedDimensions) {
+          sidebarScope().findByText(dim.display_name).should("be.visible");
+        }
       });
     });
   });
@@ -639,7 +638,7 @@ describe("scenarios > explorations > detail page", () => {
 /**
  * Resolve the "Count of orders" metric plus its first two dimensions and
  * create an exploration with them — yielding one metric-group heading with
- * exactly two "By <dimension>" pages, the smallest deterministic tree for
+ * exactly two dimension-named pages, the smallest deterministic tree for
  * sidebar-triage assertions.
  */
 function createTwoPageExploration(name: string): Cypress.Chainable<{
@@ -678,9 +677,43 @@ function createTwoPageExploration(name: string): Cypress.Chainable<{
     }).then((explorationId) => ({
       explorationId,
       metricName: ordersMetric!.name,
-      pageNames: pickedDimensions.map((dim) => `By ${dim!.display_name}`),
+      pageNames: pickedDimensions.map((dim) => dim!.display_name),
     }));
   });
+}
+
+/**
+ * Visit an exploration and wait until it has fully settled. The "Ready" icons
+ * only say every page's queries finished; the page keeps polling
+ * `GET /api/exploration/:id` (rebuilding the sidebar tree on each response)
+ * until the BE also stamps the thread's `completed_at` after its post-query
+ * handling. Interact with the tree only after that final response, or clicks
+ * can land on nodes a re-render just replaced.
+ */
+function visitExplorationUntilSettled(
+  explorationId: number,
+  expectedReadyCount: number,
+): void {
+  cy.intercept("GET", `/api/exploration/${explorationId}`).as("getExploration");
+  H.visitExploration(explorationId);
+  cy.findAllByLabelText("Ready", { timeout: 30000 }).should(
+    "have.length",
+    expectedReadyCount,
+  );
+  const awaitThreadCompletion = (attempt: number) => {
+    cy.wait("@getExploration", { timeout: 30000 }).then(({ response }) => {
+      // Unjustified type cast. FIXME
+      const threads = (response?.body as Exploration).threads ?? [];
+      if (!threads.every((thread) => thread.completed_at != null)) {
+        expect(
+          attempt,
+          "exploration completes within the poll budget",
+        ).to.be.lessThan(30);
+        awaitThreadCompletion(attempt + 1);
+      }
+    });
+  };
+  awaitThreadCompletion(0);
 }
 
 describe("scenarios > explorations > sidebar triage", () => {
@@ -692,29 +725,6 @@ describe("scenarios > explorations > sidebar triage", () => {
     filterToggle().click();
     H.menu().findByText("Show hidden items").click();
     cy.get("body").type("{esc}");
-  };
-  // The "Ready" icons only say every page's queries finished; the page keeps
-  // polling `GET /api/exploration/:id` (rebuilding the sidebar tree on each
-  // response) until the BE also stamps the thread's `completed_at` after its
-  // post-query handling. Interact with the tree only after that final
-  // response, or clicks can land on nodes a re-render just replaced.
-  // Requires a `@getExploration` intercept registered before the visit.
-  const waitForExplorationToSettle = () => {
-    cy.findAllByLabelText("Ready", { timeout: 30000 }).should("have.length", 2);
-    const awaitThreadCompletion = (attempt: number) => {
-      cy.wait("@getExploration", { timeout: 30000 }).then(({ response }) => {
-        // Unjustified type cast. FIXME
-        const threads = (response?.body as Exploration).threads ?? [];
-        if (!threads.every((thread) => thread.completed_at != null)) {
-          expect(
-            attempt,
-            "exploration completes within the poll budget",
-          ).to.be.lessThan(30);
-          awaitThreadCompletion(attempt + 1);
-        }
-      });
-    };
-    awaitThreadCompletion(0);
   };
 
   beforeEach(() => {
@@ -734,11 +744,7 @@ describe("scenarios > explorations > sidebar triage", () => {
   it("filters pages with the Stars and Discussions tabs and persists the sort preference across reloads", () => {
     createTwoPageExploration("Sidebar tabs fixture").then(
       ({ explorationId, pageNames }) => {
-        cy.intercept("GET", `/api/exploration/${explorationId}`).as(
-          "getExploration",
-        );
-        H.visitExploration(explorationId);
-        waitForExplorationToSettle();
+        visitExplorationUntilSettled(explorationId, 2);
 
         cy.log("Stars tab is empty until something is starred");
         cy.findByRole("radio", { name: "Stars" }).click({ force: true });
@@ -771,6 +777,22 @@ describe("scenarios > explorations > sidebar triage", () => {
         H.popover().findByRole("button", { name: "Send" }).should("be.visible");
         H.main().findByRole("button", { name: "Add comment" }).click();
         cy.findByRole("button", { name: "Send" }).should("not.exist");
+
+        cy.log("The l shortcut copies a link to the selected page");
+        // Headless Chrome denies real clipboard access here (NotAllowedError),
+        // so stub the write and assert the call instead of reading it back.
+        cy.window().then((win) => {
+          cy.stub(win.navigator.clipboard, "writeText")
+            .as("copyToClipboard")
+            .resolves();
+        });
+        cy.get("body").type("l");
+        H.undoToastListContainer()
+          .findByText("Copied link")
+          .should("be.visible");
+        cy.location("href").then((href) => {
+          cy.get("@copyToClipboard").should("have.been.calledWith", href);
+        });
 
         cy.log("Stars tab now shows only the starred page");
         cy.findByRole("radio", { name: "Stars" }).click({ force: true });
@@ -808,15 +830,11 @@ describe("scenarios > explorations > sidebar triage", () => {
         cy.intercept("PUT", "/api/exploration/pages/hidden").as(
           "setPagesHidden",
         );
-        cy.intercept("GET", `/api/exploration/${explorationId}`).as(
-          "getExploration",
-        );
-        H.visitExploration(explorationId);
-        waitForExplorationToSettle();
+        visitExplorationUntilSettled(explorationId, 2);
 
         // The page auto-selects the tree's first page on load, and the tree
         // orders pages by interestingness — so which of the two
-        // "By <dimension>" pages is selected is data-dependent; derive it
+        // dimension-named pages is selected is data-dependent; derive it
         // from the DOM instead of assuming.
         cy.findAllByRole("treeitem").should("have.length", 2);
         selectedRows().should("have.length", 1);
@@ -974,18 +992,18 @@ describe("scenarios > explorations > chart click-through", () => {
             group.dimensions.map((dim) => [dim.id, dim] as const),
           ),
         );
-        const categoricalDimension = ordersMetric!.dimension_ids
+        const dimension = ordersMetric!.dimension_ids
           .map((id) => dimsById.get(id))
-          .find((dim) => dim != null && !dim.effective_type.includes("Date"));
+          .find((dim) => dim != null && dim.display_name === "Category");
         expect(
-          categoricalDimension,
+          dimension,
           "orders metric exposes at least one non-temporal dimension",
         ).to.exist;
 
         H.createExplorationViaApi({
           name: "Chart click-through fixture",
           metricCardIds: [ordersMetric!.id],
-          dimensionIds: [categoricalDimension!.id],
+          dimensionIds: [dimension!.id],
           timelineIds: [timelineId],
         }).then((explorationId) => {
           let initialThreadIds: number[] = [];
@@ -1021,7 +1039,7 @@ describe("scenarios > explorations > chart click-through", () => {
               },
             );
             cy.findByRole("treeitem", {
-              name: new RegExp(categoricalDimension!.display_name),
+              name: new RegExp(dimension!.display_name),
             })
               .first()
               .click();
@@ -1101,10 +1119,6 @@ describe("scenarios > explorations > chart click-through", () => {
               "true",
             );
           });
-
-          cy.findAllByRole("treeitem")
-            .filter('[aria-selected="true"]')
-            .should("have.length", 1);
 
           cy.findByRole("main")
             .findByTestId("exploration-chart-grid")

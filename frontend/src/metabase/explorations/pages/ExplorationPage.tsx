@@ -27,7 +27,10 @@ import type {
   TimelineEvent,
   TimelineId,
 } from "metabase-types/api";
-import { isSettledExplorationQueryStatus } from "metabase-types/api";
+import {
+  isSettledExplorationQueryStatus,
+  isTerminalExplorationThreadStatus,
+} from "metabase-types/api";
 
 import {
   ExplorationSidebar,
@@ -76,22 +79,34 @@ interface ExplorationPageProps {
   location: Location<ExplorationPageQuery>;
 }
 
-function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
-  if (!exploration?.threads) {
-    return false;
-  }
-  // Keep polling while either:
-  //   (a) any individual query is still running, OR
-  //   (b) the thread has been started but isn't fully complete yet — the
-  //       backend only sets `completed_at` once its post-query handling
-  //       finishes, and we want the sidebar to pick up that final state via
-  //       a poll refresh. Draft threads (no `started_at`) don't trigger
-  //       polling — they have nothing in flight.
-  return exploration.threads.some(
-    (thread) =>
-      thread.queries?.some((q) => !isSettledExplorationQueryStatus(q.status)) ||
-      (thread.started_at != null && thread.completed_at == null),
+// A dead/stalled worker never stamps a terminal state, so a thread could stay "in flight"
+// forever. Stop polling (and spinning) once a thread has been running longer than this long.
+const STALE_THREAD_THRESHOLD_MS = 10 * 60 * 1000;
+
+function threadHasActiveWork(thread: ExplorationThread): boolean {
+  // (a) an individual query is still running, or (b) the thread is started but not yet terminal
+  // (the backend stamps completion only after its post-query handling finishes).
+  const hasRunningQuery = thread.queries?.some(
+    (query) => !isSettledExplorationQueryStatus(query.status),
   );
+  const threadInFlight =
+    thread.started_at != null &&
+    !isTerminalExplorationThreadStatus(thread.status);
+  return Boolean(hasRunningQuery) || threadInFlight;
+}
+
+// Wall-clock deadline after which each in-flight thread is treated as stalled.
+function activeThreadStaleDeadlines(
+  exploration: Exploration | undefined,
+  now: number,
+): number[] {
+  return (exploration?.threads ?? [])
+    .filter(threadHasActiveWork)
+    .map((thread) => {
+      const startedAt = thread.started_at;
+      const start = startedAt != null ? new Date(startedAt).getTime() : now;
+      return start + STALE_THREAD_THRESHOLD_MS;
+    });
 }
 
 export function ExplorationPage({ params, location }: ExplorationPageProps) {
@@ -148,6 +163,7 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
   // RTK Query reads `pollingInterval` on every render, so deriving it from
   // the response is enough — passing 0 stops polling.
   const [shouldPoll, setShouldPoll] = useState(true);
+  const [pollTick, setPollTick] = useState(0);
   const [commentDrafts, setCommentDrafts] = useState<CommentDrafts>({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
@@ -182,9 +198,27 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
   );
 
   useEffect(() => {
-    setShouldPoll(hasUnsettledQueries(exploration));
     dispatch(setCurrentExploration(exploration));
   }, [exploration, dispatch]);
+
+  useEffect(() => {
+    const now = Date.now();
+    const deadlines = activeThreadStaleDeadlines(exploration, now).filter(
+      (deadline) => deadline > now,
+    );
+    setShouldPoll(deadlines.length > 0);
+    if (deadlines.length === 0) {
+      return;
+    }
+    // Re-evaluate when the soonest thread crosses its stale deadline, even if the polled data
+    // hasn't changed — a stalled thread yields referentially-equal responses, so the effect
+    // wouldn't otherwise re-run to stop polling.
+    const timer = setTimeout(
+      () => setPollTick((tick) => tick + 1),
+      Math.min(...deadlines) - now + 1,
+    );
+    return () => clearTimeout(timer);
+  }, [exploration, pollTick]);
 
   // This is important as it will affect collection breadcrumbs in the appbar
   useEffect(() => {
@@ -503,9 +537,7 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
               onNextPage={nextPageId != null ? goToNextPage : undefined}
             />
           )}
-          {!selectedPage && hasUnsettledQueries(exploration) && (
-            <ExplorationChartAreaSkeleton />
-          )}
+          {!selectedPage && shouldPoll && <ExplorationChartAreaSkeleton />}
         </Group>
       </Stack>
     </Group>

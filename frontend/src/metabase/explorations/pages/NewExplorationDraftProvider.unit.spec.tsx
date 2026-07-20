@@ -4,11 +4,15 @@ import { act, renderWithProviders, screen } from "__support__/ui";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { makeMockSelection } from "metabase/explorations/test-utils";
 import { getMessages, metabotActions } from "metabase/metabot/state";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 
 import { NewExplorationDraftProvider } from "./NewExplorationDraftProvider";
 import { NewExplorationPage } from "./NewExplorationPage";
 import { NewExplorationPlanPage } from "./NewExplorationPlanPage";
+
+const RoutedNewExplorationDraftProvider = withRouteProps(
+  NewExplorationDraftProvider,
+);
 
 const mockRendered: {
   entry?: ExplorationSelection;
@@ -50,11 +54,11 @@ function setup() {
     // mirrors the prod route structure: the provider wraps only the
     // entry + plan routes, not the `:id` detail routes
     <Route path="/question/research">
-      <Route component={NewExplorationDraftProvider}>
-        <Route index component={NewExplorationPage} />
-        <Route path="plan" component={NewExplorationPlanPage} />
+      <Route element={<RoutedNewExplorationDraftProvider />}>
+        <Route index element={<NewExplorationPage />} />
+        <Route path="plan" element={<NewExplorationPlanPage />} />
       </Route>
-      <Route path=":id" component={() => <div data-testid="detail-page" />} />
+      <Route path=":id" element={<div data-testid="detail-page" />} />
     </Route>,
     {
       withRouter: true,

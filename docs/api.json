@@ -25642,7 +25642,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
           }
         } ],
         "responses" : {
@@ -25693,7 +25693,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
           }
         } ],
         "responses" : {
@@ -28948,7 +28948,7 @@
       "post" : {
         "operationId" : "post-api-ee-mfa-admin-remove",
         "summary" : "POST /api/ee/mfa/admin/remove",
-        "description" : "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost\n  authenticator with no recovery codes. Never feature-gated (a lapsed license must not make\n  lockouts permanent). The affected user is notified by email. They re-enroll from scratch —\n  there is nothing to \"reset\", the secret lives on their device.",
+        "description" : "Admin: remove *another* user's two-factor enrollment entirely — the lockout escape hatch for a\n  lost authenticator with no recovery codes. Never feature-gated (a lapsed license must not make\n  lockouts permanent). The affected user is notified by email. They re-enroll from scratch — there\n  is nothing to \"reset\", the secret lives on their device.\n\n  Removing your *own* enrollment is deliberately refused here: this is a user-management endpoint\n  that takes no second factor (the target can't produce one — that's why an admin is removing it),\n  and the admin UI never collects a code. Self-removal goes through the normal Security page, which\n  re-auths with a fresh factor via `/disable`. Without this guard a hijacked admin session could\n  strip its own 2FA with only a cookie, turning transient access into a permanent password bypass.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -33742,7 +33742,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-workspace-manager-id",
         "summary" : "DELETE /api/ee/workspace-manager/{id}",
-        "description" : "Delete a Workspace. Tears down each `:provisioned` database's warehouse isolation\n  first (blocking). Refuses with a 409 if any database is still `:provisioning`/\n  `:deprovisioning` unless `ignore_pending=true`, in which case those databases are\n  left in the warehouse and only their app-DB rows are removed. If the warehouse was\n  unreachable for some `:provisioned` databases, the response includes\n  `:orphaned_resources` and a `:message` describing the inert schema/user objects\n  left behind for manual cleanup.",
+        "description" : "Delete a Workspace. Tears down every database's warehouse isolation first\n  (blocking, any state). Each database is either fully torn down (its row is\n  deleted) or kept; when any teardown fails the workspace is kept too — with the\n  failed rows, so the delete can be retried — and the combined failure is\n  returned as the error. 204 on success, no response body.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -33752,18 +33752,6 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "ignore-pending",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
         } ],
         "responses" : {
           "2XX" : {
@@ -33771,56 +33759,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "deleted" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "message" : {
-                      "type" : "string"
-                    },
-                    "orphaned_resources" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database_id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "driver" : {
-                            "type" : "string"
-                          },
-                          "reason" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "schema" : {
-                            "type" : "string"
-                          },
-                          "user" : {
-                            "type" : "string"
-                          },
-                          "workspace_database_id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          }
-                        },
-                        "required" : [ "workspace_database_id", "database_id", "driver", "schema", "user" ]
-                      }
-                    }
-                  },
-                  "required" : [ "id", "deleted" ]
+                  "type" : "null"
                 }
               }
             }
