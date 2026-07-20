@@ -2,11 +2,13 @@ import fetchMock from "fetch-mock";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { BrowseTables } from "./BrowseTables";
+
+const RoutedBrowseTables = withRouteProps(BrowseTables);
 
 const setup = ({
   databases,
@@ -19,7 +21,7 @@ const setup = ({
   return renderWithProviders(
     <Route
       path="/browse/databases/:dbId/schema/:schemaName"
-      component={BrowseTables}
+      element={<RoutedBrowseTables />}
     />,
     { withRouter: true, initialRoute },
   );

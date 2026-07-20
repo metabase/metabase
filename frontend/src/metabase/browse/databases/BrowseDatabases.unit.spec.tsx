@@ -8,7 +8,7 @@ import {
 } from "__support__/ui";
 import { BrowseSchemas } from "metabase/browse/schemas/BrowseSchemas";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -17,6 +17,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import { BrowseDatabases } from "./BrowseDatabases";
+
+const RoutedBrowseSchemas = withRouteProps(BrowseSchemas);
 
 type setupOpts = {
   isAdmin?: boolean;
@@ -48,8 +50,11 @@ describe("BrowseDatabases", () => {
       setupDatabasesEndpoints(databases);
       return renderWithProviders(
         <>
-          <Route path="/browse/databases" component={BrowseDatabases} />
-          <Route path="/browse/databases/:slug" component={BrowseSchemas} />
+          <Route path="/browse/databases" element={<BrowseDatabases />} />
+          <Route
+            path="/browse/databases/:slug"
+            element={<RoutedBrowseSchemas />}
+          />
         </>,
         {
           storeInitialState: createMockState({ currentUser: createMockUser() }),

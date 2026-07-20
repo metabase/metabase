@@ -5,11 +5,13 @@ import {
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type { Database, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { TablePermalinkRedirect } from "./TablePermalinkRedirect";
+
+const RoutedTablePermalinkRedirect = withRouteProps(TablePermalinkRedirect);
 
 const PERMALINK_PATH =
   "/browse/databases/:dbName/schema/:schemaName/table/:tableName";
@@ -41,9 +43,9 @@ const setup = ({
     <>
       <Route
         path={noSchema ? PERMALINK_PATH_NO_SCHEMA : PERMALINK_PATH}
-        component={TablePermalinkRedirect}
+        element={<RoutedTablePermalinkRedirect />}
       />
-      <Route path="/table/:slug" component={() => <div>Table page</div>} />
+      <Route path="/table/:slug" element={<div>Table page</div>} />
     </>,
     { withRouter: true, initialRoute },
   );
