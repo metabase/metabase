@@ -1,15 +1,18 @@
-import type { PropsWithChildren } from "react";
-
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
+import { Outlet } from "./Outlet";
 import { redirect } from "./redirect";
 import { Route } from "./route";
 
-const Parent = ({ children }: PropsWithChildren) => <div>{children}</div>;
-const DataLayout = ({ children }: PropsWithChildren) => (
+const Parent = () => (
+  <div>
+    <Outlet />
+  </div>
+);
+const DataLayout = () => (
   <div>
     <aside data-testid="perm-side">side</aside>
-    {children}
+    <Outlet />
   </div>
 );
 const GroupPage = () => <div>group page</div>;
@@ -26,12 +29,12 @@ describe("router/redirect", () => {
   it("resolves a chained two-level index redirect (permissions repro)", async () => {
     const history = mountRoutes(
       <Route path="/admin">
-        <Route path="permissions" component={Parent}>
+        <Route path="permissions" element={<Parent />}>
           <Route>
-            <Route index component={redirect("data")} />
-            <Route path="data" component={DataLayout}>
-              <Route index component={redirect("group")} />
-              <Route path="group" component={GroupPage} />
+            <Route index element={redirect("data")} />
+            <Route path="data" element={<DataLayout />}>
+              <Route index element={redirect("group")} />
+              <Route path="group" element={<GroupPage />} />
             </Route>
           </Route>
         </Route>
@@ -50,7 +53,7 @@ describe("router/redirect", () => {
 
   it("redirects to an absolute target", async () => {
     const history = mountRoutes(
-      <Route path="start" component={redirect("/browse/models")} />,
+      <Route path="start" element={redirect("/browse/models")} />,
       "/start",
     );
 
@@ -61,8 +64,8 @@ describe("router/redirect", () => {
 
   it("resolves a relative target against the parent of the `from` match", async () => {
     const history = mountRoutes(
-      <Route path="collection" component={Parent}>
-        <Route path="archive" component={redirect("trash")} />
+      <Route path="collection" element={<Parent />}>
+        <Route path="archive" element={redirect("trash")} />
       </Route>,
       "/collection/archive",
     );
@@ -74,11 +77,8 @@ describe("router/redirect", () => {
 
   it("interpolates params into a relative target", async () => {
     const history = mountRoutes(
-      <Route path="browse" component={Parent}>
-        <Route
-          path=":dbId-:slug"
-          component={redirect("databases/:dbId-:slug")}
-        />
+      <Route path="browse" element={<Parent />}>
+        <Route path=":dbId-:slug" element={redirect("databases/:dbId-:slug")} />
       </Route>,
       "/browse/5-orders",
     );
@@ -94,8 +94,8 @@ describe("router/redirect", () => {
     const from = "table/:tableId/field/:fieldId/:section";
     const to = "table/:tableId/field/:fieldId";
     const history = mountRoutes(
-      <Route path="model" component={Parent}>
-        <Route path={from} component={redirect(to)} />
+      <Route path="model" element={<Parent />}>
+        <Route path={from} element={redirect(to)} />
       </Route>,
       "/model/table/9/field/3/settings",
     );
@@ -111,8 +111,8 @@ describe("router/redirect", () => {
     const from = "database/:databaseId/schema/:schemaId/table/:tableId";
     const to = `${from}/details`;
     const history = mountRoutes(
-      <Route path="data-studio/data" component={Parent}>
-        <Route path={from} component={redirect(to)} />
+      <Route path="data-studio/data" element={<Parent />}>
+        <Route path={from} element={redirect(to)} />
       </Route>,
       // `1:PUBLIC` arrives encoded as `1%3APUBLIC`
       "/data-studio/data/database/1/schema/1%3APUBLIC/table/2",
@@ -131,7 +131,7 @@ describe("router/redirect", () => {
     const history = mountRoutes(
       <Route
         path="admin/transforms/*"
-        component={redirect("/data-studio/transforms/*")}
+        element={redirect("/data-studio/transforms/*")}
       />,
       "/admin/transforms/jobs/7",
     );
@@ -145,8 +145,8 @@ describe("router/redirect", () => {
 
   it("redirects from an index route to a relative sibling of the parent", async () => {
     const history = mountRoutes(
-      <Route path="tools" component={Parent}>
-        <Route index component={redirect("list")} />
+      <Route path="tools" element={<Parent />}>
+        <Route index element={redirect("list")} />
       </Route>,
       "/tools",
     );
@@ -158,7 +158,7 @@ describe("router/redirect", () => {
 
   it("preserves the query string and drops the hash, like v3", async () => {
     const history = mountRoutes(
-      <Route path="start" component={redirect("/dest")} />,
+      <Route path="start" element={redirect("/dest")} />,
       "/start?foo=bar#frag",
     );
 

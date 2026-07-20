@@ -2003,28 +2003,54 @@
 ;;; |                                           Workspace Isolation                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmulti workspace-isolation-details
+  "Compute the isolation resource descriptors for `workspace` without touching the
+   warehouse. Returns a map with:
+
+   - :schema           - The name of the isolated schema/database to create
+   - :database_details - Connection details (user, password, etc.) for the isolated user
+
+   Names are deterministic (workspace id + instance slug), but generated credentials
+   are random per call — callers must compute this once, merge it into the workspace
+   map they pass to [[init-workspace-isolation!]]/[[grant-workspace-read-access!]]/
+   [[destroy-workspace-isolation!]], and persist `:database_details` themselves.
+   Computing details before init is what makes cleanup of a partially-failed init
+   possible: destroy can run with the same map even when init never returned.
+
+   Implementations must be pure computation — no warehouse connections or mutations.
+   Reading the database's connection details (e.g. for a bound catalog) is fine;
+   callers bind [[metabase.driver.connection/with-admin-connection]] so those resolve
+   against the `:admin-details` overlay when configured."
+  {:added "0.64.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti init-workspace-isolation!
   "Initialize database isolation for a workspace. Creates an isolated schema/database,
    user credentials, and grants appropriate permissions for the workspace to operate
    within its own namespace.
 
-   Returns a map with:
-   - :schema           - The name of the isolated schema/database created
-   - :database_details - Connection details (user, password, etc.) for the isolated user
+   `workspace` must already carry `:schema` and `:database_details` — the output of
+   [[workspace-isolation-details]] merged over the workspace map. Implementations
+   create resources with exactly those identifiers/credentials and must not generate
+   names or passwords themselves.
 
    Implementations should:
-   - Create an isolated schema or database for the workspace
-   - Create a user with credentials that can only access that schema
+   - Create the `:schema` isolated schema or database for the workspace
+   - Create the `:database_details` user, with credentials that can only access that schema
    - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
+
+   The return value is unspecified; callers should persist the precomputed details,
+   not anything returned from here.
 
    This is an enterprise feature. Drivers must also return true for
    (database-supports? driver :workspace database) to indicate support.
 
    Callers are expected to bind [[metabase.driver.connection/with-admin-connection]]
    around this call so connections resolve against the database's `:admin-details`
-   overlay when configured. The default `dispatching-provisioner` in
-   `metabase-enterprise.workspaces.provisioning` does this; do not rely on
-   default connection details from inside impls."
+   overlay when configured. The default `database-provisioner` in
+   `metabase-enterprise.workspaces.provisioning.database` does this; do not rely
+   on default connection details from inside impls."
   {:added "0.59.0" :arglists '([driver database workspace])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -2033,6 +2059,12 @@
   "Destroy all database resources created for workspace isolation.
    This includes dropping schemas/databases, users, roles, and any other
    resources created by init-workspace-isolation!.
+
+   `workspace` carries `:schema` and `:database_details` — either the persisted
+   values from provisioning, or freshly computed via [[workspace-isolation-details]]
+   when nothing was persisted (crashed init). Implementations read identifiers from
+   the map rather than recomputing them, and must not rely on `:password` matching
+   what's on the warehouse (a recomputed password never does).
 
    Should be called when deleting a workspace. Implementations should be
    idempotent - calling on an already-destroyed workspace should not error.
@@ -2061,33 +2093,6 @@
    Same admin-connection-scope contract as [[init-workspace-isolation!]]: callers
    bind [[metabase.driver.connection/with-admin-connection]] before invoking."
   {:added "0.59.0" :arglists '([driver database workspace input])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti check-isolation-permissions
-  "Check if database connection has sufficient permissions for workspace isolation.
-
-   Rather than directly checking permissions, this method performs the actual isolation
-   operations (init workspace, grant access, destroy resources) in a test workspace
-   because:
-
-   1. Some databases don't provide reliable APIs to check permissions a priori.
-   2. Keeping static permission checks in sync with the actual operations is error-prone.
-   3. A database user might have the necessary workspace permissions even if they
-      lack the introspection permissions to query permission tables.
-
-   Isolation operations run in a transaction that is always rolled back (for databases
-   that support transactional DDL), or are manually cleaned up immediately after testing
-   (for databases where transactions don't work, like BigQuery).
-
-   `test-table` is an optional {:schema ... :name ...} map used to test GRANT SELECT.
-   If nil, the grant test is skipped.
-
-   Returns nil on success, or an error message string on failure.
-
-   Default :sql-jdbc implementation tests CREATE SCHEMA, CREATE USER, GRANT, and DROP.
-   Drivers can override for database-specific syntax."
-  {:added "0.59.0" :arglists '([driver database test-table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

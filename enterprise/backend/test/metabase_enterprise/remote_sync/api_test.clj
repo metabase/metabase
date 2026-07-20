@@ -28,6 +28,8 @@
   (reify source.p/Source
     (create-branch [_ _branch _base]
       nil)
+    (delete-branch [_ _branch]
+      nil)
     (branches [_]
       (if error-on-branches?
         (throw (Exception. "Repository not found"))
@@ -1496,6 +1498,7 @@
   (reify source.p/Source
     (branches [_] ["main"])
     (create-branch [_ _ _] nil)
+    (delete-branch [_ _] nil)
     (default-branch [_] "main")
     (snapshot [_]
       (throw (ex-info (str "Invalid branch: " branch)
@@ -1556,6 +1559,7 @@
     (let [failing-source (reify source.p/Source
                            (branches [_] ["main"])
                            (create-branch [_ _ _] nil)
+                           (delete-branch [_ _] nil)
                            (default-branch [_] "main")
                            (snapshot [_] (throw (RuntimeException. "boom")))
                            (snapshot-at [_ _version] (throw (RuntimeException. "boom"))))]

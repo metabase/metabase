@@ -28,14 +28,13 @@ function setup({
         output: { schema: "ws_dev" },
       }),
     },
-    can_write: true,
   }),
 } = {}) {
   setupDatabasesEndpoints([POSTGRES]);
   setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint(remappings);
 
-  renderWithProviders(<Route path="*" component={CurrentWorkspacePage} />, {
+  renderWithProviders(<Route path="*" element={<CurrentWorkspacePage />} />, {
     withRouter: true,
   });
 }
@@ -67,34 +66,5 @@ describe("CurrentWorkspacePage", () => {
     expect(
       await screen.findByRole("region", { name: "Postgres" }),
     ).toBeInTheDocument();
-  });
-
-  it("renders the delete section", async () => {
-    setup();
-
-    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
-    expect(
-      await screen.findByTestId("workspace-instance-delete-section"),
-    ).toBeInTheDocument();
-  });
-
-  it("hides the delete section when can_write is false", async () => {
-    setup({
-      workspace: createMockCurrentWorkspace({
-        name: "Dev workspace",
-        databases: {
-          [POSTGRES.id]: createMockCurrentWorkspaceDatabase({
-            input_schemas: ["public"],
-            output: { schema: "ws_dev" },
-          }),
-        },
-        can_write: false,
-      }),
-    });
-
-    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("workspace-instance-delete-section"),
-    ).not.toBeInTheDocument();
   });
 });
