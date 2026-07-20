@@ -2721,3 +2721,58 @@ open item, not as evidence.
     It also flagged **one of its own mutants as partially blunt**: M7 kills, but
     one assertion earlier than aimed, leaving `contains "New Database"`
     **reached-but-unproven**. Recorded rather than counted as coverage.
+
+### My compression of #98 was ambiguous, and an agent read it backwards
+
+154. **`transforms-template-tags` reported #98 as inverted. It isn't — but my
+    brief phrasing was.** #98 states correctly that **testing-library's
+    `getNodeText` reads direct child text nodes** while **Playwright reads full
+    `textContent`**. In later briefs I compressed that to
+    *"(direct child text nodes vs full `textContent`)"*, which **doesn't say
+    which side is which**. The agent read it the wrong way round.
+
+    It then measured and landed on the correct answer anyway:
+    `<div>Default value<span>(required)</span></div>` matches upstream and **not**
+    Playwright's exact matcher — which killed its run 1. Fixed with a
+    `directText()` XPath matcher reproducing testing-library's semantics, applied
+    to the `not.exist` checks too, correctly noting that **a narrower matcher on
+    an absence assertion drifts the wrong way**.
+
+    **The lesson is mine, not the agent's:** compressing a rule into a
+    parenthetical dropped the very asymmetry that made it a rule. Ninth
+    coordinator error corrected on evidence, and the second caused by
+    abbreviating something that was right when written out in full.
+
+### Both queue gates wrong on one spec, with controls for each
+
+155. **`transforms-template-tags` has `snowplow` and `token` in the queue, and
+    neither is real.**
+    - **snowplow is dead setup**: `grep` returns exactly one line —
+      `H.resetSnowplow()` in the `beforeEach`. Zero assertions, no `afterEach`.
+      Neither vantage was ported, and the two known collector/capture defects are
+      **inapplicable, not banked**.
+    - **token is a red herring, with a control**: every transform here is a
+      `query` transform (no python), so only `query-transforms-enabled?` is
+      reachable and it short-circuits on `is-hosted? = false`. The agent removed
+      `activateToken` and re-ran: **3 passed with `features ON: 0`**.
+
+    It also recorded a **near-miss**: the EE frontend sets
+    `PLUGIN_TRANSFORMS.isEnabled = hasPremiumFeature("transforms-basic")`, false
+    here — but its only two readers are `SmartLinkNode` and
+    `DataPermissionsHelp`, **not** the transform routes. That is the difference
+    between a flag being false and a flag gating anything.
+
+    Upstream carries **no tags at all** on this spec while siblings in the same
+    directory carry `@external` — more evidence for the drift in #123.
+
+### Two fixture names that collide with live siblings
+
+156. **Upstream's `transform_table` collides with a live sibling fixture already
+    in the container, and sits inside `transforms.spec.ts`'s `%transform%` DROP
+    sweep** (`transforms-template-tags`) — the cross-spec cleanup hazard from
+    #138, now hit a second time. Upstream's `"Foo"` also materialises a physical
+    table named `foo`.
+
+    Both renamed (`tt_tag_target`, `TTFoo`) and **declared as deviations**, both
+    being unasserted literals. Container: **37 tables before, 37 after, listings
+    identical.**
