@@ -19,6 +19,7 @@ import type {
 } from "../react-router";
 import type { Route } from "../route";
 
+import { registerLeaveHook } from "./blocking-history";
 import { toV3Location } from "./location";
 import { toNavigateArgs } from "./navigator";
 
@@ -73,8 +74,8 @@ export function RouterBridge({
   );
 
   // The injected `route` prop / `useRoute()`: consumers only read it to hand back
-  // to `setRouteLeaveHook` (a no-op on v7), so the leaf match's `{ path }` is
-  // enough. Cast because the facade types the injected route object as `Route`.
+  // to `setRouteLeaveHook`, which ignores the route arg on v7, so the leaf match's
+  // `{ path }` is enough. Cast because the facade types the injected route as `Route`.
   const route = (routes.at(-1) ?? null) as Route | null;
 
   return (
@@ -92,8 +93,9 @@ export function RouterBridge({
  * The v3 `InjectedRouter` (`router.push/replace/go/...`) reimplemented over v7's
  * `navigate`. The facade's `useNavigate` has already resolved relative targets to
  * absolute paths before calling `push`/`replace`, so these pass straight through.
- * `setRouteLeaveHook` is a no-op for now: navigation blocking is data-router-only,
- * restored on the declarative engine via a blocking history in DEV-2374.
+ * `setRouteLeaveHook` registers into the blocking history, which cancels the
+ * navigation when the hook returns `false`, matching v3. The route arg is unused:
+ * the hook is registered only while its component is mounted on that route.
  */
 function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
   const href = (location: LocationDescriptor) =>
@@ -108,7 +110,7 @@ function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
     go: (n) => navigate(n),
     goBack: () => navigate(-1),
     goForward: () => navigate(1),
-    setRouteLeaveHook: () => () => undefined,
+    setRouteLeaveHook: (_route, hook) => registerLeaveHook(hook),
     createPath: href,
     createHref: href,
     isActive: () => false,

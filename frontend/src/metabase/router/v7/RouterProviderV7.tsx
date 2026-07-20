@@ -1,9 +1,16 @@
 import type { PropsWithChildren } from "react";
-import { BrowserRouter, MemoryRouter, Routes } from "react-router-v7";
+import { useState } from "react";
+import {
+  unstable_HistoryRouter as HistoryRouter,
+  Routes,
+  UNSAFE_createBrowserHistory as createBrowserHistory,
+  UNSAFE_createMemoryHistory as createMemoryHistory,
+} from "react-router-v7";
 
 import { getBasename } from "metabase/utils/basename";
 
 import { V7ReduxBridge } from "./V7ReduxBridge";
+import { withBlocking } from "./blocking-history";
 import { mapToV7 } from "./map-to-v7";
 
 /**
@@ -24,27 +31,39 @@ export function V7RouterTree({ children }: PropsWithChildren): JSX.Element {
 /**
  * react-router v7 hosting the app, declarative mode (Phase 3.1). Replaces the v3
  * `<Router>` + `useRouterHistory` + `syncHistoryWithStore` stack behind the
- * `use-v7-router` flag.
+ * `use-v7-router` flag. Hosted on a blocking history so `setRouteLeaveHook`
+ * cancels navigation the way it does on v3.
  */
 export function RouterProviderV7({ children }: PropsWithChildren): JSX.Element {
+  // `v5Compat` makes the history notify its listeners on push/replace, which is
+  // what `unstable_HistoryRouter` and the blocking wrapper both rely on.
+  const [history] = useState(() =>
+    withBlocking(createBrowserHistory({ v5Compat: true })),
+  );
   return (
-    <BrowserRouter basename={getBasename() || undefined}>
+    <HistoryRouter history={history} basename={getBasename() || undefined}>
       <V7RouterTree>{children}</V7RouterTree>
-    </BrowserRouter>
+    </HistoryRouter>
   );
 }
 
 /**
  * The v7 engine hosted on an in-memory history, for tests. Mirrors what
- * `renderWithProviders({ routerEngine: "v7" })` mounts.
+ * `renderWithProviders({ routerEngine: "v7" })` mounts, including navigation
+ * blocking.
  */
 export function RouterProviderV7Memory({
   children,
   initialRoute,
 }: PropsWithChildren<{ initialRoute: string }>): JSX.Element {
+  const [history] = useState(() =>
+    withBlocking(
+      createMemoryHistory({ initialEntries: [initialRoute], v5Compat: true }),
+    ),
+  );
   return (
-    <MemoryRouter initialEntries={[initialRoute]}>
+    <HistoryRouter history={history}>
       <V7RouterTree>{children}</V7RouterTree>
-    </MemoryRouter>
+    </HistoryRouter>
   );
 }
