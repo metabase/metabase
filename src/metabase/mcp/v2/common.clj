@@ -111,12 +111,15 @@
 
 (defn truncation-line
   "The steering sentence appended to a truncated list response: names the narrowing parameter
-   and the next offset. Returns nil when the page isn't truncated (or `total` is unknown)."
-  [{:keys [param offset limit total]}]
+   and the next offset. Returns nil when the page isn't truncated (or `total` is unknown).
+   `:total-floor?` marks `total` as a lower bound rather than an exact count — e.g. a search total
+   capped at the ranking limit — so the sentence reads \"at least N\"."
+  [{:keys [param offset limit total total-floor?]}]
   (let [offset (or offset 0)]
     (when (and total limit (< (+ offset limit) total))
-      (format "Returned %d of %d — narrow with `%s`, or continue with `offset: %d`."
-              (min limit (- total offset)) total (name param) (+ offset limit)))))
+      (format "Returned %d of %s%d — narrow with `%s`, or continue with `offset: %d`."
+              (min limit (- total offset)) (if total-floor? "at least " "") total
+              (name param) (+ offset limit)))))
 
 (defn list-envelope
   "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included

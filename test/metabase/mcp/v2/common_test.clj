@@ -26,7 +26,15 @@
       (is (str/includes? line "`search`"))
       (is (str/includes? line "offset: 50"))))
   (testing "the final page gets no steering line"
-    (is (nil? (common/truncation-line {:param "search" :offset 200 :limit 50 :total 214})))))
+    (is (nil? (common/truncation-line {:param "search" :offset 200 :limit 50 :total 214}))))
+  (testing "GHY-4137: an exact total reads as a plain count"
+    (let [line (common/truncation-line {:param "type" :offset 0 :limit 50 :total 214})]
+      (is (str/includes? line "of 214"))
+      (is (not (str/includes? line "at least")))))
+  (testing "GHY-4137: a floor total (a ranking-capped search count) reads as \"at least N\", so the
+            agent doesn't take a capped total for the full match count"
+    (let [line (common/truncation-line {:param "type" :offset 0 :limit 50 :total 1000 :total-floor? true})]
+      (is (str/includes? line "at least 1000")))))
 
 (deftest ^:parallel teaching-error-test
   (testing "teaching errors surface their message as MCP error content"

@@ -366,12 +366,12 @@
   dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you
   can read and must be requested on its own, not alongside other types; queries narrow snippets by name
   substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace:
-  \"transforms\"). Returns {data, returned, total?}; total is omitted when multi-query rank fusion makes it
-  unknowable."  {:name "search"
-                 :scope        metabot.scope/agent-search
-                 :extra-scopes #{metabot.scope/agent-snippets-read}
-                 :annotations  {:readOnlyHint true :idempotentHint true}
-                 :args         search-args-schema}
+  \"transforms\"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking
+  limit — so a large total is a floor (the response says \"at least N\")."  {:name "search"
+                                                                             :scope        metabot.scope/agent-search
+                                                                             :extra-scopes #{metabot.scope/agent-snippets-read}
+                                                                             :annotations  {:readOnlyHint true :idempotentHint true}
+                                                                             :args         search-args-schema}
   [{:keys [term_queries semantic_queries recent type collection_id archived] :as args}
    {:keys [token-scopes]}]
   (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))
@@ -394,15 +394,18 @@
       ;; `validate-filters!` has already rejected snippet alongside any other type, so these
       ;; two listings are mutually exclusive and each pages on its own terms.
       (let [types              (into [] (distinct) type)
-            {:keys [rows total]}
+            {:keys [rows total total-floor?]}
             (if (contains? (set types) "snippet")
               (let [snippets (snippet-rows (concat term_queries semantic_queries) archived)]
-                {:rows  (into [] (comp (drop offset) (take limit)) snippets)
-                 :total (count snippets)})
+                {:rows         (into [] (comp (drop offset) (take limit)) snippets)
+                 :total        (count snippets)
+                 :total-floor? false})
               (let [engine-types  (into [] (remove #{"snippet"}) (if (seq types) types all-types))
                     collection-id (when (contains? args :collection_id)
                                     (resolve-collection-filter collection_id))
                     engine        (engine-results args engine-types collection-id limit offset)]
-                {:rows (vec (:rows engine)) :total (:total engine)}))]
+                ;; The engine total is the size of the ranked pool, capped at the search ranking
+                ;; limit — so it is a floor, not an exact count, when the cap is hit.
+                {:rows (vec (:rows engine)) :total (:total engine) :total-floor? true}))]
         (common/list-content (project-rows args rows) total
-                             {:param :type :offset offset :limit limit})))))
+                             {:param :type :offset offset :limit limit :total-floor? total-floor?})))))
