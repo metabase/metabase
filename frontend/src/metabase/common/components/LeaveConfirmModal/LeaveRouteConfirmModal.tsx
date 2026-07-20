@@ -30,10 +30,9 @@ export const LeaveRouteConfirmModal = ({
 }: LeaveRouteConfirmModalProps) => {
   const { router, routes } = useRouter();
   const routeFromContext = useRoute();
-  // `routes` from the context is typed `PlainRoute[]`; its leaf is the matched
-  // route that `setRouteLeaveHook` (a no-op on v7) receives, matching the
-  // pre-conversion `Route[]` prop typing.
-  const leafRoute = routes[routes.length - 1] as unknown as Route;
+  // The matched-route chain's leaf is this page's own route, which
+  // `setRouteLeaveHook` (a no-op on v7) receives.
+  const leafRoute = routes[routes.length - 1];
   const { opened, close, confirm } = useConfirmRouteLeaveModal({
     isEnabled,
     isLocationAllowed,

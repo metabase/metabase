@@ -5,7 +5,7 @@ import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
-import { type Route, useRoute, useRouter } from "metabase/router";
+import { useRoute, useRouter } from "metabase/router";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 
 import { isNavigatingToCreateADashboardQuestion } from "./utils";
@@ -21,9 +21,8 @@ export const DashboardLeaveConfirmationModal = () => {
   const { opened, close, confirm, nextLocation } = useConfirmRouteLeaveModal({
     isEnabled: isEditing && isDirty,
     // `routes` is the matched-route chain; its last entry is this page's own
-    // route. Typed loosely as PlainRoute by react-router, cast to the `Route`
-    // the hook expects.
-    route: route ?? (routes[routes.length - 1] as Route),
+    // route.
+    route: route ?? routes[routes.length - 1],
     router,
   });
 
