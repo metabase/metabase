@@ -440,6 +440,7 @@ function(bin) {
           :quarter
           (if supports-dateTrunc?
             (truncate :quarter)
+            ;; mongo-let vars are referenced via :$$parts.* keywords, which kondo can't see
             (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
               {:$dateFromParts {:year  :$$parts.year
                                 :month {$subtract [:$$parts.month

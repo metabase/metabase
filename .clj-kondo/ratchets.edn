@@ -88,7 +88,6 @@
                    :unresolved-require
                    :unresolved-symbol
                    :unused-alias
-                   :unused-binding
                    :unused-excluded-var
                    :unused-namespace
                    :unused-private-var
