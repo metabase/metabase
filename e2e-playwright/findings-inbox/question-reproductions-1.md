@@ -230,7 +230,7 @@ before suspecting the port.
 Ported all 13 tests of `reproductions-1.cy.spec.js` with no fixmes, no
 weakenings and no merges; 11 execute green (22/22 under `--repeat-each=2`) and 2
 are the upstream `@skip` pair. Infra tier is `@external`/QA-Postgres for 3 of 13
-describes and genuinely nothing for the other 7 — the `WRITABLE_DB_ID` reference
+describes and genuinely nothing for the other 10 — the `WRITABLE_DB_ID` reference
 is a red herring, so this spec never touches the contaminated writable container.
 Two run-1 fixes: the known `QuestionDisplayToggle` disabled-ancestor case (my
 miss), and a new one worth propagating — the shared `openTable` silently discards
