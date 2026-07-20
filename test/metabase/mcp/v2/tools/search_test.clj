@@ -197,6 +197,35 @@
         (is (nil? (resolve-collection-filter nil)))
         (is (nil? (resolve-collection-filter "root")))))))
 
+;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
+(deftest filters-only-redirects-to-browse-test
+  (testing "GHY-4137: a call with filters but no query is a listing, not a search — the search tool
+            now redirects it to the browse_* tools rather than running a query-less engine search
+            (whose order is arbitrary without a relevance anchor and whose total is ranking-capped)"
+    (testing "a collection listing routes to browse_collection with that id"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"browse_collection\(id: "
+                            (validate-modes! {:type ["dashboard"] :collection_id "someEntityId01234567_"} false true))))
+    (testing "a snippet listing routes to the snippets namespace"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace: \"snippets\""
+                            (validate-modes! {:type ["snippet"]} false true))))
+    (testing "a transform listing routes to the transforms namespace"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace: \"transforms\""
+                            (validate-modes! {:type ["transform"]} false true))))
+    (testing "a created_by listing routes to browse_collection with created_by"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"created_by"
+                            (validate-modes! {:created_by "me"} false true))))
+    (testing "an archived listing routes to the trash"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"trash"
+                            (validate-modes! {:archived true} false true))))
+    (testing "a data-source listing routes to browse_data"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"browse_data"
+                            (validate-modes! {:type ["table"]} false true))))
+    (testing "a search that carries a query plus filters is not redirected"
+      (is (some? (validate-modes! {:term_queries ["sales"] :type ["dashboard"]} true true))))
+    (testing "the redirect is a 400 teaching error"
+      (is (= 400 (:status-code (ex-data (try (validate-modes! {:type ["dashboard"]} false true)
+                                             (catch clojure.lang.ExceptionInfo e e)))))))))
+
 (defn- nothing-to-search?
   "True when the search handler rejects `args` with the \"Nothing to search for\" teaching error.
    A non-matching failure (e.g. the engine's \"No current user\") means validation was passed."
@@ -213,9 +242,12 @@
             listing the entire instance"
     (is (nothing-to-search? {:collection_id "root"}))
     (is (nothing-to-search? {}) "sanity: a truly empty request is also rejected"))
-  (testing "\"root\" combined with a real query or filter is a valid search — it passes validation"
-    (is (not (nothing-to-search? {:collection_id "root" :type ["dashboard"]})))
-    (is (not (nothing-to-search? {:collection_id "root" :term_queries ["sales"]})))))
+  (testing "\"root\" combined with a real query is a valid search — it passes validation"
+    (is (not (nothing-to-search? {:collection_id "root" :term_queries ["sales"]}))))
+  (testing "\"root\" with only a filter is a browse redirect, not a query-less search"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"browse_"
+                          (tools.search/search-tool {:collection_id "root" :type ["dashboard"]}
+                                                    {:token-scopes #{"agent:search"}})))))
 
 (deftest engine-results-reports-total-test
   (testing "GHY-4137: engine-results reports the engine's total for every search, including a
