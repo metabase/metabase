@@ -1288,7 +1288,13 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   `Date.now()` advances by exactly the amount passed to `runFor`, in lockstep
   with the parent. So an in-iframe `setInterval` (e.g. the SDK's 1s dashboard
   refresh via `useDashboardRefreshPeriod`) is fully drivable.
-  **The trap:** a big jump COALESCES ticks. Measured against a 1s app timer —
+  **Measured refinement (2026-07-20):** `page.clock.setFixedTime()` **does apply to
+an already-loaded page** — no `install()` and no navigation required (probed: the
+date picker read "October 2026" after a bare `setFixedTime`). The notes below
+would lead you to assume that's impossible; it isn't. `install()` is still needed
+for *advancing* time.
+
+**The trap:** a big jump COALESCES ticks. Measured against a 1s app timer —
   `runFor(1000)`×12 → exactly 12 refreshes; a single `runFor(3000)` → **0**;
   `runFor(5000)` → 1. On a negative assertion ("it did not refresh") a coalesced
   jump is a **silently vacuous pass**. Always step at the timer's period.
@@ -1484,6 +1490,38 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   lands on a token boundary and CodeMirror selects whitespace instead of the
   leading quote (the app's error banner read `select foobar'` rather than
   `select 'foobar'`). Reproduce Cypress's rounding, don't pass the raw edge.
+- **🔴 The shared `verifyAndCloseToast` (`support/data-model.ts:235`) is a real
+  strict-mode violation — MEASURED, and `data-model-shared-1` imports it.** It
+  failed in both areas on run 1 when two toasts overlapped. Upstream survives
+  only by accident: chai-jquery's `contain.text` on a multi-element subject is a
+  **concatenation**, and Cypress's pacing lets the exit animation finish — so the
+  *assertion* was never disambiguating, the *timing* was. Its own follow-up
+  `.icon("close").click()` would have errored on two elements. **`data-model-shared-1`
+  is therefore a flake waiting for CI load.** Replacement should preserve the
+  concatenation semantics and use `dispatchEvent` rather than a force-click.
+- **The table picker renders the RAW schema name** (`label: schemaName`, no
+  humanization) — `public`, not `Public`. Invisible in most ports because they
+  only name `Domestic`/`Wild`.
+- **🔴 `H.CustomExpressionEditor.focus()` is `click("right", { force: true })`,
+  and the `force` is LOAD-BEARING** — the editor's own portalled overlays sit on
+  top of `.cm-content`. The shared `focusCustomExpressionEditor` uses a *real*
+  click, so five tests in one spec each burned 30s on "subtree intercepts pointer
+  events" over a fully-correct page. Use a dispatch-based focus.
+  **3 specs call the shared helper — worth checking them.**
+- **`allowFastSet` replaces `textContent`; it is NOT "type faster."** Porting it
+  as a fast type changes what the editor receives.
+- **🔴 The placeholder trap's worst instance: `RecipientPicker` only sets its
+  placeholder while `recipients.length === 0`.** So a literal port of
+  `cy.type(...).blur()` blurs a locator **that stopped existing the moment the
+  first pill committed** — 15 of one port's 20 run-1 failures, every one with a
+  `locator.blur: Timeout` fingerprint pointing at a *helper* rather than the
+  cause. Never re-resolve a placeholder-based locator after typing; capture the
+  element first, or anchor on something stable.
+- **A setting key ending in `?` can never match a `pathname ===` comparison** —
+  `bcc-enabled?` puts everything after the `?` into the query string, so the
+  pathname is `/api/setting/bcc-enabled`. Compare on the pathname without the
+  suffix, or match the full URL.
+- **`should("not.have.value")` with NO argument is a chai-jquery tautology.**
 - **Native parameter widgets drop their `placeholder` on focus** — re-resolving
   the input after `click()` finds nothing, the click itself succeeds, and the
   failure surfaces on the *next* line. (Same family as the token-field rule; this
@@ -1504,7 +1542,15 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   `POST /api/card → 403` across four tests, with the UI looking correctly
   signed-in as admin. If you drive SSO at the API layer, use a **separate**
   request context for it, or re-establish the api client afterwards.
-- **🔴 `cy.get(sel).should("contain.text", X)` on a MULTI-element subject is a
+- **🔴 `contain` and `contain.text` behave OPPOSITELY on a multi-element subject
+  — porting one as the other changes strength in opposite directions.**
+  - **bare `should("contain", x)`** is chai-jquery's **ANY-OF** case
+    (`$el.is(":contains()")`) — passes if *any* element contains `x`.
+  - **`should("contain.text", x)`** is a **CONCATENATION** — joins all matched
+    elements' text, so it passes if `x` spans two of them.
+  So `.first()` **strengthens** a `contain.text` port and **weakens** a `contain`
+  port. Check which one you have before choosing a shape.
+- **`cy.get(sel).should("contain.text", X)` on a MULTI-element subject is a
   CONCATENATION, not an any-of.** chai-jquery joins the matched elements' text,
   so the assertion passes if `X` spans two elements. This is the **inverse** of
   the rule-3 any-of case (`should("be.visible")`/`be.disabled`), and it means

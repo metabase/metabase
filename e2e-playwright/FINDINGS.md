@@ -1306,6 +1306,15 @@ evidence isn't worth making.
     generically-named `table_a`/`table_b`/`table_c` too, which is exactly the
     naming most likely to collide with another spec's unpinned lookup.
 
+    **A SECOND, distinct mechanism** (`data-model-shared-2`, 2026-07-20): the
+    debris also breaks **`visitDataModel`'s own wait gate**. That helper waits on
+    `GET /api/database/:id/schema/:name`, which only fires when a schema
+    **auto-expands** — and auto-expand requires **exactly one schema**. The
+    shared writable postgres has 29 (measured), so the request never fires and
+    the helper burns its full 30s on a **correctly-rendered page**. Note this is
+    not the virtualization mechanism below; contamination breaks this tier in at
+    least two independent ways.
+
     **MECHANISM NAMED 2026-07-20** (`admin-datamodel`): the admin table picker
     is **virtualized** (`@tanstack/react-virtual`, `Results.tsx`). With 26 debris
     schemas present the backend reports **29 schemas while the DOM holds only
@@ -1506,6 +1515,64 @@ evidence isn't worth making.
     `POST /api/ee/transforms-python/test-run` → **500, "Connection refused" to
     localhost:4566** (the localstack S3), which fails before :5001 is reached.
     No 402 anywhere — the final nail in my retracted premium-gating claim.
+
+92. **🔴 `isScrollableHorizontally` / `Vertically` are vacuous under overlay
+    scrollbars — a SHARED upstream helper, so this is a sweep candidate**
+    (`custom-column-reproductions-2`). The helper infers a scrollbar from the
+    layout height it *reserves*; overlay scrollbars reserve **zero**. Measured by
+    forcing a dropdown child to 2000px: `scrollWidth 2000 > clientWidth 1197`
+    (genuinely overflowing) yet `offsetHeight - clientHeight - borders = 0`, so
+    the helper returns `false`. Both of issue 55984's tests were **unfailable**.
+
+    **Prediction worth checking during the sweep:** if the helper always returns
+    `false` here, then every `expect(isScrollable).toBe(false)` using it is
+    vacuous, and any `toBe(true)` assertion would *fail* — so the surviving green
+    specs are presumably asserting only the false direction. **Call sites:
+    `dashboard-parameters`, `detail-view`, `search`, `visualizations-table`,
+    `custom-column-reproductions-2`** (plus `support/search.ts`). Not swept.
+
+    Handled by keeping the verbatim port **and adding** a direct
+    `scrollWidth - clientWidth <= 0` check alongside it, with the strengthening
+    stated explicitly.
+
+    ⚠️ **UNRESOLVED CONFLICT with #question-reproductions-4's scrollbar finding.**
+    That port measured the same class of problem and concluded it was
+    **macOS-specific** — overlay scrollbars come from `NSScroller`,
+    `--disable-features=OverlayScrollbar` changes nothing, and it explicitly
+    stated that Linux behaviour was **inferred, not observed** (it gated its fix
+    behind an in-browser gutter probe rather than `process.platform` for exactly
+    that reason). This port instead claims the vacuity holds **"CI included"**.
+    **Both cannot be right, and neither has been measured on Linux.** Whoever
+    runs the sweep should settle it on a CI runner first — the answer determines
+    whether this is a local-only artifact or real lost coverage in CI.
+
+93. **A test that cannot see the behaviour it exists to test — with a measured,
+    one-line upstream fix** (`native-filters-reproductions`, issue 31606:
+    *"should not start drag and drop from clicks on popovers"*).
+
+    `ParametersList` uses `useDndSensors`, which registers **MouseSensor +
+    TouchSensor only — no PointerSensor** — and upstream's call omits
+    `useMouseEvents`. So the PointerEvents the test dispatches are **inert for
+    any target whatsoever**. Confirmed rather than inferred: dragging a widget
+    that *provably* reorders under mouse events also did nothing under pointer
+    events. Re-run with MouseEvents, the app **correctly refuses** the drag — so
+    **the behaviour is real and the test simply can't observe it.**
+
+    **Actionable upstream follow-up: add `useMouseEvents: true` to that call —
+    measured safe.** This is the clearest "the fix is one line and we know it
+    works" item the spike has produced.
+
+    Also in the same spec: issue 15163's
+    `NativeEditor.get().should("not.exist")` is vacuous — `.cm-content` count is
+    **0 for admin and 0 for `nodata` alike** (a saved question always renders the
+    editor collapsed), so it cannot discriminate the permission state it exists
+    to check. **Not strengthened** — permissions surface, so ported verbatim per
+    the #89 rule, with upstream's own `loading-indicator` gate restored.
+
+    And a third instance of tag drift, this time the *stale-tag* direction: the
+    file's only `@external` tag is obsolete — commit `4701e5f8dc5` removed this
+    file's `WRITABLE_DB_ID` usage without updating it. Gating on it reflexively
+    would have skipped a perfectly runnable test.
 
 ### Capability: `page.clock` reaches into embed iframes
 

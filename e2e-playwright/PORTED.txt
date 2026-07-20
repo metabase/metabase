@@ -358,3 +358,8 @@ data-studio/transforms/transforms.cy.spec.ts
 admin-2/people.cy.spec.js
 question-reproductions/reproductions.cy.spec.ts
 native/native-reproductions.cy.spec.ts
+sharing/subscriptions.cy.spec.js
+custom-column/custom-column-reproductions-2.cy.spec.js
+data-model/data-model-shared-2.cy.spec.ts
+native-filters/native-filters-reproductions.cy.spec.js
+joins/joins-reproductions.cy.spec.js
