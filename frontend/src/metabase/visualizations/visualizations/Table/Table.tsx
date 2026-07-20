@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -11,8 +12,9 @@ import {
 } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import type { DatasetData } from "metabase-types/api";
+import type { DatasetData, Series } from "metabase-types/api";
 
 import { TableInteractive } from "../../components/TableInteractive";
 import type { VisualizationProps } from "../../types";
@@ -37,11 +39,7 @@ function TableComponent(props: TableProps) {
     isDashboard,
   } = props;
 
-  // construct a Question that is in-sync with query results
-  const question = useMemo(() => {
-    const [{ card }] = series;
-    return new Question(card, metadata);
-  }, [series, metadata]);
+  const question = useSyncedQuestion(series, metadata);
 
   const data = useMemo<TableData>(() => {
     const [{ data }] = series;
@@ -127,6 +125,20 @@ function TableComponent(props: TableProps) {
       getColumnSortDirection={getColumnSortDirection}
     />
   );
+}
+
+/*
+ * Constructs a Question that is in-sync with query results.
+ * Reads metadata through a ref so async metadata updates don't recreate the
+ * question (and rebuild every column) mid-interaction; series changes on every
+ * query run, which is when fresh metadata actually needs to be picked up.
+ */
+function useSyncedQuestion(series: Series, metadata: Metadata | undefined) {
+  const metadataRef = useLatest(metadata);
+  return useMemo(() => {
+    const [{ card }] = series;
+    return new Question(card, metadataRef.current);
+  }, [series, metadataRef]);
 }
 
 function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
