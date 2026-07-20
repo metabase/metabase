@@ -13,6 +13,7 @@
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
   (try
+    ;; classpath probe for EE availability; the namespace is never actually used
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'metabase-enterprise.core.dummy-namespace)
     true
@@ -30,6 +31,7 @@
   "Whether code from `./test` is available. This is mainly to facilitate certain things like test QP middleware that we
   want to load only when test code is present."
   (try
+    ;; classpath probe for test-code availability; the namespace is never actually used
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'metabase.test.dummy-namespace)
     true

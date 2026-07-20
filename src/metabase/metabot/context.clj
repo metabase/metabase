@@ -6,6 +6,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   ;; metabot context still validates legacy MBQL queries from the FE; drop with the MBQL 5 migration
    ^{:clj-kondo/ignore [:discouraged-namespace :metabase/modules]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
