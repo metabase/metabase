@@ -476,10 +476,10 @@
       (mt/assert-has-premium-feature-error
        "Custom Visualizations"
        (mt/user-http-request :rasta :get 402 "ee/custom-viz-plugin/sandbox-host"))))
-  (testing "GET /sandbox-host requires authentication"
+  (testing "GET /sandbox-host does not require authentication (an iframe src cannot carry session auth)"
     (mt/with-premium-features #{:custom-viz}
-      (is (= "Unauthenticated"
-             (client/client :get 401 "ee/custom-viz-plugin/sandbox-host"))))))
+      (let [resp (client/client-full-response :get 200 "ee/custom-viz-plugin/sandbox-host")]
+        (is (str/includes? (:body resp) "<!doctype html>"))))))
 
 ;;; ------------------------------------------------ Bundle Endpoint ------------------------------------------------
 
