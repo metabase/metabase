@@ -2456,3 +2456,52 @@ open item, not as evidence.
     `transform_table` mid-run. Avoided by a declared rename to
     `incr_target_table`. **A spec's cleanup can reach into another spec's
     fixtures** — a fourth mechanism behind the #85 family.
+
+### 🔴 HARNESS BUG: `signInWithCredentials` silently poisons later `mb.api` calls
+
+139. **`signInWithCredentials` posts `/api/session` through `mb.api`, so the
+    session cookie lands in the API request context's jar** — and Metabase's
+    `wrap-session-key` resolves the **cookie before the header**. Every later
+    `mb.api` call therefore runs as that user, and **`mb.signInAsAdmin()` does
+    not undo it** (`database-routing-usage`). It cost that agent a run with 403s
+    on `POST /api/card`, and it worked around it locally via `context.request`.
+
+    **This is not spec-local.** Any port doing admin API work after
+    `signInWithCredentials` is silently running it as the wrong user.
+
+    **Audit: two landed specs use it** — `database-routing-usage` (now handled)
+    and **`sandboxing-via-api`**, which has 84 `mb.api`/`signInAsAdmin`
+    references. That one is the concerning case: on a **sandboxing** tier,
+    running setup or verification as the wrong user is exactly the failure that
+    makes a security assertion pass while enforcing nothing — the same shape as
+    the guessed `USER_GROUPS` id that made impersonation look broken.
+
+    **Owed, and it should come before more porting on that tier:** verify
+    `sandboxing-via-api`'s API calls actually run as the intended user, and fix
+    `signInWithCredentials` in the shared harness (not applied while agents are
+    live). **Until then, treat that spec's green as unverified.**
+
+### A survivor caused by missing navigation, not a weak assertion
+
+140. **Both halves of the routing test assert without re-visiting the question**
+    (`database-routing-usage`), so they re-check the **admin's stale render**.
+    Mutation 4 (routing that user elsewhere) **survived**; a presence probe that
+    added a single `visitQuestion` under the same mutation **killed it instantly**
+    at spec:289.
+
+    So the defect is the **missing navigation**, not a weak assertion — a
+    distinction worth keeping, because "strengthen the assertion" would have been
+    the wrong fix. Kept verbatim with the analysis inline.
+
+### Unexplained, recorded rather than invented
+
+141. **The MBQL routing-error message node exists but reports `hidden` to
+    Playwright for the full retry window, while the native half of the same test
+    reports it visible** (`database-routing-usage`). The agent had added
+    `toBeVisible()` as a strengthening and **removed it** — upstream's
+    `findByText` is existence-only, so the strengthening was its own addition and
+    not something to defend.
+
+    If that banner really is zero-size for MBQL routing failures, **no current
+    assertion can see it**. Recorded as unexplained. No Cypress cross-check was
+    run, so whether upstream sees it is unknown.
