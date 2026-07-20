@@ -26,6 +26,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **Avoid non-null assertions (`!`)**. Prefer a guard, early return, or `?.`. Use `!` only when non-nullness is provably true and localized, with a comment.
 - **No redundant runtime coercion** — don't wrap already-typed values in `Number()` / `String()` / `Boolean()`.
 - **Type guards belong in `frontend/src/metabase-types/guards/`**. Do not redefine them locally.
+- **A cast you can't avoid needs a real justification comment.** The `metabase/no-unjustified-type-casts` rule accepts any preceding comment — state the actual reason the cast is safe. NEVER write the legacy `// Unjustified type cast. FIXME` placeholder; it exists only on casts that predated the rule, and copying it sneaks an unjustified cast past the linter. If you can't articulate why the cast is correct, the cast is wrong — fix the types.
 
 ## Type modeling
 
