@@ -185,6 +185,9 @@
   a wall-clock deadline, and always close the context afterwards so untrusted plugin JS never reaches the
   pooled contexts. On overrun, forcibly close the context and throw."
   [f]
+  ;; The realm is isolated (no host access, class lookup, or IO) and discarded after the render, but it runs
+  ;; in-process on the same engine as the pooled contexts, with no memory or CPU limit — a hostile bundle is
+  ;; bounded only by the wall-clock timeout below. GDGT-2856 moves this to a separate secure pipeline.
   (let [context (generate-context!)]
     (try
       (u/with-timeout custom-viz-render-timeout-ms (f context))
