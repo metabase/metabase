@@ -1944,3 +1944,60 @@ open item, not as evidence.
       `Mod-j` after a completion tooltip is silently refused" gotcha (identical
       guard) — which had been recorded as an observation with no mechanism.
       Upstream's own helper works around it with `cy.wait(300)`.
+
+### 🔴 INDEPENDENT CORROBORATION: the #64406 DataSelector regression
+
+113. **A second agent, on a different spec, root-caused the same commit**
+    (`admin-datamodel-reproductions`; first found in `native-reproductions-js`).
+    Commit `2a6741df9cf` (PR **#64406**, 2025-12-18) widened
+    `DataSelector.skipSteps` from `databases.length === 1` to
+    `enabledDatabases.length >= 1`, so with two databases the DATABASE step is
+    **always skipped**.
+
+    The two reports were produced independently, on unrelated specs, with
+    different symptoms:
+    - `native-reproductions-js` (issue 18148): the native DB picker auto-selects
+      the first database ~750ms in and PUTs `last-used-native-database-id`,
+      closing the picker before "sqlite" can be chosen.
+    - `admin-datamodel-reproductions` (segments "Filter by table"): no database
+      list renders at all — the picker opens straight on Sample Database's
+      tables, so `Writable Postgres12` is **unreachable**.
+
+    **Both measurements discriminate rather than merely fit.** The first observed
+    two enabled databases present when the skip fired — impossible under
+    `=== 1`. The second sampled the popover's `innerText` every 100ms for 4s and
+    found it **identical at every sample including t=0**, ruling out a race,
+    scoping, and virtualization. The affected test predates the change by 11
+    months.
+
+    **Still not claimed:** neither agent ran the Cypress original, because the
+    cross-check is banned while sibling slots are live. So whether upstream fails
+    identically is **unknown**, and the ~80ms window in the first case means
+    upstream may simply be flaky rather than red. What is established is the code
+    change and its observable consequence, not that Cypress catches it.
+
+    This is the strongest product finding the migration has produced: two
+    independent derivations of the same root cause, each with a measurement that
+    excludes the alternatives.
+
+### Two more vacuity confirmations, both kept verbatim
+
+114. **The command-palette "Recents" absence check is vacuous — upstream too**
+    (`admin-datamodel-reproductions`). The palette renders its empty state until
+    the recents fetch **commits** at ~t=200ms, so an absence assertion is
+    satisfied by a component that simply hasn't loaded. **Three anchors were
+    tried and each proven insufficient**, including `waitForResponse`, which
+    resolves a tick before React commits. Kept **verbatim with the analysis
+    inline** rather than papered over with a sleep.
+
+115. **`isScrollableVertically` is structurally vacuous on macOS**
+    (`admin-datamodel-reproductions`). It infers a scrollbar from layout width,
+    and Chromium's **overlay scrollbars consume none**. Measured on a plainly
+    overflowing popover — `scrollHeight 650` vs `clientHeight 147` — it still
+    returns `false`.
+
+    This is consistent with the open **#92** conflict (overlay scrollbars:
+    macOS-only vs CI-included) and does not resolve it: the helper **may be live
+    on Linux CI**, where scrollbars can take layout width. **Owed: settle #92 on
+    a Linux runner.** Until then, treat every `isScrollable*` call site as
+    unproven — there are 5 known.
