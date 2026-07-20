@@ -148,7 +148,13 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       TablePicker.getDatabase("Writable Postgres12")
         .should("be.visible")
         .click();
-      cy.wait("@getSchema");
+      // Expanding the database is a two-hop fetch: the schemas list resolves
+      // first, then the dependent tables request (`@getSchema`) is issued. On a
+      // throttled CI network the intervening hop can outrun the default 5s
+      // `cy.wait` budget, so `@getSchema` looks like it "never occurred". Give
+      // the terminal wait a throttle-tolerant timeout — it still returns as soon
+      // as the request fires on a healthy run.
+      cy.wait("@getSchema", { timeout: 30000 });
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
