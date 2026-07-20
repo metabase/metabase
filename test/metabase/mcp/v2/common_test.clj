@@ -48,6 +48,16 @@
                                                                                    ::common/error-code common/error-code-invalid-request}) "Insufficient scope."]]]
         (testing label
           (is (= expected (text (common/->mcp-error-content e)))))))
+    (testing "GHY-4137: 402 (missing premium feature) and 409 (conflict) are deliberate
+              caller-facing errors too — a premium-feature check names the missing feature, a
+              conflict names the clashing state, and neither may be redacted to a generic error"
+      (doseq [[label e expected]
+              [["premium-feature 402" (ex-info "Transforms is a paid feature not available on this instance."
+                                               {:status-code 402}) "Transforms is a paid feature not available on this instance."]
+               ["conflict 409"        (ex-info "A snippet named \"totals\" already exists in this collection."
+                                               {:status-code 409}) "A snippet named \"totals\" already exists in this collection."]]]
+        (testing label
+          (is (= expected (text (common/->mcp-error-content e)))))))
     (testing "internal failures are redacted to a generic message — their real text may embed SQL,
               schema, or connection detail and must never reach the client"
       (doseq [[label e] [["projection 500 invariant" (ex-info "No projection registered for type: widget" {:status-code 500})]

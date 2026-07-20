@@ -77,15 +77,16 @@
 (defn- status-code->error-code
   [status-code]
   (cond
-    (contains? #{401 403} status-code) error-code-invalid-request
-    (contains? #{400 404} status-code) error-code-invalid-params
-    :else                              error-code-internal))
+    (contains? #{401 402 403 409} status-code) error-code-invalid-request
+    (contains? #{400 404} status-code)         error-code-invalid-params
+    :else                                      error-code-internal))
 
 (def ^:private client-error-status-codes
   "Status codes that mark an exception as deliberately caller-facing — its message is safe to
    return. Everything else is an internal failure whose message may embed SQL, schema, or
-   connection detail."
-  #{400 401 403 404})
+   connection detail. 402 (missing premium feature) and 409 (conflict) are included because their
+   messages name the missing feature or clashing state — information the agent needs to recover."
+  #{400 401 402 403 404 409})
 
 (defn ->mcp-error-content
   "Convert a caught exception into MCP error content, and the single point where an exception
