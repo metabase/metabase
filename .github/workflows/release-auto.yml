@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Check if running on a fork
         run: |
-          if ([ "${{ github.repository }}" != "metabase/metabase" ]); then
+          if [ "${{ github.repository }}" != "metabase/metabase" ]; then
             echo "This workflow should not run on forks."
             exit 1
           fi
