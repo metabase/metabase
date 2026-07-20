@@ -621,6 +621,117 @@ describe("scenarios > setup > AI config step", () => {
     cy.findByLabelText("Connected to Anthropic").should("be.visible");
   });
 
+  it("should connect the Metabase managed provider during setup", () => {
+    // The "Metabase" provider option is gated on token features read at page
+    // bootstrap (plugin init), before any interceptable API call — so patch
+    // the server-embedded payload as it is assigned. The store-backed calls
+    // (add-ons pricing, the managed connect itself) have no real backing in
+    // e2e and are stubbed at the network layer.
+    type BootstrapPayload = {
+      "token-features"?: Record<string, boolean>;
+    } & Record<string, unknown>;
+
+    const enableManagedAiFeatures = (win: Cypress.AUTWindow) => {
+      let bootstrap: BootstrapPayload | undefined;
+      Object.defineProperty(win, "MetabaseBootstrap", {
+        configurable: true,
+        get: () => bootstrap,
+        set: (value: BootstrapPayload) => {
+          bootstrap = {
+            ...value,
+            "token-features": {
+              ...value["token-features"],
+              "metabase-ai-managed": true,
+              "offer-metabase-ai-managed": true,
+            },
+          };
+        },
+      });
+    };
+
+    let isConnected = false;
+    cy.intercept("GET", "/api/session/properties", (req) => {
+      req.reply((res) => {
+        res.body["token-features"] = {
+          ...res.body["token-features"],
+          "metabase-ai-managed": true,
+          "offer-metabase-ai-managed": true,
+        };
+        if (isConnected) {
+          res.body["llm-metabot-configured?"] = true;
+          res.body["llm-metabot-provider"] =
+            "metabase/anthropic/claude-sonnet-4-6";
+        }
+      });
+    });
+    cy.intercept("GET", "/api/ee/cloud-add-ons/addons", [
+      {
+        id: 1,
+        active: true,
+        self_service: true,
+        deployment: "hosting",
+        billing_period_months: 1,
+        default_base_fee: 0,
+        default_included_units: 0,
+        default_prepaid_units: 1,
+        default_price_per_unit: 3.75 / 1_000_000,
+        default_total_units: 1,
+        description: null,
+        is_metered: true,
+        name: "Metabase AI Managed",
+        product_tiers: [],
+        product_type: "metabase-ai-managed",
+        short_name: "Metabase AI Managed",
+        token_features: [],
+        trial_days: null,
+      },
+    ]);
+    cy.intercept("GET", "/api/ee/metabot/usage", {
+      is_locked: false,
+      tokens: 0,
+      free_tokens: 1000000,
+      updated_at: null,
+    });
+    cy.intercept("POST", "/api/premium-features/token/refresh", {});
+    cy.intercept("PUT", "/api/metabot/settings", (req) => {
+      isConnected = true;
+      req.reply({ value: "metabase/anthropic/claude-sonnet-4-6", models: [] });
+    }).as("connectManaged");
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+      { onBeforeLoad: enableManagedAiFeatures },
+    );
+
+    skipWelcomePage();
+
+    cy.findByTestId("setup-forms").within(() => {
+      const password = "12341234";
+      cy.findByLabelText("Create a password").type(password);
+      cy.findByLabelText("Confirm your password").type(password);
+      cy.button("Next").click();
+
+      cy.findByLabelText("What will you use Metabase for?").should(
+        "be.visible",
+      );
+      cy.button("Next").click();
+
+      cy.findByText("Continue with sample data").click();
+    });
+
+    cy.findByLabelText("Connect to an AI provider").within(() => {
+      cy.findByLabelText("Provider").should("have.value", "Metabase");
+      cy.findByText("About Metabase AI service").should("be.visible");
+      cy.findByText(/You get 1M tokens for free/).should("be.visible");
+      cy.button("Connect").click();
+    });
+
+    cy.wait("@connectManaged")
+      .its("request.body")
+      .should("deep.equal", { provider: "metabase", model: "" });
+    cy.findByLabelText("Connected to Metabase").should("be.visible");
+  });
+
   it("should not show the step when AI features are disabled", () => {
     H.mockSessionProperty("ai-features-enabled?", false);
 

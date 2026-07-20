@@ -15,7 +15,18 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Button, Flex, Group, Select, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Divider,
+  Flex,
+  Group,
+  Loader,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { MetabotProvider } from "metabase-types/api";
 
 import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
@@ -45,7 +56,11 @@ export function AIProviderConfigurationForm(
   // initial selection once at mount. Mounting before the value arrives would
   // let `defaultProvider` win over an existing connection.
   if (props.defaultProvider && isLoading) {
-    return null;
+    return (
+      <Center p="lg">
+        <Loader data-testid="loading-indicator" />
+      </Center>
+    );
   }
 
   return <AIProviderConfigurationFormBody {...props} />;
@@ -311,14 +326,7 @@ function AIProviderConfigurationFormBody({
 
         {envSettingName && <SetByEnvVar varName={envSettingName} />}
 
-        <Flex
-          justify={onSkip && !isCurrentConfigured ? "space-between" : "end"}
-        >
-          {onSkip && !isCurrentConfigured && (
-            <Button variant="subtle" disabled={isMutating} onClick={onSkip}>
-              {t`I'll set this up later`}
-            </Button>
-          )}
+        <Flex justify={onSkip ? "flex-start" : "end"}>
           {match({ isCurrentConfigured, isConnectButtonEnabled, isModal })
             .with({ isModal: true, isCurrentConfigured: true }, () => (
               <Button
@@ -359,6 +367,24 @@ function AIProviderConfigurationFormBody({
             )
             .exhaustive()}
         </Flex>
+
+        {onSkip && !isCurrentConfigured && (
+          <>
+            <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
+            <Box>
+              <Button
+                onClick={onSkip}
+                variant="subtle"
+                px={0}
+                fw="normal"
+                disabled={isMutating}
+              >{t`I'll set this up later`}</Button>
+              <Text c="text-disabled" size="sm">
+                {t`You won't be able to use AI features until you connect a provider.`}
+              </Text>
+            </Box>
+          </>
+        )}
         <ConfirmModal
           opened={isDisconnectConfirmOpen}
           onClose={() => setIsDisconnectConfirmOpen(false)}
