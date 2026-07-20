@@ -230,9 +230,12 @@ describe("issue 23103", () => {
     cy.wait("@updateModel");
     cy.button("Saving…").should("not.exist");
 
-    cy.findAllByTestId("header-cell").contains("Category").trigger("mouseover");
+    cy.findAllByTestId("header-cell")
+      .contains("Category")
+      .should("be.visible")
+      .realHover();
 
-    H.hovercard().findByText("4 distinct values").should("exist");
+    H.hovercard().findByText("4 distinct values").should("be.visible");
   });
 });
 
