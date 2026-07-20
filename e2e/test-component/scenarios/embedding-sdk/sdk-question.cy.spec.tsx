@@ -656,13 +656,17 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
 
     cy.log("ensure that the interactive question still works after the change");
-    // A brand-new question auto-opens the data picker (see data-picker.cy.spec.tsx),
-    // which renders in a Mantine popover portal mounted outside the SDK root. Rely on
-    // that auto-open rather than toggling the picker via a "Pick your starting data"
-    // click: that click races with the picker re-opening itself after the
-    // targetCollection change and can toggle the popover closed, so H.popover() never
-    // appears. Anchor on the trigger label first so the editor has finished rendering.
+    // The targetCollection change re-initializes the new-question editor. A brand-new
+    // question auto-opens the data picker (see data-picker.cy.spec.tsx), but here that
+    // auto-open races with the click-outside from the "use second collection" button:
+    // the picker can end up either open or (as the flake shows) stably closed, so its
+    // end state is nondeterministic. Instead of depending on it, drive the picker to a
+    // deterministic open: wait for the editor to render, dismiss any transient popover
+    // into a confirmed-closed state, then open it ourselves from the trigger.
     getSdkRoot().contains("Pick your starting data");
+    cy.realPress("Escape");
+    H.popover().should("not.exist");
+    getSdkRoot().findByText("Pick your starting data").click();
 
     H.popover().findByRole("link", { name: "Orders" }).click();
 
