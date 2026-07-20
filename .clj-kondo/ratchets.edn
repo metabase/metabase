@@ -87,5 +87,4 @@
                    :unused-alias
                    :unused-excluded-var
                    :unused-namespace
-                   :unused-private-var
-                   :unused-value}}
+                   :unused-private-var}}
