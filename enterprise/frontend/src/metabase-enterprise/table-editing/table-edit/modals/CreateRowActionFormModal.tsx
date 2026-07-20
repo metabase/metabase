@@ -76,13 +76,18 @@ export function CreateRowActionFormModal({
     validateOnMount: true,
   });
 
-  // Reset form when modal is opened
+  // Reset and (re)validate the form when the modal is opened. `validateForm`
+  // is included so validation re-runs once the field `description` resolves:
+  // it is fetched asynchronously on page mount, and if the modal opens before
+  // it arrives, validation would otherwise run against an empty parameter set,
+  // leaving `isValid` true and the submit button enabled for an empty required
+  // column until the user interacts with a field.
   useEffect(() => {
     if (opened) {
       resetForm({ values: initialValues });
       revalidateForm();
     }
-  }, [opened, resetForm, revalidateForm, initialValues]);
+  }, [opened, resetForm, revalidateForm, initialValues, validateForm]);
 
   const shouldShowLeaveConfirmation = useCallback(() => {
     return Object.keys(values).length > 0;
