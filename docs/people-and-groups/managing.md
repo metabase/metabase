@@ -30,6 +30,8 @@ Click **Create** to activate an account. An account becomes active once you clic
 
 If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
 
+Admins can also create an account for someone and point them to a specific dashboard or question. On a dashboard or question, click the **Sharing** icon and select **Invite someone to view this**. Enter the person's email, choose their groups, and click **Send invitation**. Metabase emails them an invitation, and once they sign up, Metabase directs them to that dashboard or question.
+
 To create accounts with SSO, check out [authentication options](./start.md#authentication).
 
 ## Editing an account
