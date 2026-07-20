@@ -1726,3 +1726,62 @@ open item, not as evidence.
     backend's `defonce` pooled client) but **could not confirm it, and recorded
     it as a hypothesis with a fixme rather than a finding.** The fix would touch
     a shared support module, which a port must not edit. **Owed: investigate.**
+
+### #85 root cause: the debris is self-inflicted, not cross-slot
+
+101. **The `Schema A…Z` contamination in the shared writable container is created
+    by `issue 28106` — a test *inside* `notebook-data-source` itself**
+    (`notebook-data-source`). Measured: 29 schemas present (`Domestic`,
+    `Schema A`…`Schema Z`, `Wild`, `public`), and the `Schema A…Z` block is the
+    `many_schemas` fixture that this very spec creates. **It contaminates itself
+    across runs.**
+
+    This materially changes how #85 should be read. It had been framed as
+    sibling slots polluting a shared resource — a coordination problem, fixable
+    by scheduling. It is substantially **a spec creating fixtures it never
+    cleans up**, which means it reproduces on a single-agent box and would
+    reproduce in CI on any re-run against a persistent container. The
+    coordination story is not wrong (multiple slots do share the container) but
+    it was not the main mechanism.
+
+    The consequence is the one already documented: the mini picker is a
+    `VirtualizedList` holding ~20 rows, so `Wild` — sorting after `Schema Z` —
+    is **never in the DOM**. Fixed here with a scroll-until-attached
+    `clickMiniPickerItem`, with **no assertion weakened**.
+
+    **This strengthens the case for the owed `multi_schema` reset fix**: a reset
+    that drops only the schemas it owns will not clear `many_schemas` debris
+    either. Whatever lands should be verified against a container that already
+    has the `Schema A…Z` block present.
+
+### An `@OSS` tag that wasn't a gate at all
+
+102. **`@OSS` resolved as not a real gate — +1 executed test**
+    (`notebook-data-source`). "should display databases by default" runs
+    unconditionally and passes on the EE jar, because its assertions are scoped
+    `data-active` checks with **no upsell CTA and no page-wide EE-chrome count**,
+    so `PLUGIN_IS_EE_BUILD` cannot reach them.
+
+    The complementary result from the same spec is what makes this a method
+    rather than a lucky guess: an **untagged** describe turned out to be
+    *genuinely* token-gated, proven by deleting `activateToken` and watching both
+    tests fail in `beforeEach` at `POST /api/ee/library`. So the tags were wrong
+    in **both** directions in one file. **Probe the gate; don't read the tag.**
+
+### A fixme that is environmental, with the measurement to prove it
+
+103. **`issue 34350` fails on a heap-order accident, not a product defect**
+    (`notebook-data-source`). It asserts `cell-data` contains `37.65` — Orders
+    **id 1** — against a virtualized ~18-row grid, so it silently depends on id 1
+    being physically first in an `ORDER BY`-less `LIMIT 2000`.
+
+    Measured: `select ctid, id from orders where id in (1,2)` returns
+    `(213,21) | 1` versus `(0,2) | 2`. Row 1 was UPDATEd into the tail of an
+    18760-row heap and is outside the virtualization window. The DOM was probed
+    directly to confirm the grid starts at id 2 with nothing scrolled.
+
+    **That ctid is impossible in a fresh fixture, so CI should be green.** The
+    repair (`CLUSTER orders USING orders_pkey`) was correctly refused while
+    sibling slots were live. **Owed: re-seed the container, then flip the fixme.**
+    No Cypress cross-check was run, so whether upstream also fails is unknown and
+    is not claimed either way.

@@ -95,6 +95,24 @@ const isActionList = (r: Response) => {
   );
 };
 
+/**
+ * Upstream's SECOND action intercept:
+ *   cy.intercept("GET", "/api/action?model-id=*").as("getModelActions")
+ * This is the request the model-detail page makes; `isActionList` above is
+ * upstream's `@getActions` (bare "/api/action", which Cypress's glob does NOT
+ * match against a query string). Waiting on `isActionList` at a
+ * `/model/:id/detail` visit deadlocks — the page only ever fires the
+ * `?model-id=` form.
+ */
+const isGetModelActions = (r: Response) => {
+  const url = new URL(r.url());
+  return (
+    r.request().method() === "GET" &&
+    url.pathname === "/api/action" &&
+    url.searchParams.has("model-id")
+  );
+};
+
 const isUpdateAction = (r: Response) =>
   r.request().method() === "PUT" &&
   /^\/api\/action\/.+/.test(new URL(r.url()).pathname);
@@ -133,8 +151,85 @@ function formFieldContainer(scope: Locator, label: string): Locator {
     .locator('xpath=ancestor::*[@data-testid="form-field-container"][1]');
 }
 
-async function openFieldSettings(page: Page) {
-  await icon(page, "gear").click();
+/**
+ * Upstream's openFieldSettings() is always called INSIDE a
+ * `formFieldContainer(...).within()`, so its `cy.icon("gear")` is scoped to
+ * that one field. Taking a Page here made it page-wide and it hit four gears
+ * (the action-level "Action settings" plus one per field) — hence the scope
+ * argument.
+ */
+async function openFieldSettings(scope: Locator) {
+  await icon(scope, "gear").click();
+}
+
+/**
+ * The pencil in the action-parameters modal header does NOT respond to a real
+ * Playwright mouse click: the click lands on the icon (hit-testing at the
+ * element centre resolves to the icon itself — no overlay, no tooltip in the
+ * way, verified with document.elementFromPoint) yet React's onClick never
+ * fires and the editor modal stays closed. A synthetic click — which is what
+ * Cypress's .click() dispatches — opens it immediately. Mechanism NOT
+ * isolated; recorded as observed behaviour, not a diagnosis.
+ */
+async function openActionEditor(page: Page) {
+  await icon(getActionParametersInputModal(page), "pencil").dispatchEvent(
+    "click",
+  );
+  // NB: assert on the editor's CONTENT, not on the Mantine Modal root — the
+  // root element reports `hidden` to Playwright even while the modal is open
+  // and interactive.
+  await expect(actionEditorModal(page).getByTestId("action-creator")).toBeVisible();
+}
+
+/**
+ * Upstream: cy.findAllByText("Number").each(el => cy.wrap(el).click()) — set
+ * every field's "Field type" radio to Number.
+ *
+ * Clicking them back to back does not stick: measured on this jar, field 0's
+ * radio latches, and then clicking field 1's radio silently UNCHECKS field 0
+ * again (isChecked() → false, still false a second later). The action was
+ * therefore created with the `id` template tag still typed `text`, postgres
+ * rejected the write with `operator does not exist: integer = character
+ * varying`, and the read-back saw score 0 — i.e. the failure surfaced 200
+ * lines away from its cause. Cypress's command queue paces the clicks enough
+ * to avoid it; here we re-click until every radio is simultaneously checked.
+ * The clobber mechanism itself is NOT diagnosed — recorded as observed.
+ */
+async function setAllFieldTypesToNumber(page: Page) {
+  const radios = page
+    .getByRole("dialog")
+    .getByRole("radio", { name: "Number", exact: true });
+  const count = await radios.count();
+  expect(count).toBeGreaterThan(0);
+  await expect(async () => {
+    for (let index = 0; index < count; index++) {
+      const radio = radios.nth(index);
+      if (!(await radio.isChecked())) {
+        await radio.click();
+      }
+    }
+    for (let index = 0; index < count; index++) {
+      await expect(radios.nth(index)).toBeChecked({ timeout: 1_000 });
+    }
+  }).toPass({ timeout: 30_000 });
+}
+
+/**
+ * cy.task() hands its result back over the Cypress IPC bridge, which JSON
+ * encodes it — a postgres `date`/`timestamp` column therefore reaches the
+ * upstream spec as an ISO-8601 *string*, which is why upstream can write
+ * `expect(row.date).to.include("2020-01-10")`. queryWritableDB talks to knex
+ * directly and hands back the raw driver value (a JS Date), whose String()
+ * form is "Fri Jan 10 2020 …" and contains no ISO date at all. Round-tripping
+ * through JSON reproduces exactly what Cypress sees.
+ *
+ * Like upstream, the resulting assertions are timezone sensitive (a JS Date at
+ * local midnight only serialises to the same calendar day when the zone is
+ * behind UTC). CI — and this harness, per support/binning-time-series.ts —
+ * runs TZ=US/Pacific.
+ */
+function asCypressRow(row: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(row)) as Record<string, unknown>;
 }
 
 /** Port of the file-level toggleFieldVisibility: click "Show field". */
@@ -314,7 +409,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         mb,
       }) => {
         const getModel = page.waitForResponse(isGetModel);
-        const getModelActions = page.waitForResponse(isActionList);
+        const getModelActions = page.waitForResponse(isGetModelActions);
         await page.goto(`/model/${modelId}/detail`);
         await getModel;
         await getModelActions;
@@ -351,7 +446,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         expect(before.rows[0].score).toBe(0);
 
         const getModel = page.waitForResponse(isGetModel);
-        const getModelActions = page.waitForResponse(isActionList);
+        const getModelActions = page.waitForResponse(isGetModelActions);
         await page.goto(`/model/${modelId}/detail`);
         await getModel;
         await getModelActions;
@@ -372,13 +467,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           dropIndex: 0,
         });
 
-        const numberOptions = page
-          .getByRole("dialog")
-          .getByText("Number", { exact: true });
-        const numberCount = await numberOptions.count();
-        for (let i = 0; i < numberCount; i++) {
-          await numberOptions.nth(i).click();
-        }
+        await setAllFieldTypesToNumber(page);
         await page.getByRole("dialog").getByText("Save", { exact: true }).click();
 
         await page.getByPlaceholder("My new fantastic action").fill(ACTION_NAME);
@@ -661,7 +750,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           expect(before.rows[0].score).toBe(0);
 
           const getModel = page.waitForResponse(isGetModel);
-          const getModelActions = page.waitForResponse(isActionList);
+          const getModelActions = page.waitForResponse(isGetModelActions);
           await page.goto(`/model/${modelId}/detail`);
           await getModel;
           await getModelActions;
@@ -681,13 +770,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
             dropIndex: 0,
           });
 
-          const numberOptions = page
-            .getByRole("dialog")
-            .getByText("Number", { exact: true });
-          const numberCount = await numberOptions.count();
-          for (let i = 0; i < numberCount; i++) {
-            await numberOptions.nth(i).click();
-          }
+          await setAllFieldTypesToNumber(page);
 
           // hide optional field
           const currentStatus = formFieldContainer(
@@ -696,7 +779,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           );
           await currentStatus.getByText("Text", { exact: true }).click();
           await toggleFieldVisibility(currentStatus);
-          await openFieldSettings(currentStatus.page());
+          await openFieldSettings(currentStatus);
 
           await popover(page)
             .getByLabel("Required")
@@ -739,7 +822,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           expect(mid.rows[0].score).toBe(55);
 
           const getModel2 = page.waitForResponse(isGetModel);
-          const getModelActions2 = page.waitForResponse(isActionList);
+          const getModelActions2 = page.waitForResponse(isGetModelActions);
           await page.goto(`/model/${modelId}/detail`);
           await getModel2;
           await getModelActions2;
@@ -756,7 +839,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
             "Current Status",
           );
           await toggleFieldVisibility(editStatus);
-          await openFieldSettings(editStatus.page());
+          await openFieldSettings(editStatus);
 
           await popover(page).getByLabel("Required").check({ force: true });
 
@@ -873,10 +956,15 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
 
         // can't assert on this value because mysql and postgres handle
         // timezones differently
+        // Upstream types "…T16:45:00"; Chrome normalises a zero-seconds
+        // datetime-local back to "…T16:45", and Playwright's fill() then
+        // rejects its own read-back as a "Malformed value". Same instant, and
+        // the read-back below only asserts the date part. (Values with
+        // non-zero seconds — e.g. the 01:35:55 test below — need no trim.)
         const timestampTZ = dialog.getByPlaceholder("TimestampTZ");
         await expect(timestampTZ).toHaveAttribute("type", "datetime-local");
         await timestampTZ.clear();
-        await timestampTZ.fill("2020-05-01T16:45:00");
+        await timestampTZ.fill("2020-05-01T16:45");
 
         const execute = page.waitForResponse(isExecuteAction);
         await dialog.getByRole("button", { name: "Update" }).click();
@@ -887,7 +975,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           dialect,
         );
         expect(result.rows.length).toBe(1);
-        const row = result.rows[0];
+        const row = asCypressRow(result.rows[0]);
         expect(row.uuid).toBe("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77");
         expect(row.integer).toBe(123);
         expect(row.float).toBe(2.2);
@@ -934,19 +1022,20 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         await dialog.getByPlaceholder("Text", { exact: true }).fill("Zany Zebras");
 
         await dialog.getByPlaceholder("Date", { exact: true }).fill("2020-02-01");
+        // datetime-local values trimmed to minute precision — see above.
         await dialog
           .getByPlaceholder("Datetime", { exact: true })
-          .fill("2020-03-01T12:00:00");
+          .fill("2020-03-01T12:00");
         await dialog
           .getByPlaceholder("DatetimeTZ")
-          .fill("2020-03-01T12:00:00");
+          .fill("2020-03-01T12:00");
         await dialog.getByPlaceholder("Time", { exact: true }).fill("12:57:57");
         await dialog
           .getByPlaceholder("Timestamp", { exact: true })
-          .fill("2020-03-01T12:00:00");
+          .fill("2020-03-01T12:00");
         await dialog
           .getByPlaceholder("TimestampTZ")
-          .fill("2020-03-01T12:00:00");
+          .fill("2020-03-01T12:00");
 
         const execute = page.waitForResponse(isExecuteAction);
         await dialog.getByRole("button", { name: "Save" }).click();
@@ -957,7 +1046,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           dialect,
         );
         expect(result.rows.length).toBe(1);
-        const row = result.rows[0];
+        const row = asCypressRow(result.rows[0]);
         expect(row.uuid).toBe("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15");
         expect(row.integer).toBe(-20);
         expect(row.integerUnsigned).toBe(20);
@@ -1072,7 +1161,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
           dialect,
         );
-        const row = result.rows[0];
+        const row = asCypressRow(result.rows[0]);
         const newTimeAdjusted = newTime.slice(0, 10);
         expect(String(row.date)).toContain(newTime.slice(0, 10));
         expect(row.time).toBe(newTime.slice(-8));
@@ -1160,7 +1249,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
       }) => {
         await clickHelper(page, SAMPLE_QUERY_ACTION_NAME);
 
-        await icon(getActionParametersInputModal(page), "pencil").click();
+        await openActionEditor(page);
 
         await actionEditorModal(page)
           .getByText(SAMPLE_QUERY_ACTION_NAME, { exact: true })
@@ -1203,7 +1292,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
       }) => {
         await clickHelper(page, SAMPLE_QUERY_ACTION_NAME);
 
-        await icon(getActionParametersInputModal(page), "pencil").click();
+        await openActionEditor(page);
 
         await clearNativeEditor(page);
         const TEST_COLUMNS_QUERY = `UPDATE ${TEST_COLUMNS_TABLE} SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}`;
@@ -1393,7 +1482,7 @@ test.describe("Action Parameters Mapping", () => {
       const ACTION_NAME = "Update Score";
 
       const getModel = page.waitForResponse(isGetModel);
-      const getModelActions = page.waitForResponse(isActionList);
+      const getModelActions = page.waitForResponse(isGetModelActions);
       await page.goto(`/model/${modelId}/detail`);
       await getModel;
       await getModelActions;
