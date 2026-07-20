@@ -137,7 +137,11 @@ function DashCardInner({
     }
 
     if (autoScroll) {
-      cardRootRef?.current?.scrollIntoView({ block: "nearest" });
+      // Use `block: "center"` (rather than `"nearest"`) so the target dashcard
+      // lands comfortably inside the scroll container instead of flush against
+      // its edge, where the content would otherwise be clipped by the
+      // container's overflow.
+      cardRootRef?.current?.scrollIntoView({ block: "center" });
       reportAutoScrolledToDashcard?.();
     }
   });
