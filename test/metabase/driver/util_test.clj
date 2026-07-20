@@ -655,6 +655,19 @@
           e        (driver.u/scrub-exceptions original ["s3cret"])]
       (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))
 
+(deftest batch-exception-scrub-test
+  (testing "unwrapping the batch envelope composes with password scrubbing (the init-workspace-isolation! shape)"
+    (let [inner    (java.sql.SQLException. "ERROR: syntax error in CREATE USER \"u\" PASSWORD 's3cret'")
+          batch    (doto (java.sql.BatchUpdateException. "Batch entry 0 CREATE USER ... PASSWORD 's3cret' was aborted" (int-array 0))
+                     (.setNextException inner))
+          scrubbed (driver.u/scrub-exceptions (driver.u/batch-exception batch) ["s3cret"])]
+      (is (not (instance? java.sql.BatchUpdateException scrubbed))
+          "the batch envelope is gone")
+      (is (not (str/includes? (ex-message scrubbed) "s3cret"))
+          "the password is gone from the message")
+      (is (str/includes? (ex-message scrubbed) "****")
+          "the password is redacted, not silently dropped"))))
+
 (deftest batch-exception-test
   (testing "unwraps the underlying per-statement exception of a BatchUpdateException"
     (let [inner (java.sql.SQLException. "user cannot be dropped")
