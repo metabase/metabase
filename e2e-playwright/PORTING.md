@@ -925,6 +925,21 @@ matching element.
     element is transiently present but would have vanished. Do not reach for it
     to "match" Cypress; it does not.
 
+  🔴 **Sharpened 2026-07-21 (`sso-ldap`, FINDINGS #176) — say it this way:**
+  **retrying does not help a zero-assertion at all.** A retry loop only rescues
+  an assertion that can *become* true later; a zero-assertion is satisfied on its
+  **very first poll**, so there is nothing to retry *into*. Measured: an OSS
+  denial check passed pre-render because the provisioning section is a separate
+  plugin component committing **~550 ms after** the form fields, and the mutation
+  that should have killed it **survived**. Anchoring on the settings response
+  plus the submit button made the same mutation kill.
+  **So "both forms retry" is true and beside the point. Every absence assertion
+  needs a POSITIVE ANCHOR proving the container that would hold the element has
+  actually rendered.** Four distinct ways this goes hollow are now recorded:
+  pre-fetch empty states (#73), auto-expiry timers (#167), a form's name input
+  settling before its selects (#168), and a late-mounting plugin component
+  (#176).
+
   The real problem is that *both* retrying forms are satisfied by "nothing has
   rendered yet". If the gate you await fires before the content paints, the
   absence check proves nothing. **Measured** (`custom-elements-api`):
@@ -1090,6 +1105,19 @@ on every port.**
 **The method.** Break something the test claims to check; the test must go red.
 - A **killed** mutant (test fails) = the assertion is load-bearing. Good.
 - A **surviving** mutant (test still passes) = a question, not yet a verdict.
+
+🔴 **First, verify the mutation you think you made actually landed.** A
+`perl`-based edit once silently clobbered a fixture line to `X`, caught only by
+**reading the file back**. A mutation that does something *other* than intended
+gives you a mutant that "kills" for the wrong reason or "survives" because the
+change never landed — and both look like findings.
+- Use an **anchored replace with a `count == 1` assertion**, not a loose regex.
+- **Read the file back** before drawing any conclusion from the run.
+- **Sanity-check your tooling too**: an agent's dead-import checker reported
+  `test` as unused because of a greedy regex; the real answer was zero.
+This sits alongside the other ways a mutation lies to you — mutating a shared
+constant so the assertions move with it, and removing a value the app *persists*
+(`last_used_param_values`) so the old value arrives anyway.
 
 **Invert the INPUT, not the expectation.** Change the fixture *and* the
 assertion and they move together, so the test passes and you have proved
