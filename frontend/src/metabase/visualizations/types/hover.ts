@@ -58,4 +58,5 @@ export interface HighlightedObject {
   cardId?: CardId;
   dimensions?: HighlightedDimension[];
   columnName?: string;
+  shouldShowTooltip?: boolean;
 }
