@@ -2,6 +2,7 @@
   "Common logging interface that wraps clojure.tools.logging in JVM Clojure and Glogi in CLJS.
 
   The interface is the same as [[clojure.tools.logging]]."
+  ;; kondo mis-tracks unquote nesting in the doubly syntax-quoted log macros below
   {:clj-kondo/ignore [:unquote-not-syntax-quoted]}
   (:require
    [clojure.edn :as edn]

@@ -92,7 +92,6 @@
                    :missing-docstring
                    :missing-protocol-method
                    :syntax
-                   :unquote-not-syntax-quoted
                    :unresolved-namespace
                    :unresolved-require
                    :unresolved-symbol
