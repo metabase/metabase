@@ -185,7 +185,7 @@ function ModernDataPicker({
   const modalModelList = getModelFilterList(context, hasMetrics);
   const miniPickerModelList = getModelFilterList(
     context,
-    hasMetricsInMiniPicker,
+    hasMetrics && hasMetricsInMiniPicker,
   );
 
   const databaseId = Lib.databaseID(query) ?? undefined;
