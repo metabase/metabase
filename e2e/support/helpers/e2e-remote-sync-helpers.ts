@@ -336,7 +336,11 @@ export const waitForTask = (
   if (retries > 3) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  return cy.wait("@currentTask").then(({ response }) => {
+  // The app only polls `current-task` while the task is running, the modal is open, and no sync
+  // mutation is in flight (`shouldPoll` in use-sync-status). Under network throttling a pending
+  // branch-switch/submit mutation keeps polling suspended past Cypress's default 5s requestTimeout,
+  // so the next poll can legitimately be >5s away — give the alias a generous timeout instead.
+  return cy.wait("@currentTask", { timeout: 30000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
       return waitForTask({ taskName });
