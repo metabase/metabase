@@ -69,10 +69,9 @@
     (respond nil)))
 
 (defn delete-entry!
-  "Delete the cache entry for `query-hash`, if one exists. Deleting the row also releases any held refresh lease, so
-  after a refresh fails to save new results the outdated blob is neither served stale to lease losers nor treated as
-  fresh for the rest of its window. Never throws: this runs during query result reduction, and a failed cleanup
-  shouldn't fail a query that already ran successfully."
+  "Delete the cache entry for `query-hash`, if one exists, so after a refresh fails to save new results the outdated
+  blob is neither served stale nor treated as fresh for the rest of its window. Never throws: this runs during query
+  result reduction, and a failed cleanup shouldn't fail a query that already ran successfully."
   [^bytes query-hash]
   (try
     (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash)

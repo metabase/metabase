@@ -18,6 +18,7 @@
    [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
+   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
@@ -216,12 +217,11 @@
              (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)))))))
 
 (deftest delete-entry-test
-  (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
+  (testing "delete-entry! (the db backend) removes the cache entry"
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
                                                                :updated_at (t/offset-date-time)}]
-      (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
       (backend.db/delete-entry! query-hash)
       (is (nil? (t2/select-one :model/QueryCache :query_hash query-hash))))))
 
@@ -240,51 +240,21 @@
         (is (= :not-cached
                (run-query)))))))
 
-(deftest failed-refresh-releases-refresh-lease-test
-  (testing "when the lease winner's refresh fails to save, the expired entry is deleted so other processes recompute
-            instead of serving it stale for the rest of the lease window"
-    (with-mock-cache! [save-chan]
-      (let [strategy (assoc (ttl-strategy) :multiplier 0.1)]
-        (run-query :cache-strategy strategy)
-        (mt/wait-for-result save-chan)
-        (Thread/sleep 200)
-        (mt/with-temporary-setting-values [query-caching-max-kb 0]
-          (testing "this run wins the refresh lease, recomputes, and fails to save"
-            (is (= :not-cached
-                   (run-query :cache-strategy strategy))))
-          (mt/wait-for-result save-chan)
-          (testing "the next request recomputes rather than being served the stale entry"
-            (is (= :not-cached
-                   (run-query :cache-strategy strategy)))))))))
-
 (deftest not-eligible-refresh-deletes-outdated-entry-test
-  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min-duration-ms), the expired entry
-            is deleted so other processes recompute instead of serving it stale for the rest of the lease window"
+  (testing "when a rerun is no longer cache-eligible (ran under min-duration-ms), the outdated entry is deleted
+            instead of being left to be served to later requests"
     (with-mock-cache! [save-chan]
-      (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
+      (run-query)
       (mt/wait-for-result save-chan)
-      (Thread/sleep 200)
+      (is (= :cached
+             (run-query)))
       (binding [*query-caching-min-ttl* 1000]
-        (let [strategy (assoc (ttl-strategy) :multiplier 0.1)]
-          (testing "this run wins the refresh lease, recomputes, and doesn't save (query is now too fast)"
-            (is (= :not-cached
-                   (run-query :cache-strategy strategy))))
-          (testing "the next request recomputes rather than being served the stale entry"
-            (is (= :not-cached
-                   (run-query :cache-strategy strategy)))))))))
-
-(deftest stale-while-revalidate-test
-  (testing "an expired entry whose refresh lease is already held by another process is served stale instead of
-            recomputed, so concurrent requests don't stampede the data warehouse"
-    (with-mock-cache! [save-chan]
-      (let [strategy   (assoc (ttl-strategy) :multiplier 0.1)
-            query-hash (qp.util/query-hash (test-query {:cache-strategy strategy}))]
-        (run-query :cache-strategy strategy)
-        (mt/wait-for-result save-chan)
-        (Thread/sleep 200)
-        (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash 600000)))
-        (is (= :cached
-               (run-query :cache-strategy strategy)))))))
+        (testing "this run recomputes and doesn't save (query is now too fast)"
+          (is (= :not-cached
+                 (run-query :middleware {:ignore-cached-results? true})))))
+      (testing "the still-fresh-but-outdated entry is gone, so a normal load recomputes"
+        (is (= :not-cached
+               (run-query)))))))
 
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
@@ -775,11 +745,10 @@
 
 (def stub-no-op-cache-backend
   (reify i/CacheBackend
-    (cached-results [_ _ respond] (respond nil nil))
+    (cached-results [_ _ _ respond] (respond nil))
     (save-results! [_ _ _])
     (purge-old-entries! [_ _])
-    (delete-entry! [_ _])
-    (try-acquire-refresh-lease! [_ _ _] true)))
+    (delete-entry! [_ _])))
 
 (deftest ^:parallel caching-big-resultsets
   (binding [cache/*backend* stub-no-op-cache-backend]

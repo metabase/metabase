@@ -88,8 +88,8 @@
           (log/trace "Got serialized bytes; saving to cache backend")
           (i/save-results! *backend* query-hash bytez)
           (log/debug "Successfully cached results for query.")
-          (purge! *backend*))))
-    :done
+          (purge! *backend*)
+          true)))
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
         (log/debugf e "Not caching results: results are larger than %s KB" (cache/query-caching-max-kb))
@@ -120,7 +120,7 @@
          (let [stored? (boolean (when eligible?
                                   (cache-results! serialized-bytes query-hash)))]
            ;; fresh results weren't saved (too large, save error, or no longer cache-eligible): any existing entry is
-           ;; outdated and the refresh lease is still held, so delete it rather than let it keep being served stale
+           ;; outdated, so delete it rather than let it keep being served stale
            (when-not stored?
              (i/delete-entry! *backend* query-hash))
            (rf (cond-> result

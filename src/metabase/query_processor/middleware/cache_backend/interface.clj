@@ -33,7 +33,7 @@
   `max-age-seconds` may be floating-point.")
 
   (delete-entry! [this ^bytes query-hash]
-    "Delete the cache entry for `query-hash`, if one exists, releasing any held refresh lease. Called when a query ran
+    "Delete the cache entry for `query-hash`, if one exists. Called when a query ran
   but its results could not be saved to the cache (e.g. they exceed `query-caching-max-kb`), so the outdated entry
   doesn't keep being served to other callers. Implementations must not throw: this is called during query result
   reduction, and a failed cleanup shouldn't fail a query that already ran successfully."))
