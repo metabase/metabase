@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor.middleware.large-int :as large-int]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 

@@ -23,6 +23,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; qp.test-util wraps the store's helpers for the many tests still on the legacy pipeline
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]

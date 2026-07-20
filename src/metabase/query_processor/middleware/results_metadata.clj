@@ -14,6 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
+   ;; the store's miscellaneous-value slot is the only channel for passing state between middleware stages
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
