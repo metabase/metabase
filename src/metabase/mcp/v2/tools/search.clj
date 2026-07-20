@@ -146,7 +146,11 @@
 ;;; ------------------------------------------------ Validation ----------------------------------------------------
 
 (defn- validate-modes!
-  [{:keys [recent] :as args} queries? filters?]
+  [{:keys [recent term_queries semantic_queries] :as args} queries? filters?]
+  (when (some str/blank? (concat term_queries semantic_queries))
+    (common/throw-teaching-error
+     (str "A blank query matches everything — every term_queries and semantic_queries entry must "
+          "be non-empty. Drop the blank entry, or use a filters-only listing to browse.")))
   (when (and (true? recent) queries?)
     (common/throw-teaching-error
      (str "recent: true returns your recently viewed items and cannot be combined with "

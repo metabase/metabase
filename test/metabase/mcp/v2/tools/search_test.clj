@@ -14,6 +14,9 @@
 (def ^:private validate-filters!
   #'tools.search/validate-filters!)
 
+(def ^:private validate-modes!
+  #'tools.search/validate-modes!)
+
 (def ^:private resolve-collection-filter
   #'tools.search/resolve-collection-filter)
 
@@ -121,6 +124,26 @@
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         (mt/with-current-user (mt/user->id :crowberto)
           (is (= coll-id (resolve-collection-filter coll-id))))))))
+
+;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
+(deftest blank-query-is-rejected-test
+  (testing "GHY-4137: a whitespace-only query passes the {:min 1} schema, but Postgres treats a
+            blank search string as match-all — so a blank query silently becomes an unscoped
+            listing. It is a teaching error instead."
+    (testing "a whitespace-only term query is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:term_queries [" "]} true false))))
+    (testing "a whitespace-only semantic query is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:semantic_queries ["\t"]} true false))))
+    (testing "a blank query mixed with a real one is still rejected — it would broaden the whole call"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:term_queries ["sales" "  "]} true false))))
+    (testing "a real query with incidental surrounding whitespace is fine"
+      (is (some? (validate-modes! {:term_queries [" sales "]} true false))))
+    (testing "the teaching error is a 400"
+      (is (= 400 (:status-code (ex-data (try (validate-modes! {:term_queries [" "]} true false)
+                                             (catch clojure.lang.ExceptionInfo e e)))))))))
 
 (defn- nothing-to-search?
   "True when the search handler rejects `args` with the \"Nothing to search for\" teaching error.
