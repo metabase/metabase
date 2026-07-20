@@ -29,17 +29,34 @@ import {
   parseProviderAndModel,
 } from "./utils";
 
-export function AIProviderConfigurationForm({
-  isModal = false,
-  defaultProvider,
-  onClose,
-  onSkip,
-}: {
+interface AIProviderConfigurationFormProps {
   isModal?: boolean;
   defaultProvider?: MetabotProvider;
   onClose?: (connectedProvider?: MetabotProvider) => void;
   onSkip?: VoidFunction;
-}) {
+}
+
+export function AIProviderConfigurationForm(
+  props: AIProviderConfigurationFormProps,
+) {
+  const { isLoading } = useAdminSetting("llm-metabot-provider");
+
+  // The saved provider loads asynchronously, and the form body computes its
+  // initial selection once at mount. Mounting before the value arrives would
+  // let `defaultProvider` win over an existing connection.
+  if (props.defaultProvider && isLoading) {
+    return null;
+  }
+
+  return <AIProviderConfigurationFormBody {...props} />;
+}
+
+function AIProviderConfigurationFormBody({
+  isModal = false,
+  defaultProvider,
+  onClose,
+  onSkip,
+}: AIProviderConfigurationFormProps) {
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
   const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
   const [sendToast] = useToast();
@@ -61,9 +78,16 @@ export function AIProviderConfigurationForm({
   );
   const connectedProvider = isConfigured ? config?.provider : undefined;
   const connectedModel = isConfigured ? config?.model : undefined;
-  const [provider, setProvider] = useState<MetabotProvider | undefined>(
-    isModal ? defaultProvider : connectedProvider,
-  );
+  // `defaultProvider` is only a suggestion for the unconfigured state — an
+  // existing connection always wins over it. A modal without a suggestion
+  // starts unselected on purpose, even when connected (the "switch provider"
+  // flow).
+  const [provider, setProvider] = useState<MetabotProvider | undefined>(() => {
+    if (!isModal) {
+      return connectedProvider;
+    }
+    return defaultProvider ? (connectedProvider ?? defaultProvider) : undefined;
+  });
 
   const isCurrentConfigured = connectedProvider === provider && isConfigured;
 
