@@ -234,6 +234,10 @@ width: fixed
   (create-branch [_this branch _base]
     (swap! branches-atom conj [branch (str branch "-ref")]))
 
+  (delete-branch [_this branch]
+    (swap! branches-atom (fn [branches] (vec (remove #(= (first %) branch) branches))))
+    nil)
+
   (branches [_this]
     (case fail-mode
       :branches-error (throw (java.net.UnknownHostException. "Network error"))
@@ -342,6 +346,7 @@ width: fixed
     (reify source.p/Source
       (branches [_] [branch])
       (create-branch [_ _ _] nil)
+      (delete-branch [_ _] nil)
       (default-branch [_] branch)
       (snapshot [_] (mk-snapshot (:current @state)))
       (snapshot-at [_ v] (when (contains? (:trees @state) v) (mk-snapshot v))))))
