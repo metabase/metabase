@@ -385,3 +385,5 @@ admin/databases/database-writable-connection.cy.spec.ts
 admin/database-connection-strings.cy.spec.ts
 collections/uploads.cy.spec.js
 permissions/transforms-permissions.cy.spec.ts
+metrics/metric-page.cy.spec.ts
+data-studio/data-model/data-studio-bulk-table.cy.spec.ts

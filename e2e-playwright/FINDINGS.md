@@ -2337,3 +2337,74 @@ open item, not as evidence.
     This port does clean up. That is a second confirmed instance of the
     self-inflicted-debris pattern behind #101 — specs, not slots, are the
     dominant source of container contamination.
+
+### 🔴 The per-slot snowplow collector is structurally blind to FE-emitted events
+
+133. **The collector cannot see frontend events — the opposite of what its
+    docstring claims** (`metric-page`). The tracker POSTs with
+    `credentials: "include"`; the collector's preflight omits
+    `Access-Control-Allow-Credentials`, so the POST dies with `net::ERR_FAILED`
+    and **only the OPTIONS is recorded**.
+
+    Isolated with a three-way fetch: `omit` → 200, `same-origin` → 200,
+    `include` → fail. Same CORS-credentials rule that bit the SDK-iframe harness
+    earlier in the spike.
+
+    **Audit of what this affects.** Five specs import the collector:
+    `transforms-incremental`, `onboarding-setup`, `collections-uploads`,
+    `instance-stats-snowplow`, `transforms-inspect`. Backend-emitted events do
+    **not** traverse the browser, so they are unaffected — and the two specs whose
+    collector use is load-bearing (`collections-uploads`' `csvupload` from
+    `upload/impl.clj`, `onboarding-setup`'s `invite_sent`) are both backend.
+    `transforms-inspect` and `database-connection-strings` independently chose
+    the **browser boundary** after reading their call sites.
+    **So no landed port is currently believed broken by this — but that is an
+    inference from the reports, not a re-run.** Recorded as needing verification
+    rather than asserted.
+
+    `metric-page` picked the collector first *because* it is the only seam giving
+    real Iglu validation, then fell back to `installSnowplowCapture` and **stated
+    that this degrades `expectNoBadSnowplowEvents`** rather than papering over it.
+    One-line fix in the shared module, **deliberately not applied** while agents
+    are live. **Owed.**
+
+### 🔴 Toast exit transitions are disabled ONLY under Cypress
+
+134. **`UndoListing.tsx:203` selects `"Cypress" in window ? MockGroup :
+    TransitionGroup`** (`metric-page`). Playwright gets the **real** transition, so
+    a dismissed toast lingers for seconds and the next toast produces a
+    strict-mode violation — reproduced deterministically 3/3, and **invisible
+    upstream by construction**.
+
+    This is the *mechanism* behind the shared `verifyAndCloseToast` violation
+    recorded earlier: that entry correctly observed the assertion never
+    disambiguated and the timing did, but attributed the timing to Cypress's
+    pacing. The real cause is a **product-side branch on `window.Cypress`**.
+
+    Fixed by gating on `toHaveCount(0)` — **not** by loosening to `.first()`,
+    which would have hidden it. **Generalises to any port that dismisses a toast
+    and then asserts on `toast-undo`.**
+
+    Notable as a class: this is a place where the app **behaves differently
+    because Cypress is the runner**, so the migration cannot inherit upstream's
+    green as evidence of anything.
+
+### An ambiguity that is upstream's, not the container's
+
+135. **`getTable("Animals")` matches 6 elements — and it is not purely #85
+    debris** (`data-studio-bulk-table`). There are 28 tables named `Animals` in
+    the app DB, but the decisive detail is that **the describe's own
+    `multi_schema` fixture creates both `Domestic.Animals` and `Wild.Animals`**,
+    so the upstream selector is **ambiguous by construction even on a clean
+    container**.
+
+    That distinction matters: "contaminated environment" and "ambiguous selector"
+    have different fixes, and only the second is a real defect. Pinned to the
+    `Domestic` schema following the existing `getTableCheckbox` precedent, and
+    declared as a deviation. **Whether upstream passes on clean CI is recorded as
+    an open question, not a bug claim** — the Cypress cross-check is barred.
+
+    The same port also measured the thing the brief asked about: the db-level
+    test's loop covered **8 of 8** rows (server-side `database_ids`, unbounded),
+    so **no virtualization gap**, and the un-checking-neighbours failure mode was
+    checked for and **not observed**.
