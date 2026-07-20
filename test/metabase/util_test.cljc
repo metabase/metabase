@@ -62,6 +62,7 @@
 
 #?(:clj
    (deftest ^:parallel domain?-test
+     ;; expected in the are table is literal true/false; the expansion inlines it into (=)
      #_{:clj-kondo/ignore [:equals-true]}
      (are [s expected] (= expected (u/domain? s))
        "metabase.com"         true
