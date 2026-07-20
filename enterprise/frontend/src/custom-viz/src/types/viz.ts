@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { Column, RowValue, Series } from "./data";
+import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 import type {
   CreateDefineSetting,
   CustomVisualizationSettingDefinition,
@@ -83,10 +84,16 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   mount: CustomVisualizationMount;
 
   /**
-   * Static visualization renderer (server-side PNG/PDF path, not sandboxed).
-   * Out of scope for the near-membrane hardening; stays as a plain component.
+   * Component that renders the visualization.
    */
   VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
+
+  /**
+   * Static visualization renderer (server-side PNG/PDF path).
+   */
+  StaticVisualizationComponent?: ComponentType<
+    CustomStaticVisualizationProps<TSettings>
+  >;
 };
 
 export type VisualizationGridSize = {
@@ -141,6 +148,22 @@ export type CustomVisualizationMount = <P extends object>(
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
 
+export type ColorGetter = (colorName: string) => string;
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  measureTextWidth: TextWidthMeasurer;
+  measureTextHeight: TextHeightMeasurer;
+  fontFamily: string;
+}
+
+export type CustomStaticVisualizationProps<
+  TSettings extends Record<string, unknown>,
+> = {
+  series: Series;
+  settings: CustomVisualizationSettings<TSettings>;
+  renderingContext: RenderingContext;
+};
 export type ClickObject<TSettings extends Record<string, unknown>> = {
   /** The raw value of the clicked cell. */
   value?: RowValue;

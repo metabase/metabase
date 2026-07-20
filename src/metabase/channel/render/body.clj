@@ -13,6 +13,7 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
+   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.formatter.core :as formatter]
    [metabase.geojson.api :as geojson.api]
    [metabase.geojson.settings :as geojson.settings]
@@ -29,7 +30,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -495,6 +497,22 @@
     :html {:content [:div content] :attachments nil}
     :svg  (png->rendered-part render-type (js.svg/svg-string->bytes content))))
 
+(defn custom-viz-bundles
+  "If the card has a custom:* display type, resolve the plugin's bundle for static rendering.
+   Returns a seq of `{:identifier str :plugin-id int :source str}` maps, or nil when the display
+   isn't a custom viz or its bundle can't be resolved."
+  [card]
+  (when-let [identifier (render.util/custom-viz-identifier (:display card))]
+    (let [plugin
+          ;; do not load the (potentially multi-MB) :bundle blob eagerly;
+          ;; resolve-bundle re-fetches bytes from the cache as needed.
+          (t2/select-one [:model/CustomVizPlugin :id :identifier :enabled :manifest :bundle_hash :dev_bundle_url]
+                         :identifier identifier :enabled true)]
+      (when-let [content (some-> plugin
+                                 custom-viz-plugin/resolve-bundle
+                                 :content)]
+        [{:identifier identifier :plugin-id (:id plugin) :source content}]))))
+
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
 ;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
@@ -502,13 +520,21 @@
 ;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
 ;; Trend charts were added more recently and will not have multi-series.
 (mu/defmethod render :javascript_visualization :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card dashcard data]
+  [_chart-type render-type timezone-id card dashcard data]
   (let [cards-with-data  (series-cards-with-data dashcard card data)
         viz-settings     (or (get dashcard :visualization_settings)
-                             (get card :visualization_settings))]
-    (javascript-visualization->rendered-part
-     render-type
-     (js.svg/*javascript-visualization* cards-with-data viz-settings))))
+                             (get card :visualization_settings))
+        {:keys [content] :as result} (js.svg/*javascript-visualization* cards-with-data viz-settings
+                                                                        (custom-viz-bundles card))]
+    ;; Blank content means the plugin either never registered or exports no
+    ;; StaticVisualizationComponent — either way there is no static viz to show.
+    (if (and (render.util/custom-viz-display? (:display card))
+             (str/blank? content))
+      (do
+        (log/warnf "Custom viz plugin for card %s (%s) produced no static visualization; falling back to table rendering."
+                   (:id card) (:display card))
+        (render :table render-type timezone-id card dashcard data))
+      (javascript-visualization->rendered-part render-type result))))
 
 (mu/defmethod render :region_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
@@ -532,7 +558,7 @@
                                                                :region_name (:region_name geojson)}))]
         (javascript-visualization->rendered-part
          render-type
-         (js.svg/*javascript-visualization* cards-with-data viz-settings))))))
+         (js.svg/*javascript-visualization* cards-with-data viz-settings nil))))))
 
 (defn- number-at
   "The value of `row` at `idx` when it's a number, else nil."

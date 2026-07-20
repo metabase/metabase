@@ -1,7 +1,9 @@
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { BoxPlotChart } from "../BoxPlotChart/BoxPlotChart";
 import { ComboChart } from "../ComboChart";
@@ -70,6 +72,31 @@ export const StaticVisualization = ({
     case "row":
       // TODO: replace with an ECharts implementation
       return <StaticRowChart {...props} />;
+  }
+
+  if (isCustomVizDisplay(display)) {
+    const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
+    if (customViz?.StaticVisualizationComponent) {
+      const { StaticVisualizationComponent } = customViz;
+      const customVizRenderingContext = {
+        getColor: renderingContext.getColor,
+        measureTextWidth: renderingContext.measureText,
+        measureTextHeight: renderingContext.measureTextHeight,
+        fontFamily: renderingContext.fontFamily,
+      };
+      return (
+        <StaticVisualizationComponent
+          series={rawSeries}
+          renderingContext={customVizRenderingContext}
+          settings={settings}
+          isStorybook={isStorybook}
+          hasDevWatermark={hasDevWatermark}
+        />
+      );
+    }
+
+    // Return null so the Clojure side gets an empty string and falls back to table.
+    return null;
   }
 
   throw new Error(`Unsupported display type: ${display}`);
