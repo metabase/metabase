@@ -3,6 +3,7 @@
   logging options are set in [[metabase.core.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the
   logger that clojure.tools.logging uses."
   (:require
+   ;; this ns wires tools.logging to log4j2 and reads *logger-factory*; util.log sits on top of it
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]

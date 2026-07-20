@@ -7,6 +7,7 @@
   (:require
    ;; existing legacy usage -- don't use legacy MBQL namespaces in QP going forward
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; helpers convert to legacy MBQL for drivers not yet on MBQL 5; typed against the legacy schema
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

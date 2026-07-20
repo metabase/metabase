@@ -22,6 +22,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; pre-seeds bare-bones card metadata from the app db before any metadata provider exists
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import

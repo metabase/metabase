@@ -15,7 +15,9 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
+   ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.models.dispatch :as models.dispatch]

@@ -22,6 +22,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; ms/InstanceOf validates Toucan Database instances; lib.schema has no app-db instance schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv empty? some]])
   (:import
