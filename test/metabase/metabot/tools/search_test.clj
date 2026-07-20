@@ -21,29 +21,41 @@
             permission bindings — without this, permission filtering would silently break"
     (binding [api/*current-user-id* 4242]
       (is (= [4242 4242 4242]
-             (#'search/bounded-pmap 10 10000 (fn [_] api/*current-user-id*) [:a :b :c]))))))
+             (#'search/bounded-pmap 10000 (fn [_] api/*current-user-id*) [:a :b :c]))))))
 
 (deftest ^:parallel bounded-pmap-bounds-concurrency-test
-  (testing "GHY-4137: at most max-concurrency tasks run at once, so one call's fan-out can't
-            saturate the DB / embedding provider"
-    (let [running (atom 0)
+  (testing "GHY-4137: the server-wide semaphore caps how many subsearches run at once across all
+            callers, so fan-out can't saturate the DB / embedding provider"
+    (let [limit   @#'search/max-parallel-searches
+          running (atom 0)
           peak    (atom 0)
           f       (fn [_]
                     (let [n (swap! running inc)]
                       (swap! peak max n)
-                      (Thread/sleep 30)
+                      (Thread/sleep 50)
                       (swap! running dec)
                       n))]
-      (#'search/bounded-pmap 3 10000 f (range 12))
-      (is (<= @peak 3) "never exceeds the concurrency limit"))))
+      ;; submit more than the limit; the shared semaphore must keep the running count from exceeding it
+      (#'search/bounded-pmap 10000 f (range (+ limit 5)))
+      (is (<= @peak limit) "never exceeds the server-wide concurrency limit"))))
 
 (deftest ^:parallel bounded-pmap-times-out-test
   (testing "GHY-4137: a task exceeding the timeout is cancelled and surfaces a timeout error rather
             than hanging the request thread"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"timed out"
-                          (#'search/bounded-pmap 4 50 (fn [_] (Thread/sleep 5000) :done) [:a :b]))))
+                          (#'search/bounded-pmap 50 (fn [_] (Thread/sleep 5000) :done) [:a :b]))))
   (testing "tasks that finish within the timeout return normally"
-    (is (= [:done :done] (#'search/bounded-pmap 4 10000 (fn [_] :done) [:a :b])))))
+    (is (= [:done :done] (#'search/bounded-pmap 10000 (fn [_] :done) [:a :b])))))
+
+(deftest ^:parallel bounded-pmap-propagates-task-exceptions-unwrapped-test
+  (testing "GHY-4137: a subsearch's exception propagates as itself with ex-data intact, not wrapped
+            in ExecutionException — otherwise a 403 or teaching error from a subsearch would be
+            redacted to a generic internal error by the tool layer"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (#'search/bounded-pmap 10000
+                                                (fn [_] (throw (ex-info "boom" {:status-code 403})))
+                                                [:a])))]
+      (is (= 403 (:status-code (ex-data e)))))))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
