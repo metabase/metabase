@@ -1587,8 +1587,13 @@ for *advancing* time.
   `cy.type(...).blur()` blurs a locator **that stopped existing the moment the
   first pill committed** — 15 of one port's 20 run-1 failures, every one with a
   `locator.blur: Timeout` fingerprint pointing at a *helper* rather than the
-  cause. Never re-resolve a placeholder-based locator after typing; capture the
-  element first, or anchor on something stable.
+  cause. Never re-resolve a placeholder-based locator after typing.
+  ⚠️ **Amended 2026-07-20:** this used to say "capture the element first", which
+  is actively misleading — **a Playwright `Locator` is lazy**, so assigning one
+  to a variable captures *nothing*; it re-resolves on every use and hits the same
+  trap. You need an **`elementHandle()`**, which binds to the actual DOM node, or
+  an anchor on something stable. An agent lost a run-1 failure to exactly this
+  reading of the old wording. (permissions-reproductions-js)
 - **A setting key ending in `?` can never match a `pathname ===` comparison** —
   `bcc-enabled?` puts everything after the `?` into the query string, so the
   pathname is `/api/setting/bcc-enabled`. Compare on the pathname without the
