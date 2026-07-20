@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -46,11 +46,13 @@ interface AppViewProps {
 export function DataAppView({ params }: AppViewProps) {
   const name = params.name;
   const validName = typeof name === "string" && name.length > 0;
-  // Callback ref (vs `useRef`) — fires when the iframe element actually
-  // mounts. The iframe is conditionally rendered (only after `meta`
-  // resolves), so a `useEffect` keyed on `[name, validName]` alone would
-  // run before the iframe exists and silently skip.
-  const [iframeEl, setIframeEl] = useState<HTMLIFrameElement | null>(null);
+
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
+  const setIframeEl = useCallback((el: HTMLIFrameElement | null) => {
+    iframeRef.current = el;
+    setIframeElState(el);
+  }, []);
 
   const [appReady, setAppReady] = useState(false);
   const [bundleError, setBundleError] =
@@ -122,13 +124,15 @@ export function DataAppView({ params }: AppViewProps) {
   }, [iframeEl, name, validName]);
 
   useEffect(() => {
-    if (!iframeEl) {
-      return undefined;
-    }
-
     const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const iframeWindow = iframeRef.current?.contentWindow;
+
       // Only trust messages from our own iframe
-      if (event.source !== iframeEl.contentWindow) {
+      if (!iframeWindow || event.source !== iframeWindow) {
         return;
       }
 
@@ -152,7 +156,7 @@ export function DataAppView({ params }: AppViewProps) {
     window.addEventListener("message", onMessage);
 
     return () => window.removeEventListener("message", onMessage);
-  }, [iframeEl]);
+  }, []);
 
   if (!validName) {
     return (

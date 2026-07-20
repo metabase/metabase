@@ -14,6 +14,6 @@ export function reportErrorToParent(notReady: boolean, detail?: ErrorDetail) {
       message: detail?.message,
       stack: detail?.stack,
     },
-    "*",
+    window.location.origin,
   );
 }

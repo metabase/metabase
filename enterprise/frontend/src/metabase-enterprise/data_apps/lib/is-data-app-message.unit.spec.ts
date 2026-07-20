@@ -31,18 +31,19 @@ describe("isDataAppMessage", () => {
     ).toBe(false);
   });
 
-  it("rejects anything that isn't a tagged object — the frame can post arbitrary data", () => {
-    for (const data of [
-      null,
-      undefined,
-      "metabase.data-app.ready",
-      42,
-      [],
-      {},
-      { type: undefined },
-      { notReady: true },
-    ]) {
+  it.each([
+    null,
+    undefined,
+    "metabase.data-app.ready",
+    42,
+    [],
+    {},
+    { type: undefined },
+    { notReady: true },
+  ])(
+    "rejects %p, which isn't a tagged object — the frame can post arbitrary data",
+    (data) => {
       expect(isDataAppMessage(data, DATA_APP_READY_MESSAGE_TYPE)).toBe(false);
-    }
-  });
+    },
+  );
 });

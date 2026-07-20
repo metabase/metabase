@@ -5,5 +5,8 @@ export function reportReadyToParent() {
     return;
   }
 
-  window.parent.postMessage({ type: DATA_APP_READY_MESSAGE_TYPE }, "*");
+  window.parent.postMessage(
+    { type: DATA_APP_READY_MESSAGE_TYPE },
+    window.location.origin,
+  );
 }

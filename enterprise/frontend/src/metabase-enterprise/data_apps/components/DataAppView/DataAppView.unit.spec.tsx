@@ -72,9 +72,15 @@ describe("DataAppView", () => {
   });
 
   /** Post a `message` event as if it came from `source`. */
-  function postMessage(source: MessageEventSource | null, data: unknown) {
+  function postMessage(
+    source: MessageEventSource | null,
+    data: unknown,
+    origin: string = window.location.origin,
+  ) {
     act(() => {
-      window.dispatchEvent(new MessageEvent("message", { data, source }));
+      window.dispatchEvent(
+        new MessageEvent("message", { data, source, origin }),
+      );
     });
   }
 
@@ -121,6 +127,20 @@ describe("DataAppView", () => {
       screen.queryByText("This data app isn’t ready yet"),
     ).not.toBeInTheDocument();
     expect(screen.getByTitle("Sales")).toBeInTheDocument();
+  });
+
+  it("ignores messages from another origin, even sent through its own frame", () => {
+    const iframe = setupIframe();
+
+    postMessage(
+      iframe.contentWindow,
+      { type: DATA_APP_ERROR_MESSAGE_TYPE, notReady: true },
+      "https://not-metabase.example.com",
+    );
+
+    expect(
+      screen.queryByText("This data app isn’t ready yet"),
+    ).not.toBeInTheDocument();
   });
 
   describe("loading overlay", () => {
