@@ -92,10 +92,6 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR]: {
-    // Ticking countdown circle shown only while auto-refresh is active. It
-    // replaces the standalone auto-refresh button (which now lives inside the
-    // overflow menu) and also shows in fullscreen mode. Clicking it opens the
-    // auto-refresh options popover.
     component: () => <RefreshWidget />,
     enabled: ({ isEditing, dashboard, refreshPeriod }) =>
       !isEditing &&

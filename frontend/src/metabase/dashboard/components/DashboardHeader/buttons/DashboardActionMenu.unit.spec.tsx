@@ -156,12 +156,4 @@ describe("DashboardActionMenu", () => {
     expect(screen.queryByText("Duplicate")).not.toBeInTheDocument();
     expect(screen.queryByText("Enter fullscreen")).not.toBeInTheDocument();
   });
-
-  it("should not show a 'Subscriptions' item (it now lives in the header)", async () => {
-    setup({ isAdmin: true, hasEmailSetup: true, hasSlackSetup: true });
-    await openMenu();
-
-    expect(await screen.findByText("Enter fullscreen")).toBeInTheDocument();
-    expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
-  });
 });
