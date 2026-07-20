@@ -147,6 +147,8 @@ main{flex:1;display:flex;min-height:0}
   border-radius:7px;padding:4px 7px;font:inherit;font-size:12px;outline:none;cursor:pointer}
 .rank{width:26px;text-align:right;color:var(--group);font-size:10.5px;flex-shrink:0;font-variant-numeric:tabular-nums}
 .hname{display:inline-flex;align-items:center;gap:7px;width:300px;flex-shrink:0;overflow:hidden}
+.hname .name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hname .badge{flex-shrink:0}
 .track{flex:1;max-width:360px;height:7px;border-radius:4px;background:var(--chip);overflow:hidden;display:flex}
 .track .in{background:var(--usedby)}
 .track .out{background:var(--uses)}
@@ -459,7 +461,9 @@ function renderHotspots(){
     const nm=document.createElement('span'); nm.className='hname';
     const dot=document.createElement('span'); dot.className='dot';
     dot.style.background=m.team?teamColor[m.team]:'var(--group)'; nm.appendChild(dot);
-    nm.appendChild(makeName(m, m.id, ''));
+    const name=makeName(m, m.id, '');
+    name.title=m.id+(m['ns-prefix']?' · namespaces still at '+m['ns-prefix']: '');
+    nm.appendChild(name);
     appendBadges(nm,m); row.appendChild(nm);
     const track=document.createElement('span'); track.className='track';
     const inSeg=document.createElement('span'); inSeg.className='in';

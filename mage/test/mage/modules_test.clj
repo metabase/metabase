@@ -396,6 +396,16 @@
       (is (= #{"core"} (get index "widget")))
       (is (contains? (get index "gadget") "core"))
       (is (not (contains? (get index "core") "core"))))))
+(deftest module->viz-node-expands-any-uses-test
+  (let [config  '{core   {:uses :any}
+                  widget {:uses #{gadget}}
+                  gadget {:uses #{}}}
+        used-by ((deref #'mage.modules/used-by-index) config)
+        node    ((deref #'mage.modules/module->viz-node) config used-by 'core)]
+    (testing "wildcard outbound dependencies include every other module, but not the module itself"
+      (is (true? (:uses-any node)))
+      (is (= ["gadget" "widget"] (:uses node))))))
+
 (deftest metric-file->module-driver-plugins-test
   (let [metric-file->module @#'mage.modules/metric-file->module]
     (testing "driver-plugin files belong to the driver module regardless of namespace"

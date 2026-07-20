@@ -426,9 +426,13 @@
 
 (defn- module->viz-node
   "Flatten one module's config into the plain-data map the HTML explorer consumes. `:path` reuses the
-  same display nesting as the text tree; `:used-by` is filled from the reverse-`:uses` index."
+  same display nesting as the text tree; `:used-by` is filled from the reverse-`:uses` index. Wildcard
+  `:uses :any` dependencies are expanded so every graph view uses the same effective outbound edges."
   [modules-config used-by module]
-  (let [{:keys [team api uses friends] :as entry} (get modules-config module)]
+  (let [{:keys [team api uses friends] :as entry} (get modules-config module)
+        effective-uses (if (= uses :any)
+                         (disj (set (keys modules-config)) module)
+                         uses)]
     {:id                   (str module)
      :name                 (name module)
      :enterprise           (= (namespace module) "enterprise")
@@ -438,7 +442,7 @@
      :api-any              (= api :any)
      :api                  (set-field->strings api)
      :uses-any             (= uses :any)
-     :uses                 (if (set? uses) (vec (sort (map str uses))) [])
+     :uses                 (if (set? effective-uses) (vec (sort (map str effective-uses))) [])
      :used-by              (vec (sort (get used-by (str module))))
      :friends              (set-field->strings friends)
      :module-exports       (set-field->strings (:module-exports entry))
