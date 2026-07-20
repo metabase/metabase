@@ -9,8 +9,9 @@ import {
 } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
 
-// @emotion/sheet is a transitive dependency (of @emotion/cache), which bun's
-// isolated linker doesn't hoist; resolve it through its consumer.
+// @emotion/sheet is a transitive dependency of @emotion/cache
+// @emotion/react creates its own default cache, so this is the easiest way to patch it
+// otherwise we would need to create a custom cache and wrap the entire app in a <CacheProvider> in each tests
 const { StyleSheet } = require(
   require.resolve("@emotion/sheet", {
     paths: [require.resolve("@emotion/cache")],
