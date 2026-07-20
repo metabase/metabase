@@ -1,6 +1,7 @@
 /* eslint-disable import/order */
 
-import { TEST_SCHEMA, createMockStore, resetTestState } from "./setup";
+import { createMockStore, resetTestState } from "./tests/setup";
+import { TEST_SCHEMA } from "./tests/fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 

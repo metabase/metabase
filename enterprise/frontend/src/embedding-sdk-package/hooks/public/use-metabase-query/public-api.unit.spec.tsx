@@ -1,6 +1,6 @@
 /* eslint-disable import/order */
 
-import { TEST_SCHEMA } from "./setup";
+import { TEST_SCHEMA } from "./tests/fixtures";
 
 import * as DataApp from "../../../data-app";
 import type { RowValue } from "../data-schema";

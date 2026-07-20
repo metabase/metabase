@@ -1,14 +1,14 @@
 /* eslint-disable import/order */
 
 import {
-  TEST_SCHEMA,
   createMockStore,
   mockFetchTableMetadata,
   mockGetMetadataUnfiltered,
   mockRunRtkEndpoint,
   resetTestState,
   stagesOf,
-} from "./setup";
+} from "./tests/setup";
+import { TEST_SCHEMA } from "./tests/fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { cardApi } from "metabase/api";
