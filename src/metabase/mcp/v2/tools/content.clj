@@ -608,8 +608,9 @@
   (vec (sort (keys type->spec))))
 
 (def ^:private include->types
-  "Which types each `include` section applies to; requesting a section the type doesn't have is
-   a teaching error, never a silent empty result."
+  "Which types each `include` section applies to. A section is applied to each batch item whose
+   type supports it and skipped for the rest, so a mixed-type batch can name a section that only
+   some items have; a section no item in the batch supports is a teaching error."
   {"definition" #{"question" "model" "metric" "measure" "segment" "transform"}
    "fields"     #{"question" "model"}
    "parameters" #{"dashboard"}
@@ -625,13 +626,19 @@
                       {:status-code 403})))))
 
 (defn- check-includes!
-  [type includes]
+  "Reject an `include` section that no item in the batch can supply — a caller typo, rather than
+   a mixed-type batch where the section legitimately applies to only some items. `batch-types`
+   is the set of item types present in the call."
+  [batch-types includes]
   (doseq [inc-name includes]
-    (let [types (get include->types inc-name)]
-      (when-not (contains? types type)
+    (let [applicable (get include->types inc-name)]
+      (when-not (some applicable batch-types)
         (common/throw-teaching-error
-         (format "`include: \"%s\"` does not apply to type %s — it is available for: %s."
-                 inc-name type (str/join ", " (sort types))))))))
+         (format "`include: \"%s\"` does not apply to type%s %s — it is available for: %s."
+                 inc-name
+                 (if (= 1 (count batch-types)) "" "s")
+                 (str/join ", " (sort batch-types))
+                 (str/join ", " (sort applicable))))))))
 
 (defn- build-include
   [type row inc-name]
@@ -658,20 +665,21 @@
   [{:keys [include] :as args} token-scopes {:keys [type id fields] :as _item}]
   (try
     (check-type-scope! token-scopes type)
-    (when-not fields
-      (check-includes! type include))
     (let [{:keys [proj fetch]} (type->spec type)
           row (fetch id)]
       (if fields
         (common/select-fields proj (projections/project proj :detailed row) fields
                               {:response-format (:response_format args)
                                :include         include})
-        (let [fmt (common/response-format args)]
+        (let [fmt      (common/response-format args)
+              ;; Only the sections this item's type supports; the batch may name sections that
+              ;; apply to other items (check-includes! has already rejected any that no item has).
+              sections (filter #(contains? (get include->types %) type) (distinct include))]
           (-> (projections/project proj fmt row)
-              (merge (reduce (fn [sections inc-name]
-                               (merge sections (build-include type row inc-name)))
+              (merge (reduce (fn [acc inc-name]
+                               (merge acc (build-include type row inc-name)))
                              {}
-                             (distinct include)))
+                             sections))
               (assoc :type type)))))
     (catch Exception e
       {:type type :id id :error (or (ex-message e) "Internal error")})))
@@ -688,7 +696,7 @@
              [:fields {:optional true}
               [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from this type's detailed projection (see the fields catalog resource), item-relative inside arrays. Mutually exclusive with response_format and include."}]]]]]]]
    [:include {:optional true}
-    [:maybe [:sequential [:enum {:description "Extra sections, applied to every item whose type supports them: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure). A section the item's type doesn't have is a per-item error."}
+    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure). A section no item in the batch supports is an error."}
                           "definition" "fields" "parameters" "layout" "dimensions"]]]]
    [:response_format {:optional true}
     [:maybe [:enum {:description "concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns."}
@@ -701,12 +709,15 @@
    :extra-scopes [metabot.scope/agent-notification-read metabot.scope/agent-transforms-read]
    :annotations  {:readOnlyHint true :idempotentHint true}
    :args         get-content-args-schema}
-  [{:keys [items] :as args} {:keys [token-scopes]}]
+  [{:keys [items include] :as args} {:keys [token-scopes]}]
   (when (> (count items) max-items)
     (common/throw-teaching-error
      (format "`items` accepts at most %d entries per call — you passed %d; split the batch."
              max-items (count items))))
   ;; Surface an invalid response_format once, before any item work.
   (common/response-format args)
+  ;; Reject include sections no item in the batch supports, before any per-item work.
+  (when (seq include)
+    (check-includes! (into #{} (map :type) items) (distinct include)))
   (common/success-content
    (json/encode {:results (mapv #(content-item-result args token-scopes %) items)})))

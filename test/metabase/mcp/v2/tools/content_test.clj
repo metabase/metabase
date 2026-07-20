@@ -312,3 +312,30 @@
             (is (some? (:error row))
                 "an unreadable pulse must produce not-found, never another entity's content")
             (is (not= "notification/dashboard" (:payload_type row)))))))))
+
+(deftest get-content-include-mixed-batch-test
+  (testing "GHY-4140: include sections apply to the items whose type supports them and are
+            silently skipped for the rest, so the advertised mixed-type batch works"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card      {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (mt/with-test-user :crowberto
+        (let [[dash question] (content-results {:items   [{:type "dashboard" :id dash-id}
+                                                          {:type "question"  :id card-id}]
+                                                :include ["definition" "layout"]})]
+          (testing "the dashboard gets layout and is not failed by the question-only section"
+            (is (nil? (:error dash)))
+            (is (some? (:layout dash)))
+            (is (nil? (:definition dash))))
+          (testing "the question gets definition and is not failed by the dashboard-only section"
+            (is (nil? (:error question)))
+            (is (some? (:definition question)))
+            (is (nil? (:layout question)))))))))
+
+(deftest get-content-include-unknown-for-every-item-test
+  (testing "GHY-4140: a section no item in the batch supports is a tool-level teaching error,
+            so a typo never silently returns nothing"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (mt/with-test-user :crowberto
+        (let [error (content-error {:items [{:type "question" :id card-id}] :include ["layout"]})]
+          (is (re-find #"does not apply to type question" error))
+          (is (re-find #"available for: dashboard, document" error)))))))
