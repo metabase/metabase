@@ -122,7 +122,7 @@
 (defn tools-caching-details-url
   "Return an appropriate URL for linking to caching log details."
   [^Integer persisted-info-id]
-  (format "%s/admin/tools/model-caching/%d" (site-url) persisted-info-id))
+  (format "%s/monitor/model-caching/%d" (site-url) persisted-info-id))
 
 (defn transform-job-url
   "URL for a transform job."

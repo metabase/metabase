@@ -1,4 +1,4 @@
-import { QueryStatus } from "@reduxjs/toolkit/query";
+import { QueryStatus, skipToken } from "@reduxjs/toolkit/query";
 import fetchMock from "fetch-mock";
 
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
@@ -370,6 +370,106 @@ describe("useAbortableQuery", () => {
 
     await waitFor(() => {
       expect(result.current.error).toBeDefined();
+    });
+  });
+
+  it("does not fire a request when refetch is called while skipped", async () => {
+    fetchMock.get("path:/api/task", makeResponse(PAGE_0_TASK_ID));
+
+    const { result } = setup({ arg: { limit: 50, offset: 0 }, skip: true });
+
+    expect(getTaskCalls()).toHaveLength(0);
+
+    act(() => {
+      result.current.refetch();
+    });
+
+    // Give any (erroneously scheduled) request a chance to fire.
+    await Promise.resolve();
+    expect(getTaskCalls()).toHaveLength(0);
+  });
+
+  describe("skipToken arg", () => {
+    function setupWithToken(initialArg: ListTasksRequest | typeof skipToken) {
+      return renderHookWithProviders(
+        ({ arg }: { arg: ListTasksRequest | typeof skipToken }) =>
+          useAbortableQuery(useLazyListTasksQuery, arg),
+        { initialProps: { arg: initialArg } },
+      );
+    }
+
+    it("issues no request while the arg is skipToken", async () => {
+      fetchMock.get("path:/api/task", makeResponse(PAGE_0_TASK_ID));
+
+      const { result } = setupWithToken(skipToken);
+
+      await Promise.resolve();
+      expect(getTaskCalls()).toHaveLength(0);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.isFetching).toBe(false);
+      expect(result.current.data).toBeUndefined();
+    });
+
+    it("does not fire a request when refetch is called while the arg is skipToken", async () => {
+      fetchMock.get("path:/api/task", makeResponse(PAGE_0_TASK_ID));
+
+      const { result } = setupWithToken(skipToken);
+
+      act(() => {
+        result.current.refetch();
+      });
+
+      await Promise.resolve();
+      expect(getTaskCalls()).toHaveLength(0);
+    });
+
+    it("fires exactly one request when transitioning from skipToken to a real arg", async () => {
+      fetchMock.get("path:/api/task", makeResponse(PAGE_0_TASK_ID));
+
+      const { result, rerender } = setupWithToken(skipToken);
+
+      expect(getTaskCalls()).toHaveLength(0);
+
+      rerender({ arg: { limit: 50, offset: 0 } });
+
+      await waitFor(() =>
+        expect(result.current.data?.data[0].id).toBe(PAGE_0_TASK_ID),
+      );
+      expect(getTaskCalls()).toHaveLength(1);
+    });
+
+    it("preserves abort semantics after transitioning from skipToken to a real arg", async () => {
+      fetchMock.get({
+        url: "path:/api/task",
+        query: { offset: "0" },
+        name: "page-0",
+        response: makeResponse(PAGE_0_TASK_ID),
+        delay: 200,
+      });
+      fetchMock.get({
+        url: "path:/api/task",
+        query: { offset: "50" },
+        name: "page-1",
+        response: makeResponse(PAGE_1_TASK_ID),
+        delay: 10,
+      });
+
+      const { result, rerender } = setupWithToken(skipToken);
+
+      rerender({ arg: { limit: 50, offset: 0 } });
+
+      const getPage0Call = () =>
+        getTaskCalls().find((call) => call.url.includes("offset=0"));
+      await waitFor(() => expect(getPage0Call()).toBeDefined());
+
+      rerender({ arg: { limit: 50, offset: 50 } });
+
+      await waitFor(() => {
+        expect(result.current.data?.data[0].id).toBe(PAGE_1_TASK_ID);
+      });
+
+      expect(getPage0Call()?.request?.signal.aborted).toBe(true);
+      expect(result.current.error).toBeUndefined();
     });
   });
 });

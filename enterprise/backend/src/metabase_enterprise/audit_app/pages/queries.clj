@@ -15,24 +15,24 @@
     sort-column
     sort-direction]
    (let [total-count (volatile! nil)]
-     {:metadata [[:card_id         {:display_name "Card ID",            :base_type :type/Integer :remapped_to   :card_name}]
-                 [:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
-                 [:error_substr    {:display_name "Error",              :base_type :type/Text    :code          true}]
-                 [:collection_id   {:display_name "Collection ID",      :base_type :type/Integer :remapped_to   :collection_name}]
-                 [:collection_name {:display_name "Collection",         :base_type :type/Text    :remapped_from :collection_id}]
-                 [:database_id     {:display_name "Database ID",        :base_type :type/Integer :remapped_to   :database_name}]
-                 [:database_name   {:display_name "Database",           :base_type :type/Text    :remapped_from :database_id}]
-                 [:schema_name     {:display_name "Schema",             :base_type :type/Text}]
-                 [:table_id        {:display_name "Table ID",           :base_type :type/Integer :remapped_to   :table_name}]
-                 [:table_name      {:display_name "Table",              :base_type :type/Text    :remapped_from :table_id}]
-                 [:last_run_at     {:display_name "Last run at",        :base_type :type/DateTime}]
-                 [:total_runs      {:display_name "Total runs",         :base_type :type/Integer}]
-                 ;; if it appears a billion times each in 2 dashboards, that's 2 billion appearances
-                 [:num_dashboards  {:display_name "Dashboards it's in", :base_type :type/Integer}]
-                 [:user_id         {:display_name "Created By ID",      :base_type :type/Integer :remapped_to   :user_name}]
-                 [:user_name       {:display_name "Created By",         :base_type :type/Text    :remapped_from :user_id}]
-                 [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
-      ;; Append total_count to the root response rather than each row
+     {:metadata
+      [[:card_id         {:display_name "Card ID",            :base_type :type/Integer,  :remapped_to :card_name}]
+       [:card_name       {:display_name "Question",           :base_type :type/Text,     :remapped_from :card_id}]
+       [:error_substr    {:display_name "Error",              :base_type :type/Text,     :code true}]
+       [:collection_id   {:display_name "Collection ID",      :base_type :type/Integer,  :remapped_to :collection_name}]
+       [:collection_name {:display_name "Collection",         :base_type :type/Text,     :remapped_from :collection_id}]
+       [:database_id     {:display_name "Database ID",        :base_type :type/Integer,  :remapped_to :database_name}]
+       [:database_name   {:display_name "Database",           :base_type :type/Text,     :remapped_from :database_id}]
+       [:schema_name     {:display_name "Schema",             :base_type :type/Text}]
+       [:table_id        {:display_name "Table ID",           :base_type :type/Integer,  :remapped_to :table_name}]
+       [:table_name      {:display_name "Table",              :base_type :type/Text,     :remapped_from :table_id}]
+       [:last_run_at     {:display_name "Last run at",        :base_type :type/DateTime}]
+       [:total_runs      {:display_name "Total runs",         :base_type :type/Integer}]
+       ;; if it appears a billion times each in 2 dashboards, that's 2 billion appearances
+       [:num_dashboards  {:display_name "Dashboards it's in", :base_type :type/Integer}]
+       [:user_id         {:display_name "Created By ID",      :base_type :type/Integer,  :remapped_to :user_name}]
+       [:user_name       {:display_name "Created By",         :base_type :type/Text,     :remapped_from :user_id}]
+       [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
       :xform (fn [rf]
                (fn
                  ([] (rf))
@@ -69,6 +69,7 @@
                                 [:card.creator_id :user_id]
                                 [(common/user-full-name :u) :user_name]
                                 [:card.updated_at :updated_at]
+                                ;; Keep this last: the streaming xform strips it positionally and hoists it to the root.
                                 [[:over [[:count :*] {} :total_count]]]]
                     :from      [[:report_card :card]]
                     :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]

@@ -1,14 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useLazyListTaskRunEntitiesQuery } from "metabase/api";
+import { skipToken, useLazyListTaskRunEntitiesQuery } from "metabase/api";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { Loader, Select, type SelectProps, Tooltip } from "metabase/ui";
-import type {
-  ListTaskRunEntitiesRequest,
-  TaskRunDateFilterOption,
-  TaskRunType,
-} from "metabase-types/api";
+import type { TaskRunDateFilterOption, TaskRunType } from "metabase-types/api";
 
 import { toBackendStartedAt } from "../../utils";
 
@@ -18,11 +14,6 @@ import {
   parseValue,
   serializeValue,
 } from "./utils";
-
-const SKIPPED_ENTITY_REQUEST: ListTaskRunEntitiesRequest = {
-  "run-type": "sync",
-  "started-at": "thisday",
-};
 
 type TaskRunEntityPickerProps = Omit<
   SelectProps,
@@ -49,8 +40,7 @@ export const TaskRunEntityPicker = ({
     useLazyListTaskRunEntitiesQuery,
     hasAllRequiredParams
       ? { "run-type": runType, "started-at": effectiveStartedAt }
-      : SKIPPED_ENTITY_REQUEST,
-    { skip: !hasAllRequiredParams },
+      : skipToken,
   );
 
   const data = useMemo(

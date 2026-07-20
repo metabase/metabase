@@ -98,6 +98,27 @@ const CanAccessAlertsManagement = () => <Outlet />;
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
 
+// Stand-in for the Data Studio subtree (data-studio/routes.tsx). Its `path="*"`
+// catch-all is exactly what shadowed the legacy dependency-diagnostics redirect
+// before the fix, so we mount it here — declared before the Monitor region, as
+// in metabase/routes.tsx — to reproduce the app's real declaration order.
+const DataStudioCatchAll = () => (
+  <div data-testid="data-studio-catch-all">{"Data Studio Not Found"}</div>
+);
+const DataStudioDependencies = () => (
+  <div data-testid="data-studio-dependencies">{"Dependency graph"}</div>
+);
+
+const dataStudioStandInRoutes = (
+  <Route path="data-studio">
+    <Route path="dependencies">
+      <Route index element={<DataStudioDependencies />} />
+      <Route path="*" element={<DataStudioDependencies />} />
+    </Route>
+    <Route path="*" element={<DataStudioCatchAll />} />
+  </Route>
+);
+
 type SetupOpts = {
   initialRoute: string;
   user?: ReturnType<typeof createMockUser>;
@@ -109,6 +130,7 @@ const setup = ({
 }: SetupOpts) => {
   return renderWithProviders(
     <Route path="/">
+      {dataStudioStandInRoutes}
       {getMonitorRedirects()}
       {getMonitorRoutes(
         CanAccessMonitor,
@@ -142,6 +164,7 @@ const setupWithGuards = ({
 }) => {
   return renderWithProviders(
     <Route path="/">
+      {dataStudioStandInRoutes}
       {getMonitorRedirects()}
       {getMonitorRoutes(CanAccessMonitor, Diagnostics, Tools, AlertsManagement)}
     </Route>,
@@ -276,20 +299,6 @@ describe("monitor routes", () => {
     });
   });
 
-  describe("getMonitorRedirects (legacy Data Studio URLs)", () => {
-    it("redirects the old base URL into the Monitor area", async () => {
-      setup({ initialRoute: "/data-studio/dependency-diagnostics" });
-
-      expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
-    });
-
-    it("redirects old child URLs (e.g. /broken) to the Monitor equivalent", async () => {
-      setup({ initialRoute: "/data-studio/dependency-diagnostics/broken" });
-
-      expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
-    });
-  });
-
   describe("Tools sections (migrated from /admin/tools)", () => {
     it("renders the Logs section at /monitor/logs", async () => {
       setup({ initialRoute: "/monitor/logs" });
@@ -371,6 +380,17 @@ describe("monitor routes", () => {
       setup({ initialRoute: "/admin/tools" });
 
       expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
+    });
+
+    it.each([
+      ["/admin/tools/dependencies"],
+      ["/admin/tools/dependencies/some-node"],
+    ])("redirects %s to the Data Studio dependency graph", async (route) => {
+      setup({ initialRoute: route });
+
+      expect(
+        await screen.findByTestId("data-studio-dependencies"),
+      ).toBeInTheDocument();
     });
   });
 });

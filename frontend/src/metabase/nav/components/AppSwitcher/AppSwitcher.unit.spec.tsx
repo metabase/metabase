@@ -20,6 +20,15 @@ import {
 import { AppSwitcher } from "./AppSwitcher";
 import type { CurrentApp } from "./useGetCurrentApp";
 
+jest.mock("metabase/common/monitor/analytics", () => ({
+  trackMonitorOpened: jest.fn(),
+}));
+
+// Jest's requireMock API is untyped, so define the mock module boundary.
+const { trackMonitorOpened } = jest.requireMock(
+  "metabase/common/monitor/analytics",
+) as { trackMonitorOpened: jest.Mock };
+
 const USER = createMockUser();
 
 const REGULAR_ITEMS = [
@@ -199,6 +208,15 @@ describe("ProfileLink", () => {
       WITH_AREAS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
+    });
+
+    it("tracks opening Monitor from the app switcher", async () => {
+      trackMonitorOpened.mockClear();
+      await setup({ isAdmin: true });
+
+      await userEvent.click(await getMonitorMenuItem());
+
+      expect(trackMonitorOpened).toHaveBeenCalledTimes(1);
     });
   });
 

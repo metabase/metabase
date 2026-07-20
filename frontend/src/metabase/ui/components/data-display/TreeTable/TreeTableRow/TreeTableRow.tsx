@@ -92,9 +92,12 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
         ? "some"
         : "none";
 
+  const isCheckboxDisabled =
+    isDisabled || (!getSelectionState && !row.getCanSelect());
+
   const handleCheckboxToggle = (event: MouseEvent) => {
     event.stopPropagation();
-    if (isLoading) {
+    if (isLoading || isCheckboxDisabled) {
       return;
     }
     if (onCheckboxClick) {
@@ -143,9 +146,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
             <SelectionCheckbox
               isSelected={selectionState === "all"}
               isSomeSelected={selectionState === "some"}
-              disabled={
-                isDisabled || (!getSelectionState && !row.getCanSelect())
-              }
+              disabled={isCheckboxDisabled}
               onClick={handleCheckboxToggle}
               className={classNames?.checkbox}
             />

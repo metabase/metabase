@@ -6,6 +6,7 @@ import type {
   DatasetQuery,
   FieldValue,
   GetRemappedParameterValueRequest,
+  InternalDatasetQuery,
   NativeDatasetResponse,
 } from "metabase-types/api";
 
@@ -55,7 +56,7 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      DatasetQuery & RtkCacheKeyed & IgnorableError
+      (DatasetQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
     >({
       query: ({ ignore_error, ...body }) => ({
         method: "POST",

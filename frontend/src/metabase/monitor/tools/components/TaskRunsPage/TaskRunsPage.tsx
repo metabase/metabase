@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useLazyListTaskRunsQuery } from "metabase/api";
@@ -35,7 +36,10 @@ export const TaskRunsPage = () => {
     },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
-  const sortingOptions = { sort_column, sort_direction };
+  const sortingOptions = useMemo(
+    () => ({ sort_column, sort_direction }),
+    [sort_column, sort_direction],
+  );
 
   const {
     data: taskRunsData,

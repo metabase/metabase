@@ -25,6 +25,15 @@ import {
 import { MonitorLayout } from "./MonitorLayout";
 import { Sidebar } from "./Sidebar";
 
+jest.mock("metabase/common/monitor/analytics", () => ({
+  trackMonitorSectionClicked: jest.fn(),
+}));
+
+// Jest's requireMock API is untyped, so define the mock module boundary.
+const { trackMonitorSectionClicked } = jest.requireMock(
+  "metabase/common/monitor/analytics",
+) as { trackMonitorSectionClicked: jest.Mock };
+
 interface SetupOpts {
   isNavbarOpened?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
@@ -146,15 +155,43 @@ describe("MonitorLayout", () => {
     });
   });
 
-  const SECTION_CASES: { label: string; route: string }[] = [
-    { label: "Dependency diagnostics", route: Urls.dependencyDiagnostics() },
-    { label: "Erroring questions", route: Urls.monitorErroringQuestions() },
-    { label: "Alerts management", route: Urls.monitorNotifications() },
-    { label: "Background tasks", route: Urls.monitorTasks() },
-    { label: "Scheduled jobs", route: Urls.monitorJobs() },
-    { label: "Application logs", route: Urls.monitorLogs() },
-    { label: "Model caching log", route: Urls.monitorModelCaching() },
-  ];
+  const SECTION_CASES = [
+    {
+      label: "Dependency diagnostics",
+      route: Urls.dependencyDiagnostics(),
+      section: "diagnostics",
+    },
+    {
+      label: "Erroring questions",
+      route: Urls.monitorErroringQuestions(),
+      section: "erroring-questions",
+    },
+    {
+      label: "Alerts management",
+      route: Urls.monitorNotifications(),
+      section: "alerts",
+    },
+    {
+      label: "Background tasks",
+      route: Urls.monitorTasks(),
+      section: "tasks",
+    },
+    {
+      label: "Scheduled jobs",
+      route: Urls.monitorJobs(),
+      section: "jobs",
+    },
+    {
+      label: "Application logs",
+      route: Urls.monitorLogs(),
+      section: "logs",
+    },
+    {
+      label: "Model caching log",
+      route: Urls.monitorModelCaching(),
+      section: "model-caching",
+    },
+  ] as const;
 
   it.each(SECTION_CASES)(
     "marks $label as the current page for its route",
@@ -170,6 +207,18 @@ describe("MonitorLayout", () => {
       expect(screen.getAllByRole("link", { current: "page" })).toEqual([
         activeLink,
       ]);
+    },
+  );
+
+  it.each(SECTION_CASES)(
+    "tracks opening the $label section",
+    async ({ label, section }) => {
+      trackMonitorSectionClicked.mockClear();
+      setup();
+
+      await userEvent.click(await screen.findByRole("link", { name: label }));
+
+      expect(trackMonitorSectionClicked).toHaveBeenCalledWith(section);
     },
   );
 

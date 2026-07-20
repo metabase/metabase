@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { useLazyListTasksQuery, useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -20,7 +22,10 @@ export const TaskListPage = ({ location }: WithRouterProps) => {
     { page, sort_column, sort_direction, status, task },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
-  const sortingOptions = { sort_column, sort_direction };
+  const sortingOptions = useMemo(
+    () => ({ sort_column, sort_direction }),
+    [sort_column, sort_direction],
+  );
 
   const {
     data: tasksData,

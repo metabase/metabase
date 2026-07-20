@@ -293,7 +293,7 @@ function getColumns(): TreeTableColumnDef<ErroringCard>[] {
     },
     {
       id: "user_name",
-      header: t`Created By`,
+      header: t`Created by`,
       width: "auto",
       minWidth: 110,
       maxAutoWidth: 200,
@@ -309,7 +309,7 @@ function getColumns(): TreeTableColumnDef<ErroringCard>[] {
     },
     {
       id: "updated_at",
-      header: t`Updated At`,
+      header: t`Updated at`,
       width: "auto",
       minWidth: 130,
       enableSorting: true,

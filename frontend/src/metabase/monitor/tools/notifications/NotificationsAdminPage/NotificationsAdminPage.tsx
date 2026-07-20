@@ -77,20 +77,26 @@ export const NotificationsAdminPage = ({
   );
   const selectedCount = selectedNotifications.length;
 
-  const { data: failingData, isLoading: isFailingLoading } =
-    useAdminListNotificationsQuery({
-      limit: 1,
-      offset: 0,
-      active: true,
-      last_check_status: "failing",
-    });
-  const { data: ownerlessData, isLoading: isOwnerlessLoading } =
-    useAdminListNotificationsQuery({
-      limit: 1,
-      offset: 0,
-      active: true,
-      creatorless: true,
-    });
+  const {
+    data: failingData,
+    error: failingError,
+    isLoading: isFailingLoading,
+  } = useAdminListNotificationsQuery({
+    limit: 1,
+    offset: 0,
+    active: urlState.active ?? undefined,
+    last_check_status: "failing",
+  });
+  const {
+    data: ownerlessData,
+    error: ownerlessError,
+    isLoading: isOwnerlessLoading,
+  } = useAdminListNotificationsQuery({
+    limit: 1,
+    offset: 0,
+    active: urlState.active ?? undefined,
+    creatorless: true,
+  });
   const failingCount = failingData?.total ?? 0;
   const ownerlessCount = ownerlessData?.total ?? 0;
 
@@ -278,6 +284,7 @@ export const NotificationsAdminPage = ({
 
   const isSidebarOpen = notificationId !== undefined;
   const isPageLoading = isLoading || isFailingLoading || isOwnerlessLoading;
+  const countError = failingError ?? ownerlessError;
 
   const { prevNotificationId, nextNotificationId, notificationSummary } =
     useMemo(() => {
@@ -306,8 +313,10 @@ export const NotificationsAdminPage = ({
       };
     }, [notificationId, notifications]);
 
-  if (isPageLoading) {
-    return <LoadingAndErrorWrapper loading />;
+  if (isPageLoading || countError) {
+    return (
+      <LoadingAndErrorWrapper loading={isPageLoading} error={countError} />
+    );
   }
 
   return (

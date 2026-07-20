@@ -4,12 +4,12 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,
-  Stack,
   Text,
   TreeTable,
   type TreeTableColumnDef,
@@ -98,11 +98,7 @@ export const TaskRunsTable = ({
           instance={treeTableInstance}
           hierarchical={false}
           ariaLabel={t`Task runs`}
-          emptyState={
-            <Stack p="xl" align="center">
-              <Text c="text-disabled">{t`No results`}</Text>
-            </Stack>
-          }
+          emptyState={<MonitorEmptyState label={t`No results`} />}
           getRowProps={() => ({ "data-testid": "task-run" })}
           onRowClick={handleRowActivate}
         />

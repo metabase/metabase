@@ -3,7 +3,11 @@ import {
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
-import type { Dataset, DatasetQuery, RowValue } from "metabase-types/api";
+import type {
+  Dataset,
+  InternalDatasetQuery,
+  RowValue,
+} from "metabase-types/api";
 
 import type {
   ErroringCard,
@@ -37,31 +41,18 @@ export const DEFAULT_SORTING: ErroringQuestionsSorting = {
   direction: "desc",
 };
 
-// "internal" query shape, which is later converted to DatasetQuery (opaque type).
-type InternalDatasetQuery = {
-  type: "internal";
-  fn: string;
-  args: string[];
-  limit?: number;
-  offset?: number;
-};
-
-const toDatasetQuery = (query: InternalDatasetQuery): DatasetQuery =>
-  // conversion to the branded opaque DatasetQuery union required by /api/dataset
-  query as unknown as DatasetQuery;
-
 export function getErroringQuestionsQuery(
   { search }: ErroringQuestionsFilters,
   { column, direction }: ErroringQuestionsSorting,
   page: number,
-): DatasetQuery {
-  return toDatasetQuery({
+): InternalDatasetQuery {
+  return {
     type: "internal",
     fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
     args: [search, column, direction],
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
-  });
+  };
 }
 
 export function getErroringQuestions(dataset: Dataset): ErroringCard[] {
@@ -71,10 +62,16 @@ export function getErroringQuestions(dataset: Dataset): ErroringCard[] {
     indexByName[col.name] = index;
   });
 
-  return rows.map((row) => {
+  return rows.flatMap((row) => {
     const value = (name: string) => row[indexByName[name]];
+    const id = asCount(value("card_id"));
+    // A row without a valid card id can't link to a question and would collide
+    // on the table's row id; drop it rather than fabricate an id.
+    if (id == null) {
+      return [];
+    }
     return {
-      id: asCount(value("card_id")) ?? 0,
+      id,
       card_name: asText(value("card_name")) ?? "",
       error_substr: asText(value("error_substr")) ?? "",
       collection_name: asText(value("collection_name")),

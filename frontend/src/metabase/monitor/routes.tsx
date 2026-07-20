@@ -103,24 +103,19 @@ function getMonitorIndexPath(state: State) {
 }
 
 /**
- * Legacy redirects for views that moved into the Monitor area:
- * - Dependency Diagnostics: Data Studio → Monitor.
- * - Admin Tools pages:
+ * Legacy redirects for Admin Tools pages that moved into the Monitor area:
  *   - /admin/tools → /monitor
  *   - /admin/tools/help → /admin/help
+ *   - /admin/tools/dependencies → /data-studio/dependencies (the dependency graph)
+ *
+ * The Data Studio → Monitor redirect for Dependency Diagnostics lives in
+ * data-studio/routes.tsx instead: it must be declared inside the Data Studio
+ * region (before that subtree's catch-all) so it isn't shadowed, yet outside the
+ * Data Studio access guard so it forwards every user.
  */
 export function getMonitorRedirects() {
   return (
     <>
-      <Route
-        path="/data-studio/dependency-diagnostics"
-        element={redirect(Urls.dependencyDiagnostics())}
-      />
-      <Route
-        path="/data-studio/dependency-diagnostics/*"
-        element={redirect(`${Urls.dependencyDiagnostics()}/*`)}
-      />
-
       <Route path="/admin/tools/help" element={redirect(Urls.adminHelp())} />
       <Route
         path="/admin/tools/help/*"
@@ -163,6 +158,14 @@ export function getMonitorRedirects() {
       <Route
         path="/admin/tools/notifications/*"
         element={redirect(`${Urls.monitorNotifications()}/*`)}
+      />
+      <Route
+        path="/admin/tools/dependencies"
+        element={redirect(Urls.dependencyGraph())}
+      />
+      <Route
+        path="/admin/tools/dependencies/*"
+        element={redirect(`${Urls.dependencyGraph()}/*`)}
       />
       <Route path="/admin/tools" element={redirect(Urls.monitor())} />
     </>

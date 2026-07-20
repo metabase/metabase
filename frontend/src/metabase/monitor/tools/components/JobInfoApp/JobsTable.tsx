@@ -2,13 +2,12 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,
-  Stack,
-  Text,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -58,11 +57,7 @@ export const JobsTable = ({ isLoading, jobs }: JobsTableProps) => {
           instance={treeTableInstance}
           hierarchical={false}
           ariaLabel={t`Jobs`}
-          emptyState={
-            <Stack p="xl" align="center">
-              <Text c="text-disabled">{t`No results`}</Text>
-            </Stack>
-          }
+          emptyState={<MonitorEmptyState label={t`No results`} />}
           getRowProps={() => ({ "data-testid": "job" })}
           onRowClick={handleRowActivate}
         />

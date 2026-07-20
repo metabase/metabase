@@ -1,3 +1,4 @@
+import { skipToken } from "@reduxjs/toolkit/query";
 import { useCallback, useEffect, useRef } from "react";
 import _ from "underscore";
 
@@ -29,6 +30,10 @@ type UseAbortableQueryOptions = {
  *
  * Caching mirrors `useQuery`: cache-first by default.
  *
+ * Skipping: pass `skipToken` as the arg, or set `{ skip: true }`. While skipped
+ * no request is issued and `refetch` is a no-op. Passing `skipToken` avoids
+ * having to fabricate a placeholder arg for the skipped state.
+ *
  * Each hook instance gets its own RTK cache entry, so aborting is safe.
  * The trade-off is that instances don't share cached responses and
  * identical concurrent requests aren't deduplicated.
@@ -42,9 +47,9 @@ export function useAbortableQuery<
     TResult,
     ...unknown[],
   ],
-  arg: Arg,
+  arg: Arg | typeof skipToken,
   {
-    skip = false,
+    skip: skipOption = false,
     refetchOnMountOrArgChange = false,
   }: UseAbortableQueryOptions = {},
 ): TResult & { refetch: () => void } {
@@ -52,14 +57,21 @@ export function useAbortableQuery<
   const requestRef = useRef<LazyQueryRequest | null>(null);
   const instanceKey = useUniqueId("abortable-query");
 
+  const skip = skipOption || arg === skipToken;
+
+  // Keep the last concrete arg; a `skipToken` arg never overwrites it, so
+  // `stableArg` only equals `skipToken` before any real arg has arrived.
   const argRef = useRef(arg);
-  if (!_.isEqual(argRef.current, arg)) {
+  if (arg !== skipToken && !_.isEqual(argRef.current, arg)) {
     argRef.current = arg;
   }
   const stableArg = argRef.current;
 
   const run = useCallback(
     (preferCache: boolean) => {
+      if (stableArg === skipToken) {
+        return null;
+      }
       requestRef.current?.abort();
       const request = trigger(
         { ...stableArg, [RTK_CACHE_KEY_PARAM]: instanceKey },
@@ -71,7 +83,11 @@ export function useAbortableQuery<
     [trigger, stableArg, instanceKey],
   );
 
-  const refetch = useCallback(() => run(false), [run]);
+  const refetch = useCallback(() => {
+    if (!skip) {
+      run(false);
+    }
+  }, [run, skip]);
 
   useEffect(() => {
     if (skip) {

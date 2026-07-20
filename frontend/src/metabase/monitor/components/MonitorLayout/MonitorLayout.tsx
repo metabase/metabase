@@ -4,6 +4,10 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
+  type MonitorSection,
+  trackMonitorSectionClicked,
+} from "metabase/common/monitor/analytics";
+import {
   canAccessAlertsManagement,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
@@ -20,15 +24,6 @@ import { FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
-
-type MonitorSection =
-  | "diagnostics"
-  | "erroring-questions"
-  | "alerts"
-  | "tasks"
-  | "jobs"
-  | "logs"
-  | "model-caching";
 
 function getActiveSection(pathname: string): MonitorSection | null {
   return match(pathname)
@@ -92,6 +87,7 @@ export function MonitorLayout() {
               isSelected={activeSection === "diagnostics"}
               showLabel={isNavbarOpened}
               isGated={!hasDependenciesFeature}
+              onClick={() => trackMonitorSectionClicked("diagnostics")}
             />
           )}
           {canAccessTools && (
@@ -102,6 +98,7 @@ export function MonitorLayout() {
               isSelected={activeSection === "erroring-questions"}
               showLabel={isNavbarOpened}
               isGated={!hasAuditAppFeature}
+              onClick={() => trackMonitorSectionClicked("erroring-questions")}
             />
           )}
           {canAccessAlerts && (
@@ -111,6 +108,7 @@ export function MonitorLayout() {
               to={Urls.monitorNotifications()}
               isSelected={activeSection === "alerts"}
               showLabel={isNavbarOpened}
+              onClick={() => trackMonitorSectionClicked("alerts")}
             />
           )}
         </AreaTabGroup>
@@ -123,6 +121,7 @@ export function MonitorLayout() {
             to={Urls.monitorTasks()}
             isSelected={activeSection === "tasks"}
             showLabel={isNavbarOpened}
+            onClick={() => trackMonitorSectionClicked("tasks")}
           />
           <AreaTab
             label={t`Scheduled jobs`}
@@ -130,6 +129,7 @@ export function MonitorLayout() {
             to={Urls.monitorJobs()}
             isSelected={activeSection === "jobs"}
             showLabel={isNavbarOpened}
+            onClick={() => trackMonitorSectionClicked("jobs")}
           />
           <AreaTab
             label={t`Application logs`}
@@ -137,6 +137,7 @@ export function MonitorLayout() {
             to={Urls.monitorLogs()}
             isSelected={activeSection === "logs"}
             showLabel={isNavbarOpened}
+            onClick={() => trackMonitorSectionClicked("logs")}
           />
           <AreaTab
             label={t`Model caching log`}
@@ -144,6 +145,7 @@ export function MonitorLayout() {
             to={Urls.monitorModelCaching()}
             isSelected={activeSection === "model-caching"}
             showLabel={isNavbarOpened}
+            onClick={() => trackMonitorSectionClicked("model-caching")}
           />
         </AreaTabGroup>
       )}

@@ -10,20 +10,28 @@ type UseScrollToTopProps = {
 /**
  * Scrolls the element back to the top when `keys` change, e.g. after
  * paginating or sorting.
+ *
+ * The scroll is deferred until `skip` is false, so callers can bind `skip`
+ * to `isFetching` and have the reset land once the new page is in view.
+ * When `keys` change while not skipped (e.g. a cache hit where `isFetching`
+ * never toggles), the reset fires immediately. Never fires on mount.
  */
 export function useScrollToTop({
   ref,
   keys,
   skip = false,
 }: UseScrollToTopProps) {
-  const keysRef = useRef(keys);
+  const previousKeysRef = useRef(keys);
+  const keysVersionRef = useRef(0);
   const isResetPendingRef = useRef(false);
 
-  if (!_.isEqual(keysRef.current, keys)) {
-    keysRef.current = keys;
+  if (!_.isEqual(previousKeysRef.current, keys)) {
+    previousKeysRef.current = keys;
+    keysVersionRef.current += 1;
     isResetPendingRef.current = true;
   }
 
+  const keysVersion = keysVersionRef.current;
   useLayoutEffect(() => {
     if (!skip && isResetPendingRef.current) {
       isResetPendingRef.current = false;
@@ -31,5 +39,5 @@ export function useScrollToTop({
         ref.current.scrollTop = 0;
       }
     }
-  }, [ref, skip]);
+  }, [ref, skip, keysVersion]);
 }
