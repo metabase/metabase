@@ -664,6 +664,7 @@
   ([model pk]
    (can-read? model pk)))
 
+;; only reached through the :can_write hydration key, never called by name
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write
   :can_write

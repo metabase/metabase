@@ -174,6 +174,7 @@
       (qp.compile/compile (query-fn (mp-fn))))
     {})))
 
+;; kept for REPL perf work: single-run timing alternative to the criterium helper above
 #_{:clj-kondo/ignore [:unused-private-var]}
 (defn- compile-time1
   "Times a single run rather than [[crit/quick-benchmark]]."
