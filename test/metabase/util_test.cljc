@@ -604,6 +604,7 @@
 #?(:clj
    (deftest ^:parallel case-enum-test
      (testing "case does not work"
+       ;; deliberately exercises the broken case-on-enums behavior that case-enum exists to fix
        #_{:clj-kondo/ignore [:case-symbol-test]}
        (is (= 3 (case Month/MAY
                   Month/APRIL 1
