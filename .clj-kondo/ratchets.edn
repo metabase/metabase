@@ -89,7 +89,6 @@
                    :metabase/validate-deftest
                    :missing-docstring
                    :missing-protocol-method
-                   :reduce-without-init
                    :syntax
                    :unquote-not-syntax-quoted
                    :unresolved-namespace
