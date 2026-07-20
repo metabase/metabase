@@ -3405,3 +3405,50 @@ open item, not as evidence.
     Also: **`tsc`'s silence on dead imports (#162) bit this port for real** — the
     hand-audit found a dead `currentUser` export that `tsc` said nothing about.
     The audit is not ceremonial.
+
+### 🔴 `should("be.enabled")` does NOT map to `toBeEnabled()`
+
+188. **Sizzle's `:enabled` is `elem.disabled === false`; Playwright's
+    `toBeEnabled()` uses the ARIA notion** (`alert-types`). They disagree on
+    anything that isn't a form control.
+
+    Measured on a real case: `alert-goal-select` is **two different elements**
+    depending on branch — a Mantine `<Paper>` (a plain `<div>`) in the
+    single-option branch, and an `<input>` in the Select branch. A `<div>` has no
+    `disabled` property, so **Cypress's `should("not.be.enabled")` passes**,
+    while Playwright considers that same `<div>` **enabled** — so the naive port
+    would have gone **red against correct product code**.
+
+    Ported as `toHaveJSProperty("disabled", false)`, which reproduces the jQuery
+    predicate exactly. Confirmed empirically rather than by reasoning: mutant M4's
+    failure output **printed both resolved elements**.
+
+    Joins the `getByText` pair (#98, #170) and `.contains()` (#153) as a
+    chai-jquery→Playwright mapping that looks one-to-one and isn't. **Worth
+    grepping landed ports for `toBeEnabled`/`toBeDisabled` ported from
+    `be.enabled`/`not.be.enabled`.**
+
+### A correction to my own brief, and an open question left open
+
+189. **My brief said "zero emission in the notification BE namespaces". That is
+    wrong as stated** (`alert-types`): there are **18 Prometheus emissions**, all
+    in `send.clj`, on a path this spec never reaches. **"Zero *Snowplow*" is the
+    accurate claim.** Eleventh claim of mine corrected on evidence — this one a
+    sloppy generalisation from "no snowplow" to "no emission".
+
+    The same agent flagged an **upstream** weakness worth recording: the test
+    named *"should not be possible to create goal based alert for a multi-series
+    question"* **never reaches the guard it names** — its fixture sets no
+    `visualization_settings`, so `graph.show_goal` is falsy and it short-circuits
+    down the path the rows-describe already covers. Left verbatim with the
+    analysis inline.
+
+    And it left **M8 explicitly unexplained** — two aggregations plus a goal
+    still offering goal options — with the reasoning I want to keep quoting:
+    *"I could have written a plausible-sounding mechanism for it; I'd rather you
+    know it's an open question."*
+
+    It also **re-measured rather than inherited** the webhook-tester result
+    (request-count delta 1 → 1 across ~60 executions) while correctly noting it
+    is itself an **exposer** of the shared maildev inbox, since `setupSMTP`
+    deletes it once per test.
