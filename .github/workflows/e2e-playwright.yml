@@ -211,9 +211,30 @@ jobs:
             e2e-playwright/target/playwright-results.json
           if-no-files-found: ignore
 
+      # A test that fails then passes on retry is reported `flaky` and the SHARD
+      # PASSES — so `if: failure()` below uploaded nothing, and the trace
+      # (config is trace: retain-on-failure, so the failed first attempt IS
+      # recorded on disk) was discarded. Every flaky-only failure was therefore
+      # undiagnosable: one investigation burned ~33 local runs falsifying
+      # hypotheses that a single trace would have settled. Reports are large
+      # (~125MB/shard), so this is gated on flaky rather than always().
+      - name: Check for flaky tests
+        id: flaky
+        if: always()
+        run: |
+          # `"status": *"flaky"` — the reporter emits it spaced ("status": "flaky"),
+          # but match both forms so a formatting change cannot silently turn this
+          # step into a no-op that reports "no flakes" forever.
+          if [ -f e2e-playwright/target/playwright-results.json ] \
+             && grep -qE '"status": *"flaky"' e2e-playwright/target/playwright-results.json; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7
-        if: failure()
+        if: failure() || steps.flaky.outputs.found == 'true'
         with:
           name: playwright-report-s${{ matrix.shard }}
           path: |
