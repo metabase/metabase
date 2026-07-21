@@ -908,6 +908,42 @@
               (is (= card-entity-id
                      (get-in exported ["stages" 0 "source-card"]))))))))))
 
+(deftest source-card-multi-stage-cross-stage-ref-end-to-end-test
+  (testing
+   (str "Regression (BOT-1604): a two-stage query whose FIRST stage sources from a\n"
+        "`source-card:` (not `source-table:`), aggregating and breaking out on the card's own\n"
+        "columns, with a SECOND stage that filters on the aggregation output by cross-stage\n"
+        "name (`count`). `infer-cross-stage-field-types*` mini-resolves stage 0 to learn its\n"
+        "returned columns' types, but stage 0's own `source-card` field refs (`ID` in the\n"
+        "breakout) only get their `base-type` from `infer-source-card-field-types*` - if that\n"
+        "pass runs AFTER the cross-stage pass, the mini-resolve of stage 0 fails\n"
+        "schema-validation on its own untyped refs, is silently swallowed, and stage 1's\n"
+        "`count` ref is left without `base-type` - failing the final `lib.schema/query`\n"
+        "validation (\"missing required key\") every time, regardless of how the LLM retries.")
+    (with-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "aggregation" [["count" {}]]
+                                     "breakout"    [["field" {} "ID"]]}
+                                    {"lib/type" "mbql.stage/mbql"
+                                     "filters"  [[">" {} ["field" {} "count"] 10]]}]}))
+              q             (get-in result [:structured-output :query])
+              filter-clause (get-in q [:stages 1 :filters 0])
+              field-clause  (nth filter-clause 2)]
+          (testing "two-stage shape preserved, stage 0 keeps source-card"
+            (is (= 2 (count (:stages q))))
+            (is (= 500 (get-in q [:stages 0 :source-card]))))
+          (testing "stage-1 cross-stage `count` ref resolved with an inferred base-type"
+            (is (= :> (first filter-clause)))
+            (is (= :field (first field-clause)))
+            (is (= "count" (nth field-clause 2)))
+            (is (= :type/Integer (get-in field-clause [1 :base-type])))))))))
+
 (deftest source-card-unknown-entity-id-surfaces-agent-error-test
   (testing "a valid-shaped entity_id that does not resolve to any card returns :unknown-card with :agent-error? true"
     (with-card-mp-and-stubs!
