@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -266,3 +267,44 @@
                 (testing "Returns nil when card-id is not present"
                   (is (nil? (#'sql.qp/resolve-persisted-source-sql
                              {:source-table (mt/id :products)}))))))))))))
+
+(deftest persisted-models-multi-stage-test
+  (testing "Persisted models with custom columns can be used as a source (#78240)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (let [mp           (mt/metadata-provider)]
+            (are [model-query] (mt/with-temp [:model/Card model {:type          :model
+                                                                 :database_id   (mt/id)
+                                                                 :query_type    :query
+                                                                 :dataset_query model-query}]
+                                 (persist-models!)
+                                 (let [model-id (:id model)
+                                       query (-> (lib/query mp (lib.metadata/card mp model-id))
+                                                 (lib/limit 3))
+                                       results          (qp/process-query query)
+                                       persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+                                   (testing "Was persisted"
+                                     (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
+                                   (testing "Query returns rows"
+                                     (is (= 3 (count (mt/rows results)))))))
+              (let [orders       (lib.metadata/table mp (mt/id :orders))
+                    total        (lib.metadata/field mp (mt/id :orders :total))
+                    ;; single stage, but nest-expressions splits it during SQL compilation
+                    base-query   (-> (lib/query mp orders)
+                                     (lib/expression "double_total" (lib/* total 2)))
+                    double-total (m/find-first #(= (:name %) "double_total")
+                                               (lib/breakoutable-columns base-query))]
+                (-> base-query
+                    (lib/aggregate (lib/count))
+                    (lib/breakout double-total)))
+              (let [orders      (lib.metadata/table mp (mt/id :orders))
+                    product-id  (lib.metadata/field mp (mt/id :orders :product_id))
+                    ;; two stages: summarize count by product-id, then filter in a new stage
+                    base-query  (-> (lib/query mp orders)
+                                    (lib/aggregate (lib/count))
+                                    (lib/breakout product-id)
+                                    lib/append-stage)
+                    count-col   (m/find-first #(= (:name %) "count")
+                                              (lib/filterable-columns base-query))]
+                (lib/filter base-query (lib/> count-col 5))))))))))
