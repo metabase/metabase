@@ -114,18 +114,19 @@
     (- limit returned)))
 
 (defn- cursor-query
-  "The query the next-page cursor stores: the page's own query with the budget for everything
-   after this page embedded as the last-stage limit — the query's own limit spent down by the
-   rows already served, so a `limit 500` query pages to row 500 and stops, or the served page
-   size when the query set no limit of its own, so continuing with `cursor` alone serves another
-   page of the same size. An aggregated last stage is passed through unchanged — an embedded
-   limit there would cut the base set before the keyset order can pin it down, and
+  "The query the next-page cursor stores: the page's own query carrying `remaining` — the rows
+   still owed by the query's own limit — as its last-stage limit, so a `limit 500` query pages
+   to row 500 and stops there. A query that set no limit of its own stores none either: a limit
+   at this position reads as the caller's whole-result budget, so embedding the page size there
+   would make the next page look complete the moment it filled, and the chain would stop one
+   page in. Page size is `row_limit`'s job, and a cursor call takes it like any other. An
+   aggregated last stage is passed through unchanged — an embedded limit there would cut the
+   base set before the keyset order can pin it down, and
    [[metabase.mcp.v2.query/next-page-cursor!]] would rightly refuse to mint."
-  [serialized-query page-size remaining]
-  (if (aggregated-last-stage? serialized-query)
+  [serialized-query remaining]
+  (if (or (nil? remaining) (aggregated-last-stage? serialized-query))
     serialized-query
-    (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit]
-              (or remaining page-size))))
+    (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit] remaining)))
 
 ;;; ------------------------------------------------- Response -----------------------------------------------------
 
@@ -179,7 +180,7 @@
         next-cursor (when truncated?
                       (v2.query/next-page-cursor! session-id
                                                   api/*current-user-id*
-                                                  (cursor-query serialized-query cap remaining)
+                                                  (cursor-query serialized-query remaining)
                                                   (last rows)
                                                   {:result-cols cols :prompt prompt}))
         counts      (cond-> {:query_handle handle
@@ -211,7 +212,7 @@
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-query
-  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks the query against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; when a response carries next_cursor, fetch the next page by calling again with cursor alone, otherwise narrow the query (filter/aggregate) or export for the full set.
+  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks the query against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; when a response carries next_cursor, fetch the next page by calling again with cursor (pass row_limit alongside it to keep the same page size), otherwise narrow the query (filter/aggregate) or export for the full set.
 
 Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAMES first (search, browse_data) — never invent identifiers, never use numeric ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}. Each stage has \"lib/type\": \"mbql.stage/mbql\" plus either source-table: [\"<db>\", \"<schema-or-null>\", \"<table>\"] or source-card: \"<entity_id>\" on the FIRST stage only; later stages implicitly read the previous stage's output. Every clause is [\"op\", {}, ...args] with a MANDATORY options map at position 1. Field refs are [\"field\", {}, [\"<db>\", \"<schema-or-null>\", \"<table>\", \"<column>\"]] — a 4-segment portable name array — or a bare column-name string for a previous stage's output ([\"field\", {}, \"count\"]). Per-stage clause keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Minimal example (order count by month): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}. The full grammar (operators, joins, expressions, multi-stage queries) is available as an MCP resource. Native SQL is rejected at any depth — use execute_sql for raw SQL."
   {:name        "execute_query"

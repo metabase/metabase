@@ -162,7 +162,9 @@
           (is (string? (:next_cursor body)))
           (is (str/includes? (steering-line result) "continue with `cursor`")))
         (testing "GHY-4142: obeying the steering hint makes progress — the cursor serves the next page, same size, no overlap"
-          (let [next-body (payload (call! sid {:cursor (:next_cursor body)}))]
+          ;; row_limit sizes a cursor page like any other: the cursor carries the boundary, not
+          ;; the page size, so a chain that wants a fixed size passes it on every call.
+          (let [next-body (payload (call! sid {:cursor (:next_cursor body) :row_limit 5}))]
             (is (= 5 (:returned next-body)))
             (is (empty? (set/intersection (set (row-ids body)) (set (row-ids next-body)))))
             (is (< (apply max (row-ids body)) (apply min (row-ids next-body)))
@@ -180,8 +182,8 @@
                               acc' (into acc (row-ids body))]
                           (if (or (>= (inc pages) n-pages) (not (:next_cursor body)))
                             acc'
-                            (recur {:cursor (:next_cursor body)} acc' (inc pages)))))]
-        (testing "GHY-4142: paging by cursor alone yields strictly increasing, distinct PKs — no row skipped, none repeated"
+                            (recur {:cursor (:next_cursor body) :row_limit page-size} acc' (inc pages)))))]
+        (testing "GHY-4142: paging by cursor yields strictly increasing, distinct PKs — no row skipped, none repeated"
           (is (= (* page-size n-pages) (count ids)))
           (is (apply < ids))
           (is (= (count ids) (count (distinct ids)))))))))
@@ -223,12 +225,13 @@
             o-pid  (lib.metadata/field mp (mt/id :orders :product_id))
             joined (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :orders))
-                                                  [(lib/= p-id o-pid)]))
-                       (lib/limit 5))
+                                                  [(lib/= p-id o-pid)])))
             handle (common/mint-query-handle! sid (mt/user->id :rasta)
                                               (common/encode-serialized-query
                                                (lib/prepare-for-serialization joined)))
-            result (call! sid {:query_handle handle})
+            ;; row_limit, not an embedded :limit — a query the caller limited to 5 rows that
+            ;; returns 5 is complete, and the truncation this pins has to come from the page cap.
+            result (call! sid {:query_handle handle :row_limit 5})
             body   (payload result)]
         (testing "GHY-4142: a truncated fan-out join page is an explicit dead end, not a gapped cursor"
           (is (= 5 (:returned body)))
