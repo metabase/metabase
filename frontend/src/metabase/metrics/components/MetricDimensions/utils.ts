@@ -13,6 +13,7 @@ import {
   isStringLike,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
+  CardQueryMetadata,
   IconName,
   MetricDimension,
   MetricDimensionGroup,
@@ -87,10 +88,18 @@ export function getNewDimensionTitle(
 
 export function getSourceColumnLabel(
   dimension: MetricDimension,
+  queryMetadata: CardQueryMetadata,
 ): string | null {
-  if (!dimension.sources?.length) {
+  const sourceFieldId = dimension.sources?.[0]?.["field-id"];
+  const sourceField =
+    queryMetadata.fields.find((field) => field.id === sourceFieldId) ??
+    queryMetadata.tables
+      .flatMap((table) => table.fields ?? [])
+      .find((field) => field.id === sourceFieldId);
+  const sourceColumn = sourceField?.display_name;
+  if (!sourceColumn) {
     return null;
   }
   const table = dimension.group?.display_name;
-  return table ? `${table}.${dimension.display_name}` : dimension.display_name;
+  return table ? `${table}.${sourceColumn}` : sourceColumn;
 }

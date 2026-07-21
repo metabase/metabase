@@ -15,7 +15,7 @@ export function MetricDimensionsPage({
 }: MetricPageProps) {
   return (
     <MetricPageCard cardId={params.cardId}>
-      {(card) => (
+      {(card, metadata) => (
         <PageContainer data-testid="metric-dimensions-page" gap="xl">
           <MetricPageShell
             card={card}
@@ -24,7 +24,7 @@ export function MetricDimensionsPage({
             showAppSwitcher={showAppSwitcher}
             showDataStudioLink={showDataStudioLink}
           />
-          <MetricDimensions metricId={card.id} />
+          <MetricDimensions metricId={card.id} queryMetadata={metadata} />
         </PageContainer>
       )}
     </MetricPageCard>

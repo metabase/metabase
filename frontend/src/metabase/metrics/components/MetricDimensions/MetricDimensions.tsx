@@ -12,7 +12,11 @@ import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Divider, Flex, Paper } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type { DimensionId, MetricId } from "metabase-types/api";
+import type {
+  CardQueryMetadata,
+  DimensionId,
+  MetricId,
+} from "metabase-types/api";
 
 import { AddDimensionsPanel } from "./AddDimensionsPanel";
 import { DimensionList } from "./DimensionList";
@@ -26,9 +30,13 @@ type DetailMode =
 
 interface MetricDimensionsProps {
   metricId: MetricId;
+  queryMetadata: CardQueryMetadata;
 }
 
-export function MetricDimensions({ metricId }: MetricDimensionsProps) {
+export function MetricDimensions({
+  metricId,
+  queryMetadata,
+}: MetricDimensionsProps) {
   const dispatch = useDispatch();
   const [search, setSearch] = useState("");
   const [checkedIds, setCheckedIds] = useState<Set<DimensionId>>(new Set());
@@ -127,6 +135,7 @@ export function MetricDimensions({ metricId }: MetricDimensionsProps) {
                 isFetching={isFetching}
                 key={dimension.id}
                 metricId={metricId}
+                queryMetadata={queryMetadata}
               />
             ) : (
               <Box className={S.column} />

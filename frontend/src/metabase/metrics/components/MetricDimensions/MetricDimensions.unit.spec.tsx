@@ -12,6 +12,11 @@ import {
 import { metricApi } from "metabase/api/metric";
 import type { ListMetricDimensionsResponse } from "metabase-types/api";
 import {
+  createMockCardQueryMetadata,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
   createMockAddableDimensionGroup,
   createMockMetricDimension,
   createMockMetricDimensionGroup,
@@ -102,6 +107,17 @@ const SELF_ADDABLE_GROUP = createMockAddableDimensionGroup({
   dimensions: [SELF_ADDABLE_COLUMN],
 });
 
+const QUERY_METADATA = createMockCardQueryMetadata({
+  tables: [
+    createMockTable({
+      fields: [
+        createMockField({ id: 101, display_name: "Created At" }),
+        createMockField({ id: 102, display_name: "City" }),
+      ],
+    }),
+  ],
+});
+
 function setup(response?: Partial<ListMetricDimensionsResponse>) {
   const fullResponse: ListMetricDimensionsResponse = {
     added: [CREATED_AT, COUNTRY, SUSPEND_AT],
@@ -110,7 +126,7 @@ function setup(response?: Partial<ListMetricDimensionsResponse>) {
   };
   setupMetricDimensionsEndpoints(METRIC_ID, fullResponse);
   const { store } = renderWithProviders(
-    <MetricDimensions metricId={METRIC_ID} />,
+    <MetricDimensions metricId={METRIC_ID} queryMetadata={QUERY_METADATA} />,
   );
   return { store };
 }
@@ -393,6 +409,29 @@ describe("MetricDimensions", () => {
     expect(
       settings.queryByRole("textbox", { name: "Source column" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not use the dimension display name for the source column", async () => {
+    setup({
+      added: [
+        createMockMetricDimension({
+          ...COUNTRY,
+          display_name: "User - City",
+          group: createMockMetricDimensionGroup({
+            type: "connection",
+            display_name: "User",
+          }),
+          sources: [{ type: "field", "field-id": 102 }],
+        }),
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/User - City/));
+    const sourceField = within(settings.getByTestId("dimension-source"));
+
+    expect(sourceField.getByText("User.City")).toBeInTheDocument();
+    expect(sourceField.queryByText("User.User - City")).not.toBeInTheDocument();
   });
 
   it("shows a drag handle on every row", async () => {

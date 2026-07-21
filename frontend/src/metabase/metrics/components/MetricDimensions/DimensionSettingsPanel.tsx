@@ -18,6 +18,7 @@ import {
   Title,
 } from "metabase/ui";
 import type {
+  CardQueryMetadata,
   MetricDimension,
   MetricId,
   UpdateMetricDimensionRequest,
@@ -40,12 +41,14 @@ interface DimensionSettingsPanelProps {
   metricId: MetricId;
   dimension: MetricDimension;
   isFetching: boolean;
+  queryMetadata: CardQueryMetadata;
 }
 
 export function DimensionSettingsPanel({
   metricId,
   dimension,
   isFetching,
+  queryMetadata,
 }: DimensionSettingsPanelProps) {
   const [updateDimension] = useUpdateMetricDimensionMutation();
   const [setDefaultDimension, { isLoading: isSettingDefault }] =
@@ -56,7 +59,7 @@ export function DimensionSettingsPanel({
 
   const { sendErrorToast } = useMetadataToasts();
 
-  const sourceColumnLabel = getSourceColumnLabel(dimension);
+  const sourceColumnLabel = getSourceColumnLabel(dimension, queryMetadata);
   const showSetAsDefaultButton = !isOrphaned(dimension) && !dimension.default;
 
   const persist = async (changes: DimensionChanges) => {
