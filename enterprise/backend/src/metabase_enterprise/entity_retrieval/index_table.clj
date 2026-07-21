@@ -128,7 +128,7 @@
 (defn touch-reconciled-at!
   "Set the meta row's `reconciled_at` to the pgvector clock, recording that a full reconcile just verified the
   index against the appdb. Read by the NLQ staleness health metric as a 'time since the index was last
-  confirmed fresh' bound. Deliberately NOT `updated_at`, which write-meta! bumps on an empty create/rebuild --
+  confirmed fresh' bound. Deliberately NOT `updated_at`, which write-meta! bumps on an empty create/rebuild —
   that would read as fresh before anything was reconciled. A no-op before the meta row exists."
   [tx]
   (jdbc/execute! tx [(format "UPDATE \"%s\" SET reconciled_at = now() WHERE id = 1" *meta-table*)]))
@@ -156,7 +156,7 @@
   - `:missing`      no meta row — nothing built
   - `:incompatible` meta row for a different model/schema — rebuild pending
   - `:compatible`   meta row matches — queryable with the configured model
-  Reads the meta table directly, so throws (undefined-table) before the first [[ensure-tables!]]; guard for it."
+  Reads the meta table directly, so throws (undefined-table) before the first [[ensure-tables!]] — guard against that."
   [pgvector embedding-model]
   (let [meta (read-meta pgvector)]
     (cond

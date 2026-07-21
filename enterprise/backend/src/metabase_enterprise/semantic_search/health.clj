@@ -210,7 +210,8 @@
   (atom #{}))
 
 (defn- set-index-gauge!
-  "Update a gauge for the given engine, clearing it if nil. Gauge is created on first update."
+  "Update a gauge for the given engine, clearing it when `value` is nil.
+  The series is created on first write."
   [gauge-key engine value]
   (if (some? value)
     (do (analytics/set-gauge! gauge-key {:engine (name engine)} value)
@@ -220,8 +221,8 @@
       (analytics/set-gauge! gauge-key {:engine (name engine)} ##NaN))))
 
 (defn- run-measure!
-  "Run a measure's collector, update its gauge, and return the health result. Clear the gauge if it throws,
-  or is disabled."
+  "Run a measure's collector, update its gauge, and return the health result. When the collector throws or
+  reads N/A (nil), the gauge is cleared instead."
   [{:keys [gauge-key engine collect check-name]}]
   (let [{:keys [value health message]}
         (try
@@ -258,8 +259,8 @@
       (log/error e "AI index health-row persist errored" {:check check-name}))))
 
 (defn refresh-ai-index-metrics!
-  "Compute and record all AI-index measures. Ensure health is persisted, if the inspector is enabled.
-  Run periodically to keep gauges fresh between daily reports."
+  "Compute and record all AI-index measures: set the gauges, and persist health rows when the inspector is
+  enabled. Run periodically to keep gauges fresh between daily reports."
   []
   (run! refresh-measure! @index-measures))
 

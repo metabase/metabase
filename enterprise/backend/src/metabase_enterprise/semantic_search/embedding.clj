@@ -178,8 +178,7 @@
 
 (defonce ^{:doc "Insertion-ordered set of `(fn [state])` hooks run on every breaker state change.
   Health namespaces `conj` a hook here (inverting the dep -- they require this module) to re-persist their
-  embedder-dependent check on a transition, so an outage or recovery surfaces in minutes, not the next daily
-  report.
+  embedder-dependent check on a transition, so an outage or recovery surfaces in minutes, not the next daily report.
   Ordered-set: `conj` is reload-idempotent and load-ordered, so the semantic hook clears the probe cache
   before the NLQ hook reads it. Register a var so a REPL redef takes effect live."}
   embedder-circuit-state-change-hooks

@@ -67,7 +67,7 @@
 (defn- missing-table-error?
   "Whether we threw due to a Postgres undefined_table error (42P01), i.e. the indexes don't exist yet.
   Expected before the first build or after a manual drop awaiting heal.
-  This would have to have been return from the database itself, so it will not be a connectivity fault."
+  The SQLState comes from the database itself, so this is not a connectivity fault."
   [e]
   (boolean (some #(and (instance? SQLException %)
                        (= "42P01" (.getSQLState ^SQLException %)))

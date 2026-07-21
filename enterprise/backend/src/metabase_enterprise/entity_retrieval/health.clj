@@ -1,10 +1,10 @@
 (ns metabase-enterprise.entity-retrieval.health
   "Health-inspector check for NLQ (natural-language-query) curated retrieval.
 
-  The `:nlq` Metabot profile uses this tool, but if the tool is unavailable we swap this profile out with
-  the `:nlq-fallback` profile instead, which uses the regular search tool.
+  The `:nlq` Metabot profile uses this tool; when the tool is unavailable we swap the profile out for
+  `:nlq-fallback`, which uses the regular search tool.
 
-  Because this failure mode is subtle, this health check is important to catch incidents.
+  The swap is silent, so a broken index would otherwise go unnoticed -- this check surfaces it.
 
   :health can take the following values:
   -     nil = not enabled
@@ -12,7 +12,7 @@
   - 0<h<100 = partially available (e.g. a built but empty index)
   -     100 = fully operational
 
-  Shares the embedding-service probe and circuit-breaker with semantic-search. "
+  Shares the embedding-service probe and circuit-breaker with semantic-search."
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -85,7 +85,7 @@
 
 (def ^:private library-datasource
   "TTL-memoized so coverage, garbage, and staleness share one retrieval-status probe + datasource resolve per
-  refresh cycle rather than each re-running it (staleness previously called this on its own path)."
+  refresh cycle rather than each re-running it."
   (memoize/ttl library-datasource* :ttl/threshold (* 30 1000)))
 
 (defn- entity-class-set

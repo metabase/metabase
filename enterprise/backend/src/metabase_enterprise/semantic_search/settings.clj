@@ -97,7 +97,7 @@
 (defsetting semantic-search-embedder-circuit-breaker-enabled
   (deferred-tru
    (str "Wrap embedding-service calls in a circuit breaker that fails fast after repeated failures. "
-        "Kill switch; breaker thresholds are fixed and take effect from process start."))
+        "Runtime kill switch; the breaker thresholds are fixed."))
   :type       :boolean
   :default    true
   :encryption :no
