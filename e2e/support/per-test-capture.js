@@ -7,9 +7,12 @@
  *    window, and setup traffic issued through cy.request (helpers like
  *    H.createQuestion never hit cy.intercept because they go through the
  *    Cypress server, not the browser).
- *  - which instrumented functions fired, computed node-side as the delta of
- *    the accumulated Istanbul counters between tests (recordTestCapture in
- *    e2e/support/config.js).
+ *  - which instrumented functions fired, read browser-side from each app
+ *    window's Istanbul counters (window.__coverage__). The counters are
+ *    zeroed after every flush, so each test reports only its own fires —
+ *    they cannot be diffed node-side against @cypress/code-coverage's
+ *    .nyc_output/out.json because the plugin only writes that file once per
+ *    spec (combineCoverage merges in memory; coverageReport persists).
  *
  * Two app-traffic capture paths on purpose: the intercept sees traffic the
  * window wrappers can't (child iframes in embedding specs), while the
@@ -20,10 +23,13 @@
  * flush.
  *
  * The afterEach flush below MUST run after @cypress/code-coverage's own
- * afterEach, which drains window.__coverage__ into the node-side accumulator.
- * That holds because this module is imported after
+ * afterEach, which sends the window's cumulative counters to the plugin's
+ * accumulator — zeroing before that send would drop the test's fires from
+ * the spec-level totals. That holds because this module is imported after
  * "@cypress/code-coverage/support" in e2e/support/cypress.js and root-level
- * hooks run in registration order.
+ * hooks run in registration order. (A side effect of per-test zeroing is
+ * that the plugin's summed spec totals become accurate instead of
+ * re-counting each window's cumulative counters every test.)
  *
  * Known attribution gap, acceptable for manifest purposes: requests from
  * hooks attribute to the surrounding test:before:run/afterEach window, so
@@ -48,6 +54,51 @@ const HTTP_METHODS = new Set([
 const RELATIVE_ORIGIN = "http://relative.invalid";
 
 let routeBuffer = [];
+
+// References to the __coverage__ objects of app windows that may still gain
+// counts. Istanbul registers every instrumented chunk into one object per
+// window, so holding the reference sees lazily-loaded files too. A reload
+// creates a fresh object (tracked by the window:load handler below); the old
+// one keeps any counts fired earlier in the same test until the flush.
+let coverageObjects = [];
+
+function trackCoverage(win) {
+  const coverage = win.__coverage__;
+  if (coverage && !coverageObjects.includes(coverage)) {
+    coverageObjects.push(coverage);
+  }
+}
+
+// Sums the per-file function counters across all tracked windows, zeroing
+// every counter (functions, statements, branches) as it goes so the next
+// flush reports only what fired after this one. Dead windows' objects are
+// zeroed and pruned — only the current window can still gain counts.
+function collectAndZeroFunctionCounts(currentWin) {
+  trackCoverage(currentWin);
+  const f = {};
+  for (const coverage of coverageObjects) {
+    for (const [file, fileCov] of Object.entries(coverage)) {
+      const fired = fileCov.f || {};
+      for (const [idx, count] of Object.entries(fired)) {
+        if (count > 0) {
+          const fileTotals = (f[file] ??= {});
+          fileTotals[idx] = (fileTotals[idx] || 0) + count;
+          fired[idx] = 0;
+        }
+      }
+      for (const idx of Object.keys(fileCov.s || {})) {
+        fileCov.s[idx] = 0;
+      }
+      for (const counts of Object.values(fileCov.b || {})) {
+        counts.fill(0);
+      }
+    }
+  }
+  coverageObjects = coverageObjects.filter(
+    (coverage) => coverage === currentWin.__coverage__,
+  );
+  return f;
+}
 
 function isInternalOrigin(origin) {
   if (origin === RELATIVE_ORIGIN) {
@@ -112,6 +163,11 @@ if (isInstrumented) {
     routeBuffer = [];
   });
 
+  // Every app page load, including ones triggered inside suite-level
+  // before() hooks. At load time all synchronously-executed instrumented
+  // chunks have registered, so __coverage__ exists.
+  Cypress.on("window:load", trackCoverage);
+
   Cypress.on("window:before:load", (win) => {
     const originalFetch = win.fetch;
     win.fetch = function (input, init) {
@@ -148,12 +204,12 @@ if (isInstrumented) {
   });
 
   afterEach(function () {
+    const title = this.currentTest.fullTitle();
     const routes = [...new Set(routeBuffer)].sort();
     routeBuffer = [];
-    cy.task(
-      "recordTestCapture",
-      { title: this.currentTest.fullTitle(), routes },
-      { log: false },
-    );
+    cy.window({ log: false }).then((win) => {
+      const f = collectAndZeroFunctionCounts(win);
+      return cy.task("recordTestCapture", { title, f, routes }, { log: false });
+    });
   });
 }

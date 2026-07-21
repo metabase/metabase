@@ -59,52 +59,18 @@ const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 // Per-test capture state, fed by the recordTestCapture task that the
 // support-file afterEach calls (e2e/support/per-test-capture.js). Each entry
 // is one test attempt: { title, f: {file: {fnIdx: firedCount}}, routes }.
-// `prevFunctionCounts` snapshots the accumulated counters after the previous
-// test so the next diff yields only what fired during the current one.
+// The function counts arrive already per-test — the support file reads them
+// from the app windows' Istanbul counters and zeroes those after each flush.
 let perTestEntries = [];
-let prevFunctionCounts = null;
-
-function readAccumulatedFunctionCounts() {
-  if (!fs.existsSync(NYC_OUTPUT_FILE)) {
-    return {};
-  }
-  const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
-  const counts = {};
-  for (const [file, fileCov] of Object.entries(coverage)) {
-    counts[file] = fileCov.f || {};
-  }
-  return counts;
-}
 
 const perTestCaptureTasks = {
-  // Runs after @cypress/code-coverage's afterEach has merged the test's
-  // window coverage into .nyc_output/out.json, so the accumulated counters
-  // include everything up to and including this test. Functions whose count
-  // grew since the previous snapshot fired during this test.
-  recordTestCapture({ title, routes }) {
-    const current = readAccumulatedFunctionCounts();
-    const f = {};
-    for (const [file, counts] of Object.entries(current)) {
-      const prev = prevFunctionCounts?.[file] || {};
-      let fileDeltas = null;
-      for (const [idx, count] of Object.entries(counts)) {
-        const delta = count - (prev[idx] || 0);
-        if (delta > 0) {
-          (fileDeltas ??= {})[idx] = delta;
-        }
-      }
-      if (fileDeltas) {
-        f[file] = fileDeltas;
-      }
-    }
-    prevFunctionCounts = current;
+  recordTestCapture({ title, f, routes }) {
     perTestEntries.push({ title, f, routes });
     return null;
   },
 
   resetTestCapture() {
     perTestEntries = [];
-    prevFunctionCounts = null;
     return null;
   },
 };
@@ -119,7 +85,6 @@ function writeSpecCoverageEntry(spec) {
   // leak one spec's tests into the next spec's entry.
   const tests = perTestEntries;
   perTestEntries = [];
-  prevFunctionCounts = null;
 
   if (!fs.existsSync(NYC_OUTPUT_FILE)) {
     return;
