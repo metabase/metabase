@@ -239,6 +239,20 @@ cljs:
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
 
+embedder_plugin:
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
+  - ".github/workflows/build-scripts.yml"
+  - "bin/build-embedder-plugin.sh"
+  - "bin/build/src/build/embedder_model.clj"
+  - "bin/build/src/build/plugin_uberjar.clj"
+  - "bin/build/src/build_embedder_plugin.clj"
+  - "deps.edn"
+  - "modules/embedder/**"
+  - "src/metabase/embeddings/provider.clj"
+  - "src/metabase/plugins/**"
+  - "test/metabase/embeddings/embedder_plugin_artifact_test.clj"
+
 serialization_baseline:
   - ".github/workflows/serialization.yml"
   - "test_resources/serialization_baseline/**"

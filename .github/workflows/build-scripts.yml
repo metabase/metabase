@@ -9,6 +9,61 @@ on:
 
 jobs:
 
+  files-changed:
+    name: Check which files changed
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  test-embedder-plugin:
+    needs: files-changed
+    if: needs.files-changed.outputs.embedder_plugin == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+    - name: Cache pinned model downloads
+      uses: actions/cache@v5
+      with:
+        path: modules/embedder/target/model-download
+        key: embedder-model-${{ runner.os }}-${{ hashFiles('modules/embedder/resources/metabase/embedder-model-catalog.edn') }}
+        restore-keys: |
+          embedder-model-${{ runner.os }}-
+    - name: Build embedder plugin
+      run: ./bin/build-embedder-plugin.sh
+    - name: Verify packaged plugin resources
+      run: |
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase/embedder/metabase-plugin.yaml
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase/embedder-model-catalog.edn
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/snowflake-arctic-embed-l-v2.0-f0ff6dce29c14995095706b2c861b31f13643ceb-arm64.zip
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/snowflake-arctic-embed-l-v2.0-f0ff6dce29c14995095706b2c861b31f13643ceb-avx2.zip
+    - name: Run artifact-only plugin smoke test
+      env:
+        MB_EMBEDDER_ARTIFACT_TEST: "true"
+        MB_PLUGINS_DIR: modules/embedder/target
+      run: >-
+        ./bin/test-agent --oss :only
+        '[metabase.embeddings.embedder-plugin-artifact-test]'
+
   test-build-scripts:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:

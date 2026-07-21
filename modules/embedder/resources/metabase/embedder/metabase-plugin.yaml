@@ -1,0 +1,8 @@
+info:
+  name: Metabase In-Process Embedder
+  version: 1.0.0
+  description: Runs a bundled text-embedding model inside the Metabase JVM.
+metabase-plugin-api-version: 1
+init:
+  - step: load-namespace
+    namespace: metabase-enterprise.embedder.plugin
