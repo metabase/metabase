@@ -112,9 +112,10 @@ function getMonitorIndexPath(state: State) {
 }
 
 /**
- * Legacy redirects for Admin Tools pages that moved into the Monitor area:
+ * Legacy redirects for pages that moved into the Monitor area:
  *   - /admin/tools → /monitor
  *   - /admin/tools/help → /admin/help
+ *   - /admin/metabot/usage-auditing → /monitor/ai-auditing
  *
  * The Data Studio → Monitor redirect for Dependency Diagnostics lives in
  * data-studio/routes.tsx instead: it must be declared inside the Data Studio
@@ -166,6 +167,22 @@ export function getMonitorRedirects() {
       <Route
         path="/admin/tools/notifications/*"
         element={redirect(`${Urls.monitorNotifications()}/*`)}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing"
+        element={redirect(Urls.monitorAiAuditing())}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/conversations"
+        element={redirect(Urls.monitorAiAuditingConversations())}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/conversations/*"
+        element={redirect(`${Urls.monitorAiAuditingConversations()}/*`)}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/mcp"
+        element={redirect(Urls.monitorAiAuditingMcp())}
       />
       <Route path="/admin/tools" element={redirect(Urls.monitor())} />
     </>

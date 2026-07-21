@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Outlet, Route } from "metabase/router";
@@ -365,6 +365,27 @@ describe("monitor routes", () => {
       setup({ initialRoute: "/admin/tools" });
 
       expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
+    });
+  });
+
+  describe("getMonitorRedirects (legacy AI Auditing URLs)", () => {
+    it.each([
+      ["/admin/metabot/usage-auditing", "/monitor/ai-auditing"],
+      [
+        "/admin/metabot/usage-auditing/conversations",
+        "/monitor/ai-auditing/conversations",
+      ],
+      [
+        "/admin/metabot/usage-auditing/conversations/42",
+        "/monitor/ai-auditing/conversations/42",
+      ],
+      ["/admin/metabot/usage-auditing/mcp", "/monitor/ai-auditing/mcp"],
+    ])("redirects %s to %s", async (route, expectedPathname) => {
+      const { history } = setup({ initialRoute: route });
+
+      await waitFor(() =>
+        expect(history?.getCurrentLocation().pathname).toBe(expectedPathname),
+      );
     });
   });
 });
