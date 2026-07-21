@@ -169,7 +169,6 @@ const ChartWithLegendInner = ({
         titles={layout.processedLegendTitles}
         hiddenIndices={legendHiddenIndices}
         colors={legendColors}
-        dotSize={isDashboard || isMetricsViewer ? "8px" : "12px"}
         hovered={hovered}
         onHoverChange={onHoverChange}
         onToggleSeriesVisibility={onToggleSeriesVisibility}
