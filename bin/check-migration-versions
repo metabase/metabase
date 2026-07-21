@@ -113,7 +113,11 @@ while IFS= read -r file; do
         errors=$((errors + 1))
     elif [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
         [[ "$constraint" == "<=" && "$dir_version" -gt "$version" ]]; then
-        echo "ERROR: ${file} is in ${dir} but expected ${constraint} ${expected_dir}" >&2
+        if [[ "$version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+            echo "ERROR: ${file} is in ${dir} but the changeset belongs in resources/migrations/${expected_dir}_update_migrations.yaml" >&2
+        else
+            echo "ERROR: ${file} is in ${dir} but expected ${constraint} ${expected_dir}" >&2
+        fi
         errors=$((errors + 1))
     fi
 done <<<"$changed_files"
