@@ -199,7 +199,6 @@
     (let [nonceJSON (atom nil)
           render-file (mt/original-fn #'stencil/render-file)]
       ;; http/get hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
-      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [stencil/render-file (fn [path variables]
                                           (reset! nonceJSON (:nonceJSON variables))
                                           ;; Use index_template.html instead of index.html so the frontend doesn't
