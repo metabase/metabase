@@ -2892,6 +2892,13 @@
                     :model/Sandbox
                     :model/Table}}
 
+  enterprise/ai-index-health
+  {:team "Metabot"
+   :api  #{metabase-enterprise.ai-index-health.core}
+   :uses #{analytics-interface
+           health-inspector
+           util}}
+
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -3238,6 +3245,7 @@
            premium-features
            task
            util
+           enterprise/ai-index-health
            enterprise/semantic-search}
    :model-imports #{:model/Card
                     :model/Measure
@@ -3556,7 +3564,7 @@
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
-           metabase-enterprise.semantic-search.health
+           metabase-enterprise.semantic-search.embedding-health
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3577,7 +3585,8 @@
            settings
            task
            tracing
-           util}
+           util
+           enterprise/ai-index-health}
    :model-imports #{:model/Collection
                     :model/Dashboard
                     :model/Table}}

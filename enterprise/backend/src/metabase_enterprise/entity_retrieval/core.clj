@@ -13,6 +13,7 @@
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
    [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -127,8 +128,12 @@
   "Is there a non-empty compatible index, and are we able to use it?"
   :feature :library-retrieval
   []
-  (and (not (embedding/embedder-circuit-open?))
-       (= :populated (get-in (retrieval-status) [:index :status]))))
+  (if (embedding/embedder-circuit-untrusted?)
+    (do
+      ;; Keep serving the fallback until a throttled background trial has actually closed the breaker.
+      (embedding-health/request-circuit-recovery!)
+      false)
+    (= :populated (get-in (retrieval-status) [:index :status]))))
 
 ;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
 ;;;

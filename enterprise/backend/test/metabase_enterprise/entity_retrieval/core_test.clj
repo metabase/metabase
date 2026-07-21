@@ -6,6 +6,7 @@
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
@@ -152,6 +153,21 @@
           ;; an unrecognized provider hits embedding-supported?'s :default (false)
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly {:provider "no-embedder"})]
             (is (false? (entity-retrieval.core/available?)))))))))
+
+(deftest entity-retrieval-availability-requires-a-closed-breaker-test
+  (mt/with-premium-features #{:library-retrieval}
+    (let [recovery-requested? (atom false)]
+      (mt/with-dynamic-fn-redefs
+        [entity-retrieval.core/retrieval-status            (constantly {:index {:status :populated}})
+         semantic.embedding/embedder-circuit-untrusted?     (constantly true)
+         embedding-health/request-circuit-recovery!         #(reset! recovery-requested? true)]
+        (is (false? (entity-retrieval.core/entity-retrieval-available?)))
+        (is (true? @recovery-requested?) "an untrusted circuit starts recovery without offering the tool"))))
+  (mt/with-premium-features #{:library-retrieval}
+    (mt/with-dynamic-fn-redefs
+      [entity-retrieval.core/retrieval-status        (constantly {:index {:status :populated}})
+       semantic.embedding/embedder-circuit-untrusted? (constantly false)]
+      (is (true? (entity-retrieval.core/entity-retrieval-available?))))))
 
 (deftest retrieval-status-missing-table-reads-as-absence-test
   (mt/with-premium-features #{:library :library-retrieval}

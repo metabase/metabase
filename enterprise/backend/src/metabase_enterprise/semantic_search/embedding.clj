@@ -244,13 +244,6 @@
   []
   (dh.cb/state embedder-circuit-breaker))
 
-(defn embedder-circuit-open?
-  "Whether the breaker is enabled and currently open -- i.e. real embedding calls are being short-circuited.
-  False when the breaker is disabled, since calls then bypass it and a stale open state is irrelevant."
-  []
-  (and (semantic-settings/semantic-search-embedder-circuit-breaker-enabled)
-       (= :open (embedder-circuit-state))))
-
 (defn embedder-circuit-untrusted?
   "Whether the breaker is enabled and not closed -- i.e. open or half-open, so it doesn't yet trust the
   embedding service (open short-circuits calls; half-open is on a single trial).
@@ -337,9 +330,9 @@
    (when (string? model-name)
      (str/starts-with? model-name "text-embedding-3"))))
 
-(mu/defn- openai-compatible-get-embeddings-batch*
-  "Raw OpenAI-compatible /v1/embeddings call, without the circuit breaker. Callers go through
-  [[openai-compatible-get-embeddings-batch]]; the health probe reaches this path via the bypass flag.
+(mu/defn- openai-compatible-get-embeddings-batch
+  "Call an OpenAI-compatible /v1/embeddings endpoint. The breaker guards only the remote request and
+  response decoding; analytics and token persistence happen after it returns.
 
   `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
   `:endpoint`        — full URL including /v1/embeddings
@@ -364,26 +357,29 @@
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
-    (let [start-ms             (u/start-timer)
-          {:keys [usage data]} (-> (http/post endpoint
-                                              (merge
-                                               embedding-http-timeouts
-                                               {:headers
-                                                (merge {"Content-Type"  "application/json"}
-                                                       (if (and (empty? api-key)
-                                                                (= "ai-service" provider))
-                                                         {"x-metabase-instance-token"
-                                                          (u/prog1 (premium-features/premium-embedding-token)
-                                                            (when (nil? <>)
-                                                              (throw (ex-info "Premium embedding token not set"
-                                                                              {:provider provider}))))}
-                                                         {"Authorization" (str "Bearer " api-key)}))
-                                                :body    (json/encode (merge {:model           model-name
-                                                                              :input           texts
-                                                                              :encoding_format "base64"}
-                                                                             extra-body))}))
-                                   :body
-                                   (json/decode true))
+    (let [headers              (merge {"Content-Type" "application/json"}
+                                      (if (and (empty? api-key) (= "ai-service" provider))
+                                        {"x-metabase-instance-token"
+                                         (u/prog1 (premium-features/premium-embedding-token)
+                                           (when (nil? <>)
+                                             (throw (ex-info "Premium embedding token not set"
+                                                             {:provider provider}))))}
+                                        {"Authorization" (str "Bearer " api-key)}))
+          request              (merge embedding-http-timeouts
+                                      {:headers headers
+                                       :body    (json/encode
+                                                 (merge {:model           model-name
+                                                         :input           texts
+                                                         :encoding_format "base64"}
+                                                        extra-body))})
+          start-ms             (u/start-timer)
+          {:keys [usage embeddings]}
+          (call-through-embedder-breaker
+           #(let [{:keys [usage data]} (-> (http/post endpoint request)
+                                           :body
+                                           (json/decode true))]
+              {:usage usage, :embeddings (decode-embeddings data)})
+           :endpoint endpoint)
           total-tokens         (:total_tokens usage 0)
           prompt-tokens        (:prompt_tokens usage total-tokens)]
       (analytics/inc! :metabase-search/semantic-embedding-tokens
@@ -403,23 +399,16 @@
           :tag                 "embedding_generation"}))
       (when record-tokens?
         (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
-      (decode-embeddings data))
+      embeddings)
     (catch ConnectException e
       (log/error e (str "Failed to connect to " provider) {:endpoint endpoint})
       (throw (ex-info (str provider " unavailable (connection refused)")
                       {:status 502 :endpoint endpoint}
                       e)))
     (catch Exception e
-      (log/error e (str provider " embeddings API call failed")
+      (log/error e (str "Failed to generate " provider " embeddings")
                  {:documents (count texts) :tokens (count-tokens-batch texts)})
       (throw e))))
-
-(defn- openai-compatible-get-embeddings-batch
-  "Circuit-breaker-guarded entry point to the OpenAI-compatible embeddings call (see
-  [[openai-compatible-get-embeddings-batch*]] for the argument contract)."
-  [opts]
-  (call-through-embedder-breaker #(openai-compatible-get-embeddings-batch* opts)
-                                 :endpoint (:endpoint opts)))
 
 ;;;; Embedding-service provider
 

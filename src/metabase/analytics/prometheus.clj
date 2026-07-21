@@ -481,15 +481,18 @@
                      {:description "Number of distinct entities in the library entity index, as of the last full reconcile."})
    ;; AI index health (semantic search + NLQ library retrieval), one series per engine.
    ;; A single definition covers both engines via the :engine label ("semantic" | "nlq"); see
-   ;; metabase-enterprise.semantic-search.health for the collectors that set these.
+   ;; metabase-enterprise.ai-index-health.core publishes these from engine-owned collectors.
    (prometheus/gauge :metabase-ai-index/coverage-ratio
-                     {:description "Fraction (0-1) of the items that should be indexed that actually are, per AI-search engine."
+                     {:description (str "Fraction (0-1) of the items that should be indexed that actually are, "
+                                        "per AI-search engine.")
                       :labels      [:engine]})
    (prometheus/gauge :metabase-ai-index/garbage-count
-                     {:description "Absolute number of indexed items that should NOT be indexed (orphaned / no longer a candidate), per engine."
+                     {:description (str "Absolute number of indexed items that should not be indexed "
+                                        "(orphaned or no longer a candidate), per engine.")
                       :labels      [:engine]})
    (prometheus/gauge :metabase-ai-index/staleness-seconds
-                     {:description "Age in seconds of the oldest known-pending change not yet reflected in the index (indexer/reconcile backlog), per engine."
+                     {:description (str "Age in seconds of the oldest known-pending change not yet reflected "
+                                        "in the index (indexer/reconcile backlog), per engine.")
                       :labels      [:engine]})
    ;; data-complexity-score timing
    ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.

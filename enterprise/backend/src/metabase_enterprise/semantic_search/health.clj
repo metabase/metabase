@@ -1,6 +1,5 @@
 (ns metabase-enterprise.semantic-search.health
-  "Health-inspector check for semantic search, plus the embedding-service probe shared with the NLQ
-  retrieval check ([[metabase-enterprise.entity-retrieval.health]]).
+  "Health-inspector checks and index metrics for semantic search.
 
   Semantic search degrades silently -- a missing index, stalled indexer, or unreachable embedder just falls
   back to appdb search, unnoticed. This check surfaces that.
@@ -12,78 +11,18 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [metabase-enterprise.ai-index-health.core :as ai-index-health]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.util :as semantic.util]
-   [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
 (set! *warn-on-reflection* true)
-
-(defn healthy
-  "A healthy (100) check result with `message`."
-  [message] {:health 100, :message message})
-(defn warning
-  "A partially-healthy check result. `health` defaults to 50 and must be strictly between 0 and 100 --
-  use `healthy`/`degraded` for the endpoints."
-  ([message] (warning 50 message))
-  ([health message]
-   {:pre [(< 0 health 100)]}
-   {:health health, :message message}))
-(defn degraded
-  "A degraded (0) check result with `message`."
-  [message] {:health 0, :message message})
-
-(defn- probe-embedding-service
-  "Raw embedding-service probe; see [[embedding-service-reachable?]] for the memoized entry point."
-  []
-  (try
-    ;; Bypass the breaker so the probe is an independent signal and can't itself trip or reset it.
-    ;; snowplow? false: don't emit a phantom token_usage event for this synthetic call.
-    (binding [semantic.embedding/*bypass-circuit-breaker* true]
-      (semantic.embedding/get-embedding (semantic.embedding/get-configured-model)
-                                        "health check"
-                                        {:type :query, :record-tokens? false, :snowplow? false}))
-    {:reachable? true, :error nil}
-    (catch Throwable e
-      (log/debug e "Embedding service health probe failed")
-      {:reachable? false, :error (ex-message e)})))
-
-(def ^:private embedding-service-reachable?*
-  "TTL-memoized [[probe-embedding-service]]. Held apart from the public var so the recovery hook's
-  memo-clear! targets the actual memo even when [[embedding-service-reachable?]] has been redefined
-  (a REPL or test wrapper carries no memoize metadata, so clearing through it silently no-ops)."
-  (memoize/ttl probe-embedding-service :ttl/threshold (* 60 1000)))
-
-(defn embedding-service-reachable?
-  "Probe the embedding service by embedding a trivial string; returns `{:reachable? <bool> :error <msg>}`.
-  TTL-memoized so the two health checks share one probe per report run, and so synthetic probes are capped
-  at one per window however often the breaker's state-change hooks re-run the checks. The window outlasts
-  the breaker's 30s open delay, so a steady open<->half-open flap reuses the cached probe instead of firing
-  one per transition; [[persist-index-check-on-breaker-change!]] busts the cache on recovery, the only
-  transition that needs a fresh answer."
-  []
-  (embedding-service-reachable?*))
-
-(defn embedding-problem
-  "Human-readable embedding-service problem, or nil when it looks healthy.
-  Shared by the semantic-search check below and the NLQ retrieval check
-  ([[metabase-enterprise.entity-retrieval.health]])."
-  []
-  ;; Probe even when the breaker isn't closed: on a quiet instance the breaker only leaves :open on a real
-  ;; call, so without this a recovered-but-idle embedder would read degraded until traffic.
-  (let [{:keys [reachable? error]} (embedding-service-reachable?)]
-    (cond
-      (not reachable?)
-      (str "embedding service unreachable: " error)
-
-      ;; Treat half-open as degraded, to avoid persisting a transition on every open<->half-open probe.
-      (semantic.embedding/embedder-circuit-untrusted?)
-      "embedder circuit open (probe reachable; breaker still guarding calls)")))
 
 (defn- active-index-queryable?
   "Whether a trivial `SELECT ... LIMIT 1` against the active index table succeeds -- i.e. pgvector is
@@ -114,16 +53,16 @@
                    (catch Throwable e {:error e}))]
       (cond
         (:error active)
-        (degraded (str "pgvector store unreachable: " (ex-message (:error active)) "."))
+        (ai-index-health/degraded (str "pgvector store unreachable: " (ex-message (:error active)) "."))
 
         (nil? (:state active))
-        (degraded "No active semantic search index.")
+        (ai-index-health/degraded "No active semantic search index.")
 
         :else
         (let [{:keys [pgvector state]} active
               table-name       (-> state :index :table-name)
               stalled-at       (-> state :metadata-row :indexer_stalled_at)
-              embedder-problem (embedding-problem)
+              embedder-problem (embedding-health/embedding-problem)
               problems         (cond-> []
                                  (not (active-index-queryable? pgvector table-name))
                                  (conj "active index table not queryable")
@@ -134,159 +73,17 @@
                                  embedder-problem
                                  (conj embedder-problem))]
           (if (seq problems)
-            (degraded (str "Semantic search degraded: " (str/join "; " problems) "."))
-            (healthy "Semantic search index active, fresh, and serving.")))))))
+            (ai-index-health/degraded (str "Semantic search degraded: " (str/join "; " problems) "."))
+            (ai-index-health/healthy "Semantic search index active and serving.")))))))
 
 (health-inspector/register-check! :semantic-search-index index-health-check)
 
 (defn- persist-index-check-on-breaker-change!
   "Re-run and persist the semantic-search index check."
-  [state]
-  ;; Clear the probe cache only on recovery (:closed), so the persisted row can't be a stale "unreachable"
-  ;; from just before the breaker closed; the NLQ hook runs after and rides the same fresh probe. Open and
-  ;; half-open transitions keep the TTL -- clearing on those would re-probe a struggling service on every
-  ;; flap, the storm the TTL exists to prevent, and an outage still surfaces immediately through the
-  ;; untrusted-circuit branch of [[embedding-problem]] regardless of the cached probe.
-  (when (= :closed state)
-    (memoize/memo-clear! embedding-service-reachable?*))
+  [_state]
   (health-inspector/run-and-save-check! :semantic-search-index))
 
 (swap! semantic.embedding/embedder-circuit-state-change-hooks conj #'persist-index-check-on-breaker-change!)
-
-;;; ------------------------------------------- AI index metrics --------------------------------------------
-;;;
-;;; Coverage / garbage / staleness for the AI-search indexes, each computed once per engine and fed to both a
-;;; Prometheus gauge and a health-inspector row. Gauge/threshold/message shaping lives here; each engine
-;;; supplies only raw collectors.
-
-(def ^:private measure->gauge
-  {:coverage  :metabase-ai-index/coverage-ratio
-   :garbage   :metabase-ai-index/garbage-count
-   :staleness :metabase-ai-index/staleness-seconds})
-
-(defn- pct [ratio] (Math/round (* 100.0 (double ratio))))
-
-(defn- threshold-health
-  "Map an absolute `value` to 0-100 health against a `warn`/`crit` band: 100 at/under warn, 0 at/over crit,
-  linear between. Shared by the garbage-count and staleness-age measures."
-  [value warn crit]
-  (cond
-    (<= value warn) 100
-    (>= value crit) 0
-    :else           (Math/round (* 100.0 (/ (double (- crit value)) (- crit warn))))))
-
-(defn coverage-result
-  "Uniform `{:value :health :message}` for a coverage measure over `indexed`/`expected` item counts.
-  Health is the coverage percentage; the ratio (0-1) feeds the Prometheus gauge."
-  [indexed expected]
-  (let [ratio (if (pos? expected) (min 1.0 (/ (double indexed) expected)) 1.0)]
-    {:value   ratio
-     :health  (pct ratio)
-     :message (format "%d of %d expected items indexed (%d%%)." indexed expected (pct ratio))}))
-
-(defn garbage-result
-  "Uniform result for a garbage measure. `orphans` is a raw count of indexed items that shouldn't be
-  (a count, not a fraction -- that's what's actionable). `health` thresholds it via `warn`/`crit`; the
-  count feeds the Prometheus gauge."
-  [orphans warn crit]
-  {:value   orphans
-   :health  (threshold-health orphans warn crit)
-   :message (if (zero? orphans)
-              "No orphaned items in the index."
-              (format "%d orphaned item(s) in the index." orphans))})
-
-(defn- describe-age [seconds]
-  (let [s (long seconds)]
-    (cond
-      (>= s 3600) (format "%.1fh" (/ s 3600.0))
-      (>= s 60)   (format "%dm" (quot s 60))
-      :else       (format "%ds" s))))
-
-(defn staleness-result
-  "Uniform result for a staleness measure. `age-seconds` is the age of the oldest pending change (0/nil =
-  current). `warn`/`crit` (seconds) bound the health scale: 100 at/under warn, 0 at/over crit, linear between.
-  `detail` optionally appends a clause (e.g. a backlog size or a detection-bound caveat)."
-  [age-seconds warn crit detail]
-  (let [age  (long (or age-seconds 0))
-        base (if (zero? age)
-               "Index current."
-               (format "Oldest pending change is %s old." (describe-age age)))]
-    {:value   age
-     :health  (threshold-health age warn crit)
-     :message (if detail (str base " " detail) base)}))
-
-(defonce ^:private index-measures
-  ;; check-name -> descriptor for refresh-ai-index-metrics!, populated by register-index-check! at load
-  ;; time. A map so re-registration on a namespace reload replaces a descriptor instead of duplicating it
-  ;; (which would run every collector twice per refresh).
-  (atom {}))
-
-(defonce ^:private live-gauge-series
-  ;; [gauge-key engine] pairs that have emitted a real value. Only clear these, to avoid even creating a
-  ;; metric series for unlicensed instances.
-  (atom #{}))
-
-(defn- set-index-gauge!
-  "Update a gauge for the given engine, clearing it when `value` is nil.
-  The series is created on first write."
-  [gauge-key engine value]
-  (if (some? value)
-    (do (analytics/set-gauge! gauge-key {:engine (name engine)} value)
-        ;; Mark live only after the first successful write, so we don't pre-emptively create a metric series.
-        (swap! live-gauge-series conj [gauge-key engine]))
-    (when (contains? @live-gauge-series [gauge-key engine])
-      (analytics/set-gauge! gauge-key {:engine (name engine)} ##NaN))))
-
-(defn- run-measure!
-  "Run a measure's collector, update its gauge, and return the health result: nil when the collector reads
-  N/A (nil, so the check is omitted), a degraded row when it throws -- an errored measure must not vanish
-  from the report like a not-applicable one. The gauge is cleared in both of those cases."
-  [{:keys [gauge-key engine collect check-name]}]
-  (let [{:keys [value health message]}
-        (try
-          (collect)
-          (catch Throwable e
-            (log/error e "AI index metric collector errored" {:check check-name})
-            {:health 0, :message (str "Metric collector errored: " (ex-message e))}))]
-    (set-index-gauge! gauge-key engine value)
-    (when health {:health health, :message message})))
-
-(defn register-index-check!
-  "Register an AI-index measure -- `engine` :semantic|:nlq, `measure` :coverage|:garbage|:staleness, `collect`
-  a 0-arg fn returning nil (N/A) or a `{:value :health :message}` map. Registers the `<engine>-<measure>`
-  health check and its gauge; returns the descriptor."
-  [engine measure collect]
-  (let [descriptor {:check-name (keyword (str (name engine) "-" (name measure)))
-                    :gauge-key  (measure->gauge measure)
-                    :engine     engine
-                    :measure    measure
-                    :collect    collect}]
-    (health-inspector/register-check! (:check-name descriptor) #(run-measure! descriptor))
-    ;; A live upgrade can leave the defonce'd atom holding the registry's earlier vector shape, on which
-    ;; assoc-by-keyword would throw and abort the reload; key those entries first.
-    (swap! index-measures (fn [measures]
-                            (let [keyed (if (map? measures)
-                                          measures
-                                          (into {} (map (juxt :check-name identity)) measures))]
-                              (assoc keyed (:check-name descriptor) descriptor))))
-    descriptor))
-
-(defn- refresh-measure!
-  "Refresh one measure: run its collector (writes/clears the gauge) and persist the deduplicated health row
-  when the inspector is enabled. Never throws, so a failed persist can't stop the other measures."
-  [{:keys [check-name] :as descriptor}]
-  (try
-    (when-let [result (run-measure! descriptor)]
-      (when (health-inspector/enabled?)
-        (health-inspector/save-check-result! check-name result)))
-    (catch Throwable e
-      (log/error e "AI index health-row persist errored" {:check check-name}))))
-
-(defn refresh-ai-index-metrics!
-  "Compute and record all AI-index measures: set the gauges, and persist health rows when the inspector is
-  enabled. Run periodically to keep gauges fresh between daily reports."
-  []
-  (run! refresh-measure! (vals @index-measures)))
 
 ;;; ------------------------------------- semantic-search collectors ----------------------------------------
 
@@ -298,11 +95,9 @@
 (def ^:private garbage-critical-count 5000)
 
 (defn- active-index*
-  "Return `{:pgvector :state}` for the active semantic index, or nil when semantic search is unavailable/
-  disabled, there's no active index, or pgvector is unreachable. Never throws -- availability is the
-  `:semantic-search-index` check's job; the metrics just skip when there's nothing to measure."
+  "The active semantic index and pgvector datasource, or nil when there is nothing applicable to measure."
   []
-  (when (semantic.util/semantic-search-available?)
+  (when (semantic.util/semantic-search-active?)
     (try
       (let [pgvector (semantic.env/get-pgvector-datasource!)
             state    (semantic.index-metadata/get-active-index-state pgvector (semantic.env/get-index-metadata))]
@@ -340,7 +135,7 @@
           ;; search.ingestion/search-items-count, whose per-spec COUNT(*) double-counts join fan-out (a card
           ;; with several revisions, etc.) and so never reaches 100% on a fully-indexed instance.
           expected (row-count pgvector [(format "SELECT count(*) AS n FROM %s WHERE document_hash IS NOT NULL" gate)])]
-      (coverage-result indexed expected))))
+      (ai-index-health/coverage-result indexed expected))))
 
 (defn- semantic-staleness []
   (when-let [{:keys [pgvector state]} (active-index)]
@@ -362,7 +157,8 @@
                                indexer_last_seen indexer_last_seen_id])
           pending (or (:pending row) 0)
           detail  (when (pos? pending) (format "%d change(s) in the indexer backlog." pending))]
-      (staleness-result (:age row) staleness-warn-seconds staleness-critical-seconds detail))))
+      (ai-index-health/staleness-result
+       (:age row) staleness-warn-seconds staleness-critical-seconds detail))))
 
 (defonce ^:private last-repair-orphans
   ;; Latest stale-orphan count pushed by the hourly repair job ([[report-repair-orphans!]]); nil until the
@@ -377,15 +173,15 @@
   []
   (when (active-index)
     (when-let [orphans @last-repair-orphans]
-      (garbage-result orphans garbage-warn-count garbage-critical-count))))
+      (ai-index-health/garbage-result orphans garbage-warn-count garbage-critical-count))))
 
-(register-index-check! :semantic :coverage  semantic-coverage)
-(register-index-check! :semantic :staleness semantic-staleness)
+(ai-index-health/register-index-check! :semantic :coverage  semantic-coverage)
+(ai-index-health/register-index-check! :semantic :staleness semantic-staleness)
 
 (def ^:private semantic-garbage-measure
   "The :semantic :garbage descriptor, held so [[report-repair-orphans!]] can refresh it the moment a repair
   pushes a new count instead of waiting for the next collector cycle."
-  (register-index-check! :semantic :garbage semantic-garbage))
+  (ai-index-health/register-index-check! :semantic :garbage semantic-garbage))
 
 (defn report-repair-orphans!
   "Feed the semantic-search garbage measure from the hourly repair job's stale-orphan count. Repair already
@@ -393,11 +189,11 @@
   anti-join a from-scratch pull collector would need, and correct for compound-id models. `orphans` is an
   absolute count, or nil when the count query failed (the measure then reads N/A and its gauge clears rather
   than leaving a stale count standing -- gauges never age out while the process is scraped).
-  Never throws: this is a metric side-channel of the repair job (which gates on semantic-search-available?),
-  so a blip here must not make a successful repair look failed."
+  Never throws: this is a metric side-channel of the active-engine repair job, so a reporting failure must
+  not make a successful repair look failed."
   [orphans]
   (try
     (reset! last-repair-orphans orphans)
-    (refresh-measure! semantic-garbage-measure)
-    (catch Throwable e
+    (ai-index-health/refresh-index-check! semantic-garbage-measure)
+    (catch Exception e
       (log/warn e "Failed to report semantic garbage metric"))))

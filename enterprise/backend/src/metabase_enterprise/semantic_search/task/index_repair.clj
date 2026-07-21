@@ -18,20 +18,24 @@
 (def ^:private repair-job-key (jobs/key "metabase.task.semantic-index-repair.job"))
 (def ^:private repair-trigger-key (triggers/key "metabase.task.semantic-index-repair.trigger"))
 
+(defn- repair-index! []
+  (try
+    (log/info "Starting semantic search index repair")
+    ;; Reuse repair's anti-join result instead of running a second garbage query.
+    (semantic.health/report-repair-orphans!
+     (semantic-search.core/repair-index! (search.ingestion/searchable-documents)))
+    (log/info "Completed semantic search index repair")
+    (catch Exception e
+      ;; The pushed gauge has no timestamp. Invalidate its last value when the producing job fails.
+      (semantic.health/report-repair-orphans! nil)
+      (log/error e "Failed to complete semantic search index repair"))))
+
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Runs repair-index! to maintain semantic search consistency"}
   SemanticIndexRepair [_ctx]
   (when (semantic.u/semantic-search-active?)
     (log/with-context {:quartz-job-type 'SemanticIndexRepair}
-      (try
-        (log/info "Starting semantic search index repair")
-        ;; repair returns its stale-orphan count; feed the garbage health metric off it since repair
-        ;; already did the anti-join -- no need for a separate pull collector to recompute it.
-        (semantic.health/report-repair-orphans!
-         (semantic-search.core/repair-index! (search.ingestion/searchable-documents)))
-        (log/info "Completed semantic search index repair")
-        (catch Exception e
-          (log/error e "Failed to complete semantic search index repair"))))))
+      (repair-index!))))
 
 (defmethod task/init! ::SemanticIndexRepair [_]
   (when (semantic.u/semantic-search-configured?)

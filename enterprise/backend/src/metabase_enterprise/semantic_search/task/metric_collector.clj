@@ -4,10 +4,10 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [honey.sql :as sql]
+   [metabase-enterprise.ai-index-health.core :as ai-index-health]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.datasource]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
-   [metabase-enterprise.semantic-search.health :as semantic.health]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics-interface.core :as analytics]
    [metabase.task.core :as task]
@@ -77,7 +77,7 @@
   ;; AI-index coverage/garbage/staleness for both engines: sets the labelled gauges (always) and persists
   ;; the health rows (when the inspector is enabled). Each collector self-gates, so this is a cheap no-op
   ;; when a feature is off. Kept here rather than in a new task since this collector already runs on a metric cadence.
-  (semantic.health/refresh-ai-index-metrics!))
+  (ai-index-health/refresh-ai-index-metrics!))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Collect expensive semantic search metrics"}

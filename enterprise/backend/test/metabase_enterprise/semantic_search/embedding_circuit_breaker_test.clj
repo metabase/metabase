@@ -1,5 +1,6 @@
 (ns metabase-enterprise.semantic-search.embedding-circuit-breaker-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [diehard.circuit-breaker :as dh.cb]
    ;; loaded for side effects: the health namespaces register the breaker state-change hooks that
@@ -7,8 +8,12 @@
    [metabase-enterprise.entity-retrieval.health]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.health]
+   [metabase-enterprise.semantic-search.models.token-tracking :as token-tracking]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -39,6 +44,27 @@
               (try (call-through (constantly :never)) nil
                    (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
 
+(deftest ^:sequential local-bookkeeping-failure-does-not-trip-breaker-test
+  (testing "a token-tracking failure propagates without being attributed to the embedding service"
+    (with-redefs [semantic.embedding/embedder-circuit-breaker
+                  (dh.cb/circuit-breaker {:failure-threshold 1, :success-threshold 1, :delay-ms 60000})]
+      (mt/with-dynamic-fn-redefs
+        [http/post                    (constantly {:body "{\"usage\":{\"total_tokens\":0},\"data\":[]}"})
+         analytics/inc!               (constantly nil)
+         token-tracking/record-tokens (fn [& _] (throw (ex-info "appdb unavailable" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"appdb unavailable"
+             (#'semantic.embedding/openai-compatible-get-embeddings-batch
+              {:provider       "openai"
+               :endpoint       "https://example.test/v1/embeddings"
+               :api-key        "test-key"
+               :model-name     "test-model"
+               :texts          ["bird"]
+               :record-tokens? true
+               :snowplow?      false})))
+        (is (= :closed (circuit-state)))))))
+
 (deftest ^:sequential kill-switch-bypasses-breaker-test
   (testing "with the breaker disabled the thunk runs directly: raw exception propagates, breaker untouched"
     (with-redefs [semantic.embedding/embedder-circuit-breaker
@@ -55,20 +81,6 @@
       (binding [semantic.embedding/*bypass-circuit-breaker* true]
         (is (thrown? clojure.lang.ExceptionInfo (call-through boom)))
         (is (= :closed (circuit-state)))))))
-
-(deftest ^:sequential circuit-open?-respects-kill-switch-test
-  (testing "embedder-circuit-open? is authoritative only while the breaker is enabled"
-    (with-redefs [semantic.embedding/embedder-circuit-breaker
-                  (dh.cb/circuit-breaker {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})]
-      (is (thrown? Exception (call-through boom)))
-      (is (= :open (circuit-state)))
-      (testing "enabled + open -> open"
-        (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
-          (is (true? (semantic.embedding/embedder-circuit-open?)))))
-      (testing "disabled -> not open even though the raw state is still open (calls now bypass the breaker)"
-        (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled false]
-          (is (false? (semantic.embedding/embedder-circuit-open?)))
-          (is (= :open (circuit-state))))))))
 
 (deftest ^:sequential circuit-untrusted?-covers-half-open-test
   (testing "embedder-circuit-untrusted? is true whenever the enabled breaker isn't closed -- both :open and
@@ -87,43 +99,41 @@
 (deftest ^:sequential state-change-persists-affected-checks-test
   (testing "a breaker state transition runs the registered hooks, persisting both embedder-dependent health
            checks immediately"
-    (let [persisted (atom [])]
+    (let [persisted (atom [])
+          completed (CountDownLatch. 2)]
       (mt/with-dynamic-fn-redefs
-        [health-inspector/run-and-save-check! (fn [check-name] (swap! persisted conj check-name))]
+        [health-inspector/run-and-save-check! (fn [check-name]
+                                                (swap! persisted conj check-name)
+                                                (.countDown completed))]
         (#'semantic.embedding/on-embedder-circuit-state-change! :open)
-        ;; the listener runs the hooks async on the serializing agent; give it a moment to drain
-        (is (loop [tries 50]
-              (cond
-                (= #{:semantic-search-index :nlq-retrieval} (set @persisted)) true
-                (pos? tries) (do (Thread/sleep 20) (recur (dec tries)))
-                :else false))
-            (str "expected both checks persisted, got " @persisted))))))
+        (is (.await completed 5 TimeUnit/SECONDS) "state-change hooks did not finish")
+        (is (= #{:semantic-search-index :nlq-retrieval} (set @persisted)))))))
 
 (deftest ^:sequential state-changes-run-serially-in-arrival-order-test
   (testing "transitions queue through one agent: a later transition's hooks can't overtake an earlier
            transition whose hook is still blocked (e.g. on a probe against a down service), so a slow
            pre-recovery check can't persist its stale result after the recovery one"
-    (let [events (atom [])
-          gate   (promise)
+    (let [events    (atom [])
+          entered   (CountDownLatch. 1)
+          release   (CountDownLatch. 1)
+          completed (CountDownLatch. 2)
           hook   (fn [state]
                    (when (= :half-open state)
-                     (deref gate 5000 :timed-out))
-                   (swap! events conj state))]
+                     (.countDown entered)
+                     (.await release 5 TimeUnit/SECONDS))
+                   (swap! events conj state)
+                   (.countDown completed))]
       (mt/with-dynamic-fn-redefs
         [health-inspector/run-and-save-check! (constantly nil)]
         (try
           (swap! semantic.embedding/embedder-circuit-state-change-hooks conj hook)
           (#'semantic.embedding/on-embedder-circuit-state-change! :half-open)
+          (is (.await entered 5 TimeUnit/SECONDS) "half-open hook did not start")
           (#'semantic.embedding/on-embedder-circuit-state-change! :closed)
-          (Thread/sleep 100)
           (is (= [] @events) ":closed stays queued behind the blocked :half-open run")
-          (deliver gate :go)
-          (is (loop [tries 50]
-                (cond
-                  (= [:half-open :closed] @events) true
-                  (pos? tries) (do (Thread/sleep 20) (recur (dec tries)))
-                  :else false))
-              (str "expected transitions to run in arrival order once unblocked, got " @events))
+          (.countDown release)
+          (is (.await completed 5 TimeUnit/SECONDS) "queued hooks did not finish")
+          (is (= [:half-open :closed] @events))
           (finally
-            (deliver gate :go)
+            (.countDown release)
             (swap! semantic.embedding/embedder-circuit-state-change-hooks disj hook)))))))

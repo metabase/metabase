@@ -4,7 +4,7 @@
    [metabase-enterprise.entity-retrieval.core :as entity-retrieval.core]
    [metabase-enterprise.entity-retrieval.health :as entity-retrieval.health]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
-   [metabase-enterprise.semantic-search.health :as semantic.health]
+   [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -19,7 +19,7 @@
   (mt/with-dynamic-fn-redefs
     [entity-retrieval.core/retrieval-status         (constantly status)
      semantic.embedding/embedder-circuit-untrusted? (constantly circuit-untrusted?)
-     semantic.health/embedding-service-reachable?   (constantly reachable)]
+     embedding-health/embedding-service-reachable?   (constantly reachable)]
     (entity-retrieval.health/nlq-retrieval-health-check)))
 
 (defn- with-index-status [status]
@@ -58,7 +58,7 @@
       (mt/with-dynamic-fn-redefs
         [entity-retrieval.core/retrieval-status         (constantly ready-status)
          semantic.embedding/embedder-circuit-untrusted? (constantly true)
-         semantic.health/embedding-service-reachable?   (fn [] (reset! probed? true) {:reachable? true})]
+         embedding-health/embedding-service-reachable?   (fn [] (reset! probed? true) {:reachable? true})]
         (is (=? {:health 0, :message #".*circuit open \(probe reachable.*"}
                 (entity-retrieval.health/nlq-retrieval-health-check)))
         (is (true? @probed?) "a non-closed breaker still probes so recovery is detectable"))))

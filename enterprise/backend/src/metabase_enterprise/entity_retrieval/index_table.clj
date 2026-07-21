@@ -156,7 +156,7 @@
   - `:missing`      no meta row — nothing built
   - `:incompatible` meta row for a different model/schema — rebuild pending
   - `:compatible`   meta row matches — queryable with the configured model
-  Reads the meta table directly, so throws (undefined-table) before the first [[ensure-tables!]] — guard against that."
+  Reads the meta table directly, so it throws an undefined-table error before the first [[ensure-tables!]]."
   [pgvector embedding-model]
   (let [meta (read-meta pgvector)]
     (cond

@@ -16,12 +16,13 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [metabase-enterprise.ai-index-health.core :as ai-index-health]
    [metabase-enterprise.entity-retrieval.core :as entity-retrieval]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
-   [metabase-enterprise.semantic-search.health :as semantic.health]
+   [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
    [metabase.entity-retrieval.core :as er]
    [metabase.health-inspector.core :as health-inspector]
    [metabase.util :as u]
@@ -39,20 +40,19 @@
   ;; :index is present only when every dependency holds -- absence is the not-applicable signal.
   (when-let [index (:index (entity-retrieval/retrieval-status))]
     (case (:status index)
-      :unreachable  (semantic.health/degraded "Index unreachable")
-      :missing      (semantic.health/degraded "Index not found")
-      :incompatible (semantic.health/degraded "Index not compatible")
-      :empty        (semantic.health/warning  "Index empty")
-      :populated    (if-let [problem (semantic.health/embedding-problem)]
-                      (semantic.health/degraded (u/capitalize-first-char problem))
-                      (semantic.health/healthy "Healthy")))))
+      :unreachable  (ai-index-health/degraded "Index unreachable")
+      :missing      (ai-index-health/degraded "Index not found")
+      :incompatible (ai-index-health/degraded "Index not compatible")
+      :empty        (ai-index-health/warning  "Index empty")
+      :populated    (if-let [problem (embedding-health/embedding-problem)]
+                      (ai-index-health/degraded (u/capitalize-first-char problem))
+                      (ai-index-health/healthy "Healthy")))))
 
 (health-inspector/register-check! :nlq-retrieval nlq-retrieval-health-check)
 
 (defn- persist-nlq-check-on-breaker-change!
   "Re-run and persist the NLQ retrieval check."
   [_state]
-  ;; No cache clear: the semantic-search hook runs first (this ns requires it) and already refreshed the probe.
   (health-inspector/run-and-save-check! :nlq-retrieval))
 
 (swap! semantic.embedding/embedder-circuit-state-change-hooks conj #'persist-nlq-check-on-breaker-change!)
@@ -61,8 +61,7 @@
 ;;;
 ;;; Coverage / garbage / staleness for the index, at the distinct-entity grain (rows are per (entity, doc)).
 ;;; Both sides are normalised through entity-class so a metric<->model relabel doesn't read as both missing
-;;; and garbage. Registered through the shared framework in semantic-search.health, which owns the
-;;; threshold/message/gauge shaping.
+;;; and garbage. The shared AI-index health framework owns threshold, message, and gauge shaping.
 
 (def ^:private staleness-warn-seconds     (* 30 60))   ; 30m -- one missed ~15m full-reconcile cycle
 (def ^:private staleness-critical-seconds (* 60 60))   ; 60m -- reconcile clearly stalled
@@ -115,11 +114,11 @@
 
 (defn- nlq-coverage []
   (when-let [{:keys [library indexed]} (library-and-indexed-classes)]
-    (semantic.health/coverage-result (count (set/intersection library indexed)) (count library))))
+    (ai-index-health/coverage-result (count (set/intersection library indexed)) (count library))))
 
 (defn- nlq-garbage []
   (when-let [{:keys [library indexed]} (library-and-indexed-classes)]
-    (semantic.health/garbage-result (count (set/difference indexed library))
+    (ai-index-health/garbage-result (count (set/difference indexed library))
                                     garbage-warn-count garbage-critical-count)))
 
 (defn- nlq-staleness []
@@ -134,12 +133,12 @@
     ;; built before the column existed lacks it until then, and only that case reads as N/A (skip). Any other
     ;; SQL error propagates to run-measure!'s error path instead of hiding as N/A.
     (try
-      (let [{:keys [age]} (jdbc/execute-one! ds
-                                             [(format "SELECT EXTRACT(EPOCH FROM (now() - reconciled_at)) AS age FROM \"%s\" WHERE id = 1"
-                                                      index-table/*meta-table*)]
-                                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (let [sql (format (str "SELECT EXTRACT(EPOCH FROM (now() - reconciled_at)) AS age "
+                             "FROM \"%s\" WHERE id = 1")
+                        index-table/*meta-table*)
+            {:keys [age]} (jdbc/execute-one! ds [sql] {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
         (when age
-          (semantic.health/staleness-result
+          (ai-index-health/staleness-result
            age staleness-warn-seconds staleness-critical-seconds
            "Changes missed by the write hooks are picked up by the ~15m full reconcile.")))
       (catch java.sql.SQLException e
@@ -148,6 +147,6 @@
           (log/debug e "NLQ staleness metric skipped (reconciled_at not yet added)")
           (throw e))))))
 
-(semantic.health/register-index-check! :nlq :coverage  nlq-coverage)
-(semantic.health/register-index-check! :nlq :garbage   nlq-garbage)
-(semantic.health/register-index-check! :nlq :staleness nlq-staleness)
+(ai-index-health/register-index-check! :nlq :coverage  nlq-coverage)
+(ai-index-health/register-index-check! :nlq :garbage   nlq-garbage)
+(ai-index-health/register-index-check! :nlq :staleness nlq-staleness)

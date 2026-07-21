@@ -123,7 +123,8 @@
           wm-ts    (t/offset-date-time "2026-01-01T12:00:00Z")]
       (try
         (exec! (format "CREATE TABLE \"%s\" (model text, model_id text)" index-t))
-        (exec! (format "CREATE TABLE \"%s\" (id text, model text, model_id text, document_hash text, gated_at timestamptz)"
+        (exec! (format (str "CREATE TABLE \"%s\" (id text, model text, model_id text, "
+                            "document_hash text, gated_at timestamptz)")
                        gate-t))
         (exec! (format "CREATE TABLE \"%s\" (model text, model_id text)" repair-t))
         ;; candidate set: card 1 only
