@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
+   [metabase.explorations.derived-perms :as derived-perms]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
@@ -25,6 +26,22 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+(deftest gate-threads-derived-data-forbidden-status-test
+  (testing "gate-threads-derived-data stamps forbidden when derived data is not visible"
+    (let [gate   #'metabase.explorations.api/gate-threads-derived-data
+          thread {:id       1
+                  :status   "completed"
+                  :queries  [{:id 1}]
+                  :blocks   [{:id 1}]
+                  :name     "Revenue drill-down"}]
+      (mt/with-dynamic-fn-redefs [derived-perms/thread-ids-with-visible-derived-data
+                                  (constantly #{})]
+        (let [gated (first (gate [thread]))]
+          (is (= "forbidden" (:status gated)))
+          (is (nil? (:name gated)))
+          (is (= [] (:queries gated)))
+          (is (= [] (:blocks gated))))))))
 
 (deftest thread-status-test
   (let [status  #'metabase.explorations.api/thread-status
