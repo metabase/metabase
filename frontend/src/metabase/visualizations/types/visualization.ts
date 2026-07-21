@@ -207,6 +207,7 @@ export interface VisualizationProps {
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
+  onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -231,6 +232,7 @@ export type VisualizationPassThroughProps = {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table
   isShowingDetailsOnlyColumns?: boolean;

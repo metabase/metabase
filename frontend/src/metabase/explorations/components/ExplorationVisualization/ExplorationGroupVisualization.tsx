@@ -39,6 +39,7 @@ import type {
   SingleSeries,
   Timeline,
   TimelineEvent,
+  TimelineEventId,
   TimelineId,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
@@ -50,6 +51,7 @@ import { ActionToolbar } from "./ActionToolbar";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
+import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
 import {
   type LegendItem,
   buildSeriesGroup,
@@ -246,6 +248,16 @@ function ExplorationGroupVisualizationChart({
     null,
   );
 
+  const [seeAllEvents, setSeeAllEvents] = useState<TimelineEvent[]>([]);
+  useEffect(() => {
+    setSeeAllEvents([]);
+  }, [selectedTimelineId]);
+  const seeAllEventIds = useMemo(
+    () => seeAllEvents.map((event) => event.id),
+    [seeAllEvents],
+  );
+  const closeSeeAllEvents = useCallback(() => setSeeAllEvents([]), []);
+
   const renderCommentExtra = useCallback(
     (comment: Comment) => {
       const context = comment.context;
@@ -367,6 +379,8 @@ function ExplorationGroupVisualizationChart({
               timelineEvents={timelineEvents}
               mode={clickActionsMode}
               highlighted={highlighted}
+              selectedTimelineEventIds={seeAllEventIds}
+              onSeeAllEvents={setSeeAllEvents}
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
@@ -399,6 +413,12 @@ function ExplorationGroupVisualizationChart({
           onNextPage={onNextPage}
         />
       </Stack>
+      {seeAllEvents.length > 0 && (
+        <TimelineEventsSidebar
+          events={seeAllEvents}
+          onClose={closeSeeAllEvents}
+        />
+      )}
       {isCommentsSidebarOpen && (
         <Box w="23rem" h="100%" className={S.commentsSidebar}>
           <Comments
@@ -428,6 +448,8 @@ interface ExplorationCartesianChartProps {
   timelineEvents: TimelineEvent[];
   mode: ClickActionsMode;
   highlighted?: HighlightedObject | null;
+  selectedTimelineEventIds: TimelineEventId[];
+  onSeeAllEvents: (events: TimelineEvent[]) => void;
 }
 
 function ExplorationCartesianChart({
@@ -435,6 +457,8 @@ function ExplorationCartesianChart({
   timelineEvents,
   mode,
   highlighted,
+  selectedTimelineEventIds,
+  onSeeAllEvents,
 }: ExplorationCartesianChartProps) {
   return (
     <ExplorationVisualization
@@ -443,6 +467,8 @@ function ExplorationCartesianChart({
       className={S.chart}
       mode={mode}
       highlighted={highlighted}
+      selectedTimelineEventIds={selectedTimelineEventIds}
+      onSeeAllEvents={onSeeAllEvents}
     />
   );
 }
@@ -542,6 +568,8 @@ interface ExplorationVisualizationProps {
   className?: string;
   mode?: ClickActionsMode;
   highlighted?: HighlightedObject | null;
+  selectedTimelineEventIds?: TimelineEventId[];
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 export function ExplorationVisualization({
@@ -550,6 +578,8 @@ export function ExplorationVisualization({
   className,
   mode,
   highlighted,
+  selectedTimelineEventIds,
+  onSeeAllEvents,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -564,6 +594,8 @@ export function ExplorationVisualization({
         mode={mode}
         onChangeCardAndRun={noop} // needed to show ConnectedClickActionsPopover
         highlighted={highlighted}
+        selectedTimelineEventIds={selectedTimelineEventIds}
+        onSeeAllEvents={onSeeAllEvents}
       />
     </Box>
   );
