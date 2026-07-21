@@ -208,8 +208,27 @@
   (let [model semantic.tu/mock-embedding-model]
     (is (not= (semantic.index/model-table-name model)
               (semantic.index/model-table-name (assoc model :embedding-space-id "another-space"))))
-    (is (= "index_mock_model_4"
-           (semantic.index/model-table-name (dissoc model :embedding-space-id))))))
+    (is (= (str "index_" (semantic.embedding/abbrev-provider-name "mock") "_model_4")
+           (semantic.index/model-table-name (dissoc model :embedding-space-id))))
+    (testing "plugin provider identifiers occupy a disjoint, collision-resistant namespace"
+      (let [unsafe-name     "vendor/foo"
+            encoded-name    (semantic.embedding/abbrev-provider-name unsafe-name)
+            provider-names  [unsafe-name "vendor-foo" "vendor foo" encoded-name]
+            table-names     (mapv #(semantic.index/model-table-name (assoc model :provider %)) provider-names)]
+        (is (= (count provider-names) (count (distinct table-names))))
+        (is (not= encoded-name (semantic.embedding/abbrev-provider-name encoded-name))
+            "an encoded unsafe name must not collide when registered verbatim as another provider")
+        (doseq [[built-in alias] [["ai-service" "ais"]
+                                  ["in-process" "inproc"]
+                                  ["ollama" "plugin_ollama"]
+                                  ["openai" "plugin_openai"]]]
+          (is (not= (semantic.index/model-table-name (assoc model :provider built-in))
+                    (semantic.index/model-table-name (assoc model :provider alias)))
+              (str "built-in alias must not collide with plugin provider " (pr-str alias))))
+        (doseq [table-name table-names]
+          (let [table-keyword (keyword table-name)]
+            (is (nil? (namespace table-keyword)))
+            (is (semantic.index/index-table-name? table-name))))))))
 
 (defn- expected-index-defs
   "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]] for `index`.

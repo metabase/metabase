@@ -266,15 +266,18 @@
   (testing "search ranks library documents by cosine similarity, nearest first"
     (when semantic.db.datasource/db-url
       (mt/with-premium-features #{:library :library-retrieval}
-        (let [suffix (System/nanoTime)
-              ds     (semantic.db.datasource/ensure-initialized-data-source!)
-              q      "the query"]
+        (let [suffix     (System/nanoTime)
+              ds         (semantic.db.datasource/ensure-initialized-data-source!)
+              q          "the query"
+              prefixed-q "query: the query"
+              model      (semantic.tu/resolved-mock-embedding-model
+                          :model-name "Snowflake/snowflake-arctic-embed-l-v2.0")]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
-                                      (constantly semantic.tu/mock-embedding-model)]
+                                      (constantly model)]
             (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
                       index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
-              ;; the two tables' name docs embed "near"/"far"; q ties "near" exactly and is orthogonal to "far".
-              (semantic.tu/with-mock-embeddings {q      [1.0 0.0 0.0 0.0]
+              ;; Arctic's prefixed query ties "near" exactly and is orthogonal to "far".
+              (semantic.tu/with-mock-embeddings {prefixed-q [1.0 0.0 0.0 0.0]
                                                  "near" [1.0 0.0 0.0 0.0]
                                                  "far"  [0.0 1.0 0.0 0.0]}
                 (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
@@ -285,7 +288,7 @@
                                :model/Table      {far-id :id}   {:db_id db-id :collection_id data-id :is_published true
                                                                  :active true :name "far" :display_name "far"}]
                   (try
-                    (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
+                    (reconcile/reconcile! ds (constantly model))
                     (testing "the nearer table ranks first; each hit carries the entity ref + matched doc"
                       (is (=? [{:entity {:model "table" :id near-id} :doc_type "name" :doc_text "near"}
                                {:entity {:model "table" :id far-id}}]

@@ -299,7 +299,7 @@
       (if-not (and model
                    (true? (reconcile/with-index-read-lock pgvector #(index-compatible? % model))))
         []
-        (let [embedding (embedding/get-embedding model user-search-prompt
+        (let [embedding (embedding/get-embedding model (embedding/prefix-search-query model user-search-prompt)
                                                  {:type :query :record-tokens? true})
               lit       (index-table/format-embedding embedding)
               distance  (str "doc_embedding <=> " lit)]
