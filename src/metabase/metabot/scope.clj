@@ -64,6 +64,12 @@
 (api-scope/defscope agent-timelines-read "agent:timelines:read"
   (deferred-tru "View timelines and timeline events"))
 
+;; Explorations (Research mode)
+(api-scope/defscope agent-explorations-read "agent:explorations:read"
+  (deferred-tru "View exploration research candidates"))
+(api-scope/defscope agent-explorations-write "agent:explorations:write"
+  (deferred-tru "Edit an exploration research plan"))
+
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
@@ -181,12 +187,12 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   ;; `agent:timelines:*` is granted under both nlq and other-tools: the
-   ;; NLQ-gated :explorations profile offers the read-only timeline tools (and
-   ;; its prompt instructs their use), so NLQ-only users must not have them
-   ;; silently scope-filtered away.
+   ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
+   ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
+   ;; tools (and its prompt instructs their use), so NLQ-only users must not have
+   ;; them silently scope-filtered away.
    :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*"
-                                        "agent:question:*" "agent:timelines:*"}
+                                        "agent:question:*" "agent:timelines:*" "agent:explorations:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
                                         "agent:timelines:*" "agent:collection:*"}})
 
