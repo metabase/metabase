@@ -97,7 +97,9 @@
                 "any other key is internal metadata leaking onto the wire")))
         (testing "a truncated page steers to narrowing the SQL — SQL results never mint a cursor"
           (is (not (contains? body :next_cursor)))
-          (is (= "returned 3 rows, more available — narrow the SQL (add filters/aggregation), or raise `row_limit` (max 2000)"
+          (is (= (str "returned 3 rows, more available — narrow the SQL (add filters/aggregation), "
+                      "raise `row_limit` (max 2000), or page with `ORDER BY <unique key>` + "
+                      "`WHERE <key> > <last value returned>`")
                  (steering-line result)))
           (is (not (str/includes? (steering-line result) "export"))
               "no export tool exists in v2 — steering at one sends the agent after an affordance it does not have"))

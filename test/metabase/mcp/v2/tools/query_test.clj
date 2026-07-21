@@ -270,7 +270,11 @@
           (testing "the dead end names an affordance that exists"
             (is (str/includes? (steering-line result) "raise `row_limit`"))
             (is (not (str/includes? (steering-line result) "export"))
-                "no export tool exists in v2 — steering at one sends the agent after an affordance it does not have")))))))
+                "no export tool exists in v2 — steering at one sends the agent after an affordance it does not have"))
+          (testing "and does not suggest paging by hand — a keyset over a fan-out join is exactly
+                    the gapped pagination this dead end exists to prevent, so the hint execute_sql
+                    gives must not leak onto the MBQL path"
+            (is (not (str/includes? (steering-line result) "ORDER BY")))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest aggregated-query-cursor-test

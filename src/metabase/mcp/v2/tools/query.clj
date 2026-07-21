@@ -13,7 +13,9 @@
    kill switch and native-query permission. It also mints a handle on every call (including
    `validate_only`, which replaces v1's `construct_native_query`), so saving or visualizing SQL
    needs no separate construct step. Never a cursor: arbitrary SQL can't be rewritten with a
-   server-side keyset predicate, so truncation steers to narrowing the SQL or raising `row_limit`."
+   server-side keyset predicate — the server can't know whether the SQL has a total order. The
+   caller does, so truncation steers it to page the SQL itself with a keyset filter, or to narrow
+   the query / raise `row_limit`."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -319,7 +321,13 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
 
 (defn- sql-steering-line
   [returned]
-  (format "returned %d rows, more available — narrow the SQL (add filters/aggregation), or raise `row_limit` (max %d)"
+  ;; The keyset hint is execute_sql's alone. The MBQL dead end it mirrors is the fan-out join,
+  ;; where a keyset is unsound — that is why that path refuses to mint a cursor — so suggesting
+  ;; one there would hand back the gapped pagination the refusal exists to prevent. Here the
+  ;; caller wrote the SQL and knows its key, which is the information the server lacks.
+  (format (str "returned %d rows, more available — narrow the SQL (add filters/aggregation), "
+               "raise `row_limit` (max %d), or page with `ORDER BY <unique key>` + "
+               "`WHERE <key> > <last value returned>`")
           returned max-row-limit))
 
 (defn- validate-sql-response!
@@ -367,7 +375,7 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-sql
-  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the target database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql string runs verbatim against the warehouse, so it is the injection surface — never splice caller-supplied or user-supplied values into it. Put values behind {{tag}} placeholders and pass them in template_tag_values instead: they bind as driver-level prepared-statement parameters, injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (template tags and permissions checked; the SQL text itself is not validated) — use it to stage SQL for saving or visualizing without pulling rows into context. Every call returns a query_handle accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination for SQL: when a result is truncated, narrow the SQL (add filters/aggregation) or raise row_limit (max 2000)."
+  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the target database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql string runs verbatim against the warehouse, so it is the injection surface — never splice caller-supplied or user-supplied values into it. Put values behind {{tag}} placeholders and pass them in template_tag_values instead: they bind as driver-level prepared-statement parameters, injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (template tags and permissions checked; the SQL text itself is not validated) — use it to stage SQL for saving or visualizing without pulling rows into context. Every call returns a query_handle accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination for SQL: the server cannot page arbitrary SQL soundly, because it cannot know whether your query has a total order. You can, so page it yourself — re-run with ORDER BY on a unique key and a WHERE <key> > <last value returned> filter, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (add filters/aggregation) or raise row_limit (max 2000)."
   ;; No `:readOnlyHint` — unlike execute_query, arbitrary SQL can write. MCP's defaults for an
   ;; unannotated tool (not read-only, possibly destructive) are the honest ones here.
   {:name  "execute_sql"
