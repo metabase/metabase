@@ -1757,6 +1757,26 @@
         (is (= "new" (:name resp)))
         (is (= "yo"  (:description resp)))))))
 
+(deftest exploration-put-ignores-unlisted-columns-test
+  (testing "PUT /:id strips request-body keys outside the update schema before `t2/update!`. The
+            schema is an open map, so without an allow-list a caller with write access could
+            mass-assign protected columns — reassigning `creator_id` (ownership / \"My explorations\"
+            attribution) is the sharpest case."
+    (mt/with-temp [:model/User owner {:email "owner@example.com"}
+                   :model/User thief {:email "thief@example.com"}
+                   :model/Exploration e {:name "old" :creator_id (:id owner)}]
+      (let [before (t2/select-one :model/Exploration :id (:id e))]
+        (mt/user-http-request owner :put 200 (format "exploration/%d" (:id e))
+                              {:name       "new"
+                               :creator_id (:id thief)
+                               :entity_id  "smuggled_entity_id_00"})
+        (let [after (t2/select-one :model/Exploration :id (:id e))]
+          (is (= "new" (:name after)) "the allow-listed field is still updated")
+          (is (= (:id owner) (:creator_id after))
+              "creator_id must not be reassignable through the request body")
+          (is (= (:entity_id before) (:entity_id after))
+              "entity_id must not be overwritable through the request body"))))))
+
 (deftest exploration-create-in-collection-test
   (testing "POST / places the exploration in the requested collection when the caller can write it"
     (mt/with-temp [:model/Collection c {}]

@@ -523,6 +523,15 @@
    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
+(def ^:private updatable-columns
+  "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` is an open map,
+  so extra body keys survive decoding; the request is `select-keys`'d to this set before
+  `t2/update!` to prevent mass-assignment of protected columns (`creator_id`, `entity_id`,
+  timestamps, ...). `:archived_directly` is intentionally excluded — it is derived server-side by
+  `updates-with-archived-directly`, never accepted from the client. Keep in sync with
+  `UpdateExploration`."
+  #{:name :description :archived :collection_id :collection_position})
+
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------
 
 (mr/def ::ExplorationMetric
@@ -763,7 +772,8 @@
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
-        updates' (api/updates-with-archived-directly existing updates)]
+        allowed  (select-keys updates updatable-columns)
+        updates' (api/updates-with-archived-directly existing allowed)]
     (api/write-check existing)
     (check-destination-collection-perms! existing updates')
     (t2/with-transaction [_]
