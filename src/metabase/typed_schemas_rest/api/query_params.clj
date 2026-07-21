@@ -9,18 +9,22 @@
   [value]
   (some-> value str str/trim not-empty))
 
-(defn- reference
-  [value name-key]
+(defn- database-reference
+  [value]
   (when-let [value (non-blank-string value)]
     (if-let [id (parse-long value)]
       {:id id}
-      {name-key value})))
+      {:name value})))
 
 (defn- comma-separated-references
   [value]
   (if-let [value (non-blank-string value)]
     (->> (str/split value #",")
-         (keep #(reference % :entity-id))
+         (keep (fn [value]
+                 (when-let [value (non-blank-string value)]
+                   (if-let [id (parse-long value)]
+                     {:id id}
+                     {:entity-id value}))))
          vec)
     []))
 
@@ -34,12 +38,9 @@
   This is the sole typed-schema function that accepts REST-shaped query
   parameters."
   [query-params]
-  {:database                 (reference (:database query-params) :name)
-   :library                  (reference (:library query-params) :name)
-   :library-collection-refs  (comma-separated-references (or (:library-collections query-params)
-                                                             (:collections query-params)))
+  {:database                 (database-reference (:database query-params))
+   :library-collection-refs  (comma-separated-references (:library-collections query-params))
    :question-collection-refs (comma-separated-references (:question-collections query-params))
    :include-data-library?    (enabled? (:include-data-library query-params))
    :include-metric-library?  (enabled? (:include-metric-library query-params))
-   :include-models?          (enabled? (:include-models query-params))
-   :questions-only?          (enabled? (:questions query-params))})
+   :include-models?          (enabled? (:include-models query-params))})

@@ -14,8 +14,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private IdOrNameRef
-  "References a resource by id or name."
+(def ^:private DatabaseRef
+  "References a database by id or name."
   [:or
    [:map [:id :int]]
    [:map [:name ms/NonBlankString]]])
@@ -31,10 +31,7 @@
   [:map
    [:database {:optional true}
     [:maybe {:description "Scopes the schema to a database. Accepts `{:id <database-id>}` or `{:name <database-name>}`."}
-     IdOrNameRef]]
-   [:library {:optional true}
-    [:maybe {:description "Selects a library collection. Accepts `{:id <collection-id>}` or `{:name <collection-name>}`."}
-     IdOrNameRef]]
+     DatabaseRef]]
    [:library-collection-refs {:optional true}
     [:sequential {:description "Limits tables and metrics to library collections. Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`."}
      CollectionRef]]
@@ -46,33 +43,23 @@
    [:include-metric-library? {:optional true}
     [:boolean {:description "Whether to include the root metrics library."}]]
    [:include-models? {:optional true}
-    [:boolean {:description "Whether to include models in the selected scope."}]]
-   [:questions-only? {:optional true}
-    [:boolean {:description "Whether to include only questions from the selected database."}]]])
+    [:boolean {:description "Whether to include models in the selected scope."}]]])
 
 (defn- invalid-options!
   [message]
   (throw (ex-info message {:status-code 400})))
 
 (defn- validate-options!
-  [{:keys [database library library-collection-refs question-collection-refs
-           include-data-library? include-metric-library? questions-only?] :as options}]
+  [{:keys [database library-collection-refs question-collection-refs
+           include-data-library? include-metric-library?] :as options}]
   (when-not (mr/validate SemanticSchemaOptions options)
     (invalid-options! "Invalid typed schema options."))
   (let [include-library-root? (or include-data-library? include-metric-library?)
-        collection-scoped?    (or library
-                                  (seq library-collection-refs)
+        collection-scoped?    (or (seq library-collection-refs)
                                   (seq question-collection-refs)
                                   include-library-root?)]
-    (when (and library (or (seq library-collection-refs) include-library-root?))
-      (invalid-options!
-       "The library query parameter is mutually exclusive with library-collections, include-data-library, and include-metric-library."))
     (when (and collection-scoped? database)
-      (invalid-options! "Collection-scoped query parameters and database query parameters are mutually exclusive."))
-    (when (and collection-scoped? questions-only?)
-      (invalid-options! "Collection-scoped query parameters and the questions query parameter are mutually exclusive."))
-    (when (and questions-only? (nil? database))
-      (invalid-options! "The questions query parameter requires a database query parameter."))))
+      (invalid-options! "Collection-scoped query parameters and database query parameters are mutually exclusive."))))
 
 (defn- semantic-schema-for-library-scope
   [library-scope models]
@@ -87,23 +74,20 @@
 (defn build-semantic-schema
   "Builds a semantic schema map from typed [[SemanticSchemaOptions]]."
   [options]
-  (let [{:keys [database library library-collection-refs question-collection-refs
-                include-data-library? include-metric-library? include-models? questions-only?]
+  (let [{:keys [database library-collection-refs question-collection-refs
+                include-data-library? include-metric-library? include-models?]
          :or {library-collection-refs  []
               question-collection-refs []
               include-data-library?    false
               include-metric-library?  false
-              include-models?          false
-              questions-only?          false}} options]
+              include-models?          false}} options]
     (validate-options! (assoc options
                               :library-collection-refs library-collection-refs
                               :question-collection-refs question-collection-refs
                               :include-data-library? include-data-library?
                               :include-metric-library? include-metric-library?
-                              :include-models? include-models?
-                              :questions-only? questions-only?))
-    (let [library-scope           (scope/library-scope {:library library
-                                                        :library-collection-refs library-collection-refs
+                              :include-models? include-models?))
+    (let [library-scope           (scope/library-scope {:library-collection-refs library-collection-refs
                                                         :include-data-library? include-data-library?
                                                         :include-metric-library? include-metric-library?})
           database-ids            (scope/database-ids-for-ref database)
@@ -113,8 +97,7 @@
                                     include-models? (schema.model/model-schemas nil)
                                     :else [])]
       (cond
-        (or library
-            (seq library-collection-refs)
+        (or (seq library-collection-refs)
             library-scope
             (seq question-collection-refs)
             (and include-models? (nil? database-ids)))
@@ -126,9 +109,6 @@
                               models
                               (-> library-schema :tables vals)
                               (-> library-schema :metrics vals)))
-
-        questions-only?
-        (schema/base-schema (schema.question/question-schemas database-ids) models [] [])
 
         :else
         (let [questions (schema.question/question-schemas database-ids)

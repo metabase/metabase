@@ -8,23 +8,6 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(deftest library-collection-scope-accepts-subcollection-id-test
-  (mt/with-temp [:model/Collection root  {:name "Library"
-                                          :type "library"
-                                          :location "/"}
-                 :model/Collection data  {:name "Data"
-                                          :type "library-data"
-                                          :location (collection/children-location root)}
-                 :model/Collection child {:name "Boba Data"
-                                          :type "library-data"
-                                          :location (collection/children-location data)}]
-    (mt/with-test-user :crowberto
-      (is (= {:collection-ids        #{(:id child)}
-              :data-collection-ids   #{(:id child)}
-              :metric-collection-ids #{}}
-             (select-keys (#'typed-schemas.scope/library-collection-scope {:id (:id child)})
-                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
-
 (deftest library-collections-scope-accepts-comma-separated-subcollection-ids-test
   (mt/with-temp [:model/Collection root          {:name "Library"
                                                   :type "library"
