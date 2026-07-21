@@ -4641,3 +4641,72 @@ reason the retry fix is safe here.
 **Correction on the record:** this was reported as a viewport casualty when the
 1280x800 fix landed. It is not. The viewport commit surfaced a pre-existing
 latent flake by coincidence.
+
+**#224 RESOLVED: it is the escape reading. The containment was deliberately
+removed on master, and the guarding tests were deleted with it.**
+
+The tripwire condition above ("if this test fails again after the retry fix,
+that points at the escape reading") was met on run 29825096184, and the evidence
+supports the escape.
+
+**Direct evidence** (`playwright-report-s10` trace screencast): the final frame
+of BOTH the first attempt and the retry is a **solid red viewport** — the
+attacker's `background: red` covering the entire page including the nav bar.
+Frame by frame: at +7968ms red is clamped to the chart area; at +8410ms it has
+spread to `x=0, width~558`; by +8882ms it fills 1280x800 and stays for the
+remaining ~80s. That is persistent, not transient, and not an unrendered
+element.
+
+**Mechanism.** The security wrapper is absent from the shipped DOM:
+
+```
+CI (merge commit):  DIV[data-testid=chart-settings-widget-forbiddenWidget]
+                      DIV[data-plugin-sandbox="2"]        <- no wrapper
+local (our HEAD):   DIV[data-testid=chart-settings-widget-forbiddenWidget]
+                      DIV.SandboxedPluginContainer-module__container___pKfrR
+                        DIV[data-plugin-sandbox="2"]
+```
+
+The CI bundle contains other custom_viz CSS-module output but **zero**
+occurrences of `contain: layout paint`. The rule is not in the shipped build.
+
+**Cause — an upstream product decision, verified in source.** Commit
+`07cb2f0a6c7`, "GDGT-2872 Revert #77695 to allow custom widget popovers
+(#78124)", landed on master 2026-07-21 15:32 +0700. It:
+
+- deletes `SandboxedPluginContainer.module.css`, whose entire content was
+  `.container { contain: layout paint; /* Security boundary */ }`
+- deletes `SandboxedPluginContainer.tsx`, replacing it with a bare
+  `<div ref={containerRef} data-plugin-sandbox={pluginId}
+  style={{width:"100%",height:"100%"}} />` — matching the CI DOM exactly
+- deletes the upstream Cypress test `it("confines custom viz and custom viz
+  setting widget to its container (GDGT-2400)")` (86 lines)
+- deletes the unit test "mounts the plugin inside a host-controlled wrapper the
+  plugin cannot tag"
+
+Not on our branch. `actions/checkout@v6` with no `ref` on a `pull_request`
+event checks out the **merge commit**, so CI built branch + current master. That
+is why 66 prior local runs and 4 local runs today were green.
+
+**The `toPass()` retry fix was correct and needs no further work.** `top` was 0
+permanently, so it retried to the test timeout and reported the first failing
+assertion. Retry distinguishes a race from a real failure; this is the real one.
+
+**Security assessment.** Untrusted custom-viz plugin code can set
+`position: fixed; inset: 0; z-index: 99999` on its own container and cover the
+whole application viewport, nav bar included — a clickjacking / UI-spoofing
+surface. The removal is clearly **intentional** (the revert exists to let custom
+widget popovers escape the widget box, tracked as GDGT-2872) and the guarding
+tests were deleted in the same commit, so this is not an unnoticed regression.
+
+What is worth raising with the custom-viz owners: whether the clickjacking
+consequence was explicitly weighed when trading containment for popover
+overflow, given the removed rule was annotated `/* Security boundary */` and had
+a dedicated e2e test. That is a product question, not a porting one.
+
+**Open decision on our side.** Upstream deleted this test, so our port now
+asserts a guarantee the product deliberately no longer makes. Options: port the
+deletion to match upstream; keep it as a known-failing marker pending the
+security conversation; or hold. NOT decided unilaterally — it trades a red CI
+signal against erasing the only automated evidence that a security boundary was
+given up.
