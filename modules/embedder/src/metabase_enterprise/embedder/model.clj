@@ -158,13 +158,13 @@
                       {:model-name model-name :requested-name requested-name :resource resource-path})))))
 
 (defn- sanitized-url
-  "Loggable form of a model-source URL. Userinfo, query and fragment are always dropped — that's where an
-  `s3://key:secret@…` or a presigned `?token=…` lives.
-  `include-path?` covers the one component whose safety depends on who wrote the URL: pass true only for
-  URLs [[model-source]] generates itself (`jar:///…`, `djl://…`), where the path is the model identity and
-  holds no secret. Operator-supplied override URLs pass false, since a presigned URL can just as easily
-  carry its token in a path segment."
+  "Reduce a model-source URL to a form safe to log, or `\"<redacted>\"` when no part of it can be kept.
+  `include-path?` retains the path component; pass true only for URLs [[model-source]] builds itself."
   [url include-path?]
+  ;; Userinfo, query and fragment always go: that's where an `s3://key:secret@…` or a presigned
+  ;; `?token=…` lives. The path is the one component whose safety depends on who wrote the URL — in our
+  ;; own `jar:///…` and `djl://…` it is the model's identity and holds no secret, while an operator's
+  ;; override URL can just as easily carry its token in a path segment.
   (try
     (let [^URI uri (URI. ^String url)
           scheme   (.getScheme uri)
@@ -181,19 +181,14 @@
       "<redacted>")))
 
 (defn- source-log-summary
-  "Source details for the load log: enough to say which model loaded and whether an override took effect —
-  the two things this line exists to answer — without logging anything that can carry a credential.
-
-  What survives depends on the component, not on who configured it:
-  - a local `:path` is kept in full. It names a directory on the operator's own host, which is a location
-    rather than a transport credential, and it's the whole diagnostic value of the line for a `:path`
-    override;
-  - a URL is reduced by [[sanitized-url]], which always drops userinfo/query/fragment and additionally
-    drops the path for operator-supplied overrides. A URL is a transport, so any of its components can
-    carry a secret — hence the stricter treatment than the filesystem path above.
-
-  An unrecognized `:origin` is treated as an override, so a new source type redacts by default."
+  "Loggable summary of a [[model-source]] map: its `:type` and `:origin`, plus a local `:path` verbatim or
+  a [[sanitized-url]]-reduced `:url`. Says which model loaded and whether an override took effect, without
+  logging anything that can carry a credential."
   [{:keys [type url path origin]}]
+  ;; A local path is kept but a URL's path is not, because they differ in kind rather than in who
+  ;; configured them: a path names a directory on the operator's own host — a location, not a transport
+  ;; credential — while a URL is a transport, so any of its components can hold a secret.
+  ;; Anything but a recognized :built-in reads as an override, so a new source type redacts by default.
   (let [origin (if (= origin :built-in) :built-in :override)]
     (cond-> {:type type, :origin origin}
       (= type :path) (assoc :path path)
