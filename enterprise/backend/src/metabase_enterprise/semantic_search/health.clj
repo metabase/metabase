@@ -130,11 +130,15 @@
 (health-inspector/register-check! :semantic-search-index index-health-check)
 
 (defn- persist-index-check-on-breaker-change!
-  "Re-run and persist the semantic-search index check against a fresh embedder probe."
-  [_state]
-  ;; Clear the probe cache first, so on recovery we don't persist a stale "unreachable" from the cached probe.
-  ;; The NLQ hook runs after and rides the same fresh probe.
-  (memoize/memo-clear! embedding-service-reachable?)
+  "Re-run and persist the semantic-search index check."
+  [state]
+  ;; Clear the probe cache only on recovery (:closed), so the persisted row can't be a stale "unreachable"
+  ;; from just before the breaker closed; the NLQ hook runs after and rides the same fresh probe. Open and
+  ;; half-open transitions keep the TTL -- clearing on those would re-probe a struggling service on every
+  ;; flap, the storm the TTL exists to prevent, and an outage still surfaces immediately through the
+  ;; untrusted-circuit branch of [[embedding-problem]] regardless of the cached probe.
+  (when (= :closed state)
+    (memoize/memo-clear! embedding-service-reachable?))
   (health-inspector/run-and-save-check! :semantic-search-index))
 
 (swap! semantic.embedding/embedder-circuit-state-change-hooks conj #'persist-index-check-on-breaker-change!)
