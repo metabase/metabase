@@ -16,6 +16,7 @@
    [metabase.usage-metadata.models.source-metric-daily]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
+   [metabase.usage-metadata.query-source :as query-source]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -264,13 +265,28 @@
       (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)
       json/encode))
 
+(def ^:private candidate-card-columns
+  [:model/Card :id :name :type :database_id :dataset_query :card_schema :collection_id :view_count])
+
+(defn- select-candidate-source-cards
+  [source]
+  (if source
+    (let [card-ids (set (query-source/card-ids source))]
+      (mu/validate-throw [:set pos-int?] card-ids)
+      (if (seq card-ids)
+        (t2/select candidate-card-columns
+                   :id [:in card-ids]
+                   :archived false
+                   :type [:in [:question :model]])
+        []))
+    (t2/select candidate-card-columns
+               :archived false
+               :type [:in [:question :model]])))
+
 (defn- candidate-source-cards
-  [{:keys [min-view-count]}]
+  [{:keys [min-view-count query-source]}]
   (let [min-view-count (or min-view-count candidate-default-min-view-count)
-        cards          (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema
-                                   :collection_id :view_count]
-                                  :archived false
-                                  :type [:in [:question :model]])
+        cards          (select-candidate-source-cards query-source)
         card-ids       (into #{} (map :id) cards)
         collection-ids (into #{} (keep :collection_id) cards)
         verified-ids   (if (seq card-ids)
@@ -285,17 +301,26 @@
                                             :id [:in collection-ids]
                                             :authority_level "official")
                          #{})]
-    (->> cards
-         (map (fn [{:keys [id collection_id view_count] :as card}]
-                (let [view-count (long (or view_count 0))]
-                  (assoc card
-                         :verified?            (contains? verified-ids id)
-                         :official-collection? (contains? official-ids collection_id)
-                         :popular?             (>= view-count min-view-count)
-                         :view-count           view-count))))
-         (filter (some-fn :verified? :official-collection? :popular?))
-         (sort-by :id)
-         vec)))
+    (cond->> cards
+      true
+      (map (fn [{:keys [id collection_id view_count] :as card}]
+             (let [view-count (long (or view_count 0))]
+               (assoc card
+                      :verified?            (contains? verified-ids id)
+                      :official-collection? (contains? official-ids collection_id)
+                      :popular?             (>= view-count min-view-count)
+                      :view-count           view-count))))
+
+      ;; With no explicit source, preserve the original curated-or-popular default universe.
+      ;; An explicit source controls inclusion; these signals remain evidence used by ranking.
+      (nil? query-source)
+      (filter (some-fn :verified? :official-collection? :popular?))
+
+      true
+      (sort-by :id)
+
+      true
+      vec)))
 
 (defn- candidate-model-index
   []
@@ -849,10 +874,11 @@
        (>= (:distinct-source-count evidence) 2))))
 
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
-  "Creation-ready Measure candidates mined from qualifying questions and models.
+  "Creation-ready Measure candidates mined from selected questions and models.
 
-  A source qualifies when it is verified, directly in an official collection, or has at least
-  `:min-view-count` lifetime views. Primitive aggregations over one physical-table field are considered.
+  `:query-source`, when supplied, controls which saved queries are analyzed. Otherwise a source qualifies
+  when it is verified, directly in an official collection, or has at least `:min-view-count` lifetime views.
+  Primitive aggregations over one physical-table field are considered.
   Bare row counts seed conditional count Measures but are not returned as standalone candidates.
   Conditional count/distinct/sum Measures are synthesized from categorical filter subsets and retained
   when curated or recurring. Every eligible stage is inspected until a
@@ -875,9 +901,11 @@
                                eligible-measure-candidate?))))))
 
 (mu/defn candidate-segments :- [:sequential ::usage-metadata.schema/candidate-segment]
-  "Creation-ready Segment candidates mined from qualifying questions and models.
+  "Creation-ready Segment candidates mined from selected questions and models.
 
-  Each eligible direct-table filter becomes an atomic candidate. Queries with two to five eligible
+  `:query-source`, when supplied, controls which saved queries are analyzed. Otherwise verified,
+  official-collection, or popular questions and models are analyzed. Each eligible direct-table filter
+  becomes an atomic candidate. Queries with two to five eligible
   atoms also contribute every multi-atom subset. A composite is retained when it recurs across at
   least two source Cards or has verified/official evidence. Existing exact Segment definitions are
   skipped without allowing a saved conjunction to suppress its atomic constituents. Questions and
