@@ -7,14 +7,14 @@
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts  {:aliased-namespace-symbol                                            3
                   :all                                                                 50
-                  :case-symbol-test                                                    2
+                  :case-symbol-test                                                    1
                   :clojure-lsp/unused-public-var                                       9
                   :def-fn                                                              1
                   :deprecated-namespace                                                97
                   :deprecated-var                                                      81
                   :discouraged-java-method                                             3
                   :discouraged-namespace                                               81
-                  :discouraged-var                                                     108
+                  :discouraged-var                                                     106
                   :equals-true                                                         1
                   :main-without-gen-class                                              1
                   :metabase/defsetting-namespace                                       7
@@ -28,7 +28,7 @@
                   :metabase/validate-defendpoint-has-response-schema                   444
                   :metabase/validate-defendpoint-query-params-use-kebab-case           40
                   :metabase/validate-defendpoint-route-uses-kebab-case                 44
-                  :metabase/validate-deftest                                           10
+                  :metabase/validate-deftest                                           8
                   :missing-docstring                                                   10
                   :missing-protocol-method                                             3
                   :non-arg-vec-return-type-hint                                        1
