@@ -19,11 +19,13 @@
 (set! *warn-on-reflection* true)
 
 (defn- normalize-name
-  "lowercase → trim → collapse internal whitespace. Deliberately not `search.scoring/normalize-text`,
-  which also maps commas to spaces - commas are meaningful in content names. Internal-whitespace collapse
-  is why grouping happens app-side: it has no portable SQL form across the supported app dbs."
+  "Normalize a name for duplicate detection: remove diacritical marks, lowercase, remove invisible and collapse whitespace"
   [s]
-  (-> s u/lower-case-en str/trim (str/replace #"\s+" " ")))
+  (-> (or (u/remove-diacritical-marks s) "")   ; remove-diacritical-marks returns nil on empty input
+      u/lower-case-en
+      (str/replace #"(?U)\p{Cf}" "")
+      (str/replace #"(?U)\s+" " ")
+      str/trim))
 
 (defn- entity-rows
   "Lightweight `(id, name[, type])` rows for one covered entity type - non-archived only. Transform has

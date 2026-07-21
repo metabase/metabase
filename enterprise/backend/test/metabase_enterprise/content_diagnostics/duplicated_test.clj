@@ -104,6 +104,35 @@
                 (is (nil? (by-entity [:card comma-a])))
                 (is (nil? (by-entity [:card comma-b])))))))))))
 
+(deftest duplicated-checker-unicode-normalization-test
+  (testing "diacritics fold, Unicode whitespace collapses, and zero-width invisibles are stripped before comparison"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix (scope-prefix)]
+          (mt/with-temp
+            [:model/Collection {coll-id :id} {}
+             ;; combining-mark accents fold: Café Über ≡ Cafe Uber
+             :model/Card {accent-a :id} {:collection_id coll-id :name (str prefix " Café Über")}
+             :model/Card {accent-b :id} {:collection_id coll-id :name (str prefix " Cafe Uber")}
+             ;; a non-breaking space (U+00A0) collapses like a regular space
+             :model/Card {nbsp-a :id} {:collection_id coll-id :name (str prefix " a\u00A0gap")}
+             :model/Card {nbsp-b :id} {:collection_id coll-id :name (str prefix " a gap")}
+             ;; an em space (U+2003, another Unicode whitespace form) collapses too
+             :model/Card {emsp-a :id} {:collection_id coll-id :name (str prefix " b\u2003gap")}
+             :model/Card {emsp-b :id} {:collection_id coll-id :name (str prefix " b gap")}
+             ;; a zero-width space (U+200B) is invisible - stripped, so the surrounding text joins
+             :model/Card {zwsp-a :id} {:collection_id coll-id :name (str prefix " c\u200Bjoin")}
+             :model/Card {zwsp-b :id} {:collection_id coll-id :name (str prefix " cjoin")}]
+            (let [by-entity (duplicated-findings-by-entity!)]
+              (testing "combining-mark accents fold (Café Über ≡ Cafe Uber)"
+                (is (= [accent-b] (get-in (by-entity [:card accent-a]) [:details :duplicate_entity_ids]))))
+              (testing "a non-breaking space collapses to a regular space"
+                (is (= [nbsp-b] (get-in (by-entity [:card nbsp-a]) [:details :duplicate_entity_ids]))))
+              (testing "an em space collapses to a regular space"
+                (is (= [emsp-b] (get-in (by-entity [:card emsp-a]) [:details :duplicate_entity_ids]))))
+              (testing "a zero-width space is stripped, joining the surrounding text"
+                (is (= [zwsp-b] (get-in (by-entity [:card zwsp-a]) [:details :duplicate_entity_ids])))))))))))
+
 (deftest duplicated-checker-splits-cards-by-sub-kind-test
   (testing "cards group by (type, normalized name): a question and a model sharing a name are not duplicates"
     (mt/with-premium-features #{:content-diagnostics}
@@ -161,16 +190,21 @@
                   (is (nil? (by-entity [:card trio-archived]))))))))))))
 
 (deftest duplicated-checker-skips-blank-names-test
-  (testing "whitespace-only names never cluster - unknown is not duplicate"
+  (testing "whitespace-only names - including Unicode whitespace and zero-width invisibles - never cluster; unknown is not duplicate"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [:model/Collection {coll-id :id} {}
            :model/Dashboard {blank-a :id} {:collection_id coll-id :name "   "}
-           :model/Dashboard {blank-b :id} {:collection_id coll-id :name "   "}]
+           :model/Dashboard {blank-b :id} {:collection_id coll-id :name "   "}
+           ;; NBSP-only and zero-width-only names normalize to blank too, so they never cluster
+           :model/Dashboard {nbsp-a :id} {:collection_id coll-id :name "\u00A0\u00A0"}
+           :model/Dashboard {nbsp-b :id} {:collection_id coll-id :name "\u00A0\u00A0"}
+           :model/Dashboard {zwsp-a :id} {:collection_id coll-id :name "\u200B"}
+           :model/Dashboard {zwsp-b :id} {:collection_id coll-id :name "\u200B"}]
           (let [by-entity (duplicated-findings-by-entity!)]
-            (is (nil? (by-entity [:dashboard blank-a])))
-            (is (nil? (by-entity [:dashboard blank-b])))))))))
+            (are [d] (nil? (by-entity [:dashboard d]))
+              blank-a blank-b nbsp-a nbsp-b zwsp-a zwsp-b)))))))
 
 (deftest duplicated-checker-cluster-of-three-test
   (testing "every member of a cluster of 3 gets duplicate_count 2 and the other two as peers"
