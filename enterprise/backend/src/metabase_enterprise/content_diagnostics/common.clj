@@ -44,7 +44,7 @@
   are explicit methods)."
   {:card      {:context   [:description :view_count]
                :peer      [:view_count :type :card_schema]
-               :candidate [:type :card_schema]}
+               :candidate [:card_schema]}
    :dashboard {:context   [:description :view_count]
                :peer      [:view_count]
                :candidate []}

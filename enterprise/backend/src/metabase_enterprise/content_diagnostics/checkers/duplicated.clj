@@ -5,10 +5,10 @@
   `:duplicate-count` = the peer count (→ the native `duplicate_count` column).
 
   `details` carries `normalized_name` (the normalized name the cluster collided on) and
-  `duplicate_entity_ids` (the flagged entity's peer ids - what the serve layer hydrates). Cards are grouped
-  by their sub-kind (`type` - question/model/metric): a question and a model sharing a name are not
-  duplicates. One lightweight (id, name) load per entity type, grouped in memory - no per-entity loop,
-  app-db only."
+  `duplicate_entity_ids` (the flagged entity's peer ids - what the serve layer hydrates). Clustering is by
+  normalized name within an entity type; cards cluster across all sub-kinds (`type` -
+  question/model/metric), so a question and a model sharing a name are duplicates. One lightweight
+  (id, name) load per entity type, grouped in memory - no per-entity loop, app-db only."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -27,10 +27,11 @@
       str/trim))
 
 (defmulti ^:private candidate-rows
-  "Lightweight non-archived `(id, name[, sub-kind])` rows for one entity type, for name clustering.
-  card/dashboard/document (`::collection-item`) filter on their `archived` column, sub-kind cols from
-  `common/candidate-cols`; transform has no `archived` column (hard-deleted), so every row counts. Scan-time
-  and instance-wide - deliberately un-permissioned, unlike the serve layer's `read-entity-rows`."
+  "Lightweight non-archived `(id, name)` rows for one entity type, for name clustering. card/dashboard/document
+  (`::collection-item`) filter on their `archived` column and add any `common/candidate-cols` (card carries
+  `:card_schema`, required by its after-select hook); transform has no `archived` column (hard-deleted), so
+  every row counts. Scan-time and instance-wide - deliberately un-permissioned, unlike the serve layer's
+  `read-entity-rows`."
   {:arglists '([entity-type])}
   identity
   :hierarchy #'common/hierarchy)
@@ -60,13 +61,11 @@
                          :duplicate_entity_ids peer-ids}})))
 
 (defn- findings-for-type
-  "Group one entity type's rows by normalized name - cards additionally by sub-kind (`:type`, nil for the
-  other types) - and emit findings for every cluster of ≥ 2. Clusters with a blank normalized name are
-  skipped: `name` is NOT NULL on all four models but can be whitespace-only, and unknown is not duplicate."
+  "Group one entity type's rows by normalized name and emit findings for every cluster of ≥ 2 (cards cluster
+  across all sub-kinds - grouping is by name alone). Clusters with a blank normalized name are skipped:
+  `name` is NOT NULL on all four models but can be whitespace-only, and unknown is not duplicate."
   [entity-type]
-  (for [[[norm-name _card-type] rows] (group-by (fn [{nm :name card-type :type}]
-                                                  [(normalize-name nm) card-type])
-                                                (candidate-rows entity-type))
+  (for [[norm-name rows] (group-by (comp normalize-name :name) (candidate-rows entity-type))
         :when   (and (not (str/blank? norm-name)) (>= (count rows) 2))
         finding (cluster-findings entity-type norm-name rows)]
     finding))

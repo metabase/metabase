@@ -132,27 +132,24 @@
               (testing "a zero-width space is stripped, joining the surrounding text"
                 (is (= [zwsp-b] (get-in (by-entity [:card zwsp-a]) [:details :duplicate_entity_ids])))))))))))
 
-(deftest duplicated-checker-splits-cards-by-sub-kind-test
-  (testing "cards group by (type, normalized name): a question and a model sharing a name are not duplicates"
+(deftest duplicated-checker-clusters-cards-across-sub-kinds-test
+  (testing "cards cluster by normalized name regardless of sub-kind: a question and a model sharing a name are duplicates"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)]
           (mt/with-temp
             [:model/Collection {coll-id :id} {}
              :model/Card {question :id} {:collection_id coll-id :name (str prefix " Sales") :type :question}
-             :model/Card {model :id}    {:collection_id coll-id :name (str prefix " Sales") :type :model}
-             ;; positive control: two same-kind cards with a shared name ARE duplicates
-             :model/Card {model-a :id}  {:collection_id coll-id :name (str prefix " Sales Model") :type :model}
-             :model/Card {model-b :id}  {:collection_id coll-id :name (str prefix " Sales Model") :type :model}]
-            (let [by-entity (duplicated-findings-by-entity!)]
-              (testing "cross-kind name collision yields no findings"
-                (is (nil? (by-entity [:card question])))
-                (is (nil? (by-entity [:card model]))))
-              (testing "same-kind collision is flagged, with entity_type :card"
-                (let [f (by-entity [:card model-a])]
-                  (is (some? f))
-                  (is (= :card (:entity_type f)))
-                  (is (= [model-b] (get-in f [:details :duplicate_entity_ids]))))))))))))
+             :model/Card {model :id}    {:collection_id coll-id :name (str prefix " Sales") :type :model}]
+            (let [by-entity        (duplicated-findings-by-entity!)
+                  question-finding (by-entity [:card question])
+                  model-finding    (by-entity [:card model])]
+              (testing "the question and the model are mutual peers, entity_type :card"
+                (is (some? question-finding))
+                (is (some? model-finding))
+                (is (= :card (:entity_type question-finding)))
+                (is (= [model] (get-in question-finding [:details :duplicate_entity_ids])))
+                (is (= [question] (get-in model-finding [:details :duplicate_entity_ids])))))))))))
 
 (deftest duplicated-checker-excludes-archived-test
   (testing "archived cards/dashboards/documents neither get findings nor count as peers"
