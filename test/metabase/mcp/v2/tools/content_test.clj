@@ -45,12 +45,24 @@
   ([args] (content-error nil args))
   ([token-scopes args] (-> (call-content token-scopes args) :content first :text)))
 
+(defn- venues-query
+  "A Lib query over VENUES — a runnable `:dataset_query` for fixtures that only need the card to
+   have one."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(defn- venues-count-query
+  "[[venues-query]] aggregated to a single count, for fixtures that read as a scalar."
+  []
+  (lib/aggregate (venues-query) (lib/count)))
+
 (deftest get-content-question-concise-test
   (testing "GHY-4140: a question read returns its concise projection with the type tag"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Venue Count"
                                               :type          :question
                                               :display       :scalar
-                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                              :dataset_query (venues-count-query)}]
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "question" :id card-id}]})]
           (is (nil? (:error row)))
@@ -72,13 +84,13 @@
   (testing "GHY-4140: each content type resolves by numeric id and returns a typed row"
     (mt/with-test-user :crowberto
       (testing "model"
-        (mt/with-temp [:model/Card {id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
+        (mt/with-temp [:model/Card {id :id} {:type :model :dataset_query (venues-query)}]
           (let [row (content-one {:items [{:type "model" :id id}]})]
             (is (nil? (:error row)))
             (is (= {:type "model" :id id} (select-keys row [:type :id]))))))
       (testing "metric"
         (mt/with-temp [:model/Card {id :id} {:type          :metric
-                                             :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                             :dataset_query (venues-count-query)}]
           (let [row (content-one {:items [{:type "metric" :id id}]})]
             (is (nil? (:error row)))
             (is (= "metric" (:type row))))))
@@ -148,7 +160,7 @@
 (deftest get-content-alert-test
   (testing "GHY-4140: alert reads carry condition, schedule, and handlers"
     (notification.tu/with-card-notification
-      [notification {:card              {:dataset_query (mt/mbql-query venues)}
+      [notification {:card              {:dataset_query (venues-query)}
                      :notification_card {:creator_id (mt/user->id :crowberto)}
                      :subscriptions     [{:type            :notification-subscription/cron
                                           :cron_schedule   "0 0 0 * * ?"
@@ -200,7 +212,7 @@
             so responses never form an existence oracle across the permission boundary"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Card       {card-id :id} {:collection_id coll-id
-                                                    :dataset_query (mt/mbql-query venues)}]
+                                                    :dataset_query (venues-query)}]
       (mt/with-non-admin-groups-no-collection-perms coll-id
         (mt/with-test-user :rasta
           (let [unreadable (:error (content-one {:items [{:type "question" :id card-id}]}))
@@ -213,7 +225,7 @@
 
 (deftest get-content-fault-isolation-test
   (testing "GHY-4140: one bad item becomes its own error object and the rest of the batch survives"
-    (mt/with-temp [:model/Card {card-id :id} {:name "Good" :dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {card-id :id} {:name "Good" :dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [rows (content-results {:items [{:type "question" :id card-id}
                                              {:type "question" :id 999999999}]})]
@@ -226,7 +238,7 @@
 
 (deftest get-content-card-type-mismatch-test
   (testing "GHY-4140: asking for a model with type question teaches the actual type"
-    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [error (:error (content-one {:items [{:type "question" :id card-id}]}))]
           (is (some? error))
@@ -243,7 +255,7 @@
 (deftest get-content-extra-scope-gates-test
   (testing "GHY-4140: alert reads require agent:notification:read on top of the base scope"
     (notification.tu/with-card-notification
-      [notification {:card              {:dataset_query (mt/mbql-query venues)}
+      [notification {:card              {:dataset_query (venues-query)}
                      :notification_card {:creator_id (mt/user->id :crowberto)}
                      :handlers          []}]
       (mt/with-test-user :crowberto
@@ -318,7 +330,7 @@
   (testing "GHY-4140: include sections apply to the items whose type supports them and are
             silently skipped for the rest, so the advertised mixed-type batch works"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
-                   :model/Card      {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+                   :model/Card      {card-id :id} {:dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [[dash question] (content-results {:items   [{:type "dashboard" :id dash-id}
                                                           {:type "question"  :id card-id}]
@@ -335,7 +347,7 @@
 (deftest get-content-include-unknown-for-every-item-test
   (testing "GHY-4140: a section no item in the batch supports is a tool-level teaching error,
             so a typo never silently returns nothing"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [error (content-error {:items [{:type "question" :id card-id}] :include ["layout"]})]
           (is (re-find #"does not apply to type question" error))
@@ -345,7 +357,7 @@
   (testing "GHY-4140: the dimensions include computes on read but never persists, so the tool's
             readOnlyHint holds — unlike GET /api/metric/:id, which syncs to the DB"
     (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
-                                                :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                                :dataset_query (venues-count-query)}]
       (mt/with-test-user :crowberto
         (let [dims-before (t2/select-one-fn :dimensions :model/Card :id metric-id)
               row         (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})]
