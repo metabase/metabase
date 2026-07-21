@@ -40,9 +40,8 @@
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
-  ;; u/lower-case-en would be a circular dep (metabase.util requires config)
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
+  ;; Locale/US casing so a Turkish default locale can't hide "Windows" (dotless i)
+  (str/includes? (.toLowerCase (System/getProperty "os.name") java.util.Locale/US) "win"))
 
 (def ^:private app-defaults
   "Global application defaults"
