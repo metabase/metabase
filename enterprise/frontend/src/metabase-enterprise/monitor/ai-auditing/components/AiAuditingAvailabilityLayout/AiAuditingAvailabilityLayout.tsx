@@ -21,7 +21,7 @@ function UnavailablePage({
   link,
 }: UnavailablePageProps) {
   return (
-    <MonitorMain>
+    <MonitorMain align="center" h="100%">
       <Flex flex={1} align="center" justify="center">
         <EmptyState
           icon="metabot"
