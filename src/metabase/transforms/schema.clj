@@ -4,13 +4,23 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(mr/def ::lookback
+  "A lookback window: each run re-reads source rows up to `value` `unit`s behind the checkpoint,
+  so late-arriving rows older than the watermark still get picked up. `unit` is required for
+  temporal checkpoint columns and must be omitted for numeric ones."
+  [:map
+   [:value pos-int?]
+   [:unit {:optional true} [:maybe (into [:enum] (map name) (sort u.date/add-units))]]])
 
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]])
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
+   [:lookback {:optional true} [:maybe ::lookback]]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
