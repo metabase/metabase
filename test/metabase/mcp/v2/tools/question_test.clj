@@ -272,6 +272,29 @@
           (is (=? {:base_type :type/BigInteger}
                   (get by-name "ID"))))))))
 
+(deftest update-model-column-metadata-preserves-prior-overrides-test
+  (testing "a second partial column_metadata update keeps overrides set by an earlier one (GHY-4145)"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [create-result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+                                                {:method "create" :card_type "model"
+                                                 :name "Iteratively Annotated Model"
+                                                 :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
+              card-id       (:id (:structuredContent create-result))
+              annotate!     (fn [column_metadata]
+                              (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                                  {:method "update" :id card-id :column_metadata column_metadata}))]
+          ;; first annotate TOTAL, then — in a separate call that never mentions TOTAL — annotate ID
+          (is (not (:isError (annotate! [{:name "TOTAL" :display_name "Total $" :semantic_type "type/Currency"}]))))
+          (is (not (:isError (annotate! [{:name "ID" :display_name "Order ID"}]))))
+          (let [by-name (into {} (map (juxt :name identity))
+                              (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+            (testing "the newly annotated column carries its override"
+              (is (=? {:display_name "Order ID"} (get by-name "ID"))))
+            (testing "the earlier override survives the second update rather than being wiped"
+              (is (=? {:display_name "Total $" :semantic_type :type/Currency}
+                      (get by-name "TOTAL"))))))))))
+
 (deftest update-move-question-into-dashboard-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-current-user (mt/user->id :crowberto)

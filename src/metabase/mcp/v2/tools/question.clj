@@ -14,7 +14,6 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -179,11 +178,13 @@
             computed-columns))))
 
 (defn- resolve-result-metadata
-  "Compute `dataset-query`'s real column metadata and overlay the caller's `column_metadata`
-   overrides by name. Throws a teaching error for a native query (no inferable columns) or an
-   unknown column name."
-  [dataset-query column_metadata]
-  (let [computed-columns (queries/infer-metadata dataset-query)]
+  "Compute `dataset-query`'s real column metadata — folding in `card`'s already-stored model
+   overrides (so a partial update keeps annotations on columns the caller didn't resend) — then
+   overlay the caller's `column_metadata` overrides by name. `card` carries `:type` and any existing
+   `:result_metadata`; for create it's just the pending `{:type ...}`. Throws a teaching error for a
+   native query (no inferable columns) or an unknown column name."
+  [dataset-query card column_metadata]
+  (let [computed-columns (queries/infer-metadata-with-model-overrides dataset-query card)]
     (when (empty? computed-columns)
       (common/throw-teaching-error
        "column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created."))
@@ -198,9 +199,9 @@
      "Pass either collection_id or dashboard_id, not both — a dashboard question's collection is the dashboard's collection.")))
 
 (defn- create!
-  "Mirror REST `POST /api/card/`'s pre-checks — run permissions on the resolved query, create
-   permission on the target collection — then save a `question` (or `model`) card. Returns the
-   create response: [[card-response]] plus the saved card's `:url`."
+  "Run the shared REST create check stack ([[metabase.queries.core/check-allowed-to-create-card!]])
+   on the resolved query and target collection, then save a `question` (or `model`) card. Returns
+   the create response: [[card-response]] plus the saved card's `:url`."
   [{:keys [name description display visualization_settings cache_ttl collection_position
            card_type column_metadata dashboard_id] :as args}
    session-id]
@@ -211,10 +212,12 @@
                         dashboard-id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)
                         (contains? args :collection_id) (common/resolve-collection-id (:collection_id args))
                         :else (:id (collection/user->personal-collection api/*current-user-id*)))]
-    (query-perms/check-run-permissions-for-query dataset-query)
-    (api/create-check :model/Card {:collection_id collection-id})
+    (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id}
+                                           (keyword (or card_type "question")))
     (let [result-metadata (when (seq column_metadata)
-                            (resolve-result-metadata dataset-query column_metadata))
+                            (resolve-result-metadata dataset-query
+                                                     {:type (keyword (or card_type "question"))}
+                                                     column_metadata))
           card (queries/create-card!
                 (cond-> (u/remove-nils
                          {:name                   name
@@ -238,11 +241,11 @@
   (assoc (card-response card) :archived (boolean (:archived card))))
 
 (defn- update!
-  "Mirror REST `PUT /api/card/:id`'s pre-checks — write-check the existing card, patch only the
-   caller-supplied fields (archiving/restoring via `archived`; moving into a dashboard via
-   `dashboard_id`, which forces the card's collection to the dashboard's — the model layer
-   enforces the dashboard-question move rules), re-check collection-move and query-run/overwrite
-   permissions when those fields change — then persist. Returns [[update-card-response]].
+  "Write-check the existing card, patch only the caller-supplied fields (archiving/restoring via
+   `archived`; moving into a dashboard via `dashboard_id`, which forces the card's collection to
+   the dashboard's — the model layer enforces the dashboard-question move rules), then run the
+   shared REST update check stack ([[metabase.queries.core/check-allowed-to-update-card!]] plus the
+   save-cycle guard) before persisting. Returns [[update-card-response]].
 
    Moving a card OUT of a dashboard isn't expressible here: a `nil` `dashboard_id` is
    indistinguishable from an omitted one once JSON-RPC args are stripped of nulls."
@@ -271,17 +274,14 @@
                        (seq column_metadata)                    (assoc :result_metadata
                                                                        (resolve-result-metadata
                                                                         (or new-query (:dataset_query card-before))
+                                                                        card-before
                                                                         column_metadata))
                        new-query                                (assoc :dataset_query new-query))
         card-updates (api/updates-with-archived-directly card-before raw-updates)]
-    (collection/check-allowed-to-change-collection card-before card-updates)
-    (when (api/column-will-change? :dataset_query card-before card-updates)
-      (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
-      (try
-        (lib/check-card-overwrite id (:dataset_query card-updates))
-        (catch clojure.lang.ExceptionInfo e
-          (let [data (ex-data e)]
-            (throw (ex-info (ex-message e) (assoc data :status-code (or (:status-code data) 400))))))))
+    (queries/check-card-can-be-saved! (:dataset_query card-updates) (some-> card_type keyword))
+    (when-some [query (:dataset_query card-updates)]
+      (queries/check-no-save-cycle! id query))
+    (queries/check-allowed-to-update-card! card-before card-updates)
     (queries/update-card! {:card-before-update    card-before
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
