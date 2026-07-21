@@ -99,3 +99,29 @@
           (let [cached (first (lib.metadata.protocols/cached-metadatas transformed-mp :metadata/table [1]))]
             (is (= "workspace_schema" (:schema cached)))
             (is (= "workspace_venues" (:name cached)))))))))
+
+(deftest ^:parallel table-overriding-metadata-provider-test
+  (testing "overrides merge onto the matching :metadata/table; nil = passthrough"
+    (let [base-mp (mock/mock-metadata-provider
+                   {:database {:id 1 :name "test-db" :engine :h2}
+                    :tables   [{:id 10 :name "orders"    :schema "public" :db-id 1}
+                               {:id 11 :name "customers" :schema "public" :db-id 1}]})
+          mp      (lib.metadata/table-overriding-metadata-provider
+                   (fn [t] (when (= 10 (:id t)) {:name "scratch_orders"}))
+                   base-mp)]
+      (is (= "scratch_orders" (:name (lib.metadata/table mp 10)))
+          "the mapped table is overridden")
+      (is (= "customers" (:name (lib.metadata/table mp 11)))
+          "an unmapped table (nil override) passes through unchanged"))))
+
+(deftest ^:parallel table-overriding-metadata-provider-parent-untouched-test
+  (testing "wrapping does not mutate the parent provider"
+    (let [base-mp (mock/mock-metadata-provider
+                   {:database {:id 1 :name "test-db" :engine :h2}
+                    :tables   [{:id 10 :name "orders" :schema "public" :db-id 1}]})
+          mp      (lib.metadata/table-overriding-metadata-provider
+                   (fn [_] {:name "scratch_orders"})
+                   base-mp)]
+      (lib.metadata/table mp 10)
+      (is (= "orders" (:name (lib.metadata/table base-mp 10)))
+          "the parent still serves the canonical name"))))

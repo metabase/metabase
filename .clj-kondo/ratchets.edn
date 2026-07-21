@@ -17,7 +17,7 @@
                  :equals-true                                                         1
                  :main-without-gen-class                                              1
                  :metabase/defsetting-namespace                                       7
-                 :metabase/disallow-hardcoded-driver-names-in-tests                   34
+                 :metabase/disallow-hardcoded-driver-names-in-tests                   37
                  :metabase/discourage-millis-duration                                 1
                  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 14
                  :metabase/modules                                                    8

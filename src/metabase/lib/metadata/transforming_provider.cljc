@@ -28,10 +28,12 @@
      the parent does is what happens.
 
    `f` must be pure."
+  (:refer-clojure :exclude [mapv])
   (:require
    #?@(:clj ([potemkin :as p]
              [pretty.core :as pretty]))
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.util.performance :refer [mapv]]))
 
 (#?(:clj p/deftype+ :cljs deftype) TransformingMetadataProvider [f parent-metadata-provider]
   lib.metadata.protocols/MetadataProvider
@@ -81,3 +83,18 @@
    `f` must be pure."
   [f parent-metadata-provider]
   (->TransformingMetadataProvider f parent-metadata-provider))
+
+(defn table-overriding-metadata-provider
+  "Wrap `parent-metadata-provider` so every `:metadata/table` it returns is `merge`d with
+   `(table->overrides table-metadata)`. A nil return from `table->overrides` is a
+   passthrough (the table is unchanged); all non-`:metadata/table` results pass through
+   untouched.
+
+   `table->overrides` must be pure."
+  [table->overrides parent-metadata-provider]
+  (transforming-metadata-provider
+   (fn [{metadata-type :lib/type} results]
+     (if (= metadata-type :metadata/table)
+       (mapv (fn [t] (merge t (table->overrides t))) results)
+       results))
+   parent-metadata-provider))

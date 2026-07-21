@@ -245,7 +245,7 @@
   ;; Because Spark SQL doesn't support parameterized queries (e.g. `?`) convert the entire String to hex and decode.
   ;; e.g. encode `abc` as `decode(unhex('616263'), 'utf-8')` to prevent SQL injection
   (case *inline-param-style*
-    :friendly (str \' (sql.u/escape-sql s :backslashes) \')
+    :friendly (sql.u/quote-literal s :backslashes)
     :paranoid (format "decode(unhex('%s'), 'utf-8')" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first

@@ -4,6 +4,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -161,11 +162,22 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))))
 
+(defn- drop-table-entity
+  "Driver-quoted identifier string for `table-name` -- a keyword (optionally
+  schema/catalog-namespaced) or a dot-qualified string. Namespace and name each
+  split on `.` into segments, quoted verbatim: dashes survive."
+  [driver table-name]
+  ;; not (keyword table-name) straight into HoneySQL: its entity formatter munges
+  ;; a keyword namespace's dashes to underscores, so a catalog named `test-data`
+  ;; would render as `test_data` and DROP TABLE IF EXISTS would silently no-op.
+  (let [kw       (keyword table-name)
+        ns-segs  (some-> (namespace kw) (str/split #"\."))
+        segments (into (vec ns-segs) (str/split (name kw) #"\."))]
+    (first (sql.qp/format-honeysql driver (apply h2x/identifier :table segments)))))
+
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
+  (let [sql (str "DROP TABLE IF EXISTS " (drop-table-entity driver table-name))]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
@@ -226,6 +238,14 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+(defn- lift-booleans
+  "Wrap booleans in `[:lift v]` so HoneySQL binds them as parameters; it inlines
+  `true`/`false` as literal TRUE/FALSE regardless of `:inline`, and not every
+  dialect has a boolean literal -- SQL Server parses a bare TRUE as a column name
+  (\"Invalid column name 'TRUE'\")."
+  [row]
+  (mapv #(if (boolean? %) [:lift %] %) row))
+
 (defn- insert-into!-sqls [driver table-name column-names values inline?]
   (let [;; We need to partition the insert into multiple statements for both performance and correctness.
         ;;
@@ -239,7 +259,7 @@
         dialect    (sql.qp/quote-style driver)
         sqls       (map #(sql/format {:insert-into (keyword table-name)
                                       :columns     (quote-columns driver column-names)
-                                      :values      %}
+                                      :values      (mapv lift-booleans %)}
                                      :inline inline?
                                      :quoted true
                                      :dialect dialect)

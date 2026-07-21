@@ -1,7 +1,13 @@
 (ns metabase.workspaces.table-remapping
-  "The OSS namespace for workspace table remapping."
+  "OSS namespace for workspace table remapping."
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
+
+(set! *warn-on-reflection* true)
+
+;;; ============================================================================
+;;; Sync / display defenterprise hooks (EE-impl in metabase-enterprise.*)
+;;; ============================================================================
 
 (defenterprise workspace-remap-schema+name
   "In workspace mode, a Table at the canonical identity `from-spec` may be backed
@@ -118,14 +124,12 @@
   Table-row predicate on `:schema \"\"` will not match a row stored as
   `:schema nil`.
 
-  Caveats (tracked separately):
+  Caveats:
   - Trusts the active `TableRemapping` row set. If a `WorkspaceDatabase`
     deprovision leaves stale rows behind, this hook will still translate
-    against them. See the deprovision-clears-remappings cleanup in
-    `workspaces-v2.md` worklog.
-  - The H7 second half (cross-DB workspaces on BigQuery) needs
-    callers to thread `:db` through the spec end-to-end. Both this hook and
-    `add-transform-target-mapping!` now carry the slot."
+    against them.
+  - Cross-database workspaces (e.g. BigQuery) need callers to thread `:db`
+    through the spec end-to-end."
   metabase-enterprise.workspaces.table-remapping
   [_db-id _to-spec]
   nil)

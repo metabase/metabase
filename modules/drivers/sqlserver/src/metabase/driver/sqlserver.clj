@@ -171,7 +171,9 @@
 (defmethod type->database-type :type/Integer [_] [:int])
 (defmethod type->database-type :type/Number [_] [:bigint])
 (defmethod type->database-type :type/BigInteger [_] [:bigint])
-(defmethod type->database-type :type/Text [_] [:text])
+;; not `text` -- SQL Server forbids comparing, sorting, or grouping text/ntext columns
+;; (IS NULL and LIKE only); nvarchar(max) is equally unbounded without the restriction.
+(defmethod type->database-type :type/Text [_] [[:raw "nvarchar(max)"]])
 (defmethod type->database-type :type/Time [_] [:time])
 (defmethod type->database-type :type/UUID [_] [:uniqueidentifier])
 

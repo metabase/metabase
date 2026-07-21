@@ -465,6 +465,12 @@
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
+  metabase-enterprise.transforms-verification.test-util/with-temp-csv-files                     clojure.core/let
+  metabase-enterprise.transforms-verification.chain-test/with-t1-t2-chain                       clojure.core/fn
+  metabase-enterprise.transforms-verification.chain-test/with-single-native-transform           clojure.core/let
+  metabase-enterprise.transforms-verification.chain-test/with-enrich-card                       clojure.core/fn
+  metabase-enterprise.transforms-verification.chain-test/with-enrich-mbql-card                  clojure.core/fn
+  metabase-enterprise.transforms-verification.card-chain-test/with-card-chain                   clojure.core/fn
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn

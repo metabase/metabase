@@ -36,7 +36,7 @@
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
-   (java.io File InputStreamReader Reader)
+   (java.io File InputStreamReader Reader StringReader)
    (java.nio.charset StandardCharsets)
    (org.apache.tika Tika)
    (org.mozilla.universalchardet UniversalDetector)))
@@ -319,6 +319,91 @@
   (let [charset (detect-charset file)]
     (-> (bom/bom-input-stream file)
         (InputStreamReader. charset))))
+
+;;; +----------------------------------------------------------------------------------------------+
+;;; |                                    Schema-directed parsing                                    |
+;;; +----------------------------------------------------------------------------------------------+
+
+(defn- base-type->parser
+  [base-type settings]
+  ;; Unmapped (throws) and nil base types both parse as text.
+  (let [upload-type (or (try
+                          (upload-types/base-type->upload-type base-type)
+                          (catch IllegalArgumentException _ nil))
+                        ::upload-types/text)]
+    (upload-parsing/upload-type->parser upload-type settings)))
+
+(defn- parse-csv-cell
+  [parser row-index column-name ^String value]
+  ;; Blank → nil (SQL NULL): same rule as [[parse-rows]].
+  (when-not (str/blank? value)
+    (try
+      (parser value)
+      (catch Exception e
+        (throw (ex-info (format "Could not parse value %s in column %s at row %d."
+                                (pr-str value) (pr-str column-name) row-index)
+                        {:type        :metabase.upload/unparseable-cell
+                         :row-index   row-index
+                         :column-name column-name
+                         :raw-value   value}
+                        e))))))
+
+(defn- parse-csv-row
+  [parsers column-names row-index row]
+  (when (not= (count row) (count parsers))
+    (throw (ex-info (format "CSV row %d has %d cell(s); the header has %d column(s)."
+                            row-index (count row) (count parsers))
+                    {:type                :metabase.upload/ragged-row
+                     :row-index           row-index
+                     :expected-cell-count (count parsers)
+                     :actual-cell-count   (count row)})))
+  (mapv (fn [parser column-name cell]
+          (parse-csv-cell parser row-index column-name cell))
+        parsers
+        column-names
+        row))
+
+(defn parse-csv
+  "Parse CSV `source` into typed rows, directed by a caller-supplied column schema.
+
+  `source`          — a `java.io.File` (decoded with BOM stripping and charset
+                      detection) or a CSV `String` (already decoded).
+  `header->columns` — fn of the header row (vector of strings; nil when `source`
+                      is empty) returning the column descriptors
+                      `[{:name <string> :base-type <keyword>} ...]` in CSV column
+                      order. Extra descriptor keys are passed through to
+                      `:columns` untouched. Anything it throws propagates
+                      unchanged, before any cell is parsed.
+
+  Cells are parsed by the most specific upload parser for the column's
+  `:base-type`; unmapped or nil base types parse as text. Blank cells — empty or
+  whitespace-only — parse to nil.
+
+  Returns `{:columns <the header->columns return> :rows [[v ...] ...]}`, `:rows`
+  fully realised, one vector per data row in column order.
+
+  Throws `ex-info` discriminated by `:type` in ex-data:
+  - `:metabase.upload/ragged-row` — a data row's cell count ≠ the column count;
+    ex-data has `:row-index` (0-based, header excluded), `:expected-cell-count`,
+    `:actual-cell-count`.
+  - `:metabase.upload/unparseable-cell` — a cell failed its column's parser;
+    ex-data has `:row-index`, `:column-name`, `:raw-value`; the parser's
+    exception is the cause."
+  [source header->columns]
+  (let [rows     (if (string? source)
+                   (with-open [reader (StringReader. ^String source)]
+                     (vec (csv/read-csv reader)))
+                   (with-open [reader (->reader source)]
+                     (vec (csv/read-csv reader))))
+        header   (first rows)
+        columns  (header->columns header)
+        settings (upload-parsing/get-settings)
+        parsers  (mapv #(base-type->parser (:base-type %) settings) columns)
+        names    (mapv :name columns)]
+    {:columns columns
+     :rows    (vec (map-indexed (fn [row-index row]
+                                  (parse-csv-row parsers names row-index row))
+                                (rest rows)))}))
 
 (defn- assert-separator-chosen [s]
   (or s (throw (IllegalArgumentException. "Unable to determine separator"))))

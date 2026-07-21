@@ -88,6 +88,21 @@
     (driver.conn/with-transform-connection
       (is (= "the transform connection" (driver.conn/connection-telemetry-info))))))
 
+(deftest ensure-connection-type!-test
+  (testing "passes when the current context matches the expected type, throws otherwise"
+    ;; ExceptionInfo, not AssertionError: the guard must survive builds compiled
+    ;; with *assert* disabled.
+    (testing "default context (no with-* binding)"
+      (is (nil? (driver.conn/ensure-connection-type! :default)))
+      (is (thrown? clojure.lang.ExceptionInfo (driver.conn/ensure-connection-type! :transform))))
+    (testing "inside with-transform-connection"
+      (driver.conn/with-transform-connection
+        (is (nil? (driver.conn/ensure-connection-type! :transform)))
+        (is (thrown? clojure.lang.ExceptionInfo (driver.conn/ensure-connection-type! :default)))))
+    (testing "a different context throws"
+      (driver.conn/with-write-connection
+        (is (thrown? clojure.lang.ExceptionInfo (driver.conn/ensure-connection-type! :transform)))))))
+
 (deftest effective-details-default-with-admin-details-test
   (testing "effective-details returns :details when *connection-type* is :default, even when :admin-details present"
     (let [details       {:host "read-host" :port 5432}

@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -391,3 +392,32 @@
               (driver/drop-table! driver db-id qualified-renamed))
             (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
               (driver/drop-table! driver db-id qualified-table))))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel insert-into-sqls-boolean-literal-test
+  (testing "boolean row values bind as parameters, never as inlined literals -- not every
+            dialect has a boolean literal keyword"
+    (doseq [driver [:postgres :h2]]
+      (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls driver :dbo/t ["id" "flag"]
+                                                                       [[1 true] [2 false]] false))]
+        (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)) (str driver))
+        (is (= [1 true 2 false] params) (str driver))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel drop-table-entity-preserves-dashes-test
+  (testing "drop-table! quotes identifier segments verbatim -- a dash in a schema/catalog segment
+            (a MySQL catalog named test-data) must not be munged to an underscore, or DROP TABLE
+            IF EXISTS targets a nonexistent object and silently no-ops"
+    (let [entity #'driver.sql-jdbc/drop-table-entity]
+      (testing "dashed catalog segment survives (mysql backtick dialect)"
+        (is (= "`test-data`.`some_tbl`" (entity :mysql (keyword "test-data" "some_tbl")))))
+      (testing "unqualified name (schema travels in the connection's catalog)"
+        (is (= "`some_tbl`" (entity :mysql (keyword "some_tbl")))))
+      (testing "ansi-quote dialects qualify + quote both segments"
+        (is (= "\"public\".\"foo\"" (entity :postgres (keyword "public" "foo"))))
+        (is (= "\"PUBLIC\".\"FOO\"" (entity :h2 (keyword "PUBLIC" "FOO")))))
+      (testing "dot-qualified string identifiers (metabase.upload.impl/table-identifier's shape) split into segments"
+        (is (= "\"schema\".\"name\"" (entity :postgres "schema.name")))
+        (is (= "`test-data`.`tbl`" (entity :mysql "test-data.tbl")) "dash within a dot-split segment survives"))
+      (testing "namespaced keyword whose name also contains a dot -- both segments split, all dashes survive"
+        (is (= "`test-data`.`a`.`b`" (entity :mysql (keyword "test-data" "a.b"))))))))

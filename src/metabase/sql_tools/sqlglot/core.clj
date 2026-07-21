@@ -54,15 +54,17 @@
     (let [db-tables (lib.metadata/tables query)
           db-transforms (lib.metadata/transforms query)
           sql (lib/raw-native-query query)
-          default-schema (sql.normalize/default-schema driver)
+          ;; :schema stays nil for an unqualified reference (parity with Macaw):
+          ;; find-table-or-transform resolves an unqualified name across all schemas,
+          ;; and pre-filling default-schema would collapse that to an exact, often
+          ;; wrong, match.
           query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
       (into #{}
             (keep (fn [[_catalog table-schema table]]
                     (sql-tools.common/find-table-or-transform
                      driver db-tables db-transforms
                      (sql-tools.common/normalize-table-spec
-                      driver {:table table
-                              :schema (or table-schema default-schema)}))))
+                      driver {:table table :schema table-schema}))))
             query-tables))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.

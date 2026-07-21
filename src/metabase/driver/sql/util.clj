@@ -129,6 +129,22 @@
                        (str/replace "\\" "\\\\")
                        (str/replace "'" "\\'")))))
 
+(defn quote-literal
+  "Escape `s` with [[escape-sql]] and wrap it in single quotes, yielding a SQL string literal.
+
+    (quote-literal \"Tito's Tacos\")              ; -> \"'Tito''s Tacos'\"
+    (quote-literal \"Tito's Tacos\" :backslashes) ; -> \"'Tito\\'s Tacos'\"
+
+  `escape-style` defaults to `:ansi`. Same trust caveat as [[escape-sql]]: not safe for
+  sanitizing user input — pass parameters separately where supported.
+
+  nil `s` yields `\"''\"` (the empty SQL string literal), diverging from
+  [[escape-sql]]'s nil passthrough — nil is indistinguishable from an empty string."
+  (^String [^String s]
+   (quote-literal s :ansi))
+  (^String [^String s escape-style]
+   (str \' (escape-sql s escape-style) \')))
+
 (defn validate-convert-timezone-args
   "Validate the arguments of convert-timezone.
   - if input column has timezone only target-timezone is required, throw exception if source-timezone is provided.

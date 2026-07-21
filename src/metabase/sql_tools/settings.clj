@@ -29,8 +29,9 @@
   #{:macaw :sqlglot})
 
 (def ^:dynamic *parser-backend-override*
-  "Dynamic var for overriding the parser backend in tests.
-   When bound, [[current-parser-backend]] returns this instead of the setting."
+  "Dynamic override for the parser backend; when bound, [[current-parser-backend]]
+   returns it instead of the setting. Bind it for a run with
+   `metabase.sql-tools.core/with-parser-backend`."
   nil)
 
 (defsetting sql-tools-parser-backend

@@ -76,10 +76,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- table-remapper
-  "Build a function that remaps table metadata according to `remappings`.
-   The returned fn merges `:db`, `:schema`, and `:name` overrides onto any table whose
-   `(:schema, :name)` matches a `from` spec."
+(defn- table->overrides
+  "Override `{:db :schema :name}` for any `:metadata/table` whose `(:schema, :name)`
+   matches a `from` spec in `remappings`, else nil (passthrough). Ignores `:db` when
+   matching — sync doesn't populate it on `:metadata/table`."
   [remappings]
   (let [schema-table-index (into {}
                                  (map (fn [[from-spec to-spec]]
@@ -92,18 +92,8 @@
                                             :name   to-name}])))
                                  remappings)]
     (fn [table-metadata]
-      (merge table-metadata
-             (get schema-table-index [(ws.table-remapping/denormalize-level (:schema table-metadata))
-                                      (ws.table-remapping/denormalize-level (:name table-metadata))])))))
-
-(defn- table-transform
-  "Wrap a per-table function `f` into a transform suitable for [[lib.metadata/transforming-metadata-provider]].
-   Only applies `f` when the metadata spec's `:lib/type` is `:metadata/table`; all other types pass through."
-  [f]
-  (fn [{metadata-type :lib/type} results]
-    (if (= metadata-type :metadata/table)
-      (into [] (map f) results)
-      results)))
+      (get schema-table-index [(ws.table-remapping/denormalize-level (:schema table-metadata))
+                               (ws.table-remapping/denormalize-level (:name table-metadata))]))))
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 ;;;
@@ -128,9 +118,7 @@
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
   [mp remappings]
-  (let [remapping-mp (lib.metadata/transforming-metadata-provider
-                      (table-transform (table-remapper remappings))
-                      mp)]
+  (let [remapping-mp (lib.metadata/table-overriding-metadata-provider (table->overrides remappings) mp)]
     (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
       ;; this has no body so it looks like this is a no-op. But the with-metadata-provider sets the metadata provider and then
       ;; doesn't pop it. We could use the private function that this uses: qp.store/set-metadata-provider!, or we could use the
@@ -150,10 +138,12 @@
    identifiers in the compiled SQL.
 
    Phase 1 is **not** the security boundary — Phase 2 is. Phase 1 exists for *pipeline
-   coherence*: middleware like sandboxing, permission checks, and cache-key generation may
-   read `:schema`/`:name` off table metadata and make decisions on them. Without Phase 1
-   those decisions would be made against canonical names, which is invisible bug-bait. With
-   Phase 1, the whole pipeline sees the same identifiers Phase 2 will emit.
+   coherence*: middleware that reads `:schema`/`:name` off table metadata *after this pass*
+   (e.g. cache-key generation and HoneySQL compilation) sees the identifiers Phase 2 will
+   emit rather than canonical ones. Phase 1 runs late in preprocess — **after** both
+   sandboxing passes and impersonation — so those passes still operate on canonical
+   `:schema`/`:name`. That is safe because Phase 2 is the authoritative isolation boundary;
+   Phase 1 does not retroactively feed sandboxing/impersonation.
 
    Native queries are intentionally untouched here — see the namespace docstring for why.
 

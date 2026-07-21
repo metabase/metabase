@@ -291,8 +291,7 @@
   nil)
 
 (defn run-transform!
-  "Run a transform. Returns a 202 response with run_id.
-   The transform must already be fetched and validated."
+  "Run a transform. Returns a 202 response with `:run_id`."
   [transform]
   (transforms.core/check-feature-enabled! transform)
   (api/check (not (transforms.core/transform-locked? transform))

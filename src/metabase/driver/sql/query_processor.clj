@@ -2349,15 +2349,18 @@
         ;; MySQL workspace transforms today — the iso namespace lives at the
         ;; AST `:db` position and the canonical `output-table` is bare.
         ;;
-        ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
-        ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
-        ;; Server / BigQuery cross-DB) aren't expressible through this single-
-        ;; keyword shape; when those workspaces land they'll either need
-        ;; `output-table` to carry both qualifiers or a different HoneySQL form.
+        ;; 3-part `db.schema.name` writes (Snowflake / SQL Server / BigQuery
+        ;; cross-DB) aren't expressible here; when those workspaces land,
+        ;; `output-table` will need to carry both qualifiers.
         target-id (cond
                     (and (not (str/blank? output-db))
                          (str/blank? (namespace (keyword output-table))))
-                    (keyword output-db (clojure.core/name (keyword output-table)))
+                    ;; a dot-joined string, not (keyword output-db name): HoneySQL munges a
+                    ;; keyword namespace's dashes to underscores, so a catalog named test-data
+                    ;; (MySQL, where schema == database) would render as test_data and the
+                    ;; CTAS would target a nonexistent database. A string splits on `.`, each
+                    ;; segment quoted verbatim.
+                    (str output-db "." (clojure.core/name (keyword output-table)))
                     :else
                     (keyword output-table))]
     [(first (format-honeysql driver

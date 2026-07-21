@@ -2459,6 +2459,7 @@
   {:team "Graphy"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
+           metabase.transforms-base.ordering
            metabase.transforms-base.util}
    ;; TODO regressions — transforms-base should not depend on :model/Transform or
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
@@ -3269,9 +3270,7 @@
            models
            util
            warehouse-schema}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
 
   enterprise/gsheets
   {:team "Cloud"
@@ -3756,6 +3755,26 @@
                     :model/Table
                     :model/TransformRun}}
 
+  enterprise/transforms-verification
+  {:team "Graphy"
+   :api  #{metabase-enterprise.transforms-verification.api}
+   :uses #{api
+           driver
+           lib
+           lib-be
+           permissions
+           query-processor
+           sql-tools
+           transforms
+           transforms-base
+           upload
+           util}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table
+                    :model/Transform}}
+
   enterprise/upload-management
   {:team "UX West"
    :api  #{metabase-enterprise.upload-management.api}
@@ -3786,9 +3805,7 @@
            util
            workspaces}
    :model-exports #{:model/Workspace}
-   :model-imports #{:model/Database
-                    :model/Table
-                    :model/User}}}
+   :model-imports #{:model/Database :model/Table :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

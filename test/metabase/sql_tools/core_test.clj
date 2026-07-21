@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
@@ -59,6 +60,22 @@
        (testing "Join references both tables"
          (is (= #{{:table (mt/id :orders)}
                   {:table (mt/id :products)}}
+                (sql-tools/referenced-tables driver/*driver* query))))))))
+
+(deftest ^:parallel referenced-tables-unqualified-non-default-schema-test
+  (sql-tools.tu/test-parser-backends
+   (mt/test-driver :h2
+     ;; :h2's default-schema is the fixed literal "PUBLIC", but a table can be synced under
+     ;; any schema (ClickHouse's per-connection database, a generated per-run schema); an
+     ;; unqualified reference must still resolve when the name is unambiguous.
+     (let [table-id (mt/id :orders)
+           mp (lib.tu/merged-mock-metadata-provider
+               (mt/metadata-provider)
+               {:tables [(-> (lib.metadata/table (mt/metadata-provider) table-id)
+                             (assoc :schema "some_other_schema" :name "unqualified_schema_probe"))]})
+           query (lib/native-query mp "select id from unqualified_schema_probe")]
+       (testing "Unqualified reference to a table outside the driver's default schema still resolves"
+         (is (= #{{:table table-id}}
                 (sql-tools/referenced-tables driver/*driver* query))))))))
 
 ;;; ------------------------------------------------ replace-names -------------------------------------------------
@@ -242,3 +259,70 @@
         (str "SET ROLE none; " values-query) false false
         (str values-query "; SELECT 1") false false
         (str values-query "; SET ROLE none") false false))))
+
+;;; ---------------------------------------------- rewrite-table-refs ----------------------------------------------
+
+(deftest ^:parallel rewrite-table-refs-redirects-test
+  (sql-tools.tu/test-parser-backends
+   (testing "a table ref is redirected to its replacement target"
+     (let [rw (sql-tools/rewrite-table-refs
+               :postgres "SELECT id FROM orders"
+               {:tables {{:table "orders"} {:schema "public" :table "scratch_orders"}}})]
+       (is (re-find #"scratch_orders" rw))
+       (is (not (re-find #"\borders\b" rw)))))))
+
+(deftest ^:parallel rewrite-table-refs-allow-unused-test
+  (sql-tools.tu/test-parser-backends
+   (testing "an unused replacement key is tolerated with :allow-unused? true on every backend"
+     (let [rw (sql-tools/rewrite-table-refs
+               :postgres "SELECT id FROM orders"
+               {:tables {{:table "orders"}    {:schema "public" :table "scratch_orders"}
+                         {:table "customers"} {:schema "public" :table "scratch_customers"}}}
+               {:allow-unused? true})]
+       (is (re-find #"scratch_orders" rw))
+       (is (not (re-find #"scratch_customers" rw)))))))
+
+(deftest ^:parallel rewrite-table-refs-on-parse-error-test
+  (sql-tools.tu/test-parser-backends
+   (testing "a parse failure is funnelled to :on-parse-error (not thrown)"
+     (let [seen   (atom nil)
+           ;; A genuinely unparseable string. (If a backend parses it leniently this
+           ;; is a no-op rewrite, which still must not throw.)
+           result (sql-tools/rewrite-table-refs
+                   :postgres "SELECT FROM FROM WHERE )("
+                   {:tables {{:table "orders"} {:table "scratch_orders"}}}
+                   {:on-parse-error (fn [_sql e] (reset! seen (class e)) ::handled)})]
+       (is (or (= ::handled result) (string? result))
+           "either the parse error was handled, or the backend tolerated the input")
+       (when (= ::handled result)
+         (is (some? @seen) "the cause exception was passed to on-parse-error"))))))
+
+(deftest rewrite-table-refs-default-rethrows-test
+  (testing "without :on-parse-error, a parse failure propagates"
+    ;; Force the failure deterministically — backend parsers are too lenient to
+    ;; guarantee a parse error from any particular SQL string.
+    (mt/with-dynamic-fn-redefs [sql-tools/replace-names (fn [& _] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (sql-tools/rewrite-table-refs
+                             :postgres "SELECT 1"
+                             {:tables {}}))))))
+
+(deftest rewrite-table-refs-propagates-error-band-test
+  (testing "an Error (a Throwable that is not an Exception) propagates raw"
+    ;; :on-parse-error is a parse-failure translator, not a catch-all — it must not
+    ;; swallow the Error band (StackOverflow/OOM/…) into a parse-failure label.
+    ;; Production callers (e.g. workspaces table remapping) rely on those fatal
+    ;; signals surfacing unwrapped.
+    (mt/with-dynamic-fn-redefs [sql-tools/replace-names (fn [& _] (throw (StackOverflowError. "boom")))]
+      (is (thrown? StackOverflowError
+                   (sql-tools/rewrite-table-refs
+                    :postgres "SELECT 1"
+                    {:tables {}}
+                    {:on-parse-error (fn [_sql _e] ::handled)})))))
+  (testing "an Exception still routes to :on-parse-error"
+    (mt/with-dynamic-fn-redefs [sql-tools/replace-names (fn [& _] (throw (ex-info "boom" {})))]
+      (is (= ::handled
+             (sql-tools/rewrite-table-refs
+              :postgres "SELECT 1"
+              {:tables {}}
+              {:on-parse-error (fn [_sql _e] ::handled)}))))))

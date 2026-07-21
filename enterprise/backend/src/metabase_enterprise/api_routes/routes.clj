@@ -44,6 +44,7 @@
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
    [metabase-enterprise.transforms-python.api]
+   [metabase-enterprise.transforms-verification.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase-enterprise.workspaces.api]
@@ -146,6 +147,9 @@
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   ;; :dependencies is deliberate: transform test runs ship with Dependency Tracking,
+   ;; not their own flag. Revisit if :transforms-advanced materializes.
+   "/transform-test"               (premium-handler metabase-enterprise.transforms-verification.api/routes :dependencies)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)

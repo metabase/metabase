@@ -906,9 +906,23 @@
       :type/Float              [:float]
       :type/Integer            [:int]
       :type/Number             [:bigint]
-      :type/Text               [:text]
+      :type/Text               [[:raw "nvarchar(max)"]]
       :type/Time               [:time]
-      :type/UUID               [:uniqueidentifier])))
+      :type/UUID               [:uniqueidentifier]))
+  (testing ":type/Text must not compile to `text`/`ntext` -- SQL Server rejects those in GROUP BY, ORDER BY,
+            and comparisons (\"The text, ntext, and image data types cannot be compared or sorted\")"
+    (let [ddl (#'driver.sql-jdbc/create-table!-sql :sqlserver :dbo/t
+                                                   [["state" (driver/type->database-type :sqlserver :type/Text)]])]
+      (is (re-find #"(?i)nvarchar\(max\)" ddl))
+      (is (not (re-find #"(?i)\bn?text\b" ddl))))))
+
+(deftest ^:parallel insert-boolean-values-test
+  (testing "SQL Server has no boolean literal -- a bare TRUE/FALSE token parses as an unquoted identifier
+            (\"Invalid column name 'TRUE'\") -- so boolean row values must bind as parameters"
+    (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls :sqlserver :dbo/t ["id" "flag"]
+                                                                     [[1 true] [2 false]] false))]
+      (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
+      (is (= [1 true 2 false] params)))))
 
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver

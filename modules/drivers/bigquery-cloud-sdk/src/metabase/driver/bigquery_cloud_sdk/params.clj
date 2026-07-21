@@ -43,6 +43,7 @@
 (defmethod ->QueryParameterValue Short                [v] (param "INT64" v))
 (defmethod ->QueryParameterValue Byte                 [v] (param "INT64" v))
 (defmethod ->QueryParameterValue clojure.lang.BigInt  [v] (param "INT64" v))
+(defmethod ->QueryParameterValue java.math.BigInteger [v] (param "INT64" v))
 (defmethod ->QueryParameterValue Float                [v] (param "FLOAT64" v))
 (defmethod ->QueryParameterValue Double               [v] (param "FLOAT64" v))
 

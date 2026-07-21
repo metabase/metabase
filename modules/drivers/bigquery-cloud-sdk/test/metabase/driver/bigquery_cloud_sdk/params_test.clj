@@ -19,6 +19,7 @@
                             [(short 100)                                {:base-type :type/Integer}]
                             [(byte 100)                                 {:base-type :type/Integer}]
                             [(bigint 100)                               {:base-type :type/Integer}]
+                            [(biginteger 100)                           {:base-type :type/Integer}]
                             [(float 100.0)                              {:base-type :type/Float}]
                             [(double 100.0)                             {:base-type :type/Float}]
                             ;; one case for NUMERIC/DECIMAL
