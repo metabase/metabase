@@ -18,8 +18,7 @@
   "References a database by id or name."
   [:or
    [:map [:id :int]]
-   ; remote sync representations use database names rather than numeric database ids,
-   ; and agents are typically only aware of names.
+   ; remote sync representations expose database names instead of numeric database ids
    [:map [:name ms/NonBlankString]]])
 
 (def ^:private CollectionRef
@@ -38,14 +37,14 @@
     [:sequential {:description "Limits tables and metrics to library collections. Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`."}
      CollectionRef]]
    [:question-collection-refs {:optional true}
-    [:sequential {:description "Includes questions and models from collections. Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`."}
+    [:sequential {:description "Includes saved questions from collections. Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`."}
      CollectionRef]]
    [:include-data-library? {:optional true}
     [:boolean {:description "Whether to include the root data library."}]]
    [:include-metric-library? {:optional true}
     [:boolean {:description "Whether to include the root metrics library."}]]
    [:include-models? {:optional true}
-    [:boolean {:description "Whether to include models in the selected scope."}]]])
+    [:boolean {:description "Whether to include readable models with actions. Database scope applies when provided."}]]])
 
 (defn- invalid-options!
   [message]

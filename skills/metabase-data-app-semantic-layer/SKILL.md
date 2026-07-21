@@ -50,7 +50,7 @@ Before generating, make sure the user has explicitly chosen the library scope th
 - `include-models=true` for readable models that have actions. When combined with `database=<name-or-id>`, it includes models with actions for that database only.
 - `database=<name-or-id>` when the app should use tables from one database.
 
-Use `question-collections` when the app needs `schema.questions.*` to be generated. Use `include-models=true` when the app needs any saved action under `schema.models.<model>.actions`; models without executable actions are omitted to keep generated schemas compact. It can be combined with `library-collections`, `include-data-library`, `include-metric-library`, or `question-collections` so one schema can include selected tables/metrics/questions plus all relevant actions.
+Use `question-collections` when the app needs `schema.questions.*` to be generated. Use `include-models=true` when the app needs any saved action under `schema.models.<model>.actions`; it includes all readable models with executable actions, unless `database` scopes them to one database. Models without executable actions are omitted to keep generated schemas compact. It can be combined with `library-collections`, `include-data-library`, `include-metric-library`, or `question-collections` so one schema can include selected tables/metrics/questions plus all readable actions.
 
 If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-models=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through generated model entries.
 
