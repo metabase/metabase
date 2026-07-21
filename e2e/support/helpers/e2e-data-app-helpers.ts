@@ -73,6 +73,12 @@ type MockDataAppOptions<TestEnv> = {
    * type as `TestEnv` if it differs.
    */
   testEnv?: TestEnv;
+  /**
+   * Hold the bundle response for this many ms, so the app's loading window is
+   * long enough to assert on. Without it a small mocked bundle can render before
+   * the test ever queries, making any "still loading" assertion racy.
+   */
+  bundleDelay?: number;
 };
 
 /**
@@ -114,6 +120,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
           "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
         },
         body: prelude + bundleCode,
+        ...(options.bundleDelay ? { delay: options.bundleDelay } : {}),
       },
     );
 
