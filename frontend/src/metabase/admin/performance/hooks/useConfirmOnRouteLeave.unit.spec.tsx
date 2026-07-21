@@ -25,10 +25,10 @@ describe("useConfirmOnRouteLeave", () => {
     const PageA = () => <div>Page A</div>;
 
     const { history, ...rest } = renderWithProviders(
-      <div>
+      <>
         <Route path="/a" element={<PageA />} />
         <Route path="/b" element={<PageB />} />
-      </div>,
+      </>,
       { withRouter: true, initialRoute: "/a" },
     );
     const guardedHistory = checkNotNull(history);

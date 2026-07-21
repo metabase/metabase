@@ -84,18 +84,33 @@ export function RouterProviderV7({ children }: PropsWithChildren): JSX.Element {
 }
 
 /**
+ * The in-memory blocking history the test engine runs on. Exposed so the test
+ * harness can own the instance and hand tests a handle on it, rather than it
+ * being created (and trapped) inside the provider.
+ */
+export function createMemoryTestHistory(initialRoute: string) {
+  return withBlocking(
+    createMemoryHistory({ initialEntries: [initialRoute], v5Compat: true }),
+  );
+}
+
+export type MemoryTestHistory = ReturnType<typeof createMemoryTestHistory>;
+
+/**
  * The v7 engine hosted on an in-memory history, for tests. Mirrors what
  * `renderWithProviders({ routerEngine: "v7" })` mounts, including navigation
- * blocking.
+ * blocking. Pass `history` to drive and inspect it from outside the tree.
  */
 export function RouterProviderV7Memory({
   children,
   initialRoute,
-}: PropsWithChildren<{ initialRoute: string }>): JSX.Element {
-  const [history] = useState(() =>
-    withBlocking(
-      createMemoryHistory({ initialEntries: [initialRoute], v5Compat: true }),
-    ),
+  history: providedHistory,
+}: PropsWithChildren<{
+  initialRoute: string;
+  history?: MemoryTestHistory;
+}>): JSX.Element {
+  const [history] = useState(
+    () => providedHistory ?? createMemoryTestHistory(initialRoute),
   );
   const onLocationChange = useLocationMirror();
   return (
