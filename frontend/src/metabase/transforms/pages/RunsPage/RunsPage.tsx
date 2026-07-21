@@ -1,19 +1,15 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { Outlet } from "metabase/router";
 import { Flex } from "metabase/ui";
 
-type RunsPageProps = {
-  children: ReactNode;
-};
-
-export function RunsPage({ children }: RunsPageProps) {
+export function RunsPage() {
   usePageTitle(t`Runs`);
 
   return (
     <Flex direction="column" w="100%" h="100%">
-      {children}
+      <Outlet />
     </Flex>
   );
 }

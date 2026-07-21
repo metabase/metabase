@@ -16,7 +16,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type { TransformGraphRun } from "metabase-types/api";
 import {
   createMockListTransformGraphRunsResponse,
@@ -25,6 +25,10 @@ import {
 } from "metabase-types/api/mocks";
 
 import { TransformGraphRunListPage } from "./TransformGraphRunListPage";
+
+const RoutedTransformGraphRunListPage = withRouteProps(
+  TransformGraphRunListPage,
+);
 
 type SetupOpts = {
   runs?: TransformGraphRun[];
@@ -48,7 +52,7 @@ function setup({
   const { history } = renderWithProviders(
     <Route
       path="/data-studio/transforms/runs"
-      component={TransformGraphRunListPage}
+      element={<RoutedTransformGraphRunListPage />}
     />,
     { withRouter: true, initialRoute },
   );

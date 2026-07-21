@@ -26,9 +26,7 @@ function setup({ detailed, params = {} }: SetupOpts) {
   const { history } = renderWithProviders(
     <Route
       path="*"
-      component={() => (
-        <DetailedViewSwitch detailed={detailed} params={params} />
-      )}
+      element={<DetailedViewSwitch detailed={detailed} params={params} />}
     />,
     { withRouter: true, initialRoute },
   );
