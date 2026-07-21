@@ -2763,11 +2763,16 @@
        disambiguated clause.
     4. auto-wire `source-field` on field clauses that reference a foreign table via a single
        unambiguous FK on the source table (implicit-join resolution);
-    5. infer `base-type` / `effective-type` on cross-stage field references
-       (`[\"field\" {} \"<column-name>\"]` in a non-first stage), by mini-resolving the
-       prefix of stages and reading the returned columns' metadata.
-    5.5. infer `base-type` / `effective-type` on field references in a stage whose source is
+    5. infer `base-type` / `effective-type` on field references in a stage whose source is
        a saved question / model (`source-card:`), using the card's resolved returned columns.
+       Must run *before* Pass 5.5: a `source-card` stage's own bare-name field refs need
+       `base-type` before that stage can be mini-resolved as part of a later stage's prefix.
+    5.5. infer `base-type` / `effective-type` on cross-stage field references
+       (`[\"field\" {} \"<column-name>\"]` in a non-first stage), by mini-resolving the
+       prefix of stages and reading the returned columns' metadata. When the prefix includes
+       a `source-card` stage, this relies on Pass 5 having already typed that stage's own
+       field refs - otherwise the prefix fails to resolve/schema-validate and the mini-resolve
+       silently no-ops (BOT-1604).
     5.7. assert that every string-named cross-stage / source-card field ref resolved to a real
        column (i.e. Pass 5 / 5.5 stamped its `base-type`). A ref that matched nothing is the
        LLM naming a column that doesn't exist (often a display label); raise an `:agent-error?`
@@ -2810,8 +2815,8 @@
        split-post-agg-filters*
        (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
-       (infer-cross-stage-field-types* mp content-store)
        (infer-source-card-field-types* mp content-store)
+       (infer-cross-stage-field-types* mp content-store)
        (assert-cross-stage-refs-resolved* mp content-store)
        friendly-errors*)))
 
