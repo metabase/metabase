@@ -1,10 +1,6 @@
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
-// eslint-disable-next-line import/order
-import enterpriseOverrides from "ee-overrides";
-
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import {
   StaticChoropleth,
   getStaticChoroplethSettings,
@@ -12,11 +8,14 @@ import {
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticChart";
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
+import {
+  getRawSeriesWithDashcardSettings,
+  initializeContext,
+  toRenderedChart,
+} from "metabase/static-viz/lib/entrypoint";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
-import { mutateColors } from "metabase/ui/colors/colors";
 import { updateStartOfWeek } from "metabase/utils/i18n";
-import MetabaseSettings from "metabase/utils/settings";
 import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import { createDataSource } from "metabase/visualizer/utils/data-source";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
@@ -26,7 +25,6 @@ import {
   splitVisualizerSeries,
 } from "metabase/visualizer/utils/split-series";
 import {
-  extendCardWithDashcardSettings,
   extractRemappings,
   isCartesianChart,
   makeCellBackgroundGetter,
@@ -34,14 +32,11 @@ import {
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
-  CustomVizPluginId,
-  DashCardVisualizationSettings,
   Dataset,
   DatasetData,
   GeoJSONData,
   RawSeries,
   SeriesCard,
-  SettingKey,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
@@ -61,6 +56,11 @@ export type {
   RenderedChart,
 } from "./types";
 
+export {
+  initializeContext,
+  registerCustomVizPlugin,
+} from "metabase/static-viz/lib/entrypoint";
+
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
 });
@@ -72,22 +72,6 @@ function LegacyRenderChart(type: LegacyStaticChartType, options: unknown) {
   return ReactDOMServer.renderToStaticMarkup(
     <LegacyStaticChart type={type} options={options} />,
   );
-}
-
-function getRawSeriesWithDashcardSettings(
-  rawSeries: RawSeries,
-  dashcardSettings: DashCardVisualizationSettings,
-): RawSeries {
-  return rawSeries.map((series, index) => {
-    const isMainCard = index === 0;
-    if (isMainCard) {
-      return {
-        ...series,
-        card: extendCardWithDashcardSettings(series.card, dashcardSettings),
-      };
-    }
-    return series;
-  });
 }
 
 function getVisualizerRawSeries(
@@ -123,34 +107,6 @@ function getVisualizerRawSeries(
       columnValuesMapping,
     },
   ];
-}
-
-export function initializeContext(options: RenderChartOptions) {
-  MetabaseSettings.set("token-features", options.tokenFeatures);
-  MetabaseSettings.set(
-    // Unjustified type cast. FIXME
-    "application-colors" as SettingKey,
-    options.applicationColors,
-  );
-  // The app loads the instance's colors from the page bootstrap, which this
-  // context has no access to. Without them, a palette color looked up by name
-  // would resolve to the default value rather than the instance's.
-  mutateColors(options.applicationColors ?? {});
-
-  if (typeof enterpriseOverrides === "function") {
-    enterpriseOverrides();
-  }
-
-  MetabaseSettings.set("custom-formatting", options.customFormatting);
-  MetabaseSettings.set("site-locale", options.locale ?? "en");
-}
-
-export function registerCustomVizPlugin(
-  factory: Parameters<typeof PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin>[0],
-  identifier: string,
-  pluginId: CustomVizPluginId,
-) {
-  PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier, pluginId);
 }
 
 function RenderChart(
@@ -265,7 +221,7 @@ export function renderChart(input: RenderChartInput): RenderedChart {
         input.options,
       );
   }
-  return { type: content.startsWith("<svg") ? "svg" : "html", content };
+  return toRenderedChart(content);
 }
 
 function buildCellBackgroundGetter(
