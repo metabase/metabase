@@ -10,7 +10,7 @@ import { useDispatch } from "metabase/redux";
 import { LOCATION_CHANGE } from "../routing-reducer";
 
 import { toV3Location } from "./location";
-import { setV7Navigate } from "./navigator";
+import { notifyLocationListeners, setV7Navigate } from "./navigator";
 
 /**
  * Bridges the v7 router to redux, replacing what `routerMiddleware` +
@@ -36,10 +36,11 @@ export function V7ReduxBridge(): null {
   }, [navigate]);
 
   useEffect(() => {
-    dispatch({
-      type: LOCATION_CHANGE,
-      payload: toV3Location(location, action),
-    });
+    const v3Location = toV3Location(location, action);
+    dispatch({ type: LOCATION_CHANGE, payload: v3Location });
+    // Fan out to the imperative router's `listen` subscribers (v3's
+    // `router.listen`), which have no other source of location changes on v7.
+    notifyLocationListeners(v3Location);
   }, [dispatch, location, action]);
 
   return null;

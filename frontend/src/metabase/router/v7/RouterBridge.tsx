@@ -1,9 +1,11 @@
 import type { Location as HistoryLocation, LocationDescriptor } from "history";
-import { type ReactNode, useContext, useMemo } from "react";
+import { type ReactNode, useContext, useMemo, useRef } from "react";
 import {
+  type NavigateOptions,
   UNSAFE_RouteContext,
   type NavigateFunction as V7NavigateFunction,
   Outlet as V7Outlet,
+  type To,
   useNavigationType,
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
@@ -21,7 +23,7 @@ import type { Route } from "../route";
 
 import { registerLeaveHook } from "./blocking-history";
 import { toV3Location } from "./location";
-import { toNavigateArgs } from "./navigator";
+import { subscribeLocation, toNavigateArgs } from "./navigator";
 
 // The facade route stub, plus the route's matched pathname so `setRouteLeaveHook`
 // can scope its hook to the route the way v3 does.
@@ -68,10 +70,23 @@ export function RouterBridge({
     [v7Location, action],
   );
 
-  const router = useMemo<InjectedRouter>(
-    () => makeRouterShim(navigate),
-    [navigate],
-  );
+  // v3 handed consumers a stable `router`, so effects keyed on it (notably the
+  // `router.listen` subscriptions in `use-dashboard-url-query`) survive a
+  // navigation. v7's `navigate` changes identity per location, which would tear
+  // those effects down and re-subscribe them around every location change, so read
+  // `navigate` through a ref and keep the shim itself stable.
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  const router = useMemo<InjectedRouter>(() => {
+    const navigateLatest = (to: To | number, options?: NavigateOptions) => {
+      if (typeof to === "number") {
+        navigateRef.current(to);
+      } else {
+        navigateRef.current(to, options);
+      }
+    };
+    return makeRouterShim(navigateLatest as V7NavigateFunction);
+  }, []);
 
   const value = useMemo<WithRouterProps>(
     () => ({ router, location, params, routes }),
@@ -125,5 +140,10 @@ function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
     createPath: href,
     createHref: href,
     isActive: () => false,
-  };
+    // v3's `router.listen` (used by e.g. `use-dashboard-url-query`) is absent from
+    // v3's own `InjectedRouter` type, so the cast re-adds it. `V7ReduxBridge` feeds
+    // these subscribers every location change.
+    listen: (callback: (location: HistoryLocation) => void) =>
+      subscribeLocation(callback),
+  } as InjectedRouter;
 }

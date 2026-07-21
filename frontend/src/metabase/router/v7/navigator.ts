@@ -1,4 +1,4 @@
-import type { LocationDescriptor } from "history";
+import type { Location as HistoryLocation, LocationDescriptor } from "history";
 import type { NavigateFunction, NavigateOptions, To } from "react-router-v7";
 
 import type { RouterNavigator } from "../middleware";
@@ -12,6 +12,28 @@ let currentNavigate: NavigateFunction | null = null;
 
 export function setV7Navigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
+}
+
+/**
+ * Subscribers to location changes, backing the imperative router's `listen`. v3's
+ * `router.listen` had no v7 equivalent, so `V7ReduxBridge` fans every location
+ * change out to these on the app's behalf (e.g. `use-dashboard-url-query`).
+ */
+type LocationListener = (location: HistoryLocation) => void;
+const locationListeners = new Set<LocationListener>();
+
+export function subscribeLocation(listener: LocationListener): () => void {
+  locationListeners.add(listener);
+  return () => {
+    locationListeners.delete(listener);
+  };
+}
+
+export function notifyLocationListeners(location: HistoryLocation): void {
+  // Snapshot so a listener that unsubscribes mid-run cannot skip a sibling.
+  for (const listener of [...locationListeners]) {
+    listener(location);
+  }
 }
 
 /**
