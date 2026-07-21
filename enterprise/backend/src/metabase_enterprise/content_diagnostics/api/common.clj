@@ -235,10 +235,9 @@
               :when (and model (seq ids))
               row   (read-entity-rows etype ids excluded-personal-ids)]
           [[etype (:id row)]
-           (if (= etype :transform)
-             {:id (:id row) :name (:name row) :entity_type etype}
-             (cond-> {:id (:id row) :name (:name row) :entity_type etype :view_count (:view_count row)}
-               (= etype :card) (assoc :card_type (:type row))))])))
+           (cond-> {:id (:id row) :name (:name row) :entity_type etype}
+             (not= etype :transform) (assoc :view_count (:view_count row))
+             (= etype :card)         (assoc :card_type (:type row)))])))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
