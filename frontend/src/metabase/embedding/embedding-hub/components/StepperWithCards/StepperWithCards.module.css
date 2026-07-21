@@ -41,6 +41,7 @@
 }
 
 .stepDescription {
+  /* padding so the card shadow isn't clipped */
   padding: 0.625rem 0.25rem 1.25rem 0;
 }
 

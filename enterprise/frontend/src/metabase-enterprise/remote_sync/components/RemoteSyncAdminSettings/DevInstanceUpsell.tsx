@@ -5,7 +5,7 @@ import { UpsellWrapperDismissible } from "metabase/common/components/upsells/com
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl } from "metabase/common/hooks/use-docs-url/use-docs-url";
 import CS from "metabase/css/core/index.css";
-import { Alert, Box, Flex, Text } from "metabase/ui";
+import { Alert } from "metabase/ui";
 
 export const DevInstanceUpsell = UpsellWrapperDismissible(
   function DevInstanceUpsell({ onDismiss }: { onDismiss?: () => void }) {
@@ -16,24 +16,18 @@ export const DevInstanceUpsell = UpsellWrapperDismissible(
     return (
       <Alert
         color="core-brand"
+        title={t`Need a dedicated development environment?`}
+        icon={<UpsellGem.New />}
         withCloseButton
         onClose={onDismiss}
         classNames={{ closeButton: CS.alignSelfStart }}
       >
-        <Flex>
-          <UpsellGem.New mt="0.125rem" />
-          <Box ml="sm">
-            <Text fw="bold">{t`Need a dedicated development environment?`}</Text>
-            <Text lh="1.25rem" c="text-secondary">
-              {jt`With ${(
-                <ExternalLink
-                  key="link"
-                  href={devInstanceDocsUrl}
-                >{t`Development instances`}</ExternalLink>
-              )}, you can build and test your changes in a safe, isolated environment before syncing to production.`}
-            </Text>
-          </Box>
-        </Flex>
+        {jt`With ${(
+          <ExternalLink
+            key="link"
+            href={devInstanceDocsUrl}
+          >{t`Development instances`}</ExternalLink>
+        )}, you can build and test your changes in a safe, isolated environment before syncing to production.`}
       </Alert>
     );
   },

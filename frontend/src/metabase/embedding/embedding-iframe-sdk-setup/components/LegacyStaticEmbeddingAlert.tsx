@@ -5,7 +5,7 @@ import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-ifra
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { useDispatch } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
-import { Alert, Anchor, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Alert, Anchor, Icon } from "metabase/ui";
 
 export const LegacyStaticEmbeddingAlert = () => {
   const { isGuestEmbedsEnabled, settings, resource, experience, onClose } =
@@ -38,48 +38,36 @@ export const LegacyStaticEmbeddingAlert = () => {
   }
 
   return (
-    <Alert>
-      <Flex gap="sm">
-        <Box>
-          <Icon color="text-secondary" name="info" mt="2px" />
-        </Box>
+    <Alert icon={<Icon name="info" />}>
+      {t`This embed was originally published with static embedding. We recommend using this new, modular embedding code snippet. Your embed won't change; you'll just have better theming options.`}
+      <Anchor
+        key="anchor"
+        fw="bold"
+        data-testid="legacy-static-embedding-button"
+        onClick={() => {
+          onClose();
 
-        <Stack>
-          <Text c="text-secondary" lh="lg">
-            {t`This embed was originally published with static embedding. We recommend using this new, modular embedding code snippet. Your embed won't change; you'll just have better theming options.`}
-          </Text>
-
-          <Anchor
-            key="anchor"
-            fw="bold"
-            lh="lg"
-            data-testid="legacy-static-embedding-button"
-            onClick={() => {
-              onClose();
-
-              dispatch(
-                setOpenModalWithProps({
-                  id: STATIC_LEGACY_EMBEDDING_TYPE,
-                  props: {
-                    experience,
-                    dashboardId: settings.dashboardId,
-                    questionId: settings.questionId,
-                    parentInitialState: {
-                      resourceId: resource.id,
-                      resourceType,
-                      isGuest: isGuestEmbed,
-                      useExistingUserSession,
-                    },
-                  },
-                }),
-              );
-            }}
-          >
-            {c("A link that toggles the static embedding wizard.")
-              .t`Use static embedding instead`}
-          </Anchor>
-        </Stack>
-      </Flex>
+          dispatch(
+            setOpenModalWithProps({
+              id: STATIC_LEGACY_EMBEDDING_TYPE,
+              props: {
+                experience,
+                dashboardId: settings.dashboardId,
+                questionId: settings.questionId,
+                parentInitialState: {
+                  resourceId: resource.id,
+                  resourceType,
+                  isGuest: isGuestEmbed,
+                  useExistingUserSession,
+                },
+              },
+            }),
+          );
+        }}
+      >
+        {c("A link that toggles the static embedding wizard.")
+          .t`Use static embedding instead`}
+      </Anchor>
     </Alert>
   );
 };

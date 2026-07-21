@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { Alert, Anchor, Icon, Text } from "metabase/ui";
+import { Alert, Anchor, Icon } from "metabase/ui";
 
 import { SETUP_SSO_CAMPAIGN, UTM_LOCATION } from "../../analytics";
 
@@ -19,25 +19,18 @@ export const SetupSsoAlert = () => {
   });
 
   return (
-    <Alert
-      icon={
-        <Icon name="warning_triangle_filled" c="text-secondary" size={16} />
-      }
-      color="warning"
-    >
-      <Text size="md" lh="lg" c="text-secondary">
-        {jt`This embed will only work for local testing. To get production ready code, configure ${(
-          <Anchor
-            key="configure-sso"
-            href={setupSsoUrl}
-            target="_blank"
-            size="md"
-            lh="lg"
-          >
-            {t`JWT SSO or SAML`}
-          </Anchor>
-        )}.`}
-      </Text>
+    <Alert icon={<Icon name="warning_triangle_filled" />} color="warning">
+      {jt`This embed will only work for local testing. To get production ready code, configure ${(
+        <Anchor
+          key="configure-sso"
+          href={setupSsoUrl}
+          target="_blank"
+          size="md"
+          lh="lg"
+        >
+          {t`JWT SSO or SAML`}
+        </Anchor>
+      )}.`}
     </Alert>
   );
 };

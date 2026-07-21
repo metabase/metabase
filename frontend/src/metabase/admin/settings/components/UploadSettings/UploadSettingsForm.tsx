@@ -287,9 +287,7 @@ export function UploadSettingsFormView({
 const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
   <Alert my="md" maw={620} icon={<Icon name="warning" />} color="warning">
     <Stack gap="sm">
-      <span>
-        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift or Clickhouse database.`}
-      </span>
+      {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift or Clickhouse database.`}
       {isHosted && (
         <Tooltip
           label={
