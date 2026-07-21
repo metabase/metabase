@@ -18,9 +18,8 @@
   served the creator's snapshot. See [[metabase.permissions.data-access-token]].
 
   A `nil` `:data_access_token` (a pre-token snapshot, or a write that failed to capture one)
-  means no lens comparison is possible at all; the deliberate fallback is creator+admin-only,
-  and since this is only consulted for non-creators, that collapses to admins-only. (This branch
-  never consults `:dataset_query` — there is no token to compare it against.)
+  means no lens comparison is possible at all; the deliberate fallback is admin-only.
+  (This branch never consults `:dataset_query` — there is no token to compare it against.)
 
   When a token IS present we are in strict lens-comparison land, and admins get no exemption —
   an admin's own lens isn't necessarily neutral (database routing applies to admins too). So a
@@ -63,8 +62,7 @@
 
 (defn viewer-can-view-cached-result?
   "Boolean form of [[assert-can-view-cached-result!]]: true when the current user may be served the
-  blob for `stored-result`. Does not bypass for the creator — callers wanting a creator bypass must
-  check that themselves."
+  blob for `stored-result`."
   [stored-result]
   (nil? (cached-result-blocked-reason stored-result)))
 
