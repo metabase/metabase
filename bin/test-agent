@@ -11,11 +11,13 @@
 #   bin/test-agent :only '[metabase.foo-test]'
 #   bin/test-agent :only '[metabase.foo-test/some-test]'
 #   bin/test-agent --oss :only '[metabase.foo-test]'   # run without EE extensions
+#   bin/test-agent --embedder :only '[metabase-enterprise.embedder.core-test]'
 #   bin/test-agent --drivers=mysql,h2,postgres :module enterprise/workspaces  # run driver tests
 #   bin/test-agent                          # runs all tests (rarely what you want)
 #
 # Options:
 #   --oss             Run without enterprise extensions (uses :oss:oss-dev instead of :ee:ee-dev)
+#   --embedder        Add the optional in-process embedder module and its tests.
 #   --drivers=LIST    Add driver aliases (:drivers:drivers-dev) and set DRIVERS=LIST.
 #                     LIST is a comma-separated list of driver names, e.g. mysql,h2,postgres.
 #
@@ -28,12 +30,15 @@ export HAWK_MODE=cli/ci
 
 # Parse our own flags; forward everything else to clojure.
 INCLUDE_OSS=false
+INCLUDE_EMBEDDER=false
 INCLUDE_DRIVERS=false
 DRIVERS_VAL=""
 args=()
 for arg in "$@"; do
   if [[ "$arg" == "--oss" ]]; then
     INCLUDE_OSS=true
+  elif [[ "$arg" == "--embedder" ]]; then
+    INCLUDE_EMBEDDER=true
   elif [[ "$arg" == --drivers=* ]]; then
     INCLUDE_DRIVERS=true
     DRIVERS_VAL="${arg#--drivers=}"
@@ -46,6 +51,10 @@ if $INCLUDE_OSS; then
   ALIASES=":dev:ci:test:oss:oss-dev"
 else
   ALIASES=":dev:ee:ee-dev:test"
+fi
+
+if $INCLUDE_EMBEDDER; then
+  ALIASES="${ALIASES}:embedder"
 fi
 
 if $INCLUDE_DRIVERS; then

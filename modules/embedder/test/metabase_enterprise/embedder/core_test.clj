@@ -114,15 +114,15 @@
                   lookup-name  ["all-MiniLM-L6-v2" "sentence-transformers/all-MiniLM-L6-v2"]]
             (testing (str key-spelling " -> " lookup-name)
               (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_MODEL_SOURCES"
-                                                                                (format "{%s {:path \"/models/tuned\"}}"
-                                                                                        (pr-str key-spelling))}
+                                                                                 (format "{%s {:path \"/models/tuned\"}}"
+                                                                                         (pr-str key-spelling))}
                                           embedder.model/bundled-model-resource bundle-only]
                 (is (= {:type :path :path "/models/tuned" :include-token-types? true}
                        (#'embedder.model/model-source lookup-name)))))))
         (testing "but entries for both spellings are a config error, not a silent last-one-wins"
           (mt/with-dynamic-fn-redefs [embedder.model/getenv {"MB_EMBEDDER_MODEL_SOURCES"
-                                                            (str "{\"all-MiniLM-L6-v2\" {:path \"/a\"} "
-                                                                 "\"sentence-transformers/all-MiniLM-L6-v2\" {:path \"/b\"}}")}]
+                                                             (str "{\"all-MiniLM-L6-v2\" {:path \"/a\"} "
+                                                                  "\"sentence-transformers/all-MiniLM-L6-v2\" {:path \"/b\"}}")}]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"entries for two names of the same model"
                                   (#'embedder.model/model-source "all-MiniLM-L6-v2")))))
@@ -144,6 +144,18 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"No source for embedder model \"my-model\""
                             (source-with {} false))))))
+
+(deftest source-log-summary-test
+  (testing "authenticated URL credentials, paths, queries, and fragments are not logged"
+    (is (= {:type :url :url "https://models.example.com:8443"}
+           (#'embedder.model/source-log-summary
+            {:type :url
+             :url  "https://user:password@models.example.com:8443/private/model.onnx?token=secret#fragment"}))))
+  (testing "local paths and unparseable URLs are fully redacted"
+    (is (= {:type :path}
+           (#'embedder.model/source-log-summary {:type :path :path "/secret/model"})))
+    (is (= {:type :url :url "<redacted>"}
+           (#'embedder.model/source-log-summary {:type :url :url "not a URL"})))))
 
 (deftest model-registry-test
   (testing "models are cached per name and only built once each"

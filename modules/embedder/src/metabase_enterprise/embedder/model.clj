@@ -13,6 +13,7 @@
    (ai.djl.huggingface.translator TextEmbeddingTranslatorFactory)
    (ai.djl.inference Predictor)
    (ai.djl.repository.zoo Criteria ZooModel)
+   (java.net URI)
    (java.nio.file Paths)
    (java.util ArrayList)))
 
@@ -149,6 +150,22 @@
                               (pr-str model-name))
                       {:model-name model-name :requested-name requested-name :resource resource-path})))))
 
+(defn- source-log-summary
+  "Non-sensitive source details suitable for application logs."
+  [{:keys [type url]}]
+  (cond-> {:type type}
+    (= type :url)
+    (assoc :url (try
+                  (let [^URI uri  (URI. ^String url)
+                        scheme    (.getScheme uri)
+                        host      (.getHost uri)
+                        port      (.getPort uri)]
+                    (if (and scheme host)
+                      (str scheme "://" host (when (not= port -1) (str ":" port)))
+                      "<redacted>"))
+                  (catch Exception _
+                    "<redacted>")))))
+
 (defn- build-model ^ZooModel [model-name]
   (let [source   (model-source model-name)
         criteria (-> (Criteria/builder)
@@ -162,7 +179,7 @@
                      (.optArgument "pooling" "mean")
                      (.optArgument "normalize" "true")
                      (.optArgument "includeTokenTypes" (str (boolean (:include-token-types? source)))))]
-    (log/info "Loading in-process embedder model" model-name "from" (pr-str source))
+    (log/info "Loading in-process embedder model" model-name "from" (pr-str (source-log-summary source)))
     (-> (case (:type source)
           :path (.optModelPath criteria (Paths/get ^String (:path source) (into-array String [])))
           :url  (.optModelUrls criteria ^String (:url source)))

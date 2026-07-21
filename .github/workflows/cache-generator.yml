@@ -96,6 +96,7 @@ jobs:
             ":dev:ci:test:ee:ee-dev"                            # backend.yml matrix (ee) + generative-query-test.yml
             ":dev:ci:test:oss:oss-dev"                          # backend.yml matrix (oss)
             ":dev:ci:ee:ee-dev:test:cloverage"                  # backend-cloverage.yml
+            ":dev:ee:ee-dev:test:embedder"                     # build-scripts.yml (embedder tests + plugin deps)
             ":dev:drivers:drivers-dev:test"                     # reset-cloud-test-dataset.yml + presto script
             ":dev:drivers:build:build-dev:build-test:ci"        # build-scripts.yml
             ":ee:drivers:check"                                 # backend.yml (check; git dep athos/clj-check)

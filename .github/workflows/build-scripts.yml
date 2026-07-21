@@ -9,6 +9,20 @@ on:
 
 jobs:
 
+  test-embedder:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v6
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+    - name: Run embedder tests
+      run: ./bin/test-agent --embedder :only '[metabase-enterprise.embedder.core-test]'
+    - name: Build embedder plugin
+      run: ./bin/build-embedder-plugin.sh
+    - name: Verify embedder plugin artifact
+      run: test -s modules/embedder/target/metabase-embedder-plugin.jar
+
   test-build-scripts:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:

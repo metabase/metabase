@@ -8,7 +8,8 @@
 
   Downloads are cached (and re-verified) under `modules/embedder/target/model-download/`, so repeated
   builds are offline once the cache is warm.
-  Skip entirely with `SKIP_EMBEDDER_MODEL=true`."
+  `SKIP_EMBEDDER_MODEL=true` skips the fetch, but still clears the generated bundles first, so a skipped
+  build packages no model rather than whatever a previous build left behind."
   (:require
    [clojure.java.io :as io]
    [environ.core :as env]
@@ -16,6 +17,7 @@
   (:import
    (java.io File)
    (java.net URL)
+   (java.nio.file FileVisitOption Files LinkOption Path)
    (java.security DigestInputStream MessageDigest)
    (java.util.zip ZipEntry ZipOutputStream)))
 
@@ -105,22 +107,23 @@
   `bundled-models` no longer names would otherwise linger across builds and ship inside the jar.
   Free to do: every bundle is rewritten below anyway, from the separately-cached downloads."
   []
-  ;; Depth-first (children before their parent), so the dir itself empties out; write-zip! recreates it.
-  (doseq [^File file (reverse (file-seq (io/file bundle-dir)))
-          :when      (.exists file)]
-    (when (.isFile file)
-      (u/announce "Removing stale bundle file %s" (str file)))
-    ;; Fail the build if a stale artifact cannot be removed; continuing could package it into the plugin.
-    (io/delete-file file)))
+  (let [root (.toPath (io/file bundle-dir))]
+    ;; Do not follow links: the generated tree is disposable, but a link target may not be.
+    (when (Files/exists root (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+      (with-open [paths (Files/walk root (make-array FileVisitOption 0))]
+        ;; Delete children before parents. Files/delete fails the build if any stale artifact remains.
+        (doseq [^Path path (sort-by #(.getNameCount ^Path %) > (iterator-seq (.iterator paths)))]
+          (u/announce "Removing stale bundle path %s" (str path))
+          (Files/delete path))))))
 
 (defn fetch-model!
   "Fetch (or reuse cached) pinned model files and assemble per-model, per-arch bundle zips.
-  Skip with SKIP_EMBEDDER_MODEL=true."
+  SKIP_EMBEDDER_MODEL=true still clears generated bundles, then skips fetching and rebuilding them."
   [_]
-  (if (= (env/env :skip-embedder-model) "true")
-    (u/announce "Skipping embedder model fetch (SKIP_EMBEDDER_MODEL=true)")
-    (u/step "Fetch embedder models and assemble bundles"
-      (clear-bundle-dir!)
+  (u/step "Fetch embedder models and assemble bundles"
+    (clear-bundle-dir!)
+    (if (= (env/env :skip-embedder-model) "true")
+      (u/announce "Skipping embedder model fetch (SKIP_EMBEDDER_MODEL=true)")
       (doseq [[model-name model-spec] bundled-models
               arch                    (keys (:arch->onnx-file model-spec))]
         (write-zip! model-name model-spec arch

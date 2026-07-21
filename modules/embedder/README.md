@@ -74,9 +74,11 @@ pgvector index is labeled and sized from the settings.
 ```
 
 The build fetches the pinned model files from HuggingFace (sha256-verified, cached under
-`target/model-download/`; skip with `SKIP_EMBEDDER_MODEL=true`), assembles per-model, per-arch
-INT8 bundles into `resources/metabase-embedder/`, and packs an uberjar containing the module
-source, the bundles, and only the deps the core uberjar doesn't already provide. Bundling another
+`target/model-download/`), assembles per-model, per-arch INT8 bundles into
+`resources/metabase-embedder/`, and packs an uberjar containing the module source, the bundles, and
+only the deps the core uberjar doesn't already provide. `SKIP_EMBEDDER_MODEL=true` skips the fetch and
+builds a model-less jar — it clears `resources/metabase-embedder/` first, so a skipped build never packs
+bundles left behind by an earlier one. Bundling another
 model is one entry in `bin/build/src/build/embedder_model.clj`'s `bundled-models`. There is
 deliberately no `metabase-plugin.yaml`: manifest-less jars are classpath-added at boot without
 loading anything.
