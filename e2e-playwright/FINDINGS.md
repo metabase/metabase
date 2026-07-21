@@ -4169,3 +4169,34 @@ open item, not as evidence.
     **function** as `columnAssertion` (`_.isFunction(columnAssertion)`), which
     our port does not. Checked every call site — all pass `Number(...)`, so the
     narrowing is safe in practice. Recorded rather than silently relied upon.
+
+### ⚠️ #217 SCOPED DOWN: the hole is real in Cypress, but 13 of 14 call sites already cover it
+
+218. **I overstated #217.** I called the `every()` vacuity "the primary evidence
+    across the sandboxing specs". Measured, it is not.
+
+    **What is true:** the hole is genuinely in Cypress, not a porting artifact.
+    `e2e-permissions-helpers.js:143-155` is the identical
+    `expect(values.every(assertionFn)).to.equal(true)` with no non-empty guard,
+    and `[].every(...)` is `true` in JS regardless of runner.
+
+    **What I got wrong:** of the **14 upstream call sites that pass `columnId`**
+    (the only branch that can go vacuous), **13 carry an adjacent row-count
+    guard** — `cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 10)`
+    immediately before, or `assertQueryBuilderRowCount(6)` just after. Exactly
+    **one** is exposed: `question/notebook-link-to-data-source.cy.spec.ts:530`.
+
+    So for most of those tests the **row-count assertion is doing the
+    load-bearing work** and `every()` is secondary confirmation. The correct
+    framing is *a latent hole in a shared helper, incidentally covered by
+    convention at nearly every site*, not a systematic gap in sandboxing
+    coverage.
+
+    **The guard still earns its place** — it protects the one exposed site, and
+    protects any future call site added without the neighbouring row-count
+    check, which is exactly the kind of thing that gets forgotten. And it is
+    discriminating rather than decorative: inverting it fails 11 of 29.
+
+    Recorded because the difference between "sandboxing coverage has a hole" and
+    "a helper has a latent hole that convention covers" is the difference
+    between an alarming claim and a true one.
