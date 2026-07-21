@@ -1,198 +1,115 @@
 # Resume here
 
-## ✅ STATUS: THE PORTING QUEUE IS EMPTY (2026-07-21)
+**Last updated: 2026-07-22, after the stabilisation pass.**
 
-**414 specs ported.** `PORTED.txt` has 414 entries; `node scripts/build-queue.mjs`
-reports `0 specs queued (0 lines)`.
+## Status
 
-Verification at handoff:
-- `bunx tsc --noEmit` → **exit 0**
-- import gate across all 414 specs → **0 unresolved** (the 8 flagged deps are
-  `cypress_sample_instance_data.json`, **gitignored and generated at CI time** —
-  verified, not assumed)
-- branch `playwright-e2e-spike`, PR #77999
+The porting queue is empty (414 specs) and the suite is stable enough that the
+number is no longer the interesting thing.
 
----
+| | broken |
+|---|---|
+| Start of the stabilisation pass (`workers=2`) | 66 |
+| After the merge + 15 deterministic fixes | 14 |
+| Latest (`workers=2`) | ~13 |
 
-## 📈 The business case: `CASE.md`
+**`workers=2` reached parity with `workers=1`** — the parallelism penalty is
+gone. Four shared-resource races were the bulk of it: the writable DB, maildev,
+routing databases, and `global-teardown` sweeping other invocations' ports.
 
-The migration argument, kept current. Its "Defects found in the existing Cypress
-suite" section is the register of ~30 upstream problems this port surfaced, each
-with a finding number, a measurement, and an honest "does it bite?" column.
+## Read this first, or you will waste hours
 
-That last column matters: a latent hole that convention covers is not the same
-as missing coverage, and conflating them would discredit the list. See #218 for
-the worked example of me getting that wrong and correcting it.
+**"13 broken" is a SAMPLE, not a list.** Across 4 CI runs, 35 distinct tests
+failed at least once (0.7% of 4849) — but **27 of them failed exactly once**.
+The persistent core is ~8 tests collapsing into ~4 root causes, 3 of which are
+already diagnosed. Do not treat a run's failure list as a to-do list: 9 of 11
+"failures" recovered with no change between two consecutive runs, while 11
+previously-green tests broke.
 
-## Read this before trusting anything below
+**Run-to-run comparisons are confounded when the spec count changes.** Playwright
+shards by test count, so porting one spec (+8 tests) reshuffles which specs share
+a shard, changing execution order and neighbours.
 
-`FINDINGS.md` is 207 entries. **Twelve of my own claims were corrected on
-evidence**, several after being repeated in a dozen agent briefs. Retractions are
-recorded in place, not deleted. **If a claim here matters to a decision you are
-about to make, check it** — that is the method, and it is why the rest is worth
-anything.
+**A green port is weak evidence without a mutation.** Four assertions this pass
+were vacuous — passing while observing nothing. And mutations against transient
+state must be run TWICE: one recorded result had to be retracted because the
+mutant died by luck, and a separate mutant was inert (it edited a helper default
+the spec overrides explicitly) and survived meaninglessly.
 
-Two habits produced most of the value:
-1. **Mutation testing every port.** A green port proves nothing until something
-   that should break it does. ~12 vacuous assertions were found this way, several
-   of them upstream's.
-2. **Reporting a briefed hazard as *inapplicable*** — the standard being *"I
-   checked the mechanism"*, not *"I didn't see it"*. This prevented manufactured
-   work and false "fixes" repeatedly.
+## 🔴 Next steps, in priority order
 
----
+### 1. In flight — two agents, the last undiagnosed clusters
+- **`temporal-unit-parameters`** (3 tests, dashcard parameter mapping). The only
+  persistent cluster with no diagnosis.
+- **`impersonated`** (2 tests, both `waitForResponse` at the same line,
+  `support/models.ts:64`). Suspected FINDINGS #222 (cold GraalPy/sqlglot pool),
+  but the agent is asked to check whether "have limited access" touches a native
+  query at all — if not, #222 is the wrong tree.
 
-## 🔴 Owed work, in priority order
+Both now have something no prior investigation had: **traces for flaky-but-passing
+shards**, as of `18a02dd000c`.
 
-### 1. Port `resetWritableDb` (#157)
-Cypress's `H.restore("*-writable")` also calls `resetWritableDb`
-(`e2e/support/db_tasks.js:41`), which wipes the warehouse. **Ours does not, and it
-is not ported anywhere** — while 47 files here restore a writable snapshot. State
-accumulates forever.
-- **A fidelity gap, not just hygiene** — every spec on that tier runs against a
-  materially different warehouse than upstream.
-- **Not a drop-in:** a faithful version does `DROP SCHEMA … CASCADE` across
-  `Schema A`…`Schema Z` and would destroy a concurrent agent's fixtures. **Land it
-  with the slots drained.**
-- **Acceptance test, ready-made:** `datamodel-data-studio-search` is **2/6 failed**
-  on the real container and **8/8 under a pristine-DB shim**. It should go
-  2/8 → 8/8 with no other change (#183).
-- Second leak it also covers: model persistence leaks a `metabase_cache_*` schema
-  per run **forever** (#195). I cleaned 9 by hand (39 → 30 schemas).
+### 2. Awaiting a human answer — `custom-viz` (#224)
+A **genuine sandbox escape**: untrusted plugin code can cover the whole viewport.
+Master commit `07cb2f0a6c7` (GDGT-2872) deliberately removed
+`contain: layout paint /* Security boundary */` to let popovers overflow, and
+deleted upstream's own test in the same commit. **Triaged not urgent.** A message
+to the custom-viz owners is drafted. Our ported test is deliberately left FAILING
+until they answer — **do not silently delete it**, it is the only automated
+evidence the boundary was given up. Once they confirm the trade was weighed,
+delete it to match upstream and close.
 
-### 2. Two specs are deliberately RED, both on warehouse provisioning
-- **`datamodel-data-studio-search`** — above.
-- **`workspace-manager`** postgres arm — 412, because `writable_db`'s `public`
-  schema grants CREATE to PUBLIC and workspace isolation refuses it. The one-line
-  REVOKE belongs in **provisioning**, not a `beforeEach` (#193). Left faithful with
-  a full FIXME. Nothing in the repo establishes that precondition, and whether
-  upstream passes in CI is **unknown and unclaimed**.
+### 3. Report to owners, no code change from us
+- **#225 MySQL 8.4** — Metabase cannot connect to a cold `caching_sha2` account
+  over non-TLS. `/api/database/validate` is the admin "add a database" path, so
+  real users hit this. Belongs with the drivers owners.
+- **#218** data studio drops the open table from the URL; **#220** `PinMap`
+  mutates props during render; **#223** `/backfill-status` reports complete while
+  entities sit in retry backoff.
 
-### 3. Fix the viewport (#111)
-The harness runs **1280×720**, not the 1280×800 `playwright.config.ts` appears to
-set — the `chromium` project spreads `devices["Desktop Chrome"]`, whose viewport
-overrides the top-level `use`. **Line 46 has never had any effect.** Add the
-viewport *after* the spread, **then re-run the landed ports** — some may encode
-workarounds that become wrong at 800. The re-verification is the real cost.
+### 4. The fourth shared resource — per-worker webhook tester
+One webhook-tester container per shard on a hardcoded `:9080` with a fixed
+session id, which every `beforeEach` DELETEs wholesale. Patched for one describe
+with `mode: "default"`, but **`question-saved.spec.ts:777` resets the same
+session**, so a cross-file collision remains possible if sharding co-locates
+them. The durable fix mirrors `support/maildev.ts`.
 
-### 4. Fix the snowplow collector's CORS preflight (#133)
-It omits `Access-Control-Allow-Credentials`, so the tracker's
-`credentials:"include"` POST dies `net::ERR_FAILED` and only the OPTIONS is
-recorded — **the collector is blind to FE events**, the opposite of its docstring.
-One line. Audited: no landed port currently depends on it for an FE event, but
-that is **an inference from reports, not a re-run**.
+### 5. Stop the snapshot metadata being a lie
+`resetWritableDb` empties the warehouse, but the snapshot's app-DB metadata still
+lists 8 tables for database 2 (upstream's `convertToWritable` only re-points
+`dbname`). Any metadata sync deletes them. Background Quartz syncs are now
+disabled on db 2, which **narrows the window rather than closing it** — the
+restore-to-PUT gap remains. The complete fix is repopulating the per-worker
+warehouse after the reset.
 
-### 5. Fix `signInWithCredentials` (#139, #148)
-It POSTs `/api/session` through `mb.api`, so the cookie lands in the API request
-jar and `wrap-session-key` resolves **cookie before header** — every later
-`mb.api` call runs as that user, and `mb.signInAsAdmin()` does **not** undo it.
-**A mutation proved this makes sandboxing baselines pass while measuring nothing.**
-Working shape is in `sandboxing-via-ui`: session POST through a **throwaway
-request context disposed immediately**.
-⚠️ **`sandboxing-via-api`'s green is marked UNVERIFIED** pending this — 84
-`mb.api`/`signInAsAdmin` references.
+### 6. Smaller, well-scoped
+- `browse-permalinks` needs a **jar re-verify** — the local jar predates the
+  feature it tests, so it is source-mode verified only.
+- **Prettier: 488 of 770 files unformatted.** Pre-existing; reformatting now
+  would bury real diffs.
+- `resyncProductsTable`'s gate is satisfiable by a stale row (its own docstring
+  says so). Latent, not currently biting.
+- `support/INDEX.md` may be stale.
 
-### 6. CI parallelism — settle before raising the shard count
-- `sandboxing-misconfiguration` and `question-reproductions` **both rebuild
-  `public.products`** in the shared warehouse; they must not run concurrently
-  (#203). Presents as an inexplicable intermittent failure in one of them.
-- The **maildev inbox is shared and `setupSMTP` DELETEs it** (#186). `forgot-password`
-  shows the fix: isolate on the **per-slot site URL** (#205).
-- Some upstream specs are **only safe because Cypress is serial** (#191).
+## Hazards that masquerade as port drift
 
-### 7. Smaller, well-scoped
-- **`openTable` drops `database` and `limit`** on its notebook branch (#116, #197)
-  — three independent confirmations, two near-duplicate workarounds to retire.
-- **`.every(` / `.all(` sweep in shared assertion helpers** — `[].every(...)` is
-  `true`, so `rowsShouldContainOnlyOneCategory` passes on an empty result set
-  (#202). Fixing it also strengthens `sandboxing-via-ui`.
-- **`be.enabled` → `toBeEnabled()` audit** (#188/#190): 41 specs exposed, but the
-  hazard only bites on **non-form-control** targets and the failure direction is
-  **safe** (red against correct code). Any of the 41 currently green have already
-  demonstrated consistency.
-- **`pro-self-hosted` feature count disputed** — 42 vs 52 (#180). One measurement
-  against a freshly started backend settles it.
-- **5s first-call tax on `PUT /api/email`** (#207) — localized precisely,
-  mechanism unknown, taxes every email spec via the shared helper.
-- `support/INDEX.md` is stale. Prettier has never been run on this package.
-
----
-
-## Environment gotchas that masquerade as port drift
-
-**Check the fixture before accepting a local failure as your own bug:**
-- **`e2e/snapshots/blank.sql` is corrupt** — holds the fully set-up `default` state
-  (11 users, 97 cards), not a blank instance (#97). Gitignored, so **CI is fine**.
-- **The `default` snapshot has a 30-day fuse** (#145).
-- **Postgres heap order** broke one assertion via the virtualization window (#103).
-- **`schemas[0]` is `Domestic`, not `public`** on this box.
-- **Three routes to a false "feature is off"**: the retracted `.env` trailing comma
-  (#107/#129 — the harness reads `cypress.env.json`), a probe that PUT an
-  **undefined** token (#181), and **underscore vs hyphen** in the feature key
-  (#200). `undefined` and `false` are not the same answer.
-- **`cypress_sample_instance_data.json` is unsafe for name-based lookups** — it says
-  "All internal users" where the jar serves "All Users" (#201).
-
-**Do not regenerate snapshots while agents are live** — they are shared.
-
----
-
-## What is shared and what is not (#178, #186 — I had this wrong at first)
-
-- **Per-slot, isolated:** everything in the application DB — settings, users,
-  groups, tokens, collections, questions. `worker-backend.ts:266` gives each slot
-  its own `MB_DB_FILE`.
-- **Genuinely shared:** the **warehouse containers** (postgres :5404, mysql :3304,
-  mongo), **maildev including its inbox**, and **webhook-tester**.
-
-I over-constrained app-DB writes and under-emphasised warehouse hygiene for most of
-this work. **The warehouse is where the real hazards live.**
-
----
-
-## Running it
-
-```
-cd e2e-playwright
-JAR_PATH=$(git rev-parse --show-toplevel)/target/uberjar/metabase.jar \
-  PW_PER_WORKER_BACKEND=1 PW_KEEP_SLOT_BACKENDS=1 PW_SLOT_OFFSET=<1-5> \
-  PW_QA_DB_ENABLED=1 PW_ACTION_TIMEOUT=30000 TZ=US/Pacific \
-  bunx playwright test tests/<spec>.spec.ts --workers=1 --trace=off
-```
-
-- **Verify the jar BY IDENTITY** (`ps` + `version.hash` vs `COMMIT-ID`) —
-  `PW_KEEP_SLOT_BACKENDS=1` silently ignores `JAR_PATH` and prints `(reused)`.
-- **Never touch port 4000.**
-- **The gate-OFF control is the only trustworthy signal** that a spec really
-  executes. Tags have been found wrong in **eight** distinct ways; a green run with
-  the gate off is either real coverage or silent skipping, and only the
-  executed-vs-skipped counts tell them apart.
-- Containers: `postgres-sample`, `mysql-sample`, `mongo-sample`, `maildev`,
-  `webhook-tester`, and an **OpenLDAP on :389** started this session — that one took
-  `sso-ldap` from **4/14 to 14/14**. `maildev-ssl` and localstack :4566 are down;
-  localstack is the real python-transforms blocker.
-
----
-
-## 🔴 The product finding worth taking to the frontend team
-
-**PR #64406 (`2a6741df9cf`)** widened `DataSelector.skipSteps` from
-`databases.length === 1` to `enabledDatabases.length >= 1`, so with two databases
-the DATABASE step is **always skipped**.
-
-**Three agents derived this independently, from three specs with three different
-symptoms.** The third measured the window directly: `last-used-native-database-id`
-is `""` after restore (eliminating the dirty-snapshot explanation), popover open
-with nothing selected at **+159 ms**, auto-selected and PUT at **+280 ms** — a
-~150 ms window. Seven tests in `native-database-source` are `test.fixme` because
-their subject is now untestable; lifting two and running `--repeat-each=5` gave
-**0/5 and 0/5**.
-
-**Not claimed:** whether Cypress catches it. The cross-check is barred while
-sibling slots are live, so upstream's behaviour is **unknown**.
-
----
----
+- **The `mysql-sample-8` QA image tag is MUTABLE.** CI's warehouse can change
+  under the suite with no commit — that is how #225 appeared.
+- **The repo is a SHALLOW clone.** `git log -- <file>` returns exactly one commit
+  for every path and is useless for drift checking. Use `git show <sha> -- <file>`
+  or diff against upstream text.
+- **CI overrides the config.** `e2e-playwright.yml:199` runs
+  `--workers=2 --fully-parallel`, defeating `workers: 1, fullyParallel: false`.
+  Reproduce concurrency bugs with CI's flags, not the config's.
+- **CI builds the PR MERGE commit**, so master drift appears in CI and not
+  locally. This produced a whole batch of "port defects" that were upstream
+  changes.
+- **Check `:8080` before believing a local failure.** A stale `target/cljs_dev/`
+  with rspack failing to compile renders a broken app and produces a rash of
+  bogus failures. `bunx shadow-cljs compile app`.
+- **Slot -> port is `4100 + slot`** (`support/worker-backend.ts:186`), and
+  snowplow collectors sit at `5100 + slot`. Space concurrent agents' offsets by
+  worker count, not by 1.
 
 # ⬇️ SUPERSEDED — kept for provenance
 
@@ -811,3 +728,203 @@ started during the documents-comments port and left up). The ports stub
 snowplow, so they don't need it — but any **original Cypress spec whose
 `beforeEach` calls `H.resetSnowplow()`** dies in `before each hook` in ~1s
 without it, which matters for the fidelity cross-check.
+
+
+# ⬇️ SUPERSEDED (2026-07-22) — the pre-stabilisation head, kept for provenance
+
+# Resume here
+
+## ✅ STATUS: THE PORTING QUEUE IS EMPTY (2026-07-21)
+
+**414 specs ported.** `PORTED.txt` has 414 entries; `node scripts/build-queue.mjs`
+reports `0 specs queued (0 lines)`.
+
+Verification at handoff:
+- `bunx tsc --noEmit` → **exit 0**
+- import gate across all 414 specs → **0 unresolved** (the 8 flagged deps are
+  `cypress_sample_instance_data.json`, **gitignored and generated at CI time** —
+  verified, not assumed)
+- branch `playwright-e2e-spike`, PR #77999
+
+---
+
+## 📈 The business case: `CASE.md`
+
+The migration argument, kept current. Its "Defects found in the existing Cypress
+suite" section is the register of ~30 upstream problems this port surfaced, each
+with a finding number, a measurement, and an honest "does it bite?" column.
+
+That last column matters: a latent hole that convention covers is not the same
+as missing coverage, and conflating them would discredit the list. See #218 for
+the worked example of me getting that wrong and correcting it.
+
+## Read this before trusting anything below
+
+`FINDINGS.md` is 207 entries. **Twelve of my own claims were corrected on
+evidence**, several after being repeated in a dozen agent briefs. Retractions are
+recorded in place, not deleted. **If a claim here matters to a decision you are
+about to make, check it** — that is the method, and it is why the rest is worth
+anything.
+
+Two habits produced most of the value:
+1. **Mutation testing every port.** A green port proves nothing until something
+   that should break it does. ~12 vacuous assertions were found this way, several
+   of them upstream's.
+2. **Reporting a briefed hazard as *inapplicable*** — the standard being *"I
+   checked the mechanism"*, not *"I didn't see it"*. This prevented manufactured
+   work and false "fixes" repeatedly.
+
+---
+
+## 🔴 Owed work, in priority order
+
+### 1. Port `resetWritableDb` (#157)
+Cypress's `H.restore("*-writable")` also calls `resetWritableDb`
+(`e2e/support/db_tasks.js:41`), which wipes the warehouse. **Ours does not, and it
+is not ported anywhere** — while 47 files here restore a writable snapshot. State
+accumulates forever.
+- **A fidelity gap, not just hygiene** — every spec on that tier runs against a
+  materially different warehouse than upstream.
+- **Not a drop-in:** a faithful version does `DROP SCHEMA … CASCADE` across
+  `Schema A`…`Schema Z` and would destroy a concurrent agent's fixtures. **Land it
+  with the slots drained.**
+- **Acceptance test, ready-made:** `datamodel-data-studio-search` is **2/6 failed**
+  on the real container and **8/8 under a pristine-DB shim**. It should go
+  2/8 → 8/8 with no other change (#183).
+- Second leak it also covers: model persistence leaks a `metabase_cache_*` schema
+  per run **forever** (#195). I cleaned 9 by hand (39 → 30 schemas).
+
+### 2. Two specs are deliberately RED, both on warehouse provisioning
+- **`datamodel-data-studio-search`** — above.
+- **`workspace-manager`** postgres arm — 412, because `writable_db`'s `public`
+  schema grants CREATE to PUBLIC and workspace isolation refuses it. The one-line
+  REVOKE belongs in **provisioning**, not a `beforeEach` (#193). Left faithful with
+  a full FIXME. Nothing in the repo establishes that precondition, and whether
+  upstream passes in CI is **unknown and unclaimed**.
+
+### 3. Fix the viewport (#111)
+The harness runs **1280×720**, not the 1280×800 `playwright.config.ts` appears to
+set — the `chromium` project spreads `devices["Desktop Chrome"]`, whose viewport
+overrides the top-level `use`. **Line 46 has never had any effect.** Add the
+viewport *after* the spread, **then re-run the landed ports** — some may encode
+workarounds that become wrong at 800. The re-verification is the real cost.
+
+### 4. Fix the snowplow collector's CORS preflight (#133)
+It omits `Access-Control-Allow-Credentials`, so the tracker's
+`credentials:"include"` POST dies `net::ERR_FAILED` and only the OPTIONS is
+recorded — **the collector is blind to FE events**, the opposite of its docstring.
+One line. Audited: no landed port currently depends on it for an FE event, but
+that is **an inference from reports, not a re-run**.
+
+### 5. Fix `signInWithCredentials` (#139, #148)
+It POSTs `/api/session` through `mb.api`, so the cookie lands in the API request
+jar and `wrap-session-key` resolves **cookie before header** — every later
+`mb.api` call runs as that user, and `mb.signInAsAdmin()` does **not** undo it.
+**A mutation proved this makes sandboxing baselines pass while measuring nothing.**
+Working shape is in `sandboxing-via-ui`: session POST through a **throwaway
+request context disposed immediately**.
+⚠️ **`sandboxing-via-api`'s green is marked UNVERIFIED** pending this — 84
+`mb.api`/`signInAsAdmin` references.
+
+### 6. CI parallelism — settle before raising the shard count
+- `sandboxing-misconfiguration` and `question-reproductions` **both rebuild
+  `public.products`** in the shared warehouse; they must not run concurrently
+  (#203). Presents as an inexplicable intermittent failure in one of them.
+- The **maildev inbox is shared and `setupSMTP` DELETEs it** (#186). `forgot-password`
+  shows the fix: isolate on the **per-slot site URL** (#205).
+- Some upstream specs are **only safe because Cypress is serial** (#191).
+
+### 7. Smaller, well-scoped
+- **`openTable` drops `database` and `limit`** on its notebook branch (#116, #197)
+  — three independent confirmations, two near-duplicate workarounds to retire.
+- **`.every(` / `.all(` sweep in shared assertion helpers** — `[].every(...)` is
+  `true`, so `rowsShouldContainOnlyOneCategory` passes on an empty result set
+  (#202). Fixing it also strengthens `sandboxing-via-ui`.
+- **`be.enabled` → `toBeEnabled()` audit** (#188/#190): 41 specs exposed, but the
+  hazard only bites on **non-form-control** targets and the failure direction is
+  **safe** (red against correct code). Any of the 41 currently green have already
+  demonstrated consistency.
+- **`pro-self-hosted` feature count disputed** — 42 vs 52 (#180). One measurement
+  against a freshly started backend settles it.
+- **5s first-call tax on `PUT /api/email`** (#207) — localized precisely,
+  mechanism unknown, taxes every email spec via the shared helper.
+- `support/INDEX.md` is stale. Prettier has never been run on this package.
+
+---
+
+## Environment gotchas that masquerade as port drift
+
+**Check the fixture before accepting a local failure as your own bug:**
+- **`e2e/snapshots/blank.sql` is corrupt** — holds the fully set-up `default` state
+  (11 users, 97 cards), not a blank instance (#97). Gitignored, so **CI is fine**.
+- **The `default` snapshot has a 30-day fuse** (#145).
+- **Postgres heap order** broke one assertion via the virtualization window (#103).
+- **`schemas[0]` is `Domestic`, not `public`** on this box.
+- **Three routes to a false "feature is off"**: the retracted `.env` trailing comma
+  (#107/#129 — the harness reads `cypress.env.json`), a probe that PUT an
+  **undefined** token (#181), and **underscore vs hyphen** in the feature key
+  (#200). `undefined` and `false` are not the same answer.
+- **`cypress_sample_instance_data.json` is unsafe for name-based lookups** — it says
+  "All internal users" where the jar serves "All Users" (#201).
+
+**Do not regenerate snapshots while agents are live** — they are shared.
+
+---
+
+## What is shared and what is not (#178, #186 — I had this wrong at first)
+
+- **Per-slot, isolated:** everything in the application DB — settings, users,
+  groups, tokens, collections, questions. `worker-backend.ts:266` gives each slot
+  its own `MB_DB_FILE`.
+- **Genuinely shared:** the **warehouse containers** (postgres :5404, mysql :3304,
+  mongo), **maildev including its inbox**, and **webhook-tester**.
+
+I over-constrained app-DB writes and under-emphasised warehouse hygiene for most of
+this work. **The warehouse is where the real hazards live.**
+
+---
+
+## Running it
+
+```
+cd e2e-playwright
+JAR_PATH=$(git rev-parse --show-toplevel)/target/uberjar/metabase.jar \
+  PW_PER_WORKER_BACKEND=1 PW_KEEP_SLOT_BACKENDS=1 PW_SLOT_OFFSET=<1-5> \
+  PW_QA_DB_ENABLED=1 PW_ACTION_TIMEOUT=30000 TZ=US/Pacific \
+  bunx playwright test tests/<spec>.spec.ts --workers=1 --trace=off
+```
+
+- **Verify the jar BY IDENTITY** (`ps` + `version.hash` vs `COMMIT-ID`) —
+  `PW_KEEP_SLOT_BACKENDS=1` silently ignores `JAR_PATH` and prints `(reused)`.
+- **Never touch port 4000.**
+- **The gate-OFF control is the only trustworthy signal** that a spec really
+  executes. Tags have been found wrong in **eight** distinct ways; a green run with
+  the gate off is either real coverage or silent skipping, and only the
+  executed-vs-skipped counts tell them apart.
+- Containers: `postgres-sample`, `mysql-sample`, `mongo-sample`, `maildev`,
+  `webhook-tester`, and an **OpenLDAP on :389** started this session — that one took
+  `sso-ldap` from **4/14 to 14/14**. `maildev-ssl` and localstack :4566 are down;
+  localstack is the real python-transforms blocker.
+
+---
+
+## 🔴 The product finding worth taking to the frontend team
+
+**PR #64406 (`2a6741df9cf`)** widened `DataSelector.skipSteps` from
+`databases.length === 1` to `enabledDatabases.length >= 1`, so with two databases
+the DATABASE step is **always skipped**.
+
+**Three agents derived this independently, from three specs with three different
+symptoms.** The third measured the window directly: `last-used-native-database-id`
+is `""` after restore (eliminating the dirty-snapshot explanation), popover open
+with nothing selected at **+159 ms**, auto-selected and PUT at **+280 ms** — a
+~150 ms window. Seven tests in `native-database-source` are `test.fixme` because
+their subject is now untestable; lifting two and running `--repeat-each=5` gave
+**0/5 and 0/5**.
+
+**Not claimed:** whether Cypress catches it. The cross-check is barred while
+sibling slots are live, so upstream's behaviour is **unknown**.
+
+---
+---
+
