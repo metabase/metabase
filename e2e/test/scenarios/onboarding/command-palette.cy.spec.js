@@ -628,6 +628,12 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.location("pathname").should("contain", "/admin/settings");
     cy.realPress("5");
     cy.location("pathname").should("contain", "/admin/datamodel");
+    // Wait for the Data Model page to finish its redirect chain (index →
+    // database) and render before pressing the next shortcut. Pressing "9"
+    // while the datamodel redirect is still in flight makes Tools' relative
+    // `redirect("help")` resolve against the stale `/admin/datamodel` path,
+    // landing on `/admin/datamodel/help` instead of `/admin/tools`.
+    cy.findByTestId("data-model").should("be.visible");
     cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/tools");
   });
