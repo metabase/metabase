@@ -37,6 +37,16 @@
      [2 "created" #t "2026-01-31T21:00:04"]
      [3 "created" #t "2026-01-31T21:00:04"]]]])
 
+(mt/defdataset merge-lookback-data
+  "An event-log dataset with a timestamp checkpoint column, for the lookback-window test."
+  [["order_status_lb"
+    [{:field-name "order_id" :base-type :type/Integer}
+     {:field-name "status" :base-type :type/Text}
+     {:field-name "changed_at" :base-type :type/DateTime}]
+    [[1 "created" #t "2026-01-30T10:00:00"]
+     [2 "created" #t "2026-01-31T21:00:04"]
+     [3 "created" #t "2026-01-31T21:00:04"]]]])
+
 ;; Two key columns (order_id, region) for testing a composite merge key.
 (mt/defdataset merge-composite-test
   "An event log keyed on (order_id, region), for testing a two-column merge key."
@@ -222,15 +232,15 @@
   (testing "a lookback window re-reads rows behind the checkpoint so late-arriving data is upserted (GDGT-2868)"
     (mt/test-drivers (test-drivers)
       (mt/with-premium-features #{:transforms-basic}
-        (mt/dataset merge-temporal-test
+        (mt/dataset merge-lookback-data
           (with-transform-cleanup! [target-table {:type     :table
                                                   :name     "merge_lookback"
                                                   :schema   (t2/select-one-fn :schema :model/Table
-                                                                              (mt/id :order_status_ts))
+                                                                              (mt/id :order_status_lb))
                                                   :database (mt/id)}]
             (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
                   ts-field-id  (t2/select-one-pk :model/Field :name "changed_at"
-                                                 :table_id (mt/id :order_status_ts))
+                                                 :table_id (mt/id :order_status_lb))
                   source-query {:database (mt/id)
                                 :type     :native
                                 :native   {:query         (format "SELECT %s, %s FROM {{t}} AS %s"
@@ -239,7 +249,7 @@
                                                                 :name         "t"
                                                                 :display-name "T"
                                                                 :type         "table"
-                                                                :table-id     (mt/id :order_status_ts)
+                                                                :table-id     (mt/id :order_status_lb)
                                                                 :required     true}}}}
                   payload      {:name               "Lookback Merge"
                                 :source_database_id (mt/id)
@@ -254,7 +264,7 @@
                                                                                           :unique-key [{:name "order_id"}]}})}
                   insert!      (fn [rows]
                                  (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
-                                                                      (mt/id :order_status_ts))
+                                                                      (mt/id :order_status_lb))
                                        spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
                                        values       (str/join ", " (map (fn [[oid st ts]]
                                                                           (format "(%d, '%s', '%s')" oid st ts))
