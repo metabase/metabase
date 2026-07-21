@@ -1488,7 +1488,7 @@
   (set
    (concat
     (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
-    (metrics/dimension-mappings-deps dimension_mappings)
+    (metrics/dimension-mappings-deps allow-int-ids? dimension_mappings)
     (serdes/parameters-deps allow-int-ids? parameters)
     (when database_id [[{:model "Database" :id database_id}]])
     (when source_card_id #{[{:model "Card" :id source_card_id}]})

@@ -113,7 +113,9 @@
 (defn dimension-mappings-deps
   "Serdes dependencies contributed by an entity's `:dimension_mappings` — the Fields/Tables referenced by each
    mapping's `:target`."
-  [mappings]
-  (into #{} (comp (map :target)
-                  (mapcat serdes/mbql-deps))
-        mappings))
+  ([mappings]
+   (dimension-mappings-deps false mappings))
+  ([allow-int-ids? mappings]
+   (into #{} (comp (map :target)
+                   (mapcat #(serdes/mbql-deps allow-int-ids? %)))
+         mappings)))
