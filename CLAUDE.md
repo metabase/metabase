@@ -95,7 +95,8 @@ Budget too low (you added an ignore): the task only raises a budget when told to
 genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the
 PR.
 
-Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment on the line
+The ignore must be the first key in its map; noncanonical forms fail the ratchet instead of being guessed
+at. Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment directly
 above (or trailing on the same line). The set only shrinks: once a linter's last uncommented ignore gains
 a comment, the fixer drops its exemption.
 

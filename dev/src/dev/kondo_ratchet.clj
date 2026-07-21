@@ -28,10 +28,12 @@
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 
-;; `#_{... [:some-linter]}`, `^{... [:some-linter]}`, and the prefix-less attr-map form
-;; `(ns foo {... [:some-linter]})`; the vector may span lines. The lazy tail after the vector runs to the
-;; map's own closing brace, so extra keys still count and removal spans the whole form; a nested-brace
-;; value stops the match at the vector instead.
+;; Canonical map form: the ignore must be the first key. This covers reader-discard maps, metadata maps,
+;; and prefix-less attr maps such as `(ns foo {...})`. Keeping one deliberately narrow spelling lets the
+;; scanner fail closed instead of growing a partial Clojure reader; [[ignore-matches]] rejects any real
+;; ignore marker not covered by this pattern. The vector may span lines. The lazy tail after the vector
+;; runs to the map's own closing brace, so extra keys still count and removal spans the whole form; a
+;; nested-brace value stops the match at the vector instead.
 (def ^:private vector-form-re
   (re-pattern (str "(?:(?:#_|\\^)\\s*)?\\{\\s*" ignore-marker "\\s*\\[([^\\]]*)\\](?:[^{}]*?\\})?")))
 
@@ -39,12 +41,15 @@
 (def ^:private bare-form-re
   (re-pattern (str "(?:#_\\s*|\\^)" ignore-marker "(?![\\w./-])")))
 
+(def ^:private ignore-marker-re
+  (re-pattern (str ignore-marker "(?![\\w./-])")))
+
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
   Same length as the input, so offsets and line numbers carry over.
   Ignore forms inside strings (test fixtures) or commented-out code must not count.
-  The `;` that starts a comment survives, and no other `;` does, so [[justified?]] can locate real
-  trailing comments."
+  The `;` that starts a comment survives, and no other `;` does, so
+  [[has-justification-comment?]] can locate real trailing comments."
   [content]
   (let [sb (StringBuilder. ^String content)
         n  (count content)]
@@ -82,15 +87,6 @@
   (map (comp keyword #(subs % 1))
        (re-seq #":[A-Za-z][A-Za-z0-9*+!?<>=._/-]*" vector-contents)))
 
-(defn line-linters
-  "Linter keywords suppressed by inline ignore forms on `line`.
-  The bare vector-less form counts as `:all`.
-  Like [[scan]], ignore forms inside string literals or line comments don't count."
-  [line]
-  (let [masked (mask-strings-and-comments line)]
-    (concat (mapcat (comp linter-keywords second) (re-seq vector-form-re masked))
-            (repeat (count (re-seq bare-form-re masked)) :all))))
-
 (defn- offset->line
   "1-based line number of character offset `i` in `content`."
   [content i]
@@ -107,39 +103,74 @@
                           :linters (if bare? [:all] (vec (linter-keywords (.group m 1))))}))
         acc))))
 
-;; A justifying comment has words in it; a bare `;;` section divider does not.
+;; A justifying comment has a letter somewhere in it; a bare `;;` or `;; ----` section divider does not.
 (def ^:private substantive-comment-re
-  #";+\s*\S*[A-Za-z].*")
+  #";+.*[A-Za-z].*")
 
-(defn- justified?
+(defn- has-justification-comment?
   "Does the ignore starting at `start`/ending at `end` in `content` have an explanatory comment?
-  Counts a substantive trailing comment on the same line, or one on the nearest preceding non-blank line.
-  The trailing comment is located in `masked`, where a `;` inside a string literal is blanked out."
+  Counts a substantive trailing comment on the same line, or a comment-only line directly above.
+
+  Comment openers are authenticated in `masked`, where a real opener survives but semicolons inside
+  strings do not; their text is then read from `content`, since masking blanks comment interiors."
   [content masked start end]
   (let [line-num   (offset->line content start)
-        lines      (str/split-lines content)
         line-end   (or (str/index-of content "\n" end) (count content))
-        prev-lines (->> (take (dec line-num) lines)
-                        reverse
-                        (drop-while str/blank?))]
+        raw-lines  (vec (str/split-lines content))
+        mask-lines (vec (str/split-lines masked))
+        above-idx  (- line-num 2)]
     (boolean (or (when-let [i (str/index-of masked ";" end)]
                    (when (< i line-end)
                      (re-matches substantive-comment-re (str/trim (subs content i line-end)))))
-                 (when-let [prev (first prev-lines)]
-                   (re-matches substantive-comment-re (str/trim prev)))))))
+                 (when-let [raw (get raw-lines above-idx)]
+                   (when-let [i (str/index-of (get mask-lines above-idx "") ";")]
+                     (and (str/blank? (subs raw 0 i))
+                          (re-matches substantive-comment-re (str/trim (subs raw i))))))))))
+
+(defn- marker-offsets
+  "Offsets of real ignore markers in `masked`; strings and comments have already been blanked."
+  [masked]
+  (let [m (re-matcher ignore-marker-re masked)]
+    (loop [acc []]
+      (if (.find m)
+        (recur (conj acc (.start m)))
+        acc))))
+
+(defn- unsupported-ignore-lines
+  "Lines containing an ignore marker outside one of `matches`' canonical spans."
+  [masked matches]
+  (for [offset (marker-offsets masked)
+        :when  (not-any? #(<= (:start %) offset (dec (:end %))) matches)]
+    (offset->line masked offset)))
 
 (defn ignore-matches
   "Inline ignore matches in `content`, in file order:
   `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
-  Matches inside string literals or line comments are excluded."
+  The ignore must be the first key of its map. Any other spelling is rejected rather than guessed at,
+  so a suppression cannot silently bypass the ratchet. Matches inside strings and comments are excluded."
   [content]
-  (let [masked (mask-strings-and-comments content)]
-    (->> (concat (matches-with-offsets vector-form-re masked false)
-                 (matches-with-offsets bare-form-re masked true))
+  (let [masked      (mask-strings-and-comments content)
+        matches     (vec (concat (matches-with-offsets vector-form-re masked false)
+                                 (matches-with-offsets bare-form-re masked true)))
+        unsupported (vec (unsupported-ignore-lines masked matches))]
+    (when (seq unsupported)
+      (throw (ex-info (format "Unsupported %s syntax on line%s %s; put the ignore first in its map"
+                              ignore-marker
+                              (if (= 1 (count unsupported)) "" "s")
+                              (str/join ", " unsupported))
+                      {:lines unsupported})))
+    (->> matches
          (sort-by :start)
          (map #(assoc %
                       :line       (offset->line masked (:start %))
-                      :justified? (justified? content masked (:start %) (:end %)))))))
+                      :justified? (has-justification-comment? content masked (:start %) (:end %)))))))
+
+(defn line-linters
+  "Linter keywords suppressed by inline ignore forms on `line`.
+  The bare vector-less form counts as `:all`.
+  Like [[scan]], ignore forms inside string literals or line comments don't count."
+  [line]
+  (mapcat :linters (ignore-matches line)))
 
 (defn scan
   "Occurrences of inline ignore forms under `roots` (relative to the repo root).
@@ -188,8 +219,8 @@
                                        vec)))]))))
 
 (defn unjustified
-  "Occurrences that need a justification comment but lack one: not [[justified?]], and suppressing at
-  least one linter outside the `exempt` set."
+  "Occurrences that need a justification comment but lack one, and suppress at least one linter outside
+  the `exempt` set."
   [exempt occurrences]
   (for [{:keys [linters justified?] :as occurrence} occurrences
         :when (and (not justified?)
@@ -213,8 +244,8 @@
 
 (def ^:private header
   (str ";; Per-linter budgets for inline `" ignore-marker "` forms.\n"
-       ";; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts, or when a\n"
-       ";; linter outside :comment-exempt has an ignore with no explanatory comment above (or trailing) it.\n"
+       ";; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts, or when an\n"
+       ";; ignore outside :comment-exempt lacks an explanatory comment directly above or trailing on its line.\n"
        ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
        ";; automatically. Raising a budget, adding one for a new linter (`--seed`), or widening the\n"
        ";; exemptions is a hand edit to defend in your PR.\n"

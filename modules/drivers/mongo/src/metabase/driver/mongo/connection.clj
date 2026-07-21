@@ -113,8 +113,8 @@
   "Create instance of `MongoClient` for `database` and bind it to [[*mongo-client*]]. `database` can be anything
    digestable by [[mongo.db/details-normalized]]. Call of this macro in its body will reuse existing
    [[*mongo-client*]]."
-  {:clj-kondo/lint-as 'clojure.core/let
-   :clj-kondo/ignore [:unresolved-symbol :type-mismatch]}
+  {:clj-kondo/ignore  [:unresolved-symbol :type-mismatch]
+   :clj-kondo/lint-as 'clojure.core/let} ;; kondo can't follow the syntax-quoted fn indirection under lint-as let
   [[client-sym database] & body]
   `(let [f# (fn [~client-sym] ~@body)]
      (if (nil? *mongo-client*)
@@ -130,8 +130,8 @@
 
 (defmacro with-mongo-database
   "Utility for accessing database directly instead of a client. For more info see [[with-mongo-client]]."
-  {:clj-kondo/lint-as 'clojure.core/let
-   :clj-kondo/ignore [:unresolved-symbol :type-mismatch]}
+  {:clj-kondo/ignore  [:unresolved-symbol :type-mismatch]
+   :clj-kondo/lint-as 'clojure.core/let} ;; kondo can't follow the syntax-quoted fn indirection under lint-as let
   [[db-sym database] & body]
   `(let [f# (fn [~db-sym] ~@body)]
      (do-with-mongo-database f# ~database)))

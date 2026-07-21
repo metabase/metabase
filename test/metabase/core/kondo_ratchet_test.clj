@@ -113,6 +113,15 @@
     []                  "(def s \"#_{:clj-kondo/ignore [:in-a-string]}\")"
     []                  ";; #_{:clj-kondo/ignore [:commented-out]}"))
 
+(deftest ^:parallel noncanonical-ignore-test
+  (testing "an ignore behind another map key fails closed instead of asking a partial reader to classify it"
+    (are [line] (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"put the ignore first in its map"
+                                  (kondo-ratchet/line-linters line))
+      "(def ^{:added \"0.1\" :clj-kondo/ignore [:buried]} x 1)"
+      "(ns b {:doc \"d\" :clj-kondo/ignore [:buried]})"
+      "{:label :clj-kondo/ignore [:data]}")))
+
 (deftest ^:parallel scan-test
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory
                       "kondo-ratchet-test"
@@ -128,8 +137,15 @@
                "#_{:clj-kondo/ignore [:multi\n"
                "                      :line]}\n"
                "(defn i [] 4) #_{:clj-kondo/ignore [:trailing]} ;; trailing needs suppressing here\n"
+               "(f) ;; this describes f, not the ignore below\n"
+               "#_{:clj-kondo/ignore [:after-code-comment]}\n"
+               "(defn after-code-comment [] 5)\n"
+               ";; a real comment, but separated from the ignore\n"
+               "\n"
+               "#_{:clj-kondo/ignore [:after-blank]}\n"
+               "(defn after-blank [] 5)\n"
                ";; #_{:clj-kondo/ignore [:commented-out]}\n"
-               "(defn j [] 5)\n"
+               "(defn j [] 6)\n"
                "#_{:clj-kondo/ignore [:sneaky]} (def s \"a ; b\")\n"))
     (spit (io/file dir "b.clj")
           (str "(ns b {:clj-kondo/ignore [:attr-map]})\n"
@@ -140,13 +156,16 @@
               {:file (.getPath (io/file dir "a.clj")), :line 5,  :linters [:all],         :justified? true}
               {:file (.getPath (io/file dir "a.clj")), :line 8,  :linters [:multi :line], :justified? false}
               {:file (.getPath (io/file dir "a.clj")), :line 10, :linters [:trailing],    :justified? true}
-              {:file (.getPath (io/file dir "a.clj")), :line 13, :linters [:sneaky],      :justified? false}
+              {:file (.getPath (io/file dir "a.clj")), :line 12, :linters [:after-code-comment], :justified? false}
+              {:file (.getPath (io/file dir "a.clj")), :line 16, :linters [:after-blank], :justified? false}
+              {:file (.getPath (io/file dir "a.clj")), :line 20, :linters [:sneaky],      :justified? false}
               {:file (.getPath (io/file dir "b.clj")), :line 1,  :linters [:attr-map],    :justified? false}
               {:file (.getPath (io/file dir "b.clj")), :line 2,  :linters [:extra],       :justified? false}]
              occurrences)
           "strings and commented-out forms don't count; multi-line vectors, attr-maps, and extra keys do;
            a semicolon inside a trailing string is not a justification")
-      (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1, :sneaky 1, :attr-map 1, :extra 1}
+      (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1, :after-code-comment 1,
+              :after-blank 1, :sneaky 1, :attr-map 1, :extra 1}
              (kondo-ratchet/actual-counts occurrences))))))
 
 ;;;; ---------------------------------------------------------------------------

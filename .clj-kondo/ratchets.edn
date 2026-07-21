@@ -1,6 +1,6 @@
 ;; Per-linter budgets for inline `:clj-kondo/ignore` forms.
-;; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts, or when a
-;; linter outside :comment-exempt has an ignore with no explanatory comment above (or trailing) it.
+;; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts, or when an
+;; ignore outside :comment-exempt lacks an explanatory comment directly above or trailing on its line.
 ;; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it
 ;; automatically. Raising a budget, adding one for a new linter (`--seed`), or widening the
 ;; exemptions is a hand edit to defend in your PR.
@@ -35,10 +35,11 @@
                   :reduce-without-init                                                 3
                   :redundant-fn-wrapper                                                1
                   :syntax                                                              2
+                  :type-mismatch                                                       2
                   :unquote-not-syntax-quoted                                           1
                   :unresolved-namespace                                                3
                   :unresolved-require                                                  1
-                  :unresolved-symbol                                                   4
+                  :unresolved-symbol                                                   6
                   :unsorted-required-namespaces                                        1
                   :unused-alias                                                        1
                   :unused-binding                                                      9
