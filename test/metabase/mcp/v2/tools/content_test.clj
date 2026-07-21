@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content]
    [metabase.notification.test-util :as notification.tu]
@@ -355,3 +356,15 @@
               "a count metric over venues yields at least one groupable dimension")
           (is (= dims-before (t2/select-one-fn :dimensions :model/Card :id metric-id))
               "the read persisted nothing to the metric's dimensions column"))))))
+
+(deftest question-projection-is-canonical-test
+  (testing "GHY-4140: there is one :question projection, carrying get_content's enrichments, so
+            loading this tool cannot silently reshape what browse_collection projects. A future
+            competing lean registration would drop these keys and fail here."
+    (let [catalog (set (projections/catalog :question))]
+      (is (contains? catalog "query_summary"))
+      (is (contains? catalog "template_tags"))
+      (is (contains? catalog "source_card_id")))
+    (testing "the concise projection compacts nils rather than emitting them"
+      (is (= {:id 1 :name "Q"}
+             (projections/project :question :concise {:id 1 :name "Q" :description nil}))))))

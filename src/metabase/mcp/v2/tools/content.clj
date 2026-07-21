@@ -96,26 +96,9 @@
   (when-let [query (::query row)]
     (repr.resolve/try-export-query (::mp row) query content-store/default-store)))
 
-(def ^:private question-concise-keys
-  [:id :name :type :description :display :collection_id :database_id :table_id :source_card_id
-   :archived :query_summary :template_tags :parameters])
-
-(def ^:private question-detailed-keys
-  (into question-concise-keys
-        [:entity_id :dashboard_id :query_type :collection_position :creator_id :cache_ttl
-         :created_at :updated_at]))
-
-(def ^:private question-sample
-  (-> (zipmap question-detailed-keys (repeat "x"))
-      (assoc :template_tags {}
-             :parameters [{:id "x" :name "x" :type "x" :target ["x"] :slug "x"}])))
-
-(projections/register-projection!
- :question
- {:concise  #(compact (select-keys % question-concise-keys))
-  :detailed #(compact (select-keys % question-detailed-keys))
-  :sample   question-sample})
-
+;; The question/model projection (`:question`) is the one canonical card projection, registered
+;; in [[metabase.mcp.v2.projections]] because browse_collection shares it. metric/measure/etc.
+;; below are get_content's own and registered here.
 (def ^:private metric-concise-keys
   [:id :name :type :description :collection_id :database_id :table_id :source_card_id
    :archived :query_summary])
