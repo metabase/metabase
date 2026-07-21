@@ -8,6 +8,7 @@
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]))
 
 (deftest all-tools-test
