@@ -240,6 +240,17 @@
                             seq)]
       (search.ingestion/ingest-maybe-async! updates))))
 
+(defn bulk-update-with-changes!
+  "Enqueue re-indexing for the pre-image rows of an update statement that applied `changes` to each of them.
+  Hooks are filtered on the changed columns; see [[search.spec/search-models-to-update-with-changes]]."
+  [instances changes]
+  (when (supports-index?)
+    (when-let [updates (->> instances
+                            (into #{} (mapcat #(search.spec/search-models-to-update-with-changes % changes)))
+                            (remove (comp search.util/impossible-condition? second))
+                            seq)]
+      (search.ingestion/ingest-maybe-async! updates))))
+
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."
   [model ids]
