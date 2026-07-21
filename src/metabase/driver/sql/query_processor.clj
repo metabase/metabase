@@ -2240,6 +2240,27 @@
       driver-api/add-alias-info
       :stages))
 
+(defmulti use-ctes-for-stages?
+  "Whether to compile the stages of a multi-stage query as a chain of CTEs instead of nested subselects, e.g.
+
+    WITH \"__mb_stage_0\" AS (SELECT \"a\", \"b\" FROM \"t\" WHERE \"b\" = 1)
+    SELECT \"a\", COUNT(*) FROM \"__mb_stage_0\" AS \"__mb_source\" GROUP BY \"a\"
+
+  instead of
+
+    SELECT \"a\", COUNT(*) FROM (SELECT \"a\", \"b\" FROM \"t\" WHERE \"b\" = 1) AS \"__mb_source\" GROUP BY \"a\"
+
+  Default is `false`. Drivers can opt in if their database allows a `WITH` clause everywhere a subquery can appear:
+  the source of a multi-stage join compiles to a `WITH` nested inside the join parens, and a query used as a
+  subexpression (e.g. a card referenced from native SQL, or `CREATE TABLE ... AS`) may likewise start with `WITH`."
+  {:added "0.63.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod use-ctes-for-stages? :sql
+  [_driver]
+  false)
+
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
 
@@ -2271,7 +2292,7 @@
     (binding [*inner-query* stage]
       (apply-top-level-clauses driver prev-from stage))))
 
-(defn- stages->honeysql [driver stages]
+(defn- stages->honeysql-subselects [driver stages]
   (first
    (reduce
     (fn [[prev-hsql prev-stage] stage]
@@ -2279,6 +2300,49 @@
         [(stage->honeysql driver prev-from stage) stage]))
     [nil nil]
     stages)))
+
+(defn- stage-cte-name [stage-idx]
+  (str "__mb_stage_" stage-idx))
+
+(defn- cte-stage-source-form
+  "Like [[stage-source-form]], but the source is the CTE containing the previous stage rather than a nested
+  subselect. The CTE is aliased as `__mb_source` so field refs compile identically in either style."
+  [driver prev-stage-idx]
+  {:from [[(->honeysql driver (h2x/identifier :table-alias (stage-cte-name prev-stage-idx)))
+           [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
+
+(defn- stage-cte
+  "HoneySQL `:with` entry for a compiled non-final stage. If the stage has ambiguous output column names, rename them
+  with a CTE column list — the same fix [[stage-source-form]] applies in the nested-subselect style."
+  [stage-idx hsql stage]
+  (let [cte-name         (stage-cte-name stage-idx)
+        columns-metadata (get-in stage [:lib/stage-metadata :columns])]
+    (if (needs-cte-for-duplicate-cols? columns-metadata)
+      [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
+      [cte-name hsql])))
+
+(defn- stages->honeysql-ctes
+  "Compile `stages` to HoneySQL, putting each stage but the last in a CTE named `__mb_stage_<idx>` that the following
+  stage selects from. All the CTEs end up in the `:with` clause of the final stage's form. Each CTE only references
+  the one before it, so the chain is valid without `RECURSIVE`."
+  [driver stages]
+  (let [stages   (vec stages)
+        last-idx (dec (count stages))]
+    (loop [idx 0, ctes []]
+      (let [stage     (nth stages idx)
+            prev-from (if (zero? idx)
+                        {}
+                        (cte-stage-source-form driver (dec idx)))
+            hsql      (stage->honeysql driver prev-from stage)]
+        (if (= idx last-idx)
+          (cond-> hsql
+            (seq ctes) (update :with #(into ctes %)))
+          (recur (inc idx) (conj ctes (stage-cte idx hsql stage))))))))
+
+(defn- stages->honeysql [driver stages]
+  (if (use-ctes-for-stages? driver)
+    (stages->honeysql-ctes driver stages)
+    (stages->honeysql-subselects driver stages)))
 
 (defmethod join-source :sql
   [driver {:keys [stages]}]
