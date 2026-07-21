@@ -252,6 +252,13 @@ embedder:
   - "bin/build/src/metabuild_common/**"
   - "bin/test-agent"
   - "deps.edn"
+  - "enterprise/backend/src/metabase_enterprise/data_complexity_score/**"
+  - "enterprise/backend/src/metabase_enterprise/entity_retrieval/**"
+  - "enterprise/backend/src/metabase_enterprise/semantic_search/embedding.clj"
+  - "enterprise/backend/src/metabase_enterprise/semantic_search/settings.clj"
+  - "enterprise/backend/test/metabase_enterprise/data_complexity_score/**"
+  - "enterprise/backend/test/metabase_enterprise/entity_retrieval/**"
+  - "enterprise/backend/test/metabase_enterprise/semantic_search/embedding_test.clj"
   - "modules/embedder/**"
 
 serialization_baseline:

@@ -299,6 +299,13 @@
                               (format "WHEN doc_type = '%s' THEN %s" (name k) w)))]
     (format "(%s) - (CASE %s ELSE 0.0 END)" distance-expr cases)))
 
+(defn- query-embedding
+  "Embed a library-retrieval query with the model-family prefix used for asymmetric retrieval models."
+  [model user-search-prompt]
+  (embedding/get-embedding model
+                           (embedding/prefix-search-query model user-search-prompt)
+                           {:type :query :record-tokens? true}))
+
 (defenterprise search
   "Find the library-entity documents best matching `user-search-prompt`, up to `limit`, ranked by a
   blended score (cosine similarity plus a slight doc_type bump).
@@ -315,8 +322,7 @@
     (let [pgvector  (semantic.db.datasource/ensure-initialized-data-source!)
           limit     (or limit default-limit)
           model     (configured-model)
-          embedding (embedding/get-embedding model user-search-prompt
-                                             {:type :query :record-tokens? true})
+          embedding (query-embedding model user-search-prompt)
           lit       (index-table/format-embedding embedding)
           distance  (str "doc_embedding <=> " lit)
           rows      (try

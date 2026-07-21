@@ -1,5 +1,6 @@
 (ns metabase-enterprise.entity-retrieval.core-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.entity-retrieval.core :as entity-retrieval.core]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
@@ -69,6 +70,40 @@
         (mt/with-temporary-setting-values [ee-library-embedding-provider "in-process"]
           (retrieval.settings/ee-library-embedding-provider! "")
           (is (nil? (retrieval.settings/ee-library-embedding-provider))))))))
+
+(deftest ^:sequential in-process-arctic-integration-test
+  (if-not (or (io/resource "metabase-embedder/snowflake-arctic-embed-l-v2.0-arm64.zip")
+              (io/resource "metabase-embedder/snowflake-arctic-embed-l-v2.0-avx2.zip"))
+    (testing "Arctic bundle unavailable outside the embedder CI job"
+      (is true))
+    (mt/with-temporary-setting-values [ee-embedding-provider                 "in-process"
+                                       ee-embedding-model                    nil
+                                       ee-embedding-model-dimensions         nil
+                                       ee-embedding-query-prefix             nil
+                                       ee-library-embedding-provider         nil
+                                       ee-library-embedding-model            nil
+                                       ee-library-embedding-model-dimensions nil]
+      (let [model     (#'entity-retrieval.core/configured-model)
+            embedding (#'entity-retrieval.core/query-embedding model "monthly active users")]
+        (is (= {:provider          "in-process"
+                :model-name        "Snowflake/snowflake-arctic-embed-l-v2.0"
+                :vector-dimensions 1024}
+               model))
+        (is (= 1024 (alength ^floats embedding)))))))
+
+(deftest query-embedding-prefix-test
+  (let [call (atom nil)
+        model {:provider ::query-prefix-test :model-name "Snowflake/snowflake-arctic-embed-l-v2.0"}]
+    (.addMethod ^clojure.lang.MultiFn semantic.embedding/get-embedding
+                ::query-prefix-test
+                (fn [actual-model text & opts]
+                  (reset! call [actual-model text (first opts)])
+                  ::embedding))
+    (try
+      (is (= ::embedding (#'entity-retrieval.core/query-embedding model "find orders")))
+      (is (= [model "query: find orders" {:type :query :record-tokens? true}] @call))
+      (finally
+        (remove-method semantic.embedding/get-embedding ::query-prefix-test)))))
 
 (deftest score-shape-matches-regular-search-test
   (let [score (var-get #'entity-retrieval.core/score)]

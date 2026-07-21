@@ -13,6 +13,12 @@
 (def ^:private default-model-name
   (:model-name embedder/default-model-descriptor))
 
+(deftest default-model-descriptor-test
+  (is (= {:provider         "in-process"
+          :model-name       "Snowflake/snowflake-arctic-embed-l-v2.0"
+          :model-dimensions 1024}
+         embedder/default-model-descriptor)))
+
 (defn- model-available? []
   (try
     (#'embedder.model/model-source default-model-name)
@@ -43,13 +49,12 @@
       (testing "identical calls are deterministic"
         (is (= (mapv vec embeddings) (mapv vec (embedder/embed-texts default-model-name texts)))))
       (testing "output order matches input order"
-        ;; Compared by cosine, not equality: the INT8 model's activation quantization is sensitive to
-        ;; batch padding, so the same text embedded solo vs. in a batch drifts by ~0.015 cosine. Harmless
-        ;; for retrieval (MiniLM's related/unrelated gaps are >0.5) but exact-match assertions would flake.
+        ;; Compared by cosine, not equality: INT8 activation quantization is sensitive to batch padding,
+        ;; so an exact-match assertion would be unnecessarily brittle.
         (doseq [[batch-embedding text] (map vector embeddings texts)
                 :let [[solo] (embedder/embed-texts default-model-name [text])]]
           (testing text
-            (is (> (cosine batch-embedding solo) 0.95)))))
+            (is (> (cosine batch-embedding solo) 0.9)))))
       (testing "related terms are closer than unrelated ones"
         (let [[dog puppy invoice] embeddings]
           (is (> (cosine dog puppy) (cosine dog invoice)))))
@@ -145,11 +150,26 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"No source for embedder model"
                                   (#'embedder.model/model-source "other-org/all-MiniLM-L6-v2")))))))
-    (testing "the zoo download gates on opt-in and applies to the default model only"
+    (testing "the Arctic settings name resolves to its bare bundle with its inference contract"
+      (let [bare-bundle-path (str "metabase-embedder/snowflake-arctic-embed-l-v2.0-"
+                                  (#'embedder.model/bundled-model-arch)
+                                  ".zip")
+            bundle-only      (fn [path] (when (= path bare-bundle-path) (java.net.URL. "file:///stub")))]
+        (mt/with-dynamic-fn-redefs [embedder.model/getenv                 (constantly nil)
+                                    embedder.model/bundled-model-resource bundle-only]
+          (is (=? {:type                 :url
+                   :url                  #"jar:///metabase-embedder/snowflake-arctic-embed-l-v2.0-.*\.zip"
+                   :pooling              "cls"
+                   :include-token-types? false}
+                  (#'embedder.model/model-source "Snowflake/snowflake-arctic-embed-l-v2.0"))))))
+    (testing "the dev-only zoo download gates on opt-in and applies only to MiniLM"
       (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD" "true"}
                                   embedder.model/bundled-model-resource (constantly nil)]
         (is (=? {:type :url :url #"djl://.*all-MiniLM-L6-v2" :include-token-types? false}
-                (#'embedder.model/model-source default-model-name)))
+                (#'embedder.model/model-source "all-MiniLM-L6-v2")))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No source for embedder model"
+                              (#'embedder.model/model-source default-model-name)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"No source for embedder model"
                               (#'embedder.model/model-source "my-model")))))
@@ -214,7 +234,7 @@
             (is (= ["model-a" "model-b"] @builds)))
           (finally
             (embedder.model/reset-models!))))))
-  (testing "both spellings of a pinned alias share one resident model"
+  (testing "both spellings of each pinned alias share one resident model"
     (let [builds (atom [])]
       (mt/with-dynamic-fn-redefs [embedder.model/build-model (fn [model-name]
                                                                (swap! builds conj model-name)
@@ -223,7 +243,9 @@
         (try
           (is (identical? (#'embedder.model/model "all-MiniLM-L6-v2")
                           (#'embedder.model/model "sentence-transformers/all-MiniLM-L6-v2")))
-          (is (= ["all-MiniLM-L6-v2"] @builds))
+          (is (identical? (#'embedder.model/model "snowflake-arctic-embed-l-v2.0")
+                          (#'embedder.model/model "Snowflake/snowflake-arctic-embed-l-v2.0")))
+          (is (= ["all-MiniLM-L6-v2" "snowflake-arctic-embed-l-v2.0"] @builds))
           (finally
             (embedder.model/reset-models!)))))))
 

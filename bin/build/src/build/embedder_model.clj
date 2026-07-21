@@ -42,7 +42,20 @@
                       "tokenizer.json"              "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037"
                       "tokenizer_config.json"       "acb92769e8195aabd29b7b2137a9e6d6e25c476a4f15aa4355c233426c61576b"
                       "special_tokens_map.json"     "303df45a03609e4ead04bc3dc1536d0ab19b5358db685b6f3da123d05ec200e3"
-                      "config.json"                 "953f9c0d463486b10a6871cc2fd59f223b2c70184f49815e7efbcab5d8908b41"}}})
+                      "config.json"                 "953f9c0d463486b10a6871cc2fd59f223b2c70184f49815e7efbcab5d8908b41"}}
+
+   "snowflake-arctic-embed-l-v2.0"
+   {:hf-repo         "Snowflake/snowflake-arctic-embed-l-v2.0"
+    :revision        "f0ff6dce29c14995095706b2c861b31f13643ceb"
+    :arch->onnx-file {"arm64" "onnx/model_int8.onnx"
+                      "avx2"  "onnx/model_uint8.onnx"}
+    :tokenizer-files ["tokenizer.json" "tokenizer_config.json" "special_tokens_map.json" "config.json"]
+    :files           {"onnx/model_int8.onnx"        "4b164a8bd09dd9806e035bdf3c34a2d81848b3db9642ba2e342b8367c00872d8"
+                      "onnx/model_uint8.onnx"       "8712ea862fbbf1ba08fecfcfef4f9d01929e7326567672fb033b6c3755751e1a"
+                      "tokenizer.json"              "39feb9863a378165ab9c5c689047203d789422966c0c58721c5309fd039a8edc"
+                      "tokenizer_config.json"       "cb058b4c5c0c08738eb028c2ae82ed55cd84ce8999ece76b13472af80f0f77f1"
+                      "special_tokens_map.json"     "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+                      "config.json"                 "c31b06d272429c471dcf61f02191d3b861fd4185776e92e411ab6c82fc63e274"}}})
 
 (def ^:private download-dir
   (u/filename u/project-root-directory "modules" "embedder" "target" "model-download"))

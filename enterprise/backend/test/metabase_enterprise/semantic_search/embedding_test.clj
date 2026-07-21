@@ -102,6 +102,14 @@
                                          ee-embedding-model "all-MiniLM-L6-v2"
                                          ee-embedding-model-dimensions 384]
         (is (= embedding-model (embedding/get-configured-model)))))
+    (testing "in-process inherits the shared Arctic defaults when only the provider is selected"
+      (mt/with-temporary-setting-values [ee-embedding-provider "in-process"
+                                         ee-embedding-model nil
+                                         ee-embedding-model-dimensions nil]
+        (is (= {:provider          "in-process"
+                :model-name        "Snowflake/snowflake-arctic-embed-l-v2.0"
+                :vector-dimensions 1024}
+               (embedding/get-configured-model)))))
     (testing "unknown providers are still rejected by the setter"
       (mt/with-temporary-setting-values [ee-embedding-provider "ai-service"]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -193,6 +201,25 @@
                       ['embed-texts "another-model" ["b"]]
                       ['warm-up! "all-MiniLM-L6-v2"]]
                      @calls)))))))))
+
+(deftest ^:sequential in-process-arctic-integration-test
+  (if-not (or (io/resource "metabase-embedder/snowflake-arctic-embed-l-v2.0-arm64.zip")
+              (io/resource "metabase-embedder/snowflake-arctic-embed-l-v2.0-avx2.zip"))
+    (testing "Arctic bundle unavailable outside the embedder CI job"
+      (is true))
+    (mt/with-temporary-setting-values [ee-embedding-provider "in-process"
+                                       ee-embedding-model nil
+                                       ee-embedding-model-dimensions nil
+                                       ee-embedding-query-prefix nil]
+      (let [model     (embedding/get-configured-model)
+            query     (embedding/prefix-search-query model "monthly active users")
+            embedding (embedding/get-embedding model query)]
+        (is (= {:provider          "in-process"
+                :model-name        "Snowflake/snowflake-arctic-embed-l-v2.0"
+                :vector-dimensions 1024}
+               model))
+        (is (= "query: monthly active users" query))
+        (is (= 1024 (alength ^floats embedding)))))))
 
 (deftest test-token-counting
   (testing "count-tokens returns reasonable counts for text"

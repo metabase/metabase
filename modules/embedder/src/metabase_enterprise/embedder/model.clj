@@ -3,7 +3,7 @@
   Holds a registry of loaded models keyed by model name, so different consumers (semantic search, the
   library entity index, the complexity-score synonym axis) can run different models in one JVM.
   Each loaded model stays resident; the expensive part (~430 MB DJL/ONNX Runtime native init) is per-JVM,
-  not per-model — an additional model costs only its weights (~25 MB for a MiniLM-class INT8 export).
+  not per-model — an additional model costs its weights.
   See [[metabase-enterprise.embedder.core]] for the public API and packaging story."
   (:require
    [clojure.edn :as edn]
@@ -20,10 +20,14 @@
 (set! *warn-on-reflection* true)
 
 (def default-model-name
-  "Name of the model bundled into the plugin jar, and the fallback for zoo downloads."
-  "all-MiniLM-L6-v2")
+  "The semantic-search and library-retrieval default, as named by their shared embedding settings."
+  "Snowflake/snowflake-arctic-embed-l-v2.0")
 
-(def ^:private default-model-zoo-url
+(def ^:private default-model-bundle-name
+  "Canonical bundle/registry name for [[default-model-name]]."
+  "snowflake-arctic-embed-l-v2.0")
+
+(def ^:private minilm-model-zoo-url
   "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2")
 
 (def ^:private ^Class floats-class
@@ -51,11 +55,18 @@
   "Pinned HF repo paths → the bare names bundles (and the zoo default) are keyed by.
   The bare name is the canonical one: the model registry, the `MB_EMBEDDER_MODEL_SOURCES` lookup and the
   bundle path all key off it, so both spellings name one resident model and one override entry.
-  Consumer settings often carry the full repo path (the complexity-score synonym default is
-  `sentence-transformers/all-MiniLM-L6-v2`). Only pinned aliases collapse: HF repo names are
-  namespace-scoped, so another org's `<org>/all-MiniLM-L6-v2` is a different model that needs its own
-  `MB_EMBEDDER_MODEL_SOURCES` entry."
-  {"sentence-transformers/all-MiniLM-L6-v2" default-model-name})
+  Consumer settings often carry the full repo paths (semantic search defaults to Arctic, while the
+  complexity-score synonym axis defaults to MiniLM). Only pinned aliases collapse: HF repo names are
+  namespace-scoped, so another org's identically named model needs its own `MB_EMBEDDER_MODEL_SOURCES`
+  entry."
+  {"sentence-transformers/all-MiniLM-L6-v2" "all-MiniLM-L6-v2"
+   default-model-name                        default-model-bundle-name})
+
+(def ^:private model-runtime-options
+  "Non-default translator options for pinned models. Arctic's official inference contract uses CLS
+  pooling, and its ONNX exports accept only input IDs and an attention mask."
+  {default-model-bundle-name {:pooling              "cls"
+                              :include-token-types? false}})
 
 (defn- normalize-model-name
   "Collapse a pinned HF repo alias to its bundled bare name; other names pass through unchanged."
@@ -65,7 +76,7 @@
 (defn- model-source-overrides
   "Per-model source overrides from the `MB_EMBEDDER_MODEL_SOURCES` env var: an EDN map of model name →
   `{:path \"/dir\"}` or `{:url \"...\"}`, with optional `:model-file-name` (weights file minus `.onnx`,
-  default `model`) and `:include-token-types?` (default true).
+  default `model`), `:include-token-types?` and `:pooling` translator overrides.
   Keys are normalized like consumer-supplied names, so an entry keyed with either spelling of a pinned
   alias covers consumers configured with the other; keying both spellings is a config error rather than a
   silent last-one-wins."
@@ -98,17 +109,16 @@
      `MB_EE_EMBEDDING_MODEL_DIMENSIONS`), so the name/dimensions they declare must describe the model the
      entry loads.
   2. A per-arch INT8 bundle packed into this jar's resources at build time (the production default).
-     A pinned HF repo alias (see [[model-name-aliases]]) resolves to its bare bundled name, so a consumer
-     configured with `sentence-transformers/all-MiniLM-L6-v2` finds the `all-MiniLM-L6-v2` bundle; other
-     qualified names never collapse.
-  3. For [[default-model-name]] (or its pinned alias) only: the DJL model-zoo URL, downloading into
+     A pinned HF repo alias (see [[model-name-aliases]]) resolves to its bare bundled name, so the consumer
+     defaults find the Arctic and MiniLM bundles; other qualified names never collapse.
+  3. For the MiniLM bundle name (or its pinned alias) only: the DJL model-zoo URL, downloading into
      `~/.djl.ai/` — dev-only, and only with `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` so production can
-     never silently reach the network.
+     never silently reach the network. Arctic is intentionally build-pinned rather than downloaded at
+     runtime.
 
-  Each source carries `:include-token-types?`: the HF INT8 exports we bundle (and dirs prepared like them)
-  have a third `token_type_ids` graph input the translator must feed, while the DJL zoo export takes two.
-  Override entries default to the bundle convention; set `:include-token-types? false` for a two-input
-  custom model."
+  Each source carries the translator options required by that pinned model: Arctic uses CLS pooling and
+  two graph inputs, while MiniLM uses mean pooling and three. An override inherits the pinned model's
+  options and can replace them when its custom source differs."
   [requested-name]
   ;; Normalize before anything else: the override lookup, the bundle path and the zoo-download gate must all
   ;; agree on one canonical name, or an alias would pick up some of them and miss the others.
@@ -119,9 +129,12 @@
          :as entry]     (find (model-source-overrides) model-name)
         ;; Only the recognized keys, so a stray key in the entry (e.g. :type) can't clobber the internal
         ;; source-map discriminator and surface as a cryptic downstream error.
+        model-options   (merge {:include-token-types? true}
+                               (get model-runtime-options model-name))
         override-source (fn [type-key]
-                          (merge {:include-token-types? true, :origin :override}
-                                 (select-keys override [:model-file-name :include-token-types?])
+                          (merge model-options
+                                 {:origin :override}
+                                 (select-keys override [:model-file-name :include-token-types? :pooling])
                                  {:type type-key, type-key (str (get override type-key))}))]
     ;; A malformed entry must fail loudly here: falling through to the bundled/zoo branches would either
     ;; claim no entry exists or silently load a different model than the one the entry meant to select.
@@ -137,15 +150,15 @@
       (override-source :url)
 
       (bundled-model-resource resource-path)
-      {:type                 :url
-       :url                  (str "jar:///" resource-path)
-       :include-token-types? true
-       :origin               :built-in}
+      (merge model-options
+             {:type   :url
+              :url    (str "jar:///" resource-path)
+              :origin :built-in})
 
-      (and (= model-name default-model-name)
+      (and (= model-name "all-MiniLM-L6-v2")
            (= "true" (getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD")))
       {:type :url
-       :url default-model-zoo-url
+       :url minilm-model-zoo-url
        :include-token-types? false
        :origin :built-in}
 
@@ -203,7 +216,7 @@
                      ;; directory/archive name; our bundles always call it `model.onnx`.
                      (.optModelName (str (or (:model-file-name source) "model")))
                      ;; Explicit so behavior doesn't depend on a serving.properties inside the bundle.
-                     (.optArgument "pooling" "mean")
+                     (.optArgument "pooling" (or (:pooling source) "mean"))
                      (.optArgument "normalize" "true")
                      (.optArgument "includeTokenTypes" (str (boolean (:include-token-types? source)))))]
     (log/info "Loading in-process embedder model" model-name "from" (pr-str (source-log-summary source)))

@@ -18,6 +18,19 @@
   (with-redefs-fn {#'embedder-model/bundle-dir (str bundle-dir)}
     #(#'embedder-model/clear-bundle-dir!)))
 
+(deftest bundled-models-test
+  (let [models (var-get #'embedder-model/bundled-models)]
+    (testing "the plugin ships the defaults used by its three consumers"
+      (is (= #{"all-MiniLM-L6-v2" "snowflake-arctic-embed-l-v2.0"}
+             (set (keys models)))))
+    (testing "Arctic is pinned with native signed/unsigned INT8 exports for the two architecture buckets"
+      (is (= {:hf-repo         "Snowflake/snowflake-arctic-embed-l-v2.0"
+              :revision        "f0ff6dce29c14995095706b2c861b31f13643ceb"
+              :arch->onnx-file {"arm64" "onnx/model_int8.onnx"
+                                "avx2"  "onnx/model_uint8.onnx"}}
+             (select-keys (get models "snowflake-arctic-embed-l-v2.0")
+                          [:hf-repo :revision :arch->onnx-file]))))))
+
 (deftest clear-bundle-dir-test
   (testing "removes stale bundle files and nested directories"
     (let [^File bundle-dir (temp-dir "metabase-embedder-bundles-")

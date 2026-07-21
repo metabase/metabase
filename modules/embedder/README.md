@@ -2,30 +2,37 @@
 
 In-process text embedder running inside the Metabase JVM via DJL + ONNX Runtime. Backs the
 `in-process` semantic-search embedding provider, so embedding-powered features work without an
-external embedding service. It serves multiple models per JVM, keyed by model name; the bundled
-default is `sentence-transformers/all-MiniLM-L6-v2` (INT8, 384-dim, mean-pooled, L2-normalized).
+external embedding service. It serves multiple models per JVM, keyed by model name. The plugin bundles
+both consumer defaults:
+
+- `Snowflake/snowflake-arctic-embed-l-v2.0` (INT8, 1024-dim, CLS-pooled, L2-normalized) for semantic
+  search and library retrieval.
+- `sentence-transformers/all-MiniLM-L6-v2` (INT8, 384-dim, mean-pooled, L2-normalized) for the
+  complexity-score synonym axis.
 
 This module is **not** part of the core uberjar. It ships as a separate plugin jar that the plugin
 loader adds to the classpath at boot; nothing is loaded (and none of the ~430 MB DJL/ONNX Runtime
-native init is paid) until the first embedding is requested. The init cost is per-JVM, not
-per-model — each additional model only adds its weights (~25 MB for a MiniLM-class INT8 export).
+native init is paid) until the first embedding is requested. The init cost is per-JVM; each loaded model
+then adds its own weights.
 
 ## Using it
 
 ```sh
 MB_EE_EMBEDDING_PROVIDER=in-process
-MB_EE_EMBEDDING_MODEL=all-MiniLM-L6-v2
-MB_EE_EMBEDDING_MODEL_DIMENSIONS=384
 ```
+
+The existing `MB_EE_EMBEDDING_MODEL=Snowflake/snowflake-arctic-embed-l-v2.0` and 1024-dimension
+defaults work unchanged. The library entity index inherits those global settings when its overrides are
+unset.
 
 Production: drop `metabase-embedder-plugin.jar` into the plugins directory (`MB_PLUGINS_DIR`,
 default `./plugins`) and restart. Switching provider/model creates a fresh pgvector index table
 and triggers a full reindex — the previous index is left intact.
 
 Dev: add the `:embedder` alias (e.g. `clojure -M:dev:ee:ee-dev:embedder`). Without a bundled model
-on the classpath, either run the model fetch step once (`clojure -X:build:build/embedder-plugin`
-also does this) or set `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` to let DJL fetch the default model
-from HuggingFace into `~/.djl.ai/`.
+on the classpath, run the model fetch step once (`clojure -X:build:build/embedder-plugin` also does
+this). `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` remains a MiniLM-only fallback for development; Arctic
+is always loaded from the build-pinned bundle or an explicit `MB_EMBEDDER_MODEL_SOURCES` entry.
 
 ### Different models per consumer
 
@@ -41,10 +48,11 @@ serves them side by side:
 - Complexity-score synonym axis: `MB_DATA_COMPLEXITY_SCORING_SYNONYM_EMBEDDING_*`.
 
 A requested model resolves, in priority order: an `MB_EMBEDDER_MODEL_SOURCES` entry, a bundle in
-the jar named `metabase-embedder/<model-name>-<arch>.zip`, or (default model only, dev only) the
-HuggingFace download behind `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true`. The pinned repo path
-`sentence-transformers/all-MiniLM-L6-v2` is an alias for the bundled `all-MiniLM-L6-v2`; other
-HF-qualified names are distinct models (repos are namespace-scoped) and need their own source entry.
+the jar named `metabase-embedder/<model-name>-<arch>.zip`, or (MiniLM only, dev only) the HuggingFace
+download behind `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true`. The pinned repo paths
+`Snowflake/snowflake-arctic-embed-l-v2.0` and `sentence-transformers/all-MiniLM-L6-v2` are aliases for
+their bare bundle names; other HF-qualified names are distinct models (repos are namespace-scoped) and
+need their own source entry.
 
 ### Custom model sources
 
@@ -60,8 +68,10 @@ MB_EMBEDDER_MODEL_SOURCES='{"my-model" {:path "/models/my-model"}
 - `:path` — directory containing an extracted model (`model.onnx`, `tokenizer.json`, config files).
 - `:url` — any DJL-supported model URL (`file:`, `https:`, `s3:`, `djl://` zoo).
 - `:model-file-name` — weights file name minus `.onnx` when it isn't `model.onnx`.
-- `:include-token-types?` — set false for two-input models (the HF INT8 exports we bundle carry a
-  third `token_type_ids` graph input; the DJL zoo exports don't).
+- `:include-token-types?` — whether the ONNX graph accepts a third `token_type_ids` input. The bundled
+  MiniLM export does; bundled Arctic and the DJL MiniLM zoo export do not.
+- `:pooling` — DJL pooling mode; pinned-model defaults are inherited by overrides (`cls` for Arctic,
+  `mean` otherwise), but a custom source can replace it.
 
 The consumer's declared model name/dimensions must describe what the source actually loads — the
 pgvector index is labeled and sized from the settings.

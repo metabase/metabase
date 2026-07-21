@@ -38,7 +38,6 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
-   [metabase.classloader.core :as classloader]
    ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
    ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
@@ -142,30 +141,14 @@
                              "(or score without --embedder) so precomputed embeddings aren't silently discarded.")
                         {:cli-validation true}))))))
 
-(def ^:private in-process-descriptor
-  "Model identity for `--embedder in-process`.
-  Mirrors `metabase-enterprise.embedder.core/default-model-descriptor`; [[assert-descriptor-in-sync!]]
-  keeps the two aligned."
+(def ^:private in-process-minilm-descriptor
+  "Data-complexity-score model identity for `--embedder in-process`.
+  MiniLM is deliberately scoped to this consumer; the embedder's global default is Arctic."
   ;; A literal rather than a require so parsing the flag doesn't need the plugin on the classpath — the
   ;; provider dispatch resolves the plugin (and errors usefully) only when embeddings are requested.
   {:provider         "in-process"
    :model-name       "all-MiniLM-L6-v2"
    :model-dimensions 384})
-
-(defn- assert-descriptor-in-sync!
-  "When the embedder module is loadable, fail loudly if [[in-process-descriptor]] drifted from its source
-  of truth."
-  []
-  ;; The module suite asserts the same thing but only runs under the :embedder alias; this check runs
-  ;; wherever the flag is actually usable.
-  (when-let [actual (try
-                      (classloader/require 'metabase-enterprise.embedder.core)
-                      (some-> (ns-resolve 'metabase-enterprise.embedder.core 'default-model-descriptor) deref)
-                      (catch Exception _ nil))]
-    (when (not= actual in-process-descriptor)
-      (throw (ex-info (str "in-process-descriptor is out of sync with "
-                           "metabase-enterprise.embedder.core/default-model-descriptor; update the literal.")
-                      {:literal in-process-descriptor :actual actual})))))
 
 (defn- embedder-override
   "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta}` to splice over the
@@ -187,11 +170,11 @@
                    ;; in the plugins directory would never reach the classpath. Memoized, so a no-op in
                    ;; server/REPL contexts where plugins already loaded.
                    (plugins/load-plugins!)
-                   (assert-descriptor-in-sync!)
                    {:embedder             (embedders/provider-embedder
-                                           (assoc in-process-descriptor
-                                                  :vector-dimensions (:model-dimensions in-process-descriptor)))
-                    :embedding-model-meta in-process-descriptor
+                                           (assoc in-process-minilm-descriptor
+                                                  :vector-dimensions
+                                                  (:model-dimensions in-process-minilm-descriptor)))
+                    :embedding-model-meta in-process-minilm-descriptor
                     :text-variant         embedders/default-text-variant})
     nil))
 
