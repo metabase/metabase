@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { DelayedSkeleton } from "metabase/common/components/DelayedLoading";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -29,7 +30,6 @@ import {
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
-import { DelayedSkeleton } from "../LoadingSpinner";
 
 export const SearchResults = ({
   searchResults,

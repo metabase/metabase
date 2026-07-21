@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMount } from "react-use";
-import { t } from "ttag";
 import _ from "underscore";
 
-import { Box, Flex, Loader, Skeleton, Stack, Text } from "metabase/ui";
+import { Flex, Loader, Skeleton, Stack, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
   <Flex align="center" justify="center" h="100%" gap="md">
@@ -75,9 +74,3 @@ export const DelayedSkeleton = ({ delay = 300 }: { delay?: number }) => {
     </Stack>
   );
 };
-
-export const ItemListLoader = () => (
-  <Box w={365} h="100%" p="1rem" aria-label={t`Loading...`}>
-    <DelayedSkeleton />
-  </Box>
-);
