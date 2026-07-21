@@ -19,6 +19,7 @@ import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type {
   BedrockCredentials,
+  GoogleCredentials,
   MetabotCredentials,
   MetabotProvider,
   MetabotSettingsResponse,
@@ -73,6 +74,13 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     value: "azure/anthropic/claude-sonnet-4-5",
     models: [],
   },
+  google: {
+    value: "google/gemini-3.5-flash",
+    models: [
+      { id: "gemini-3.6-flash", display_name: "Gemini 3.6 Flash" },
+      { id: "gemini-3.5-flash", display_name: "Gemini 3.5 Flash" },
+    ],
+  },
   bedrock: {
     value: "bedrock/anthropic.claude-haiku-4-5",
     models: [
@@ -123,6 +131,9 @@ type MetabotSettingKey =
   | "llm-anthropic-api-key"
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
+  | "llm-google-api-key"
+  | "llm-google-project-id"
+  | "llm-google-location"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
   | "llm-bedrock-access-key-id"
@@ -160,6 +171,7 @@ type SetupOptions = {
   deferPurchaseCloudAddOnResponse?: boolean;
   removeCloudAddOnResponse?: number | { status: number; body: unknown };
   apiKeyValues?: Partial<Record<MetabotProvider, string | null>>;
+  googleProjectIdValue?: string | null;
   pauseUpdateResponse?: boolean;
   deferMetabotSettingsUpdateResponse?: boolean;
   settingUpdateResponse?: number | { status: number; body?: unknown };
@@ -191,6 +203,7 @@ async function setup({
   deferPurchaseCloudAddOnResponse = false,
   removeCloudAddOnResponse = 200,
   apiKeyValues,
+  googleProjectIdValue = "my-project",
   pauseUpdateResponse = false,
   deferMetabotSettingsUpdateResponse = false,
   settingUpdateResponse = 204,
@@ -210,12 +223,13 @@ async function setup({
   const updateMetabotSettingsDeferred = defer<void>();
 
   const mergedApiKeyValues: Record<
-    MetabotApiKeyProvider | "azure" | "bedrock",
+    MetabotApiKeyProvider | "azure" | "bedrock" | "google",
     string | null
   > = {
     anthropic: "**********45",
     azure: null,
     bedrock: null,
+    google: null,
     openai: null,
     openrouter: null,
     ...apiKeyValues,
@@ -271,6 +285,20 @@ async function setup({
       value: mergedApiKeyValues.azure
         ? "https://my-resource.services.ai.azure.com/anthropic"
         : undefined,
+    }),
+    "llm-google-api-key": createMockSettingDefinition({
+      key: "llm-google-api-key",
+      value: mergedApiKeyValues.google ?? undefined,
+    }),
+    "llm-google-project-id": createMockSettingDefinition({
+      key: "llm-google-project-id",
+      value: mergedApiKeyValues.google
+        ? (googleProjectIdValue ?? undefined)
+        : undefined,
+    }),
+    "llm-google-location": createMockSettingDefinition({
+      key: "llm-google-location",
+      value: undefined,
     }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
@@ -425,6 +453,37 @@ async function setup({
         "secret-access-key",
       );
       updateBedrockSetting("llm-bedrock-session-token", "session-token");
+    }
+
+    if (body.provider === "google" && "credentials" in body) {
+      const mask = (value: string | null | undefined) =>
+        value ? `**********${String(value).slice(-2)}` : undefined;
+
+      // Same presence contract as Bedrock: `credentials: null` clears everything; inside the
+      // map an absent field keeps the saved value, a null field clears it.
+      const requestCredentials = body.credentials ?? null;
+      const updateGoogleSetting = (
+        settingKey:
+          | "llm-google-api-key"
+          | "llm-google-project-id"
+          | "llm-google-location",
+        field: keyof GoogleCredentials,
+        masked: boolean,
+      ) => {
+        if (requestCredentials !== null && !(field in requestCredentials)) {
+          return;
+        }
+        const nextValue = requestCredentials?.[field];
+        settingsDefinitions[settingKey] = createMockSettingDefinition({
+          ...settingsDefinitions[settingKey],
+          key: settingKey,
+          value: masked ? mask(nextValue) : (nextValue ?? undefined),
+        });
+      };
+
+      updateGoogleSetting("llm-google-api-key", "api-key", true);
+      updateGoogleSetting("llm-google-project-id", "project-id", false);
+      updateGoogleSetting("llm-google-location", "location", false);
     }
 
     if ("model" in body) {
@@ -2171,6 +2230,168 @@ describe("AIProviderSettingsSection", () => {
       expect(
         await screen.findByText("Connect to an AI provider"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("Google Gemini Enterprise", () => {
+    it("shows Google Gemini Enterprise as selectable in the provider dropdown", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await userEvent.click(screen.getByLabelText("Provider"));
+
+      const option = await screen.findByRole("option", {
+        name: "Google Gemini Enterprise",
+      });
+      expect(option).toBeInTheDocument();
+      expect(option).not.toHaveAttribute("data-combobox-disabled");
+    });
+
+    it("shows the API key, project ID, and location fields when selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Google Gemini Enterprise");
+
+      expect(await screen.findByLabelText("API key")).toBeInTheDocument();
+      expect(screen.getByLabelText("Project ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("Location")).toBeInTheDocument();
+      // No model picker until the credentials are saved.
+      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+    });
+
+    it("keeps Connect disabled until both the API key and project ID are filled in", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Google Gemini Enterprise");
+
+      await userEvent.type(
+        await screen.findByLabelText("API key"),
+        "AIzaTestKey",
+      );
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+    });
+
+    it("connects by sending the credentials object, then picks a model", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Google Gemini Enterprise");
+
+      await userEvent.type(
+        await screen.findByLabelText("API key"),
+        "AIzaTestKey",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      // The untouched location field is omitted entirely — only changed fields are sent.
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "google",
+          credentials: {
+            "api-key": "AIzaTestKey",
+            "project-id": "my-project",
+          },
+        }),
+      );
+
+      await screen.findByLabelText("Model");
+      await openModelSelector();
+      await userEvent.click(await screen.findByText("Gemini 3.5 Flash"));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toHaveLength(2);
+      });
+
+      const modelRequest = fetchMock.callHistory
+        .calls("path:/api/metabot/settings", { method: "PUT" })
+        .at(-1);
+      expect(modelRequest?.options?.body).toBe(
+        JSON.stringify({ provider: "google", model: "gemini-3.5-flash" }),
+      );
+    });
+
+    it("shows the saved credentials and model picker for a connected provider", async () => {
+      await setup({
+        savedProviderValue: "google/gemini-3.5-flash",
+        apiKeyValues: { google: "**********ey" },
+      });
+
+      expect(await screen.findByLabelText("API key")).toHaveValue(
+        "**********ey",
+      );
+      expect(screen.getByLabelText("Project ID")).toHaveValue("my-project");
+      expect(await screen.findByLabelText("Model")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show the model picker when the project ID is missing — both credentials are required", async () => {
+      await setup({
+        savedProviderValue: "google/gemini-3.5-flash",
+        apiKeyValues: { google: "**********ey" },
+        googleProjectIdValue: null,
+      });
+
+      expect(await screen.findByLabelText("API key")).toHaveValue(
+        "**********ey",
+      );
+      expect(screen.getByLabelText("Project ID")).toHaveValue("");
+      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+    });
+
+    it("disconnects by clearing the credentials before the provider setting", async () => {
+      await setup({
+        savedProviderValue: "google/gemini-3.5-flash",
+        apiKeyValues: { google: "**********ey" },
+      });
+
+      await screen.findByLabelText("Project ID");
+      await confirmDisconnectProvider();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+            body: { provider: "google", credentials: null },
+          }),
+        ).toBe(true);
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/setting", {
+            method: "PUT",
+            body: { "llm-metabot-provider": null },
+          }),
+        ).toBe(true);
+      });
     });
   });
 

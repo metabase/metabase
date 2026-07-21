@@ -540,6 +540,9 @@ interface SettingsManagerSettings {
   "llm-openrouter-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
+  "llm-google-api-key"?: string | null;
+  "llm-google-project-id"?: string | null;
+  "llm-google-location"?: string | null;
   "llm-bedrock-access-key-id"?: string | null;
   "llm-bedrock-secret-access-key"?: string | null;
   "llm-bedrock-region"?: string | null;
