@@ -222,8 +222,8 @@
 (defn hydrate-findings
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
-  is the entity's live usage counter, present only for types that have the column (all but transform).
-  Batched, page-size-independent.
+  is the entity's live usage counter, present only for types that have the column (card/dashboard/document;
+  not transform, not collection). Batched, page-size-independent.
 
   Options let each endpoint add its per-finding-type extras without changing the shared base:
   `:top-level-cols` - extra native finding columns hoisted to the top level (e.g. `:last_active_at` for

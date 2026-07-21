@@ -7,7 +7,7 @@
   Response shape: a flat identity (`id, finding_type, entity_type, entity_id, detected_at,
   entity_display_name`) plus a nested typed `details` merging the stored verdict with live-hydrated
   `collection`, `description`, `owner`, `creator`, and `view_count` (the entity's usage counter, present
-  for every type but transform)."
+  for card/dashboard/document; not collection or transform)."
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
@@ -110,7 +110,8 @@
   the bound crossed (floor for sparse, ceiling for crowded, implicit 0 for empty) and `details.unit`
   what was counted (`items` collection / `dashcards`|`tabs` dashboard / `cards` document / `rows`
   card + transform). The two evidence-dated empties add `details.as_of`: card = the deciding run's
-  start, transform = the row-count estimate's sync time."
+  start, transform = the row-count estimate's sync time. `details.view_count` is the entity's live
+  usage counter, present for card/dashboard/document subjects (collection and transform have none)."
   [:map
    [:id                  :int]
    [:finding_type        :keyword]
@@ -128,6 +129,7 @@
      [:description [:maybe :string]]
      [:owner       NormalizedUser]
      [:creator     Creator]
+     [:view_count  {:optional true} :int]
      [:threshold   :int]
      [:unit        :string]
      [:as_of       {:optional true} some?]]]])
