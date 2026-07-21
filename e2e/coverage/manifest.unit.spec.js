@@ -5,8 +5,10 @@ import {
   fileExceedsBaseline,
 } from "./baseline.mjs";
 import {
+  apiRoutes,
   buildRouteTable,
   matchRoute,
+  normalizePages,
   normalizeRoute,
   normalizeRoutes,
 } from "./routes.mjs";
@@ -62,6 +64,44 @@ describe("normalizeRoutes", () => {
   });
 });
 
+describe("apiRoutes", () => {
+  it("keeps only internal /api requests", () => {
+    expect(
+      apiRoutes([
+        "GET /api/card/1",
+        "GET /app/assets/vendor-abc123.js",
+        "GET /dashboard/1-orders",
+        "POST https://snowplow-micro:9090/com.snowplowanalytics/tp2",
+        "not-a-route",
+      ]),
+    ).toEqual(["GET /api/card/1"]);
+    expect(apiRoutes(undefined)).toEqual([]);
+  });
+});
+
+describe("normalizePages", () => {
+  it("normalizes ids, slugs, uuids, and tokens; dedupes and sorts", () => {
+    expect(
+      normalizePages([
+        "/dashboard/1-orders-dashboard",
+        "/dashboard/2",
+        "/question/173-quarterly-revenue",
+        "/public/dashboard/f0e545b0-5f2e-45a7-91b6-371041fdcd48",
+        "/embed/dashboard/fake-header.fake-payload.fake-signature",
+        "/admin/settings",
+        "/admin/settings",
+      ]),
+    ).toEqual([
+      "/admin/settings",
+      "/dashboard/:id",
+      "/embed/dashboard/:token",
+      "/public/dashboard/:uuid",
+      "/question/:id",
+    ]);
+    expect(normalizePages(undefined)).toEqual([]);
+  });
+});
+
 describe("OpenAPI route table", () => {
   const table = buildRouteTable({
     paths: {
@@ -101,12 +141,13 @@ describe("OpenAPI route table", () => {
     expect(matchRoute(table, "GET", "/api/card/173/")).toBe("/api/card/{id}");
   });
 
-  it("normalizeRoute uses the table, falling back to regexes", () => {
-    expect(normalizeRoute("GET /api/setting/site-name", table)).toBe(
-      "GET /api/setting/{key}",
+  it("matches stored manifest shapes structurally, for consumers", () => {
+    expect(matchRoute(table, "GET", "/api/card/:id")).toBe("/api/card/{id}");
+    expect(matchRoute(table, "POST", "/api/card/:id/query")).toBe(
+      "/api/card/{id}/query",
     );
-    expect(normalizeRoute("GET /api/unknown/173", table)).toBe(
-      "GET /api/unknown/:id",
+    expect(matchRoute(table, "GET", "/api/setting/site-name")).toBe(
+      "/api/setting/{key}",
     );
   });
 
