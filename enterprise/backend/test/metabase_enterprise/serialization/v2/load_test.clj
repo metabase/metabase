@@ -25,7 +25,6 @@
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
 ;; and re-enable H2 in the extract (production keeps it filtered).
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]

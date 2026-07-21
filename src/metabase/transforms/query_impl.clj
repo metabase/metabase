@@ -83,6 +83,5 @@
          (log/error t "Error executing transform"))
        (throw t)))))
 
-#_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :query [transform opts]
   (run-mbql-transform! transform opts))

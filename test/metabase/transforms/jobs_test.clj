@@ -590,6 +590,7 @@
                       ;; ExecutorService worker (transforms-sql-worker), which doesn't convey dynamic bindings, so a
                       ;; proxy-based redef is invisible there and the barrier choreography silently no-ops. A global
                       ;; root swap is seen by every thread.
+                      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                       (with-redefs [transforms.u/try-start-unless-already-running
                                     (fn [transform-id run-method user-id & kwargs]
