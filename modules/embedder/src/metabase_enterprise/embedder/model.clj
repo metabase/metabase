@@ -86,6 +86,17 @@
   alias covers consumers configured with the other; keying both spellings is a config error rather than a
   silent last-one-wins."
   []
+  ;; TODO support an optional `:sha256` on `:url` entries. Bundled models are pinned to a HuggingFace
+  ;; revision and hash-verified at build time, but a remote override — the path operators actually use to
+  ;; run their own model — has no integrity check at all, so the flexible route is the unverified one.
+  ;; DJL currently owns the fetch (`.optModelUrls`), so we never hold the bytes; supporting a hash means
+  ;; downloading the archive ourselves, verifying, and handing DJL a local `file:` URL instead. That is
+  ;; what `build.embedder-model/fetch-file!` already does at build time, but it lives in the build tree
+  ;; rather than on the runtime classpath, so it would be a reimplementation (~40 lines) rather than a
+  ;; reuse. It would also give remote sources a verified cache across restarts, which they lack today.
+  ;; Keep it optional so existing `:url` entries keep working; log a warning when a remote source
+  ;; declares no hash. `:path` entries need none — a local directory is the operator's own filesystem,
+  ;; not a transport.
   (when-let [raw (not-empty (getenv "MB_EMBEDDER_MODEL_SOURCES"))]
     (let [parsed (try
                    (edn/read-string raw)
