@@ -32,6 +32,7 @@ type NativeQuerySidebarProps = {
   parameterValues: Record<string, RowValue>;
   setParameterValues: (newParameterValues: Record<string, RowValue>) => void;
   parametersAreUserVisible?: boolean;
+  canUseSampleDatabase?: boolean;
 };
 
 export function NativeQuerySidebar({
@@ -131,6 +132,7 @@ function TemplateTagsSidebar({
   parameterValues,
   parametersAreUserVisible,
   onChangeQuery,
+  canUseSampleDatabase,
 }: NativeQuerySidebarProps) {
   const sampleDatabaseId = useSelector(getSampleDatabaseId);
 
@@ -139,7 +141,9 @@ function TemplateTagsSidebar({
       question={question}
       query={question.legacyNativeQuery()!}
       onClose={onToggleTemplateTagsSidebar}
-      sampleDatabaseId={sampleDatabaseId}
+      sampleDatabaseId={
+        canUseSampleDatabase === false ? undefined : sampleDatabaseId
+      }
       setTemplateTag={(tag) => {
         const templateTags = Lib.templateTags(query);
         const newQuery = Lib.withTemplateTags(query, {
