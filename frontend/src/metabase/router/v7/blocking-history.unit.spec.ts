@@ -14,8 +14,11 @@ const cleanups: Array<() => void> = [];
 
 // Register through here so a failed assertion cannot leak a hook into the next
 // test: the module registry is shared across the suite.
-const register = (hook: (nextLocation?: HistoryLocation) => unknown) => {
-  const unregister = registerLeaveHook(hook);
+const register = (
+  hook: (nextLocation?: HistoryLocation) => unknown,
+  basePath?: string,
+) => {
+  const unregister = registerLeaveHook(hook, basePath);
   cleanups.push(unregister);
   return unregister;
 };
@@ -90,6 +93,37 @@ describe("withBlocking", () => {
     history.go(-1);
 
     expect(history.location.pathname).toBe("/a");
+  });
+
+  it("does not fire a route-scoped hook for a destination within its route", () => {
+    const history = setup(["/section/a"]);
+    const hook = jest.fn(() => false);
+    register(hook, "/section");
+
+    history.push("/section/b");
+
+    expect(hook).not.toHaveBeenCalled();
+    expect(history.location.pathname).toBe("/section/b");
+  });
+
+  it("fires a route-scoped hook for a destination that leaves its route", () => {
+    const history = setup(["/section/a"]);
+    const hook = jest.fn(() => false);
+    register(hook, "/section");
+
+    history.push("/other");
+
+    expect(hook).toHaveBeenCalled();
+    expect(history.location.pathname).toBe("/section/a");
+  });
+
+  it("treats the guarded route's own path as within scope", () => {
+    const history = setup(["/section/a"]);
+    register(() => false, "/section");
+
+    history.push("/section");
+
+    expect(history.location.pathname).toBe("/section");
   });
 
   it("tracks whether any hook is active", () => {

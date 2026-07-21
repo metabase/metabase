@@ -19,17 +19,31 @@ type History = HistoryRouterProps["history"];
  */
 type LeaveHook = (nextLocation?: HistoryLocation) => unknown;
 
-const leaveHooks = new Set<LeaveHook>();
+interface Registration {
+  hook: LeaveHook;
+  // The matched pathname of the guarded route. v3's `setRouteLeaveHook` is scoped
+  // to a route and only fires when a navigation leaves that route's subtree, so a
+  // hook with a base path does not fire for destinations that stay under it.
+  basePath?: string;
+}
+
+const registrations = new Set<Registration>();
 
 /**
  * Register a leave hook. The v7 `setRouteLeaveHook` shim calls this, so the
  * leave-confirm modals block navigation on v7 the same way they do on v3.
- * Returns the unregister function the caller uses as effect cleanup.
+ * `basePath` scopes the hook to a route: it fires only when the destination
+ * leaves that route's subtree, matching v3's `listenBeforeLeavingRoute`. Returns
+ * the unregister function the caller uses as effect cleanup.
  */
-export function registerLeaveHook(hook: LeaveHook): () => void {
-  leaveHooks.add(hook);
+export function registerLeaveHook(
+  hook: LeaveHook,
+  basePath?: string,
+): () => void {
+  const registration: Registration = { hook, basePath };
+  registrations.add(registration);
   return () => {
-    leaveHooks.delete(hook);
+    registrations.delete(registration);
   };
 }
 
@@ -38,12 +52,27 @@ export function registerLeaveHook(hook: LeaveHook): () => void {
  * at the call sites (`useBeforeUnload`), so this is exposed only for assertions.
  */
 export function hasLeaveHooks(): boolean {
-  return leaveHooks.size > 0;
+  return registrations.size > 0;
+}
+
+function staysWithin(basePath: string | undefined, pathname: string): boolean {
+  if (!basePath) {
+    return false;
+  }
+  const base = basePath.replace(/\/$/, "");
+  return pathname === base || pathname.startsWith(`${base}/`);
 }
 
 function isBlocked(nextLocation: HistoryLocation): boolean {
   // Snapshot so a hook that unregisters mid-run cannot skip a sibling.
-  return [...leaveHooks].some((hook) => hook(nextLocation) === false);
+  return [...registrations].some(({ hook, basePath }) => {
+    // Navigating within the guarded route is not leaving it, so the hook does
+    // not fire, exactly as v3's route-scoped leave hook behaves.
+    if (staysWithin(basePath, nextLocation.pathname)) {
+      return false;
+    }
+    return hook(nextLocation) === false;
+  });
 }
 
 function toBlockedLocation(

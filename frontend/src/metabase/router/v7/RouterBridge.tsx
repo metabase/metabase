@@ -23,6 +23,10 @@ import { registerLeaveHook } from "./blocking-history";
 import { toV3Location } from "./location";
 import { toNavigateArgs } from "./navigator";
 
+// The facade route stub, plus the route's matched pathname so `setRouteLeaveHook`
+// can scope its hook to the route the way v3 does.
+type RouteStub = PlainRoute & { pathnameBase?: string };
+
 /**
  * Runs as the `element` of every v7 route and republishes v7's location,
  * params, matched-route branch, and an imperative-router shim into the shared
@@ -47,13 +51,14 @@ export function RouterBridge({
   // context that also drives `<Outlet>` (available in declarative mode). Each
   // route keeps its v3 path on `handle`, which the facade hooks match against.
   const { matches } = useContext(UNSAFE_RouteContext);
-  const routes = useMemo<PlainRoute[]>(
+  const routes = useMemo<RouteStub[]>(
     () =>
       matches.map((match) => {
         // `handle` is typed `unknown`; we only ever put `{ v3Path }` on it.
         const handle = match.route.handle as { v3Path?: string } | undefined;
-        // The facade hooks read only `route.path`, so a `{ path }` stub is enough.
-        return { path: handle?.v3Path } as PlainRoute;
+        // The facade hooks read `route.path`; `pathnameBase` is the route's matched
+        // pathname, which `setRouteLeaveHook` uses to scope its hook to this route.
+        return { path: handle?.v3Path, pathnameBase: match.pathname };
       }),
     [matches],
   );
@@ -73,9 +78,9 @@ export function RouterBridge({
     [router, location, params, routes],
   );
 
-  // The injected `route` prop / `useRoute()`: consumers only read it to hand back
-  // to `setRouteLeaveHook`, which ignores the route arg on v7, so the leaf match's
-  // `{ path }` is enough. Cast because the facade types the injected route as `Route`.
+  // The injected `route` prop / `useRoute()`: consumers hand it back to
+  // `setRouteLeaveHook`, which reads its `pathnameBase` to scope the hook. Cast
+  // because the facade types the injected route as `Route`.
   const route = (routes.at(-1) ?? null) as Route | null;
 
   return (
@@ -94,8 +99,9 @@ export function RouterBridge({
  * `navigate`. The facade's `useNavigate` has already resolved relative targets to
  * absolute paths before calling `push`/`replace`, so these pass straight through.
  * `setRouteLeaveHook` registers into the blocking history, which cancels the
- * navigation when the hook returns `false`, matching v3. The route arg is unused:
- * the hook is registered only while its component is mounted on that route.
+ * navigation when the hook returns `false`, matching v3. The route's matched
+ * pathname scopes the hook, so it fires only when the destination leaves that
+ * route, the way v3's `listenBeforeLeavingRoute` does.
  */
 function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
   const href = (location: LocationDescriptor) =>
@@ -110,7 +116,12 @@ function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
     go: (n) => navigate(n),
     goBack: () => navigate(-1),
     goForward: () => navigate(1),
-    setRouteLeaveHook: (_route, hook) => registerLeaveHook(hook),
+    setRouteLeaveHook: (route, hook) => {
+      // The facade types the route arg as v3's `Route`; on v7 it is our stub,
+      // which carries the matched `pathnameBase` used to scope the hook.
+      const basePath = (route as RouteStub | undefined)?.pathnameBase;
+      return registerLeaveHook(hook, basePath);
+    },
     createPath: href,
     createHref: href,
     isActive: () => false,
