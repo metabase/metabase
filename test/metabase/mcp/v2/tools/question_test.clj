@@ -160,3 +160,42 @@
               result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
           (is (not (:isError result)) (-> result :content first :text))
           (is (= :model (t2/select-one-fn :type :model/Card :id (:id (:structuredContent result))))))))))
+
+(deftest create-dashboard-question-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard dash {:collection_id nil}]
+        (let [args   {:method "create"
+                      :name "Dash Q"
+                      :dashboard_id (:id dash)
+                      :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
+              result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+          (is (not (:isError result)) (-> result :content first :text))
+          (let [card-id (:id (:structuredContent result))]
+            (is (= (:id dash) (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))))
+
+(deftest create-dashboard-question-model-type-rejected-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard dash {:collection_id nil}]
+      (let [args   {:method "create"
+                    :card_type "model"
+                    :name "Dash Model"
+                    :dashboard_id (:id dash)
+                    :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
+            result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+        (is (:isError result))
+        (is (re-find #"Invalid dashboard-internal card" (-> result :content first :text)))))))
+
+(deftest create-dashboard-question-collection-id-exclusivity-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard dash {:collection_id nil}
+                   :model/Collection coll {}]
+      (let [args   {:method "create"
+                    :name "Dash Q Both"
+                    :dashboard_id (:id dash)
+                    :collection_id (:id coll)
+                    :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
+            result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+        (is (:isError result))
+        (is (re-find #"Pass either collection_id or dashboard_id, not both"
+                     (-> result :content first :text)))))))

@@ -183,12 +183,17 @@
    permission on the target collection — then save a `question` (or `model`) card. Returns the
    create response: [[card-response]] plus the saved card's `:url`."
   [{:keys [name description display visualization_settings cache_ttl collection_position
-           card_type column_metadata] :as args}
+           card_type column_metadata dashboard_id] :as args}
    session-id]
+  (when (and dashboard_id (contains? args :collection_id))
+    (common/throw-teaching-error
+     "Pass either collection_id or dashboard_id, not both — a dashboard question's collection is the dashboard's collection."))
   (let [dataset-query (resolve-query-source args session-id)
-        collection-id (if (contains? args :collection_id)
-                        (common/resolve-collection-id (:collection_id args))
-                        (:id (collection/user->personal-collection api/*current-user-id*)))]
+        dashboard-id  (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))
+        collection-id (cond
+                        dashboard-id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)
+                        (contains? args :collection_id) (common/resolve-collection-id (:collection_id args))
+                        :else (:id (collection/user->personal-collection api/*current-user-id*)))]
     (query-perms/check-run-permissions-for-query dataset-query)
     (api/create-check :model/Card {:collection_id collection-id})
     (let [computed-columns (when (seq column_metadata) (queries/infer-metadata dataset-query))]
@@ -208,7 +213,8 @@
                             :collection_position    collection_position
                             :cache_ttl              cache_ttl
                             :visualization_settings (or visualization_settings {})})
-                    result-metadata (assoc :result_metadata result-metadata))
+                    result-metadata (assoc :result_metadata result-metadata)
+                    dashboard-id    (assoc :dashboard_id dashboard-id))
                   {:id api/*current-user-id*})]
         (assoc (card-response card)
                :url (frontend-url (channel.urls/card-path (:id card))))))))
@@ -232,6 +238,7 @@
    [:name {:optional true} [:maybe [:string {:min 1}]]]
    [:description {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe [:or :int :string]]]
+   [:dashboard_id {:optional true} [:maybe [:or :int :string]]]
    [:collection_position {:optional true} [:maybe :int]]
    [:display {:optional true} [:maybe card-display-enum]]
    [:visualization_settings {:optional true} [:maybe :map]]
@@ -247,7 +254,7 @@
               [:visibility_type {:optional true} [:maybe :string]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection), display, visualization_settings, cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection) or dashboard_id (saves the question inside that dashboard; its collection is inferred from the dashboard — pass one or the other, not both), display, visualization_settings, cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores."
   {:name         "question_write"
    :scope        metabot.scope/agent-question-create
    :update-scope metabot.scope/agent-question-update
