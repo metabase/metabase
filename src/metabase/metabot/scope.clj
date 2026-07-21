@@ -100,6 +100,10 @@
 (api-scope/defscope agent-alert-create "agent:alert:create"
   (deferred-tru "Create alerts"))
 
+;; Notification (alerts and dashboard subscriptions)
+(api-scope/defscope agent-notification-read "agent:notification:read"
+  (deferred-tru "View alerts and dashboard subscriptions"))
+
 ;; Search
 (api-scope/defscope agent-search "agent:search"
   (deferred-tru "Search for content"))
@@ -179,7 +183,7 @@
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
    :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
-                                        "agent:collection:*"}})
+                                        "agent:notification:*" "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
