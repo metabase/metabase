@@ -799,7 +799,8 @@
               ;; Database of the table it points at.
               (is (contains? (metrics/dimension-mappings-deps (:dimension_mappings card))
                              [{:model "Database" :id "metric-db"}]))
-              (is (contains? (serdes/dependencies card) [{:model "Database" :id "metric-db"}])))))
+              (is (contains? (serdes/deserialization-dependencies card)
+                             [{:model "Database" :id "metric-db"}])))))
         (testing "deserializing resolves dimensions & mappings to the dest IDs"
           (ts/with-db dest-db
             ;; Pre-existing db/table on dest so the imported IDs don't match the source's. Create more junk fields

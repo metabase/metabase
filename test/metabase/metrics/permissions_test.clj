@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.metrics.core :as metrics]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.permissions.metric :as permissions.metric]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -28,6 +29,13 @@
   "Extract the set of group display-names from a seq of dimensions."
   [dims]
   (into #{} (map #(get-in % [:group :display-name])) dims))
+
+(defn- persist-full-dimension-set!
+  [metric]
+  (let [{:keys [dimensions dimension-mappings]}
+        (metrics/compute-full-dimension-set (:dataset_query metric))]
+    (t2/update! :model/Card (:id metric)
+                {:dimensions dimensions, :dimension_mappings dimension-mappings})))
 
 ;;; ------------------------------------------------- Field Visibility Tests -------------------------------------------------
 
@@ -83,6 +91,7 @@
     (mt/with-temp [:model/Card metric {:name          "Orders Count"
                                        :type          :metric
                                        :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+      (persist-full-dimension-set! metric)
       ;; Establish dimensions as superuser first (sync happens on first read)
       (let [all-dims    (metric-dimensions :crowberto (:id metric))
             all-groups  (dimension-group-names all-dims)]
@@ -110,6 +119,7 @@
     (mt/with-temp [:model/Card metric {:name          "Orders Count"
                                        :type          :metric
                                        :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+      (persist-full-dimension-set! metric)
       (mt/with-no-data-perms-for-all-users!
         ;; Even with all perms revoked for all-users group, crowberto (superuser) sees everything
         (let [dims   (metric-dimensions :crowberto (:id metric))
@@ -142,6 +152,7 @@
     (mt/with-temp [:model/Card metric {:name          "Orders Count"
                                        :type          :metric
                                        :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+      (persist-full-dimension-set! metric)
       ;; Establish dimensions as superuser
       (let [all-response (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric)))
             ;; Find a dimension from the Product group (FK-joined from Products table)
