@@ -46,6 +46,13 @@
   :audit      :getter
   :export?    true)
 
+(defsetting use-v7-router
+  (deferred-tru "Serve the app with the react-router v7 engine instead of the legacy v3 engine. Toggle off for an instant rollback.")
+  :type       :boolean
+  :default    false
+  :visibility :public
+  :export?    false)
+
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.
    Otherwise make the landing-page a relative path."

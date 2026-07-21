@@ -58,7 +58,7 @@
      :headers {"Content-Type" "application/json"}
      :body    {:resource                  (str site-url resource-path)
                :authorization_servers     [site-url]
-               :scopes_supported          (vec (oauth-server/all-agent-scopes))
+               :scopes_supported          (vec (oauth-server/protected-resource-scopes))
                :bearer_methods_supported  ["header"]}}))
 
 (api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp"

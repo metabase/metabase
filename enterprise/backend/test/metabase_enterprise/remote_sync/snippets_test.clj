@@ -39,7 +39,6 @@
     (finally
       (t2/delete! :model/RemoteSyncObject))))
 
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
                         (clean-remote-sync-state f))))

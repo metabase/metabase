@@ -13,6 +13,7 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, IconName } from "metabase-types/api";
+import { createMockSearchResult } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
@@ -347,6 +348,25 @@ describe("DataStep", () => {
   });
 
   describe("metrics", () => {
+    it("should hide metrics from the mini picker", async () => {
+      const step = createMockNotebookStep({
+        question: DEFAULT_QUESTION.setType("metric"),
+      });
+      const existingMetric = createMockSearchResult({
+        name: "Existing metric",
+        model: "metric",
+      });
+      await setup({ step, searchItems: [existingMetric] });
+
+      await userEvent.click(screen.getByText("Orders"));
+      await userEvent.type(
+        screen.getByPlaceholderText(/search for tables and more/i),
+        "Existing metric",
+      );
+
+      expect(screen.queryByText("Existing metric")).not.toBeInTheDocument();
+    });
+
     it("should automatically aggregate by count for metrics", async () => {
       const step = createMockNotebookStep({
         question: DEFAULT_QUESTION.setType("metric"),

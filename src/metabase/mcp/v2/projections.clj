@@ -132,7 +132,8 @@
   [:id :name :type :description :display :collection_id :database_id :table_id :source_card_id
    :archived :query_summary :template_tags :parameters])
 
-(def ^:private question-detailed-keys
+(def question-detailed-keys
+  "Keys of the `:question` detailed projection — also the columns a row must carry to project."
   (into question-concise-keys
         [:entity_id :dashboard_id :query_type :collection_position :creator_id :cache_ttl
          :created_at :updated_at]))

@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 
-import { StorageSetupProvider } from "metabase/common/components/upsells/StoragePurchaseModal/storage-setup-context";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 
@@ -25,7 +24,6 @@ const getDefaultPluginUploadManagement = () => ({
   GdriveAddDataPanel:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
-  StorageSetupProvider,
 });
 
 export const PLUGIN_UPLOAD_MANAGEMENT = getDefaultPluginUploadManagement();

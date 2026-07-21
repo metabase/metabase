@@ -645,7 +645,6 @@
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/pdf" :- :any
   "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render charts) and stream it
   back as a file download.

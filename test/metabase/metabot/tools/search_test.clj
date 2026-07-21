@@ -3,17 +3,61 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.lib-be.metadata.jvm :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.metabot.tools.search :as search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.tracing.core :as tracing]
+   [metabase.tracing.test-util :as tracing.tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel bounded-pmap-conveys-bindings-test
+  (testing "GHY-4137: bounded-pmap runs f on virtual threads with the caller's dynamic bindings
+            conveyed (like future did), so each per-query subsearch keeps the current user's
+            permission bindings — without this, permission filtering would silently break"
+    (binding [api/*current-user-id* 4242]
+      (is (= [4242 4242 4242]
+             (#'search/bounded-pmap 10000 (fn [_] api/*current-user-id*) [:a :b :c]))))))
+
+(deftest ^:parallel bounded-pmap-bounds-concurrency-test
+  (testing "GHY-4137: the server-wide semaphore caps how many subsearches run at once across all
+            callers, so fan-out can't saturate the DB / embedding provider"
+    (let [limit   @#'search/max-parallel-searches
+          running (atom 0)
+          peak    (atom 0)
+          f       (fn [_]
+                    (let [n (swap! running inc)]
+                      (swap! peak max n)
+                      (Thread/sleep 50)
+                      (swap! running dec)
+                      n))]
+      ;; submit more than the limit; the shared semaphore must keep the running count from exceeding it
+      (#'search/bounded-pmap 10000 f (range (+ limit 5)))
+      (is (<= @peak limit) "never exceeds the server-wide concurrency limit"))))
+
+(deftest ^:parallel bounded-pmap-times-out-test
+  (testing "GHY-4137: a task exceeding the timeout is cancelled and surfaces a timeout error rather
+            than hanging the request thread"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"timed out"
+                          (#'search/bounded-pmap 50 (fn [_] (Thread/sleep 5000) :done) [:a :b]))))
+  (testing "tasks that finish within the timeout return normally"
+    (is (= [:done :done] (#'search/bounded-pmap 10000 (fn [_] :done) [:a :b])))))
+
+(deftest ^:parallel bounded-pmap-propagates-task-exceptions-unwrapped-test
+  (testing "GHY-4137: a subsearch's exception propagates as itself with ex-data intact, not wrapped
+            in ExecutionException — otherwise a 403 or teaching error from a subsearch would be
+            redacted to a generic internal error by the tool layer"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (#'search/bounded-pmap 10000
+                                                (fn [_] (throw (ex-info "boom" {:status-code 403})))
+                                                [:a])))]
+      (is (= 403 (:status-code (ex-data e)))))))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
@@ -309,16 +353,16 @@
                   perms/sandboxed-user? (fn [] false)
                   api/*current-user-id* 1]
       (testing ":search-native-query is included in context when true"
-        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                         (is (true? (:search-native-query context)))
-                                                         {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                 (is (true? (:search-native-query context)))
+                                                                 [])]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
       (testing ":search-native-query is not included in context when nil or false"
-        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                         (is (not (contains? context :search-native-query)))
-                                                         {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                 (is (not (contains? context :search-native-query)))
+                                                                 [])]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query false})
@@ -334,9 +378,9 @@
                     api/*current-user-id* 1]
         (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["x"]}))
             (is (= #{"table" "dataset" "metric" "card"} @captured))
             (is (not (contains? @captured "dashboard")))
@@ -344,16 +388,16 @@
             (is (not (contains? @captured "database")))))
         (testing "sql-search-tool with no entity_types searches only table/model"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))))))
 
@@ -365,16 +409,18 @@
                     api/*current-user-id* 1]
         (testing "default limit is 10 when not provided"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:limit-int context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                        search-core/search-results (fn [context _ _]
+                                                                     (reset! captured (:limit-int context))
+                                                                     {:data []})]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:limit-int context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                        search-core/search-results (fn [context _ _]
+                                                                     (reset! captured (:limit-int context))
+                                                                     {:data []})]
               (search/search-tool {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
         (testing "limit above 50 is rejected by schema validation"
@@ -383,6 +429,92 @@
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
+
+(deftest search-emits-execute-span-test
+  (testing "GHY-4137: agent search must still emit the search.execute span so its traffic shows up
+            in search traces — the span used to live inside search/search, which the tool no longer
+            calls, so it has to be re-established around the ranked-results/search-results pair."
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/disjunction (fn [_ terms] terms)]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                    search-core/search-results (fn [_ _ _] {:data [] :total 0})]
+          (try
+            (tracing/init-enabled-groups! "search" "INFO")
+            (tracing.tu/with-span-exporter [exporter]
+              (search/search {:term-queries ["orders"] :entity-types ["table"]})
+              (is (some #(= "search.execute" (:name %))
+                        (tracing.tu/finished-spans exporter))
+                  "a search.execute span is emitted for an agent search"))
+            (finally
+              (tracing/shutdown-groups!))))))))
+
+(deftest metabot-search-collection-scoping-test
+  (testing "GHY-4137: `search` scopes by whatever collection-id it is handed and never overrides it
+            based on caller type. Confining embedded-metabot / nlq-profile flows to the metabot's
+            own collection is the caller's (do-search's) policy, expressed by confined-collection-id."
+    (mt/with-temp [:model/Collection c {:name "Metabot Home"}
+                   :model/Metabot _ {:name "MB" :entity_id "mbEid1234567890abcdef" :collection_id (:id c)}]
+      (testing "confined-collection-id resolves the confined flows to the metabot's collection"
+        (let [confined @#'search/confined-collection-id]
+          (is (= (:id c) (confined "mbEid1234567890abcdef" "nlq"))
+              "an nlq-profile search is confined to the metabot's collection")
+          (is (nil? (confined "mbEid1234567890abcdef" nil))
+              "a non-embedded, non-nlq flow is unconfined")))
+      (testing "search passes the collection-id through unchanged — no caller-type override"
+        (mt/with-test-user :rasta
+          (with-redefs [perms/impersonated-user? (fn [] false)
+                        perms/sandboxed-user?    (fn [] false)]
+            (let [captured (atom :unset)
+                  run!     (fn [search-args]
+                             (reset! captured :unset)
+                             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [ctx]
+                                                                                      (reset! captured (:collection ctx))
+                                                                                      [])]
+                               (search/search (merge {:term-queries ["x"] :entity-types ["card"]} search-args)))
+                             @captured)]
+              (is (= 42 (run! {:collection-id 42}))
+                  "the caller's collection-id is used")
+              (is (= 42 (run! {:collection-id 42 :profile-id "nlq" :metabot-id "mbEid1234567890abcdef"}))
+                  "even an nlq/metabot flow uses the passed collection-id — search does not override it")
+              (is (nil? (run! {}))
+                  "no collection-id means no scoping"))))))))
+
+(deftest multi-query-fusion-paginates-coherently-test
+  (testing "GHY-4137: paging a multi-query (rank-fused) search applies offset to the *fused*
+            ranking, so each match appears on exactly one page (no repeats, no gaps) and the total
+            is knowable and stable across pages — previously offset was applied per query before
+            fusion, which repeated and dropped rows and left total nil"
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Card _ {:name "zzorders zzrevenue a" :database_id db-id}
+                     :model/Card _ {:name "zzorders zzrevenue b" :database_id db-id}
+                     :model/Card _ {:name "zzorders c" :database_id db-id}
+                     :model/Card _ {:name "zzorders d" :database_id db-id}
+                     :model/Card _ {:name "zzrevenue e" :database_id db-id}
+                     :model/Card _ {:name "zzrevenue f" :database_id db-id}
+                     :model/Card _ {:name "zzorders zzrevenue g" :database_id db-id}
+                     :model/Card _ {:name "zzorders zzrevenue h" :database_id db-id}]
+        (search-core/init-index! {:force-reset? true :in-place? true})
+        (mt/with-test-user :crowberto
+          (with-redefs [perms/impersonated-user? (fn [] false)
+                        perms/sandboxed-user? (fn [] false)]
+            (let [page    (fn [offset]
+                            (search/search {:term-queries ["zzorders" "zzrevenue"]
+                                            :entity-types ["question"] :limit 3 :offset offset}))
+                  pages   [(page 0) (page 3) (page 6)]
+                  totals  (map (comp :total meta) pages)
+                  all-ids (mapcat #(map :id %) pages)]
+              (testing "the eight seeded cards are the whole fused set"
+                (is (= 8 (first totals))))
+              (testing "total is populated (not nil) and stable across pages"
+                (is (every? #{8} totals)))
+              (testing "no card appears on more than one page"
+                (is (= (count all-ids) (count (distinct all-ids)))))
+              (testing "the pages together cover the entire fused set — no gaps"
+                (is (= 8 (count (distinct all-ids))))))))))))
 
 (deftest other-user-collection-test
   (testing "excludes entities from other users' collections"
@@ -434,7 +566,7 @@
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
 
 (deftest enrich-with-portable-entity-ids-test
-  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
+  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Card {q-id :id q-eid :entity_id} {:name "PortableEID Sample Question"
@@ -530,7 +662,7 @@
 
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
-                "`source-table:` without a separate entity_details call. We look up\n"
+                "`source-table:` without a separate read_resource call. We look up\n"
                 "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
                 "portable FK `[database_name, schema, table_name]`. This closes the failure\n"
                 "mode where the LLM saw a metric in search, had its portable_entity_id, but\n"
@@ -560,30 +692,31 @@
               (is (= [db-name (:schema orders-t) (:name orders-t)]
                      (:base_table_portable_fk metric-res))))))))))
 
-(deftest remove-unreadable-transforms-test
-  (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Database {db-id :id} {}]
-        (let [mp (lib-be/application-database-metadata-provider db-id)]
-          (mt/with-temp [:model/Transform {transform-id :id}
-                         {:name   "Test Transform"
-                          :source {:type  "query"
-                                   :query (lib/native-query mp "SELECT 1")}}]
-            (let [mock-results [{:id transform-id :type "transform" :name "Test Transform"}
-                                {:id 999 :type "dashboard" :name "Some Dashboard"}]]
-              (testing "keeps transforms when user can query the source database"
-                (mt/with-test-user :crowberto
-                  (let [results (#'search/remove-unreadable-transforms mock-results)]
-                    (is (= 2 (count results))))))
-              (testing "filters out transforms when user cannot query the source database"
-                (mt/with-user-in-groups [group {:name "No Query Access"}
-                                         user [group]]
-                  (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/create-queries :no
-                    (mt/with-db-perm-for-group! group db-id :perms/create-queries :no
-                      (binding [api/*current-user-id* (:id user)]
-                        (let [results (#'search/remove-unreadable-transforms mock-results)]
-                          (is (= 1 (count results)))
-                          (is (= "dashboard" (:type (first results)))))))))))))))))
+(deftest transform-search-is-superuser-only-test
+  (testing "GHY-4137: transforms are :visibility :superuser in search, so only superusers ever see
+            them in results. This is what makes a transform-readability post-filter unnecessary — a
+            user who cannot access transforms never has them in results to begin with."
+    (search.tu/with-temp-index-table
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+          (mt/with-temp [:model/Database {db-id :id} {}
+                         :model/Transform _ {:name   "zzxform target"
+                                             :source {:type "query" :query {:database db-id}}}]
+            (search-core/init-index! {:force-reset? true :in-place? true})
+            (with-redefs [perms/impersonated-user? (constantly false)
+                          perms/sandboxed-user?    (constantly false)]
+              (let [transform-types (fn []
+                                      (->> (search/search {:term-queries ["zzxform"]
+                                                           :entity-types ["transform"]
+                                                           :limit        10})
+                                           (map :type)
+                                           set))]
+                (testing "a superuser's search returns the transform"
+                  (mt/with-test-user :crowberto
+                    (is (contains? (transform-types) "transform"))))
+                (testing "a non-superuser's search returns no transforms"
+                  (mt/with-test-user :rasta
+                    (is (empty? (transform-types)))))))))))))
 
 (deftest weight-override-test
   (testing "weights can be overridden on a per-tool-call basis"

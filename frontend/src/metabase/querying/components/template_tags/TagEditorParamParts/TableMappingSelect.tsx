@@ -39,9 +39,7 @@ export function TableMappingSelect({
         </ContainerLabel>
         <SchemaAndTableDataSelector
           databases={databases}
-          selectedDatabase={database || null}
           selectedDatabaseId={database?.id || null}
-          selectedTable={tableId}
           selectedTableId={tableId}
           setSourceTableFn={onChange}
           isInitiallyOpen={tableId == null}

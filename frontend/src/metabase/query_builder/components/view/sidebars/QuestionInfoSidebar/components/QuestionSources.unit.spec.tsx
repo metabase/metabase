@@ -57,13 +57,10 @@ const setup = async ({
     };
   }
 
-  return renderWithProviders(
-    <Route path="/" component={() => <QuestionSources />} />,
-    {
-      withRouter: true,
-      storeInitialState: state,
-    },
-  );
+  return renderWithProviders(<Route path="/" element={<QuestionSources />} />, {
+    withRouter: true,
+    storeInitialState: state,
+  });
 };
 
 describe("QuestionSources", () => {

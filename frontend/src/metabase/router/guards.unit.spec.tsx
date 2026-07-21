@@ -4,6 +4,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { setBasename } from "metabase/utils/basename";
 import { replaceLocation } from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -37,11 +38,11 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsAuthenticated}>
-            <Route path="/dashboard/:slug" component={Dashboard} />
+          <Route element={<IsAuthenticated />}>
+            <Route path="/dashboard/:slug" element={<Dashboard />} />
           </Route>
-          <Route component={IsNotAuthenticated}>
-            <Route path="/auth/login" component={LoginPage} />
+          <Route element={<IsNotAuthenticated />}>
+            <Route path="/auth/login" element={<LoginPage />} />
           </Route>
         </>,
         {
@@ -72,10 +73,10 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsAdmin}>
-            <Route path="/admin/settings" component={Protected} />
+          <Route element={<IsAdmin />}>
+            <Route path="/admin/settings" element={<Protected />} />
           </Route>
-          <Route path="/unauthorized" component={Unauthorized} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
         </>,
         {
           storeInitialState: state,
@@ -100,10 +101,10 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsNotAuthenticated}>
-            <Route path="/auth/login" component={LoginPage} />
+          <Route element={<IsNotAuthenticated />}>
+            <Route path="/auth/login" element={<LoginPage />} />
           </Route>
-          <Route path="/" component={Home} />
+          <Route path="/" element={<Home />} />
         </>,
         {
           storeInitialState: state,
@@ -136,8 +137,8 @@ describe("route-guards", () => {
       });
 
       const { history } = renderWithProviders(
-        <Route component={IsNotAuthenticated}>
-          <Route path="/auth/login" component={LoginPage} />
+        <Route element={<IsNotAuthenticated />}>
+          <Route path="/auth/login" element={<LoginPage />} />
         </Route>,
         {
           storeInitialState: state,
@@ -154,6 +155,7 @@ describe("route-guards", () => {
       window.history.replaceState({}, "", "/");
       // reset the global MetabaseSettings singleton mutated by mockSettings
       mockSettings();
+      setBasename("");
     });
 
     it("does a full-page redirect for a relative backend-only path", async () => {
@@ -210,6 +212,66 @@ describe("route-guards", () => {
         );
       });
       expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+    });
+
+    describe("when Metabase is hosted under a subpath (GIT-10551)", () => {
+      beforeEach(() => {
+        setBasename("/metabase");
+      });
+
+      it("prefixes the subpath on a full-page redirect to a backend-only path", async () => {
+        const { history } = setup("/oauth/authorize?client_id=abc");
+
+        await waitFor(() => {
+          expect(replaceLocationMock).toHaveBeenCalledWith(
+            `${ORIGIN}/metabase/oauth/authorize?client_id=abc`,
+          );
+        });
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      it("does not double the subpath when navigating in-app", async () => {
+        const { history } = setup("/dashboard/1");
+
+        await waitFor(() => {
+          expect(history?.getCurrentLocation().pathname).toBe("/dashboard/1");
+        });
+        expect(replaceLocationMock).not.toHaveBeenCalled();
+      });
+
+      it("recognizes a backend-only path behind the subpath in an absolute URL", async () => {
+        const { history } = setup(`${ORIGIN}/metabase/oauth/authorize`);
+
+        await waitFor(() => {
+          expect(replaceLocationMock).toHaveBeenCalledWith(
+            `${ORIGIN}/metabase/oauth/authorize`,
+          );
+        });
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      it("does not strip a lookalike path prefix that is not the basename", async () => {
+        const { history } = setup(`${ORIGIN}/metabase-docs/foo`);
+
+        await waitFor(() => {
+          expect(history?.getCurrentLocation().pathname).toBe(
+            "/metabase-docs/foo",
+          );
+        });
+        expect(replaceLocationMock).not.toHaveBeenCalled();
+      });
+
+      it("handles a nested subpath basename", async () => {
+        setBasename("/bi/metabase");
+        const { history } = setup("/oauth/authorize?client_id=abc");
+
+        await waitFor(() => {
+          expect(replaceLocationMock).toHaveBeenCalledWith(
+            `${ORIGIN}/bi/metabase/oauth/authorize?client_id=abc`,
+          );
+        });
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
     });
   });
 

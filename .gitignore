@@ -89,6 +89,7 @@ cypress.env.json
 /resources/frontend_client/app/embedding-sdk.js.map
 /resources/frontend_client/app/embedding-sdk/
 /resources/frontend_client/tmp-*/
+/resources/frontend_client/data-app.html
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
 /resources/frontend_client/embed-mcp.html
@@ -150,6 +151,7 @@ mise.local.toml
 **/.clj-kondo/*
 !**/.clj-kondo/README.md
 !**/.clj-kondo/config.edn
+!**/.clj-kondo/ratchets.edn
 !**/.clj-kondo/config/
 !**/.clj-kondo/src/
 !**/.clj-kondo/test/
