@@ -38,8 +38,8 @@ export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
 
 export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
-// Audit-only query shape accepted by /api/dataset. `fn` names a whitelisted
-// backend function (audit-app internal queries); there is no `database`.
+// Audit-only query shape accepted by /api/dataset.
+// `fn` names a backend function.
 export interface InternalDatasetQuery {
   type: "internal";
   fn: string;

@@ -33,7 +33,7 @@ function setup({
   enableRowSelection = true,
   onCheckboxClick,
 }: SetupOpts = {}) {
-  function Harness() {
+  function RowContainer() {
     const instance = useTreeTableInstance({
       data: DATA,
       columns: COLUMNS,
@@ -62,7 +62,7 @@ function setup({
           measureElement={() => {}}
           isDisabled={isDisabled}
           onCheckboxClick={
-            onCheckboxClick ? (r, index) => onCheckboxClick(index) : undefined
+            onCheckboxClick ? (_, index) => onCheckboxClick(index) : undefined
           }
           hierarchical={false}
         />
@@ -70,7 +70,7 @@ function setup({
     );
   }
 
-  renderWithProviders(<Harness />);
+  renderWithProviders(<RowContainer />);
 }
 
 function getCheckboxWrapper() {
