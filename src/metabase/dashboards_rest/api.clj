@@ -136,15 +136,10 @@
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
         true (apply t2/hydrate dashboard)))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
-  "Create a new Dashboard."
-  [_route-params
-   _query-params
-   {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
+(mu/defn create-dashboard! :- :map
+  "Create a Dashboard owned by the current user and return it hydrated for an API response.
+  Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`."
+  [{:keys [name description parameters cache_ttl collection_id collection_position]}
    :- [:map
        [:name                ms/NonBlankString]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
@@ -175,6 +170,23 @@
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/"
+  "Create a new Dashboard."
+  [_route-params
+   _query-params
+   dashboard :- [:map
+                 [:name                ms/NonBlankString]
+                 [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
+                 [:description         {:optional true} [:maybe :string]]
+                 [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
+                 [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
+  (create-dashboard! dashboard))
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -885,9 +897,10 @@
      :created-dashcards (when (seq to-create)
                           (create-dashcards! dashboard to-create))}))
 
-(def ^:private UpdatedDashboardCard
+(def UpdatedDashboardCard
+  "Schema for one dashcard in a dashboard update payload. A negative `:id` marks a dashcard to
+  create; positive ids name existing rows, and rows absent from the payload are deleted."
   [:map
-   ;; id can be negative, it indicates a new card and BE should create them
    [:id                                  int?]
    [:size_x                              ms/PositiveInt]
    [:size_y                              ms/PositiveInt]
@@ -897,9 +910,10 @@
    [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series             {:optional true} [:maybe [:sequential map?]]]])
 
-(def ^:private UpdatedDashboardTab
+(def UpdatedDashboardTab
+  "Schema for one tab in a dashboard update payload. A negative `:id` marks a tab to create;
+  positive ids name existing rows, and rows absent from the payload are deleted."
   [:map
-   ;; id can be negative, it indicates a new card and BE should create them
    [:id   ms/Int]
    [:name ms/NonBlankString]])
 
@@ -1010,20 +1024,26 @@
          ;; We will not include links to Metabase for subscriptions created in modular embeddings
          :disable_links (:disable_links broken-pulse))))))
 
-(defn- handle-broken-subscriptions
-  "Given a dashboard id and original parameters, determine if any of the subscriptions are broken (we've removed params
-  that subscriptions require). If so, delete the subscriptions and notify the dashboard and pulse creators."
+(defn handle-broken-subscriptions
+  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard,
+  notify their creators, and return the archived subscriptions' data. Must run after the update:
+  it compares the dashboard's current resolved params against each pulse's stored params."
   [dashboard-id original-dashboard-params]
-  (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
-    ;; Archive the pulse
-    (pulse/update-pulse! {:id pulse-id :archived true})
-    ;; Let the pulse and subscription creator know about the broken pulse
-    (messages/send-broken-subscription-notification! broken-subscription)))
+  (let [broken (broken-subscription-data dashboard-id original-dashboard-params)]
+    (doseq [{:keys [pulse-id] :as broken-subscription} broken]
+      ;; Archive the pulse
+      (pulse/update-pulse! {:id pulse-id :archived true})
+      ;; Let the pulse and subscription creator know about the broken pulse
+      (messages/send-broken-subscription-notification! broken-subscription))
+    broken))
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 
-(defn- update-dashboard!
-  "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
+(defn update-dashboard!
+  "Update the Dashboard with `id` and return it hydrated for an API response. `dash-updates` may carry
+  dashboard attributes plus `:dashcards` and `:tabs`, which fully replace the current layout — entries
+  with negative ids are created, missing entries are deleted. Requires write permission on the dashboard;
+  runs in one transaction. Publishes `:event/dashboard-update` and may notify owners of broken subscriptions."
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
   (span/with-span!
     {:name       "update-dashboard"
@@ -1113,8 +1133,9 @@
             apply-card-permission-filters
             (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))))
 
-(def ^:private DashUpdates
-  "Schema for Dashboard Updates."
+(def DashUpdates
+  "Schema for the `dash-updates` argument to [[update-dashboard!]]: dashboard attributes plus the
+  optional `:dashcards`/`:tabs` full-replacement layout."
   [:map
    [:name                    {:optional true} [:maybe ms/NonBlankString]]
    [:description             {:optional true} [:maybe :string]]
