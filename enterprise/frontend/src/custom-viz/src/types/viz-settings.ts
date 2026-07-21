@@ -6,6 +6,16 @@ import type { BaseWidgetProps, ClickBehavior } from "./viz";
 export type WidgetName = keyof Widgets;
 
 /**
+ * Setting ids contributed to every custom visualization by the host (they
+ * power the built-in per-column formatting popover).
+ */
+export type ReservedVisualizationSettingId = "column" | "column_settings";
+
+export type BaseVisualizationSettings = Record<string, unknown> & {
+  [K in ReservedVisualizationSettingId]?: never;
+};
+
+/**
  * Handle returned by a custom widget's mount call.
  *
  * The host drives the widget's lifecycle through this handle: `update` pushes
@@ -133,10 +143,10 @@ type CommonVisualizationSettings = {
 };
 
 export type CustomVisualizationSettings<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = TSettings & CommonVisualizationSettings;
 
-export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
+export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
   () => <
     W extends WidgetName | ComponentType<any>,
     Key extends keyof TSettings,
