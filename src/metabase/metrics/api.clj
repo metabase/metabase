@@ -343,12 +343,12 @@
   "List a metric's curated dimensions, and (when `with-addable=true`) the columns still available to
   add, grouped by source table. Both can be filtered with a `query` name substring."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [query with_addable]} :- [:map
+   {:keys [query with-addable]} :- [:map
                                     [:query        {:optional true} [:maybe :string]]
-                                    [:with_addable {:optional true} [:maybe ms/BooleanValue]]]]
+                                    [:with-addable {:optional true} [:maybe ms/BooleanValue]]]]
   (read-check-metric! id)
   (metrics/list-dimensions :metadata/metric id {:query         query
-                                                :with-addable? (boolean with_addable)}))
+                                                :with-addable? (boolean with-addable)}))
 
 (api.macros/defendpoint :post "/:id/dimension/add"
   :- [:sequential :map]

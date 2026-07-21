@@ -46,7 +46,7 @@ export function AddDimensionsPanel({
   const dispatch = useDispatch();
   const { data, isLoading, error } = useListMetricDimensionsQuery({
     metricId,
-    with_addable: true,
+    "with-addable": true,
     query: debouncedSearch || undefined,
   });
   const [addDimensions] = useAddMetricDimensionsMutation();

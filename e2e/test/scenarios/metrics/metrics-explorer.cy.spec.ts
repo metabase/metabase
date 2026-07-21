@@ -2775,7 +2775,7 @@ function addConnectionDimension(
   return cy
     .request<CuratedDimensionsResponse>(
       "GET",
-      `/api/metric/${metricId}/dimension?with_addable=true`,
+      `/api/metric/${metricId}/dimension?with-addable=true`,
     )
     .then(({ body }) => {
       const group = body.addable.find(

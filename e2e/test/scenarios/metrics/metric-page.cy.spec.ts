@@ -55,7 +55,7 @@ function addOverviewDimensions(metricId: number) {
     .then(() =>
       cy.request<ListMetricDimensionsResponse>(
         "GET",
-        `/api/metric/${metricId}/dimension?with_addable=true`,
+        `/api/metric/${metricId}/dimension?with-addable=true`,
       ),
     )
     .then(({ body }) => {

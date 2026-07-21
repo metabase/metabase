@@ -123,7 +123,7 @@ export type GetRemappedMetricDimensionValueRequest = {
 export type ListMetricDimensionsRequest = {
   metricId: MetricId;
   query?: string;
-  with_addable?: boolean;
+  "with-addable"?: boolean;
 };
 
 export type AddableDimensionGroup = {

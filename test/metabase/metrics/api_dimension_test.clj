@@ -230,10 +230,10 @@
         (is (contains? (set (map :display_name (:added resp))) "Price"))))))
 
 (deftest list-dimensions-with-addable-test
-  (testing "GET /api/metric/:id/dimension?with_addable=true returns joinable columns to add"
+  (testing "GET /api/metric/:id/dimension?with-addable=true returns joinable columns to add"
     (with-seeded-metric [metric]
       (let [resp (mt/user-http-request :crowberto :get 200
-                                       (str "metric/" (:id metric) "/dimension") :with_addable true)]
+                                       (str "metric/" (:id metric) "/dimension") :with-addable true)]
         (is (seq (:addable resp)) "FK-joinable (categories) columns should be addable")
         (is (every? #(and (contains? % :group) (seq (:dimensions %))) (:addable resp))
             "each addable entry is a {group, dimensions} group")))))
@@ -296,7 +296,7 @@
                                          (:dimensions (t2/select-one :model/Card :id (:id metric))))
                            :id)
             addable    (-> (mt/user-http-request :crowberto :get 200
-                                                 (str "metric/" (:id metric) "/dimension") :with_addable true)
+                                                 (str "metric/" (:id metric) "/dimension") :with-addable true)
                            :addable first :dimensions first)]
         (is (some? addable) "there should be an addable joinable dimension")
         (let [resp      (mt/user-http-request :crowberto :post 200
@@ -320,7 +320,7 @@
                               (str "metric/" (:id metric) "/dimension/remove")
                               {:dimension_ids dimension-ids})
         (let [addable (-> (mt/user-http-request :crowberto :get 200
-                                                (str "metric/" (:id metric) "/dimension") :with_addable true)
+                                                (str "metric/" (:id metric) "/dimension") :with-addable true)
                           :addable first :dimensions first)
               resp    (mt/user-http-request :crowberto :post 200
                                             (str "metric/" (:id metric) "/dimension/add")
