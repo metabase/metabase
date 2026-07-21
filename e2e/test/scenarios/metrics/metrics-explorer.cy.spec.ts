@@ -147,7 +147,13 @@ const selectEntityPickerItem = (path: string | string[]) => {
     H.miniPicker()
       .findAllByRole("menuitem")
       .contains(new RegExp(`^${escapedPath}$`))
+      .should("be.visible")
       .click();
+    // Selecting a metric re-runs the dropdown search and re-renders the menu.
+    // Wait for the pick to land in the formula before the next selection so a
+    // rapid follow-up click can't hit a re-rendering (detached) menu item and
+    // silently drop the metric.
+    cy.findByTestId("metrics-viewer-search-input").should("contain.text", path);
   } else {
     H.miniPickerBrowseAll().click();
     H.pickEntity({ path });
