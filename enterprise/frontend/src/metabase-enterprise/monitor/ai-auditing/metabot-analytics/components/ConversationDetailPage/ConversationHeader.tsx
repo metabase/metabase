@@ -56,10 +56,10 @@ export function ConversationHeader({
   const crumbs = useMemo<Crumb[]>(
     () =>
       _.compact([
-        [t`Conversations`, "/admin/metabot/usage-auditing/conversations"],
+        [t`Conversations`, Urls.monitorAiAuditingConversations()],
         conversation.user && [
           userName,
-          `/admin/metabot/usage-auditing/conversations?user=${conversation.user.id}`,
+          `${Urls.monitorAiAuditingConversations()}?user=${conversation.user.id}`,
         ],
         <DateTime key="created_at" value={conversation.created_at} />,
       ]),

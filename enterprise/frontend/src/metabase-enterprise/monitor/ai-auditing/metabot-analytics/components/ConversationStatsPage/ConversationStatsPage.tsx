@@ -12,6 +12,7 @@ import { useDispatch } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
 import { push } from "metabase/router";
 import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
@@ -193,7 +194,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     (filterOverrides: Partial<ConversationsUrlState>) => {
       dispatch(
         push({
-          pathname: "/admin/metabot/usage-auditing/conversations",
+          pathname: Urls.monitorAiAuditingConversations(),
           query: conversationsUrlStateConfig.serialize({
             page: 0,
             sort_column: "created_at",

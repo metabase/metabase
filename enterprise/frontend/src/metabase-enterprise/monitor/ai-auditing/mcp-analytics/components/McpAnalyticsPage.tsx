@@ -8,6 +8,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import type { WithRouterProps } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import {
   // The shared audit filter bar; aliased since it has nothing to do with MCP "conversations".
@@ -88,7 +89,7 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   // is inaccessible — redirect away so it can't be reached by URL (the nav item also greys out).
   useEffect(() => {
     if (!mcpEnabled) {
-      router.replace("/admin/metabot/usage-auditing");
+      router.replace(Urls.monitorAiAuditing());
     }
   }, [mcpEnabled, router]);
 
