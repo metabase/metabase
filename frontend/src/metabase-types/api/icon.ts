@@ -15,6 +15,7 @@ export type IconName =
   | "alert"
   | "alert_filled"
   | "alert_confirm"
+  | "app"
   | "archive"
   | "area"
   | "attachment"

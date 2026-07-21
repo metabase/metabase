@@ -48,8 +48,6 @@ export const MetabotGreeting = ({
   agentId,
   suggestionModels,
 }: MetabotGreetingProps) => {
-  const { canUseNlq } = useUserMetabotPermissions();
-
   const [title] = useState(getTitleText);
   const [
     isAiProviderConfigurationModalOpen,
@@ -59,7 +57,7 @@ export const MetabotGreeting = ({
     },
   ] = useDisclosure(false);
   const metabot = useMetabotAgent(agentId);
-  const { isConfigured } = useUserMetabotPermissions();
+  const { isConfigured, canUseNlq } = useUserMetabotPermissions();
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {

@@ -24,7 +24,7 @@ function setup({ node = createMockCardDependencyNode() }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => <PanelBody node={node} getGraphUrl={getGraphUrl} />}
+      element={<PanelBody node={node} getGraphUrl={getGraphUrl} />}
     />,
     { withRouter: true, initialRoute: "/" },
   );

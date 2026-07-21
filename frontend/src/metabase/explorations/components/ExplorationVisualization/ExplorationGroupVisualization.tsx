@@ -51,7 +51,12 @@ import { ActionToolbar } from "./ActionToolbar";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import { type LegendItem, buildSeriesGroup, getCommentLabel } from "./utils";
+import {
+  type LegendItem,
+  buildSeriesGroup,
+  getCommentLabel,
+  getHighlightedWithShouldShowTooltip,
+} from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
@@ -246,11 +251,12 @@ function ExplorationGroupVisualizationChart({
     (comment: Comment) => {
       const context = comment.context;
 
-      // comment context is an untyped JSON blob; `highlighted` is written by
-      // us as a HighlightedObject when the comment captures a chart point
-      const commentHighlight = context?.highlighted as
-        | HighlightedObject
-        | undefined;
+      const commentHighlight = getHighlightedWithShouldShowTooltip(
+        // comment context is an untyped JSON blob; `highlighted` is written by
+        // us as a HighlightedObject when the comment captures a chart point
+        context?.highlighted as HighlightedObject | undefined,
+        seriesGroup,
+      );
       const commentLabel = getCommentLabel(
         commentHighlight,
         seriesGroup,

@@ -29,16 +29,16 @@ function setup({
   const settings = mockSettings({ "hide-embed-branding?": !hasEmbedBranding });
 
   renderWithProviders(
-    <Route
-      path="/public/dashboard/:id"
-      component={(props) => (
-        <PublicApp {...props}>
+    <Route path="/public/dashboard/:id" element={<PublicApp />}>
+      <Route
+        index
+        element={
           <SyncedEmbedFrame {...embedFrameProps}>
             <h1 data-testid="test-content">Test</h1>
           </SyncedEmbedFrame>
-        </PublicApp>
-      )}
-    />,
+        }
+      />
+    </Route>,
     {
       mode: "public",
       initialRoute: `/public/dashboard/UUID${hash}`,

@@ -8,11 +8,13 @@ import {
   createQuery,
   createThread,
 } from "metabase/explorations/test-utils";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Exploration, ExplorationThread } from "metabase-types/api";
 
 import { ExplorationPage } from "./ExplorationPage";
+
+const RoutedExplorationPage = withRouteProps(ExplorationPage);
 
 let explorationData: Exploration;
 const sendToastMock = jest.fn();
@@ -82,7 +84,7 @@ function renderExplorationPage(initialRoute?: string) {
   return renderWithProviders(
     <Route
       path={`${Urls.exploration(explorationData.id)}(/:entityType/:entityId)`}
-      component={ExplorationPage}
+      element={<RoutedExplorationPage />}
     />,
     {
       withRouter: true,
@@ -98,7 +100,7 @@ function rerenderExplorationPage(
   rerender(
     <Route
       path={`${Urls.exploration(explorationData.id)}(/:entityType/:entityId)`}
-      component={ExplorationPage}
+      element={<RoutedExplorationPage />}
     />,
   );
 }

@@ -6,6 +6,10 @@ export function newExploration(): string {
   return `/${EXPLORATION_BASE_PATH}`;
 }
 
+export function newExplorationPlan(): string {
+  return `/${EXPLORATION_BASE_PATH}/plan`;
+}
+
 export function exploration(explorationId: ExplorationId): string {
   return `/${EXPLORATION_BASE_PATH}/${explorationId}`;
 }

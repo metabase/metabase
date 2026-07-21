@@ -135,6 +135,10 @@ describe("scenarios > explorations > new research > manual flow", () => {
     H.visitNewExploration();
     H.startManualExploration();
 
+    // Manual setup is its own location, so browser back returns here
+    // instead of leaving the research flow (UXW-4832).
+    cy.location("pathname").should("eq", "/question/research/plan");
+
     H.addMetricsAndDimensions({
       metrics: ["Count of orders"],
     });

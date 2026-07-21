@@ -99,8 +99,8 @@ async function setup({ dashboard }: Options = {}) {
 
   const { history } = renderWithProviders(
     <>
-      <Route path="/" component={TestHome} />
-      <Route path="/dashboard/:slug" component={DashboardAppContainer} />
+      <Route path="/" element={<TestHome />} />
+      <Route path="/dashboard/:slug" element={<DashboardAppContainer />} />
     </>,
     {
       initialRoute: `/dashboard/${dashboardId}`,

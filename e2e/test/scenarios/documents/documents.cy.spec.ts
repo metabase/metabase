@@ -17,6 +17,7 @@ import {
   SCALAR_CARD,
   STEP_COLUMN_CARD,
 } from "e2e/support/test-visualization-data";
+import type { Document } from "metabase-types/api";
 
 const { H } = cy;
 

@@ -29,6 +29,7 @@
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
         ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [process-userland-query/save-execution-metadata!*
                       (fn [query-executions]

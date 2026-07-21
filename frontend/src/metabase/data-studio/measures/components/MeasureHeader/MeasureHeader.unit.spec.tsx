@@ -21,7 +21,7 @@ const setup = ({ readOnly }: SetupOpts = {}) => {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <MeasureHeader
           measure={measure}
           onRemove={jest.fn()}
@@ -29,7 +29,7 @@ const setup = ({ readOnly }: SetupOpts = {}) => {
           tabUrls={tabUrls}
           previewUrl="/measures/1/preview"
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

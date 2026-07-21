@@ -9,7 +9,7 @@ function setup(initialRoute: string) {
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <CommentsMenu
           active={false}
           childTargetId="block-123"
@@ -17,7 +17,7 @@ function setup(initialRoute: string) {
           style={defaultStyle}
           unresolvedCommentsCount={0}
         />
-      )}
+      }
     />,
     { withRouter: true, initialRoute },
   );

@@ -16,6 +16,7 @@ import type {
 import type { RawSeries } from "metabase-types/api";
 
 import { normalizeDimensionValue } from "./events";
+import type { CartesianHoveredObject } from "./types";
 
 export { getDashboardAdjustedSettings };
 
@@ -55,7 +56,7 @@ export const getHoveredFromHighlighted = (
   highlighted: HighlightedObject,
   rawSeries: RawSeries,
   chartModel: BaseCartesianChartModel,
-): HoveredObject | null => {
+): CartesianHoveredObject | null => {
   if (!highlighted.dimensions || rawSeries.length === 0) {
     return null;
   }
@@ -126,5 +127,6 @@ export const getHoveredFromHighlighted = (
   return {
     index: seriesIndex,
     datumIndex,
+    shouldShowTooltip: highlighted.shouldShowTooltip,
   };
 };
