@@ -67,6 +67,29 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
   });
 
+  describe("loading state", () => {
+    it("keeps the loader up until the app's bundle has actually rendered", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+        bundleDelay: 2000,
+      });
+
+      H.openDataApp(APP_NAME);
+
+      cy.findByTestId("data-app-loading").should("be.visible");
+
+      cy.findByTestId("data-app-loading", { timeout: 30000 }).should(
+        "not.exist",
+      );
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByRole("heading", { name: "Orders overview" }).should(
+          "be.visible",
+        );
+      });
+    });
+  });
+
   describe("internal routing", () => {
     it("mirrors internal route changes into the parent URL", () => {
       H.mockDataApp(APP_NAME, {

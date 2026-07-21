@@ -56,10 +56,9 @@
   [& conditions]
   (apply t2/select (into [:model/DataApp] non-blob-columns) conditions))
 
-;; Any signed-in user may view (open) a data app. The `/api/apps` endpoints
-;; are `+auth`, so reaching a read-check already means the user is authenticated.
-;; Data the app queries still runs through the QP with the user's own
-;; permissions, so a viewer without data access simply sees no data.
+;; Deliberately ungated: any signed-in user may view a data app, and the `+auth`
+;; endpoints mean reaching a read check already implies authentication. See the
+;; README's permissions section for why this is safe.
 (defmethod mi/can-read? :model/DataApp
   ([_instance]   true)
   ([_model _pk]  true))
