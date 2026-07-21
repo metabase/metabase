@@ -300,7 +300,9 @@ This moves `metabase.dashboards.core` (for `dashboard->resolved-params`) and `me
 
 - [ ] **Step 3: Verify both suites**
 
-Run: `./bin/test-agent :only '[metabase.mcp.v2.tools.content-test metabase.mcp.v2.projections-test]'`
+Run: `./bin/test-agent :only '[metabase.mcp.v2.tools.content-test]'`
+
+(There is no `metabase.mcp.v2.projections-test` — `projections.clj` is covered through the tools that use it.)
 Expected: PASS, same assertion count as Step 1. Specifically the `fields` catalog for `type: "dashboard"` must be unchanged — the catalog is generated from the sample, and the sample moved verbatim.
 
 - [ ] **Step 4: Lint and commit**
