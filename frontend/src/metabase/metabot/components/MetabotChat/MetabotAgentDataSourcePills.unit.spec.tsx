@@ -8,6 +8,7 @@ import type {
   DatasetQuery,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
+  StructuredQuery,
   TemplateTags,
 } from "metabase-types/api";
 import {
@@ -61,12 +62,12 @@ const createGeneratedCard = (datasetQuery: DatasetQuery): GeneratedCard => ({
   query: { id: "query-1", query: datasetQuery },
 });
 
-const createMbqlCard = (query: Record<string, unknown>, database = 1) =>
+const createMbqlCard = (query: StructuredQuery, database = 1) =>
   createGeneratedCard({
     type: "query",
     database,
     query,
-  } as DatasetQuery);
+  });
 
 const createNativeCard = (
   sql = "SELECT * FROM ORDERS",
@@ -80,7 +81,7 @@ const createNativeCard = (
       query: sql,
       ...(templateTags ? { "template-tags": templateTags } : {}),
     },
-  } as DatasetQuery);
+  });
 
 const setupTableEndpoints = (...tables: (typeof ORDERS_TABLE)[]) => {
   tables.forEach((table) => {
@@ -127,7 +128,7 @@ const renderMbqlPills = ({
   query,
 }: {
   messageId?: string;
-  query: Record<string, unknown>;
+  query: StructuredQuery;
 }) =>
   renderWithProviders(
     <GeneratedCardTablePills

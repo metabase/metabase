@@ -280,7 +280,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("c1")));
+        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
       });
 
       const [message] = await readMessages();
@@ -292,7 +292,7 @@ describe("useMetabot", () => {
         id: expect.any(String),
         role: "agent",
         type: "chart",
-        questionPath: cardPath("c1"),
+        questionPath: cardPath("card-1"),
       });
     });
 
@@ -376,8 +376,12 @@ describe("useMetabot", () => {
             message: "first",
           }),
         );
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("c1a", 1)));
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("c1b", 2)));
+        store.dispatch(
+          metabotActions.addAgentMessage(cardMessage("card-1A", 1)),
+        );
+        store.dispatch(
+          metabotActions.addAgentMessage(cardMessage("card-1B", 2)),
+        );
         store.dispatch(
           metabotActions.addUserMessage({
             agentId: "omnibot",
@@ -386,14 +390,16 @@ describe("useMetabot", () => {
             message: "second",
           }),
         );
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("c2", 3)));
+        store.dispatch(
+          metabotActions.addAgentMessage(cardMessage("card-2", 3)),
+        );
       });
 
       const messages = await readMessages();
       const charts = messages.filter((m) => m.type === "chart");
       expect(charts).toHaveLength(2);
-      expect(charts[0].questionPath).toBe(cardPath("c1b", 2));
-      expect(charts[1].questionPath).toBe(cardPath("c2", 3));
+      expect(charts[0].questionPath).toBe(cardPath("card-1B", 2));
+      expect(charts[1].questionPath).toBe(cardPath("card-2", 3));
     });
   });
 
@@ -483,7 +489,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestChart /> });
 
       act(() => {
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("c1")));
+        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
       });
 
       expect(await screen.findByTestId("mock-static-question")).toBeVisible();
@@ -493,7 +499,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestChart drills /> });
 
       act(() => {
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("c1")));
+        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
       });
 
       expect(
@@ -526,7 +532,9 @@ describe("useMetabot", () => {
             message: "first",
           }),
         );
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("c-abc", 1)));
+        store.dispatch(
+          metabotActions.addAgentMessage(cardMessage("card-abc", 1)),
+        );
       });
 
       await waitFor(() => {
@@ -545,7 +553,9 @@ describe("useMetabot", () => {
             message: "second",
           }),
         );
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("c-xyz", 2)));
+        store.dispatch(
+          metabotActions.addAgentMessage(cardMessage("card-xyz", 2)),
+        );
       });
 
       await waitFor(() => {

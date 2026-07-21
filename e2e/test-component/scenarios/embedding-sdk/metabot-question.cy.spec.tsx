@@ -20,10 +20,17 @@ const query = {
   breakout: [["field", ORDERS.PRODUCT_ID, null]],
   limit: 2,
 };
+const generatedCard = {
+  type: "card",
+  id: "card-1",
+  title: "Question",
+  query: { id: "query-1", query: { database: 1, type: "query", query } },
+  display: "table",
+};
 const adHocQuestionPath = `/question#${btoa(
   JSON.stringify({
-    dataset_query: { database: 1, type: "query", query },
-    display: "table",
+    dataset_query: generatedCard.query.query,
+    display: generatedCard.display,
     displayIsLocked: true,
     visualization_settings: {},
   }),
@@ -33,16 +40,25 @@ const metabotResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
 );
 // Metabot surfaces a chart to the SDK via a `generated_entity` card data part.
-const metabotResponseWithChart = H.createMetabotSSEBody([
-  ...H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+const metabotResponseWithChart = H.createMetabotSSEBody(
+  H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+  H.metabotDataPart("generated_entity", generatedCard),
+);
+
+const metabotResponseWithSqlEditor = H.createMetabotSSEBody(
+  H.metabotTextPart(
+    "I'll write a SQL query for the most popular products so you can tweak it in the SQL editor!",
+  ),
   H.metabotDataPart("generated_entity", {
     type: "card",
-    id: "card-1",
-    title: "Question",
-    query: { id: "query-1", query: { database: 1, type: "query", query } },
-    display: "table",
+    id: "card-sql",
+    title: "SQL query",
+    query: {
+      id: "query-sql",
+      query: { database: 1, type: "native", native: { query: "" } },
+    },
   }),
-]);
+);
 
 const metabotRetryResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Retry: Here is the [question link](${adHocQuestionPath})`),
@@ -83,6 +99,17 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
   };
+
+  it("should show the SQL editor when Metabot generates a native query", () => {
+    setup(metabotResponseWithSqlEditor);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Open the SQL editor {enter}");
+      cy.findByTestId("native-query-editor-container").should("be.visible");
+    });
+  });
 
   it("should show drill-through results after drilling from a metabot question", () => {
     setup(metabotResponseWithChart);
