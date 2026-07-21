@@ -27,6 +27,7 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import type {
   ClickActionsMode,
   HighlightedObject,
+  OnBrush,
 } from "metabase/visualizations/types";
 import type {
   Comment,
@@ -436,6 +437,13 @@ function ExplorationCartesianChart({
   mode,
   highlighted,
 }: ExplorationCartesianChartProps) {
+  const handleBrush = useCallback<OnBrush>(
+    ({ clickObject, openClickActions }) => {
+      openClickActions(clickObject);
+    },
+    [],
+  );
+
   return (
     <ExplorationVisualization
       rawSeries={series}
@@ -443,6 +451,7 @@ function ExplorationCartesianChart({
       className={S.chart}
       mode={mode}
       highlighted={highlighted}
+      onBrush={handleBrush}
     />
   );
 }
@@ -542,6 +551,7 @@ interface ExplorationVisualizationProps {
   className?: string;
   mode?: ClickActionsMode;
   highlighted?: HighlightedObject | null;
+  onBrush?: OnBrush;
 }
 
 export function ExplorationVisualization({
@@ -550,6 +560,7 @@ export function ExplorationVisualization({
   className,
   mode,
   highlighted,
+  onBrush,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -564,6 +575,7 @@ export function ExplorationVisualization({
         mode={mode}
         onChangeCardAndRun={noop} // needed to show ConnectedClickActionsPopover
         highlighted={highlighted}
+        onBrush={onBrush}
       />
     </Box>
   );

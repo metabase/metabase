@@ -250,7 +250,7 @@
 (def ^:private widget-explore-filters
   "The `:explore_filters` chain that produced a Widget-scoped card — what the ctx carries and the
   discovery cache keys on."
-  [{:field_ref ["field" {} 4242] :value "Widget"}])
+  [{:operator "=" :field_ref ["field" {} 4242] :value "Widget"}])
 
 (deftest cached-discovery-isolates-filtered-queries-test
   (testing "cached-discovery keys on the :explore-filters chain so segments don't share top-N results"

@@ -29,6 +29,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   isBreakoutSeries,
+  isNumericAxis,
   isQuarterInterval,
   isTimeSeriesAxis,
 } from "metabase/visualizations/echarts/cartesian/model/guards";
@@ -45,9 +46,10 @@ import type {
   StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
-import type {
-  EChartsSeriesBrushEndEvent,
-  EChartsSeriesMouseEvent,
+import {
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesMouseEvent,
+  isLineXBrushRange,
 } from "metabase/visualizations/echarts/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
@@ -58,14 +60,20 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
+  OnBrush,
   OnChangeCardAndRun,
 } from "metabase/visualizations/types";
-import type { ClickObject, ClickObjectDimension } from "metabase-lib";
+import type {
+  BrushClickObject,
+  BrushRange,
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
@@ -310,7 +318,7 @@ export const canBrush = (
   settings: ComputedVisualizationSettings,
   dimensionColumn: DatasetColumn | undefined,
   onChangeCardAndRun?: OnChangeCardAndRun | null,
-  onBrush?: ((range: { start: number; end: number }) => void) | null,
+  onBrush?: OnBrush | null,
 ) => {
   const hasBrushableDimension =
     settings["graph.x_axis.scale"] != null &&
@@ -937,6 +945,63 @@ export const getSeriesClickData = (
     column: seriesModel.column,
     data,
     dimensions,
+    settings,
+  };
+};
+
+export const getBrushClickObject = (
+  chartModel: BaseCartesianChartModel,
+  event: EChartsSeriesBrushEndEvent,
+  chartElement: HTMLElement,
+  settings: ComputedVisualizationSettings,
+): BrushClickObject | null => {
+  const area = event.areas[0];
+  const coordRange = area?.coordRange;
+  const pixelRange = area?.range;
+  if (
+    !isLineXBrushRange(coordRange) ||
+    !isLineXBrushRange(pixelRange) ||
+    coordRange.length < 2 ||
+    pixelRange.length < 2
+  ) {
+    return null;
+  }
+
+  const [rawStart, rawEnd] = [
+    Number(coordRange[0]),
+    Number(coordRange[1]),
+  ].sort((a, b) => a - b);
+  const { xAxisModel, dimensionModel } = chartModel;
+  const column = dimensionModel.column;
+
+  let brushRange: BrushRange;
+  if (isTimeSeriesAxis(xAxisModel)) {
+    const dateFormat = isDateWithoutTime(column)
+      ? "YYYY-MM-DD"
+      : "YYYY-MM-DDTHH:mm:ss";
+    brushRange = {
+      type: "temporal",
+      start: xAxisModel.fromEChartsAxisValue(rawStart).format(dateFormat),
+      end: xAxisModel.fromEChartsAxisValue(rawEnd).format(dateFormat),
+    };
+  } else if (isNumericAxis(xAxisModel)) {
+    brushRange = {
+      type: "numeric",
+      start: xAxisModel.fromEChartsAxisValue(rawStart),
+      end: xAxisModel.fromEChartsAxisValue(rawEnd),
+    };
+  } else {
+    return null;
+  }
+
+  const chartBounds = chartElement.getBoundingClientRect();
+  const clientX = chartBounds.left + Math.max(pixelRange[0], pixelRange[1]);
+  const clientY = chartBounds.top + chartBounds.height / 2;
+
+  return {
+    brushRange,
+    column,
+    event: new MouseEvent("click", { clientX, clientY }),
     settings,
   };
 };

@@ -55,6 +55,7 @@ import {
   type ClickObject,
   type HighlightedObject,
   type HoveredObject,
+  type OnBrush,
   type QueryClickActionsMode,
   type VisualizationDefinition,
   type VisualizationGridSize,
@@ -179,7 +180,7 @@ type VisualizationOwnProps = {
     showSidebarTitle?: boolean;
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
-  onBrush?: ((range: { start: number; end: number }) => void) | null;
+  onBrush?: OnBrush | null;
   onHeaderColumnReorder?: (columnIndex: number) => void;
   onChangeLocation?: (location: Location) => void;
   onUpdateQuestion?: (question: Question) => void;

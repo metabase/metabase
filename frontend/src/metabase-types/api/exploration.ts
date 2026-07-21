@@ -126,11 +126,24 @@ export interface CreateExplorationRequest {
   }[];
 }
 
-export type ExplorationExploreFilter = {
+type BaseExplorationExploreFilter = {
   field_ref: DimensionReference;
-  value: RowValue;
   display_value: string;
 };
+
+export type ExplorationExploreEqualityFilter = BaseExplorationExploreFilter & {
+  operator: "=";
+  value: RowValue;
+};
+
+export type ExplorationExploreBetweenFilter = BaseExplorationExploreFilter & {
+  operator: "between";
+  values: [string, string] | [number, number];
+};
+
+export type ExplorationExploreFilter =
+  | ExplorationExploreEqualityFilter
+  | ExplorationExploreBetweenFilter;
 
 export type HydratedExplorationExploreFilter = ExplorationExploreFilter & {
   dimension_name?: string | null;

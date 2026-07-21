@@ -17,6 +17,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockDatetimeColumn,
 } from "metabase-types/api/mocks";
 
 import {
@@ -231,6 +232,50 @@ describe("canExploreFurther", () => {
       ),
     ).toBe(true);
   });
+
+  it("returns true for brush clicks with a field_ref on metric blocks", () => {
+    expect(
+      canExploreFurther(
+        {
+          brushRange: {
+            type: "temporal",
+            start: "2020-01-01T00:00:00",
+            end: "2020-03-01T00:00:00",
+          },
+          column: createMockDatetimeColumn({
+            name: "CREATED_AT",
+            field_ref: ["field", 20, null],
+          }),
+          event: new MouseEvent("click"),
+          settings: {},
+        },
+        "metric",
+        "default",
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false for brush clicks on dimension blocks", () => {
+    expect(
+      canExploreFurther(
+        {
+          brushRange: {
+            type: "numeric",
+            start: 1,
+            end: 4,
+          },
+          column: createMockColumn({
+            name: "PRICE",
+            field_ref: ["field", 21, null],
+          }),
+          event: new MouseEvent("click"),
+          settings: {},
+        },
+        "dimension",
+        "default",
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("getExploreFurtherFilters", () => {
@@ -258,11 +303,13 @@ describe("getExploreFurtherFilters", () => {
 
     expect(getExploreFurtherFilters(clicked)).toEqual([
       {
+        operator: "=",
         field_ref: ["field", 10, null],
         value: "Gadget",
         display_value: "Gadget",
       },
       {
+        operator: "=",
         field_ref: ["field", 11, null],
         value: "Affiliate",
         display_value: "Affiliate",
@@ -286,9 +333,125 @@ describe("getExploreFurtherFilters", () => {
 
     expect(getExploreFurtherFilters(clicked)).toEqual([
       {
+        operator: "=",
         field_ref: ["field", 10, null],
         value: null,
         display_value: NULL_DISPLAY_VALUE,
+      },
+    ]);
+  });
+
+  it("clamps a temporal brush range to the dots inside the brush", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    // Brush from mid-Jan to mid-Mar: Jan's dot (Jan 1) is outside, so the
+    // filter clamps to Feb 1 – Mar 1 (same as Lib.updateTemporalFilter).
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        start: "2020-01-15T14:30:00",
+        end: "2020-03-10T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {
+        column: () => ({ column, date_abbreviate: true }),
+      },
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "between",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+        values: ["2020-02-01T00:00:00", "2020-03-01T00:00:00"],
+        display_value: "Feb 2020 – Mar 2020",
+      },
+    ]);
+  });
+
+  it("returns an equality filter when a temporal brush covers a single dot", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        // After clamp: start = Feb 1, end = Feb 1
+        start: "2020-01-15T14:30:00",
+        end: "2020-02-20T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {
+        column: () => ({ column, date_abbreviate: true }),
+      },
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "=",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+        value: "2020-02-01T00:00:00",
+        display_value: "Feb 2020",
+      },
+    ]);
+  });
+
+  it("returns no filters when a temporal brush covers no dots", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        // Entirely within January after the Jan 1 dot
+        start: "2020-01-15T14:30:00",
+        end: "2020-01-20T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {},
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([]);
+    expect(canExploreFurther(clicked, "metric", "default")).toBe(false);
+  });
+
+  it("projects a numeric brush range into a between explore filter", () => {
+    const column = createMockColumn({
+      name: "PRICE",
+      source: "breakout",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      field_ref: ["field", 21, null],
+    });
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "numeric",
+        start: 1,
+        end: 4,
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {},
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "between",
+        field_ref: ["field", 21, null],
+        values: [1, 4],
+        display_value: "1 - 4",
       },
     ]);
   });

@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
@@ -8,16 +9,21 @@ import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isCartesianChart } from "metabase/visualizations";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeRangeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type {
+  BrushClickObject,
+  BrushRange,
   ClickObject,
   ComputedVisualizationSettings,
   HighlightedObject,
 } from "metabase/visualizations/types";
+import { isBrushClickObject } from "metabase/visualizations/types";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,
   isDate,
+  isDateWithoutTime,
   isNumeric,
   isState,
 } from "metabase-lib/v1/types/utils/isa";
@@ -26,6 +32,7 @@ import type {
   ColumnSettings,
   Dataset,
   DatasetColumn,
+  DateTimeAbsoluteUnit,
   ExplorationBlockNodeType,
   ExplorationExploreFilter,
   ExplorationQuery,
@@ -37,6 +44,7 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 const SHOULD_STACK_CUTOFF = 8;
 const MIN_SEGMENTS_TO_SHOW_HEATMAP = 4;
@@ -436,13 +444,146 @@ export function formatColumnValue(
   return String(formatValue(value ?? NULL_DISPLAY_VALUE, settings));
 }
 
+function getClickedColumnSettings(
+  clicked: ClickObject,
+  column: DatasetColumn,
+): ColumnSettings {
+  // Brush clicks stash ComputedVisualizationSettings on ClickObject.settings
+  // (typed as a loose record on the shared ClickObject shape).
+  const settings = clicked.settings as
+    | ComputedVisualizationSettings
+    | undefined;
+  return settings?.column?.(column) ?? { column };
+}
+
+/** Same clamp as Lib.updateTemporalFilter: keep only unit buckets whose dots fall inside the brush. */
+function clampTemporalBrushRange(
+  start: string,
+  end: string,
+  unit: DateTimeAbsoluteUnit,
+  column: DatasetColumn,
+): { start: string; end: string } | null {
+  const dateFormat = isDateWithoutTime(column)
+    ? "YYYY-MM-DD"
+    : "YYYY-MM-DDTHH:mm:ss";
+  const clampedStart = dayjs(start)
+    .add(1, unit)
+    .startOf(unit)
+    .format(dateFormat);
+  const clampedEnd = dayjs(end).startOf(unit).format(dateFormat);
+  if (dayjs(clampedStart).isAfter(dayjs(clampedEnd))) {
+    return null;
+  }
+  return { start: clampedStart, end: clampedEnd };
+}
+
+function formatBrushRangeDisplayValue(
+  brushRange: BrushRange,
+  column: DatasetColumn,
+  columnSettings: ColumnSettings,
+): string {
+  if (
+    brushRange.type === "temporal" &&
+    column.unit != null &&
+    isAbsoluteDateTimeUnit(column.unit)
+  ) {
+    return String(
+      formatDateTimeRangeWithUnit(
+        [brushRange.start, brushRange.end],
+        column.unit,
+        columnSettings,
+      ),
+    );
+  }
+
+  return `${formatColumnValue(brushRange.start, column, columnSettings)} - ${formatColumnValue(brushRange.end, column, columnSettings)}`;
+}
+
+function getBrushExploreFurtherFilters(
+  clicked: BrushClickObject,
+): ExplorationExploreFilter[] {
+  const { column, brushRange } = clicked;
+  if (column.field_ref == null) {
+    return [];
+  }
+
+  const columnSettings = getClickedColumnSettings(clicked, column);
+
+  if (brushRange.type === "temporal") {
+    const clamped =
+      column.unit != null && isAbsoluteDateTimeUnit(column.unit)
+        ? clampTemporalBrushRange(
+            brushRange.start,
+            brushRange.end,
+            column.unit,
+            column,
+          )
+        : { start: brushRange.start, end: brushRange.end };
+    if (clamped == null) {
+      return [];
+    }
+
+    const clampedRange: BrushRange = {
+      type: "temporal",
+      start: clamped.start,
+      end: clamped.end,
+    };
+
+    if (clamped.start === clamped.end) {
+      return [
+        {
+          operator: "=",
+          field_ref: column.field_ref,
+          value: clamped.start,
+          display_value: formatColumnValue(
+            clamped.start,
+            column,
+            columnSettings,
+          ),
+        },
+      ];
+    }
+
+    return [
+      {
+        operator: "between",
+        field_ref: column.field_ref,
+        values: [clamped.start, clamped.end],
+        display_value: formatBrushRangeDisplayValue(
+          clampedRange,
+          column,
+          columnSettings,
+        ),
+      },
+    ];
+  }
+
+  return [
+    {
+      operator: "between",
+      field_ref: column.field_ref,
+      values: [brushRange.start, brushRange.end],
+      display_value: formatBrushRangeDisplayValue(
+        brushRange,
+        column,
+        columnSettings,
+      ),
+    },
+  ];
+}
+
 export function getExploreFurtherFilters(
   clicked: ClickObject,
 ): ExplorationExploreFilter[] {
+  if (isBrushClickObject(clicked)) {
+    return getBrushExploreFurtherFilters(clicked);
+  }
+
   return (clicked.dimensions ?? []).flatMap(({ column, value }) =>
     column.field_ref != null
       ? [
           {
+            operator: "=" as const,
             field_ref: column.field_ref,
             value,
             display_value: formatColumnValue(value, column),
@@ -457,13 +598,18 @@ export function canExploreFurther(
   blockType: ExplorationBlockNodeType,
   queryType: ExplorationQueryType,
 ): boolean {
-  const dimensions = clicked.dimensions ?? [];
-  if (dimensions.length === 0) {
-    return false;
-  }
   // disable for dimension blocks - every query in a dimension block is cut by the same dimension
   // so filtering on a single dimension value doesn't provide a new view of the data
   if (blockType === "dimension") {
+    return false;
+  }
+
+  if (isBrushClickObject(clicked)) {
+    return getExploreFurtherFilters(clicked).length > 0;
+  }
+
+  const dimensions = clicked.dimensions ?? [];
+  if (dimensions.length === 0) {
     return false;
   }
   // OTHER_BUCKET_LABEL is not a real dimension value, so filtering on it won't return anything

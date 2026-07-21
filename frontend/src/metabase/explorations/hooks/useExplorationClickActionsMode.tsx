@@ -11,6 +11,7 @@ import type {
   ClickObject,
   HighlightedObject,
 } from "metabase/visualizations/types";
+import { isBrushClickObject } from "metabase/visualizations/types";
 import type {
   DocumentContent,
   ExplorationBlockNodeType,
@@ -89,59 +90,61 @@ export function useExplorationClickActionsMode({
           });
         }
 
-        const handleAddComment = async (
-          content: DocumentContent,
-          onClose: () => void,
-        ) => {
-          const highlighted: HighlightedObject = {
-            cardId: clicked.cardId,
-            columnName: clicked.column?.name,
-            dimensions: clicked.dimensions?.map((d) => ({
-              value: d.value,
-              columnName: d.column.name,
-            })),
-          };
-          const { error } = await createComment({
-            target_id: explorationId,
-            target_type: "exploration",
-            child_target_id: String(pageId),
-            parent_comment_id: null,
-            content,
-            context: {
-              highlighted,
-            },
-          });
-          if (error) {
-            sendToast({
-              icon: "warning_triangle_filled",
-              iconColor: "warning",
-              message: t`Failed to add comment`,
+        if (!isBrushClickObject(clicked)) {
+          const handleAddComment = async (
+            content: DocumentContent,
+            onClose: () => void,
+          ) => {
+            const highlighted: HighlightedObject = {
+              cardId: clicked.cardId,
+              columnName: clicked.column?.name,
+              dimensions: clicked.dimensions?.map((d) => ({
+                value: d.value,
+                columnName: d.column.name,
+              })),
+            };
+            const { error } = await createComment({
+              target_id: explorationId,
+              target_type: "exploration",
+              child_target_id: String(pageId),
+              parent_comment_id: null,
+              content,
+              context: {
+                highlighted,
+              },
             });
-          } else {
-            onClose();
-          }
-        };
+            if (error) {
+              sendToast({
+                icon: "warning_triangle_filled",
+                iconColor: "warning",
+                message: t`Failed to add comment`,
+              });
+            } else {
+              onClose();
+            }
+          };
 
-        const CommentEditor = ({ onClose }: ClickActionPopoverProps) => {
-          return (
-            <ExplorationCommentEditor
-              commentDrafts={commentDraftsRef.current}
-              setCommentDrafts={setCommentDrafts}
-              pageId={String(pageId)}
-              onAddComment={(content) => handleAddComment(content, onClose)}
-              placeholder={t`Comment on this…`}
-            />
-          );
-        };
+          const CommentEditor = ({ onClose }: ClickActionPopoverProps) => {
+            return (
+              <ExplorationCommentEditor
+                commentDrafts={commentDraftsRef.current}
+                setCommentDrafts={setCommentDrafts}
+                pageId={String(pageId)}
+                onAddComment={(content) => handleAddComment(content, onClose)}
+                placeholder={t`Comment on this…`}
+              />
+            );
+          };
 
-        actions.push({
-          name: "add-comment",
-          section: "custom",
-          title: t`Add comment`,
-          buttonType: "horizontal",
-          icon: "add_comment",
-          popover: CommentEditor,
-        });
+          actions.push({
+            name: "add-comment",
+            section: "custom",
+            title: t`Add comment`,
+            buttonType: "horizontal",
+            icon: "add_comment",
+            popover: CommentEditor,
+          });
+        }
 
         return actions;
       },
