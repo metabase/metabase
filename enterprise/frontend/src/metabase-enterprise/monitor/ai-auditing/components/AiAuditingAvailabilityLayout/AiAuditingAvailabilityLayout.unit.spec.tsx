@@ -74,6 +74,19 @@ describe("MetabotAnalyticsAvailabilityLayout", () => {
 });
 
 describe("McpAnalyticsAvailabilityLayout", () => {
+  it("links to AI Settings when AI features are disabled", () => {
+    setup(<McpAnalyticsAvailabilityLayout />, {
+      aiFeaturesEnabled: false,
+      mcpEnabled: false,
+    });
+
+    expect(screen.getByText("AI features are disabled")).toBeInTheDocument();
+    expect(screen.queryByText("Analytics content")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Go to AI Settings" }),
+    ).toHaveAttribute("href", Urls.adminAiSettings());
+  });
+
   it("links to MCP settings when MCP is disabled", () => {
     setup(<McpAnalyticsAvailabilityLayout />, { mcpEnabled: false });
 

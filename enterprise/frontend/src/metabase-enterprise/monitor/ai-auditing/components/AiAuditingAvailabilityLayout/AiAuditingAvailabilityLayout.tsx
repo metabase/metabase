@@ -65,7 +65,19 @@ export function MetabotAnalyticsAvailabilityLayout() {
 }
 
 export function McpAnalyticsAvailabilityLayout() {
+  const aiFeaturesEnabled = useSetting("ai-features-enabled?") === true;
   const mcpEnabled = useSetting("mcp-enabled?") === true;
+
+  if (!aiFeaturesEnabled) {
+    return (
+      <UnavailablePage
+        title={t`AI features are disabled`}
+        message={t`Enable AI features in Admin settings to view MCP analytics.`}
+        action={t`Go to AI Settings`}
+        link={Urls.adminAiSettings()}
+      />
+    );
+  }
 
   if (!mcpEnabled) {
     return (

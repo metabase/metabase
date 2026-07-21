@@ -2,6 +2,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { getAiAuditingRoutes, getAiAuditingUpsellRoutes } from "./routes";
 
@@ -68,6 +69,24 @@ describe("AI Auditing routes", () => {
     expect(screen.getByText("AI features are disabled")).toBeInTheDocument();
     expect(screen.queryByText(pageText)).not.toBeInTheDocument();
   });
+
+  it.each([false, true])(
+    "prioritizes globally disabled AI on the MCP route when upsell is %s",
+    (upsell) => {
+      setup({
+        route: "/monitor/ai-auditing/mcp",
+        upsell,
+        aiFeaturesEnabled: false,
+        mcpEnabled: false,
+      });
+
+      expect(screen.getByText("AI features are disabled")).toBeInTheDocument();
+      expect(screen.queryByText("MCP analytics page")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Go to AI Settings" }),
+      ).toHaveAttribute("href", Urls.adminAiSettings());
+    },
+  );
 
   it("renders full Metabot analytics when enabled and configured", () => {
     setup({ route: "/monitor/ai-auditing/conversations" });
