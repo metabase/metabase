@@ -278,6 +278,10 @@ settings: {
 | `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                                           |
 | `persistDefault`               | When `true`, writes the value from `getDefault` to stored settings on first render.              |
 
+### Reserved setting ids
+
+Metabase adds a few settings of its own to every custom visualization. They power built-in behavior, like the column formatting popover that opens when a `"field"` or `"fields"` widget sets `showColumnSetting: true`. The setting ids `column_settings` and `column` are reserved for those settings: TypeScript rejects a `Settings` type that declares either key, and Metabase ignores any setting definition that uses one (and logs a warning to the console).
+
 ### Built-in widgets
 
 Widgets for the settings UI.

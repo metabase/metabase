@@ -68,9 +68,9 @@ To develop against a live Metabase instance with hot-reload:
 ```
 
 | Field              | Description                                                                                   |
-| ------------------ | -------------------------------------------------------------------------------------------- |
+| ------------------ | --------------------------------------------------------------------------------------------- |
 | `name`             | Unique identifier for the plugin. Must match the `id` returned by your visualization factory. |
-| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                      |
+| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                       |
 | `metabase.version` | Semver range of compatible Metabase versions (e.g. `">=1.60.0"`, `"^1.60"`).                  |
 
 ---
@@ -185,6 +185,10 @@ settings: {
 | `writeDependencies`            | Setting IDs whose current values are persisted when this setting changes.            |
 | `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                               |
 | `persistDefault`               | When `true`, writes the computed default to stored settings on first render.         |
+
+> **Note:** The setting ids `column_settings` and `column` are reserved by Metabase
+> (they power the built-in column formatting popover). TypeScript rejects them in your
+> `Settings` type, and Metabase ignores setting definitions that use them.
 
 ### Built-in widgets
 
