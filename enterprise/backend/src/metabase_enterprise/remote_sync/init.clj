@@ -2,9 +2,12 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.branching]
    [metabase-enterprise.remote-sync.events]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.branch-remapping]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.query-processor]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.task.import]
    [metabase-enterprise.remote-sync.task.table-cleanup]

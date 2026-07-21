@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -291,3 +292,10 @@
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   model)
+
+;;; --------------------------------------------- Content branching -----------------------------------------------
+
+(defmethod remote-sync/clone-for-branch! :model/Document
+  [_model id]
+  (remote-sync/clone-row! :model/Document id
+                          [:name :document :content_type :collection_id :archived]))

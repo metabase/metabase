@@ -43,6 +43,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -167,6 +168,7 @@
                          (api/maybe-reconcile-collection-position! dashboard-data)
                          ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
+    (remote-sync/add-branch-remapping! :dashboard (u/the-id dash) (u/the-id dash))
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
@@ -640,9 +642,11 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
-    (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
-          dashboard (get-dashboard resolved-id)]
-      (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
+    (let [source-id    (eid-translation/->id-or-404 :dashboard id)
+          effective-id (remote-sync/effective-entity-id :dashboard source-id)
+          dashboard    (get-dashboard effective-id)]
+      (u/prog1 (-> (first (revisions/with-last-edit-info [dashboard] :dashboard))
+                   (remote-sync/present-entity source-id))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :post "/:id/pdf" :- :any
@@ -755,8 +759,10 @@
   This will remove also any questions/models/segments/metrics that use this database."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [dashboard (api/write-check :model/Dashboard id)]
-    (t2/delete! :model/Dashboard :id id)
+  (let [effective-id (remote-sync/effective-entity-id :dashboard id)
+        dashboard    (api/write-check :model/Dashboard effective-id)]
+    (t2/delete! :model/Dashboard :id effective-id)
+    (remote-sync/delete-branch-remapping! :dashboard id)
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -1145,7 +1151,9 @@
                     [:id ms/PositiveInt]]
    _query-params
    dash-updates :- DashUpdates]
-  (update-dashboard! id dash-updates))
+  (let [effective-id (remote-sync/ensure-branch-copy! :dashboard id)]
+    (-> (update-dashboard! effective-id dash-updates)
+        (remote-sync/present-entity id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1447,8 +1455,8 @@
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
                body
-               {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-                :card      (api/check-404 (t2/select-one :model/Card card-id))
+               {:dashboard (api/check-404 (t2/select-one :model/Dashboard (remote-sync/effective-entity-id :dashboard dashboard-id)))
+                :card      (api/check-404 (t2/select-one :model/Card (remote-sync/effective-entity-id :card card-id)))
                 :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

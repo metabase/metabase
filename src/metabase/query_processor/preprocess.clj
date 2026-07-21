@@ -66,6 +66,9 @@
    #'qp.perms/remove-persisted-info-native-keys
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
+   ;; must run before prefetch-metadata/resolve-source-cards so branch overlays
+   ;; are in place before any card metadata is read
+   #'qp.middleware.enterprise/apply-branch-remapping
    #'prefetch-metadata/prefetch-metadata
    #'fetch-source-query/resolve-source-cards
    #'drop-fields-in-summaries/drop-fields-in-summaries

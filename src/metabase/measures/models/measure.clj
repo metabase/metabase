@@ -244,3 +244,10 @@
     (t2/update! :model/Measure measure-id
                 {:dimensions         dimensions
                  :dimension_mappings dimension-mappings})))
+
+;;; --------------------------------------------- Content branching -----------------------------------------------
+
+(defmethod remote-sync/clone-for-branch! :model/Measure
+  [_model id]
+  (remote-sync/clone-row! :model/Measure id
+                          [:name :description :table_id :definition :archived]))

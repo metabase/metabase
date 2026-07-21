@@ -10,7 +10,9 @@
    [toucan2.core :as t2]))
 
 (def ^:private current-user-fields
-  (into [:model/User] user/admin-or-self-visible-columns))
+  ;; `:branch` is the git branch the user has checked out (content branching); carrying it on
+  ;; `*current-user*` lets the branching hooks read it on every request without an extra query.
+  (conj (into [:model/User] user/admin-or-self-visible-columns) :branch))
 
 (defn- find-user [user-id]
   (when user-id

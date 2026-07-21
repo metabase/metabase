@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -51,6 +52,7 @@
                                                           :name        name
                                                           :description description
                                                           :definition  definition)))]
+      (remote-sync/add-branch-remapping! :segment (:id segment) (:id segment))
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
       (t2/hydrate segment :creator))))
 
@@ -66,7 +68,8 @@
   "Fetch `Segment` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (hydrated-segment id))
+  (-> (hydrated-segment (remote-sync/effective-entity-id :segment id))
+      (remote-sync/present-entity id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -123,7 +126,8 @@
             [:description             {:optional true} [:maybe :string]]
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
-  (write-check-and-update-segment! id body))
+  (-> (write-check-and-update-segment! (remote-sync/ensure-branch-copy! :segment id) body)
+      (remote-sync/present-entity id)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -140,7 +144,8 @@
    {:keys [revision_message]} :- [:map
                                   [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
-  (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
+  (write-check-and-update-segment! (remote-sync/ensure-branch-copy! :segment id)
+                                   {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

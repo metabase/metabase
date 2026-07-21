@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -80,6 +81,7 @@
                                                           :name        name
                                                           :description description
                                                           :definition  normalized-definition)))]
+      (remote-sync/add-branch-remapping! :measure (:id measure) (:id measure))
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
 
@@ -93,8 +95,10 @@
   "Fetch `Measure` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [measure (hydrated-measure id)]
-    (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
+  (let [measure (hydrated-measure (remote-sync/effective-entity-id :measure id))]
+    (-> measure
+        (assoc :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))
+        (remote-sync/present-entity id))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
@@ -142,7 +146,8 @@
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]
-  (write-check-and-update-measure! id body))
+  (-> (write-check-and-update-measure! (remote-sync/ensure-branch-copy! :measure id) body)
+      (remote-sync/present-entity id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Dimension Value Endpoints                                                |

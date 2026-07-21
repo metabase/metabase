@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.remote-sync.branching :as branching]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -40,6 +41,25 @@
                        :current_branch  current})))
     requested-branch))
 
+(defn- user-branch-operation?
+  "True when `branch` targets the current user's checked-out branch rather than
+  the instance's global sync branch — a per-user pull/push. Such operations skip
+  the global-branch staleness assertion (it guards the shared setting, which a
+  per-user operation doesn't touch) and run in the branch's context."
+  [branch]
+  (boolean (and branch
+                (= branch (branching/current-branch))
+                (not= branch (settings/remote-sync-branch)))))
+
+(defn- with-op-branch-context
+  "Run `thunk` with [[branching/*branch*]] bound to `branch` when it differs from
+  the global sync branch, so the sync pipeline (and anything it calls) sees the
+  branch overlay. Bindings convey into the task's virtual thread via `bound-fn`."
+  [branch thunk]
+  (if (and branch (not= branch (settings/remote-sync-branch)))
+    (branching/with-branch branch (thunk))
+    (thunk)))
+
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Import Metabase content from configured Remote Sync source.
 
@@ -60,18 +80,23 @@
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
        ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
-       [:expected_branch ms/NonBlankString]]]
+       ;; Optional for per-user branch pulls, which don't touch the global setting.
+       [:expected_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (check-branch-matches-setting! expected_branch)
+  (when-not (user-branch-operation? branch)
+    (api/check-400 expected_branch "expected_branch is required for a global sync-branch import")
+    (check-branch-matches-setting! expected_branch))
   (let [branch-name (or branch (settings/remote-sync-branch))
         user-id     api/*current-user-id*
         {task-id :id}
-        (impl/async-import!
-         branch-name force {}
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
+        (with-op-branch-context branch-name
+          (fn []
+            (impl/async-import!
+             branch-name force {}
+             :merge?     (or merge false)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))))]
     {:status :success
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
@@ -135,16 +160,20 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
-  (let [branch-name (check-branch-matches-setting! branch)
+  (let [branch-name (if (user-branch-operation? branch)
+                      branch
+                      (check-branch-matches-setting! branch))
         user-id     api/*current-user-id*
         {task-id :id}
-        (impl/async-export!
-         branch-name
-         (or force false)
-         (or message "Exported from Metabase")
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
+        (with-op-branch-context branch-name
+          (fn []
+            (impl/async-export!
+             branch-name
+             (or force false)
+             (or message "Exported from Metabase")
+             :merge?     (or merge false)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))))]
     {:message "Export task started"
      :task_id task-id}))
 
@@ -342,6 +371,32 @@
       (catch Exception e
         (throw (ex-info (format "Failed to create branch: %s" (ex-message e))
                         {:status-code 400} e))))))
+
+;;; ------------------------------------------ Content branching ------------------------------------------
+
+(api.macros/defendpoint :post "/checkout" :- [:map [:branch [:maybe :string]]]
+  "Check out a git branch for the current user (`branch` nil = back to the main
+   sync branch). While checked out, the main API endpoints and the QP
+   transparently serve branch-local copies of content entities; the first edit of
+   an entity on a branch creates its copy (copy-on-write).
+
+   When remote sync is configured, the branch must exist on the remote — create
+   one first via `POST /create-branch`. Without a configured source (dev/tests)
+   any name is accepted."
+  [_route-params
+   _query-params
+   {:keys [branch]} :- [:map [:branch [:maybe ms/NonBlankString]]]]
+  (when (and branch (settings/remote-sync-enabled))
+    (when-let [source (source/source-from-settings)]
+      (api/check-400 (some #{branch} (source.p/branches source))
+                     (format "Branch '%s' does not exist on the remote" branch))))
+  (t2/update! :model/User :id api/*current-user-id* {:branch branch})
+  {:branch branch})
+
+(api.macros/defendpoint :get "/checkout" :- [:map [:branch [:maybe :string]]]
+  "The git branch the current user has checked out, or nil for main."
+  []
+  {:branch (t2/select-one-fn :branch :model/User :id api/*current-user-id*)})
 
 (api.macros/defendpoint :post "/stash" :- remote-sync.schema/StashResponse
   "Stashes changes to a new branch, and changes the current branch to it.

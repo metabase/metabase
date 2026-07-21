@@ -1,0 +1,89 @@
+## Content branching PoC: per-user checkout of real git branches (remote sync).
+## A user checks out a git branch by name (core_user.branch); entities they edit
+## get branch-local copies recorded in branch_remapping, and the main API + QP
+## transparently remap to those copies for that user.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T20:00:00
+      author: ranquild
+      comment: Create branch_remapping table for per-branch entity shadowing
+      changes:
+        - createTable:
+            tableName: branch_remapping
+            remarks: Maps source entities to their branch-local copies, per git branch
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch name this remapping belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(32)
+                  remarks: Entity type being remapped (card, dashboard, document, measure, segment)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_entity_id
+                  type: int
+                  remarks: Id of the entity on the main branch. Equal to target_entity_id when the entity was created on the branch.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_entity_id
+                  type: int
+                  remarks: Id of the branch-local copy that shadows the source
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-07-21T20:00:01
+      author: ranquild
+      comment: Unique remapping per (branch, entity_type, source)
+      changes:
+        - addUniqueConstraint:
+            tableName: branch_remapping
+            constraintName: idx_unique_branch_remapping_source
+            columnNames: branch, entity_type, source_entity_id
+
+  - changeSet:
+      id: v64.2026-07-21T20:00:02
+      author: ranquild
+      comment: Add core_user.branch — the git branch the user has checked out
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch this user has checked out, or null for the main sync branch
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T20:00:03
+      author: ranquild
+      comment: Add index on core_user.branch
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_branch
+            columns:
+              - column:
+                  name: branch

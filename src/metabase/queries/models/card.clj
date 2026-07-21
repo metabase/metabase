@@ -40,6 +40,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -1613,3 +1614,14 @@
             (when (contains? (:collection-ids args) nil)
               [:is :report_card.collection_id nil])
             [:in :report_card.collection_id (-> args :collection-ids)]]]})
+
+;;; --------------------------------------------- Content branching -----------------------------------------------
+
+(defmethod remote-sync/clone-for-branch! :model/Card
+  [_model id]
+  (let [source (t2/select-one :model/Card :id id)]
+    (:id (create-card! (select-keys source
+                                    [:name :description :display :dataset_query :visualization_settings
+                                     :type :parameters :parameter_mappings :collection_id :database_id
+                                     :table_id :query_type :result_metadata :cache_ttl])
+                       @api/*current-user*))))

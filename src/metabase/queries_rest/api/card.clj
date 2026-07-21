@@ -27,6 +27,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
@@ -258,14 +259,16 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
     :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
-    (cond-> card
-      legacy-mbql?
-      (update :dataset_query (fn [query]
-                               #_{:clj-kondo/ignore [:discouraged-var]}
-                               (cond-> query
-                                 (seq query) lib/->legacy-MBQL))))))
+  (let [source-id    (eid-translation/->id-or-404 :card id)
+        effective-id (remote-sync/effective-entity-id :card source-id)
+        card         (get-card effective-id)]
+    (-> (cond-> card
+          legacy-mbql?
+          (update :dataset_query (fn [query]
+                                   #_{:clj-kondo/ignore [:discouraged-var]}
+                                   (cond-> query
+                                     (seq query) lib/->legacy-MBQL))))
+        (remote-sync/present-entity source-id))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -577,6 +580,7 @@
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
     (let [created-card (queries/create-card! card @api/*current-user*)]
+      (remote-sync/add-branch-remapping! :card (:id created-card) (:id created-card))
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -763,7 +767,9 @@
    {delete-old-dashcards? :delete_old_dashcards} :- [:map
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! id body (boolean delete-old-dashcards?)))
+  (let [effective-id (remote-sync/ensure-branch-copy! :card id)]
+    (-> (update-card! effective-id body (boolean delete-old-dashcards?))
+        (remote-sync/present-entity id))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -776,7 +782,7 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+  (let [resolved-id (remote-sync/effective-entity-id :card (eid-translation/->id-or-404 :card id))]
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -789,8 +795,10 @@
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [card (api/write-check :model/Card id)]
-    (t2/delete! :model/Card :id id)
+  (let [effective-id (remote-sync/effective-entity-id :card id)
+        card         (api/write-check :model/Card effective-id)]
+    (t2/delete! :model/Card :id effective-id)
+    (remote-sync/delete-branch-remapping! :card id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -902,7 +910,7 @@
   ;;    POST /api/dashboard/:dashboard-id/queries/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
-  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
+  (let [resolved-card-id (remote-sync/effective-entity-id :card (eid-translation/->id-or-404 :card card-id))]
     (qp.card/process-query-for-card
      (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
      :parameters parameters

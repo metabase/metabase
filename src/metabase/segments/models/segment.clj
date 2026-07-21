@@ -252,3 +252,11 @@
                   :table_display_name :table.display_name
                   :table_schema :table.schema}
    :joins {:table [:model/Table [:= :table.id :this.table_id]]}})
+
+;;; --------------------------------------------- Content branching -----------------------------------------------
+
+(defmethod remote-sync/clone-for-branch! :model/Segment
+  [_model id]
+  (remote-sync/clone-row! :model/Segment id
+                          [:name :description :table_id :definition :archived
+                           :caveats :points_of_interest]))

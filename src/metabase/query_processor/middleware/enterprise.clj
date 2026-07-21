@@ -69,6 +69,15 @@
   (fn [query rff]
     ((apply-impersonation-postprocessing qp) query rff)))
 
+(defenterprise apply-branch-remapping
+  "**Content branching PoC.** When the current user has a git branch checked out
+   (`core_user.branch`), wraps the metadata provider so card/measure/segment
+   reads are served from branch-local copies under their main ids. Must run
+   before `resolve-source-cards`. OSS / on main: identity."
+  metabase-enterprise.remote-sync.query-processor
+  [query]
+  query)
+
 (defenterprise apply-download-limit
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `limited` download perms. This
   does not apply to native queries, which are instead limited by the [[limit-download-result-rows]] post-processing

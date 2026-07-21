@@ -9,10 +9,10 @@
                  :case-symbol-test                                                    1
                  :clojure-lsp/unused-public-var                                       9
                  :def-fn                                                              1
-                 :deprecated-namespace                                                97
+                 :deprecated-namespace                                                98
                  :deprecated-var                                                      81
                  :discouraged-java-method                                             3
-                 :discouraged-namespace                                               81
+                 :discouraged-namespace                                               82
                  :discouraged-var                                                     106
                  :equals-true                                                         1
                  :main-without-gen-class                                              1

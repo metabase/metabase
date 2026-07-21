@@ -20,6 +20,7 @@
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/AuthIdentity metabase.auth-identity.models.auth-identity
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
+    :model/BranchRemapping                   metabase-enterprise.remote-sync.models.branch-remapping
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.queries.models.card
     :model/CardBookmark                      metabase.bookmarks.models.bookmark

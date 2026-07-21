@@ -723,6 +723,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -766,6 +767,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            request
            revisions
            util
@@ -823,6 +825,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -1791,6 +1794,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -1836,6 +1840,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            request
            revisions
            search
@@ -1939,8 +1944,7 @@
 
   remote-sync
   {:team "UX West"
-   :api  #{metabase.remote-sync.core
-           metabase.remote-sync.init}
+   :api  #{metabase.remote-sync.branching metabase.remote-sync.core metabase.remote-sync.init}
    :uses #{api
            models
            premium-features}
@@ -3435,8 +3439,11 @@
            app-db
            collections
            events
+           lib
            models
            premium-features
+           query-processor
+           remote-sync
            search
            settings
            startup
