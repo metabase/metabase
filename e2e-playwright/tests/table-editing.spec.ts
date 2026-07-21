@@ -249,7 +249,19 @@ test.describe("scenarios > table-editing", () => {
         `CREATE TABLE IF NOT EXISTS ${INLINE_EDIT_TEST_TABLE_NAME} AS SELECT id, uuid, integer, tinyint, string, date, datetime, boolean FROM ${EDITABLE_SOURCE_TABLE_NAME}`,
         "postgres",
       );
-      await resyncDatabase(mb.api, { dbId: WRITABLE_DB_ID });
+      // Wait for THIS table specifically. The bare form returns as soon as the
+      // database reports a completed sync, and `initial_sync_status` is a
+      // first-ever-sync marker that stays complete (FINDINGS #196) — so it can
+      // return before `editing_test` exists in the metadata, and `getTableId`
+      // then throws "Table with name editing_test cannot be found".
+      //
+      // This only started biting once `mb.restore("*-writable")` began
+      // resetting the warehouse (FINDINGS #157). Before that the table set was
+      // effectively static across runs, so the race never opened.
+      await resyncDatabase(mb.api, {
+        dbId: WRITABLE_DB_ID,
+        tables: [INLINE_EDIT_TEST_TABLE_NAME],
+      });
 
       const tableId = await getTableId(mb.api, {
         databaseId: WRITABLE_DB_ID,

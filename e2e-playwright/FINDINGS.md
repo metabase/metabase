@@ -4200,3 +4200,35 @@ open item, not as evidence.
     Recorded because the difference between "sandboxing coverage has a hole" and
     "a helper has a latent hole that convention covers" is the difference
     between an alarming claim and a true one.
+
+### `table-editing`'s resync race — intermittent, and I mis-attributed it
+
+219. **9 `table-editing` tests failed with `Table with name editing_test cannot
+    be found`.** The `beforeEach` does
+    `CREATE TABLE editing_test AS SELECT … FROM many_data_types`, then
+    `resyncDatabase(mb.api, { dbId })` — **the bare form**, which returns as soon
+    as the database reports a completed sync. `initial_sync_status` is a
+    *first-ever-sync* marker that stays complete (#196), so the resync can
+    return before `editing_test` is in the metadata and `getTableId` throws.
+
+    **Fixed** by passing `tables: [INLINE_EDIT_TEST_TABLE_NAME]`, which is what
+    the parameter exists for. Locally: **9 failures → 0**, 20 passed.
+
+    🔴 **I initially blamed my own `resetWritableDb`, and that was wrong.**
+    Comparing three CI runs settles it:
+
+    | run | had `resetWritableDb`? | table-editing failures |
+    | --- | --- | --- |
+    | `workers=2` | yes | 1 |
+    | `workers=1` (a) | yes | **0** |
+    | `workers=1` (b) | yes | **9** |
+
+    The reset was present in **all three**, so it cannot be the cause. The race
+    is **intermittent** — timing-sensitive, and runner speed varies run to run.
+    The fix hardens it regardless, but the causal story I reached for first was
+    unsupported, and the comparison took two minutes.
+
+    **Separately, one local-only failure:** `WRK-907` times out waiting for a
+    field-values search on `ORDERS.USER_ID`. It appears in **none** of the three
+    CI runs, and this box's Sample Database is the stale 4-table copy (#213), so
+    it is almost certainly that. Not chased.
