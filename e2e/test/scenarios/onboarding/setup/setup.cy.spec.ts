@@ -624,9 +624,11 @@ describe("scenarios > setup > AI config step", () => {
   it("should connect the Metabase managed provider during setup", () => {
     // The "Metabase" provider option is gated on token features read at page
     // bootstrap (plugin init), before any interceptable API call — so patch
-    // the server-embedded payload as it is assigned. The store-backed calls
-    // (add-ons pricing, the managed connect itself) have no real backing in
-    // e2e and are stubbed at the network layer.
+    // the server-embedded payload as it is assigned. We can't use
+    // `H.activateToken` here because the endpoint requires a user.. which
+    // isn't created yet.
+    // The store-backed calls (add-ons pricing, the managed connect itself)
+    // have no real backing in e2e and are stubbed at the network layer.
     type BootstrapPayload = {
       "token-features"?: Record<string, boolean>;
     } & Record<string, unknown>;
@@ -674,6 +676,7 @@ describe("scenarios > setup > AI config step", () => {
         default_base_fee: 0,
         default_included_units: 0,
         default_prepaid_units: 1,
+        free_units: 1_000_000,
         default_price_per_unit: 3.75 / 1_000_000,
         default_total_units: 1,
         description: null,
