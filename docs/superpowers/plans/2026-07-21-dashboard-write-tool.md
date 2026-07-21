@@ -52,6 +52,15 @@ This tool is assembly, not invention. Almost everything it needs exists; several
 
 Decision: **build ours, converge later.** Borrow its *patterns* — per-tab collision grouping, autoplace state threading, per-op error indexing — not its mutation bodies. Do not modify `agent_api`. Note the duplication in the PR description and file a follow-up to migrate `agent_api/update_dashboard` onto the shared compiler, which also fixes its partial-write behavior.
 
+## Known-Failing Baseline Tests
+
+Two tests in `metabase.dashboards-rest.api-test` fail on a clean `mcp-v2-foundation` checkout, before any work in this plan. Verified by running them in a detached worktree at `235a767c33e`: `2 failures, 0 errors`, identical to the failures seen on our branch.
+
+- `dashboard-internal-cards-test` — 500 from `metabase-enterprise.dependencies.metadata-update` on `PUT /api/card/:id`; an empty MBQL query `{}` fails `metabase.lib.schema/query` validation inside the `:event/card-update` handler.
+- `dashboard-card-query-export-format-no-self-service-test` — 403 on `POST /api/dashboard/:id/dashcard/:id/card/:id/query/csv`, tied to `create-queries` permission checks.
+
+**Do not try to fix these, and do not treat them as regressions.** A `dashboards-rest.api-test` run is green for our purposes at exactly these 2 failures, 0 errors. Any third failure is ours.
+
 ## Global Constraints
 
 - Base branch is `mcp-v2-foundation`. The worktree is already reset onto it.
