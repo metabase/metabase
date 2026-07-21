@@ -9,10 +9,6 @@ import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboar
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
 import type { MetabaseError } from "embedding-sdk-shared/errors";
 import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
-import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeQuestionEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type {
   MetabaseEmbeddingSessionToken,
@@ -301,6 +297,14 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
 export type SdkIframeEmbedEvent = { type: "ready" };
 
 export type SdkIframeEmbedEventHandler = () => void;
+
+export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions & {
+  lockedParameters?: string[];
+};
+
+export type SdkIframeQuestionEmbedSettings = QuestionEmbedOptions & {
+  lockedParameters?: string[];
+};
 
 /** Keys that can be used to update the embed settings */
 export type SdkIframeEmbedSettingKey =
