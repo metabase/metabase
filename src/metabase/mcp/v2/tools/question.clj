@@ -152,12 +152,29 @@
    :collection_path (collection-path (:collection_id card))
    :description     (:description card)})
 
+(defn- ->result-metadata
+  "Map the tool's `column_metadata` entries onto `result_metadata` column maps, dropping nil
+   fields. `display_name` defaults to `name` when omitted. `base_type` is stamped `:type/*`
+   (unknown) — `analyze/ResultsMetadata` requires it on every column, and an entry that fails
+   that schema is silently discarded in favor of freshly computed metadata rather than saved
+   (see `card.metadata/maybe-async-result-metadata`)."
+  [column_metadata]
+  (mapv (fn [{:keys [name display_name description semantic_type visibility_type]}]
+          (u/remove-nils
+           {:name            name
+            :display_name    (or display_name name)
+            :base_type       :type/*
+            :description     description
+            :semantic_type   (some-> semantic_type keyword)
+            :visibility_type (some-> visibility_type keyword)}))
+        column_metadata))
+
 (defn- create!
   "Mirror REST `POST /api/card/`'s pre-checks — run permissions on the resolved query, create
    permission on the target collection — then save a `question` (or `model`) card. Returns the
    create response: [[card-response]] plus the saved card's `:url`."
   [{:keys [name description display visualization_settings cache_ttl collection_position
-           card_type] :as args}
+           card_type column_metadata] :as args}
    session-id]
   (let [dataset-query (resolve-query-source args session-id)
         collection-id (if (contains? args :collection_id)
@@ -166,16 +183,17 @@
     (query-perms/check-run-permissions-for-query dataset-query)
     (api/create-check :model/Card {:collection_id collection-id})
     (let [card (queries/create-card!
-                (u/remove-nils
-                 {:name                   name
-                  :type                   (keyword (or card_type "question"))
-                  :dataset_query          dataset-query
-                  :display                (keyword (or display "table"))
-                  :description            description
-                  :collection_id          collection-id
-                  :collection_position    collection_position
-                  :cache_ttl              cache_ttl
-                  :visualization_settings (or visualization_settings {})})
+                (cond-> (u/remove-nils
+                         {:name                   name
+                          :type                   (keyword (or card_type "question"))
+                          :dataset_query          dataset-query
+                          :display                (keyword (or display "table"))
+                          :description            description
+                          :collection_id          collection-id
+                          :collection_position    collection_position
+                          :cache_ttl              cache_ttl
+                          :visualization_settings (or visualization_settings {})})
+                  (seq column_metadata) (assoc :result_metadata (->result-metadata column_metadata)))
                 {:id api/*current-user-id*})]
       (assoc (card-response card)
              :url (frontend-url (channel.urls/card-path (:id card)))))))
@@ -203,10 +221,18 @@
    [:display {:optional true} [:maybe card-display-enum]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:cache_ttl {:optional true} [:maybe :int]]
-   [:archived {:optional true} [:maybe :boolean]]])
+   [:archived {:optional true} [:maybe :boolean]]
+   [:column_metadata {:optional true}
+    [:maybe [:sequential
+             [:map
+              [:name [:string {:min 1}]]
+              [:display_name {:optional true} [:maybe :string]]
+              [:description {:optional true} [:maybe :string]]
+              [:semantic_type {:optional true} [:maybe :string]]
+              [:visibility_type {:optional true} [:maybe :string]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection), display, visualization_settings, cache_ttl. On update, pass id and any fields to change; archived: true trashes, false restores."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection), display, visualization_settings, cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores."
   {:name         "question_write"
    :scope        metabot.scope/agent-question-create
    :update-scope metabot.scope/agent-question-update

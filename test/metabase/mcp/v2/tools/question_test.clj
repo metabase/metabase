@@ -98,3 +98,19 @@
             (is (not (:isError result)) (-> result :content first :text))
             (is (= personal-id (t2/select-one-fn :collection_id :model/Card
                                                  :id (:id (:structuredContent result)))))))))))
+
+(deftest create-model-with-column-metadata-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [args   {:method "create"
+                    :card_type "model"
+                    :name "Agent Model"
+                    :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+                    :column_metadata [{:name "total" :display_name "Total $" :semantic_type "type/Currency"}]}
+            result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+        (is (not (:isError result)) (-> result :content first :text))
+        (let [card-id (:id (:structuredContent result))]
+          (is (= :model (t2/select-one-fn :type :model/Card :id card-id)))
+          (is (= "Agent Model" (t2/select-one-fn :name :model/Card :id card-id)))
+          (is (=? [{:name "total" :display_name "Total $" :semantic_type :type/Currency}]
+                  (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
