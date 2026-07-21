@@ -875,6 +875,19 @@
         (card.metadata/populate-result-metadata changes))
       (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
+(defn- clear-metabot-origin
+  "A card edited after being saved from a Metabot conversation no longer materializes
+  the chart it was saved from, so sever the link back to its origin — the conversation
+  then stops showing that chart as saved. Only content edits count (query, display, viz
+  settings); renames, moves, and archiving keep the link. The Metabot save paths stamp
+  these columns with raw table updates, so stamping never re-enters this hook."
+  [card changes]
+  (if (and (some (partial contains? changes)
+                 [:dataset_query :display :visualization_settings])
+           (or (:metabot_conversation_id card) (:metabot_chart_id card)))
+    (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
+    card))
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
@@ -889,6 +902,7 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
+        (clear-metabot-origin changes)
         (pre-update changes)
         maybe-populate-initially-published-at)))
 
@@ -1430,7 +1444,9 @@
           ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
           :query_type
           ;; always re-derived from dataset_query by populate-query-fields on import
-          :table_id :source_card_id]
+          :table_id :source_card_id
+          ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
+          :metabot_conversation_id :metabot_chart_id]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query

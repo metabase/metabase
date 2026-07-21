@@ -10,6 +10,10 @@ export function setupGetCurrentWorkspaceEndpoint(
   fetchMock.get(`${BASE_URL}/current`, { data: workspace });
 }
 
+export function setupDeleteCurrentWorkspaceEndpoint() {
+  fetchMock.delete(`${BASE_URL}/current`, 204);
+}
+
 export function setupListTableRemappingsEndpoint(remappings: TableRemapping[]) {
   fetchMock.get(`${BASE_URL}/table-remappings`, remappings);
 }

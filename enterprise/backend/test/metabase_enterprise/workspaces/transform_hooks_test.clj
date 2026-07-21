@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.transform-hooks-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.workspaces.instance :as ws.instance]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
    [metabase.test :as mt]
@@ -13,7 +13,7 @@
 
 (deftest resolve-transform-target-no-workspace-passthrough-test
   (testing "without a provisioned WorkspaceDatabase, target passes through unchanged"
-    (with-redefs [ws.instance/db-workspace-namespace  (constantly nil)
+    (with-redefs [ws/db-workspace-namespace  (constantly nil)
                   ws.table-remapping/add-transform-target-mapping!
                   (fn [& _] (throw (ex-info "add-transform-target-mapping! must not be called when no workspace is active" {})))]
       (let [target {:schema "public" :name "orders" :type :table}]
@@ -22,7 +22,7 @@
 (deftest resolve-transform-target-rewrites-schema-test
   (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the recorded to-spec"
     (let [recorded (atom nil)]
-      (with-redefs [ws.instance/db-workspace-namespace  (constantly {:schema "ws_alice"})
+      (with-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
                     ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id target]
                       (reset! recorded {:db-id db-id :target target})
@@ -40,7 +40,7 @@
 (deftest resolve-transform-target-records-remapping-test
   (testing "with a workspace active, the canonical->workspace remapping is recorded"
     (let [recorded (atom nil)]
-      (with-redefs [ws.instance/db-workspace-namespace  (constantly {:schema "ws_alice"})
+      (with-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
                     ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id target]
                       (reset! recorded {:db-id db-id :target target})
@@ -57,12 +57,12 @@
    the way out."
   [output-schema body-fn]
   (try
-    (ws.instance/set-instance-workspace! {:name "test-ws"
-                                          :databases {(mt/id) {:input_schemas ["_"]
-                                                               :output        {:schema output-schema}}}})
+    (ws/set-instance-workspace! {:name "test-ws"
+                                 :databases {(mt/id) {:input_schemas ["_"]
+                                                      :output        {:schema output-schema}}}})
     (body-fn)
     (finally
-      (ws.instance/clear-instance-workspace!))))
+      (ws/clear-instance-workspace!))))
 
 (deftest resolve-transform-target-end-to-end-test
   (testing "end-to-end against the test app DB: a remapping row appears after the hook fires"
@@ -93,7 +93,6 @@
   (wired in `transforms.execute/execute!`), so the captured target reflects the post-rewrite
   state — the question this helper answers is 'what does the per-type method actually see?'."
   [captured-atom body-fn]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (with-redefs [transforms.i/execute! (fn [transform _opts]
                                         (reset! captured-atom transform)
                                         {:status :succeeded})]

@@ -1,35 +1,29 @@
 (ns metabase-enterprise.workspaces.api.workspace-manager
   "EE API endpoints for managing workspaces, served under `/api/ee/workspace-manager`.
-   Validation and presentation only — domain logic lives in the workspace models
-   and [[metabase-enterprise.workspaces.provisioning]]; permission predicates live
-   on `:model/Workspace` and `:model/WorkspaceDatabase` (see
-   `mi/can-read?`/`can-write?`/`can-create?`).
-
-   Creating a workspace only inserts `:unprovisioned` rows; provisioning is
-   started explicitly via `POST /:id/provision` and runs in the background —
-   clients poll `GET /:id` and follow the workspace's `:status`."
+   Validation and presentation only — domain logic lives in
+   [[metabase-enterprise.workspaces.core]] and permission predicates live on
+   `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.workspaces.models.workspace :as workspace]
-   [metabase-enterprise.workspaces.provisioning :as ws.provisioning]
-   [metabase-enterprise.workspaces.schema :as ws.schema]
+   [metabase-enterprise.workspaces.config :as ws.config]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
+(def ^:private WorkspaceStatus
+  [:enum {:decode/api keyword}
+   :unprovisioned :provisioning :provisioned :deprovisioning])
+
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name          ms/NonBlankString]
-   [:target_branch {:optional true} [:maybe ms/NonBlankString]]
-   [:database_ids  [:sequential {:min 1} ::lib.schema.id/database]]])
+   [:name         ms/NonBlankString]
+   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -40,8 +34,7 @@
    [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential ms/NonBlankString]]
    [:output_namespace :string]
-   [:status           ::ws.schema/workspace-database-status]
-   [:status_details   [:maybe :string]]
+   [:status           WorkspaceStatus]
    [:database         {:optional true} [:maybe :map]]])
 
 (def ^:private CreatorResponse
@@ -61,25 +54,20 @@
 
 (def ^:private WorkspaceResponse
   [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:name           ms/NonBlankString]
-   [:target_branch  [:maybe :string]]
-   [:status         ::ws.schema/workspace-status]
-   [:status_details [:maybe :string]]
-   [:instance_id    [:maybe :string]]
-   [:instance_url   [:maybe :string]]
-   [:creator        [:maybe CreatorResponse]]
-   [:created_at     DateTimeWithTimeZone]
-   [:updated_at     DateTimeWithTimeZone]
+   [:id          ms/PositiveInt]
+   [:name        ms/NonBlankString]
+   [:creator     [:maybe CreatorResponse]]
+   [:created_at  DateTimeWithTimeZone]
+   [:updated_at  DateTimeWithTimeZone]
    ;; Both the list and GET /:id endpoints hydrate `:databases`; it stays
    ;; optional so clients treat a missing array as `[]`.
-   [:databases      {:optional true} [:sequential WorkspaceDatabaseResponse]]])
+   [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
   (-> wsd
-      (select-keys [:database_id :input_schemas :output_namespace :status :status_details :database])
+      (select-keys [:database_id :input_schemas :output_namespace :status :database])
       ;; never expose connection credentials
       (m/update-existing :database #(some-> % (dissoc :details)))))
 
@@ -89,7 +77,7 @@
 
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :target_branch :status :status_details :instance_id :instance_url :creator :created_at :updated_at :databases])
+          (select-keys [:id :name :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
 
@@ -101,92 +89,57 @@
   (api/check-superuser)
   (into [] (comp (filter mi/can-read?)
                  (map present-workspace))
-        (-> (t2/select :model/Workspace {:order-by [[:id :asc]]})
-            (t2/hydrate :creator [:databases :database]))))
+        (ws/list-workspaces)))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws (api/read-check :model/Workspace id)]
-    (-> ws
-        (t2/hydrate :creator [:databases :database])
-        present-workspace)))
+  (api/read-check :model/Workspace id)
+  (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces). The workspace and its databases start `:unprovisioned` —
-   start provisioning explicitly via `POST /:id/provision`."
-  [_route-params _query-params {:keys [target_branch database_ids] :as params} :- CreateWorkspaceParams]
+   for workspaces) and provision it (blocking)."
+  [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (when target_branch
-    (api/check-400 (not (t2/exists? :model/Workspace :target_branch target_branch))
-                   (tru "A workspace with this target branch already exists")))
-  (-> (workspace/create-workspace! {:name          (:name params)
-                                    :target_branch target_branch
-                                    :creator_id    api/*current-user-id*
-                                    :databases     (workspace/workspace-databases database_ids)})
-      (t2/hydrate :creator [:databases :database])
-      present-workspace))
+  (present-workspace
+   (ws/create-workspace!
+    (assoc params :creator_id api/*current-user-id*))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
-  (let [ws (api/write-check :model/Workspace id)
-        ws (if-let [new-name (:name params)]
-             (do (t2/update! :model/Workspace :id id {:name new-name})
-                 (assoc ws :name new-name))
-             ws)]
-    (-> ws
-        (t2/hydrate :creator [:databases :database])
-        present-workspace)))
+  (api/write-check :model/Workspace id)
+  (when (:name params)
+    (t2/update! :model/Workspace :id id {:name (:name params)}))
+  (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a Workspace. Refuses with a 400 unless the workspace is strictly
-  `:unprovisioned` — deprovision it first (`POST /:id/deprovision`). The status
-  condition sits on the DELETE itself, closing the race with a concurrently
-  started run. The workspace_database rows are cascade-deleted with the
-  workspace. 204 on success, no response body."
+  "Delete a Workspace. Tears down every database's warehouse isolation first
+  (blocking, any state). Each database is either fully torn down (its row is
+  deleted) or kept; when any teardown fails the workspace is kept too — with the
+  failed rows, so the delete can be retried — and the combined failure is
+  returned as the error. 204 on success, no response body."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
-  (api/check-400 (pos? (t2/delete! :model/Workspace :id id :status :unprovisioned)))
+  (ws/delete-workspace! id)
   nil)
 
-(api.macros/defendpoint :post "/:id/provision" :- WorkspaceResponse
-  "Start provisioning the workspace in the background and return immediately.
-  Retryable from any settled status except `:provisioned`; 400 when already
-  provisioned or while a provision or deprovision run is in flight. Poll
-  `GET /:id` to follow the workspace's `:status`; the response reflects the
-  just-started run (`:database-provisioning`)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws       (api/write-check :model/Workspace id)
-        ws       (ws.provisioning/set-initial-workspace-provisioning-status! ws)
-        response (-> ws
-                     (t2/hydrate :creator [:databases :database])
-                     present-workspace)]
-    (u.jvm/in-virtual-thread*
-     (try
-       (ws.provisioning/provision-workspace! ws)
-       (catch Throwable t
-         (log/error t "Async workspace provisioning failed"))))
-    response))
+;;; ------------------------------------------- Config download --------------------------------------------------
 
-(api.macros/defendpoint :post "/:id/deprovision" :- WorkspaceResponse
-  "Start deprovisioning the workspace in the background and return immediately.
-  Retryable from any settled status except `:unprovisioned`; 400 when already
-  unprovisioned or while a provision or deprovision run is in flight. Poll
-  `GET /:id` to follow the workspace's `:status`; the response reflects the
-  just-started run (`:instance-deprovisioning`)."
+(api.macros/defendpoint :get "/:id/config"
+  :- [:map
+      [:status  [:= 200]]
+      [:headers [:map-of :string :string]]
+      [:body    :string]]
+  "Download the workspace's developer-instance config as a YAML file. 409 if any
+  of the workspace's databases is not `:provisioned`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws       (api/write-check :model/Workspace id)
-        ws       (ws.provisioning/set-initial-workspace-deprovisioning-status! ws)
-        response (-> ws
-                     (t2/hydrate :creator [:databases :database])
-                     present-workspace)]
-    (u.jvm/in-virtual-thread*
-     (try
-       (ws.provisioning/deprovision-workspace! ws)
-       (catch Throwable t
-         (log/error t "Async workspace deprovisioning failed"))))
-    response))
+  (api/write-check :model/Workspace id)
+  (let [config (api/check-404 (ws.config/build-workspace-config id))]
+    {:status  200
+     :headers {"Content-Type"        "application/x-yaml"
+               "Content-Disposition" "attachment; filename=\"config.yml\""}
+     :body    (ws.config/config->yaml config)}))

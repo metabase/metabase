@@ -2043,7 +2043,6 @@
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [f apply-joins-honey-sql-2]
     (f driver honeysql-form joins)))
 

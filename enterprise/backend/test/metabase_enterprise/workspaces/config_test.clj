@@ -5,17 +5,9 @@
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :db))
-
-(defn- build-config
-  "Fetch + hydrate the workspace the way production callers do, then build."
-  [ws-id]
-  (-> (t2/select-one :model/Workspace :id ws-id)
-      (t2/hydrate :databases)
-      config/build-workspace-config))
 
 (deftest build-workspace-config-happy-path-test
   (testing "build-workspace-config returns a {:version 1 :config {...}} structure matching config.yml"
@@ -35,7 +27,7 @@
                     :output_namespace "mb_isolation_github"
                     :input_schemas    ["raw_github"]
                     :status           :provisioned}]
-      (let [cfg (build-config ws-id)]
+      (let [cfg (config/build-workspace-config ws-id)]
         (testing "outer shape matches config.yml (version + config block)"
           (is (= 1 (:version cfg)))
           (is (= #{:databases :workspace} (set (keys (:config cfg))))))
@@ -78,7 +70,7 @@
                       :output_namespace "ws_alice"
                       :input_schemas    ["dbo"]
                       :status           :provisioned}]
-        (let [cfg (build-config ws-id)]
+        (let [cfg (config/build-workspace-config ws-id)]
           (is (= {"MSSQL DW"
                   {:input_schemas ["dbo"]
                    :output        {:db "AnalyticsDB" :schema "ws_alice"}}}
@@ -97,7 +89,7 @@
                     :output_namespace "out"
                     :input_schemas    ["schema_a" "schema_b" "schema_c"]
                     :status           :provisioned}]
-      (let [cfg (build-config ws-id)]
+      (let [cfg (config/build-workspace-config ws-id)]
         (is (= "schema_a,schema_b,schema_c"
                (-> cfg :config :databases first :details :schema-filters-patterns)))))))
 
@@ -123,7 +115,7 @@
                       :output_namespace "ws_alice"
                       :input_schemas    ["core" "warehouse"]
                       :status           :provisioned}]
-        (let [details (-> (build-config ws-id) :config :databases first :details)]
+        (let [details (-> (config/build-workspace-config ws-id) :config :databases first :details)]
           (is (= "inclusion" (:dataset-filters-type details)))
           (is (= "core,warehouse" (:dataset-filters-patterns details)))
           (is (some? (:service-account-json details))
@@ -143,13 +135,13 @@
       (is (thrown-with-msg?
            Exception
            #"not :provisioned"
-           (build-config ws-id))))))
+           (config/build-workspace-config ws-id))))))
 
 (deftest build-workspace-config-empty-workspace-test
   (testing "A workspace with no databases still produces the version+config outer shape"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"
                                                  :creator_id (mt/user->id :crowberto)}]
-      (let [cfg (build-config ws-id)]
+      (let [cfg (config/build-workspace-config ws-id)]
         (is (= 1 (:version cfg)))
         (is (= "Empty" (-> cfg :config :workspace :name)))
         (is (empty? (remove (some-fn :is_stub :is_sample) (-> cfg :config :databases)))
@@ -174,7 +166,7 @@
                                                  :output_namespace ""
                                                  :input_schemas    ["public"]
                                                  :status           :provisioned}]
-      (let [cfg-dbs (-> (build-config ws-id) :config :databases)
+      (let [cfg-dbs (-> (config/build-workspace-config ws-id) :config :databases)
             by-name (into {} (map (juxt :name identity)) cfg-dbs)]
         (testing "workspace's own database is present and is NOT a stub"
           (is (contains? by-name "stub-test-ws-db"))
@@ -196,6 +188,11 @@
           (is (not (contains? by-name "stub-test-audit")))
           (is (not (contains? by-name "stub-test-target"))))))))
 
+(deftest build-workspace-config-missing-workspace-returns-nil-test
+  (testing "A missing workspace returns nil"
+    (mt/with-model-cleanup [:model/Workspace]
+      (is (nil? (config/build-workspace-config Integer/MAX_VALUE))))))
+
 (deftest build-workspace-config-forces-let-user-control-scheduling-false-test
   (testing "Non-stub database entries emit :let-user-control-scheduling false even if the source
             database had it true. The YAML carries :details only — not the schedule cron columns —
@@ -216,7 +213,7 @@
                     :output_namespace "ws_alice"
                     :input_schemas    ["public"]
                     :status           :provisioned}]
-      (let [own-db (->> (build-config ws-id)
+      (let [own-db (->> (config/build-workspace-config ws-id)
                         :config
                         :databases
                         (remove (some-fn :is_stub :is_sample))
@@ -239,7 +236,7 @@
       ;; Select the MySQL entry explicitly rather than relying on `first` -- `:databases` also carries
       ;; stub/sample entries (e.g. a pre-existing Sample Database), so its ordering isn't something this
       ;; test should depend on.
-      (let [details (->> (build-config ws-id) :config :databases
+      (let [details (->> (config/build-workspace-config ws-id) :config :databases
                          (u/seek #(= :mysql (:engine %)))
                          :details)]
         (is (nil? (:schema-filters-type details)))
@@ -258,7 +255,7 @@
                                                  :is_sample true}
                    :model/Workspace {ws-id :id} {:name       "sample-emit-ws"
                                                  :creator_id (mt/user->id :crowberto)}]
-      (let [cfg-dbs (-> (build-config ws-id) :config :databases)
+      (let [cfg-dbs (-> (config/build-workspace-config ws-id) :config :databases)
             samples (filter :is_sample cfg-dbs)]
         (testing "exactly one sample entry is emitted"
           (is (= 1 (count samples))))
@@ -270,43 +267,3 @@
                  (first samples))))
         (testing "sample entry is NOT also marked as a stub"
           (is (not (:is_stub (first samples)))))))))
-
-(deftest build-workspace-config-remote-sync-settings-test
-  (testing "when remote sync is enabled, :config carries read-write remote-sync settings for the child instance"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name       "github"
-                                                 :creator_id (mt/user->id :crowberto)}]
-      (mt/with-temporary-setting-values [remote-sync-url    "https://git.example.com/test.git"
-                                         remote-sync-branch "main"
-                                         remote-sync-token  "s3cr3t-token"]
-        (is (= {:remote-sync-url    "https://git.example.com/test.git"
-                :remote-sync-branch "main"
-                :remote-sync-token  "s3cr3t-token"
-                :remote-sync-type   :read-write}
-               (-> (build-config ws-id) :config :settings))))
-      (testing "and no :settings section when remote sync is disabled"
-        (mt/with-temporary-setting-values [remote-sync-url nil]
-          (is (not (contains? (-> (build-config ws-id) :config) :settings)))))))
-  (testing "the workspace's target_branch overrides the instance's remote-sync branch"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name          "github"
-                                                 :creator_id    (mt/user->id :crowberto)
-                                                 :target_branch "workspace-branch"}]
-      (mt/with-temporary-setting-values [remote-sync-url    "https://git.example.com/test.git"
-                                         remote-sync-branch "main"
-                                         remote-sync-token  "s3cr3t-token"]
-        (is (= "workspace-branch"
-               (-> (build-config ws-id) :config :settings :remote-sync-branch)))))))
-
-(deftest build-workspace-config-creator-superuser-test
-  (testing "when workspace-instance-user-password is set, :config carries the creator as a superuser"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name       "github"
-                                                 :creator_id (mt/user->id :crowberto)}]
-      (mt/with-temporary-setting-values [workspace-instance-user-password "sUp3r-s3cret"]
-        (is (= [{:first_name   "Crowberto"
-                 :last_name    "Corv"
-                 :email        "crowberto@metabase.com"
-                 :password     "sUp3r-s3cret"
-                 :is_superuser true}]
-               (-> (build-config ws-id) :config :users))))
-      (testing "and no :users section when the password is not set"
-        (mt/with-temporary-setting-values [workspace-instance-user-password nil]
-          (is (not (contains? (-> (build-config ws-id) :config) :users))))))))

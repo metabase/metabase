@@ -1,10 +1,9 @@
 (ns metabase-enterprise.workspaces.config
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.remote-sync.core :as remote-sync]
+   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
-   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
-   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
@@ -74,7 +73,7 @@
    mapping."
   [db output-namespace]
   (let [components (set (driver/qualified-name-components (:engine db)))
-        positions  (provisioning.database/engine-namespace-positions db)
+        positions  (ws/engine-namespace-positions db)
         schema     (when-not (str/blank? output-namespace) output-namespace)]
     (cond-> {}
       (:db components)     (assoc :db (:db positions))
@@ -106,36 +105,6 @@
                         [:not-in :id workspace-db-ids]
                         true)]}))
 
-(defn- remote-sync-settings
-  "Remote-sync settings for the child instance's `settings:` config section, or
-   nil when remote sync is not enabled on this instance. The child instance
-   always gets `:read-write` — its whole purpose is committing changes back.
-   The child works on the workspace's `:target_branch` when set, falling back
-   to this instance's configured remote-sync branch."
-  [workspace]
-  (when (remote-sync/remote-sync-enabled)
-    (let [target-branch (:target_branch workspace)]
-      {:remote-sync-url    (remote-sync/remote-sync-url)
-       :remote-sync-branch (if (str/blank? target-branch)
-                             (remote-sync/remote-sync-branch)
-                             target-branch)
-       :remote-sync-token  (remote-sync/remote-sync-token)
-       :remote-sync-type   :read-write})))
-
-(defn- user-entries
-  "config-file `users:` entries for the child instance: the workspace creator
-   as a superuser, when both the creator and the configured
-   `workspace-instance-user-password` exist."
-  [workspace]
-  (let [{:keys [creator]} (t2/hydrate workspace :creator)
-        password          (ws.settings/workspace-instance-user-password)]
-    (when (and creator (not (str/blank? password)))
-      [{:first_name   (:first_name creator)
-        :last_name    (:last_name creator)
-        :email        (:email creator)
-        :password     password
-        :is_superuser true}])))
-
 (defn- sample-database-entries
   "If the instance has a Sample Database, emit a single placeholder entry the
    import side will use to recreate it. Always uses the canonical name/engine —
@@ -148,7 +117,7 @@
       :is_sample true}]))
 
 (defn build-workspace-config
-  "Return a downloadable config.yml-shaped map for `workspace`:
+  "Return a downloadable config.yml-shaped map for `workspace-id`:
 
     {:version 1
      :config  {:databases [...]
@@ -160,41 +129,33 @@
   WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
-  `instance-workspace` setting stores. When remote sync is enabled on this
-  instance, `:config` also carries a `:settings` section pointing the child
-  instance at the same git repo in `:read-write` mode. When the
-  `workspace-instance-user-password` setting is set and the workspace has a
-  creator, `:config` carries a `:users` section creating that user as a
-  superuser on the child. Takes a workspace with
-  its `:databases` hydrated. Throws a 409 `ex-info` if any of the workspace's
-  databases is not `:provisioned`."
-  [workspace]
-  (let [wsds (:databases workspace)]
-    (when (some #(not= :provisioned (:status %)) wsds)
-      (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
-                      {:status-code  409
-                       :workspace_id (:id workspace)})))
-    (let [workspace-db-ids (mapv :database_id wsds)
-          dbs-by-id        (if-let [ids (seq workspace-db-ids)]
-                             (into {} (map (juxt :id identity))
-                                   (t2/select :model/Database :id [:in ids]))
-                             {})
-          pairs            (for [wsd wsds
-                                 :let [db (get dbs-by-id (:database_id wsd))]]
-                             [wsd db])
-          ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
-          stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
-          sample-entries   (sample-database-entries)
-          settings         (remote-sync-settings workspace)
-          users            (user-entries workspace)]
-      {:version 1
-       :config  (cond-> {:databases (-> ws-entries
-                                        (into stub-entries)
-                                        (into sample-entries))
-                         :workspace {:name      (:name workspace)
-                                     :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
-                  settings (assoc :settings settings)
-                  users    (assoc :users users))})))
+  `instance-workspace` setting stores. Returns nil when the workspace does not
+  exist. Throws a 409 `ex-info` if any of the workspace's databases is not
+  `:provisioned`."
+  [workspace-id]
+  (when-let [ws (workspace/get-workspace workspace-id)]
+    (let [wsds (:databases ws)]
+      (when (some #(not= :provisioned (:status %)) wsds)
+        (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
+                        {:status-code  409
+                         :workspace_id workspace-id})))
+      (let [workspace-db-ids (mapv :database_id wsds)
+            dbs-by-id        (if-let [ids (seq workspace-db-ids)]
+                               (into {} (map (juxt :id identity))
+                                     (t2/select :model/Database :id [:in ids]))
+                               {})
+            pairs            (for [wsd wsds
+                                   :let [db (get dbs-by-id (:database_id wsd))]]
+                               [wsd db])
+            ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+            stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
+            sample-entries   (sample-database-entries)]
+        {:version 1
+         :config  {:databases (-> ws-entries
+                                  (into stub-entries)
+                                  (into sample-entries))
+                   :workspace {:name      (:name ws)
+                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."
