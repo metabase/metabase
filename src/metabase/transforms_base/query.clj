@@ -12,7 +12,6 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms-base.workspace-hooks :as transforms-base.workspace-hooks]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -106,17 +105,7 @@
           effective-transform-type (if (transforms-base.u/full-incremental-run? transform)
                                      :table
                                      (keyword (:type target)))
-          ;; Workspace SQL rewrite. Transforms route through `driver/run-transform!`
-          ;; with pre-compiled SQL -- they don't go through `qp.execute/run`, so the
-          ;; Phase 2 rewriter (which lives in the execute middleware chain) NEVER
-          ;; fires for transforms. Both MBQL and native sources need their compiled
-          ;; SQL rewritten here so canonical refs resolve to workspace-isolation
-          ;; tables. No-op when no workspace is active. See
-          ;; `metabase.transforms-base.workspace-hooks`.
-          compiled-query (-> (transforms-base.u/compile-source transform source-range-params)
-                             (update :query
-                                     #(transforms-base.workspace-hooks/rewrite-native-sql-for-workspace
-                                       driver db %)))
+          compiled-query (transforms-base.u/compile-source transform source-range-params)
           transform-details {:db-id db
                              :database database
                              :transform-id   id

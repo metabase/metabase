@@ -5,7 +5,6 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
-   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -241,76 +240,3 @@
               "both rows are kept for retry")
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
             (is (nil? (ws/delete-workspace! (:id ws))))))))))
-
-;;; -------------------------------------------- Remappings ----------------------------------------------------
-
-(deftest list-remappings-test
-  (mt/with-model-cleanup [:model/TableRemapping]
-    (t2/insert! :model/TableRemapping {:database_id     (mt/id)
-                                       :from_schema     "public"
-                                       :from_table_name "orders"
-                                       :to_schema       "mb_iso"
-                                       :to_table_name   "orders"})
-    (let [remappings (ws/list-remappings)]
-      (is (some #(= "orders" (:from_table_name %)) remappings)))))
-
-;;; ----------------------------------------- workspace-instance lock ------------------------------------------
-
-(defn- lock-atom
-  "Reach through the private var to the lock atom."
-  []
-  @#'ws/locked-by-config?*)
-
-(deftest workspace-locked-by-config?-baseline-test
-  (testing "default state (no atom flip, no env-var) is unlocked"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (is (false? (ws/workspace-locked-by-config?)))
-        (finally (reset! a prior))))))
-
-(deftest workspace-locked-by-config?-atom-flipped-test
-  (testing "after mark-locked-by-config!, the predicate returns true"
-    (workspaces.tu/with-workspace-locked-by-config
-      (fn [] (is (true? (ws/workspace-locked-by-config?)))))))
-
-(deftest mark-locked-by-config!-flips-the-atom-test
-  (testing "mark-locked-by-config! flips the atom to true"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (is (false? (ws/workspace-locked-by-config?)))
-        (ws/mark-locked-by-config!)
-        (is (true? @a))
-        (is (true? (ws/workspace-locked-by-config?)))
-        (finally (reset! a prior))))))
-
-(deftest env-var-presence-locks-test
-  (testing "MB_INSTANCE_WORKSPACE set => predicate true regardless of atom"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-          (is (true? (ws/workspace-locked-by-config?))))
-        (testing "outside the binding, atom alone determines the lock"
-          (is (false? (ws/workspace-locked-by-config?))))
-        (finally (reset! a prior))))))
-
-(deftest env-var-empty-string-does-not-lock-test
-  (testing "MB_INSTANCE_WORKSPACE set to empty string does NOT lock (env-var-value treats blank as unset)"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (mt/with-temp-env-var-value! [mb-instance-workspace ""]
-          (is (false? (ws/workspace-locked-by-config?))))
-        (finally (reset! a prior))))))
-
-(deftest env-var-and-atom-both-lock-test
-  (testing "both sources set => still true; OR semantics"
-    (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-      (workspaces.tu/with-workspace-locked-by-config
-        (fn [] (is (true? (ws/workspace-locked-by-config?))))))))

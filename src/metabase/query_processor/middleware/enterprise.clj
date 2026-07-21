@@ -77,40 +77,17 @@
   [query]
   query)
 
-(defenterprise apply-workspace-remapping
-  "**Workspace remapping, Phase 1 — preprocess.** Mutates cached MBQL table metadata so
-   downstream middleware and HoneySQL compilation see workspace identifiers.
-
-   Phase 1 is for pipeline coherence; Phase 2 ([[apply-workspace-sql-remapping]]) is the
-   authoritative security boundary. Native SQL is intentionally untouched here. See the EE
-   impl namespace docstring for the full design rationale."
-  metabase-enterprise.workspaces.query-processor.middleware
+(defenterprise apply-workspace-entity-remapping
+  "**Workspaces v2 PoC.** When a query runs in a workspace context (the workspace id
+   binding is set by the `/api/ee/workspace/...` query/run endpoints), wraps the
+   metadata provider so card/transform/table reads are served from workspace-local
+   copies under their production ids. Must run before `resolve-source-cards`.
+   OSS / no workspace bound: identity."
+  metabase-enterprise.workspaces.query-processor
   [query]
   query)
 
 ;;;; Execution middleware
-
-(defenterprise apply-workspace-sql-remapping
-  "**Workspace remapping, Phase 2 — execute (post-compilation).** Authoritative SQL rewriter
-   and the security boundary for workspace isolation.
-
-   Runs after all preprocess work — snippets, card refs, params, and MBQL compilation are
-   complete — so the query is reduced to one canonical SQL string. Parses it, rewrites every
-   `from` table ref to its `to` counterpart, re-emits.
-
-   **Fails closed:** on parse failure throws `ex-info` with `:type qp.error-type/qp`. There
-   is no fallback to the original SQL — a silent pass-through would breach workspace
-   isolation."
-  metabase-enterprise.workspaces.query-processor.middleware
-  [qp]
-  qp)
-
-(defn apply-workspace-sql-remapping-middleware
-  "Helper middleware wrapper for [[apply-workspace-sql-remapping]] to make sure we do [[defenterprise]] dispatch
-  correctly on each QP run rather than just once when we combine all of the QP middleware."
-  [qp]
-  (fn [query rff]
-    ((apply-workspace-sql-remapping qp) query rff)))
 
 ;;; (f qp) => qp
 

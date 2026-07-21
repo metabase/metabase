@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.postgres]
-   [metabase.driver.sync :as driver.s]
-   [metabase.workspaces.core :as workspaces])
+   [metabase.driver.sync :as driver.s])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -47,14 +46,11 @@
                 :engine   :postgres}]
         (is (driver.s/include-schema? db nil))))))
 
-(deftest ^:parallel workspace-isolation-schemas-skipped-on-parent-instance-test
-  (testing "On parent (non-workspace-mode) instances, include-schema? rejects mb__isolation_* (GHY-3489)"
-    ;; `with-redefs` is unsafe in :parallel, but `workspace-mode?` is an EE
-    ;; defenterprise whose OSS fallback returns false. Test ns is OSS, so the
-    ;; default already simulates parent-instance behavior without redefs.
+(deftest ^:parallel workspace-isolation-schemas-skipped-test
+  (testing "include-schema? rejects mb__isolation_* (GHY-3489)"
     (testing "with no user-configured filters (sync everything)"
       (is (not (driver.s/include-schema? nil nil "mb__isolation_abc_42"))
-          "iso schema must be skipped on parent even when no filters are set")
+          "iso schema must be skipped even when no filters are set")
       (is (driver.s/include-schema? nil nil "public")
           "non-iso schemas pass through unchanged"))
     (testing "with broad inclusion filters that WOULD match the iso prefix"
@@ -75,15 +71,3 @@
           "single-underscore variant is NOT the iso prefix; passes through")
       (is (driver.s/include-schema? nil nil "mb__customer_data")
           "double-underscore but different suffix is NOT the iso prefix; passes through"))))
-
-(deftest ^:synchronized workspace-isolation-schemas-synced-on-child-instance-test
-  ;; `with-redefs` to flip workspace-mode? to true -- not :parallel-safe.
-  ;; Wrapping ns ^:synchronous would be cleaner but this single test stays local.
-  (testing "On child (workspace-mode) instances, include-schema? DOES sync mb__isolation_* (GHY-3489)"
-    (with-redefs [workspaces/workspace-mode? (constantly true)]
-      (is (driver.s/include-schema? nil nil "mb__isolation_abc_42")
-          "iso schemas must be synced on child -- table remapping needs them")
-      (is (driver.s/include-schema? "mb*" nil "mb__isolation_abc_42")
-          "inclusion patterns continue to apply normally on child")
-      (is (not (driver.s/include-schema? nil "mb*" "mb__isolation_abc_42"))
-          "exclusion patterns continue to apply normally on child -- user can still opt out"))))
