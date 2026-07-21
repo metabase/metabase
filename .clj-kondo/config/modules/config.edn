@@ -157,7 +157,10 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.query-guards}
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init
+              metabase.agent-api.query-guards
+              metabase.agent-api.settings}
    :uses    #{ai-tracing
               api
               auth-identity
