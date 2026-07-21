@@ -20,7 +20,7 @@
 
 (defn validate-embedding-provider!
   "Throw on an unknown embedding provider name; nil passes, since override settings inherit when unset.
-  Consumer modules reach this through `embedding/validate-provider!`."
+  Consumer modules reach this through [[metabase-enterprise.semantic-search.embedding/validate-provider!]]."
   [provider]
   (when (and provider (not (contains? valid-embedding-providers provider)))
     (throw (ex-info (str "Invalid embedding provider: " (pr-str provider)

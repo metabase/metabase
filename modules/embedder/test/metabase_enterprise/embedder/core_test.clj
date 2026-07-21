@@ -13,7 +13,7 @@
 (def ^:private default-model-name
   (:model-name embedder/default-model-descriptor))
 
-(deftest default-model-descriptor-test
+(deftest ^:parallel default-model-descriptor-test
   (is (= {:provider         "in-process"
           :model-name       "Snowflake/snowflake-arctic-embed-l-v2.0"
           :model-dimensions 1024}
