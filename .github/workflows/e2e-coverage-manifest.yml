@@ -48,6 +48,18 @@ jobs:
           name: instrumented-uberjar
           path: target/uberjar/metabase.jar
           retention-days: 1
+      # Regenerate the OpenAPI spec from this SHA's defendpoint definitions so
+      # route normalization in the merge job matches against the endpoints
+      # that actually served this run, not the checked-in file (which is only
+      # refreshed by the label-gated openapi-check workflow and drifts).
+      - name: Generate OpenAPI route table
+        run: bun run generate-openapi
+      - name: Upload OpenAPI route table
+        uses: actions/upload-artifact@v7
+        with:
+          name: openapi-spec
+          path: resources/openapi/openapi.json
+          retention-days: 1
 
   # Fixed-N sharding — coverage doesn't need the PR matrix-builder's tag/edition
   # groups, just an even split of the regular spec set. The shard count lives in
@@ -130,6 +142,15 @@ jobs:
       - name: Unzip previous manifest
         if: steps.prev.outputs.found == 'true'
         run: unzip -o prev-manifest.zip -d prev-manifest
+      # Overwrites the checked-out resources/openapi/openapi.json with the one
+      # generated from this run's SHA. If the artifact is somehow missing, the
+      # checked-in file is still there and the builder falls back to it.
+      - name: Download OpenAPI route table
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: openapi-spec
+          path: resources/openapi
       # GITHUB_SHA (the master commit this nightly built from) is stamped into
       # the manifest as `builtAt`, so a PR can later pick the manifest closest
       # to its own point in history. See resolve-coverage-manifest.mjs.
