@@ -49,40 +49,17 @@
     :max-tokens  - Maximum tokens in the response
     :schema      - JSON Schema map for structured output; each provider forces a
                    tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
-    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy
-    :thinking    - Provider-specific extended-thinking config. For Anthropic,
-                   either of:
-                     - `{:type \"enabled\" :budget_tokens <int>}` (explicit
-                       budget; rejected by adaptive-only models such as Opus
-                       4.7+)
-                     - `{:type \"adaptive\" :effort \"high|medium|low\"}`
-                       (`:effort` is forwarded as `output_config.effort`)
-                   The Claude adapter normalizes whichever shape is given into
-                   what the target model accepts (adaptive-only models reject
-                   `budget_tokens`), so callers express intent rather than the
-                   wire format. Only the Claude adapter currently consumes
-                   this; other providers ignore it.
-    :model-capabilities - Anthropic-only, set internally by `claude-raw`: the
-                   model's live Models API `capabilities` map, used to decide
-                   the thinking/temperature wire formats. When absent, the
-                   Claude adapter falls back to a model-version heuristic.
-    :cache?      - Whether to apply Anthropic ephemeral prompt-cache breakpoints
-                   (default true). Set false for one-shot calls that never reread
-                   the prefix, to avoid paying the cache-write premium for zero
-                   cache reads. Anthropic-only; ignored by other adapters."
+    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy"
   [:map
-   [:model              {:optional true} :string]
-   [:system             {:optional true} [:maybe :string]]
-   [:input              {:optional true} [:sequential :map]]
-   [:tools              {:optional true} [:maybe [:sequential ToolEntry]]]
-   [:tool_choice        {:optional true} [:maybe [:enum "auto" "required"]]]
-   [:temperature        {:optional true} [:maybe number?]]
-   [:max-tokens         {:optional true} [:maybe :int]]
-   [:schema             {:optional true} :any]
-   [:ai-proxy?          {:optional true} [:maybe :boolean]]
-   [:thinking           {:optional true} [:maybe :map]]
-   [:model-capabilities {:optional true} [:maybe :map]]
-   [:cache?             {:optional true} [:maybe :boolean]]])
+   [:model       {:optional true} :string]
+   [:system      {:optional true} [:maybe :string]]
+   [:input       {:optional true} [:sequential :map]]
+   [:tools       {:optional true} [:maybe [:sequential ToolEntry]]]
+   [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
+   [:temperature {:optional true} [:maybe number?]]
+   [:max-tokens  {:optional true} [:maybe :int]]
+   [:schema      {:optional true} :any]
+   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
 
 (defn mkid
   "Generate a random id"
@@ -177,10 +154,6 @@
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
                                        (str/join ""))}
-    :reasoning-start       {:type      :reasoning
-                            :id        (:id chunk)
-                            :reasoning (->> (map :delta chunks)
-                                            (str/join ""))}
     :tool-input-start      {:type      :tool-input
                             :id        (:toolCallId chunk)
                             :function  (:toolName chunk)
@@ -856,29 +829,18 @@
       (or auth
           (throw (missing-api-key-ex llm-type))))))
 
-(def ^:private ^:const default-connection-timeout-ms
-  "TCP connect timeout for an LLM HTTP request. A provider that's down or
-  unreachable should fail fast instead of holding a worker thread forever."
-  10000)
-
-(def ^:private ^:const default-socket-timeout-ms
-  "Inter-byte read timeout for an LLM HTTP request. Anthropic streams responses,
-  so this is the gap between successive chunks (NOT total response time). Picked
-  generously: extended thinking can pause for tens of seconds between thinking
-  chunks. Without this, a hung TLS read inside the stream blocks the worker
-  indefinitely — observed in production when an upstream proxy held the
-  connection open without sending data."
-  120000)
-
 (defn request
   "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
   Forces a connection + socket timeout on every request so a hung upstream can
-  never block the caller forever. Callers can override either timeout by
-  passing `:connection-timeout` / `:socket-timeout` in `req`."
+  never block the caller forever. The timeouts default to the operator-tunable
+  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  override either timeout per request by passing `:connection-timeout` /
+  `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
   (llm/assert-llm-host-allowed! url)
-  (http/request (-> {:connection-timeout default-connection-timeout-ms
-                     :socket-timeout     default-socket-timeout-ms}
+  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                     :socket-timeout     (llm/llm-request-timeout-ms)}
                     (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))

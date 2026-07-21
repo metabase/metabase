@@ -290,17 +290,26 @@
   :doc false)
 
 (defsetting llm-request-timeout-ms
-  (deferred-tru "Socket timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "Socket (inter-byte read) timeout in milliseconds for LLM API requests. "
+        "For streaming responses this bounds the gap between successive chunks, "
+        "NOT the total response time. Picked generously: extended thinking can "
+        "pause for tens of seconds between chunks. Without it, a hung read inside "
+        "the stream blocks the worker indefinitely — observed in production when "
+        "an upstream proxy held the connection open without sending data."))
   :type :integer
-  :default 60000
+  :default 120000
   :visibility :settings-manager
   :export? false
   :doc false)
 
 (defsetting llm-connection-timeout-ms
-  (deferred-tru "Connection timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "TCP connection timeout in milliseconds for LLM API requests. A provider "
+        "that is down or unreachable should fail fast instead of holding a worker "
+        "thread forever."))
   :type :integer
-  :default 5000
+  :default 10000
   :visibility :settings-manager
   :export? false
   :doc false)

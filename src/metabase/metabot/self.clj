@@ -442,9 +442,9 @@
 
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
-  so callers can inspect everything the model emitted — extended-thinking
-  reasoning blocks, any non-tool text, the structured tool call itself, and
-  usage. Useful for debugging *why* the model produced what it did.
+  so callers can inspect everything the model emitted — any non-tool text, the
+  structured tool call itself, and usage. Useful for debugging *why* the model
+  produced what it did.
 
   Before calling the provider, enforces global usage limits (via
   [[metabase.metabot.usage/check-usage-limits!]]) and the caller's metabot
@@ -456,9 +456,6 @@
   explicitly.
 
   `opts` extends `tracking-opts` and may include:
-    :thinking             - Provider-specific extended-thinking config. For
-                            Anthropic: `{:type \"enabled\" :budget_tokens <int>}`.
-                            Only the Claude adapter consumes this currently.
     :required-permission  - A `:permission/metabot-*` keyword that the current
                             user must hold (as `:yes`) in addition to the base
                             `:permission/metabot` (which is always checked).
@@ -476,10 +473,9 @@
         _ (log/info "Calling LLM (structured-with-trace)" {:provider provider
                                                            :model     model
                                                            :msg-count (count messages)
-                                                           :ai-proxy? ai-proxy?
-                                                           :thinking? (some? (:thinking opts))})
+                                                           :ai-proxy? ai-proxy?})
         tracking-opts  (-> opts
-                           (dissoc :thinking :required-permission)
+                           (dissoc :required-permission)
                            (assoc :model provider-and-model :ai-proxy? ai-proxy?))
         streaming-opts (cond-> {:model       model
                                 :input       messages
@@ -487,7 +483,6 @@
                                 :temperature temperature
                                 :max-tokens  max-tokens
                                 :ai-proxy?   ai-proxy?}
-                         (:thinking opts)         (assoc :thinking (:thinking opts))
                          (contains? opts :cache?) (assoc :cache? (:cache? opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
@@ -553,10 +548,10 @@
     max-tokens    - Maximum tokens in the response
     opts          - Tracking + gating options. See [[report-token-usage-xf]] for
                     tracking fields and [[call-llm-structured-with-trace]] for
-                    `:required-permission` and `:thinking`.
+                    `:required-permission`.
 
   Returns the parsed JSON map from the forced tool call. For access to the
-  full streamed trace (reasoning blocks, non-tool text), see
+  full streamed trace (non-tool text), see
   [[call-llm-structured-with-trace]]."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (:result (call-llm-structured-with-trace

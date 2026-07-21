@@ -9,8 +9,6 @@ export interface ExplorationCollection {
   name: string;
 }
 
-export type NewExplorationMode = "entry" | "plan";
-
 export const EXPLORATION_SIDEBAR_TABS = [
   "all",
   "stars",
