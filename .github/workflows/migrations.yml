@@ -24,15 +24,38 @@ jobs:
   check-migration-versions:
     if: github.event_name == 'pull_request'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 5
+    timeout-minutes: 10 # the `backport`-label path builds the release scripts
     steps:
       - uses: actions/checkout@v6
         with:
           filter: blob:none
           fetch-depth: 0
+      # The `backport` label backports to every supported release line (see auto-backport.yml),
+      # so migrations on such a PR must sit in the oldest supported line's directory. Resolve
+      # that floor with the same getSupportedMajors the backport workflow uses; skip the
+      # release-script build entirely for PRs without the label.
+      - name: Prepare release scripts
+        if: contains(github.event.pull_request.labels.*.name, 'backport')
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Compute oldest supported backport target
+        id: oldest-supported
+        if: contains(github.event.pull_request.labels.*.name, 'backport')
+        uses: actions/github-script@v9
+        env:
+          AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          script: | # js
+            const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const targets = await getSupportedMajors();
+            console.log('supported backport targets', targets);
+
+            return Math.min(...targets);
       - name: Check migration versions
         env:
           BASE_REF: ${{ github.base_ref }}
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          OLDEST_SUPPORTED_VERSION: ${{ steps.oldest-supported.outputs.result }}
         run: bin/check-migration-versions
