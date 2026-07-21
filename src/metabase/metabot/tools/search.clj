@@ -239,7 +239,7 @@
    connection indefinitely."
   10000)
 
-(defonce ^:private search-semaphore
+(defonce ^:private ^Semaphore search-semaphore
   ;; Server-wide permit pool bounding total concurrent subsearches to max-parallel-searches. Shared
   ;; across every caller so the limit is a property of the server, not of one request.
   (Semaphore. max-parallel-searches))
