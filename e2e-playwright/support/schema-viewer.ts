@@ -172,16 +172,49 @@ export async function getTableId(
 
 /**
  * Port of H.resyncDatabase + waitForSyncToFinish
- * (e2e-qa-databases-helpers.js), including the occasional sync_schema
- * retrigger for the silently-dropped-sync case (QUE2-663).
+ * (e2e-qa-databases-helpers.js), including the sync_schema retrigger for the
+ * silently-dropped-sync case (QUE2-663).
+ *
+ * RETRIGGER IS ON BY DEFAULT (it was opt-in, and only three call sites opted
+ * in). `POST /api/database/:id/sync_schema` answers `{"status":"ok"}` the
+ * moment it has SUBMITTED the sync — the work itself runs later, on a
+ * background thread, and can be discarded without a trace: `sync-db-metadata-
+ * explicit!` goes through `with-duplicate-ops-prevented` (sync/util.clj:102),
+ * which silently skips a `:sync-metadata` for a database that already has one
+ * in flight, and `quick-task/submit-task!` (util/quick_task.clj:25) runs every
+ * such task on a SINGLE-thread executor shared instance-wide, so a submission
+ * can also simply sit in a queue behind unrelated work.
+ *
+ * When that happens with retrigger off, nothing ever re-asks: the poll below
+ * reads the same stale metadata until it gives up. Measured on CI shard 19 of
+ * run 29814216890, `database-writable-connection`'s `beforeEach` polled
+ * `GET /api/database/2/metadata` 346 times over 90s and every single response
+ * was byte-identical `tables: []` — a database correctly pointed at
+ * `writable_db_w0`, holding a table the spec had already created, that no sync
+ * ever looked at. Re-POSTing sync_schema every ~5s is idempotent and cheap,
+ * and it is the difference between recovering in 5s and failing the test.
+ *
+ * THE BUDGET MUST FIT INSIDE THE TEST TIMEOUT. This used to wait 3 minutes
+ * against a 90s per-test timeout (playwright.config.ts), so the throw below was
+ * unreachable: the failure ALWAYS surfaced as a bare "Test timeout of 90000ms
+ * exceeded while running beforeEach hook", pointing at the hook signature and
+ * naming neither the database nor the table nor the sync. Keeping this under
+ * the test timeout is what makes the diagnostic message the thing you actually
+ * see. Callers with a raised `test.setTimeout` can widen it explicitly.
  */
 export async function resyncDatabase(
   api: MetabaseApi,
   {
     dbId = WRITABLE_DB_ID,
     tables = [],
-    retrigger = false,
-  }: { dbId?: number; tables?: string[]; retrigger?: boolean },
+    retrigger = true,
+    timeout = 75_000,
+  }: {
+    dbId?: number;
+    tables?: string[];
+    retrigger?: boolean;
+    timeout?: number;
+  },
 ) {
   const SYNC_RETRY_DELAY_MS = 500;
   const RESYNC_TRIGGER_INDEX = 10;
@@ -189,7 +222,8 @@ export async function resyncDatabase(
   await api.post(`/api/database/${dbId}/sync_schema`);
   await api.post(`/api/database/${dbId}/rescan_values`);
 
-  const deadline = Date.now() + 3 * 60_000;
+  const deadline = Date.now() + timeout;
+  let seen: { name: string; initial_sync_status: string }[] = [];
   for (let iteration = 0; Date.now() < deadline; iteration++) {
     if (retrigger && iteration > 0 && iteration % RESYNC_TRIGGER_INDEX === 0) {
       await api.post(`/api/database/${dbId}/sync_schema`);
@@ -199,9 +233,10 @@ export async function resyncDatabase(
     const body = (await response.json()) as {
       tables: { name: string; initial_sync_status: string }[];
     };
-    if (body.tables.length) {
+    seen = body.tables ?? [];
+    if (seen.length) {
       const completed = new Set(
-        body.tables
+        seen
           .filter((table) => table.initial_sync_status === "complete")
           .map((table) => table.name),
       );
@@ -210,7 +245,14 @@ export async function resyncDatabase(
       }
     }
   }
+  // Report what the database actually showed. `tables: []` means no sync ever
+  // ran; a listed table stuck on "incomplete" means one ran and is unfinished.
+  // Those are different bugs and the message has to tell them apart.
+  const inventory = seen.length
+    ? seen.map((t) => `${t.name}:${t.initial_sync_status}`).join(", ")
+    : "<no tables at all>";
   throw new Error(
-    `Timed out waiting for tables [${tables.join(", ")}] to finish syncing on database ${dbId}`,
+    `Timed out after ${timeout}ms waiting for tables [${tables.join(", ")}] to ` +
+      `finish syncing on database ${dbId}. Database reported: ${inventory}`,
   );
 }

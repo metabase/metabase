@@ -1087,6 +1087,10 @@ async function createTestTables(api: MetabaseApi) {
       TARGET_MISSING_COLUMN,
     ],
     retrigger: true,
+    // This describe runs at test.describe.configure({ timeout: 300_000 }), so
+    // keep the pre-existing 3-minute sync budget rather than inheriting the
+    // helper's new default, which is sized for the 90s per-test timeout.
+    timeout: 180_000,
   });
 }
 
@@ -1126,6 +1130,8 @@ async function createTestTablesWithForeignKey(api: MetabaseApi) {
     dbId: WRITABLE_DB_ID,
     tables: [SOURCE_TABLE, COMPATIBLE_TARGET, CHILD_TABLE],
     retrigger: true,
+    // See createTestTables — same 300s describe, same preserved budget.
+    timeout: 180_000,
   });
 }
 
