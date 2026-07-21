@@ -193,6 +193,7 @@
      metabase.mcp.usage/record-mcp-session!
      metabase.mcp.usage/record-mcp-session-end!
      metabase.mcp.usage/record-mcp-tool-call!
+     metabase.mcp.v2.tools.browse/validate-args-for-action!
      metabase.notification.models/create-notification!
      metabase.oauth-server.core/reset-provider!
      metabase.pulse.send/send-pulse!

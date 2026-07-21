@@ -583,8 +583,10 @@
 
   collections
   {:team "UX West"
-   :api  #{metabase.collections.core
+   :api  #{metabase.collections.children
+           metabase.collections.core
            metabase.collections.curation
+           metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -594,11 +596,19 @@
            audit-app
            config
            events
+           lib-be
            models
            permissions
            premium-features
+           queries
            remote-sync
+           request
+           revisions
            search
+           settings
+           tracing
+           transforms
+           upload
            util}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
@@ -618,35 +628,19 @@
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api
-           metabase.collections-rest.init}
+   :api  #{metabase.collections-rest.api}
    :uses #{api
-           app-db
            collections
            eid-translation
            events
-           lib-be
            models
            notification
            permissions
            premium-features
            queries
            request
-           revisions
-           settings
-           tracing
-           transforms
-           upload
            util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/Document
-                    :model/NativeQuerySnippet
-                    :model/Pulse
-                    :model/Table
-                    :model/Timeline
-                    :model/Transform}}
+   :model-imports #{:model/Card :model/Collection}}
 
   comments
   {:team "UX West"
@@ -750,7 +744,6 @@
            app-db
            channel
            collections
-           collections-rest
            dashboards
            eid-translation
            embedding
@@ -1268,6 +1261,7 @@
            ai-tracing
            api
            app-db
+           collections
            config
            eid-translation
            lib
@@ -1276,6 +1270,7 @@
            metabot
            models
            oauth-server
+           parameters
            premium-features
            request
            server
@@ -1283,8 +1278,14 @@
            settings
            system
            task
-           util}
-   :model-imports #{:model/Collection :model/NativeQuerySnippet}}
+           util
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/NativeQuerySnippet
+                    :model/Table}}
 
   measures
   {:team "Graphy"
@@ -2705,7 +2706,9 @@
            api
            app-db
            audit-app
+           classloader
            collections
+           config
            driver
            lib
            lib-be
@@ -2717,7 +2720,8 @@
            remote-sync
            search
            util
-           warehouses}
+           warehouses
+           enterprise/advanced-permissions}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldValues
