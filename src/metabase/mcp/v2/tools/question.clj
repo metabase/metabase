@@ -191,23 +191,27 @@
                         (:id (collection/user->personal-collection api/*current-user-id*)))]
     (query-perms/check-run-permissions-for-query dataset-query)
     (api/create-check :model/Card {:collection_id collection-id})
-    (let [result-metadata (when (seq column_metadata)
-                            (merge-column-metadata (queries/infer-metadata dataset-query) column_metadata))
-          card (queries/create-card!
-                (cond-> (u/remove-nils
-                         {:name                   name
-                          :type                   (keyword (or card_type "question"))
-                          :dataset_query          dataset-query
-                          :display                (keyword (or display "table"))
-                          :description            description
-                          :collection_id          collection-id
-                          :collection_position    collection_position
-                          :cache_ttl              cache_ttl
-                          :visualization_settings (or visualization_settings {})})
-                  result-metadata (assoc :result_metadata result-metadata))
-                {:id api/*current-user-id*})]
-      (assoc (card-response card)
-             :url (frontend-url (channel.urls/card-path (:id card)))))))
+    (let [computed-columns (when (seq column_metadata) (queries/infer-metadata dataset-query))]
+      (when (and (seq column_metadata) (empty? computed-columns))
+        (common/throw-teaching-error
+         "column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created."))
+      (let [result-metadata (when (seq column_metadata)
+                              (merge-column-metadata computed-columns column_metadata))
+            card (queries/create-card!
+                  (cond-> (u/remove-nils
+                           {:name                   name
+                            :type                   (keyword (or card_type "question"))
+                            :dataset_query          dataset-query
+                            :display                (keyword (or display "table"))
+                            :description            description
+                            :collection_id          collection-id
+                            :collection_position    collection_position
+                            :cache_ttl              cache_ttl
+                            :visualization_settings (or visualization_settings {})})
+                    result-metadata (assoc :result_metadata result-metadata))
+                  {:id api/*current-user-id*})]
+        (assoc (card-response card)
+               :url (frontend-url (channel.urls/card-path (:id card))))))))
 
 (defn- update!
   [_id _args _session-id]

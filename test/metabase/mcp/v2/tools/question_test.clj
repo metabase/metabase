@@ -138,3 +138,25 @@
       (is (:isError result))
       (is (re-find #"\"NOT_A_REAL_COLUMN\" is not in the query results"
                    (-> result :content first :text))))))
+
+(deftest create-native-model-with-column-metadata-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "column_metadata on a native-source model is a teaching error, not a bogus \"not in results\" error"
+        (let [args   {:method "create"
+                      :card_type "model"
+                      :name "Native Model With CM"
+                      :native {:database_id (mt/id) :sql "SELECT * FROM orders"}
+                      :column_metadata [{:name "TOTAL" :display_name "Total $"}]}
+              result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+          (is (:isError result))
+          (is (re-find #"column_metadata isn't supported for models built from a native \(SQL\) query"
+                       (-> result :content first :text)))))
+      (testing "a native-source model without column_metadata still creates fine"
+        (let [args   {:method "create"
+                      :card_type "model"
+                      :name "Native Model No CM"
+                      :native {:database_id (mt/id) :sql "SELECT * FROM orders"}}
+              result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+          (is (not (:isError result)) (-> result :content first :text))
+          (is (= :model (t2/select-one-fn :type :model/Card :id (:id (:structuredContent result))))))))))
