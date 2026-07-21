@@ -69,7 +69,7 @@ export function MetricsFilterPillPopover({
           <Flex align="center" gap="xs">
             {metricName && (
               <Flex align="center">
-                <Text component="span" fw={700} c="inherit" fz="inherit">
+                <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
                   {metricName}
                 </Text>
                 {(metricCount ?? 0) > 1 && (
@@ -84,14 +84,14 @@ export function MetricsFilterPillPopover({
                     {metricCount}
                   </Badge>
                 )}
-                <Text component="span" fw={700} c="inherit" fz="inherit">
+                <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
                   {", "}
                 </Text>
               </Flex>
             )}
             {displayParts.label}
             {displayParts.value && (
-              <Text component="span" fw={700} c="inherit" fz="inherit">
+              <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
                 {" "}
                 {displayParts.value}
               </Text>

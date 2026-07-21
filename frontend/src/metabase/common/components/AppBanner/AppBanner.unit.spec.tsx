@@ -43,7 +43,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={AppBanner} />, {
+  renderWithProviders(<Route path="*" element={<AppBanner />} />, {
     initialRoute: "/",
     storeInitialState: state,
     withRouter: true,

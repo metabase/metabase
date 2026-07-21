@@ -39,10 +39,10 @@ describe("route-guards", () => {
       const { history } = renderWithProviders(
         <>
           <Route element={<IsAuthenticated />}>
-            <Route path="/dashboard/:slug" component={Dashboard} />
+            <Route path="/dashboard/:slug" element={<Dashboard />} />
           </Route>
           <Route element={<IsNotAuthenticated />}>
-            <Route path="/auth/login" component={LoginPage} />
+            <Route path="/auth/login" element={<LoginPage />} />
           </Route>
         </>,
         {
@@ -74,9 +74,9 @@ describe("route-guards", () => {
       const { history } = renderWithProviders(
         <>
           <Route element={<IsAdmin />}>
-            <Route path="/admin/settings" component={Protected} />
+            <Route path="/admin/settings" element={<Protected />} />
           </Route>
-          <Route path="/unauthorized" component={Unauthorized} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
         </>,
         {
           storeInitialState: state,
@@ -102,9 +102,9 @@ describe("route-guards", () => {
       const { history } = renderWithProviders(
         <>
           <Route element={<IsNotAuthenticated />}>
-            <Route path="/auth/login" component={LoginPage} />
+            <Route path="/auth/login" element={<LoginPage />} />
           </Route>
-          <Route path="/" component={Home} />
+          <Route path="/" element={<Home />} />
         </>,
         {
           storeInitialState: state,
@@ -138,7 +138,7 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <Route element={<IsNotAuthenticated />}>
-          <Route path="/auth/login" component={LoginPage} />
+          <Route path="/auth/login" element={<LoginPage />} />
         </Route>,
         {
           storeInitialState: state,

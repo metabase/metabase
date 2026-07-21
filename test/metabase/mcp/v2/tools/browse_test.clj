@@ -242,11 +242,14 @@
                    ;; two tenants' destinations; tenant B holds data tenant A must never see
                    :model/Database {tenant-a :id} {:name "Tenant A DB" :router_database_id router}
                    :model/Database {tenant-b :id} {:name "Tenant B DB" :router_database_id router}
-                   :model/Table    {b-orders :id} {:db_id tenant-b :schema "public" :name "tenant_b_orders"}
+                   :model/Table    {b-orders :id} {:db_id router :schema "public" :name "tenant_b_orders"}
                    :model/Field    _              {:table_id b-orders :name "secret_amount"
                                                    :base_type :type/Float :position 0}
                    :model/Card     _              {:name "Tenant B Model" :type :model
                                                    :database_id tenant-b :table_id b-orders}]
+      ;; The table is created on the router and moved: inserting it directly on a destination trips
+      ;; the after-insert permission grant, which destinations are forbidden to carry.
+      (t2/update! :model/Table b-orders {:db_id tenant-b})
       (mt/with-full-data-perms-for-all-users!
         (mt/with-test-user :rasta
           (is (mi/can-read? (t2/select-one :model/Database :id tenant-b))

@@ -152,23 +152,6 @@
 
 ;;; ------------------------------------------------ Validation ----------------------------------------------------
 
-(defn- validate-modes!
-  [{:keys [recent term_queries semantic_queries] :as args} queries? filters?]
-  (when (some str/blank? (concat term_queries semantic_queries))
-    (common/throw-teaching-error
-     (str "A blank query matches everything — every term_queries and semantic_queries entry must "
-          "be non-empty. Drop the blank entry, or use a filters-only listing to browse.")))
-  (when (and (true? recent) queries?)
-    (common/throw-teaching-error
-     (str "recent: true returns your recently viewed items and cannot be combined with "
-          "term_queries or semantic_queries — drop the queries or drop recent.")))
-  (when-not (or queries? filters? (true? recent))
-    (common/throw-teaching-error
-     (str "Nothing to search for — pass queries (term_queries and/or semantic_queries), "
-          "filters (type, collection_id, created_by, archived) for a listing, "
-          "or recent: true for your recently viewed items.")))
-  args)
-
 (defn- collection-scoping?
   "True when `collection_id` scopes the search to a specific collection: present and not the inert
    \"root\" sentinel (nil is stripped before the handler, so a present value is non-nil). A missing
@@ -177,6 +160,87 @@
   [{:keys [collection_id] :as args}]
   (and (contains? args :collection_id)
        (not= "root" collection_id)))
+
+(def ^:private data-source-types
+  "Types the data-hierarchy browser (browse_data) serves; every other type lives in a collection
+   and is browsed with browse_collection."
+  #{"table" "database"})
+
+(defn- browse-redirect!
+  "Throw a teaching error for a filters-only call — filters but no query. search only ranks
+   queries, so a query-less listing belongs in a browse_* tool, whose order is stable and whose
+   count isn't ranking-capped. Route to the closest match by the filters given."
+  [{:keys [type collection_id created_by archived] :as args}]
+  (let [types  (set type)
+        target (cond
+                 (contains? types "snippet")
+                 "browse_collection(namespace: \"snippets\")"
+
+                 (contains? types "transform")
+                 "browse_collection(namespace: \"transforms\")"
+
+                 (collection-scoping? args)
+                 (format "browse_collection(id: %s, mode: \"items\"%s%s)"
+                         (pr-str collection_id)
+                         (if (seq types) (str ", type: " (pr-str (vec (sort types)))) "")
+                         (if created_by ", created_by: \"me\"" ""))
+
+                 created_by
+                 (str "browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") — "
+                      "browse lists your content within a collection, not instance-wide")
+
+                 (true? archived)
+                 "browse_collection(id: \"trash\", mode: \"items\")"
+
+                 (and (seq types) (every? data-source-types types))
+                 "browse_data (list_databases, then list_tables)"
+
+                 :else
+                 "browse_collection(id: <collection>, mode: \"items\") for a specific collection")]
+    (common/throw-teaching-error
+     (str "This is a listing, not a search — it has filters but no term_queries or semantic_queries. "
+          "To browse without a query, use " target "."))))
+
+(def ^:private max-queries-per-list
+  "Cap on term_queries/semantic_queries entries. Each entry fans out into its own subsearch (a full
+   ranked-pool fetch, plus an embedding call for a semantic query), and the MCP throttler counts
+   requests, not the queries inside one — so an uncapped list turns one call into many concurrent
+   searches."
+  10)
+
+(def ^:private max-query-length
+  "Cap on each query string, in characters — a long query wastes embedding tokens and slows the
+   full-text scan without adding signal."
+  500)
+
+(defn- validate-modes!
+  [{:keys [recent term_queries semantic_queries] :as args} queries? filters?]
+  (when (some str/blank? (concat term_queries semantic_queries))
+    (common/throw-teaching-error
+     (str "A blank query matches everything — every term_queries and semantic_queries entry must "
+          "be non-empty. Drop the blank entry.")))
+  (when (or (> (count term_queries) max-queries-per-list)
+            (> (count semantic_queries) max-queries-per-list))
+    (common/throw-teaching-error
+     (format (str "Too many queries — pass at most %d entries each in term_queries and "
+                  "semantic_queries. Combine related queries or drop some.")
+             max-queries-per-list)))
+  (when (some #(> (count %) max-query-length) (concat term_queries semantic_queries))
+    (common/throw-teaching-error
+     (format "A query is too long — each term_queries/semantic_queries entry must be at most %d characters."
+             max-query-length)))
+  (when (and (true? recent) queries?)
+    (common/throw-teaching-error
+     (str "recent: true returns your recently viewed items and cannot be combined with "
+          "term_queries or semantic_queries — drop the queries or drop recent.")))
+  (when-not (or queries? filters? (true? recent))
+    (common/throw-teaching-error
+     (str "Nothing to search for — pass term_queries and/or semantic_queries (optionally narrowed "
+          "by type, collection_id, created_by, archived), or recent: true for your recently viewed "
+          "items. To list without a query, browse with browse_collection or browse_data.")))
+  (when (and filters? (not queries?) (not (true? recent)))
+    (browse-redirect! args))
+  args)
 
 (defn- validate-filters!
   [{:keys [type created_by archived] :as args}]
@@ -270,6 +334,10 @@
 
 ;;; ---------------------------------------------- Snippet union ---------------------------------------------------
 
+;; TODO(GHY-4171): snippets are a bolt-on — not in the search engine, so they can't be scored,
+;; ranked, or fused, and must be listed and paged on their own track (the reason the
+;; snippet-exclusivity teaching error exists). Moving them into the engine lets this function, that
+;; error, and the namespace redirect all be deleted.
 (defn- snippet-rows
   "Snippet rows for the server-side union: all (non-)archived snippets the caller can read —
    filtered per row through `mi/can-read?`, so EE snippet-folder permissions and the
@@ -301,14 +369,15 @@
    postprocessed+enriched results with `:collection_path` attached; `total` is the engine's match
    count for the (fused) result set."
   [{:keys [term_queries semantic_queries created_by archived]} entity-types collection-id limit offset]
+  ;; The tool redirects query-less listings to browse_*, so engine-results only ever runs with a
+  ;; query present — no :filters-only? branch to trip.
   (let [results (metabot.search/search
                  (cond-> {:term-queries     (vec term_queries)
                           :semantic-queries (vec semantic_queries)
                           :entity-types     (vec entity-types)
                           :archived         (true? archived)
                           :limit            limit
-                          :offset           offset
-                          :filters-only?    (and (empty? term_queries) (empty? semantic_queries))}
+                          :offset           offset}
                    created_by    (assoc :created-by #{api/*current-user-id*})
                    collection-id (assoc :collection-id collection-id)))]
     {:rows  (add-collection-paths (vec results))
@@ -360,12 +429,13 @@
       (mapv #(projections/project :search-result fmt %) rows))))
 
 (registry/deftool search-tool
-  "Find content across the Metabase instance. Three modes: (1) ranked search — term_queries (keywords) and/or
-  semantic_queries (natural language), optionally narrowed by filters; (2) filters-only listing — any of type,
-  collection_id (scopes to the collection subtree), created_by: \"me\", archived: true with no queries, e.g. all
-  dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you
-  can read and must be requested on its own, not alongside other types; queries narrow snippets by name
-  substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace:
+  "Find content across the Metabase instance by relevance. Two modes: (1) ranked search — term_queries (keywords)
+  and/or semantic_queries (natural language), optionally narrowed by type, collection_id (scopes to the collection
+  subtree), created_by: \"me\", archived: true; (2) recent: true — your recently viewed items. A query is required
+  for mode (1): to browse or list without one (a collection's contents, a database's tables, your content in a
+  collection), use browse_collection or browse_data instead — this tool redirects query-less listings there.
+  type: [\"snippet\"] searches SQL snippets you can read by name and must be requested on its own, not alongside
+  other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace:
   \"transforms\"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking
   limit — so a large total is a floor (the response says \"at least N\")."  {:name "search"
                                                                              :scope        metabot.scope/agent-search

@@ -15,6 +15,50 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel bounded-pmap-conveys-bindings-test
+  (testing "GHY-4137: bounded-pmap runs f on virtual threads with the caller's dynamic bindings
+            conveyed (like future did), so each per-query subsearch keeps the current user's
+            permission bindings — without this, permission filtering would silently break"
+    (binding [api/*current-user-id* 4242]
+      (is (= [4242 4242 4242]
+             (#'search/bounded-pmap 10000 (fn [_] api/*current-user-id*) [:a :b :c]))))))
+
+(deftest ^:parallel bounded-pmap-bounds-concurrency-test
+  (testing "GHY-4137: the server-wide semaphore caps how many subsearches run at once across all
+            callers, so fan-out can't saturate the DB / embedding provider"
+    (let [limit   @#'search/max-parallel-searches
+          running (atom 0)
+          peak    (atom 0)
+          f       (fn [_]
+                    (let [n (swap! running inc)]
+                      (swap! peak max n)
+                      (Thread/sleep 50)
+                      (swap! running dec)
+                      n))]
+      ;; submit more than the limit; the shared semaphore must keep the running count from exceeding it
+      (#'search/bounded-pmap 10000 f (range (+ limit 5)))
+      (is (<= @peak limit) "never exceeds the server-wide concurrency limit"))))
+
+(deftest ^:parallel bounded-pmap-times-out-test
+  (testing "GHY-4137: a task exceeding the timeout is cancelled and surfaces a timeout error rather
+            than hanging the request thread"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"timed out"
+                          (#'search/bounded-pmap 50 (fn [_] (Thread/sleep 5000) :done) [:a :b]))))
+  (testing "tasks that finish within the timeout return normally"
+    (is (= [:done :done] (#'search/bounded-pmap 10000 (fn [_] :done) [:a :b])))))
+
+(deftest ^:parallel bounded-pmap-propagates-task-exceptions-unwrapped-test
+  (testing "GHY-4137: a subsearch's exception propagates as itself with ex-data intact, not wrapped
+            in ExecutionException — otherwise a 403 or teaching error from a subsearch would be
+            redacted to a generic internal error by the tool layer"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (#'search/bounded-pmap 10000
+                                                (fn [_] (throw (ex-info "boom" {:status-code 403})))
+                                                [:a])))]
+      (is (= 403 (:status-code (ex-data e)))))))
+
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
     (let [single-list [[{:id 1 :model "card" :name "Card 1"}
@@ -522,7 +566,7 @@
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
 
 (deftest enrich-with-portable-entity-ids-test
-  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
+  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Card {q-id :id q-eid :entity_id} {:name "PortableEID Sample Question"
@@ -618,7 +662,7 @@
 
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
-                "`source-table:` without a separate entity_details call. We look up\n"
+                "`source-table:` without a separate read_resource call. We look up\n"
                 "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
                 "portable FK `[database_name, schema, table_name]`. This closes the failure\n"
                 "mode where the LLM saw a metric in search, had its portable_entity_id, but\n"

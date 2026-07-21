@@ -9,7 +9,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
@@ -27,6 +27,8 @@ import {
 import { AUDIT_DB_ID } from "../constants";
 
 import { McpAnalyticsPage } from "./McpAnalyticsPage";
+
+const RoutedMcpAnalyticsPage = withRouteProps(McpAnalyticsPage);
 
 registerVisualizations();
 
@@ -183,7 +185,7 @@ function setup({ dataset }: { dataset?: Dataset } = {}) {
   return renderWithProviders(
     <Route
       path="/admin/metabot/usage-auditing/mcp"
-      component={McpAnalyticsPage}
+      element={<RoutedMcpAnalyticsPage />}
     />,
     {
       initialRoute: "/admin/metabot/usage-auditing/mcp",

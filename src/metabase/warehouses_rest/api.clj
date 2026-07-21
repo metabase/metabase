@@ -1457,6 +1457,10 @@
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`.
 
+  Schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when
+  percent-encoded in the URL path; pass those as the `schema` query parameter of `GET /:id/schema/`
+  instead (#77353).
+
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
@@ -1487,26 +1491,32 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/schema/"
-  "Return a list of Tables for a Database whose `schema` is `nil` or an empty string.
+  "Return a list of Tables for a Database whose schema is the `schema` query parameter, or `nil` or an
+  empty string when no `schema` is given. Unlike the `/:id/schema/:schema` route, the query parameter
+  supports schema names containing slashes, which are rejected at the HTTP layer when percent-encoded in
+  the URL path (#77353).
 
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
-                                                                                                          [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                                          [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                                          [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                                          [:can-write-metadata          {:optional true} [:maybe :boolean]]
-                                                                                                          [:include_measures            {:optional true} [:maybe :boolean]]]]
+   {:keys [schema include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
+                                                                                                                 [:schema                      {:optional true} [:maybe :string]]
+                                                                                                                 [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                                                 [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                                                 [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                                                 [:can-write-metadata          {:optional true} [:maybe :boolean]]
+                                                                                                                 [:include_measures            {:optional true} [:maybe :boolean]]]]
   (let [opts {:include-hidden?              include_hidden
               :include-editable-data-model? include_editable_data_model
               :can-query?                   can-query
               :can-write-metadata?          can-write-metadata
               :include-measures?            include_measures}]
-    (api/check-404 (seq (concat (schema.table/schema-tables-list id nil opts)
-                                (schema.table/schema-tables-list id "" opts))))))
+    (api/check-404 (seq (if (str/blank? schema)
+                          (concat (schema.table/schema-tables-list id nil opts)
+                                  (schema.table/schema-tables-list id "" opts))
+                          (schema.table/schema-tables-list id schema opts))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

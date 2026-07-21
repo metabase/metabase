@@ -1,4 +1,4 @@
-import { Route, redirect } from "metabase/router";
+import { Route, redirect, withRouteProps } from "metabase/router";
 import {
   BrokenDependencyDiagnosticsPage,
   UnreferencedDependencyDiagnosticsPage,
@@ -6,18 +6,29 @@ import {
 
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
+const RoutedDependencyGraphPage = withRouteProps(DependencyGraphPage);
+const RoutedBrokenDependencyDiagnosticsPage = withRouteProps(
+  BrokenDependencyDiagnosticsPage,
+);
+const RoutedUnreferencedDependencyDiagnosticsPage = withRouteProps(
+  UnreferencedDependencyDiagnosticsPage,
+);
+
 export function getDataStudioDependencyRoutes() {
-  return <Route index component={DependencyGraphPage} />;
+  return <Route index element={<RoutedDependencyGraphPage />} />;
 }
 
 export function getDataStudioDependencyDiagnosticsRoutes() {
   return (
     <>
-      <Route index component={redirect("broken")} />
-      <Route path="broken" component={BrokenDependencyDiagnosticsPage} />
+      <Route index element={redirect("broken")} />
+      <Route
+        path="broken"
+        element={<RoutedBrokenDependencyDiagnosticsPage />}
+      />
       <Route
         path="unreferenced"
-        component={UnreferencedDependencyDiagnosticsPage}
+        element={<RoutedUnreferencedDependencyDiagnosticsPage />}
       />
     </>
   );

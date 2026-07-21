@@ -19,7 +19,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Callable ExecutionException ExecutorService Executors Future Semaphore TimeUnit TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -115,7 +117,7 @@
   "Fetch and merge database engine + name info for search results that have database IDs.
   `:database_name` is the human-readable name the LLM needs as the first slot of every
   portable FK in `construct_notebook_query`; surfacing it on every table/model search
-  result means the LLM doesn't need a separate `entity_details` round-trip just to learn
+  result means the LLM doesn't need a separate `read_resource` round-trip just to learn
   the DB name."
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
@@ -132,7 +134,7 @@
   "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question, model,
   and metric search results so the LLM can use it verbatim as `source-card:` (for
   questions/models) or inside a `[metric, {}, <entity_id>]` aggregation clause (for
-  metrics) without a follow-up `entity_details` / `read_resource` round-trip."
+  metrics) without a follow-up `read_resource` round-trip."
   [results]
   (let [carded-types #{"question" "model" "metric"}
         card-ids (->> results
@@ -156,7 +158,7 @@
   table's portable FK as the `source-table:` when it wants to use the metric. Without this
   enrichment the LLM sees the metric's `portable_entity_id` in search but has to either
   hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
-  extra `entity_details` round-trip. We read the two columns directly from
+  extra `read_resource` round-trip. We read the two columns directly from
   `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
   query per search call, regardless of number of metrics in the result set.
 
@@ -225,17 +227,69 @@
               (sort-by :rrf >)
               (map :search-result)))))))
 
+(def ^:private max-parallel-searches
+  "Ceiling on subsearches running at once across the whole server — a shared budget, so neither one
+   call's fan-out nor many callers at once can saturate the DB / embedding provider. Enforced by the
+   server-wide [[search-semaphore]]."
+  20)
+
+(def ^:private search-timeout-ms
+  "Per-subsearch deadline. A subsearch that overruns — including time spent waiting for a permit
+   under load — is cancelled and surfaces a timeout, rather than pinning a thread and a DB
+   connection indefinitely."
+  10000)
+
+(defonce ^:private ^Semaphore search-semaphore
+  ;; Server-wide permit pool bounding total concurrent subsearches to max-parallel-searches. Shared
+  ;; across every caller so the limit is a property of the server, not of one request.
+  (Semaphore. max-parallel-searches))
+
+(defonce ^:private ^ExecutorService search-executor
+  ;; Server-lifetime virtual-thread executor — created once, never shut down. Virtual threads are
+  ;; created per task and cost nothing while idle; concurrency is bounded by search-semaphore, not by
+  ;; the pool.
+  (Executors/newVirtualThreadPerTaskExecutor))
+
+(defn- bounded-pmap
+  "Map `f` over `coll` on the shared virtual-thread executor, each task gated by the server-wide
+   [[search-semaphore]] (at most [[max-parallel-searches]] running at once across all callers), the
+   whole call bounded to `timeout-ms`, returning results in order. Conveys the caller's dynamic
+   bindings to each task (like `future`), so work that reads dynamic vars — e.g. the current user's
+   permission set — sees them. On timeout the call throws a teaching error; on any exit — timeout,
+   error, or success — tasks still running are cancelled so an abandoned subsearch is interrupted."
+  [timeout-ms f coll]
+  (let [tasks    (mapv (fn [x]
+                         (.submit search-executor
+                                  ^Callable (bound-fn* (fn []
+                                                         (.acquire search-semaphore)
+                                                         (try (f x) (finally (.release search-semaphore)))))))
+                       coll)
+        deadline (+ (System/nanoTime) (* (long timeout-ms) 1000000))]
+    (try
+      (mapv (fn [^Future fut]
+              (.get fut (max 0 (- deadline (System/nanoTime))) TimeUnit/NANOSECONDS))
+            tasks)
+      (catch TimeoutException _
+        (throw (ex-info (format "Search timed out after %ds — send fewer or narrower queries, then retry."
+                                (quot timeout-ms 1000))
+                        {:status-code 400})))
+      ;; Unwrap so a subsearch's exception propagates as itself (with its ex-data/status-code), the
+      ;; way a synchronous call would — not buried in an ExecutionException the caller can't read.
+      (catch ExecutionException e
+        (throw (or (ex-cause e) e)))
+      (finally
+        (run! (fn [^Future fut] (.cancel fut true)) tasks)))))
+
 (defn- join-results-by-rrf
-  "Execute multiple search queries in parallel and combine results using Reciprocal Rank Fusion.
-   Items appearing in multiple result lists are boosted in the final ranking.
-   May return more results than requested limit."
+  "Run each search query in parallel on the shared bounded executor, then combine them with
+   Reciprocal Rank Fusion. Every query — even a lone one — goes through the executor so it counts
+   against the server-wide concurrency budget and gets the timeout; a single result list keeps its
+   raw ranked order (RRF would only re-score one list), while zero or many are fused. Items appearing
+   in multiple lists are boosted. May return more results than the requested limit."
   [search-fn search-engine all-queries]
-  ;; Zero queries case is handled nicely by the >1 branch
-  (if (= 1 (count all-queries))
-    (search-fn (first all-queries) search-engine)
-    ;; Create futures for parallel execution
-    (let [futures      (mapv #(future (search-fn % search-engine)) all-queries)
-          result-lists (mapv deref futures)]
+  (let [result-lists (bounded-pmap search-timeout-ms #(search-fn % search-engine) all-queries)]
+    (if (= 1 (count result-lists))
+      (first result-lists)
       (reciprocal-rank-fusion result-lists))))
 
 (defn search

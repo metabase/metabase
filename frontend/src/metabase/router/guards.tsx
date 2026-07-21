@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect } from "react";
+import { type ReactElement, type ReactNode, useEffect } from "react";
 
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -16,7 +16,12 @@ import { Outlet } from "./Outlet";
 import type { Location } from "./types";
 import { useLocation } from "./use-location";
 
-type Props = { children: ReactElement };
+/**
+ * Guards double as route elements and as wrapper components. As a route element
+ * (`element={<IsAuthenticated/>}`) no `children` are passed, so they fall back to
+ * `<Outlet/>` and render whatever nested route matched.
+ */
+type Props = { children?: ReactNode };
 
 /** Paths that are handled by the backend server, not the frontend SPA router. */
 export const BACKEND_ONLY_PATH_PREFIXES = ["/oauth/", "/auth/sso/"];
@@ -100,7 +105,7 @@ function createGuard(
   { isAllowed, isAuthenticating = NEVER_AUTHENTICATING }: GuardSelectors,
   renderRedirect: (location: Location) => ReactElement | null,
 ) {
-  return function Guard({ children }: Props) {
+  return function Guard({ children = <Outlet /> }: Props) {
     const location = useLocation();
     const allowed = useSelector(isAllowed);
     const authenticating = useSelector(isAuthenticating);
