@@ -4861,3 +4861,81 @@ recorded, so a trace will not show a duration — but it **will** show whether t
 request was ever *sent*, which is exactly the discriminator between "slow
 response" and "the click never fired a query". Nothing so far has separated
 those.
+
+---
+
+### #226 PORTING RULE: `click({ force: true })` does NOT mean the same thing in
+### Cypress and Playwright — Playwright's can silently miss
+
+**The asymmetry.**
+- **Cypress** `.click({ force: true })` dispatches the event **directly on the
+  element**. It cannot miss.
+- **Playwright** `click({ force: true })` only skips the actionability
+  **checks** (visible / stable / receives-events) and still performs a **real
+  mouse click at the element's coordinates**. Skipping the *stable* check means
+  it will happily click a moving target — and land where the element used to be.
+
+A forced Playwright click on an element mid-reflow logs
+`"forcing action" -> "click action done"` **with no error**, while doing nothing.
+That is the worst possible shape: a silent no-op that reports success.
+
+**How it presented.** `temporal-unit-parameters`'s `removeQuestion()` follows the
+parameter sidebar's `Done` button at exactly two call sites (lines 202-203 and
+232-233). Closing the sidebar reflows the dashboard grid, and the forced click
+landed at stale coordinates ~40ms into that reflow. The dashcard survived, the
+next block ran against a **stale card at index 0**, and the test died 30s later
+on a locator that could never match. The page snapshot showed two dashcards where
+there should be one — the leftover "No breakouts" card reading "No valid fields"
+sitting at `.first()`.
+
+**The positional evidence is exact.** The two CI failures landed in precisely the
+blocks following those two call sites:
+
+| CI run | failing block | preceded by |
+|---|---|---|
+| 29814216890 | breakout by expression — waiting for `"Select…"` | Done+remove @202 |
+| 29820641912 | native query — waiting for `/Add a variable to this question/` | Done+remove @232 |
+
+The three `removeQuestion` calls that instead follow `editDashboard()` — no
+sidebar, therefore no reflow — have **never** failed.
+
+**Reproduced**, which almost nothing in this failure class has been: invisible
+unthrottled (30/30 pass), but **2/10 fail** under `Emulation.setCPUThrottlingRate:
+6` with CI's `--workers=2 --fully-parallel`. Fixed: 10/10.
+
+**The fix is to REMOVE `force: true`, which makes the click STRICTER** — it now
+waits for visible + stable + receives-events instead of skipping them. The
+preceding `hover()` already makes the hover-gated close icon visible, so nothing
+is lost.
+
+**Generalise:** any port that carries `force: true` across from Cypress is
+suspect, especially where the element can move (a closing sidebar, an animating
+panel, a re-laying-out grid). The Cypress original was safe by construction; the
+Playwright translation is not. Note this is the *opposite* direction from the
+usual porting hazard — here the faithful-looking translation is the dangerous
+one, and the correction is to be less forceful than upstream.
+
+**Related, and worth knowing:** the failure sites above were recovered WITHOUT a
+trace. Both shards went flaky-and-passed, so no report was uploaded — but
+`playwright-results.json`, in the always-uploaded `playwright-timings-s*`
+artifact, carries full error text including the failing locator. That is reusable
+for any flaky-only failure predating the artifact fix (#18a02dd000c).
+
+**Not explained by this.** The other two `temporal-unit-parameters` failures
+("auto-wire to cards with breakouts after a new card is added", "not auto-wire to
+cards without breakout columns") did **not** reproduce (0/10 under the same
+throttle) and are undetermined. Nothing was changed for them.
+
+**Scale, stated carefully.** `force: true` appears at **375 sites across 160
+files** in this package. That is an upper bound on where to *look*, NOT a defect
+count, and it should never be quoted as one. Most are harmless: forcing a click
+on an element that is merely overlapped or offscreen-but-stable behaves as
+intended. The defect needs the element to be **moving** at click time — a
+closing sidebar, an animating panel, a re-laying-out grid.
+
+Deciding which sites qualify requires knowing whether a reflow is in flight, so
+this is not mechanically detectable, exactly as with #221. The tractable triage
+is the shape that bit us here: a `force: true` click that immediately follows an
+action known to reflow its container (a `Done` / `Save` / `Cancel` that closes a
+sidebar or modal). Those are worth auditing; the other several hundred are not,
+absent evidence.

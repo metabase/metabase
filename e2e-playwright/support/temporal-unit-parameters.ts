@@ -371,11 +371,32 @@ export async function addQuestion(page: Page, name: string) {
     .click();
 }
 
-/** Port of the spec-local removeQuestion (the close icon is hover-gated). */
+/**
+ * Port of the spec-local removeQuestion (the close icon is hover-gated).
+ *
+ * Deliberately NOT `click({ force: true })`, even though upstream is
+ * `H.getDashboardCard().icon("close").click({ force: true })`. The two `force`
+ * flags do not mean the same thing:
+ *   - Cypress dispatches the event directly ON the element, so it cannot miss.
+ *   - Playwright only skips the actionability CHECKS (visible/stable/receives
+ *     events) and still performs a real mouse click at the element's
+ *     coordinates — so it can, and does, miss a moving target.
+ * Skipping the *stable* check is what bit us: in the two blocks where
+ * removeQuestion() follows the parameter sidebar's "Done" button, closing the
+ * sidebar reflows the dashboard grid, and the forced click landed at stale
+ * coordinates ~40ms into that reflow. Playwright logged "click action done"
+ * with no error, but the dashcard was never removed — so the next block ran
+ * against a stale card at index 0 and died 30s later on a locator that could
+ * never match (CI runs 29814216890 / 29820641912; reproduced locally at 2/10
+ * under 6x CPU throttle).
+ * The preceding hover() already makes the icon visible, so a plain click waits
+ * for the reflow to settle instead. Strictly stronger than upstream, and the
+ * only way to make the removal actually happen.
+ */
 export async function removeQuestion(page: Page) {
   const card = getDashboardCard(page);
   await card.hover();
-  await icon(card, "close").first().click({ force: true });
+  await icon(card, "close").first().click();
 }
 
 /**
