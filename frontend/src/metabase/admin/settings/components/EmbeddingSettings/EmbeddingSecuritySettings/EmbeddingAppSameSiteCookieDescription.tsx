@@ -42,11 +42,13 @@ function AuthorizedOriginsNote() {
     <Box data-testid="authorized-origins-note" w="22rem">
       <Alert className={S.SameSiteAlert} color="warning">
         <Center>
-          {jt`You should probably change this setting to ${(
-            <Text key="inner" component="span" fw="bold" c="text-secondary">
-              {t`None`}
-            </Text>
-          )}.`}
+          <Text component="span" ta="center">
+            {jt`You should probably change this setting to ${(
+              <Text key="inner" component="span" fw="bold" c="text-secondary">
+                {t`None`}
+              </Text>
+            )}.`}
+          </Text>
         </Center>
       </Alert>
     </Box>
