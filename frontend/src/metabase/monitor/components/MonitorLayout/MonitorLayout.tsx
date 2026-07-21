@@ -174,7 +174,7 @@ export function MonitorLayout() {
             <>
               <AreaTab
                 label={t`Usage stats`}
-                icon="metabot"
+                icon="lineandbar"
                 to={Urls.monitorAiAuditing()}
                 isSelected={activeSection === "ai-auditing-usage-stats"}
                 showLabel={isNavbarOpened}
@@ -184,7 +184,7 @@ export function MonitorLayout() {
               />
               <AreaTab
                 label={t`Conversations`}
-                icon="metabot"
+                icon="comment"
                 to={Urls.monitorAiAuditingConversations()}
                 isSelected={activeSection === "ai-auditing-conversations"}
                 showLabel={isNavbarOpened}
@@ -196,7 +196,7 @@ export function MonitorLayout() {
           ) : (
             <AreaTab
               label={t`Usage stats`}
-              icon="metabot"
+              icon="lineandbar"
               to={Urls.monitorAiAuditing()}
               isSelected={activeSection === "ai-auditing-usage-stats"}
               showLabel={isNavbarOpened}

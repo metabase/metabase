@@ -489,6 +489,24 @@ describe("MonitorLayout", () => {
     );
   });
 
+  it.each([
+    { label: "Usage stats", icon: "lineandbar" },
+    { label: "Conversations", icon: "comment" },
+    { label: "MCP analytics", icon: "metabot" },
+  ])("shows the $icon icon for $label", async ({ label, icon }) => {
+    setup({ tokenFeatures: { audit_app: true, ai_controls: true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      within(screen.getByRole("link", { name: label })).getByRole("img", {
+        name: `${icon} icon`,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("gates Usage stats and hides Conversations when ai_controls is unavailable", async () => {
     setup({ tokenFeatures: { audit_app: true, ai_controls: false } });
 
@@ -497,6 +515,12 @@ describe("MonitorLayout", () => {
     });
 
     expect(getTabGem("Usage stats")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("link", { name: "Usage stats" })).getByRole(
+        "img",
+        { name: "lineandbar icon" },
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Conversations" }),
     ).not.toBeInTheDocument();
