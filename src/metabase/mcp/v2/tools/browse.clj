@@ -235,7 +235,10 @@
   ;; transforms on every model — the expensive part of listing a database with thousands of cards.
   ;; `:card_schema` is never projected, but Card's after-select hook throws without it once the
   ;; row carries `:id` plus any of `:dataset_query`/`:result_metadata`/`:database_id`/`:type`.
-  (into [:model/Card :card_schema] projections/question-detailed-columns))
+  ;; `question-enrichment-keys` are projection keys `get_content` computes, not Card columns;
+  ;; selecting them would name a nonexistent column, so they are dropped from the DB select here.
+  (into [:model/Card :card_schema]
+        (remove projections/question-enrichment-keys projections/question-detailed-keys)))
 
 (defn- list-models
   [{:keys [database_id] :as args}]

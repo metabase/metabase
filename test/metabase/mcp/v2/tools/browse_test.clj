@@ -15,6 +15,7 @@
    collection while a current user is bound writes a `CollectionPermissionGraphRevision` whose
    id is `(inc (latest-id))`, which races under `^:parallel`. Only the tool call needs a user."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
@@ -835,18 +836,21 @@
             (is (= ["Orders Model"] (map :name (:data envelope)))
                 "plain questions are excluded — only :type :model")
             (is (= 1 (:total envelope))))
-          (testing "every column-backed projection key survives the narrowed column select — one
-                    missing from the select would come back missing here"
+          (testing "list_models emits exactly the column-backed projection keys — one dropped from
+                    the narrowed select would come back missing, one with no backing column would
+                    surface as the SQL error the basic assertion catches, and no get_content
+                    enrichment key leaks in"
             (let [[envelope] (call! {:action "list_models" :database_id db-id
                                      :response_format "detailed"})
-                  row-keys   (set (keys (first (:data envelope))))]
+                  row-keys   (set (keys (first (:data envelope))))
+                  col-keys   (set (remove projections/question-enrichment-keys
+                                          projections/question-detailed-keys))]
               ;; :dashboard_id and :source_card_id stay nil — a dashboard question and a sourced
-              ;; card are separate fixtures, and neither adds anything to what is tested here.
-              (is (= (into #{} (remove #{:dashboard_id :source_card_id})
-                           projections/question-detailed-columns)
-                     row-keys))
-              (is (empty? (filter #{:query_summary :template_tags} row-keys))
-                  "browse rows carry no computed enrichments — get_content derives those"))))))))
+              ;; card are separate fixtures, and `compact` drops what the row doesn't carry.
+              (is (= (disj col-keys :dashboard_id :source_card_id) row-keys)
+                  "every column-backed key survives the narrowed select, and nothing else appears")
+              (is (empty? (set/intersection row-keys projections/question-enrichment-keys))
+                  "no enrichment key (query_summary/template_tags) leaks into a list_models row"))))))))
 
 (deftest list-models-permission-filtered-test
   (testing "GHY-4138: list_models filters models by their parent collection's read perms, which
