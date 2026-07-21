@@ -368,3 +368,18 @@
     (testing "the concise projection compacts nils rather than emitting them"
       (is (= {:id 1 :name "Q"}
              (projections/project :question :concise {:id 1 :name "Q" :description nil}))))))
+
+(deftest get-content-subscription-fields-covers-notification-shape-test
+  (testing "GHY-4140: the subscription fields catalog covers the notification-backed shape, not
+            just the pulse shape — both are reachable under type subscription, so handlers.* must
+            validate as a fields path"
+    (mt/with-temp [:model/Notification {notif-id :id} {:payload_type :notification/card
+                                                       :creator_id   (mt/user->id :crowberto)
+                                                       :active       true}]
+      (migrate-notification-to-dashboard! notif-id)
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type   "subscription"
+                                         :id     notif-id
+                                         :fields ["handlers.channel_type"]}]})]
+          (is (nil? (:error row))
+              "handlers.* is a valid fields path for a notification-backed subscription"))))))

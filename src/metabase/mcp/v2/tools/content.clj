@@ -511,7 +511,11 @@
               (if (:handlers row)
                 (compact (select-keys row alert-detailed-keys))
                 (compact (select-keys row subscription-pulse-detailed-keys))))
-  :sample   subscription-sample})
+  :sample   subscription-sample
+  ;; The projection dispatches on row shape (pulse-backed vs. notification-backed), so no single
+  ;; sample captures it — the `fields` catalog is the union of both shapes' detailed paths.
+  :catalog  (vec (sort (distinct (concat (projections/paths-from-sample subscription-sample)
+                                         (projections/paths-from-sample alert-sample)))))})
 
 ;;; --------------------------------------------------- transform --------------------------------------------------
 
