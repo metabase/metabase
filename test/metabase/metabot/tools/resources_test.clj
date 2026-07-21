@@ -190,6 +190,33 @@
     (is (thrown? Exception
                  (#'read-resource/dispatch "https://example.com")))))
 
+(deftest dispatch-rejects-non-numeric-id-test
+  (testing "a non-numeric id segment throws a directive error stating the numeric-id contract"
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://question/VZbHZIeqQ2HhZv5r0pO6a")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://table/orders")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://collection/root"))))
+  (testing "the error carries agent-error metadata"
+    (let [e (try
+              (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")
+              (catch Exception e e))]
+      (is (= 400 (:status-code (ex-data e))))
+      (is (true? (:agent-error? (ex-data e))))))
+  (testing "the directive error text reaches read_resource output"
+    (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields"]})]
+      (is (str/includes? output "URIs use the numeric entity id"))))
+  (testing "non-id segments are unaffected — schema names and field ids may be non-numeric"
+    (is (= ["database" "1" "schemas" "PUBLIC" "tables"]
+           (:segments (#'read-resource/parse-uri "metabase://database/1/schemas/PUBLIC/tables"))))
+    (is (nil? (#'read-resource/check-numeric-id-segment!
+               "metabase://table/3/fields/c75/17" ["table" "3" "fields" "c75" "17"])))))
+
 (comment
   (mt/with-current-user (mt/user->id :crowberto)
     (read-resource/read-resource
@@ -731,38 +758,46 @@
 (deftest read-destination-backed-entities-return-errors-test
   (testing "destination-backed entity resources cannot expose destination database metadata"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {router-id :id} {}
-                     :model/Database {destination-id :id} {:router_database_id router-id}
-                     :model/Table    {table-id :id}       {:db_id destination-id :active true}
-                     :model/Card     {model-id :id}       {:type :model :database_id destination-id}
-                     :model/Card     {question-id :id}    {:type :question :database_id destination-id}
-                     :model/Card     {metric-id :id}      {:type :metric :database_id destination-id}
-                     :model/Measure  {measure-id :id}     {:table_id table-id}
-                     :model/Segment  {segment-id :id}     {:table_id table-id}]
-        (with-redefs [mi/can-read? (constantly true)]
-          (doseq [uri [(str "metabase://table/" table-id)
-                       (str "metabase://table/" table-id "/fields")
-                       (str "metabase://table/" table-id "/fields/42")
-                       (str "metabase://table/" table-id "/derived")
-                       (str "metabase://model/" model-id)
-                       (str "metabase://model/" model-id "/fields")
-                       (str "metabase://model/" model-id "/fields/42")
-                       (str "metabase://model/" model-id "/sources")
-                       (str "metabase://question/" question-id)
-                       (str "metabase://question/" question-id "/fields")
-                       (str "metabase://question/" question-id "/fields/42")
-                       (str "metabase://question/" question-id "/sources")
-                       (str "metabase://metric/" metric-id)
-                       (str "metabase://metric/" metric-id "/dimensions")
-                       (str "metabase://metric/" metric-id "/dimensions/42")
-                       (str "metabase://measure/" measure-id)
-                       (str "metabase://segment/" segment-id)]]
-            (testing uri
-              ;; Match the guard's 404 message exactly: a plain `error?` check can't tell the
-              ;; destination-database guard from unrelated failures like "Field 42 not found".
-              (is (= "Not found."
-                     (-> (read-resource/read-resource {:uris [uri]}) :resources first :error))
-                  "destination-backed entity resource must 404 via the destination-database guard"))))))))
+      (mt/with-temp [:model/Database {router-id :id}      {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}]
+        ;; A table can't exist on a destination in production (destinations aren't synced), so a normal
+        ;; `with-temp :model/Table` trips the destination-permission guard. Insert it directly to work
+        ;; around that guard and confirm the metabot guard rejects it anyway. (Cascades away with the db.)
+        (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                {:db_id      destination-id
+                                                 :name       "destination-table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
+          (mt/with-temp [:model/Card    {model-id :id}    {:type :model :database_id destination-id}
+                         :model/Card    {question-id :id} {:type :question :database_id destination-id}
+                         :model/Card    {metric-id :id}   {:type :metric :database_id destination-id}
+                         :model/Measure {measure-id :id}  {:table_id table-id}
+                         :model/Segment {segment-id :id}  {:table_id table-id}]
+            (with-redefs [mi/can-read? (constantly true)]
+              (doseq [uri [(str "metabase://table/" table-id)
+                           (str "metabase://table/" table-id "/fields")
+                           (str "metabase://table/" table-id "/fields/42")
+                           (str "metabase://table/" table-id "/derived")
+                           (str "metabase://model/" model-id)
+                           (str "metabase://model/" model-id "/fields")
+                           (str "metabase://model/" model-id "/fields/42")
+                           (str "metabase://model/" model-id "/sources")
+                           (str "metabase://question/" question-id)
+                           (str "metabase://question/" question-id "/fields")
+                           (str "metabase://question/" question-id "/fields/42")
+                           (str "metabase://question/" question-id "/sources")
+                           (str "metabase://metric/" metric-id)
+                           (str "metabase://metric/" metric-id "/dimensions")
+                           (str "metabase://metric/" metric-id "/dimensions/42")
+                           (str "metabase://measure/" measure-id)
+                           (str "metabase://segment/" segment-id)]]
+                (testing uri
+                  ;; Match the guard's 404 message exactly: a plain `error?` check can't tell the
+                  ;; destination-database guard from unrelated failures like "Field 42 not found".
+                  (is (= "Not found."
+                         (-> (read-resource/read-resource {:uris [uri]}) :resources first :error))
+                      "destination-backed entity resource must 404 via the destination-database guard"))))))))))
 
 (deftest read-database-models-test
   (mt/with-current-user (mt/user->id :crowberto)

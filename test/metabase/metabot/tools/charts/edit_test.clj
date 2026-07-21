@@ -73,7 +73,7 @@
           (tools.resources/read-resource-tool {:uris [table-fields-uri]})
 
           ;; Representations-format query: LLM-facing code should prefer the portable_fk path
-          ;; over numeric field ids. Take them straight from the entity_details response.
+          ;; over numeric field ids. Take them straight from the read_resource response.
           table-fk (:portable_fk table)
           category-field-fk (some (fn [{:keys [display_name portable_fk]}]
                                     (when (= "Category" display_name)
@@ -164,7 +164,7 @@
                 "example name) against the real `Sample Database` app DB. Per\n"
                 "`repr-plan.md` step 13 the YAML's `database:` is now strict - the lookup\n"
                 "fails fast with a clear `:agent-error?` message that nudges the LLM to\n"
-                "use the canonical name from `entity_details`.")
+                "use the canonical name from search / `read_resource`.")
     (mt/with-current-user (test.users/user->id :crowberto)
       ;; Verbatim the YAML the LLM produced in the bug report. Note: every portable FK uses
       ;; `Sample` (the prompt name), not `Sample Database` (the real one).
@@ -195,13 +195,13 @@
           (is (re-find #"Sample" (:output result))
               (str "error message should mention the offending DB name; got: "
                    (:output result)))
-          (is (re-find #"entity_details|Unknown database" (:output result))
+          (is (re-find #"read_resource|Unknown database" (:output result))
               (str "error message should hint at the recovery path; got: "
                    (:output result))))))))
 
 (deftest construct-notebook-query-llm-uses-canonical-db-name-end-to-end-test
   (testing (str "Symmetric to the previous test: the LLM writes `database: Sample Database`\n"
-                "(the canonical name reported by `entity_details`) and the chart constructs\n"
+                "(the canonical name reported by search / `read_resource`) and the chart constructs\n"
                 "cleanly. This is the post-step-13 happy path the LLM should follow.")
     (mt/with-current-user (test.users/user->id :crowberto)
       (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
@@ -239,7 +239,7 @@
                 "gets source-field auto-wired, produces a query that compiles to SQL with "
                 "a JOIN and executes successfully against the app DB.")
     (mt/with-current-user (test.users/user->id :crowberto)
-      (let [;; Discover portable FKs the same way the LLM does: via entity_details / fields.
+      (let [;; Discover portable FKs the same way the LLM does: via read_resource /fields.
             {[{{orders-details :structured-output} :content}] :resources}
             (tools.resources/read-resource-tool
              {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
@@ -277,7 +277,7 @@
             query (get-in construct-result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])
             field-opts (second breakout-field)]
-        (testing "entity_details surfaced the FK target - sanity-check the inputs we fed in"
+        (testing "read_resource surfaced the FK target - sanity-check the inputs we fed in"
           (is (= ["Product ID" "PRODUCTS"]
                  [(:display_name product-id-field)
                   (nth products-target-fk 2)])
