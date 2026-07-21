@@ -5,19 +5,14 @@
    `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.serialization.core :as serialization]
-   [metabase-enterprise.serialization.schema :as serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(comment serialization.schema/keep-me)
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -64,8 +59,8 @@
    [:creator     [:maybe CreatorResponse]]
    [:created_at  DateTimeWithTimeZone]
    [:updated_at  DateTimeWithTimeZone]
-   ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
-   ;; The list endpoint omits it — clients should treat a missing array as `[]`.
+   ;; Both the list and GET /:id endpoints hydrate `:databases`; it stays
+   ;; optional so clients treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
@@ -121,30 +116,16 @@
     (t2/update! :model/Workspace :id id {:name (:name params)}))
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
-(api.macros/defendpoint :delete "/:id"
-  :- [:map
-      [:id ms/PositiveInt]
-      [:deleted :boolean]
-      [:message {:optional true} :string]
-      [:orphaned_resources {:optional true}
-       [:sequential [:map
-                     [:workspace_database_id ms/PositiveInt]
-                     [:database_id ms/PositiveInt]
-                     [:driver :keyword]
-                     [:schema :string]
-                     [:user :string]
-                     [:reason {:optional true} [:maybe :string]]]]]]
-  "Delete a Workspace. Tears down each `:provisioned` database's warehouse isolation
-  first (blocking). Refuses with a 409 if any database is still `:provisioning`/
-  `:deprovisioning` unless `ignore_pending=true`, in which case those databases are
-  left in the warehouse and only their app-DB rows are removed. If the warehouse was
-  unreachable for some `:provisioned` databases, the response includes
-  `:orphaned_resources` and a `:message` describing the inert schema/user objects
-  left behind for manual cleanup."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {ignore-pending? :ignore-pending} :- [:map [:ignore-pending {:default false} [:maybe ms/BooleanValue]]]]
+(api.macros/defendpoint :delete "/:id" :- :nil
+  "Delete a Workspace. Tears down every database's warehouse isolation first
+  (blocking, any state). Each database is either fully torn down (its row is
+  deleted) or kept; when any teardown fails the workspace is kept too — with the
+  failed rows, so the delete can be retried — and the combined failure is
+  returned as the error. 204 on success, no response body."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
-  (assoc (ws/delete-workspace! id (boolean ignore-pending?)) :id id))
+  (ws/delete-workspace! id)
+  nil)
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
@@ -162,36 +143,3 @@
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
-
-;;; ----------------------------------------- Metadata export --------------------------------------------------
-
-(defn- workspace-metadata-filters
-  "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace.
-   `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
-  [{:keys [databases]}]
-  {:database-ids (mapv :database_id databases)
-   :schema-ids   (into {}
-                       (map (fn [{:keys [database_id input_schemas]}]
-                              [database_id (vec input_schemas)]))
-                       databases)})
-
-(api.macros/defendpoint :get "/:id/metadata/export"
-  :- (sr/streaming-response-schema ::serialization.schema/export-metadata-response)
-  "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,
-  scoped to each database's `:input` namespaces. Same flag semantics as
-  `/api/ee/serialization/metadata/export` — sections must be opted into via the
-  `with-databases` / `with-tables` / `with-fields` query parameters."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   query-params
-   :- [:map
-       [:with-databases {:default false} [:maybe :boolean]]
-       [:with-tables    {:default false} [:maybe :boolean]]
-       [:with-fields    {:default false} [:maybe :boolean]]]]
-  (api/read-check :model/Workspace id)
-  (let [workspace (api/check-404 (ws/get-workspace id))
-        opts      (merge query-params
-                         (workspace-metadata-filters workspace)
-                         {:user-info {:user-id       api/*current-user-id*
-                                      :is-superuser? api/*is-superuser?*}})]
-    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-      (serialization/export-metadata! os opts))))

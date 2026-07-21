@@ -46,7 +46,7 @@ const setup = async ({
     settingValue: versionInfo,
   });
 
-  renderWithProviders(<Route path="*" component={SettingsNav} />, {
+  renderWithProviders(<Route path="*" element={<SettingsNav />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {

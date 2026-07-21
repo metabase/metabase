@@ -16,7 +16,7 @@
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEditor DirCacheEditor$DeletePath
                               DirCacheEditor$DeleteTree DirCacheEditor$PathEdit DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent Ref Repository)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent ProgressMonitor Ref Repository)
    (org.eclipse.jgit.lib ObjectInserter ObjectReader)
    (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
@@ -251,27 +251,75 @@
                 (recur (update acc bucket conj (.getPathString tw))))
               acc)))))))
 
+(def ^:private commit-progress-checkpoint
+  "Export progress fraction reported once the local commit is durable, just before the network push begins."
+  0.8)
+
+(def ^:private push-progress-start
+  "Progress fraction at which the network push begins."
+  0.8)
+
+(def ^:private push-progress-end
+  "Progress fraction the network push approaches as it completes; the final 1.0 is reported elsewhere."
+  0.99)
+
+(defn- ->push-progress-monitor
+  "A JGit ProgressMonitor that maps the client-side \"Writing objects\" phase onto
+  [push-progress-start, push-progress-end] and calls `report-progress` (a 1-arg fraction fn) on every
+  `update` tick — even outside the writing phase, falling back to `push-progress-start` — so the push
+  always heartbeats regardless of JVM locale (which can rename or suppress the \"Writing objects\" title)
+  or an unknown (zero) total. Upstream throttling/monotonicity is handled by the reporter, so the repeated
+  fallback values are cheap and safe."
+  ^ProgressMonitor [report-progress]
+  (let [writing? (volatile! false)
+        total    (volatile! 0)
+        done     (volatile! 0)
+        report!  (fn []
+                   (report-progress
+                    (if (and @writing? (pos? @total))
+                      (+ push-progress-start
+                         (* (- push-progress-end push-progress-start)
+                            (min 1.0 (/ (double @done) @total))))
+                      push-progress-start)))]
+    (reify ProgressMonitor
+      (start [_ _total-tasks])
+      (beginTask [_ title tot]
+        (vreset! writing? (= title "Writing objects"))
+        (vreset! total (max 0 tot))
+        (vreset! done 0)
+        (report!))
+      (update [_ completed]
+        (vswap! done + completed)
+        (report!))
+      (endTask [_]
+        (vreset! writing? false))
+      (isCancelled [_] false)
+      (showDuration [_ _]))))
+
 (defn push-branch!
-  "Pushes a local branch to the remote repository.
+  "Pushes a local branch to the remote repository. Optional `progress-monitor` (a JGit ProgressMonitor)
+  reports push progress.
 
   Takes a git-source map containing a :git Git instance, :branch, and optional :token for
   authentication. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
   non-OK/UP_TO_DATE status."
-  [{:keys [^Git git ^String branch] :as git-source}]
-  (let [branch-name (qualify-branch branch)
-        push-response (call-remote-command
-                       (-> (.push git)
-                           (.setRefSpecs (doto (java.util.ArrayList.)
-                                           (.add (RefSpec. (str branch-name ":" branch-name))))))
-                       git-source)
-        push-results (->> push-response
-                          (map #(into [] (.getRemoteUpdates ^PushResult %)))
-                          flatten)]
-    (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
-      (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
-    push-response))
+  ([git-source] (push-branch! git-source nil))
+  ([{:keys [^Git git ^String branch] :as git-source} ^ProgressMonitor progress-monitor]
+   (let [branch-name (qualify-branch branch)
+         push-cmd    (cond-> (-> (.push git)
+                                 (.setRefSpecs (doto (java.util.ArrayList.)
+                                                 (.add (RefSpec. (str branch-name ":" branch-name))))))
+                       progress-monitor (.setProgressMonitor progress-monitor))
+         push-response (call-remote-command push-cmd git-source)
+         push-results  (->> push-response
+                            (map #(into [] (.getRemoteUpdates ^PushResult %)))
+                            flatten)]
+     (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %)
+                                      (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
+       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
+     push-response)))
 
 (defn default-branch
   "Retrieves the default branch name of the git repository.
@@ -332,6 +380,9 @@
                (.equals (written-tree-id this) ^ObjectId parent-tree-id))))
 
   (finish-commit! [this message]
+    (source.p/finish-commit! this message nil))
+
+  (finish-commit! [this message report-progress]
     (let [^Git git   (:git snapshot)
           repo       (.getRepository git)
           branch-ref (qualify-branch (:branch snapshot))
@@ -348,7 +399,9 @@
         (doto (.updateRef repo branch-ref)
           (.setNewObjectId commit-id)
           (.update))
-        (push-branch! snapshot)
+        ;; local commit durable; push about to start — force this one-shot checkpoint past the throttle
+        (when report-progress (report-progress commit-progress-checkpoint {:force? true}))
+        (push-branch! snapshot (when report-progress (->push-progress-monitor report-progress)))
         (close-commit-resources! inserter reader rev-walk)   ; close only after a successful push
         (.name commit-id))))
 

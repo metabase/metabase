@@ -96,7 +96,6 @@
       (semantic.tu/with-test-db! {:mode :blank}
         ;; with-redefs mirrors the :mock-initialized bindings, which include non-fn values that
         ;; with-dynamic-fn-redefs cannot proxy.
-        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [semantic.embedding/get-configured-model        (fn [] semantic.tu/mock-embedding-model)
                       semantic.index-metadata/default-index-metadata semantic.tu/mock-index-metadata
                       semantic.index/model-table-suffix              semantic.tu/mock-table-suffix]
