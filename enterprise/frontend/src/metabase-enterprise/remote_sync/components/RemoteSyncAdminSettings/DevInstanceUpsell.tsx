@@ -24,7 +24,7 @@ export const DevInstanceUpsell = UpsellWrapperDismissible(
           <UpsellGem.New mt="0.125rem" />
           <Box ml="sm">
             <Text fw="bold">{t`Need a dedicated development environment?`}</Text>
-            <Text lh="1.25rem">
+            <Text lh="1.25rem" c="text-secondary">
               {jt`With ${(
                 <ExternalLink
                   key="link"

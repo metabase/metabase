@@ -7,9 +7,17 @@ import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
 import { ERROR_DOC_LINKS } from "embedding-sdk-shared/errors";
 import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
-import { Alert } from "metabase/common/components/Alert";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
-import { Anchor, Box, Center, Code, Flex, Portal } from "metabase/ui";
+import {
+  Alert,
+  Anchor,
+  Box,
+  Center,
+  Code,
+  Flex,
+  Icon,
+  Portal,
+} from "metabase/ui";
 
 export const SdkError = ({
   message,
@@ -95,7 +103,12 @@ export function SdkPortalErrorWrapper({ children }: PropsWithChildren) {
 
 const DefaultErrorMessage = ({ message, onClose }: SdkErrorComponentProps) => (
   <Box p="sm" maw={600}>
-    <Alert variant="error" icon="warning" onClose={onClose}>
+    <Alert
+      color="error"
+      icon={<Icon name="warning" />}
+      withCloseButton={Boolean(onClose)}
+      onClose={onClose}
+    >
       <Box
         style={{
           WebkitLineClamp: 2,

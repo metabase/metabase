@@ -38,14 +38,14 @@ export const LegacyStaticEmbeddingAlert = () => {
   }
 
   return (
-    <Alert color="info" variant="outline">
+    <Alert>
       <Flex gap="sm">
         <Box>
           <Icon color="text-secondary" name="info" mt="2px" />
         </Box>
 
         <Stack>
-          <Text c="text-primary" lh="lg">
+          <Text c="text-secondary" lh="lg">
             {t`This embed was originally published with static embedding. We recommend using this new, modular embedding code snippet. Your embed won't change; you'll just have better theming options.`}
           </Text>
 

@@ -78,7 +78,7 @@ export const PushChangesModal = ({
     >
       <Box pt="md">
         {errorMessage && (
-          <Alert mb="md" variant="error" icon={<Icon name="warning" />}>
+          <Alert mb="md" color="error" icon={<Icon name="warning" />}>
             {errorMessage}
           </Alert>
         )}

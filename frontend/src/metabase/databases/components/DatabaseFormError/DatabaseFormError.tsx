@@ -3,7 +3,7 @@ import { Fragment, useRef } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { Alert, Box, Button, Divider, Icon, Paper, Text } from "metabase/ui";
+import { Alert, Box, Button, Divider, Icon, Paper } from "metabase/ui";
 
 import { AdditionalHelpButtonGroup } from "./AdditionalHelpButtonGroup";
 import { CheckHostAndPortButton } from "./CheckHostAndPortButton";
@@ -35,7 +35,7 @@ export const DatabaseFormError = () => {
     <Paper className={S.paper} ref={ref}>
       <Box p="md" pb={0}>
         <Alert color="warning" icon={<Icon name="warning" />} title={title}>
-          <Text>{errorMessage}</Text>
+          {errorMessage}
         </Alert>
         {troubleshootingTips.map((tipProps, index) => (
           <Fragment key={tipProps.key}>

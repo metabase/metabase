@@ -6,7 +6,7 @@ import {
   ExternalLink,
 } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { Alert, Group, Icon, Stack, Text } from "metabase/ui";
+import { Alert, Group, Icon, Stack } from "metabase/ui";
 
 import S from "./MetabotSlackSetup.module.css";
 
@@ -25,15 +25,9 @@ export function MissingScopesAlert({
       : "https://api.slack.com/apps";
 
   return (
-    <Alert
-      color="core-brand"
-      title={t`Metabot needs more Slack permissions`}
-      styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
-    >
+    <Alert color="core-brand" title={t`Metabot needs more Slack permissions`}>
       <Stack gap="md" mt="sm">
-        <Text>
-          {t`Your Slack app is missing OAuth scopes required for Metabot. Copy the updated manifest and paste it in your Slack app settings. You will need to re-install your application to your workspace after.`}
-        </Text>
+        {t`Your Slack app is missing OAuth scopes required for Metabot. Copy the updated manifest and paste it in your Slack app settings. You will need to re-install your application to your workspace after.`}
         <Group gap="md">
           <CopyButton
             value={JSON.stringify(manifest, null, 2)}
@@ -56,17 +50,11 @@ export function MissingScopesAlert({
 
 export function MetabotSetupRequiredAlert() {
   return (
-    <Alert
-      color="core-brand"
-      title={t`This feature requires an AI model`}
-      styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
-    >
-      <Text mt="sm">
-        <Link
-          to="/admin/metabot#setup"
-          variant="brand"
-        >{t`Connect to a provider`}</Link>
-      </Text>
+    <Alert color="core-brand" title={t`This feature requires an AI model`}>
+      <Link
+        to="/admin/metabot#setup"
+        variant="brand"
+      >{t`Connect to a provider`}</Link>
     </Alert>
   );
 }
@@ -82,13 +70,10 @@ export function EncryptionRequiredAlert({
     <Alert
       color="core-brand"
       title={t`You must enable encryption for your instance in order to use this feature`}
-      styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
     >
-      <Text mt="sm">
-        <ExternalLink
-          href={docsUrl}
-        >{t`Learn how to enable encryption`}</ExternalLink>
-      </Text>
+      <ExternalLink
+        href={docsUrl}
+      >{t`Learn how to enable encryption`}</ExternalLink>
     </Alert>
   );
 }

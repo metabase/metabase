@@ -1,12 +1,28 @@
-import { Alert, type AlertProps, Icon, Stack, Text } from "metabase/ui";
+import type { StoryFn } from "@storybook/react";
+import { Fragment } from "react";
+
+import { Alert, type AlertProps, Box, Icon, Stack, Text } from "metabase/ui";
+import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
+
+const TITLE = "Open source analytics that answers back";
+const MESSAGE =
+  "Let your team and customers chat with your data, query in natural language, and explore with AI-backed tools. Connect to your database in minutes for analytics without bottlenecks.";
 
 const args = {
-  icon: <Icon name="warning" />,
-  title: "Bummer!",
+  icon: <Icon name="info" />,
+  title: TITLE,
   withCloseButton: false,
 };
 
 const argTypes = {
+  variant: {
+    options: ["default", "light"],
+    control: { type: "inline-radio" },
+  },
+  size: {
+    options: ["default", "compact"],
+    control: { type: "inline-radio" },
+  },
   color: {
     control: { type: "text" },
   },
@@ -18,81 +34,81 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = (args: AlertProps) => {
-  return (
-    <Alert {...args}>
-      <Text>The No self-service access level for View data is going away.</Text>
-      <Text>
-        In a future release, if a group’s View data access for a database (or
-        any of its schemas or tables) is still set to No self-service
-        (deprecated), Metabase will automatically change that group’s View data
-        access for the entire database to Blocked. We’ll be defaulting to
-        Blocked, the least permissive View data access, to prevent any
-        unattended access to data. Need help? See our docs.
-      </Text>
-    </Alert>
-  );
-};
+const DefaultTemplate = (args: AlertProps) => (
+  <Alert {...args}>
+    <Text>{MESSAGE}</Text>
+  </Alert>
+);
 
-const WarningColorTemplate = (args: AlertProps) => {
-  return (
-    <Alert {...args} color="warning">
-      <Text>
-        In a future release, if a group’s View data access for a database (or
-        any of its schemas or tables) is still set to No self-service
-        (deprecated), Metabase will automatically change that group’s View data
-        access for the entire database to Blocked.
-      </Text>
-    </Alert>
-  );
-};
+const COLUMNS = [
+  { variant: "default", withCloseButton: false },
+  { variant: "default", withCloseButton: true },
+  { variant: "light", withCloseButton: false },
+  { variant: "light", withCloseButton: true },
+] as const;
 
-const multiColor = (args: AlertProps) => {
-  return (
-    <Stack>
-      <Alert {...args} color="info">
-        <Text>
-          In a future release, if a group’s View data access for a database (or
-          any of its schemas or tables) is still set to No self-service
-          (deprecated), Metabase will automatically change that group’s View
-          data access for the entire database to Blocked.
-        </Text>
-      </Alert>
-      <Alert {...args} color="warning">
-        <Text>
-          In a future release, if a group’s View data access for a database (or
-          any of its schemas or tables) is still set to No self-service
-          (deprecated), Metabase will automatically change that group’s View
-          data access for the entire database to Blocked.
-        </Text>
-      </Alert>
-      <Alert {...args} color="error">
-        <Text>
-          In a future release, if a group’s View data access for a database (or
-          any of its schemas or tables) is still set to No self-service
-          (deprecated), Metabase will automatically change that group’s View
-          data access for the entire database to Blocked.
-        </Text>
-      </Alert>
-      <Alert {...args} color="core-brand">
-        <Text>
-          In a future release, if a group’s View data access for a database (or
-          any of its schemas or tables) is still set to No self-service
-          (deprecated), Metabase will automatically change that group’s View
-          data access for the entire database to Blocked.
-        </Text>
-      </Alert>
-      <Alert {...args} color="success">
-        <Text>
-          In a future release, if a group’s View data access for a database (or
-          any of its schemas or tables) is still set to No self-service
-          (deprecated), Metabase will automatically change that group’s View
-          data access for the entire database to Blocked.
-        </Text>
-      </Alert>
-    </Stack>
-  );
-};
+const SIZES = [
+  { size: "default", label: "Default" },
+  { size: "compact", label: "Compact" },
+] as const;
+
+const Overview: StoryFn<AlertProps> = () => (
+  <StoryShowcase title="Alert">
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: `8rem repeat(${COLUMNS.length}, minmax(0, 1fr))`,
+        columnGap: "1.5rem",
+        rowGap: "1.5rem",
+        alignItems: "start",
+      }}
+    >
+      <div />
+      {COLUMNS.map(({ variant, withCloseButton }) => (
+        <StoryJsx
+          key={`${variant}-${withCloseButton}`}
+        >{`<Alert variant="${variant}"${withCloseButton ? " withCloseButton" : ""} />`}</StoryJsx>
+      ))}
+      {SIZES.map(({ size, label }) => (
+        <Fragment key={size}>
+          <Text size="sm" c="text-secondary" mt="sm">
+            {label}
+          </Text>
+          {COLUMNS.map(({ variant, withCloseButton }) => (
+            <Alert
+              key={`${variant}-${withCloseButton}`}
+              variant={variant}
+              size={size}
+              withCloseButton={withCloseButton}
+              icon={<Icon name="info" />}
+              title={TITLE}
+            >
+              <Text>{MESSAGE}</Text>
+            </Alert>
+          ))}
+        </Fragment>
+      ))}
+    </Box>
+  </StoryShowcase>
+);
+
+const ColorsTemplate = (args: AlertProps) => (
+  <Stack>
+    {(["info", "core-brand", "warning", "error", "success"] as const).map(
+      (color) => (
+        <Alert
+          {...args}
+          key={color}
+          color={color}
+          icon={<Icon name="info" />}
+          title={`color="${color}"`}
+        >
+          <Text>{MESSAGE}</Text>
+        </Alert>
+      ),
+    )}
+  </Stack>
+);
 
 export default {
   title: "Components/Feedback/Alert",
@@ -105,20 +121,13 @@ export const Default = {
   render: DefaultTemplate,
 };
 
-export const Warning = {
-  render: WarningColorTemplate,
-};
-
-export const Light = {
-  render: multiColor,
-  args: {
-    theme: "light",
+export const OverviewStory = {
+  render: Overview,
+  parameters: {
+    controls: { include: [] },
   },
 };
 
-export const Dark = {
-  render: multiColor,
-  args: {
-    theme: "dark",
-  },
+export const Colors = {
+  render: ColorsTemplate,
 };

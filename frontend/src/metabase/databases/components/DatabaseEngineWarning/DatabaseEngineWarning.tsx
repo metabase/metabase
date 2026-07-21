@@ -1,8 +1,7 @@
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { Alert } from "metabase/common/components/Alert";
-import { Anchor, Box } from "metabase/ui";
+import { Alert, Anchor, Box, Icon } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
 export interface DatabaseEngineWarningProps {
@@ -114,7 +113,7 @@ const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
 
 const CommunityEngineWarning = () => (
   <Box mb="xl">
-    <Alert icon="info">
+    <Alert icon={<Icon name="info" />}>
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
       {t`This is a community-developed driver and not supported by Metabase. `}
     </Alert>

@@ -16,7 +16,6 @@ import {
   Input,
   Modal,
   Stack,
-  Text,
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -131,17 +130,15 @@ export const DeleteDatabaseModal = ({
         >
           {hasContent && (
             <DeleteDatabaseModalSection isHidden={isContentRemovalConfirmed}>
-              <Alert color="info" icon={<Icon name="info" />}>
-                <Text>
-                  {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
-                    <UnstyledButton
-                      key="button"
-                      onClick={handleEditConnectionDetailsClick}
-                      c="core-brand"
-                      fw="bold"
-                    >{t`edit your connection details.`}</UnstyledButton>
-                  )}`}
-                </Text>
+              <Alert icon={<Icon name="info" />}>
+                {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
+                  <UnstyledButton
+                    key="button"
+                    onClick={handleEditConnectionDetailsClick}
+                    c="core-brand"
+                    fw="bold"
+                  >{t`edit your connection details.`}</UnstyledButton>
+                )}`}
               </Alert>
             </DeleteDatabaseModalSection>
           )}
@@ -165,7 +162,7 @@ export const DeleteDatabaseModal = ({
             isHidden={!isContentRemovalConfirmed && hasContent}
           >
             <Alert icon={<Icon name="warning" />} color="error">
-              <Text>{defaultDatabaseRemovalMessage}</Text>
+              {defaultDatabaseRemovalMessage}
             </Alert>
           </DeleteDatabaseModalSection>
           <DeleteDatabaseModalSection

@@ -25,7 +25,7 @@ export const SetupSsoAlert = () => {
       }
       color="warning"
     >
-      <Text size="md" lh="lg">
+      <Text size="md" lh="lg" c="text-secondary">
         {jt`This embed will only work for local testing. To get production ready code, configure ${(
           <Anchor
             key="configure-sso"

@@ -10,7 +10,7 @@ import { useTransformPermissions } from "metabase/transforms/hooks/use-transform
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { RunSection } from "metabase/transforms/pages/TransformRunPage/RunSection";
 import { isMissingSourceDatabase } from "metabase/transforms/utils";
-import { Alert, Center, Icon, Text } from "metabase/ui";
+import { Alert, Center, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { InspectorContent } from "./components/InspectorContent";
@@ -58,7 +58,7 @@ export const TransformInspectPage = ({
         .with({ hasSucceeded: false }, () => (
           <>
             <Alert color="core-brand" icon={<Icon name="info" />}>
-              <Text>{t`To inspect the transform you need to run it first.`}</Text>
+              {t`To inspect the transform you need to run it first.`}
             </Alert>
             <RunSection
               transform={transform}

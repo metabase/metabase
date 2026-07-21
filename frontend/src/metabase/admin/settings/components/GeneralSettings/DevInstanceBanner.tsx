@@ -38,7 +38,7 @@ function BannerBody({
 }) {
   const storeUrl = useStoreUrl();
   return (
-    <Text lh="1.25rem">
+    <Text lh="1.25rem" c="text-secondary">
       {copyText}{" "}
       <Anchor fw="bold" href={storeUrl} target="_blank">
         {linkText}

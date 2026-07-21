@@ -6,6 +6,9 @@ export { alertOverrides } from "./Alert.config";
 
 export type AlertProps = MantineAlertProps & {
   color?: "core-brand" | "warning" | "error" | "info" | "success";
+  size?: "default" | "compact";
 };
 
-export const Alert = (props: AlertProps) => <MantineAlert {...props} />;
+export const Alert = ({ size = "default", ...props }: AlertProps) => (
+  <MantineAlert data-size={size} {...props} />
+);
