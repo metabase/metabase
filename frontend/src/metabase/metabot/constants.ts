@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { isEmbedding } from "metabase/embedding/config";
+
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
@@ -86,6 +88,14 @@ export const METABOT_PROFILE_OVERRIDES = {
   SQL: "sql",
   TRANSFORMS_CODEGEN: "transforms_codegen",
 } as const satisfies Record<string, MetabotProfileId | undefined>;
+
+export const isHistoryEnabledProfile = (profile: string | undefined) =>
+  profile === undefined || profile === "nlq";
+
+export const resolveMetabotProfileId = (
+  profile: MetabotProfileId | undefined,
+): MetabotProfileId =>
+  profile ?? (isEmbedding() ? "embedding_next" : "internal");
 
 export const METABOT_ERR_MSG = {
   get default() {

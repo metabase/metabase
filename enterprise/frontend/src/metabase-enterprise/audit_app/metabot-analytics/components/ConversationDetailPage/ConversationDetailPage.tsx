@@ -41,7 +41,7 @@ import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
-import { useGetMetabotConversationQuery } from "../../api";
+import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
@@ -53,7 +53,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     data: conversation,
     isLoading,
     error,
-  } = useGetMetabotConversationQuery(convoId, {
+  } = useGetMetabotAnalyticsConversationQuery(convoId, {
     refetchOnMountOrArgChange: true,
   });
 

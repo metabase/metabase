@@ -56,7 +56,7 @@ export function MetabotChatHistory() {
       ) : null}
       {metabot.isLongConversation && (
         <MetabotResetLongChatButton
-          onResetConversation={metabot.resetConversation}
+          onResetConversation={metabot.createNewConversation}
         />
       )}
     </Stack>

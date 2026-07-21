@@ -1,18 +1,30 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import {
+  createMockMetabotConversationDetail,
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
   setupDocumentEndpoints,
+  setupGetMetabotConversationEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
   MetabotAgentChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { thumbsDown, thumbsUp } from "metabase/metabot/tests/utils";
+import {
+  assertConversation,
+  enterChatMessage,
+  input,
+  setup as renderMetabotChat,
+  thumbsDown,
+  thumbsUp,
+} from "metabase/metabot/tests/utils";
+import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
@@ -29,6 +41,11 @@ import {
 } from "../components/MetabotChat/MetabotChatMessage";
 
 registerVisualizations();
+
+const textMessage = (
+  role: "user" | "agent",
+  message: string,
+): FetchedChatMessage => ({ id: message, role, type: "text", message });
 
 const setup = (message: MetabotAgentChatMessage) =>
   renderWithProviders(
@@ -240,6 +257,46 @@ describe("AgentMessage", () => {
       });
 
       expect(screen.getByText(/Something went wrong/)).toBeInTheDocument();
+    });
+
+    it("shows a refresh button for conversation_out_of_sync errors that reloads the conversation", async () => {
+      const { store } = renderMetabotChat();
+      fetchMock.post(`path:/api/metabot/agent-streaming`, 409);
+
+      await enterChatMessage("How many orders?");
+
+      await assertConversation([
+        ["user", "How many orders?"],
+        ["agent", METABOT_ERR_MSG.outOfSync],
+      ]);
+      expect(await input()).toHaveTextContent("How many orders?");
+
+      const conversationId =
+        store.getState().metabot.conversations.omnibot?.conversationId;
+      if (!conversationId) {
+        throw new Error("expected an active omnibot conversation");
+      }
+      const reloaded: ["user" | "agent", string][] = [
+        ["user", "How many orders?"],
+        ["agent", "There are 42 orders."],
+        ["user", "And grouped by month?"],
+        ["agent", "Here is the monthly breakdown."],
+      ];
+      setupGetMetabotConversationEndpoint(
+        createMockMetabotConversationDetail({
+          conversation_id: conversationId,
+          messages: reloaded.map(([role, message]) =>
+            textMessage(role, message),
+          ),
+        }),
+      );
+
+      await userEvent.click(
+        await screen.findByTestId("metabot-chat-message-refresh"),
+      );
+
+      await assertConversation(reloaded);
+      expect(await input()).toHaveTextContent("");
     });
 
     it("renders the raw error payload as a debug card when debug is true", () => {
