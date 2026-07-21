@@ -92,4 +92,42 @@ describe("scenarios > data apps > repo sync", () => {
       .findByText(/isn.t ready yet/i, { timeout: 30000 })
       .should("be.visible");
   });
+
+  it("prunes an app whose directory is removed from the repo on the next sync", () => {
+    H.copySyncedCollectionFixture();
+    H.copySyncedDataAppsFixture();
+    H.commitToRepo("Add data apps");
+    H.configureGitAndPullChanges("read-write");
+
+    // Both apps are materialized from the first pull.
+    cy.request("GET", "/api/apps").then(({ body: apps }) => {
+      expect(apps.map((app: { name: string }) => app.name).sort()).to.deep.eq([
+        "broken-bundle",
+        "good",
+      ]);
+    });
+
+    // Delete the good app's directory from the repo and sync again. The connected
+    // repo is the source of truth, so the app must be pruned — not left serving.
+    cy.exec(`rm -rf -- "${H.LOCAL_GIT_PATH}/data_apps/good"`);
+    H.commitToRepo("Remove the good app from the repo");
+    H.configureGitAndPullChanges("read-write");
+
+    // `good` is gone; `broken-bundle` (still in the repo) survives.
+    cy.request("GET", "/api/apps").then(({ body: apps }) => {
+      expect(apps.map((app: { name: string }) => app.name)).to.deep.eq([
+        "broken-bundle",
+      ]);
+    });
+    cy.request({ url: "/api/apps/good", failOnStatusCode: false })
+      .its("status")
+      .should("eq", 404);
+
+    // The admin list reflects the removal.
+    cy.visit("/admin/settings/apps");
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.findByTestId("data-app-list-item-broken-bundle").should("exist");
+      cy.findByTestId("data-app-list-item-good").should("not.exist");
+    });
+  });
 });

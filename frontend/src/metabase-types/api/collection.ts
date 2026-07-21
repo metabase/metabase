@@ -177,7 +177,6 @@ export type ListCollectionItemsRequest = {
   collection_type?: CollectionType;
   include_can_run_adhoc_query?: boolean;
   show_dashboard_questions?: boolean;
-  show_exploration_documents?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 

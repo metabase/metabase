@@ -186,8 +186,8 @@
       (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
              (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
 
-(deftest ^:parallel claude-thinking-blocks-streamed-test
-  (testing "thinking content blocks (extended/adaptive thinking, e.g. Claude Sonnet 5) stream as reasoning parts"
+(deftest ^:parallel claude-thinking-blocks-ignored-test
+  (testing "thinking content blocks (extended/adaptive thinking, e.g. Claude Sonnet 5) are ignored"
     (let [events [{:type "message_start"
                    :message {:id "msg-1" :model "claude-sonnet-5"
                              :usage {:input_tokens 10 :output_tokens 0}}}
@@ -202,33 +202,25 @@
                   {:type "message_delta" :delta {:stop_reason "end_turn"}
                    :usage {:input_tokens 10 :output_tokens 5}}
                   {:type "message_stop"}]]
-      (testing "reasoning chunks are emitted ahead of the text chunks"
-        (is (=? [{:type :start}
-                 {:type :reasoning-start} {:type :reasoning-delta} {:type :reasoning-end}
-                 {:type :text-start} {:type :text-delta} {:type :text-end}
-                 {:type :usage}]
+      (testing "no thinking/reasoning chunks are emitted; only text + usage survive"
+        (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
                 (into []
                       (comp (claude/claude->aisdk-chunks-xf)
                             (m/distinct-by :type))
                       events))))
-      (testing "through the full pipeline produces reasoning + text + usage"
-        (is (=? [{:type :start}
-                 {:type :reasoning :reasoning "let me think"}
-                 {:type :text :text "hi"}
-                 {:type :usage}]
+      (testing "through the full pipeline produces text + usage"
+        (is (=? [{:type :start} {:type :text :text "hi"} {:type :usage}]
                 (into []
                       (comp (claude/claude->aisdk-chunks-xf)
                             (self.core/aisdk-xf))
                       events))))))
-  (testing "a stream that ends mid-thinking closes the reasoning part and flushes usage"
+  (testing "a stream that ends mid-thinking flushes usage without emitting a thinking part"
     (let [events [{:type "message_start"
                    :message {:id "msg-2" :model "claude-sonnet-5"
                              :usage {:input_tokens 10 :output_tokens 0}}}
                   {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
                   {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "partial"}}]]
-      (is (=? [{:type :start}
-               {:type :reasoning-start} {:type :reasoning-delta} {:type :reasoning-end}
-               {:type :usage}]
+      (is (=? [{:type :start} {:type :usage}]
               (into []
                     (comp (claude/claude->aisdk-chunks-xf)
                           (m/distinct-by :type))
@@ -432,31 +424,6 @@
                   {:type "text"
                    :text "Dynamic suffix content."}]
                  (:system body)))))
-      (testing "a blank suffix after the sentinel is dropped — Anthropic 400s on empty text blocks"
-        ;; e.g. explorations.selmer's only post-sentinel content is `{% if research_plan %}...`,
-        ;; which renders blank on the first prompt when no plan context is registered yet.
-        (let [body (capture-claude-request-body!
-                    {:input  input
-                     :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"})]
-          (is (= [{:type          "text"
-                   :text          "Stable prefix content."
-                   :cache_control {:type "ephemeral"}}]
-                 (:system body)))))
-      (testing "a blank prefix before the sentinel is dropped too"
-        (let [body (capture-claude-request-body!
-                    {:input  input
-                     :system "<<<METABOT_CACHE_BREAKPOINT>>>\n\nDynamic suffix content."})]
-          (is (= [{:type "text"
-                   :text "Dynamic suffix content."}]
-                 (:system body)))))
-      (testing "no :system key when the rendered system prompt is entirely blank"
-        (doseq [system ["" "   " "\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"]]
-          (let [body (capture-claude-request-body! {:input input :system system})]
-            (is (not (contains? body :system))
-                (pr-str system)))
-          (let [body (capture-claude-request-body! {:input input :system system :cache? false})]
-            (is (not (contains? body :system))
-                (pr-str system)))))
       (testing "no :system key when system is not provided"
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))
@@ -591,22 +558,22 @@
   (testing "models that accept an explicit temperature"
     (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
                    "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
-      (is (true? (#'claude/model-supports-temperature? model nil))
+      (is (true? (#'claude/model-supports-temperature? model))
           model)))
   (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
                    "claude-opus-5" "claude-opus-5-0"
                    "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-6"
                    "claude-fable-5"]]
-      (is (false? (#'claude/model-supports-temperature? model nil))
+      (is (false? (#'claude/model-supports-temperature? model))
           model))))
 
 (deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test
   (testing "Bedrock mantle ids carry an anthropic. vendor prefix that is stripped before the check"
     (doseq [model ["anthropic.claude-opus-4-8" "anthropic.claude-opus-4-7" "anthropic.claude-fable-5"]]
-      (is (false? (#'claude/model-supports-temperature? model nil))
+      (is (false? (#'claude/model-supports-temperature? model))
           model))
-    (is (true? (#'claude/model-supports-temperature? "anthropic.claude-haiku-4-5" nil)))))
+    (is (true? (#'claude/model-supports-temperature? "anthropic.claude-haiku-4-5")))))
 
 (deftest ^:parallel temperature-omitted-for-removed-sampling-models-test
   (let [request-body #(claude/claude-request-body {:model       %
@@ -618,134 +585,3 @@
       (is (not (contains? (request-body "claude-opus-4-8") :temperature)))
       (is (not (contains? (request-body "claude-sonnet-5") :temperature)))
       (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))))
-
-;;; ──────────────────────────────────────────────────────────────────
-;;; thinking-config normalization tests
-;;; ──────────────────────────────────────────────────────────────────
-
-(deftest ^:parallel adaptive-thinking-only?-test
-  (testing "models where {:type \"enabled\" :budget_tokens N} still works"
-    (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-5" "claude-sonnet-4-6"
-                   "claude-opus-4-5" "claude-opus-4-6" "claude-3-haiku-20240307"]]
-      (is (false? (#'claude/adaptive-thinking-only? model nil))
-          model)))
-  (testing "models where budget_tokens returns HTTP 400: Opus 4.7+, any generation 5+, Fable/Mythos"
-    (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
-                   "claude-sonnet-5" "claude-haiku-5" "claude-opus-5"
-                   "claude-fable-5" "claude-mythos-5"
-                   "anthropic.claude-sonnet-5"]]
-      (is (true? (#'claude/adaptive-thinking-only? model nil))
-          model))))
-
-(deftest ^:parallel adaptive-thinking-only?-capabilities-test
-  (let [adaptive-only {:thinking {:supported true
-                                  :types     {:enabled  {:supported false}
-                                              :adaptive {:supported true}}}}
-        legacy-ok     {:thinking {:supported true
-                                  :types     {:enabled  {:supported true}
-                                              :adaptive {:supported true}}}}
-        no-thinking   {:thinking {:supported false
-                                  :types     {:enabled  {:supported false}
-                                              :adaptive {:supported false}}}}]
-    (testing "live Models API capabilities take precedence over the version heuristic, in both directions"
-      (is (true? (#'claude/adaptive-thinking-only? "claude-sonnet-4-6" adaptive-only)))
-      (is (false? (#'claude/adaptive-thinking-only? "claude-sonnet-5" legacy-ok))))
-    (testing "a model with no thinking support at all is not adaptive-only"
-      (is (false? (#'claude/adaptive-thinking-only? "claude-sonnet-5" no-thinking))))
-    (testing "nil capabilities or a map without thinking info falls back to the version heuristic"
-      (is (true? (#'claude/adaptive-thinking-only? "claude-sonnet-5" nil)))
-      (is (true? (#'claude/adaptive-thinking-only? "claude-sonnet-5" {})))
-      (is (false? (#'claude/adaptive-thinking-only? "claude-sonnet-4-6" {}))))))
-
-(deftest ^:parallel thinking-config-uses-model-capabilities-test
-  (let [request-body  (fn [model caps]
-                        (claude/claude-request-body {:model              model
-                                                     :input              [{:role :user :content "hi"}]
-                                                     :temperature        0.3
-                                                     :thinking           {:type "enabled" :budget_tokens 8000}
-                                                     :model-capabilities caps}))
-        adaptive-only {:thinking {:supported true
-                                  :types     {:enabled  {:supported false}
-                                              :adaptive {:supported true}}}}
-        legacy-ok     {:thinking {:supported true
-                                  :types     {:enabled  {:supported true}
-                                              :adaptive {:supported true}}}}]
-    (testing "capabilities saying adaptive-only override a heuristic that says legacy"
-      (let [body (request-body "claude-sonnet-4-6" adaptive-only)]
-        (is (= {:type "adaptive"} (:thinking body)))
-        (is (not (contains? body :temperature)))))
-    (testing "capabilities saying the legacy shape is supported override a heuristic that says adaptive-only"
-      (let [body (request-body "claude-sonnet-5" legacy-ok)]
-        (is (= {:type "enabled" :budget_tokens 8000} (:thinking body)))
-        (is (= 0.3 (:temperature body)))))))
-
-(deftest claude-raw-capability-lookup-test
-  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
-    (let [caps-json  (fn [enabled? adaptive?]
-                       {:body (json/encode
-                               {:id           "whatever"
-                                :capabilities {:thinking {:supported true
-                                                          :types     {:enabled  {:supported enabled?}
-                                                                      :adaptive {:supported adaptive?}}}}})})
-          run-twice! (fn [opts caps-handler]
-                       (reset! @#'claude/model-capabilities-cache {})
-                       (let [get-urls (atom [])
-                             captured (atom nil)]
-                         (with-redefs [self.core/sse-reducible identity
-                                       debug/capture-stream    (fn [r _] r)
-                                       http/request            (fn [req]
-                                                                 (if (= :get (:method req))
-                                                                   (do (swap! get-urls conj (:url req))
-                                                                       (caps-handler req))
-                                                                   (do (reset! captured (json/decode+kw (:body req)))
-                                                                       {:body req})))]
-                           (dotimes [_ 2]
-                             (claude/claude-raw (merge {:model "claude-sonnet-4-6"
-                                                        :input [{:role :user :content "hi"}]}
-                                                       opts))))
-                         {:get-urls @get-urls :thinking (:thinking @captured)}))
-          thinking   {:type "enabled" :budget_tokens 1024}]
-      (testing "live capabilities override the version heuristic, and the lookup is cached across calls"
-        ;; the heuristic says sonnet-4-6 keeps the legacy shape; stubbed live capabilities say adaptive-only
-        (is (= {:get-urls ["https://api.anthropic.com/v1/models/claude-sonnet-4-6"]
-                :thinking {:type "adaptive"}}
-               (run-twice! {:thinking thinking} (fn [_] (caps-json false true))))))
-      (testing "a failed lookup falls back to the version heuristic (and the failure is cached too)"
-        (is (= {:get-urls ["https://api.anthropic.com/v1/models/claude-sonnet-4-6"]
-                :thinking {:type "enabled" :budget_tokens 1024}}
-               (run-twice! {:thinking thinking} (fn [_] (throw (ex-info "clj-http: status 404" {:status 404})))))))
-      (testing "no capability lookup happens when the request has neither thinking nor temperature"
-        (is (= {:get-urls [] :thinking nil}
-               (run-twice! {} (fn [_] (throw (ex-info "should not be called" {}))))))))))
-
-(deftest ^:parallel thinking-config-normalized-per-model-test
-  (let [request-body (fn [model thinking]
-                       (claude/claude-request-body {:model    model
-                                                    :input    [{:role :user :content "hi"}]
-                                                    :thinking thinking}))]
-    (testing "legacy enabled/budget_tokens config passes through unchanged on models that support it"
-      (is (= {:type "enabled" :budget_tokens 8000}
-             (:thinking (request-body "claude-sonnet-4-6" {:type "enabled" :budget_tokens 8000})))))
-    (testing "legacy config is coerced to adaptive on models that reject budget_tokens"
-      (doseq [model ["claude-sonnet-5" "claude-opus-4-7" "claude-opus-4-8"
-                     "claude-fable-5" "anthropic.claude-sonnet-5"]]
-        (is (= {:type "adaptive"}
-               (:thinking (request-body model {:type "enabled" :budget_tokens 8000})))
-            model)))
-    (testing ":effort survives the coercion and is still split out into output_config"
-      (let [body (request-body "claude-sonnet-5" {:type "enabled" :budget_tokens 8000 :effort "high"})]
-        (is (= {:type "adaptive"} (:thinking body)))
-        (is (= {:effort "high"} (:output_config body)))))
-    (testing "adaptive config passes through unchanged everywhere it is valid"
-      (is (= {:type "adaptive"}
-             (:thinking (request-body "claude-sonnet-5" {:type "adaptive"}))))
-      (is (= {:type "adaptive"}
-             (:thinking (request-body "claude-fable-5" {:type "adaptive"})))))
-    (testing "explicit disabled is dropped on Fable/Mythos (rejected there) but kept on other adaptive-only models"
-      (is (not (contains? (request-body "claude-fable-5" {:type "disabled"}) :thinking)))
-      (is (not (contains? (request-body "claude-mythos-5" {:type "disabled"}) :thinking)))
-      (is (= {:type "disabled"}
-             (:thinking (request-body "claude-sonnet-5" {:type "disabled"})))))
-    (testing "no thinking config means no :thinking key, on any model"
-      (is (not (contains? (request-body "claude-sonnet-5" nil) :thinking)))
-      (is (not (contains? (request-body "claude-sonnet-4-6" nil) :thinking))))))

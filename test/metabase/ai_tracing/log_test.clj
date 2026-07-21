@@ -133,7 +133,6 @@
         (is (= :ok (ait/with-eval-session nil (ait/with-llm-call {} :ok))))
         (is (= [] (entries messages)))))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- recording-logger-factory
   "A tools.logging factory that records the Log4j2 ThreadContext present at each write."
   [sink]

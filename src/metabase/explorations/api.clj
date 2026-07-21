@@ -332,11 +332,10 @@
 
 (mr/def ::ExplorationQuerySummary
   "Schema for a query row in API responses. The result blob and `dataset_query` aren't
-   asserted here; `interestingness_score`, `contextual_interestingness_score`, and
-   `row_count` are left-joined (in `/:id/queries`) or batched-hydrated (in `/:id`) — the
-   scores from `exploration_query_result`, `row_count` from the linked `stored_result` —
-   and may be nil for pending/errored queries or — for the contextual score — when the LLM
-   is unconfigured or the thread had no prompt."
+   asserted here; `interestingness_score`, `contextual_interestingness_score`, and `row_count`
+   are batched-hydrated onto each query in `/:id` — the scores from `exploration_query_result`,
+   `row_count` from the linked `stored_result` — and may be nil for pending/errored queries or —
+   for the contextual score — when the LLM is unconfigured or the thread had no prompt."
   [:map
    [:id                               ms/PositiveInt]
    [:exploration_thread_id            ms/PositiveInt]
@@ -562,7 +561,8 @@
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
   and timelines, and stamp the thread as started. Actual planning is async; this endpoint returns
-  immediately with an empty queries list. Clients should poll `GET /:id/queries` until rows appear.
+  immediately with an empty queries list. Clients should poll `GET /:id` until the queries appear
+  and reach a terminal status.
 
   Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted
   verbatim, plus a thread-scoped `:timeline_ids`."
@@ -786,22 +786,6 @@
     (t2/delete! :model/Exploration :id id))
   nil)
 
-(def ^:private query-summary-columns
-  "Column projection for `::ExplorationQuerySummary` rows — excludes `dataset_query` and the
-  result blob, joins both interestingness scores from `exploration_query_result` and the
-  snapshot `row_count` from `stored_result` (reached through the EQR FK — callers must
-  left-join both tables)."
-  [:exploration_query.id :exploration_query.exploration_thread_id
-   :exploration_query.card_id :exploration_query.segment_id
-   :exploration_query.dimension_id :exploration_query.query_type
-   :exploration_query.name :exploration_query.position
-   :exploration_query.status :exploration_query.error_message
-   :exploration_query.started_at :exploration_query.finished_at
-   :exploration_query.entity_id
-   [:exploration_query_result.interestingness_score            :interestingness_score]
-   [:exploration_query_result.contextual_interestingness_score :contextual_interestingness_score]
-   [:stored_result.row_count                                    :row_count]])
-
 (defn- get-exploration-page-or-404
   [page-id]
   (api/check-404 (t2/select-one :model/ExplorationPage :id page-id)))
@@ -885,26 +869,6 @@
             :where  [:in :id pending-ids]})))))
   (t2/select-one [:model/ExplorationThread :id :canceled_at :completed_at] :id thread-id))
 
-(api.macros/defendpoint :get "/:id/queries" :- [:sequential ::ExplorationQuerySummary]
-  "Lightweight list of queries for an exploration. Excludes `dataset_query` and the result blob —
-  intended for the frontend to poll while pending queries finish. The `interestingness_score`
-  column is left-joined from `exploration_query_result` so clients can rank/highlight without a
-  second roundtrip; pending or errored queries get `nil`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/read-check (get-exploration-or-404 id))
-  (t2/hydrate
-   (t2/select (into [:model/ExplorationQuery] query-summary-columns)
-              {:left-join [:exploration_thread
-                           [:= :exploration_query.exploration_thread_id :exploration_thread.id]
-                           :exploration_query_result
-                           [:= :exploration_query_result.exploration_query_id :exploration_query.id]
-                           :stored_result
-                           [:= :stored_result.id :exploration_query_result.stored_result_id]]
-               :where     [:= :exploration_thread.exploration_id id]
-               :order-by  [[:exploration_query.position :asc]
-                           [:exploration_query.id :asc]]})
-   :segment_name))
-
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up
   through `ExplorationThread` to the parent `Exploration`."
@@ -939,11 +903,11 @@
     (case (:status q)
       "done"
       (let [sr (api/check-404 (eqr/stored-results id))]
-        ;; The cached `result_data` was produced under the creator's lens, so a non-creator viewer
-        ;; might otherwise see rows the QP would have filtered out for them. Gate against the
-        ;; creator's stored data-access token (sandbox/impersonation/routing) + basic data perms.
-        (when-not (= api/*current-user-id* (:creator_id sr))
-          (queries/assert-can-view-cached-result! sr))
+        ;; The cached `result_data` was produced under the creator's lens, so any viewer might
+        ;; otherwise see rows the QP would have filtered out for them now. Gate every viewer — the
+        ;; creator included, whose own permissions may have narrowed since the snapshot — against the
+        ;; stored data-access token (sandbox/impersonation/routing) + basic data perms.
+        (queries/assert-can-view-cached-result! sr)
         (stream-stored-result format (:result_data sr)))
 
       ;; Pending / errored: no blob exists yet and the response is status-only (no rows, no

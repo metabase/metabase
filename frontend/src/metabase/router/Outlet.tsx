@@ -3,9 +3,9 @@ import { createContext, useContext } from "react";
 
 import type { Route } from "./route";
 
-const OutletContext = createContext<ReactNode>(null);
+export const OutletContext = createContext<ReactNode>(null);
 
-const RouteContext = createContext<Route | null>(null);
+export const RouteContext = createContext<Route | null>(null);
 
 /**
  * The route matched for the nearest `element`-based route ancestor. On v3 the

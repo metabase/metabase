@@ -11,7 +11,7 @@ import type {
   GetExplorationDataResponse,
   GetMyExplorationsRequest,
   GetMyExplorationsResponse,
-  RestartExplorationRequest,
+  RestartExplorationThreadRequest,
   UpdateExplorationRequest,
 } from "metabase-types/api";
 import { getExplorationPages } from "metabase-types/api/exploration";
@@ -82,17 +82,6 @@ export const explorationApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("exploration", id)]),
     }),
-    restartExploration: builder.mutation<
-      Exploration,
-      RestartExplorationRequest
-    >({
-      query: ({ threadId }) => ({
-        method: "POST",
-        url: `/api/exploration/thread/${threadId}/restart`,
-      }),
-      invalidatesTags: (_, error, { explorationId }) =>
-        invalidateTags(error, [idTag("exploration", explorationId)]),
-    }),
     deleteExploration: builder.mutation<void, ExplorationId>({
       query: (id) => ({
         method: "DELETE",
@@ -103,6 +92,17 @@ export const explorationApi = Api.injectEndpoints({
           idTag("exploration", id),
           listTag("exploration"),
         ]),
+    }),
+    restartExplorationThread: builder.mutation<
+      Exploration,
+      RestartExplorationThreadRequest
+    >({
+      query: ({ threadId }) => ({
+        method: "POST",
+        url: `/api/exploration/thread/${threadId}/restart`,
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
     }),
     cancelExplorationThread: builder.mutation<
       CancelExplorationThreadResponse,
@@ -205,10 +205,9 @@ export const {
   useCreateExplorationMutation,
   useExploreFurtherMutation,
   useUpdateExplorationMutation,
-  useRestartExplorationMutation,
   useDeleteExplorationMutation,
+  useRestartExplorationThreadMutation,
   useCancelExplorationThreadMutation,
-  useGetExplorationQueryResultQuery,
   useSetPageStarredMutation,
   useSetPagesHiddenMutation,
 } = explorationApi;

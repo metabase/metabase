@@ -157,17 +157,45 @@
               (is (= 1 (count queries)) "the query row is returned")
               (is leaks? "and its creator-derived name is visible to a same-lens viewer"))))))))
 
-(deftest creator-sees-own-derived-metadata-test
-  (testing "the creator always sees their own derived metadata, even against an incompatible stored token"
-    (with-done-exploration!
-      {:creator-id        (mt/user->id :rasta)
-       :data-access-token {:sandbox {(mt/id :venues) [1 "x" {"price" "999"}]}}}
-      (fn [{:keys [exploration]}]
-        (let [body (mt/user-http-request :rasta :get 200
-                                         (format "exploration/%d" (:id exploration)))
-              {:keys [queries leaks?]} (exploration-derived-data body)]
-          (is (= 1 (count queries)))
-          (is leaks? "the creator reads back the values their own lens produced"))))))
+(deftest creator-with-unchanged-lens-sees-own-derived-metadata-test
+  (testing "a creator whose lens is unchanged since the snapshot still sees their own derived
+            metadata — the re-gate must not lock the creator out of results they can still see"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
+          (fn [{:keys [exploration]}]
+            (let [body (mt/user-http-request :rasta :get 200
+                                             (format "exploration/%d" (:id exploration)))
+                  {:keys [queries leaks?]} (exploration-derived-data body)]
+              (is (= 1 (count queries)))
+              (is leaks? "the creator reads back the values their own lens produced"))))))))
+
+(deftest creator-with-changed-lens-is-denied-derived-metadata-test
+  (testing "being the snapshot's creator is not a permanent pass. A creator whose sandbox attribute
+            changed since the snapshot is re-gated against their *current* lens exactly like any
+            other viewer: they get the shell but none of the metadata derived from results computed
+            under a lens they no longer have (their permissions may have narrowed)."
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      ;; snapshot stored under rasta's own price=1 lens ...
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
+          (fn [{:keys [exploration]}]
+            ;; ... but rasta now resolves to price=2 -> a different lens
+            (sandbox.tu/with-user-attributes! :rasta {"price" "2"}
+              (let [body (mt/user-http-request :rasta :get 200
+                                               (format "exploration/%d" (:id exploration)))
+                    {:keys [queries blocks leaks?]} (exploration-derived-data body)]
+                (testing "the shell is still readable via collection perms"
+                  (is (= "shared" (:name body))))
+                (is (= [] queries)
+                    "no query rows — their :name and :dataset_query carry values from a now-incompatible lens")
+                (is (= [] blocks)
+                    "no block/page tree — its titles are built from those same query names")
+                (is (not leaks?)
+                    (str "the discovered value " (pr-str discovered-value)
+                         " must not appear anywhere in the response"))))))))))
 
 (deftest unsandboxed-viewer-with-perms-sees-cached-result-test
   (testing "an unsandboxed viewer with data perms may stream a sandboxed creator's result (superset)"
@@ -209,14 +237,28 @@
           (mt/user-http-request :rasta :get 200 (format "exploration/%d" (:id exploration)))
           (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))
 
-(deftest creator-bypasses-gate-test
-  (testing "the snapshot's creator always streams it, even against an incompatible stored token"
-    (with-done-exploration!
-      {:creator-id       (mt/user->id :rasta)
-       ;; a token rasta could never match, to prove the creator bypass overrides the gate
-       :data-access-token {:sandbox {(mt/id :venues) [1 "x" {"price" "999"}]}}}
-      (fn [{:keys [query]}]
-        (mt/user-http-request :rasta :get 202 (format "exploration/query/%d" (:id query)))))))
+(deftest creator-with-unchanged-lens-streams-own-result-test
+  (testing "a creator whose lens is unchanged since the snapshot still streams their own result"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
+          (fn [{:keys [query]}]
+            (mt/user-http-request :rasta :get 202 (format "exploration/query/%d" (:id query)))))))))
+
+(deftest creator-with-changed-lens-blocked-from-own-result-test
+  (testing "the snapshot's creator does NOT get a permanent pass to their own blob: a creator whose
+            sandbox attribute changed since the snapshot is re-gated against their *current* lens and
+            blocked (403), because the blob was computed under a lens they no longer have"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      ;; snapshot stored under rasta's own price=1 lens ...
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
+          (fn [{:keys [query]}]
+            ;; ... but rasta now resolves to price=2 -> a different lens
+            (sandbox.tu/with-user-attributes! :rasta {"price" "2"}
+              (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))))
 
 (deftest pending-query-status-is-not-gated-test
   (testing "the pending/error path returns status only (409) and is not data-gated — even for a sandboxed viewer"
