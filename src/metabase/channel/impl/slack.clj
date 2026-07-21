@@ -162,8 +162,7 @@
       (slack/upload-file-to-channel! (:bytes pdf) (:filename pdf) channel (:comment pdf))
       (catch Throwable e
         (log/error e "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF")
-        ;; A DM already delivers the caption as the message that opens the conversation, so don't re-post it.
-        (when (and (:comment pdf) (not (::slack/caption-already-posted? (ex-data e))))
+        (when (:comment pdf)
           (slack/post-chat-message! {:channel channel :text (:comment pdf)}))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
