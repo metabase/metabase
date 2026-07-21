@@ -3,11 +3,11 @@ import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage"
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { isWithinIframe } from "metabase/utils/iframe";
 
-import { WAIT_FOR_SESSION_TOKEN_TIMEOUT } from "../constants";
+import { WAIT_FOR_SESSION_TOKEN_TIMEOUT } from "../../script/constants";
 import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedTagMessage,
-} from "../types/embed";
+} from "../../script/types/embed";
 
 /**
  * Requests a refresh token from the embed.js script which lives in the parent window.

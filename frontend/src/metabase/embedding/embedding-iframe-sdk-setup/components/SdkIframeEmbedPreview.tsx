@@ -11,11 +11,11 @@ import { match } from "ts-pattern";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
 import { useSetting } from "metabase/common/hooks";
-import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
+import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/script/constants";
 // we import the equivalent of embed.js so that we don't add extra loading time
 // by appending the script
-import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
-import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/script/embed";
+import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/script/types/embed";
 import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Card } from "metabase/ui";

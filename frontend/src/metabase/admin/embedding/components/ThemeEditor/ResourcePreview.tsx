@@ -9,9 +9,9 @@ import {
 import { match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
-import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
-import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
-import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/script/constants";
+import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/script/embed";
+import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/script/types/embed";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box, Center, Loader } from "metabase/ui";
 

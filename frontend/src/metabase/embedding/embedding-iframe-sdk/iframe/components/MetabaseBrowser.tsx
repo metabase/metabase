@@ -19,7 +19,7 @@ import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
 import { Box, Button, Group, Stack } from "metabase/ui";
 
-import type { SdkIframeEmbedSettings } from "../types/embed";
+import type { SdkIframeEmbedSettings } from "../../script/types/embed";
 
 interface MetabaseBrowserProps {
   settings: SdkIframeEmbedSettings & {

@@ -4,7 +4,7 @@ import { trackSimpleEvent } from "metabase/analytics";
 import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
+} from "metabase/embedding/embedding-iframe-sdk/script/types/embed";
 import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";

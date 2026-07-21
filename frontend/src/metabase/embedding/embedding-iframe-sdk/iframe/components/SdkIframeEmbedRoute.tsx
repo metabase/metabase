@@ -29,9 +29,9 @@ import { getSetting } from "metabase/selectors/settings";
 import { getUserId } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 
+import type { SdkIframeEmbedSettings } from "../../script/types/embed";
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
-import type { SdkIframeEmbedSettings } from "../types/embed";
 import { stripInternalIframeQueryParameters } from "../utils/strip-internal-iframe-query-parameters";
 
 import { DashboardParametersBridge } from "./DashboardParametersBridge";

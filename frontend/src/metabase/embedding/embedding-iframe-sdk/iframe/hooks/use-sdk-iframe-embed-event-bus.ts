@@ -10,7 +10,7 @@ import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
-} from "../types/embed";
+} from "../../script/types/embed";
 
 import { trackEmbeddedAnalyticsJs } from "./analytics";
 

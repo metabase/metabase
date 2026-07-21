@@ -28,7 +28,7 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/iframe/utils";
 import {
   sessionTokenHeaders,
   setApiKeyHeader,

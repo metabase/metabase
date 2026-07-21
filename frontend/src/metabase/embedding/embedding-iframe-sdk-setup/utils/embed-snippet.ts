@@ -4,7 +4,7 @@ import _ from "underscore";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
-} from "metabase/embedding/embedding-iframe-sdk/constants";
+} from "metabase/embedding/embedding-iframe-sdk/script/constants";
 import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 
 import type {

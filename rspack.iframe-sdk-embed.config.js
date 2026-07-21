@@ -17,7 +17,7 @@ const ENTERPRISE_SRC_PATH =
 
 const SCRIPT_TAG_PATH = path.resolve(
   SRC_PATH,
-  "embedding/embedding-iframe-sdk/embed.ts",
+  "embedding/embedding-iframe-sdk/script/embed.ts",
 );
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";

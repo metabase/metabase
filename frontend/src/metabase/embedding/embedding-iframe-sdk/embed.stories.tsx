@@ -8,7 +8,7 @@ import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboar
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { SegmentedControl, Stack, Text } from "metabase/ui";
 
-import type { MetabaseDashboardElement } from "./embed";
+import type { MetabaseDashboardElement } from "./script/embed";
 
 type Mode = "controlled" | "uncontrolled";
 

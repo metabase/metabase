@@ -3,7 +3,7 @@ import { P, match } from "ts-pattern";
 
 import { stableStringify } from "metabase/utils/objects";
 
-import type { SdkIframeEmbedSettings } from "../types/embed";
+import type { SdkIframeEmbedSettings } from "../../script/types/embed";
 
 /**
  * Forces a re-render when the initial parameter changes.

@@ -4,13 +4,13 @@ import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
   type AllowedEmbedSettingKey,
-} from "metabase/embedding/embedding-iframe-sdk/constants";
+} from "metabase/embedding/embedding-iframe-sdk/script/constants";
 import type {
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
+} from "metabase/embedding/embedding-iframe-sdk/script/types/embed";
 import type {
   SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedSetupExperience,
