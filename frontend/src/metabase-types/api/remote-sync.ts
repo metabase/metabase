@@ -96,6 +96,15 @@ export type ExportPreflightResponse = {
   reason: string | null;
 };
 
+export type CheckoutBranchRequest = {
+  /** Git branch to check out for the current user; null returns to the main sync branch. */
+  branch: string | null;
+};
+
+export type CheckoutBranchResponse = {
+  branch: string | null;
+};
+
 export type ImportFromBranchRequest = {
   branch: string;
   force?: boolean;
@@ -106,7 +115,8 @@ export type ImportFromBranchRequest = {
    * configured remote-sync-branch — i.e. another session switched branches. Differs from `branch`
    * on a branch switch, where `branch` is the target and this is the branch being switched away from.
    */
-  expected_branch: string;
+  /** Optional for per-user branch pulls, which don't touch the global setting. */
+  expected_branch?: string;
 };
 
 export type ImportFromBranchResponse = {

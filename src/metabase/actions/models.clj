@@ -441,7 +441,7 @@
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :description :entity_id :name :public_uuid]
-   :skip      []
+   :skip      [:branch]
    :transform {:created_at             (serdes/date)
                :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
@@ -488,7 +488,8 @@
 
 (search/define-spec "action"
   {:model        :model/Action
-   :attrs        {:archived       true
+   :attrs        {:branch true
+                  :archived       true
                   :collection-id  :model.collection_id
                   :creator-id     true
                   :database-id    :query_action.database_id

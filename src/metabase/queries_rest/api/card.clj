@@ -237,7 +237,8 @@
   "Get `Card` with ID."
   [id]
   (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
-        raw-card (t2/select-one :model/Card :id id)]
+        raw-card (t2/select-one :model/Card {:where [:and [:= :id id]
+                                                     (remote-sync/branch-filter-clause)]})]
     (-> raw-card
         api/read-check
         hydrate-card-details
@@ -260,7 +261,7 @@
    {legacy-mbql? :legacy-mbql
     :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (remote-sync/check-branch-visible (get-card resolved-id))]
+        card (get-card resolved-id)]
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]

@@ -1777,7 +1777,8 @@
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type)))
+               remote-sync/stamp-branch)
     (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!
@@ -2198,7 +2199,7 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:branch]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
@@ -2464,7 +2465,8 @@
 
 (search.spec/define-spec "collection"
   {:model        :model/Collection
-   :attrs        {:collection-id        :id
+   :attrs        {:branch true
+                  :collection-id        :id
                   :collection-type      :type
                   :collection-location  :location
                   :root-collection-type {:fn root-collection-type}

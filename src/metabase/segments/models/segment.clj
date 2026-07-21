@@ -227,7 +227,7 @@
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip      [:branch ;; content-branching: never serialized
+   :skip      [:branch
                ;; always re-derived from definition by before-insert via lib/primary-source-table-id
                :table_id]
    :transform {:created_at (serdes/date)
@@ -239,7 +239,8 @@
 
 (search/define-spec "segment"
   {:model :model/Segment
-   :attrs {:archived true
+   :attrs {:branch true
+           :archived true
            :collection-id false
            :creator-id false
            :database-id :table.db_id

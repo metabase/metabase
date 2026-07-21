@@ -79,6 +79,7 @@ export interface User extends BaseUser {
     dashboard_id: DashboardId;
   } | null;
   permissions?: UserPermissions;
+  branch?: string | null;
 }
 
 export interface UserListResult {

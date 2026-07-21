@@ -35,6 +35,7 @@ import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
 import { type SyncError, parseSyncError } from "../../utils";
+import { CheckoutBranchModal } from "../CheckoutBranchModal";
 import { PushChangesModal } from "../PushChangesModal";
 import { SyncConflictModal } from "../SyncConflictModal";
 
@@ -64,6 +65,7 @@ export const GitSyncControls = () => {
   // True while the export preflight runs (push, or a dirty pull): it re-serializes the whole library and
   // reads the remote trees, so it can take a few seconds — show the control as busy meanwhile.
   const [isCheckingPreflight, setIsCheckingPreflight] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
   const combobox = useCombobox();
@@ -283,6 +285,7 @@ export const GitSyncControls = () => {
         </Combobox.Target>
 
         <GitSyncOptionsDropdown
+          onCheckoutClick={() => setShowCheckoutModal(true)}
           isPullDisabled={!hasRemoteChanges}
           isPullError={hasRemoteChangesError}
           isLoadingPull={isFetchingRemoteChanges}
@@ -298,6 +301,11 @@ export const GitSyncControls = () => {
           onClose={togglePushModal}
         />
       )}
+
+      <CheckoutBranchModal
+        opened={showCheckoutModal}
+        onClose={() => setShowCheckoutModal(false)}
+      />
 
       {conflictVariant && (
         <SyncConflictModal

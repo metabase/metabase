@@ -18,18 +18,20 @@
      references branch rows natively — no read-time remapping anywhere.
 
    - **Filtering**: entity queries use
-     [[metabase.remote-sync.branching/branch-filter-clause]] /
-     [[metabase.remote-sync.branching/check-branch-visible]] keyed off
-     [[current-branch]].
+     [[metabase.remote-sync.core/branch-filter-clause]] keyed off
+     [[current-branch]] — an other-branch row is simply not found.
 
-   - **Pull / push** always run within a branch: extract is filtered to the
-     operation branch's rows ([[exportable-instance?]]), load scopes entity
-     resolution to `(entity_id, branch)` and stamps `:branch` on every loaded
-     row ([[serdes-load-target]]). Legacy NULL-branch rows are adopted (stamped)
-     only by operations on the global sync branch."
+   - **Pull / push** always run within a branch: extraction filters rows to the
+     operation branch, and serdes load takes an explicit `:branch` option that
+     scopes entity resolution to `(entity_id, branch)` and stamps the column.
+     A data migration backfills `branch` from the `remote-sync-branch` setting
+     for pre-existing synced content, so there is no runtime adoption of
+     NULL-branch rows."
   (:require
    [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.api.common :as api]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -38,12 +40,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private branchable-models
-  {"Card"      :model/Card
-   "Dashboard" :model/Dashboard
-   "Document"  :model/Document
-   "Measure"   :model/Measure
-   "Segment"   :model/Segment})
+(def ^:private content-models
+  "Model-name -> model keyword for every content serdes model."
+  (into {} (map (fn [m] [m (keyword "model" m)])) serdes.models/content))
 
 ;;; ------------------------------------------ Branch context ------------------------------------------
 
@@ -69,52 +68,6 @@
       (when (settings/remote-sync-enabled)
         (settings/remote-sync-branch))))
 
-;;; ------------------------------------------ Serdes hooks ------------------------------------------
-
-(defenterprise exportable-instance?
-  "EE impl: serialize unbranched rows and rows of the current branch; skip other
-   branches' rows."
-  :feature :remote-sync
-  [instance]
-  (let [row-branch (:branch instance)
-        b          (current-branch)]
-    (or (nil? row-branch)
-        (nil? b)
-        (= row-branch b))))
-
-(defenterprise serdes-load-target
-  "EE impl: for branchable models in a branch context, resolve the load target by
-   `(entity_id, branch)` and stamp `:branch` on the ingested map. A legacy
-   NULL-branch row is adopted (updated and stamped) only when loading the global
-   sync branch — loads of any other branch insert fresh branch rows."
-  :feature :remote-sync
-  [model-name ingested local]
-  (let [b (current-branch)]
-    (if-let [model (and b (branchable-models model-name))]
-      (let [local' (or (t2/select-one model
-                                      :entity_id (:entity_id ingested)
-                                      :branch b)
-                       (when (and local
-                                  (nil? (:branch local))
-                                  (= b (settings/remote-sync-branch)))
-                         local))]
-        [(assoc ingested :branch b) local'])
-      [ingested local])))
-
-(defenterprise stamp-loaded-row!
-  "EE impl: stamp the freshly loaded row with the operation branch. `:branch` is
-   in every branchable model's serdes `:skip` list (it must never serialize), so
-   the load pipeline drops it from the ingested map — this post-load stamp is
-   what actually persists branch membership."
-  :feature :remote-sync
-  [model-name instance]
-  (when-let [b (current-branch)]
-    (when-let [model (branchable-models model-name)]
-      (when-let [id (:id instance)]
-        (when (not= b (:branch instance))
-          (t2/update! model :id id {:branch b})))))
-  nil)
-
 ;;; ------------------------------------------ Materialization ------------------------------------------
 
 (defn- in-memory-ingestable
@@ -132,7 +85,7 @@
   "True when `branch` already has local rows for any branchable model."
   [branch]
   (boolean (some (fn [model] (t2/exists? model :branch branch))
-                 (vals branchable-models))))
+                 (vals content-models))))
 
 (defn materialize-branch!
   "Materialize `to-branch` as a full copy of the git-synced content visible on
@@ -146,21 +99,12 @@
   [syncable-ids from-branch to-branch]
   (let [entities (into []
                        (for [[model-name ids] syncable-ids
-                             :let  [model (branchable-models model-name)]
+                             :let  [model (content-models model-name)]
                              :when (and model (seq ids))
                              row   (t2/select model :id [:in ids])
                              :when (or (nil? (:branch row))
                                        (= from-branch (:branch row)))]
-                         (do
-                           ;; adopt legacy unbranched rows into the branch they're being copied
-                           ;; from (the global sync branch), so each row belongs to exactly one
-                           ;; branch and cross-branch visibility is unambiguous
-                           (when (and (nil? (:branch row))
-                                      (= from-branch (settings/remote-sync-branch)))
-                             (t2/update! model :id (:id row) {:branch from-branch}))
-                           (serdes/extract-one model-name {} row))))]
+                         (serdes/extract-one model-name {} row)))]
     (log/infof "Materializing branch %s from %s: %d entities" to-branch from-branch (count entities))
-    (with-branch to-branch
-      ((requiring-resolve 'metabase-enterprise.serialization.v2.load/load-metabase!)
-       (in-memory-ingestable entities)))
+    (serialization/load-metabase! (in-memory-ingestable entities) :branch to-branch)
     (count entities)))

@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -55,7 +56,7 @@
       (t2/hydrate segment :creator))))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one :model/Segment :id id))
+  (-> (api/read-check (t2/select-one :model/Segment {:where [:and [:= :id id] (remote-sync/branch-filter-clause)]}))
       (t2/hydrate :creator)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -77,7 +78,8 @@
   []
   (as-> (t2/select :model/Segment
                    :archived false
-                   {:order-by [[:%lower.name :asc]]}) segments
+                   {:order-by [[:%lower.name :asc]]
+                    :where    (remote-sync/branch-filter-clause)}) segments
     (filter mi/can-read? segments)
     (t2/hydrate segments :creator :definition_description)))
 

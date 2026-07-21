@@ -1,18 +1,42 @@
 (ns metabase.remote-sync.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.branching]
-   [potemkin :as p]
    [toucan2.core :as t2]))
 
-(comment metabase.remote-sync.branching/keep-me)
+(defenterprise current-branch
+  "The git branch context for the current request/operation: the explicit sync
+   binding when set, otherwise the current user's checked-out branch, otherwise
+   the instance's global sync branch. Nil when remote sync is not in play.
+   OSS: always nil."
+  metabase-enterprise.remote-sync.branching
+  []
+  nil)
 
-(p/import-vars
- [metabase.remote-sync.branching
-  current-branch
-  branch-filter-clause
-  visible-on-current-branch?
-  check-branch-visible])
+(defn stamp-branch
+  "before-insert helper for content models: when the row has no explicit
+   `:branch`, targets a remote-synced collection, and the request runs in a
+   branch context, stamp the current branch on it — so content created at
+   runtime lands on the creator's branch (or the main sync branch) without
+   waiting for the next sync. No-op otherwise."
+  [{:keys [collection_id] :as row}]
+  (if-let [b (and (nil? (:branch row))
+                  (or collection_id (:is_remote_synced row))
+                  (current-branch))]
+    (if (or (:is_remote_synced row)
+            (t2/exists? :model/Collection :id collection_id :is_remote_synced true))
+      (assoc row :branch b)
+      row)
+    row))
+
+(defn branch-filter-clause
+  "HoneySQL WHERE clause restricting branchable content to the current branch:
+   rows with a NULL `branch` (not under git sync) are always visible; branch rows
+   only on their own branch. Returns nil — no filtering — when there is no branch
+   context. Use in every query that fetches branchable entities."
+  ([] (branch-filter-clause :branch))
+  ([branch-col]
+   (when-let [b (current-branch)]
+     [:or [:= branch-col nil] [:= branch-col b]])))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

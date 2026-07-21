@@ -15,6 +15,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -345,7 +346,8 @@
         has-transforms?     (snapshot-has-transforms? base-ingestable)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
         load-result         (serdes/with-cache
-                              (serialization/load-metabase! ingestable-snapshot))
+                              (serialization/load-metabase! ingestable-snapshot
+                                                            :branch (settings/remote-sync-branch)))
         seen-paths          (:seen load-result)
         imported-data       (spec/extract-imported-entities seen-paths)]
     (remote-sync.task/update-progress! task-id 0.8)
@@ -461,7 +463,8 @@
                         (serdes/with-cache
                           (serialization/load-metabase!
                            (source.ingestable/wrap-progress-ingestable task-id 0.7 ingestable)
-                           :backfill? false :reindex? false)))
+                           :backfill? false :reindex? false
+                           :branch (settings/remote-sync-branch))))
         imported-data (spec/extract-imported-entities (:seen load-result))
         loaded-eid?   (fn [model-type eid]
                         ;; by-entity-id holds sets of raw entity_id strings, keyed by model type
@@ -852,7 +855,9 @@
     (into [] (keep (fn [instance]
                      (when-let [row (id->row (:id instance))]
                        ;; content branching: only serialize rows visible on the operation's branch
-                       (when (branching/exportable-instance? instance)
+                       (when (or (not ((set serdes.models/content) model_type))
+                                 (nil? (:branch instance))
+                                 (= (:branch instance) (branching/current-branch)))
                          [row (serdes/extract-one model_type opts instance)]))))
           (serdes/extract-query model_type opts))))
 
@@ -1442,7 +1447,7 @@
 
 (defn- branch-import!
   "Pull a user branch: load the branch's serialized tree with the branch bound —
-  branchable entities land as branch rows (see serdes-load-target). None of the
+  branchable entities land as branch rows (the load runs with an explicit :branch). None of the
   main-branch reconciliation (RemoteSyncObject table, version pointer, unsynced
   cleanup) runs; those track the global sync branch."
   [branch snapshot task-id]
@@ -1450,7 +1455,7 @@
         base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
         ingestable      (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
     (serdes/with-cache
-      (serialization/load-metabase! ingestable))
+      (serialization/load-metabase! ingestable :branch branch))
     {:status  :success
      :outcome {:kind "pulled" :branch branch}}))
 

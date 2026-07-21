@@ -23,6 +23,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -79,7 +80,8 @@
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
+        dashboard (remote-sync/stamp-branch
+                   (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard)))]
     (u/prog1 dashboard
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
@@ -511,7 +513,8 @@
 
 (search/define-spec "dashboard"
   {:model        :model/Dashboard
-   :attrs        {:archived       true
+   :attrs        {:branch true
+                  :archived       true
                   :collection-id  true
                   :creator-id     true
                   :database-id    false

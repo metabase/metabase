@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -139,7 +140,8 @@
 
 (search.spec/define-spec "document"
   {:model :model/Document
-   :attrs {:archived true
+   :attrs {:branch true
+           :archived true
            :collection-id :collection_id
            :creator-id :creator_id
            :view-count :view_count
@@ -286,7 +288,7 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  model)
+  (remote-sync/stamp-branch model))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))

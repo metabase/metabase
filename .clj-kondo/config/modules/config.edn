@@ -632,6 +632,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            settings
@@ -723,6 +724,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -824,6 +826,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -1792,6 +1795,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -1941,7 +1945,7 @@
 
   remote-sync
   {:team "UX West"
-   :api  #{metabase.remote-sync.branching metabase.remote-sync.core metabase.remote-sync.init}
+   :api  #{metabase.remote-sync.core metabase.remote-sync.init}
    :uses #{api
            models
            premium-features}
@@ -2038,6 +2042,7 @@
            premium-features
            queries
            query-processor
+           remote-sync
            request
            settings
            startup
@@ -2398,6 +2403,7 @@
            collections
            events
            models
+           remote-sync
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -3611,7 +3617,7 @@
            metabase-enterprise.serialization.core
            metabase-enterprise.serialization.v2.backfill-ids
            metabase-enterprise.serialization.v2.ingest
-           metabase-enterprise.serialization.v2.load}
+           metabase-enterprise.serialization.v2.models}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
@@ -3624,7 +3630,6 @@
            models
            plugins
            premium-features
-           remote-sync
            search
            server
            setup

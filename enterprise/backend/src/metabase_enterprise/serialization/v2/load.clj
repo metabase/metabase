@@ -10,7 +10,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
    [metabase.models.serialization :as serdes]
-   [metabase.remote-sync.branching :as remote-sync.branching]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -216,18 +215,23 @@
                                    (log/debug "Ended loading dependencies" {:entity_id (:entity_id ingested)
                                                                             :level     (count expanding)}))
               local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))
-              ;; content branching: scope entity resolution to (entity_id, branch) and stamp
-              ;; :branch on the loaded row; identity outside a branch context
-              [ingested
-               local-or-nil]     (remote-sync.branching/serdes-load-target
-                                  (:model (peek rebuilt-path)) ingested local-or-nil)]
+              model-name         (:model (peek rebuilt-path))
+              branched?          (and (:branch ctx) ((set serdes.models/content) model-name))
+              local-or-nil       (if branched?
+                                   (t2/select-one (keyword "model" model-name)
+                                                  :entity_id (:entity_id ingested)
+                                                  :branch (:branch ctx))
+                                   local-or-nil)]
           (try
             (with-retries 3 200
               (fn []
                 (t2/with-transaction [_tx]
                   (let [result (serdes/load-one! ingested local-or-nil)]
-                    ;; content branching: persist branch membership post-load
-                    (remote-sync.branching/stamp-loaded-row! (:model (peek rebuilt-path)) result)
+                    (when (and branched?
+                               (:id result)
+                               (not= (:branch ctx) (:branch result)))
+                      (t2/update! (keyword "model" model-name) :id (:id result)
+                                  {:branch (:branch ctx)}))
                     result))))
             ctx
             (catch Exception e
@@ -264,7 +268,7 @@
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error reindex?]
+  [ingestion & {:keys [backfill? continue-on-error reindex? branch]
                 :or   {backfill?         true
                        continue-on-error false
                        reindex?          true}}]
@@ -280,6 +284,7 @@
       (let [contents      (serdes.ingest/ingest-list ingestion)
             ingest-errors (serdes.ingest/ingest-errors ingestion)
             ctx           (cond-> (new-context ingestion)
+                            branch              (assoc :branch branch)
                             (seq ingest-errors) (update :errors into ingest-errors))]
         (when (and (seq ingest-errors) (not continue-on-error))
           (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]

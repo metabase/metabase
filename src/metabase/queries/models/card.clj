@@ -40,6 +40,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -819,6 +820,7 @@
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
+        remote-sync/stamp-branch
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields)
@@ -1515,7 +1517,8 @@
 (defn ^:private base-search-spec
   []
   {:model        :model/Card
-   :attrs        {:archived             true
+   :attrs        {:branch               true
+                  :archived             true
                   :collection-id        true
                   :creator-id           true
                   :dashboard-id         true

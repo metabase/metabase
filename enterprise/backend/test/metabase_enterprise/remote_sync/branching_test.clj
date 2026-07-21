@@ -29,10 +29,11 @@
 
 (deftest checkout-materializes-branch-test
   (mt/with-premium-features #{:remote-sync}
-    (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/" :branch "main"}
                      :model/Card card      {:name          "A"
                                             :collection_id (:id coll)
+                                            :branch        "main"
                                             :dataset_query (mt/mbql-query venues)}]
         (with-branch-sync-setup
           (try
@@ -60,10 +61,11 @@
 
 (deftest re-checkout-does-not-rematerialize-test
   (mt/with-premium-features #{:remote-sync}
-    (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/" :branch "main"}
                      :model/Card card      {:name          "A"
                                             :collection_id (:id coll)
+                                            :branch        "main"
                                             :dataset_query (mt/mbql-query venues)}]
         (with-branch-sync-setup
           (try

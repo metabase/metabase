@@ -350,7 +350,8 @@
   (span/with-span!
     {:name       "get-dashboard"
      :attributes {:dashboard/id id}}
-    (-> (t2/select-one :model/Dashboard :id id)
+    (-> (t2/select-one :model/Dashboard {:where [:and [:= :id id]
+                                                 (remote-sync/branch-filter-clause)]})
         api/read-check
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
@@ -642,7 +643,7 @@
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
     (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
-          dashboard (remote-sync/check-branch-visible (get-dashboard resolved-id))]
+          dashboard (get-dashboard resolved-id)]
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 

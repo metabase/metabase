@@ -1,4 +1,6 @@
 import type {
+  CheckoutBranchRequest,
+  CheckoutBranchResponse,
   CreateBranchRequest,
   ExportChangesRequest,
   ExportChangesResponse,
@@ -50,6 +52,16 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         params: { branch },
       }),
       providesTags: () => [tag("remote-sync-has-remote-changes")],
+    }),
+    checkoutBranch: builder.mutation<
+      CheckoutBranchResponse,
+      CheckoutBranchRequest
+    >({
+      query: ({ branch }) => ({
+        url: `/api/ee/remote-sync/checkout`,
+        method: "POST",
+        body: { branch },
+      }),
     }),
     importChanges: builder.mutation<
       ImportFromBranchResponse,
@@ -181,6 +193,7 @@ export const {
   useGetBranchesQuery,
   useCreateBranchMutation,
   useImportChangesMutation,
+  useCheckoutBranchMutation,
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
