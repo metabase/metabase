@@ -10,6 +10,48 @@
 
 **Spec:** `docs/superpowers/specs/2026-07-21-dashboard-write-tool-design.md`
 
+## Reuse Ledger
+
+This tool is assembly, not invention. Almost everything it needs exists; several pieces are private and need exposing. **Before writing any helper, check this table.** If you find yourself implementing something not listed here, stop and search for it first.
+
+| What you need | What already does it | State |
+| --- | --- | --- |
+| Save a dashboard + full layout, transactionally, with write-check | `dashboards-rest.api/update-dashboard!` (api.clj:1025) | private → **make public** (Task 1) |
+| Create a dashboard with create-check | `POST /` body (api.clj:143-176) | inline → **extract** (Task 1) |
+| Validate the compiled payload | `DashUpdates` (api.clj:1116), `UpdatedDashboardCard` (:888), `UpdatedDashboardTab` (:900) | private → **make public** (Task 1) |
+| Create/update/delete dashcards by diff | `do-update-dashcards!` (api.clj:874) via `u/row-diff` | free via `update-dashboard!` |
+| Parameter-mapping permission checks | `check-parameter-mapping-permissions` (api.clj:768), `check-updated-parameter-mapping-permissions` (:817), `existing-parameter-mappings` (:807) | **free** via `update-dashboard!` — do not reimplement |
+| Tab create/update/delete + negative-id remap | `dashboard-tab/do-update-tabs!` (dashboard_tab.clj:105) | free via `update-dashboard!` |
+| Tab `:position` from vector order | `update-dashboard!` `map-indexed` (api.clj:1074) | free — `move_tab` is a vector reorder |
+| Delete cards on a removed tab | `update-dashboard!` filters by `deleted-tab-ids` (api.clj:1080) | free |
+| Grid placement | `dashboards.autoplace/get-position-for-new-dashcard` (autoplace.clj:23) | **public**, use verbatim |
+| Default card size per display type | `dashboards.constants/card-size-defaults` via autoplace's `[cards display-type]` arity | **public**, use verbatim |
+| Virtual card settings (text, heading) | `dashboard-card/virtual-card-settings` (dashboard_card.clj:80) | **public**; **extend** for link/iframe/action (Task 4) |
+| Normalize a JSON-shaped dashcard | `dashboard-card/from-parsed-json` (dashboard_card.clj:59) | **public** |
+| Visualizer `columnValuesMapping` remap on clone | `update-colvalmap-setting` (api.clj:465) | private → make public if `duplicate_card` supports visualizer cards |
+| Read model for "which dashcards is this parameter wired to" | `dashboard/dashboard->resolved-params` (dashboard.clj:376) | **public**, already used by `get_content` |
+| Does this target resolve against this card? | `parameters.params/param-target->field-id` (params.clj:80) | **public** — nil means bogus |
+| Filterable columns of a card's query (models/metrics/stages handled) | `params/filterable-columns-for-query` (params.clj:200), `card->filterable-columns-query` (:186) | private → **make public** (Task 7) |
+| The `target` clause shape | `xrays…filters/filter-for-card` (filters.clj:74) — `[:dimension ref {:stage-number 0}]` | private → copy the one-liner |
+| Field type → parameter type | `xrays…filters/filter-type-info` (filters.clj:92) | private → make public or copy |
+| Name subscriptions broken by a parameter removal | `broken-subscription-data` (api.clj:989), `handle-broken-subscriptions` (:1013) | private → **make public + return findings** (Task 8) |
+| Concise dashboard response shape | `content.clj` `dashcard-summary` (:253), `dashboard-parameters-summary` (:274) | private → **move to projections** (Task 2) |
+
+**Explicitly NOT reusable** — verified, do not be tempted:
+
+- `update-cards-for-copy` (api.clj:486, public) — for a same-dashboard duplicate, `id->new-card` is empty and the branch at api.clj:512 **silently drops every card-backed dashcard**. Take its remapping checklist (tab id, series, parameter_mappings, columnValuesMapping), not the function.
+- `duplicate-tabs` (api.clj:456) — inserts rows directly; wrong layer for a payload compiler.
+- `cards-to-copy` / `maybe-duplicate-cards` (api.clj:391, :433) — cross-collection *Card* duplication. `duplicate_card` clones the dashcard and points at the **same** `card_id`. Only relevant if you decide a dashboard-question-backed dashcard should clone its question; this plan decides **no**.
+- `chain-filter/filterable-field-ids` (chain_filter.clj:851) — takes field ids, not cards; can't produce a target clause, knows nothing of template tags or multi-stage queries. That's linked filters, a different problem.
+- `xrays…populate.clj` — a second, incompatible occupancy-grid packer. `autoplace` is the one kept in sync with the frontend.
+- `metabot/tools/autogen_dashboard.clj` — despite the name it creates nothing, just returns an `/auto/dashboard/…` URL.
+
+## Known Duplication (do not fix here)
+
+`src/metabase/agent_api/api.clj:1284-1500` already implements an ordered dashcard-mutation compiler (`add`, `add_heading`, `add_text`, `update_text`, `remove`, `move`) behind the Agent API's `update_dashboard`. Our op set is a strict superset of its six, but it mutates the DB **op-by-op** (`create-dashboard-cards!` / `delete-dashboard-cards!` / `t2/update!`), so a mid-batch failure leaves a partial layout — the opposite of what this ticket asks for. It also has no tabs-CRUD, parameters, series, or `patch_dashcard`.
+
+Decision: **build ours, converge later.** Borrow its *patterns* — per-tab collision grouping, autoplace state threading, per-op error indexing — not its mutation bodies. Do not modify `agent_api`. Note the duplication in the PR description and file a follow-up to migrate `agent_api/update_dashboard` onto the shared compiler, which also fixes its partial-write behavior.
+
 ## Global Constraints
 
 - Base branch is `mcp-v2-foundation`. The worktree is already reset onto it.
@@ -129,6 +171,19 @@ At `src/metabase/dashboards_rest/api.clj:1025`, change `defn-` to `defn` and rew
 ```
 
 Leave the body unchanged.
+
+- [ ] **Step 2b: Make the payload schemas public**
+
+`validate_only` validates the compiled payload with the same schema the REST endpoint uses, so drop the `^:private` from `DashUpdates` (`api.clj:1116`), `UpdatedDashboardCard` (`:888`), and `UpdatedDashboardTab` (`:900`). Give each a docstring; `UpdatedDashboardCard`'s should keep the existing negative-id comment as prose:
+
+```clojure
+(def UpdatedDashboardCard
+  "Schema for one dashcard in a dashboard update payload. A negative `:id` marks a dashcard to
+  create; positive ids name existing rows, and rows absent from the payload are deleted."
+  [:map
+   [:id                                  int?]
+   ...])
+```
 
 - [ ] **Step 3: Verify the REST suite still passes**
 
@@ -389,18 +444,29 @@ Create `src/metabase/mcp/v2/dashboard_ops.clj`:
   [idx message]
   (common/throw-teaching-error (format "op %d (%s" idx message)))
 
-(def ^:private default-size
-  "Grid size for a dashcard whose `size` was omitted and whose display type has no default."
-  {:size_x 12 :size_y 6})
+;; No local size table: `autoplace`'s `[cards display-type]` arity already merges
+;; `dashboards.constants/default-card-size` with the per-display entry in `card-size-defaults`,
+;; which covers :heading (full-width × 1), :text, :link, :iframe, and :action. That table is kept
+;; in sync with the frontend grid; a second copy here would drift.
 
 ;;; ------------------------------------------------- State --------------------------------------------------------
 
 (defn- init-state
-  "Working state for the fold: dashcards/tabs/parameters as vectors, in save order."
-  [current]
+  "Working state for the fold: dashcards/tabs/parameters as vectors in save order, plus the
+   caller-supplied `{card-id card}` map. Card metadata rides in state rather than being fetched,
+   which is what keeps this namespace pure — it is needed for a new card's default size and,
+   later, for parameter wiring."
+  [current cards]
   {:dashcards  (vec (:dashcards current))
    :tabs       (vec (:tabs current))
-   :parameters (vec (:parameters current))})
+   :parameters (vec (:parameters current))
+   ::cards     cards})
+
+(defn- card-display
+  "The display type keyword driving a new dashcard's default size; `:table` when the card is
+   unknown, which only affects the default and never correctness."
+  [state card-id]
+  (keyword (or (:display (get (::cards state) card-id)) "table")))
 
 (defn- find-dashcard
   [state id]
@@ -431,15 +497,24 @@ Create `src/metabase/mcp/v2/dashboard_ops.clj`:
 ;;; ---------------------------------------------- Placement -------------------------------------------------------
 
 (defn- placement
-  "The `{:row :col :size_x :size_y}` for a new dashcard: explicit `position`/`size` win, and an
-   omitted position autoplaces against the cards already on the target tab."
-  [state {:keys [position size]} tab-id]
-  (let [{:keys [size_x size_y]} (merge default-size size)
-        siblings (filterv #(= tab-id (:dashboard_tab_id %)) (:dashcards state))]
+  "The `{:row :col :size_x :size_y}` for a new dashcard of `display-type` (a keyword such as
+   `:table`, `:heading`, `:iframe`). Explicit `position`/`size` win; an omitted size comes from
+   the display type's default and an omitted position autoplaces against the cards already on
+   the target tab."
+  [state {:keys [position size]} tab-id display-type]
+  (let [siblings   (filterv #(= tab-id (:dashboard_tab_id %)) (:dashcards state))
+        ;; The 2-arity resolves the display's default size from `dashboards.constants`.
+        autoplaced (autoplace/get-position-for-new-dashcard siblings display-type)
+        size_x     (or (:size_x size) (:size_x autoplaced))
+        size_y     (or (:size_y size) (:size_y autoplaced))]
     (if position
       {:row (:row position) :col (:col position) :size_x size_x :size_y size_y}
+      ;; Re-run placement at the caller's size — the default-size slot may not fit it.
       (let [placed (autoplace/get-position-for-new-dashcard
                     siblings size_x size_y autoplace/default-grid-width)]
+        (when-not placed
+          (common/throw-teaching-error
+           "No free space on this tab for another card — remove or resize something first."))
         {:row (:row placed) :col (:col placed) :size_x size_x :size_y size_y}))))
 
 ;;; ------------------------------------------------- Ops ----------------------------------------------------------
@@ -461,7 +536,7 @@ Create `src/metabase/mcp/v2/dashboard_ops.clj`:
                   :card_id            card_id
                   :dashboard_tab_id   tab
                   :parameter_mappings []}
-                 (placement state op tab)
+                 (placement state op tab (card-display state card_id))
                  (when (seq series) {:series (mapv (fn [cid] {:id cid}) series)})
                  (when (seq inline_parameters) {:inline_parameters (vec inline_parameters)}))))
 
@@ -470,13 +545,18 @@ Create `src/metabase/mcp/v2/dashboard_ops.clj`:
 (defn compile-ops
   "Fold `ops` over `current` (a dashboard hydrated with `[:dashcards :series :card] :tabs`) and
    return `{:dashcards :tabs :parameters}` — the full-replacement payload `update-dashboard!`
-   saves. New rows carry the caller's negative ids. Throws a teaching error naming the op index
-   on any invalid op."
-  [current ops]
-  (reduce-kv (fn [state idx op] (apply-op state idx op))
-             (init-state current)
-             (vec ops)))
+   saves. New rows carry the caller's negative ids. `cards` maps every card id the ops may touch
+   to its card row; this namespace does no I/O, so the caller resolves that. Throws a teaching
+   error naming the op index on any invalid op."
+  ([current ops] (compile-ops current ops {}))
+  ([current ops cards]
+   (-> (reduce-kv (fn [state idx op] (apply-op state idx op))
+                  (init-state current cards)
+                  (vec ops))
+       (select-keys [:dashcards :tabs :parameters]))))
 ```
+
+Taking the `cards` map from the start avoids changing this signature again in Task 8, and `select-keys` at the end keeps the internal `::cards` key out of the payload.
 
 Note `op-error!`'s format string closes the parenthesis opened by `"op %d ("` — each call site supplies the rest, producing e.g. `op 1 (add_card): id -1 is already used in this batch — …`. Keep that discipline in every op method.
 
@@ -499,11 +579,15 @@ git commit -m "GHY-4147: dashboard op compiler core with add_card"
 
 `add_text`, `add_heading`, `add_link`, `add_iframe`, `add_action`, `duplicate_card`. All produce a dashcard; the virtual ones carry no `card_id` and describe themselves through `visualization_settings`.
 
-The exact virtual-card shapes come from the frontend, which is the only current writer: `createVirtualCard` (`frontend/src/metabase/common/utils/dashboard.ts:41`) and the `add*DashCardToDashboard` actions (`frontend/src/metabase/dashboard/actions/cards-typed.ts:197-245`). The backend already has `metabase.dashboards.models.dashboard-card/virtual-card-settings` covering `text` and `heading`, including the `dashcard.background false` that headings get.
+`metabase.dashboards.models.dashboard-card/virtual-card-settings` (dashboard_card.clj:80) is public and already covers `text` and `heading`, including the `dashcard.background false` that headings get. It does **not** cover `link`, `iframe`, or `action`. **Extend that fn** rather than building settings maps inside the compiler — a virtual card the editor cannot render is worse than no op, and one shared builder is the only way to stay in step with the frontend.
+
+Reference shapes, from the only current writers: `createVirtualCard` (`frontend/src/metabase/common/utils/dashboard.ts:41`), the `add*DashCardToDashboard` actions (`frontend/src/metabase/dashboard/actions/cards-typed.ts:197-245`), the backend's one link-card example (`src/metabase/xrays/api/automagic_dashboards.clj:269`), and the iframe read side (`src/metabase/channel/render/pdf.clj:405`).
 
 **Files:**
+- Modify: `src/metabase/dashboards/models/dashboard_card.clj:80` (extend `virtual-card-settings`)
 - Modify: `src/metabase/mcp/v2/dashboard_ops.clj`
 - Modify: `test/metabase/mcp/v2/dashboard_ops_test.clj`
+- Test: `test/metabase/dashboards/models/dashboard_card_test.clj`
 
 **Interfaces:**
 - Consumes: `compile-ops` / `op-error!` / `placement` from Task 3; `metabase.dashboards.models.dashboard-card/virtual-card-settings`.
@@ -609,23 +693,50 @@ Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`:
 Run: `./bin/test-agent :only '[metabase.mcp.v2.dashboard-ops-test]'`
 Expected: FAIL — the new tests hit `apply-op :default` ("unknown op").
 
-- [ ] **Step 3: Implement the add ops**
+- [ ] **Step 3a: Extend `virtual-card-settings`**
+
+In `src/metabase/dashboards/models/dashboard_card.clj:80`, widen the existing fn to cover the remaining virtual displays. Keep the current `[display text]` arity working — `xrays…populate/add-text-card` calls it — and add an arity taking display-specific extras:
+
+```clojure
+(defn virtual-card-settings
+  "`visualization_settings` for a virtual dashcard — one with no backing card, such as a text card,
+  heading, link, or iframe. `display` is the virtual display type as a string. `extras` carries the
+  display-specific settings: `{:text …}` for text and headings, `{:link {:url …}}` or
+  `{:link {:entity {:model … :id …}}}` for links, `{:iframe …}` for iframes.
+  Mirrors the shape the frontend saves; see `createVirtualCard` in
+  frontend/src/metabase/common/utils/dashboard.ts."
+  ([display text] (virtual-card-settings display (when text {:text text})))
+  ([display extras]
+   (cond-> (merge {:virtual_card {:name                   nil
+                                  :display                display
+                                  :visualization_settings {}
+                                  :archived               false}}
+                  extras)
+     ;; headings render without a card background, matching the frontend default
+     (= display "heading") (assoc :dashcard.background false))))
+```
+
+The two arities are ambiguous when `extras` is a string vs a map — dispatch on `(map? x)` inside a single 2-arity rather than relying on shape, or give the new one a distinct name (`virtual-card-settings*`) if that reads better. Pick one and make `add-text-card`'s existing call site still pass its test.
+
+Add a test in `test/metabase/dashboards/models/dashboard_card_test.clj` covering each display, asserting the `:virtual_card` envelope and the display-specific key.
+
+- [ ] **Step 3b: Implement the add ops**
 
 Add to `src/metabase/mcp/v2/dashboard_ops.clj` (and add `[metabase.dashboards.models.dashboard-card :as dashboard-card]` to the `ns` requires):
 
 ```clojure
 (defn- virtual-dashcard
-  "A dashcard with no backing card: `display` is the virtual display type and `settings` the
-   display-specific `visualization_settings` merged over the standard virtual-card envelope."
-  [state idx op display settings]
+  "A dashcard with no backing card. `display` is the virtual display type and `extras` its
+   display-specific settings, both handed to [[dashboard-card/virtual-card-settings]] so this
+   compiler and the frontend agree on the shape."
+  [state idx op display extras]
   (check-new-id! state idx (:id op) (:op op))
   (update state :dashcards conj
-          (merge {:id                 (:id op)
-                  :dashboard_tab_id   (:tab op)
-                  :parameter_mappings []
-                  :visualization_settings
-                  (merge (dashboard-card/virtual-card-settings display nil) settings)}
-                 (placement state op (:tab op))
+          (merge {:id                     (:id op)
+                  :dashboard_tab_id       (:tab op)
+                  :parameter_mappings     []
+                  :visualization_settings (dashboard-card/virtual-card-settings display extras)}
+                 (placement state op (:tab op) (keyword display))
                  (when (seq (:inline_parameters op))
                    {:inline_parameters (vec (:inline_parameters op))}))))
 
@@ -661,22 +772,29 @@ Add to `src/metabase/mcp/v2/dashboard_ops.clj` (and add `[metabase.dashboards.mo
                   :visualization_settings
                   (cond-> {:actionDisplayType (or display "button")}
                     label (assoc "button.label" label))}
-                 (placement state op (:tab op)))))
+                 (placement state op (:tab op) :action))))
 
 (defmethod apply-op "duplicate_card"
   [state idx {:keys [id dashcard_id tab] :as op}]
   (check-new-id! state idx id "duplicate_card")
-  (let [source  (resolve-dashcard! state idx dashcard_id)
-        tab-id  (if (contains? op :tab) tab (:dashboard_tab_id source))]
+  (let [source (resolve-dashcard! state idx dashcard_id)
+        tab-id (if (contains? op :tab) tab (:dashboard_tab_id source))]
     (update state :dashcards conj
-            (merge (dissoc source :id :row :col :size_x :size_y :dashboard_tab_id :created_at :updated_at :card)
+            (merge (dissoc source :id :row :col :size_x :size_y :dashboard_tab_id
+                           :created_at :updated_at :card :entity_id)
                    {:id id :dashboard_tab_id tab-id}
                    (placement state
                               (assoc op :size {:size_x (:size_x source) :size_y (:size_y source)})
-                              tab-id)))))
+                              tab-id
+                              (card-display state (:card_id source)))))))
 ```
 
-The action dashcard's `visualization_settings` keys (`actionDisplayType`, `"button.label"`) come from the frontend's action-card settings. Confirm them against `frontend/src/metabase/dashboard/components/` before committing — grep for `actionDisplayType`. If they differ, fix both the implementation and the test to match what the frontend writes; an action dashcard the editor cannot render is worse than no `add_action` op.
+Two notes on `duplicate_card`:
+
+- A same-dashboard duplicate points at the **same** `card_id` — it does not clone the underlying question, even when that question is a dashboard question. `update-cards-for-copy` (api.clj:486) is *not* usable here: with an empty `id->new-card` its branch at api.clj:512 silently drops every card-backed dashcard.
+- What must be remapped when cloning, per that function's checklist: `dashboard_tab_id` (done above), and — for visualizer cards — `visualization_settings.columnValuesMapping`'s `sourceId`. Handling the visualizer case means making `update-colvalmap-setting` (api.clj:465) public and calling it. If you skip it, a duplicated visualizer card will reference the source dashcard's columns; add a test asserting the current behavior either way so it is a decision rather than an accident.
+
+The action dashcard's `actionDisplayType` / `"button.label"` keys come from the frontend. Confirm against `frontend/src/metabase/dashboard/components/` — grep for `actionDisplayType` — and fix both implementation and test if they differ.
 
 - [ ] **Step 4: Run to verify they pass**
 
@@ -1082,16 +1200,33 @@ git commit -m "GHY-4147: dashboard tab ops"
 
 ## Task 7: `metabase.parameters.mapping-targets`
 
-"Given a card and a parameter, what are the valid mapping targets?" has no backend answer today. The frontend owns it in `getParameterMappingOptions` (`frontend/src/metabase/parameters/utils/mapping-options.ts:153`). `wire_parameter` needs it to validate, and `autowire` needs it to match.
+There is no backend equivalent of the frontend's `getParameterMappingOptions` (`frontend/src/metabase/parameters/utils/mapping-options.ts:153`) — but **most of its hard half already exists privately**, and this task is mostly exposure plus a thin layer. Do not build a metadata provider or a filterable-columns walk from scratch.
 
-It lives in `metabase.parameters` — next to `chain_filter.clj`, which answers the adjacent "which fields can filter which" question — because it is a domain primitive, not an MCP concern. A future REST endpoint can expose it so the frontend eventually drops its copy.
+What exists, all in `src/metabase/parameters/params.clj`:
+
+| Piece | Line | State |
+| --- | --- | --- |
+| `card->filterable-columns-query` — builds the lib query, wrapping models and metrics as source cards | 186 | private → make public |
+| `filterable-columns-for-query` — `[card stage-number] -> [column …]`, calls `lib/ensure-filter-stage` then `lib/filterable-columns` | 200 | private → make public |
+| `param-target->field-id` — `[target card] -> field-id or nil`; resolves both `[:dimension [:field …]]` and `[:variable [:template-tag …]]` | 80 | **already public** — this is your target validator; nil means bogus |
+| `assert-valid-parameter-mappings` | 46 | already public (schema only, does not check the target against the card) |
+
+Two shapes to copy rather than invent, from `src/metabase/xrays/automagic_dashboards/filters.clj`:
+
+- `filter-for-card` (`:74`, private) — the target clause is `[:dimension field-ref {:stage-number 0}]`. **The `{:stage-number …}` option is required**; omitting it produces a target that looks right and resolves wrong on multi-stage queries.
+- `filter-type-info` (`:92`, private) — field effective/semantic type → `{:type "string/=" :sectionId "string"}`. Make public or copy for parameter-type compatibility. It is x-ray-flavored (booleans map to `"string/="` with a TODO), so read it before trusting it.
+
+Do **not** reuse `filters/add-filters` or `add-filter` — they operate on the x-ray `::ads/dashboard` map and its `fk-map` machinery. Superficially similar, wrong world.
+
+It lives in `metabase.parameters` because it is a domain primitive, not an MCP concern, and because everything it builds on is already in that namespace. A future REST endpoint can expose it so the frontend eventually drops its copy.
 
 **Files:**
+- Modify: `src/metabase/parameters/params.clj:186,200` (make two fns public)
 - Create: `src/metabase/parameters/mapping_targets.clj`
 - Create: `test/metabase/parameters/mapping_targets_test.clj`
 
 **Interfaces:**
-- Consumes: `metabase.lib.core` (`lib/query`, `lib/filterable-columns`), `metabase.lib.metadata`, `metabase.lib-be.core` for a metadata provider.
+- Consumes: `params/filterable-columns-for-query`, `params/param-target->field-id`, `lib/all-template-tags-map` (already used at `params.clj:44`).
 - Produces:
   - `(mapping-targets/valid-targets card parameter) => [{:target target-clause :column-name string :display-name string} …]`
     where `target-clause` is the MBQL target vector stored in a parameter mapping — `["dimension" ["field" id opts]]` for MBQL cards, `["variable" ["template-tag" tag-name]]` or `["dimension" ["template-tag" tag-name]]` for native ones.
@@ -1117,15 +1252,24 @@ Create `test/metabase/parameters/mapping_targets_test.clj`:
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
       (let [targets (mapping-targets/valid-targets card {:id "p1" :type "string/="})]
         (is (seq targets))
-        (is (every? #(= "dimension" (first (:target %))) targets))
+        (is (every? #(= :dimension (first (:target %))) targets))
         (is (contains? (set (map :column-name targets)) "NAME"))))))
 
+(deftest dimension-targets-carry-a-stage-number-test
+  (testing "GHY-4147: dimension targets carry {:stage-number 0} — without it they resolve wrong on
+            multi-stage queries"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+      (let [targets (mapping-targets/valid-targets card {:id "p1" :type "string/="})]
+        (is (every? #(= {:stage-number 0} (nth (:target %) 2 nil)) targets))))))
+
 (deftest target-for-field-test
-  (testing "GHY-4147: target-for-field finds the dimension clause for a specific field"
+  (testing "GHY-4147: target-for-field finds the target resolving to a specific field"
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
       (let [target (mapping-targets/target-for-field card {:id "p1" :type "number/="} (mt/id :venues :price))]
-        (is (= "dimension" (first target)))
-        (is (= (mt/id :venues :price) (get-in target [1 1])))))))
+        (is (= :dimension (first target)))
+        (testing "and it round-trips through the codebase's own target resolver"
+          (is (= (mt/id :venues :price)
+                 (metabase.parameters.params/param-target->field-id target card))))))))
 
 (deftest target-for-field-returns-nil-when-absent-test
   (testing "GHY-4147: a field the card does not expose yields nil, so the caller can teach"
@@ -1143,7 +1287,7 @@ Create `test/metabase/parameters/mapping_targets_test.clj`:
                                                                 :display-name "Price"
                                                                 :type :number}}})}]
       (let [targets (mapping-targets/valid-targets card {:id "p1" :type "number/="})]
-        (is (= [["variable" ["template-tag" "price"]]] (mapv :target targets)))))))
+        (is (= [[:variable [:template-tag "price"]]] (mapv :target targets)))))))
 
 (deftest native-dimension-tag-test
   (testing "GHY-4147: a native dimension tag is a dimension target, not a variable"
@@ -1156,7 +1300,7 @@ Create `test/metabase/parameters/mapping_targets_test.clj`:
                                                               :widget-type :string/=
                                                               :dimension [:field (mt/id :venues :name) nil]}}})}]
       (let [targets (mapping-targets/valid-targets card {:id "p1" :type "string/="})]
-        (is (= [["dimension" ["template-tag" "cat"]]] (mapv :target targets)))))))
+        (is (= [[:dimension [:template-tag "cat"]]] (mapv :target targets)))))))
 
 (deftest incompatible-parameter-type-yields-no-targets-test
   (testing "GHY-4147: a date parameter finds no target on a card exposing only a number variable"
@@ -1174,9 +1318,23 @@ Create `test/metabase/parameters/mapping_targets_test.clj`:
 Run: `./bin/test-agent :only '[metabase.parameters.mapping-targets-test]'`
 Expected: FAIL — namespace not found.
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 3a: Expose the two private fns**
 
-Create `src/metabase/parameters/mapping_targets.clj`. The parameter-type-to-tag-type compatibility table is the backend counterpart of the frontend's `parameter-type.ts`; check `src/metabase/parameters/` for an existing predicate before writing a new one — if `metabase.parameters.core` or `metabase.legacy-mbql.util` already exposes one, use it rather than duplicating.
+In `src/metabase/parameters/params.clj`, drop `^:private` from `card->filterable-columns-query` (`:186`) and `filterable-columns-for-query` (`:200`), giving each a contract docstring:
+
+```clojure
+(defn filterable-columns-for-query
+  "The columns of `card`'s query a filter can target at `stage-number`. Models and metrics are
+  wrapped as source cards, and a non-negative `stage-number` gets a filter stage appended first."
+  [card stage-number]
+  ...)
+```
+
+Run `./bin/test-agent :only '[metabase.parameters.params-test]'` to confirm nothing regressed.
+
+- [ ] **Step 3b: Implement `mapping-targets`**
+
+Create `src/metabase/parameters/mapping_targets.clj`. The sketch below shows the intended shape; build it on the exposed fns rather than reconstructing a metadata provider.
 
 ```clojure
 (ns metabase.parameters.mapping-targets
@@ -1236,16 +1394,18 @@ Create `src/metabase/parameters/mapping_targets.clj`. The parameter-type-to-tag-
       true)))
 
 (defn- mbql-targets
+  "Filterable columns of `card`'s query as dimension targets. `params/filterable-columns-for-query`
+   already handles model/metric source-card wrapping and the filter-stage subtleties; the only work
+   here is the type filter and the target clause."
   [card parameter]
   (try
-    (let [mp    (lib-be/application-database-metadata-provider (:database_id card))
-          query (lib/query mp (:dataset_query card))
-          stage -1]
-      (for [col   (lib/filterable-columns query stage)
-            :when (column-compatible? (:type parameter) col)]
-        {:target       ["dimension" (lib/ref col)]
-         :column-name  (:name col)
-         :display-name (lib/display-name query col)}))
+    (for [col   (params/filterable-columns-for-query card -1)
+          :when (column-compatible? (:type parameter) col)]
+      ;; `{:stage-number 0}` is not decoration — without it the target resolves wrong on
+      ;; multi-stage queries. Shape copied from xrays…filters/filter-for-card (filters.clj:74).
+      {:target       [:dimension (lib/ref col) {:stage-number 0}]
+       :column-name  (:name col)
+       :display-name (or (:display-name col) (:name col))})
     (catch Exception e
       ;; An unrunnable card should narrow the wiring options, not fail the whole save.
       (log/warnf e "Could not enumerate mapping targets for card %s" (:id card))
@@ -1265,26 +1425,29 @@ Create `src/metabase/parameters/mapping_targets.clj`. The parameter-type-to-tag-
    no compatible column for that field."
   [card parameter field-id]
   (->> (valid-targets card parameter)
-       (filter (fn [{[_ ref*] :target}]
-                 (and (vector? ref*) (= "field" (name (first ref*))) (= field-id (second ref*)))))
+       ;; `param-target->field-id` is the same resolution the rest of the codebase uses for both
+       ;; dimension and template-tag targets — matching on the ref's shape here would drift from it.
+       (filter #(= field-id (params/param-target->field-id (:target %) card)))
        first
        :target))
 ```
 
-Add `[clojure.string :as str]` to the requires and use `str/split` rather than the fully-qualified `clojure.string/split` shown above — kondo will flag the unaliased form.
+Notes for the implementer:
 
-Confirm `lib-be/application-database-metadata-provider` is the right constructor name by grepping `src/metabase/lib_be/core.clj`; if the metadata provider is built differently elsewhere in the codebase (grep for `metadata-provider` in `src/metabase/parameters/`), follow that call site instead.
+- Add `[clojure.string :as str]` to the requires and use `str/split`, not the fully-qualified form shown above — kondo flags the unaliased version.
+- Before writing `column-compatible?` and `tag-compatible?`, check `filters/filter-type-info` (`src/metabase/xrays/automagic_dashboards/filters.clj:92`) and grep `src/metabase/parameters/` for an existing parameter-type predicate. If one exists, use it. If you take `filter-type-info`, read it first — it is x-ray-flavored (booleans map to `"string/="` with a TODO).
+- There is no metadata provider to construct here. `filterable-columns-for-query` does that internally. If you find yourself reaching for `lib-be`, you have gone around the fn you just exposed.
 
 - [ ] **Step 4: Run to verify they pass**
 
-Run: `./bin/test-agent :only '[metabase.parameters.mapping-targets-test]'`
-Expected: PASS, 6 tests. If the `:effective-type` key on Lib columns is named differently in this version, fix `column-compatible?` — do not weaken the test.
+Run: `./bin/test-agent :only '[metabase.parameters.mapping-targets-test metabase.parameters.params-test]'`
+Expected: PASS, 7 new tests plus the existing params suite. If the `:effective-type` key on Lib columns is named differently in this version, fix `column-compatible?` — do not weaken the test.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-./bin/mage kondo src/metabase/parameters/mapping_targets.clj test/metabase/parameters/mapping_targets_test.clj
-git add src/metabase/parameters/mapping_targets.clj test/metabase/parameters/mapping_targets_test.clj
+./bin/mage kondo src/metabase/parameters/mapping_targets.clj src/metabase/parameters/params.clj test/metabase/parameters/mapping_targets_test.clj
+git add src/metabase/parameters/mapping_targets.clj src/metabase/parameters/params.clj test/metabase/parameters/mapping_targets_test.clj
 git commit -m "GHY-4147: enumerate parameter mapping targets server-side"
 ```
 
@@ -1296,19 +1459,27 @@ git commit -m "GHY-4147: enumerate parameter mapping targets server-side"
 
 Parameter ids are agent-supplied strings, matching both the schema (`::parameter` requires `:id`, `src/metabase/parameters/schema.cljc:82`) and the frontend, which mints the id client-side.
 
-Mapping targets need card metadata, which the pure compiler cannot fetch. The caller resolves it and passes it in: `compile-ops` gains a third argument, a `card-id → card` map covering every card on the dashboard plus any `card_id` referenced by an `add_card` op.
+Mapping targets need card metadata, which the pure compiler cannot fetch. `compile-ops` already takes the `cards` map for this (Task 3) — no signature change here.
+
+`remove_parameter` must name the subscriptions it breaks. That machinery exists but is private and returns nothing useful: `broken-subscription-data` (api.clj:989) computes the findings, and `handle-broken-subscriptions` (api.clj:1013) archives the pulses and emails their owners in a bare `doseq`. Two constraints from the audit:
+
+- It must run **after** the update — `broken-pulses` (api.clj:972) re-reads the dashboard's current `:resolved-params` and compares against the pulses' stored params. You cannot compute it beforehand.
+- Routing through `update-dashboard!` already triggers the side effect whenever `:parameters` is passed. You need only the **return value** for reporting.
+
+So the response wording is "archived N subscriptions", not "these would break" — it is destructive and already happened.
 
 **Files:**
+- Modify: `src/metabase/dashboards_rest/api.clj:1013` (make `handle-broken-subscriptions` public and return its findings)
 - Modify: `src/metabase/mcp/v2/dashboard_ops.clj`
 - Modify: `test/metabase/mcp/v2/dashboard_ops_test.clj`
 
 **Interfaces:**
-- Consumes: `metabase.parameters.mapping-targets/valid-targets` and `/target-for-field` from Task 7.
-- Produces: **changed signature** — `(dashboard-ops/compile-ops current ops cards) => {:dashcards :tabs :parameters}`, where `cards` is `{card-id card-map}`. Update every existing test call site to pass `{}`.
+- Consumes: `metabase.parameters.mapping-targets/valid-targets` and `/target-for-field` from Task 7; `compile-ops`'s existing `cards` argument from Task 3.
+- Produces: six more `apply-op` methods, and `(dashboards-rest.api/handle-broken-subscriptions dashboard-id original-params) => [{:pulse-id :pulse-name :bad-parameters …} …]` (was nil).
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`, and update the existing `compile-ops` calls to the three-arity form:
+Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`. Existing call sites need no change — `compile-ops` has taken `cards` since Task 3, and the 2-arity defaults it to `{}`.
 
 ```clojure
 (def ^:private a-card
@@ -1451,20 +1622,13 @@ Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`, and update the existing
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `./bin/test-agent :only '[metabase.mcp.v2.dashboard-ops-test]'`
-Expected: FAIL — arity error on `compile-ops` plus unknown ops.
+Expected: FAIL — unknown op.
 
 - [ ] **Step 3: Implement**
 
-Change `compile-ops` to three arities and thread `cards` through the fold as part of the state. Add `[metabase.parameters.mapping-targets :as mapping-targets]` to the requires.
+Add `[metabase.parameters.mapping-targets :as mapping-targets]` to the requires. `init-state` and `compile-ops` already carry `cards` from Task 3 — do not change them.
 
 ```clojure
-(defn- init-state
-  [current cards]
-  {:dashcards  (vec (:dashcards current))
-   :tabs       (vec (:tabs current))
-   :parameters (vec (:parameters current))
-   ::cards     cards})
-
 (defn- resolve-parameter!
   [state idx id]
   (or (first (filter #(= id (:id %)) (:parameters state)))
@@ -1615,36 +1779,35 @@ Change `compile-ops` to three arities and thread `cards` through the fold as par
                        dc)))))
 ```
 
-Finally, update `compile-ops` and strip the internal `::cards` key from the result:
+Then make broken-subscription reporting available. In `src/metabase/dashboards_rest/api.clj:1013`, make `handle-broken-subscriptions` public and have it return what it acted on instead of nil:
 
 ```clojure
-(defn compile-ops
-  "Fold `ops` over `current` (a dashboard hydrated with `[:dashcards :series :card] :tabs`) and
-   return `{:dashcards :tabs :parameters}` — the full-replacement payload `update-dashboard!`
-   saves. New rows carry the caller's negative ids. `cards` maps every card id the ops may touch
-   to its card row, since parameter wiring needs card metadata and this namespace does no I/O.
-   Throws a teaching error naming the op index on any invalid op."
-  ([current ops] (compile-ops current ops {}))
-  ([current ops cards]
-   (-> (reduce-kv (fn [state idx op] (apply-op state idx op))
-                  (init-state current cards)
-                  (vec ops))
-       check-tab-coverage!
-       (select-keys [:dashcards :tabs :parameters]))))
+(defn handle-broken-subscriptions
+  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard,
+  notify their creators, and return the archived subscriptions' data. Must run after the update:
+  it compares the dashboard's current resolved params against each pulse's stored params."
+  [dashboard-id original-dashboard-params]
+  (let [broken (broken-subscription-data dashboard-id original-dashboard-params)]
+    (doseq [broken-subscription broken]
+      ;; … existing body …
+      )
+    broken))
 ```
+
+Its one existing caller inside `update-dashboard!` (api.clj:1084) ignores the return value, so this is additive. The tool surfaces the count in its response; wiring that into `dashboard-response` happens in Task 9.
 
 If you hit a delimiter imbalance while pasting these forms, run `clj-paren-repair src/metabase/mcp/v2/dashboard_ops.clj` rather than hand-repairing — it also formats with cljfmt.
 
 - [ ] **Step 4: Run to verify they pass**
 
-Run: `./bin/test-agent :only '[metabase.mcp.v2.dashboard-ops-test]'`
-Expected: PASS — all tests, including the earlier ones updated to the 3-arity call.
+Run: `./bin/test-agent :only '[metabase.mcp.v2.dashboard-ops-test metabase.dashboards-rest.api-test]'`
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-./bin/mage kondo src/metabase/mcp/v2/dashboard_ops.clj test/metabase/mcp/v2/dashboard_ops_test.clj
-git add src/metabase/mcp/v2/dashboard_ops.clj test/metabase/mcp/v2/dashboard_ops_test.clj
+./bin/mage kondo src/metabase/mcp/v2/dashboard_ops.clj src/metabase/dashboards_rest/api.clj test/metabase/mcp/v2/dashboard_ops_test.clj
+git add src/metabase/mcp/v2/dashboard_ops.clj src/metabase/dashboards_rest/api.clj test/metabase/mcp/v2/dashboard_ops_test.clj
 git commit -m "GHY-4147: dashboard parameter ops and autowire"
 ```
 
@@ -1973,6 +2136,12 @@ Continue with the schema and handler:
   (let [cards   (fetch-cards (referenced-card-ids dash ops))
         _       (check-cards-exist! ops cards)
         payload (dashboard-ops/compile-ops dash ops cards)]
+    ;; Validate against the same schema `PUT /api/dashboard/:id` uses, so a dry run rejects
+    ;; anything the real save would.
+    (when-let [explanation (mr/explain dashboards-rest.api/DashUpdates (merge attrs payload))]
+      (common/throw-teaching-error
+       (format "The requested ops produce an invalid dashboard: %s"
+               (pr-str (me/humanize explanation)))))
     (if validate-only?
       (merge dash payload)
       (dashboards-rest.api/update-dashboard! (:id dash) (merge attrs payload)))))
@@ -2020,7 +2189,9 @@ Continue with the schema and handler:
            (dashboards-rest.api/update-dashboard! (:id dash) attrs)))))))
 ```
 
-Two things to resolve while implementing, both requiring you to read the code rather than guess:
+Three things to resolve while implementing, all requiring you to read the code rather than guess:
+
+0. **What `validate_only` cannot check.** Parameter-mapping permission checks (`check-parameter-mapping-permissions`, api.clj:768) run inside `create-dashcards!`/`update-dashcards!`, so a dry run does not exercise them: a caller can get a clean `validate_only` and still hit a 403 on the real save. Say so in the tool description — one sentence, e.g. "validate_only checks the ops and the resulting layout; per-field permission checks run only on the real save." Do not try to replicate those checks in the compiler.
 
 1. `collection_id` accepts `null` / `"root"` per the v2 convention — run it through `common/resolve-collection-id` (`src/metabase/mcp/v2/common.clj:205`) before handing it to the domain fn.
 2. The `op-schema` above shows only `add_card`. Write out all 24 entries. Each op's args are listed in the spec's op grammar table (`docs/superpowers/specs/2026-07-21-dashboard-write-tool-design.md`), and the implementation in `dashboard_ops.clj` is the authority on which keys each `apply-op` method reads — cross-check every entry against its method. `:description` strings on the ops and their fields are what the agent actually sees; write them for an agent that has never used this API.
