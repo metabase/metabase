@@ -1,4 +1,6 @@
 import type {
+  CheckoutBranchRequest,
+  CheckoutBranchResponse,
   CreateBranchRequest,
   ExportChangesRequest,
   ExportChangesResponse,
@@ -50,6 +52,16 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         params: { branch },
       }),
       providesTags: () => [tag("remote-sync-has-remote-changes")],
+    }),
+    checkoutBranch: builder.mutation<
+      CheckoutBranchResponse,
+      CheckoutBranchRequest
+    >({
+      query: ({ branch }) => ({
+        url: `/api/ee/remote-sync/checkout`,
+        method: "POST",
+        body: { branch },
+      }),
     }),
     importChanges: builder.mutation<
       ImportFromBranchResponse,
@@ -131,11 +143,13 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       providesTags: () => [tag("remote-sync-branches")],
     }),
     createBranch: builder.mutation<void, CreateBranchRequest>({
-      query: ({ name }) => ({
+      query: ({ name, base, switch: switchBranch }) => ({
         method: "POST",
         url: `/api/ee/remote-sync/create-branch`,
         body: {
           name,
+          base,
+          switch: switchBranch,
         },
       }),
       invalidatesTags: () => [
@@ -181,6 +195,7 @@ export const {
   useGetBranchesQuery,
   useCreateBranchMutation,
   useImportChangesMutation,
+  useCheckoutBranchMutation,
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,

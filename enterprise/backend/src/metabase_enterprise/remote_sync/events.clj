@@ -19,6 +19,7 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
@@ -124,7 +125,13 @@
    This is the spec-based version of create-or-update-remote-sync-object-entry!."
   [model-spec model-id status]
   (let [model-type (:model-type model-spec)
-        existing   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
+        existing   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)
+        ;; content models carry a branch column; stamp it on the tracking row so
+        ;; dirty state is scoped per branch. On deletes the entity row is already
+        ;; gone — keep the branch the tracking row was created with.
+        row-branch (when ((set serdes.models/content) model-type)
+                     (or (t2/select-one-fn :branch (:model-key model-spec) :id model-id)
+                         (:branch existing)))]
     (cond
       (not existing)
       (let [model-details (spec/hydrate-model-details model-spec model-id)
@@ -133,6 +140,7 @@
                     (merge {:model_type        model-type
                             :model_id          model-id
                             :status            status
+                            :branch            row-branch
                             :status_changed_at (t/offset-date-time)}
                            fields)))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
@@ -146,6 +154,7 @@
             fields        (spec/build-sync-object-fields model-spec model-details)]
         (t2/update! :model/RemoteSyncObject (:id existing)
                     (merge {:status            (resolve-status model-type model-id status existing)
+                            :branch            row-branch
                             :status_changed_at (t/offset-date-time)}
                            fields))))))
 

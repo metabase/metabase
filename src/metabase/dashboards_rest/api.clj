@@ -43,6 +43,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -349,7 +350,8 @@
   (span/with-span!
     {:name       "get-dashboard"
      :attributes {:dashboard/id id}}
-    (-> (t2/select-one :model/Dashboard :id id)
+    (-> (t2/select-one :model/Dashboard {:where [:and [:= :id id]
+                                                 (remote-sync/branch-filter-clause)]})
         api/read-check
         hydrate-dashboard-details
         collection.root/hydrate-root-collection

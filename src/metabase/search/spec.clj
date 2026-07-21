@@ -93,6 +93,7 @@
 (def attr-types
   "The abstract types of each attribute."
   {:archived                :boolean
+   :branch                  :text
    :collection-id           :pk
    :created-at              :timestamp
    :creator-id              :pk
@@ -132,7 +133,8 @@
   (->> (keys (apply dissoc search.config/filters explicit-attrs))
        ;; identifiers and rankers
        (into
-        [:id                                                ;;  in addition to being a filter, this is a key property
+        [:branch                                            ;;  content branching: git branch of the source row
+         :id                                                ;;  in addition to being a filter, this is a key property
          :name
          :official-collection
          :dashboard-id

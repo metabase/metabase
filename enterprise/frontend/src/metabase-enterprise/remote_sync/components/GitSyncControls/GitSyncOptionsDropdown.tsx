@@ -7,6 +7,7 @@ export interface GitSyncOptionsDropdownProps {
   isPullError: boolean;
   isLoadingPull: boolean;
   isPushDisabled: boolean;
+  onCheckoutClick: VoidFunction;
   onPullClick: VoidFunction;
   onPushClick: VoidFunction;
 }
@@ -16,6 +17,7 @@ export const GitSyncOptionsDropdown = ({
   isPullError,
   isLoadingPull,
   isPushDisabled,
+  onCheckoutClick,
   onPullClick,
   onPushClick,
 }: GitSyncOptionsDropdownProps) => {
@@ -34,6 +36,13 @@ export const GitSyncOptionsDropdown = ({
   return (
     <Combobox.Dropdown p={0}>
       <Combobox.Options>
+        <Combobox.Option onClick={onCheckoutClick} py="sm" value="checkout">
+          <Group gap="md" wrap="nowrap">
+            <Icon name="git_branch" size={12} />
+            <Text>{t`Checkout branch`}</Text>
+          </Group>
+        </Combobox.Option>
+
         <Tooltip
           label={isPushDisabled ? t`No changes to push` : t`Push changes`}
         >

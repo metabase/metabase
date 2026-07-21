@@ -25,6 +25,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.tracing.core :as tracing]
@@ -89,6 +90,7 @@
   (cond->>
    (t2/select :model/Collection
               {:where [:and
+                       (remote-sync/branch-filter-clause)
                        (case archived
                          nil nil
                          false [:and
@@ -448,6 +450,7 @@
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
                [:= :document.archived (boolean archived?)]]}
+      (sql.helpers/where (remote-sync/branch-filter-clause :document.branch))
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod collection-children-query :pulse
@@ -582,6 +585,7 @@
       (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
+      (sql.helpers/where (remote-sync/branch-filter-clause :c.branch))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
@@ -677,6 +681,7 @@
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
                    [:= :d.archived (boolean archived?)]]}
+      (sql.helpers/where (remote-sync/branch-filter-clause :d.branch))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard

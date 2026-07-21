@@ -6,6 +6,7 @@
    and for Field/Segment/Table models, parent table information."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -19,45 +20,49 @@
 
 ;;; ------------------------------------------------- Public API -------------------------------------------------------
 
-(defn dirty?
-  "Checks if any collection has changes since the last sync.
-   Returns true if any remote-synced object has a status other than 'synced', false otherwise.
-   Excludes transform model types when transform sync is disabled."
-  []
+(defn- dirty-where
+  "WHERE clause for un-synced rows, scoped by branch: a personal `branch` sees
+   only its own rows; the global view (nil) sees legacy NULL rows and the global
+   sync branch's rows. Excludes disabled model types."
+  [branch]
   (let [excluded (spec/excluded-model-types)]
-    (if (empty? excluded)
-      (t2/exists? :model/RemoteSyncObject :status [:not= "synced"])
-      (t2/exists? :model/RemoteSyncObject
-                  :status [:not= "synced"]
-                  :model_type [:not-in excluded]))))
+    [:and
+     [:not= :status "synced"]
+     (when (seq excluded)
+       [:not-in :model_type excluded])
+     (if branch
+       [:= :branch branch]
+       [:or [:= :branch nil] [:= :branch (rs-settings/remote-sync-branch)]])]))
+
+(defn dirty?
+  "Checks if any collection has changes since the last sync, scoped to `branch`
+   (nil = the global sync branch view)."
+  ([] (dirty? nil))
+  ([branch]
+   (t2/exists? :model/RemoteSyncObject {:where (dirty-where branch)})))
 
 (defn dirty-rows
   "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced'),
-  excluding disabled model types (e.g. transforms when transform sync is off)."
-  []
-  (let [excluded (spec/excluded-model-types)]
-    (if (empty? excluded)
-      (t2/select :model/RemoteSyncObject :status [:not= "synced"])
-      (t2/select :model/RemoteSyncObject
-                 :status [:not= "synced"]
-                 :model_type [:not-in excluded]))))
+  scoped to `branch` (nil = the global sync branch view)."
+  ([] (dirty-rows nil))
+  ([branch]
+   (t2/select :model/RemoteSyncObject {:where (dirty-where branch)})))
 
 (defn dirty-objects
-  "Gets all models in any collection that are dirty with their sync status.
-   Returns a sequence of model maps that have changed since the last remote sync,
-   including details about their current state and sync status.
-   Excludes transform model types when transform sync is disabled."
-  []
-  (->> (dirty-rows)
-       (map #(-> %
-                 (dissoc :id :status_changed_at)
-                 (set/rename-keys {:model_id :id
-                                   :model_name :name
-                                   :model_type :model
-                                   :model_collection_id :collection_id
-                                   :model_display :display
-                                   :model_table_id :table_id
-                                   :model_table_name :table_name
-                                   :status :sync_status})
-                 (update :model u/lower-case-en)))
-       (into [])))
+  "Gets all models in any collection that are dirty with their sync status,
+   scoped to `branch` (nil = the global sync branch view)."
+  ([] (dirty-objects nil))
+  ([branch]
+   (->> (dirty-rows branch)
+        (map #(-> %
+                  (dissoc :id :status_changed_at)
+                  (set/rename-keys {:model_id :id
+                                    :model_name :name
+                                    :model_type :model
+                                    :model_collection_id :collection_id
+                                    :model_display :display
+                                    :model_table_id :table_id
+                                    :model_table_name :table_name
+                                    :status :sync_status})
+                  (update :model u/lower-case-en)))
+        (into []))))

@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -84,7 +85,7 @@
       (t2/hydrate measure :creator))))
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt]
-  (api/read-check (t2/select-one :model/Measure :id id))
+  (api/read-check (t2/select-one :model/Measure {:where [:and [:= :id id] (remote-sync/branch-filter-clause)]}))
   (metrics/sync-dimensions! :metadata/measure id)
   (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
       metrics/filter-dimensions-for-user))
@@ -99,7 +100,8 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}) measures
+  (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]
+                                                     :where    (remote-sync/branch-filter-clause)}) measures
     (filter mi/can-read? measures)
     (t2/hydrate measures :creator :definition_description)))
 

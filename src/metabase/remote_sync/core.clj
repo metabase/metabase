@@ -1,7 +1,86 @@
 (ns metabase.remote-sync.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]))
+
+(defenterprise current-branch
+  "The git branch context for the current request/operation: the explicit sync
+   binding when set, otherwise the current user's checked-out branch, otherwise
+   the instance's global sync branch. Nil when remote sync is not in play.
+   OSS: always nil."
+  metabase-enterprise.remote-sync.branching
+  []
+  nil)
+
+(defn stamp-branch
+  "before-insert helper for content models: when the row has no explicit
+   `:branch`, targets a remote-synced collection, and the request runs in a
+   branch context, stamp the current branch on it — so content created at
+   runtime lands on the creator's branch (or the main sync branch) without
+   waiting for the next sync. No-op otherwise."
+  [{:keys [collection_id] :as row}]
+  (if-let [b (and (nil? (:branch row))
+                  (or collection_id (:is_remote_synced row))
+                  (current-branch))]
+    (if (or (:is_remote_synced row)
+            (t2/exists? :model/Collection :id collection_id :is_remote_synced true))
+      (assoc row :branch b)
+      row)
+    row))
+
+(defn stamp-branch-on-move
+  "before-update helper for content models: when the row moves between
+   collections, recompute `:branch` from the target collection — the current
+   branch when it is remote-synced, NULL otherwise. An explicit `:branch` in
+   the update wins. No-op when `:collection_id` is not changing."
+  [instance]
+  (let [changes (t2/changes instance)]
+    (if (and (contains? changes :collection_id)
+             (not (contains? changes :branch)))
+      (assoc instance :branch
+             (when-let [b (current-branch)]
+               (when (and (:collection_id changes)
+                          (t2/exists? :model/Collection
+                                      :id (:collection_id changes)
+                                      :is_remote_synced true))
+                 b)))
+      instance)))
+
+(def branched-content-hook
+  "t2 hook keyword for content models with a git-sync `branch` column. Deriving a
+   model from this stamps `:branch` from the target collection on insert and
+   re-stamps it when a row moves between collections."
+  :hook/branched-content)
+
+(t2/define-before-insert :hook/branched-content
+  [row]
+  (stamp-branch row))
+
+(t2/define-before-update :hook/branched-content
+  [row]
+  (stamp-branch-on-move row))
+
+;; models deriving this hook also derive the timestamp/entity-id hooks; methodical
+;; needs an explicit order between unrelated aux methods on the same model
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/branched-content)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/branched-content)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/branched-content)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/entity-id :hook/branched-content)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/timestamped? :hook/branched-content)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/updated-at-timestamped? :hook/branched-content)
+
+(defn branch-filter-clause
+  "HoneySQL WHERE clause restricting branchable content to the current branch:
+   rows with a NULL `branch` (not under git sync) are always visible; branch rows
+   only on their own branch. Returns nil — no filtering — when there is no branch
+   context. Use in every query that fetches branchable entities."
+  ([] (branch-filter-clause :branch))
+  ([branch-col]
+   (when-let [b (current-branch)]
+     [:or [:= branch-col nil] [:= branch-col b]])))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

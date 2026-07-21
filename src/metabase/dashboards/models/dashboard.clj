@@ -23,6 +23,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -46,7 +47,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive remote-sync/branched-content-hook))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -425,7 +427,8 @@
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [;; those stats are inherently local state
+   :skip      [:branch ;; content-branching: never serialized
+               ;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
                :cache_ttl]
@@ -510,7 +513,8 @@
 
 (search/define-spec "dashboard"
   {:model        :model/Dashboard
-   :attrs        {:archived       true
+   :attrs        {:branch true
+                  :archived       true
                   :collection-id  true
                   :creator-id     true
                   :database-id    false

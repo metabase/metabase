@@ -27,6 +27,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
@@ -236,7 +237,8 @@
   "Get `Card` with ID."
   [id]
   (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
-        raw-card (t2/select-one :model/Card :id id)]
+        raw-card (t2/select-one :model/Card {:where [:and [:= :id id]
+                                                     (remote-sync/branch-filter-clause)]})]
     (-> raw-card
         api/read-check
         hydrate-card-details

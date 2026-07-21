@@ -5,6 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
@@ -191,6 +192,8 @@
   (keep
    identity
    (concat
+    (when-let [b (remote-sync/current-branch)]
+      [[:branch [:or [:= :search_index.branch nil] [:= :search_index.branch b]]]])
     [[:models (if (seq (:models search-context))
                 [:in :search_index.model (:models search-context)]
                 ;; Ideally, we would not get this far, and bail out earlier.

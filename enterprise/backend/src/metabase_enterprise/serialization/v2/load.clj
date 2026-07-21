@@ -214,12 +214,25 @@
               _                  (when (seq deps)
                                    (log/debug "Ended loading dependencies" {:entity_id (:entity_id ingested)
                                                                             :level     (count expanding)}))
-              local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))]
+              local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))
+              model-name         (:model (peek rebuilt-path))
+              branched?          (and (:branch ctx) ((set serdes.models/content) model-name))
+              local-or-nil       (if branched?
+                                   (t2/select-one (keyword "model" model-name)
+                                                  :entity_id (:entity_id ingested)
+                                                  :branch (:branch ctx))
+                                   local-or-nil)]
           (try
             (with-retries 3 200
               (fn []
                 (t2/with-transaction [_tx]
-                  (serdes/load-one! ingested local-or-nil))))
+                  (let [result (serdes/load-one! ingested local-or-nil)]
+                    (when (and branched?
+                               (:id result)
+                               (not= (:branch ctx) (:branch result)))
+                      (t2/update! (keyword "model" model-name) :id (:id result)
+                                  {:branch (:branch ctx)}))
+                    result))))
             ctx
             (catch Exception e
               ;; if the entity was part of a dependency loop, a stripped version of it may already be committed; with
@@ -255,7 +268,7 @@
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error reindex?]
+  [ingestion & {:keys [backfill? continue-on-error reindex? branch]
                 :or   {backfill?         true
                        continue-on-error false
                        reindex?          true}}]
@@ -271,6 +284,7 @@
       (let [contents      (serdes.ingest/ingest-list ingestion)
             ingest-errors (serdes.ingest/ingest-errors ingestion)
             ctx           (cond-> (new-context ingestion)
+                            branch              (assoc :branch branch)
                             (seq ingest-errors) (update :errors into ingest-errors))]
         (when (and (seq ingest-errors) (not continue-on-error))
           (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]

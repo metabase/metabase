@@ -3,6 +3,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,7 +14,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive remote-sync/branched-content-hook))
 
 ;;;; transforms
 
@@ -62,7 +64,7 @@
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]
-   :skip      []
+   :skip      [:branch]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

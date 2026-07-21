@@ -209,20 +209,23 @@
                              [:id :desc]]}))
 
 (defn last-version
-  "Gets the version that any changes are built off of.
+  "Gets the version that any changes are built off of, scoped to `branch`
+  (nil = tasks on the global sync branch).
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
   tasks exist."
-  []
-  (:version (t2/select-one :model/RemoteSyncTask
-                           {:where [:and
-                                    [:<> nil :ended_at]
-                                    [:= false :cancelled]
-                                    [:= nil :error_message]
-                                    [:<> nil :version]]
-                            :limit 1
-                            :order-by [[:started_at :desc]
-                                       [:id :desc]]})))
+  ([] (last-version nil))
+  ([branch]
+   (:version (t2/select-one :model/RemoteSyncTask
+                            {:where [:and
+                                     [:<> nil :ended_at]
+                                     [:= false :cancelled]
+                                     [:= nil :error_message]
+                                     [:<> nil :version]
+                                     [:= :branch branch]]
+                             :limit 1
+                             :order-by [[:started_at :desc]
+                                        [:id :desc]]}))))
 
 (defn running?
   "Checks if a task is currently running.

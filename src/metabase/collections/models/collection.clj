@@ -312,7 +312,8 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive remote-sync/branched-content-hook))
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
@@ -2198,7 +2199,7 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:branch]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
@@ -2464,7 +2465,8 @@
 
 (search.spec/define-spec "collection"
   {:model        :model/Collection
-   :attrs        {:collection-id        :id
+   :attrs        {:branch true
+                  :collection-id        :id
                   :collection-type      :type
                   :collection-location  :location
                   :root-collection-type {:fn root-collection-type}

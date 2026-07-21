@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -31,7 +32,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive remote-sync/branched-content-hook))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -139,7 +141,8 @@
 
 (search.spec/define-spec "document"
   {:model :model/Document
-   :attrs {:archived true
+   :attrs {:branch true
+           :archived true
            :collection-id :collection_id
            :creator-id :creator_id
            :view-count :view_count
@@ -220,7 +223,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
+   :skip [:branch :view_count :last_viewed_at :public_uuid :made_public_by_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content

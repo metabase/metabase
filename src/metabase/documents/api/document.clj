@@ -15,6 +15,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -136,7 +137,9 @@
   [id & {:keys [log-view?] :or {log-view? true}}]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
+             (t2/hydrate (t2/select-one :model/Document {:where [:and [:= :id id]
+                                                                 (remote-sync/branch-filter-clause)]})
+                         :creator :can_write :can_delete :can_restore :is_remote_synced)))
     (when log-view?
       (events/publish-event! :event/document-read
                              {:object-id id

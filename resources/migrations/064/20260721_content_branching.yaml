@@ -1,0 +1,316 @@
+## Content branching: every content (git-synced) entity carries a `branch`
+## column — NULL for content not under git sync, the git branch name otherwise.
+## The same entity (same entity_id) is materialized as one row per branch, each
+## with its own numeric id. core_user.branch is the branch the user has checked
+## out; entity queries filter on it.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T21:00:01
+      author: ranquild
+      comment: Add branch column to content tables
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: glossary
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: timeline
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+
+        - addColumn:
+            tableName: measure
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:02
+      author: ranquild
+      comment: Index branch on the high-traffic content tables
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_branch
+            columns:
+              - column:
+                  name: branch
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_branch
+            columns:
+              - column:
+                  name: branch
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:03
+      author: ranquild
+      comment: Add core_user.branch — the git branch the user has checked out
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch this user has checked out, or null for the main sync branch
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:04
+      author: ranquild
+      comment: Add index on core_user.branch
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_branch
+            columns:
+              - column:
+                  name: branch
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:05
+      author: ranquild
+      comment: Replace single-column entity_id uniques with branch-aware ones (H2 — drop only, no partial indexes)
+      changes:
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE action DROP CONSTRAINT IF EXISTS CONSTRAINT_72C;
+              ALTER TABLE report_card DROP CONSTRAINT IF EXISTS CONSTRAINT_73;
+              ALTER TABLE collection DROP CONSTRAINT IF EXISTS CONSTRAINT_B;
+              ALTER TABLE report_dashboard DROP CONSTRAINT IF EXISTS CONSTRAINT_97;
+              ALTER TABLE document DROP CONSTRAINT IF EXISTS CONSTRAINT_62;
+              ALTER TABLE native_query_snippet DROP CONSTRAINT IF EXISTS CONSTRAINT_4B3;
+              ALTER TABLE timeline DROP CONSTRAINT IF EXISTS CONSTRAINT_B2;
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:06
+      author: ranquild
+      comment: Replace single-column entity_id uniques with branch-aware partial unique indexes (Postgres)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE action DROP CONSTRAINT IF EXISTS action_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_action_entity_id_main ON action (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_action_entity_id_branch ON action (entity_id, branch) WHERE branch IS NOT NULL;
+              ALTER TABLE report_card DROP CONSTRAINT IF EXISTS report_card_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_report_card_entity_id_main ON report_card (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_report_card_entity_id_branch ON report_card (entity_id, branch) WHERE branch IS NOT NULL;
+              ALTER TABLE collection DROP CONSTRAINT IF EXISTS collection_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_collection_entity_id_main ON collection (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_collection_entity_id_branch ON collection (entity_id, branch) WHERE branch IS NOT NULL;
+              ALTER TABLE report_dashboard DROP CONSTRAINT IF EXISTS report_dashboard_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_report_dashboard_entity_id_main ON report_dashboard (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_report_dashboard_entity_id_branch ON report_dashboard (entity_id, branch) WHERE branch IS NOT NULL;
+              ALTER TABLE document DROP CONSTRAINT IF EXISTS document_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_document_entity_id_main ON document (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_document_entity_id_branch ON document (entity_id, branch) WHERE branch IS NOT NULL;
+              ALTER TABLE native_query_snippet DROP CONSTRAINT IF EXISTS native_query_snippet_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_native_query_snippet_entity_id_main ON native_query_snippet (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_native_query_snippet_entity_id_branch ON native_query_snippet (entity_id, branch) WHERE branch IS NOT NULL;
+              ALTER TABLE timeline DROP CONSTRAINT IF EXISTS timeline_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_timeline_entity_id_main ON timeline (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_timeline_entity_id_branch ON timeline (entity_id, branch) WHERE branch IS NOT NULL;
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:07
+      author: ranquild
+      comment: Replace single-column entity_id uniques with a composite unique index (MySQL/MariaDB — no partial indexes)
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE action DROP INDEX entity_id;
+              ALTER TABLE action ADD UNIQUE INDEX idx_action_entity_id_branch (entity_id, branch);
+              ALTER TABLE report_card DROP INDEX entity_id;
+              ALTER TABLE report_card ADD UNIQUE INDEX idx_report_card_entity_id_branch (entity_id, branch);
+              ALTER TABLE collection DROP INDEX entity_id;
+              ALTER TABLE collection ADD UNIQUE INDEX idx_collection_entity_id_branch (entity_id, branch);
+              ALTER TABLE report_dashboard DROP INDEX entity_id;
+              ALTER TABLE report_dashboard ADD UNIQUE INDEX idx_report_dashboard_entity_id_branch (entity_id, branch);
+              ALTER TABLE document DROP INDEX entity_id;
+              ALTER TABLE document ADD UNIQUE INDEX idx_document_entity_id_branch (entity_id, branch);
+              ALTER TABLE native_query_snippet DROP INDEX entity_id;
+              ALTER TABLE native_query_snippet ADD UNIQUE INDEX idx_native_query_snippet_entity_id_branch (entity_id, branch);
+              ALTER TABLE timeline DROP INDEX entity_id;
+              ALTER TABLE timeline ADD UNIQUE INDEX idx_timeline_entity_id_branch (entity_id, branch);
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:08
+      author: ranquild
+      comment: Branch-aware entity_id uniques for measure and segment
+      changes:
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE measure DROP CONSTRAINT IF EXISTS CONSTRAINT_62B;
+              ALTER TABLE segment DROP CONSTRAINT IF EXISTS CONSTRAINT_A;
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE measure DROP CONSTRAINT IF EXISTS measure_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_measure_entity_id_main ON measure (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_measure_entity_id_branch ON measure (entity_id, branch) WHERE branch IS NOT NULL;
+              ALTER TABLE segment DROP CONSTRAINT IF EXISTS segment_entity_id_key;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_segment_entity_id_main ON segment (entity_id) WHERE branch IS NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_segment_entity_id_branch ON segment (entity_id, branch) WHERE branch IS NOT NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE measure DROP INDEX entity_id;
+              ALTER TABLE measure ADD UNIQUE INDEX idx_measure_entity_id_branch (entity_id, branch);
+              ALTER TABLE segment DROP INDEX entity_id;
+              ALTER TABLE segment ADD UNIQUE INDEX idx_segment_entity_id_branch (entity_id, branch);
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:09
+      author: ranquild
+      comment: Backfill branch from the remote-sync-branch setting for all synced content
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE collection SET branch = (SELECT s.value FROM setting s WHERE s.key = 'remote-sync-branch') WHERE is_remote_synced = true;
+              UPDATE report_card SET branch = (SELECT s.value FROM setting s WHERE s.key = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE report_dashboard SET branch = (SELECT s.value FROM setting s WHERE s.key = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE document SET branch = (SELECT s.value FROM setting s WHERE s.key = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE timeline SET branch = (SELECT s.value FROM setting s WHERE s.key = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE native_query_snippet SET branch = (SELECT s.value FROM setting s WHERE s.key = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE action SET branch = (SELECT s.value FROM setting s WHERE s.key = 'remote-sync-branch') WHERE model_id IN (SELECT id FROM report_card WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true));
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE collection SET branch = (SELECT s."VALUE" FROM setting s WHERE s."KEY" = 'remote-sync-branch') WHERE is_remote_synced = true;
+              UPDATE report_card SET branch = (SELECT s."VALUE" FROM setting s WHERE s."KEY" = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE report_dashboard SET branch = (SELECT s."VALUE" FROM setting s WHERE s."KEY" = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE document SET branch = (SELECT s."VALUE" FROM setting s WHERE s."KEY" = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE timeline SET branch = (SELECT s."VALUE" FROM setting s WHERE s."KEY" = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE native_query_snippet SET branch = (SELECT s."VALUE" FROM setting s WHERE s."KEY" = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE action SET branch = (SELECT s."VALUE" FROM setting s WHERE s."KEY" = 'remote-sync-branch') WHERE model_id IN (SELECT id FROM report_card WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true));
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE collection SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE is_remote_synced = true;
+              UPDATE report_card SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE report_dashboard SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE document SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE timeline SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE native_query_snippet SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
+              UPDATE action SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE model_id IN (SELECT id FROM report_card WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true));
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:10
+      author: ranquild
+      comment: Add branch to remote_sync_object — per-branch dirty tracking
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch the tracked entity row belongs to; NULL for legacy/global rows
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: remote_sync_object
+            indexName: idx_remote_sync_object_branch
+            columns:
+              - column:
+                  name: branch
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:11
+      author: ranquild
+      comment: Add branch to remote_sync_task — per-branch version tracking
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Personal branch the task operated on; NULL for global sync-branch tasks
+                  constraints:
+                    nullable: true

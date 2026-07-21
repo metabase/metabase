@@ -25,6 +25,8 @@ import { trackBranchCreated } from "../../analytics";
 export interface BranchDropdownProps {
   allowCreate?: boolean;
   baseBranch?: string;
+  /** When false, creating a branch doesn't switch the global sync branch (per-user checkout flow). */
+  switchOnCreate?: boolean;
   combobox: ComboboxStore;
   onChange: (branch: string, isNewBranch?: boolean) => void;
   value: string;
@@ -35,6 +37,7 @@ export const BranchDropdown = ({
   onChange,
   baseBranch = "main",
   allowCreate = true,
+  switchOnCreate = true,
   combobox,
 }: BranchDropdownProps) => {
   const [sendToast] = useToast();
@@ -81,6 +84,8 @@ export const BranchDropdown = ({
     try {
       await createBranch({
         name: branchName,
+        base: baseBranch,
+        switch: switchOnCreate,
       }).unwrap();
 
       trackBranchCreated({
