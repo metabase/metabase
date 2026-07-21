@@ -9,7 +9,12 @@ import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { CollectionItem } from "metabase-types/api";
+import type {
+  Card,
+  CollectionItem,
+  Database,
+  Dataset,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -28,19 +33,32 @@ const defaultCardDetails: Partial<CollectionItem> = {
   collection_preview: true,
 };
 
+interface SetupOptions {
+  enterprise?: boolean;
+  card?: Partial<Card>;
+  dataset?: Partial<Dataset>;
+  databases?: Database[];
+}
+
 export function setup(
   cardDetails = defaultCardDetails,
-  { enterprise } = { enterprise: false },
+  {
+    enterprise = false,
+    card: cardOverrides,
+    dataset: datasetOverrides,
+    databases = [],
+  }: SetupOptions = {},
 ) {
   const card = createMockCard({
     id: 1,
+    ...cardOverrides,
   });
   const collectionItem = createMockCollectionItem({
     id: card.id,
     ...cardDetails,
   });
   setupCardEndpoints(card);
-  setupCardQueryEndpoints(card, createMockDataset());
+  setupCardQueryEndpoints(card, createMockDataset(datasetOverrides));
 
   const settings = mockSettings(
     createMockSettings({
@@ -64,6 +82,7 @@ export function setup(
     {
       storeInitialState: createMockState({
         entities: createMockEntitiesState({
+          databases,
           questions: [card],
         }),
         settings,

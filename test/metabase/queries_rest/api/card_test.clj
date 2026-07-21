@@ -201,8 +201,8 @@
                                 :target [:variable [:template-tag :category]]
                                 :value  2}]})))))))
 
-(deftest dashboard-context-metric-query-uses-default-dimension-test
-  (testing "POST card query endpoints use the metric's default dimension in dashboard context (UXW-4769)"
+(deftest dashboard-and-collection-context-metric-query-uses-default-dimension-test
+  (testing "POST card query endpoints use the metric's default dimension in dashboard and collection contexts (UXW-4769, UXW-4771)"
     (mt/dataset test-data
       (let [mp           (mt/metadata-provider)
             orders       (lib.metadata/table mp (mt/id :orders))
@@ -239,6 +239,10 @@
                 (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
                 (is (= stored-metadata
                        (t2/select-one-fn :result_metadata :model/Card :id metric-id)))))
+            (let [result (mt/user-http-request :crowberto :post 202 path {:collection_preview true})]
+              (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
+              (is (= stored-metadata
+                     (t2/select-one-fn :result_metadata :model/Card :id metric-id))))
             (mt/user-http-request :crowberto :post 404 path {:dashboard_id Integer/MAX_VALUE})))))))
 
 (deftest execute-card-with-default-parameters-test

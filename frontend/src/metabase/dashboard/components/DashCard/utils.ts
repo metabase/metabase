@@ -1,6 +1,4 @@
 import { getVirtualCardType } from "metabase/dashboard/utils";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   BaseDashboardCard,
   Series,
@@ -10,37 +8,6 @@ import type {
 } from "metabase-types/api";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["heading", "placeholder"];
-
-export function getMetricSeriesWithDefaultDisplay(
-  series: Series,
-  metadata: Metadata,
-): Series {
-  if (series.length !== 1) {
-    return series;
-  }
-
-  const [metricSeries] = series;
-  if (metricSeries.card.type !== "metric" || !metricSeries.json_query) {
-    return series;
-  }
-
-  const query = Lib.fromJsQueryAndMetadata(metadata, metricSeries.json_query);
-  const { display, settings = {} } = Lib.defaultDisplay(query);
-
-  return [
-    {
-      ...metricSeries,
-      card: {
-        ...metricSeries.card,
-        display,
-        visualization_settings: {
-          ...metricSeries.card.visualization_settings,
-          ...settings,
-        },
-      },
-    },
-  ];
-}
 
 export function shouldShowParameterMapper({
   dashcard,

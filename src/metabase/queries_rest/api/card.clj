@@ -912,7 +912,8 @@
      :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
-     :card-transform (when dashboard_id qp.dashboard/card-with-default-metric-dimension)
+     :card-transform (when (or dashboard_id collection_preview)
+                       qp.dashboard/card-with-default-metric-dimension)
      :context (cond
                 collection_preview :collection
                 dashboard_id       :dashboard
