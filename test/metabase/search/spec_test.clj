@@ -146,6 +146,19 @@
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
 
+(deftest ^:parallel hook-where-fields-test
+  (testing "single-key :id joins collapse to #{:id}"
+    (is (= #{:id} (search.spec/hook-where-fields :model/Collection)))
+    (is (= #{:id} (search.spec/hook-where-fields :model/Card)))
+    (is (= #{:id} (search.spec/hook-where-fields :model/Table)))
+    (is (= #{:id} (search.spec/hook-where-fields :model/Database))))
+  (testing "multi-clause joins collect every :updated-qualified column referenced in the where"
+    (is (= #{:most_recent :model_id :model} (search.spec/hook-where-fields :model/Revision)))
+    (is (= #{:most_recent :moderated_item_id :moderated_item_type}
+           (search.spec/hook-where-fields :model/ModerationReview))))
+  (testing "a model that feeds no search-model hooks has nothing to capture"
+    (is (nil? (search.spec/hook-where-fields :model/User)))))
+
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"
     (let [hash1 (search.spec/index-version-hash)

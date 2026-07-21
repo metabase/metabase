@@ -228,6 +228,18 @@
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/ingest-maybe-async! updates))))
 
+(defn bulk-update!
+  "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows.
+  Enqueued messages only ask ingestion to re-derive the affected search entries: rows that no longer
+  satisfy their spec's query are purged by ingestion's asked-for-but-not-indexed diff."
+  [instances]
+  (when (supports-index?)
+    (when-let [updates (->> instances
+                            (into #{} (mapcat #(search.spec/search-models-to-update % true)))
+                            (remove (comp search.util/impossible-condition? second))
+                            seq)]
+      (search.ingestion/ingest-maybe-async! updates))))
+
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."
   [model ids]
