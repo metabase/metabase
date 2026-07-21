@@ -99,18 +99,42 @@
             (is (= personal-id (t2/select-one-fn :collection_id :model/Card
                                                  :id (:id (:structuredContent result)))))))))))
 
+(defn- create-model-result-metadata
+  "Create a model card via the tool with `extra-args` merged in, returning its persisted
+   `result_metadata`."
+  [extra-args]
+  (let [base-args {:method "create" :card_type "model"
+                   :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
+        result    (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+                                      (merge base-args extra-args))]
+    (is (not (:isError result)) (-> result :content first :text))
+    (t2/select-one-fn :result_metadata :model/Card :id (:id (:structuredContent result)))))
+
 (deftest create-model-with-column-metadata-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [args   {:method "create"
-                    :card_type "model"
-                    :name "Agent Model"
-                    :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
-                    :column_metadata [{:name "total" :display_name "Total $" :semantic_type "type/Currency"}]}
-            result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
-        (is (not (:isError result)) (-> result :content first :text))
-        (let [card-id (:id (:structuredContent result))]
-          (is (= :model (t2/select-one-fn :type :model/Card :id card-id)))
-          (is (= "Agent Model" (t2/select-one-fn :name :model/Card :id card-id)))
-          (is (=? [{:name "total" :display_name "Total $" :semantic_type :type/Currency}]
-                  (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
+      (let [baseline         (create-model-result-metadata {:name "Agent Model Baseline"})
+            result-metadata  (create-model-result-metadata
+                              {:name "Agent Model"
+                               :column_metadata [{:name "TOTAL" :display_name "Total $" :semantic_type "type/Currency"}]})
+            by-name          (into {} (map (juxt :name identity)) result-metadata)]
+        (testing "every query column is present, not just the annotated one"
+          (is (= (count baseline) (count result-metadata))))
+        (testing "the annotated column carries the override plus its real (non-fake) base_type"
+          (is (=? {:display_name "Total $" :semantic_type :type/Currency :base_type :type/Float}
+                  (get by-name "TOTAL"))))
+        (testing "a non-annotated column is still present with its real base_type"
+          (is (=? {:base_type :type/BigInteger}
+                  (get by-name "ID"))))))))
+
+(deftest create-model-with-unknown-column-metadata-name-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [args   {:method "create"
+                  :card_type "model"
+                  :name "Agent Model Bad Column"
+                  :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+                  :column_metadata [{:name "NOT_A_REAL_COLUMN" :display_name "whoops"}]}
+          result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+      (is (:isError result))
+      (is (re-find #"\"NOT_A_REAL_COLUMN\" is not in the query results"
+                   (-> result :content first :text))))))

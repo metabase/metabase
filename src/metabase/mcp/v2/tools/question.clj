@@ -152,22 +152,31 @@
    :collection_path (collection-path (:collection_id card))
    :description     (:description card)})
 
-(defn- ->result-metadata
-  "Map the tool's `column_metadata` entries onto `result_metadata` column maps, dropping nil
-   fields. `display_name` defaults to `name` when omitted. `base_type` is stamped `:type/*`
-   (unknown) — `analyze/ResultsMetadata` requires it on every column, and an entry that fails
-   that schema is silently discarded in favor of freshly computed metadata rather than saved
-   (see `card.metadata/maybe-async-result-metadata`)."
-  [column_metadata]
-  (mapv (fn [{:keys [name display_name description semantic_type visibility_type]}]
-          (u/remove-nils
-           {:name            name
-            :display_name    (or display_name name)
-            :base_type       :type/*
-            :description     description
-            :semantic_type   (some-> semantic_type keyword)
-            :visibility_type (some-> visibility_type keyword)}))
-        column_metadata))
+(defn- merge-column-metadata
+  "Overlay caller-supplied `column_metadata` overrides onto `computed-columns` (the query's
+   real, inferred result metadata), matching by `:name`. Only the override keys
+   (display_name, description, semantic_type, visibility_type) are changed on a matched
+   column — base_type, id, field_ref, fingerprints, and every non-annotated column pass
+   through untouched. Every `column_metadata` name must match a computed column, or a
+   teaching error names the offending one."
+  [computed-columns column_metadata]
+  (let [by-name (into {} (map (juxt :name identity)) computed-columns)]
+    (doseq [{col-name :name} column_metadata]
+      (when-not (contains? by-name col-name)
+        (common/throw-teaching-error
+         (format "Column %s is not in the query results — column_metadata names must match the query's output columns."
+                 (pr-str col-name)))))
+    (let [overrides (into {} (map (juxt :name identity)) column_metadata)]
+      (mapv (fn [col]
+              (if-let [{:keys [display_name description semantic_type visibility_type]}
+                       (get overrides (:name col))]
+                (cond-> col
+                  display_name    (assoc :display_name display_name)
+                  description     (assoc :description description)
+                  semantic_type   (assoc :semantic_type (keyword semantic_type))
+                  visibility_type (assoc :visibility_type (keyword visibility_type)))
+                col))
+            computed-columns))))
 
 (defn- create!
   "Mirror REST `POST /api/card/`'s pre-checks — run permissions on the resolved query, create
@@ -182,7 +191,9 @@
                         (:id (collection/user->personal-collection api/*current-user-id*)))]
     (query-perms/check-run-permissions-for-query dataset-query)
     (api/create-check :model/Card {:collection_id collection-id})
-    (let [card (queries/create-card!
+    (let [result-metadata (when (seq column_metadata)
+                            (merge-column-metadata (queries/infer-metadata dataset-query) column_metadata))
+          card (queries/create-card!
                 (cond-> (u/remove-nils
                          {:name                   name
                           :type                   (keyword (or card_type "question"))
@@ -193,7 +204,7 @@
                           :collection_position    collection_position
                           :cache_ttl              cache_ttl
                           :visualization_settings (or visualization_settings {})})
-                  (seq column_metadata) (assoc :result_metadata (->result-metadata column_metadata)))
+                  result-metadata (assoc :result_metadata result-metadata))
                 {:id api/*current-user-id*})]
       (assoc (card-response card)
              :url (frontend-url (channel.urls/card-path (:id card)))))))
