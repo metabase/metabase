@@ -139,6 +139,38 @@
              (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id qid))
                  "no partial result was written"))))))))
 
+(deftest completion-check-failure-in-error-path-is-retried-not-swallowed-test
+  (testing "a query that fails, then whose thread-completion check transiently fails, must NOT strand
+            its thread. The failed check propagates out of the listener (rather than being swallowed
+            with the batch acked), mq redelivers the batch, and run-query!'s terminal-status fallback
+            re-runs the check for the now-`error` query so the thread completes."
+    (mt/with-temporary-setting-values [queue-max-retries 5]
+      (do-with-fixtures!
+       (fn [{:keys [card thread]}]
+         ;; a database that doesn't exist: the QP throws on every attempt → the error path
+         (let [qid   (insert-query! (:id thread) (:id card)
+                                    {:database 999999
+                                     :type     :query
+                                     :query    {:source-table 1 :aggregation [[:count]]}})
+               calls (atom 0)
+               orig  runner/maybe-complete-thread!]
+           ;; `with-redefs`, not `mt/with-dynamic-fn-redefs`: the handler runs on an MQ worker thread.
+           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+           (with-redefs [runner/maybe-complete-thread!
+                         (fn [tid]
+                           (when (and tid (= 1 (swap! calls inc)))
+                             (throw (ex-info "transient completion blip" {})))
+                           (orig tid))]
+             (mq.tu/with-test-mq [ctx]
+               (#'explorations.queues/publish-pending-queries! (:id thread))
+               (mq.tu/eventually! ctx
+                                  #(some? (:completed_at (t2/select-one :model/ExplorationThread
+                                                                        :id (:id thread))))
+                                  60000)))
+           (is (= "error" (status qid)) "the query is terminally errored")
+           (is (some? (:completed_at (t2/select-one :model/ExplorationThread :id (:id thread))))
+               "and the thread completed despite the completion check failing on its first attempt")))))))
+
 (deftest plan-that-keeps-failing-terminally-stamps-the-thread-test
   (testing "a plan delivery that fails every attempt ends with the thread terminally stamped — the
             same state the planner's own failure path writes — so the client stops polling and the
