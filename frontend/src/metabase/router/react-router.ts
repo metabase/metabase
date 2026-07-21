@@ -11,7 +11,10 @@
 import type { RouteProps as BaseRouteProps } from "react-router";
 
 export {
-  Link as RouterLink,
+  // The raw v3 `<Link>`. The public `RouterLink` (router-link.tsx) is engine-aware
+  // and renders v7's `<Link>` on the v7 engine, so v3's is exported under a private
+  // name for that wrapper to fall back to on the v3 engine.
+  Link as V3RouterLink,
   // The raw v3 `<Route>`, used by the `Route` shim to run v3's route builder over
   // a `<Route index>` element without recursing back into the shim's own builder.
   Route as ReactRouterRoute,
