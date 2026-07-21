@@ -197,6 +197,27 @@ export async function uploadFile(
 ) {
   const uploaded = waitForUpload(page, uploadMode);
 
+  // Same transient-state race as `uploadToExisting` below: the "Uploading data
+  // to …" card only exists between dispatch and the upload response landing.
+  // MEASURED here (dog_breeds/star_wars/pokedex, both dialects): the response
+  // arrives 98–339ms after `setInputFiles`, and the card has already flipped to
+  // "Data added to …" by the time the response is awaited. The assertions below
+  // currently resolve at 14–24ms, so they win by a couple of hundred
+  // milliseconds — comfortably on a warm local backend, not necessarily on a
+  // loaded CI box. Gating the response holds the in-progress state open until
+  // the assertions have run; the request is `continue()`d unmodified, so
+  // nothing about what is asserted changes. See `gateUpload`.
+  //
+  // NOT ported from `uploadToExisting`: the card-scoping. That function needs it
+  // because it runs on a page that already carries a completed toast naming the
+  // same fixture, which makes the root-scoped assertions unfalsifiable. This one
+  // does not — every caller reaches it through `uploadFileToCollection`, whose
+  // `page.goto` full-reloads the app and empties the status root (MEASURED: 0
+  // status cards, root text "", at every call site including the append/replace
+  // specs). So the upstream-literal root scoping here can genuinely fail, and is
+  // kept verbatim.
+  const gate = testFile.valid && (await gateUpload(page, uploadMode));
+
   await page.locator(inputSelector).setInputFiles(fixturePayload(testFile));
 
   if (testFile.valid) {
@@ -206,6 +227,10 @@ export async function uploadFile(
     // container, so `toContainText` twice is the faithful port.
     await expect(statusRoot(page)).toContainText("Uploading data to");
     await expect(statusRoot(page)).toContainText(testFile.fileName);
+
+    if (gate) {
+      await gate.release();
+    }
 
     await uploaded;
 

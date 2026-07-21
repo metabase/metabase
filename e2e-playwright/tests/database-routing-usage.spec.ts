@@ -56,6 +56,7 @@ import {
   addPostgresDatabase,
   createDbWithIdentifierTable,
   getDbIdentifierIds,
+  routingDbName,
 } from "../support/database-routing-usage";
 import { sandboxTable } from "../support/dashboard-repros";
 import { createNativeQuestion } from "../support/factories";
@@ -113,6 +114,21 @@ async function buildSnapshot(mb: {
     router_database_id: leadDbId,
     user_attribute: "destination_database",
   });
+  // `name` is the routing SLUG (matched against the `destination_database`
+  // login attribute), so it stays logical; only `details.dbname` — the physical
+  // postgres database on the shared container — is per-slot.
+  //
+  // NOT drained afterwards, on purpose: destination databases are never synced.
+  // `POST /api/ee/database-routing/destination-database` inserts them with
+  // `router_database_id` set, and `database/should-sync?`
+  // (src/metabase/warehouses/models/database.clj:230) is
+  // `(not (is-destination? db))` — so the `:event/database-create` task these
+  // publish reaches `do-sync-operation`, finds the database ineligible and does
+  // nothing. VERIFIED on a live slot backend: dbs 4 and 5 sat at
+  // `initial_sync_status: "incomplete"` with ZERO rows in
+  // `/api/task/runs?entity-type=database&entity-id=…`. Waiting for a task run
+  // that will never be created just hangs, which is exactly what a first cut of
+  // this change did. They are therefore not a leaked-sync-work source either.
   await createDestinationDatabasesViaAPI(mb.api, {
     router_database_id: leadDbId,
     databases: [
@@ -121,7 +137,7 @@ async function buildSnapshot(mb: {
         name: "destination_one",
         details: {
           ...BASE_POSTGRES_DESTINATION_DB_INFO.details,
-          dbname: "destination_one",
+          dbname: routingDbName("destination_one"),
         },
       },
       {
@@ -129,7 +145,7 @@ async function buildSnapshot(mb: {
         name: "destination_two",
         details: {
           ...BASE_POSTGRES_DESTINATION_DB_INFO.details,
-          dbname: "destination_two",
+          dbname: routingDbName("destination_two"),
         },
       },
     ],

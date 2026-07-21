@@ -223,13 +223,73 @@ async function setAllFieldTypesToNumber(page: Page) {
  * form is "Fri Jan 10 2020 …" and contains no ISO date at all. Round-tripping
  * through JSON reproduces exactly what Cypress sees.
  *
- * Like upstream, the resulting assertions are timezone sensitive (a JS Date at
- * local midnight only serialises to the same calendar day when the zone is
- * behind UTC). CI — and this harness, per support/binning-time-series.ts —
- * runs TZ=US/Pacific.
+ * This is used for the NON-temporal columns only. Its output is timezone
+ * sensitive — a JS Date built from local wall-clock fields only serialises to
+ * the same calendar day when the runner's zone is behind UTC — so the temporal
+ * assertions read the `*_txt` columns below instead. See TEMPORAL_TEXT_COLUMNS.
  */
 function asCypressRow(row: Record<string, unknown>): Record<string, unknown> {
   return JSON.parse(JSON.stringify(row)) as Record<string, unknown>;
+}
+
+/**
+ * Extra SELECT expressions that make the DATABASE render its own temporal
+ * columns as text, aliased `<column>_txt`.
+ *
+ * Why: upstream asserts `expect(row.date).to.include("2020-05-01")` against
+ * whatever the driver handed back, with the comment "metabase uses UTC
+ * timestamps, so compare the date only" — i.e. it assumes the test runner sits
+ * in UTC, which is true of CI and of nobody else. Both drivers actually return
+ * a JS `Date`:
+ *
+ *   - for the tz-naive columns (`date`, `datetime`, `timestamp`) the Date is
+ *     built from the stored wall clock interpreted in the RUNNER's zone, so its
+ *     UTC serialisation rolls back a day on any zone ahead of UTC (measured
+ *     here at UTC+13: `2020-02-01` came back as `2020-01-31T11:00:00.000Z`);
+ *   - for the tz-aware columns (`datetimeTZ`, `timestampTZ`) postgres returns a
+ *     genuine instant, whose calendar day likewise depends on which zone you
+ *     render it in.
+ *
+ * Rendering server-side removes the runner from the picture entirely: the value
+ * is formatted in the same database session zone it was written in, so the
+ * comparison is against the wall clock the form actually submitted. That holds
+ * on a UTC CI box and on a UTC+13 laptop alike.
+ */
+const TEMPORAL_TEXT_COLUMNS: Record<WritebackDialect, string> = {
+  postgres: [
+    `to_char("date", 'YYYY-MM-DD') AS "date_txt"`,
+    `to_char("datetime", 'YYYY-MM-DD HH24:MI:SS') AS "datetime_txt"`,
+    `to_char("datetimeTZ", 'YYYY-MM-DD HH24:MI:SS') AS "datetimeTZ_txt"`,
+    `to_char("timestamp", 'YYYY-MM-DD HH24:MI:SS') AS "timestamp_txt"`,
+    `to_char("timestampTZ", 'YYYY-MM-DD HH24:MI:SS') AS "timestampTZ_txt"`,
+  ].join(", "),
+  mysql: [
+    "DATE_FORMAT(`date`, '%Y-%m-%d') AS `date_txt`",
+    "DATE_FORMAT(`datetime`, '%Y-%m-%d %H:%i:%s') AS `datetime_txt`",
+    "DATE_FORMAT(`datetimeTZ`, '%Y-%m-%d %H:%i:%s') AS `datetimeTZ_txt`",
+    "DATE_FORMAT(`timestamp`, '%Y-%m-%d %H:%i:%s') AS `timestamp_txt`",
+    "DATE_FORMAT(`timestampTZ`, '%Y-%m-%d %H:%i:%s') AS `timestampTZ_txt`",
+  ].join(", "),
+};
+
+/**
+ * The calendar date the database itself reports for a temporal column, as
+ * `YYYY-MM-DD`.
+ *
+ * Upstream compares the date part only (its comment: "compare the date only"),
+ * because the time-of-day of the tz-aware columns depends on how the app server
+ * resolved the submitted wall clock. That is kept — but as an EXACT match on a
+ * date rather than a substring match on a stringified timestamp, which is
+ * strictly stronger: `toContain("2020-05-01")` also passes on
+ * `2020-05-01T…` bleeding out of any other field of the serialised value.
+ */
+function dbDate(row: Record<string, unknown>, column: string): string {
+  const value = row[`${column}_txt`];
+  expect(
+    typeof value,
+    `${column}_txt rendered by the database (got ${JSON.stringify(value)})`,
+  ).toBe("string");
+  return String(value).slice(0, 10);
 }
 
 /** Port of the file-level toggleFieldVisibility: click "Show field". */
@@ -984,7 +1044,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         await execute;
 
         const result = await queryWritableDB(
-          `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+          `SELECT *, ${TEMPORAL_TEXT_COLUMNS[dialect]} FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
           dialect,
         );
         expect(result.rows.length).toBe(1);
@@ -994,8 +1054,8 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         expect(row.float).toBe(2.2);
         expect(row.string).toBe("new string");
         expect(row.boolean).toBe(dialect === "mysql" ? 0 : false);
-        expect(String(row.date)).toContain("2020-05-01");
-        expect(String(row.timestampTZ)).toContain("2020-05-01");
+        expect(dbDate(row, "date")).toBe("2020-05-01");
+        expect(dbDate(row, "timestampTZ")).toBe("2020-05-01");
       });
 
       test("can insert various data types via implicit actions", async ({
@@ -1055,7 +1115,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         await execute;
 
         const result = await queryWritableDB(
-          `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
+          `SELECT *, ${TEMPORAL_TEXT_COLUMNS[dialect]} FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
           dialect,
         );
         expect(result.rows.length).toBe(1);
@@ -1076,12 +1136,14 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         expect(row.boolean).toBe(dialect === "mysql" ? 1 : true);
         expect(row.string).toBe("Zany Zebras");
         expect(row.text).toBe("Zany Zebras");
-        expect(String(row.date)).toContain("2020-02-01");
-        expect(String(row.datetime)).toContain("2020-03-01");
-        expect(String(row.datetimeTZ)).toContain("2020-03-01");
+        expect(dbDate(row, "date")).toBe("2020-02-01");
+        expect(dbDate(row, "datetime")).toBe("2020-03-01");
+        expect(dbDate(row, "datetimeTZ")).toBe("2020-03-01");
+        // `time` comes back from both drivers as a plain string ("12:57:57"),
+        // never a Date, so it carries no timezone fragility.
         expect(String(row.time)).toContain("57:57");
-        expect(String(row.timestamp)).toContain("2020-03-01");
-        expect(String(row.timestampTZ)).toContain("2020-03-01");
+        expect(dbDate(row, "timestamp")).toBe("2020-03-01");
+        expect(dbDate(row, "timestampTZ")).toBe("2020-03-01");
       });
 
       test("does not show json, enum, or binary columns for implicit actions", async ({
@@ -1173,17 +1235,17 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         await execute;
 
         const result = await queryWritableDB(
-          `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+          `SELECT *, ${TEMPORAL_TEXT_COLUMNS[dialect]} FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
           dialect,
         );
         const row = asCypressRow(result.rows[0]);
         const newTimeAdjusted = newTime.slice(0, 10);
-        expect(String(row.date)).toContain(newTime.slice(0, 10));
+        expect(dbDate(row, "date")).toBe(newTime.slice(0, 10));
         expect(row.time).toBe(newTime.slice(-8));
-        expect(String(row.datetime)).toContain(newTimeAdjusted);
-        expect(String(row.timestamp)).toContain(newTimeAdjusted);
-        expect(String(row.datetimeTZ)).toContain(newTimeAdjusted);
-        expect(String(row.timestampTZ)).toContain(newTimeAdjusted);
+        expect(dbDate(row, "datetime")).toBe(newTimeAdjusted);
+        expect(dbDate(row, "timestamp")).toBe(newTimeAdjusted);
+        expect(dbDate(row, "datetimeTZ")).toBe(newTimeAdjusted);
+        expect(dbDate(row, "timestampTZ")).toBe(newTimeAdjusted);
       });
     });
 
