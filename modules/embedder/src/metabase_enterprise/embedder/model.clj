@@ -181,9 +181,8 @@
       "<redacted>")))
 
 (defn- source-log-summary
-  "Loggable summary of a [[model-source]] map: its `:type` and `:origin`, plus a local `:path` verbatim or
-  a [[sanitized-url]]-reduced `:url`. Says which model loaded and whether an override took effect, without
-  logging anything that can carry a credential."
+  "Loggable summary of a [[model-source]] map: says which model loaded and whether an override took
+  effect, without logging anything that can carry a credential."
   [{:keys [type url path origin]}]
   ;; A local path is kept but a URL's path is not, because they differ in kind rather than in who
   ;; configured them: a path names a directory on the operator's own host — a location, not a transport
