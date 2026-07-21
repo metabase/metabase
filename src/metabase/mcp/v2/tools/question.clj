@@ -178,6 +178,17 @@
                 col))
             computed-columns))))
 
+(defn- resolve-result-metadata
+  "Compute `dataset-query`'s real column metadata and overlay the caller's `column_metadata`
+   overrides by name. Throws a teaching error for a native query (no inferable columns) or an
+   unknown column name."
+  [dataset-query column_metadata]
+  (let [computed-columns (queries/infer-metadata dataset-query)]
+    (when (empty? computed-columns)
+      (common/throw-teaching-error
+       "column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created."))
+    (merge-column-metadata computed-columns column_metadata)))
+
 (defn- create!
   "Mirror REST `POST /api/card/`'s pre-checks — run permissions on the resolved query, create
    permission on the target collection — then save a `question` (or `model`) card. Returns the
@@ -196,32 +207,72 @@
                         :else (:id (collection/user->personal-collection api/*current-user-id*)))]
     (query-perms/check-run-permissions-for-query dataset-query)
     (api/create-check :model/Card {:collection_id collection-id})
-    (let [computed-columns (when (seq column_metadata) (queries/infer-metadata dataset-query))]
-      (when (and (seq column_metadata) (empty? computed-columns))
-        (common/throw-teaching-error
-         "column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created."))
-      (let [result-metadata (when (seq column_metadata)
-                              (merge-column-metadata computed-columns column_metadata))
-            card (queries/create-card!
-                  (cond-> (u/remove-nils
-                           {:name                   name
-                            :type                   (keyword (or card_type "question"))
-                            :dataset_query          dataset-query
-                            :display                (keyword (or display "table"))
-                            :description            description
-                            :collection_id          collection-id
-                            :collection_position    collection_position
-                            :cache_ttl              cache_ttl
-                            :visualization_settings (or visualization_settings {})})
-                    result-metadata (assoc :result_metadata result-metadata)
-                    dashboard-id    (assoc :dashboard_id dashboard-id))
-                  {:id api/*current-user-id*})]
-        (assoc (card-response card)
-               :url (frontend-url (channel.urls/card-path (:id card))))))))
+    (let [result-metadata (when (seq column_metadata)
+                            (resolve-result-metadata dataset-query column_metadata))
+          card (queries/create-card!
+                (cond-> (u/remove-nils
+                         {:name                   name
+                          :type                   (keyword (or card_type "question"))
+                          :dataset_query          dataset-query
+                          :display                (keyword (or display "table"))
+                          :description            description
+                          :collection_id          collection-id
+                          :collection_position    collection_position
+                          :cache_ttl              cache_ttl
+                          :visualization_settings (or visualization_settings {})})
+                  result-metadata (assoc :result_metadata result-metadata)
+                  dashboard-id    (assoc :dashboard_id dashboard-id))
+                {:id api/*current-user-id*})]
+      (assoc (card-response card)
+             :url (frontend-url (channel.urls/card-path (:id card)))))))
+
+(defn- update-card-response
+  "The update response: [[card-response]] plus `:archived`."
+  [card]
+  (assoc (card-response card) :archived (boolean (:archived card))))
 
 (defn- update!
-  [_id _args _session-id]
-  (common/throw-teaching-error "Updating questions is not yet implemented."))
+  "Mirror REST `PUT /api/card/:id`'s pre-checks — write-check the existing card, patch only the
+   caller-supplied fields (archiving/restoring via `archived`), re-check collection-move and
+   query-run/overwrite permissions when those fields change — then persist. Returns
+   [[update-card-response]]."
+  [id {:keys [name description display visualization_settings cache_ttl collection_position
+              card_type archived column_metadata] :as args}
+   session-id]
+  (let [card-before  (common/resolve-and-read
+                      :model/Card id
+                      (fn [cid] (api/write-check :model/Card cid)))
+        new-query    (when (or (:query_handle args) (:query args) (:native args))
+                       (lib-be/normalize-query (resolve-query-source args session-id)))
+        raw-updates  (cond-> {}
+                       (contains? args :name)                   (assoc :name name)
+                       (contains? args :description)            (assoc :description description)
+                       (contains? args :collection_id)          (assoc :collection_id (common/resolve-collection-id (:collection_id args)))
+                       (contains? args :collection_position)    (assoc :collection_position collection_position)
+                       (contains? args :display)                (assoc :display (some-> display keyword))
+                       (contains? args :visualization_settings) (assoc :visualization_settings visualization_settings)
+                       (contains? args :cache_ttl)              (assoc :cache_ttl cache_ttl)
+                       (contains? args :card_type)              (assoc :type (keyword card_type))
+                       (contains? args :archived)               (assoc :archived (boolean archived))
+                       (seq column_metadata)                    (assoc :result_metadata
+                                                                       (resolve-result-metadata
+                                                                        (or new-query (:dataset_query card-before))
+                                                                        column_metadata))
+                       new-query                                (assoc :dataset_query new-query))
+        card-updates (api/updates-with-archived-directly card-before raw-updates)]
+    (collection/check-allowed-to-change-collection card-before card-updates)
+    (when (api/column-will-change? :dataset_query card-before card-updates)
+      (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
+      (try
+        (lib/check-card-overwrite id (:dataset_query card-updates))
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (throw (ex-info (ex-message e) (assoc data :status-code (or (:status-code data) 400))))))))
+    (queries/update-card! {:card-before-update    card-before
+                           :card-updates          card-updates
+                           :actor                 @api/*current-user*
+                           :delete-old-dashcards? false})
+    (update-card-response (t2/select-one :model/Card :id id))))
 
 (def ^:private question-write-args-schema
   [:map {:closed true}

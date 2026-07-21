@@ -1286,7 +1286,10 @@
            system
            task
            util}
-   :model-imports #{:model/Card :model/Collection :model/Field}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Field}}
 
   measures
   {:team "Graphy"

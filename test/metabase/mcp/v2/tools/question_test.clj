@@ -1,6 +1,7 @@
 (ns metabase.mcp.v2.tools.question-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.question :as v2.question]
@@ -199,3 +200,72 @@
         (is (:isError result))
         (is (re-find #"Pass either collection_id or dashboard_id, not both"
                      (-> result :content first :text)))))))
+
+;;; ------------------------------------------------------ Update --------------------------------------------------
+
+(deftest update-question-rename-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card card {:name "Before" :dataset_query (mt/mbql-query orders)}]
+      (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                       {:method "update" :id (:id card) :description "new desc"})]
+        (is (not (:isError result)) (-> result :content first :text))
+        (is (= "new desc" (t2/select-one-fn :description :model/Card :id (:id card))))))))
+
+(deftest update-archive-restore-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card card {:archived false :dataset_query (mt/mbql-query orders)}]
+      (let [archive-result (registry/call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived true})]
+        (is (not (:isError archive-result)) (-> archive-result :content first :text)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id (:id card))))
+      (let [restore-result (registry/call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived false})]
+        (is (not (:isError restore-result)) (-> restore-result :content first :text)))
+      (is (false? (t2/select-one-fn :archived :model/Card :id (:id card)))))))
+
+(deftest update-not-found-collapses-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [result (registry/call-tool #{::scope/unrestricted} nil "question_write"
+                                     {:method "update" :id 999999999 :name "x"})]
+      (is (:isError result))
+      (is (re-find #"not found" (-> result :content first :text))))))
+
+(deftest update-scope-denied-test
+  (mt/with-temp [:model/Card card {:name "X"}]
+    (let [result (registry/call-tool #{"agent:question:create"} nil "question_write"
+                                     {:method "update" :id (:id card) :name "Y"})]
+      (is (:isError result))
+      (is (re-find #"method: update" (-> result :content first :text))))))
+
+(deftest update-question-swap-query-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders)}]
+      (let [new-query {:database (mt/id) :stages [{:source-table (mt/id :products)}]}
+            result    (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                          {:method "update" :id (:id card) :query new-query})]
+        (is (not (:isError result)) (-> result :content first :text))
+        (is (=? {:stages [{:source-table (mt/id :products)}]}
+                (t2/select-one-fn :dataset_query :model/Card :id (:id card))))))))
+
+(deftest update-model-column-metadata-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [baseline (create-model-result-metadata {:name "Update Model Baseline"})
+            create-result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+                                              {:method "create" :card_type "model"
+                                               :name "Update Model"
+                                               :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
+            card-id (:id (:structuredContent create-result))
+            update-result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                              {:method "update" :id card-id
+                                               :column_metadata [{:name "TOTAL" :display_name "Total $"
+                                                                  :semantic_type "type/Currency"}]})
+            result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
+            by-name (into {} (map (juxt :name identity)) result-metadata)]
+        (is (not (:isError update-result)) (-> update-result :content first :text))
+        (testing "every query column is still present, not just the annotated one"
+          (is (= (count baseline) (count result-metadata))))
+        (testing "the annotated column carries the override plus its real (non-fake) base_type"
+          (is (=? {:display_name "Total $" :semantic_type :type/Currency :base_type :type/Float}
+                  (get by-name "TOTAL"))))
+        (testing "a non-annotated column is still present with its real base_type, unmodified"
+          (is (=? {:base_type :type/BigInteger}
+                  (get by-name "ID"))))))))
