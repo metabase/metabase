@@ -6,7 +6,8 @@
 
   Response shape: a flat identity (`id, finding_type, entity_type, entity_id, detected_at,
   entity_display_name`) plus a nested typed `details` merging the stored verdict with live-hydrated
-  `collection`, `description`, `owner`, and `creator`."
+  `collection`, `description`, `owner`, `creator`, and `view_count` (the entity's usage counter, present
+  for every type but transform)."
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
@@ -59,18 +60,21 @@
      [:description    [:maybe :string]]
      [:owner          NormalizedUser]
      [:creator        Creator]
+     [:view_count     {:optional true} :int]
      [:threshold_days {:optional true} :int]]]])
 
 (def ^:private SlowEntity
   "A hydrated culprit of a container roll-up: an embedded slow **card** of a dashboard/document finding.
   Always a card - a container embeds cards (a dashboard via its dashcards, a document via the cards embedded
   in its body) and is flagged slow when one of those cards' queries is slow; it never embeds a transform, and
-  a slow transform is its own leaf finding, not a member of another entity. `{id, name, entity_type, card_type?}`."
+  a slow transform is its own leaf finding, not a member of another entity.
+  `{id, name, entity_type, card_type?, view_count}`."
   [:map
    [:id          :int]
    [:name        [:maybe :string]]
    [:entity_type :keyword]
-   [:card_type   {:optional true} [:maybe :keyword]]])
+   [:card_type   {:optional true} [:maybe :keyword]]
+   [:view_count  :int]])
 
 (def ^:private SlowFinding
   "Response item for a `slow` finding: flat identity + a top-level `duration_ms` + nested typed `details`.
@@ -94,6 +98,7 @@
      [:description   [:maybe :string]]
      [:owner         NormalizedUser]
      [:creator       Creator]
+     [:view_count    {:optional true} :int]
      [:threshold_ms  {:optional true} :int]
      [:slow_entities {:optional true} [:sequential SlowEntity]]]]])
 

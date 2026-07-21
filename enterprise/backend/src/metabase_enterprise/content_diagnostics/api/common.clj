@@ -117,12 +117,15 @@
 
 (defn- entity-context
   "For one entity-type's id set → `{entity-id → row}`. Live-hydrates only the non-denormalized display
-  fields: `description`, `collection_id`, and (transform only) the owner. `document` has no description."
+  fields: `description`, `collection_id`, `view_count` (all but transform), and (transform only) the owner.
+  `document` has no description."
   [entity-type ids]
   (when-let [model (common/entity-type->model entity-type)]
     (let [cols (cond-> [:id :collection_id]
-                 (not= entity-type :document) (conj :description)
-                 (= entity-type :transform)   (conj :owner_user_id :owner_email))
+                 (not= entity-type :document)  (conj :description)
+                 ;; card/dashboard/document have a native view_count column; transform has none.
+                 (not= entity-type :transform) (conj :view_count)
+                 (= entity-type :transform)    (conj :owner_user_id :owner_email))
           rows (cond-> (t2/select (into [model] cols) :id [:in (set ids)])
                  ;; reuse the transform model's batched :owner hydrate (user row, or {:email …} external)
                  (= entity-type :transform) (t2/hydrate :owner))]
@@ -145,9 +148,10 @@
             colls))))
 
 (defn- hydrate-slow-entities
-  "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw>}}`. The read-time hydration of
-  a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects. `card_type` is the
-  `report_card.type` enum (question/model/metric) that drives the FE per-member link/icon. Batched.
+  "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw> :view_count <int>}}`. The
+  read-time hydration of a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects.
+  `card_type` is the `report_card.type` enum (question/model/metric) that drives the FE per-member
+  link/icon; `view_count` is the card's live usage counter. Batched.
 
   Culprit cards can live outside their container's collection, so the per-caller read-time filters are
   re-applied here: caller visibility (the same gate as `visible-findings-clause`) always, and the
@@ -156,8 +160,9 @@
   [card-ids excluded-personal-ids]
   (when (seq card-ids)
     ;; `:card_schema` is required on any Card select - its after-select schema-upgrade hook reads it.
-    (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)})
-                      [:model/Card :id :name :type :card_schema]
+    (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)
+                               :view_count (:view_count c)})
+                      [:model/Card :id :name :type :view_count :card_schema]
                       {:where [:and
                                [:in :id (set card-ids)]
                                (collection/visible-collection-filter-clause :collection_id)
@@ -179,7 +184,9 @@
 
 (defn hydrate-findings
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
-  nested `details` = stored verdict + {collection, description, owner, creator}. Batched, page-size-independent.
+  nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
+  is the entity's live usage counter, present only for types that have the column (all but transform).
+  Batched, page-size-independent.
 
   Options let each endpoint add its per-finding-type extras without changing the shared base:
   `:top-level-cols` - extra native finding columns hoisted to the top level (e.g. `:last_active_at` for
@@ -208,7 +215,9 @@
                                   :owner       (normalized-owner entity)
                                   ;; creator denormalized (id + common_name) - no live :creator hydrate.
                                   :creator     (when entity_creator_id
-                                                 {:id entity_creator_id :name entity_creator_name :type :user})})
+                                                 {:id entity_creator_id :name entity_creator_name :type :user})}
+                                 (when-some [view-count (:view_count entity)]
+                                   {:view_count view-count}))
                   details* (if (and hydrate-culprits? (contains? details :slow_entity_ids))
                              (-> base
                                  (dissoc :slow_entity_ids)
