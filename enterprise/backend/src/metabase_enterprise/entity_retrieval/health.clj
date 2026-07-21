@@ -36,16 +36,16 @@
   Returns nil when a dependency is unmet (the feature is off, so the check is omitted), otherwise a
   `{:health :message}` map describing the index's own state and the embedding service it depends on."
   []
-  (let [status (entity-retrieval/retrieval-status)]
-    (when (entity-retrieval/all-dependencies-met? status)
-      (case (get-in status [:index :status])
-        :unreachable  (semantic.health/degraded "Index unreachable")
-        :missing      (semantic.health/degraded "Index not found")
-        :incompatible (semantic.health/degraded "Index not compatible")
-        :empty        (semantic.health/warning  "Index empty")
-        :populated    (if-let [problem (semantic.health/embedding-problem)]
-                        (semantic.health/degraded (u/capitalize-first-char problem))
-                        (semantic.health/healthy "Healthy"))))))
+  ;; :index is present only when every dependency holds -- absence is the not-applicable signal.
+  (when-let [index (:index (entity-retrieval/retrieval-status))]
+    (case (:status index)
+      :unreachable  (semantic.health/degraded "Index unreachable")
+      :missing      (semantic.health/degraded "Index not found")
+      :incompatible (semantic.health/degraded "Index not compatible")
+      :empty        (semantic.health/warning  "Index empty")
+      :populated    (if-let [problem (semantic.health/embedding-problem)]
+                      (semantic.health/degraded (u/capitalize-first-char problem))
+                      (semantic.health/healthy "Healthy")))))
 
 (health-inspector/register-check! :nlq-retrieval nlq-retrieval-health-check)
 
@@ -78,8 +78,8 @@
   compatibility, not population -- and passes `probe-populated? false` so it doesn't run the population
   query it would discard."
   []
-  (when (contains? #{:compatible :empty :populated}
-                   (get-in (entity-retrieval/retrieval-status false) [:index :status]))
+  ;; probe-populated? false stops the probe at :compatible, so :empty/:populated never appear here.
+  (when (= :compatible (get-in (entity-retrieval/retrieval-status false) [:index :status]))
     (try (semantic.datasource/ensure-initialized-data-source!)
          (catch Throwable _ nil))))
 
@@ -141,7 +141,7 @@
         (when age
           (semantic.health/staleness-result
            age staleness-warn-seconds staleness-critical-seconds
-           "Membership/name changes not hooked are caught by the ~15m full reconcile.")))
+           "Changes missed by the write hooks are picked up by the ~15m full reconcile.")))
       (catch java.sql.SQLException e
         ;; 42703 = undefined_column
         (if (= "42703" (.getSQLState e))

@@ -80,14 +80,6 @@
    :embedder (embedder-configured?)
    :licenses (licensed?)})
 
-(defn- deps-met? [deps]
-  (reduce-kv (fn [_ _ met?] (if met? true (reduced false))) true deps))
-
-(defn all-dependencies-met?
-  "True when every dependency in a `retrieval-status` map holds (equivalently, when `:index` is present)."
-  [status]
-  (deps-met? (:dependencies status)))
-
 (defn- index-populated? [ds]
   (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
 
@@ -105,7 +97,9 @@
       ;; A missing table is the ordinary absent-index state, not a store fault.
       (if (missing-table-error? e)
         {:status :missing}
-        (do (log/warn e "entity-retrieval index probe failed")
+        ;; DEBUG: entity-retrieval-available? probes per tool-offering request, so a pgvector outage would
+        ;; WARN-flood the logs; the :unreachable status and the health check already carry the signal.
+        (do (log/debug e "entity-retrieval index probe failed")
             {:status :unreachable, :error (ex-message e)})))))
 
 (defn retrieval-status
@@ -127,7 +121,7 @@
   ([probe-populated?]
    (let [deps (dependencies)]
      (cond-> {:dependencies deps}
-       (deps-met? deps) (assoc :index (probe-index probe-populated?))))))
+       (every? val deps) (assoc :index (probe-index probe-populated?))))))
 
 (defenterprise entity-retrieval-available?
   "Is there a non-empty compatible index, and are we able to use it?"
