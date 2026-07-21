@@ -204,6 +204,38 @@
                                                      :template_tag_values {(keyword "#123-some-card") "x"}}))
                              "card-reference tag")))))))
 
+;;; -------------------------------------------------- Prompt ------------------------------------------------------
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest execute-sql-prompt-rides-the-handle-test
+  (testing "the user's original request is stored with a SQL-minted handle, so visualize_query can
+            surface it in the feedback flow exactly as it does for execute_query handles — the tool
+            description advertises these handles as visualize-ready, so dropping the prompt would
+            silently degrade every SQL-derived chart"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [sid           (str "execute-sql-prompt-" (random-uuid))
+              uid           (mt/user->id :crowberto)
+              ;; the raw store accessor, not common/resolve-query-handle! — that one re-runs the
+              ;; native-query guard and refuses SQL handles by design (see the handle-contract test)
+              handle-prompt (fn [body]
+                              (:prompt (mcp.session/resolve-query-handle sid uid (:query_handle body))))]
+          (testing "on the execute path"
+            (is (= "show me the first orders"
+                   (handle-prompt (payload (call! sid {:database_id (mt/id)
+                                                       :sql         "SELECT ID FROM ORDERS ORDER BY ID"
+                                                       :row_limit   2
+                                                       :prompt      "show me the first orders"}))))))
+          (testing "and on the validate_only path, which exists to stage SQL for exactly that flow"
+            (is (= "stage this for a chart"
+                   (handle-prompt (payload (call! sid {:database_id   (mt/id)
+                                                       :sql           "SELECT 1"
+                                                       :validate_only true
+                                                       :prompt        "stage this for a chart"}))))))
+          (testing "an omitted prompt stores nil rather than failing the call"
+            (is (nil? (handle-prompt (payload (call! sid {:database_id (mt/id)
+                                                          :sql         "SELECT 1"})))))))))))
+
 ;;; ------------------------------------------------ validate_only -------------------------------------------------
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table

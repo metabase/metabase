@@ -323,8 +323,8 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
           returned))
 
 (defn- validate-sql-response!
-  [session-id serialized-query]
-  (let [counts {:query_handle (mint-handle! session-id serialized-query nil)
+  [session-id serialized-query prompt]
+  (let [counts {:query_handle (mint-handle! session-id serialized-query prompt)
                 :returned     0
                 :truncated    false}]
     (common/success-content
@@ -332,12 +332,12 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
           "\nSQL accepted, not executed — template tags and permissions were checked; the SQL text itself was not validated. Execute, save, or visualize it later by passing this query_handle."))))
 
 (defn- execute-sql-response!
-  [session-id serialized-query row-limit]
+  [session-id serialized-query prompt row-limit]
   (let [;; The probe row matters more here than on the MBQL path: with no cursor to page, a
         ;; complete result mis-reported as truncated would steer the agent to rewrite SQL that
         ;; was already right, and nothing downstream could correct it.
         {:keys [cols rows returned truncated?]} (execute-page! serialized-query row-limit)
-        counts     {:query_handle (mint-handle! session-id serialized-query nil)
+        counts     {:query_handle (mint-handle! session-id serialized-query prompt)
                     :returned     returned
                     :truncated    truncated?}
         payload    (assoc counts
@@ -356,6 +356,8 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
    [:template_tag_values {:optional true}
     [:maybe [:map-of {:description "Values for the {{tag}} placeholders in sql, keyed by tag name. Each value binds as a driver-level prepared-statement parameter (injection-safe): strings bind as text, numbers as numbers. Snippet ({{snippet: …}}) and card-reference ({{#123}}) tags cannot be populated here."}
              :keyword [:or :string number? :boolean]]]]
+   [:prompt {:optional true}
+    [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle so visualize_query can surface it in the feedback flow."}]]]
    [:validate_only {:optional true}
     [:maybe [:boolean {:description "true mints a query_handle without executing — template tags and permissions are checked, the SQL text itself is not (default false)."}]]]
    [:row_limit {:optional true}
@@ -366,7 +368,7 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
   {:name  "execute_sql"
    :scope metabot.scope/agent-sql-execute
    :args  execute-sql-args-schema}
-  [{:keys [database_id sql template_tag_values validate_only row_limit]} {:keys [session-id]}]
+  [{:keys [database_id sql template_tag_values prompt validate_only row_limit]} {:keys [session-id]}]
   (check-execute-sql-gates! database_id)
   (let [mp    (lib-be/application-database-metadata-provider database_id)
         query (lib/native-query mp sql)
@@ -379,5 +381,5 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
         serialized (cond-> (lib/prepare-for-serialization query)
                      (seq parameters) (assoc :parameters parameters))]
     (if (true? validate_only)
-      (validate-sql-response! session-id serialized)
-      (execute-sql-response! session-id serialized (or row_limit default-row-limit)))))
+      (validate-sql-response! session-id serialized prompt)
+      (execute-sql-response! session-id serialized prompt (or row_limit default-row-limit)))))
