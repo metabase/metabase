@@ -71,6 +71,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
+   [metabase.warehouses.core :as warehouses]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -269,6 +270,7 @@
 (defn- fetch-databases-list [query-params]
   (let [dbs (->> (t2/select [:model/Database :id :name :engine :description :is_audit]
                             :is_audit false
+                            :router_database_id nil
                             {:order-by [[:%lower.name :asc]]})
                  (filter mi/can-read?)
                  (mapv present-database))]
@@ -328,12 +330,12 @@
 ;; ----- Database drill-down -----
 
 (defn- fetch-database [id-str]
-  (let [db (api/read-check :model/Database (parse-long id-str))]
+  (let [db (warehouses/get-database (parse-long id-str))]
     (entity-result (present-database db))))
 
 (defn- fetch-database-tables [id-str query-params]
   (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
+        _      (warehouses/get-database db-id)
         tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
                                :db_id  db-id
                                :active true
@@ -344,7 +346,7 @@
 
 (defn- fetch-database-models [id-str query-params]
   (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
+        _      (warehouses/get-database db-id)
         models (->> (t2/select [:model/Card :id :name :type :description :card_schema
                                 :collection_id :database_id :table_id]
                                :type        :model
@@ -357,7 +359,7 @@
 
 (defn- fetch-database-schemas [id-str query-params]
   (let [db-id   (parse-long id-str)
-        _       (api/read-check :model/Database db-id)
+        _       (warehouses/get-database db-id)
         rows    (t2/query
                  {:select-distinct [:schema]
                   :from            [:metabase_table]
@@ -374,7 +376,7 @@
 
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
+        _      (warehouses/get-database db-id)
         tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
                                :db_id  db-id
                                :schema schema-name
@@ -428,10 +430,33 @@
 
 ;; ----- Table -----
 
+(defn- check-resource-database
+  "Require that a resource's backing database is addressable as a Metabot resource.
+   Routed destination databases are routing internals here: users should navigate via
+   the router database, not direct destination-backed resource URIs."
+  [db-id]
+  (when db-id
+    (warehouses/get-database db-id)))
+
+(defn- check-table-resource-database [table-id]
+  (when-let [table (api/read-check :model/Table table-id)]
+    (check-resource-database (:db_id table))))
+
+(defn- check-card-resource-database [card-id]
+  (when-let [card (api/read-check :model/Card card-id)]
+    (check-resource-database (:database_id card))))
+
+(defn- check-measure-or-segment-resource-database [model id]
+  (when-let [table-id (t2/select-one-fn :table_id model :id id)]
+    (check-table-resource-database table-id)))
+
 (defn- table-details
   "Shared `entity-details/get-table-details` call for both /table/{id} and /table/{id}/fields.
    `entity-type` is :table, :model, or :question."
   [entity-type id with-fields?]
+  (case entity-type
+    :table (check-table-resource-database id)
+    (:model :question) (check-card-resource-database id))
   (entity-details/get-table-details {:entity-type          entity-type
                                      :entity-id            id
                                      :with-fields?         with-fields?
@@ -447,15 +472,18 @@
   (table-details :table (parse-long id-str) true))
 
 (defn- fetch-table-field [id-str field-id]
-  (field-stats/field-values {:entity-type "table"
-                             :entity-id   (parse-long id-str)
-                             :field-id    field-id
-                             :limit       30}))
+  (let [table-id (parse-long id-str)]
+    (check-table-resource-database table-id)
+    (field-stats/field-values {:entity-type "table"
+                               :entity-id   table-id
+                               :field-id    field-id
+                               :limit       30})))
 
 (defn- fetch-table-derived [id-str query-params]
   (let [table-id   (parse-long id-str)
         table      (api/read-check :model/Table table-id)
         db-id      (:db_id table)
+        _          (check-resource-database db-id)
         cards      (->> (t2/select [:model/Card :id :name :type :description :card_schema
                                     :collection_id :database_id :table_id]
                                    :table_id table-id
@@ -488,40 +516,53 @@
   (table-details (keyword type-str) (parse-long id-str) true))
 
 (defn- fetch-card-field [type-str id-str field-id]
-  (field-stats/field-values {:entity-type type-str
-                             :entity-id   (parse-long id-str)
-                             :field-id    field-id
-                             :limit       30}))
+  (let [card-id (parse-long id-str)]
+    (check-card-resource-database card-id)
+    (field-stats/field-values {:entity-type type-str
+                               :entity-id   card-id
+                               :field-id    field-id
+                               :limit       30})))
 
 (defn- fetch-card-sources [id-str]
   (let [card (api/read-check :model/Card (parse-long id-str))]
+    (check-resource-database (:database_id card))
     (list-result :card-sources (card-sources-items card))))
 
 ;; ----- Metric -----
 
 (defn- fetch-metric [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions false
-                                      :with-field-values         false}))
+  (let [metric-id (parse-long id-str)]
+    (check-card-resource-database metric-id)
+    (entity-details/get-metric-details {:metric-id                 metric-id
+                                        :with-queryable-dimensions false
+                                        :with-field-values         false})))
 
 (defn- fetch-metric-dimensions [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions true
-                                      :with-field-values         false}))
+  (let [metric-id (parse-long id-str)]
+    (check-card-resource-database metric-id)
+    (entity-details/get-metric-details {:metric-id                 metric-id
+                                        :with-queryable-dimensions true
+                                        :with-field-values         false})))
 
 (defn- fetch-metric-dimension [id-str dim-id]
-  (field-stats/field-values {:entity-type "metric"
-                             :entity-id   (parse-long id-str)
-                             :field-id    dim-id
-                             :limit       30}))
+  (let [metric-id (parse-long id-str)]
+    (check-card-resource-database metric-id)
+    (field-stats/field-values {:entity-type "metric"
+                               :entity-id   metric-id
+                               :field-id    dim-id
+                               :limit       30})))
 
 ;; ----- Measure / Segment -----
 
 (defn- fetch-measure [id-str]
-  (entity-details/get-measure-details {:measure-id (parse-long id-str)}))
+  (let [measure-id (parse-long id-str)]
+    (check-measure-or-segment-resource-database :model/Measure measure-id)
+    (entity-details/get-measure-details {:measure-id measure-id})))
 
 (defn- fetch-segment [id-str]
-  (entity-details/get-segment-details {:segment-id (parse-long id-str)}))
+  (let [segment-id (parse-long id-str)]
+    (check-measure-or-segment-resource-database :model/Segment segment-id)
+    (entity-details/get-segment-details {:segment-id segment-id})))
 
 ;; ----- Transform -----
 
@@ -643,6 +684,29 @@
 
 ;; ----- Dispatch -----
 
+(def ^:private numeric-id-uri-types
+  "URI entity-type segments whose next segment must be a numeric id (see `dispatch`)."
+  #{"database" "collection" "table" "model" "question" "metric"
+    "measure" "segment" "transform" "dashboard"})
+
+(defn- check-numeric-id-segment!
+  "Entity URIs take numeric ids only. The common miss is the LLM pasting a 21-char entity id
+   where the numeric id belongs; without this check that fails downstream as a bare 404 the
+   LLM misreads as a permissions problem. Throw a directive error instead so it
+   self-corrects in one step."
+  [uri [type-seg id-seg]]
+  (when (and (numeric-id-uri-types type-seg)
+             (some? id-seg)
+             (nil? (parse-long id-seg)))
+    (throw (ex-info
+            (str "Invalid id `" id-seg "` in URI. read_resource URIs use the numeric entity "
+                 "id — copy the `uri` attribute from a search result, or build the URI from "
+                 "its numeric `id` attribute, e.g. metabase://" type-seg "/42.")
+            {:agent-error? true
+             :status-code  400
+             :uri          uri
+             :id-segment   id-seg}))))
+
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
    list of supported URI shapes — adding a new URI = adding a clause here + a handler.
@@ -651,6 +715,7 @@
    ones (with rest-binding) so the exact-length match wins for the no-extra-segments case."
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
+    (check-numeric-id-segment! uri segments)
     (match/match-one segments
       ;; Navigation
       ["databases"]                                    (fetch-databases-list query-params)
@@ -790,8 +855,8 @@
            :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
-  the instance and drill into specific entities. URIs returned by `search` and other
-  read_resource calls can be fed directly back here.
+  the instance and drill into specific entities. URIs returned by `search` can be fed directly
+  back here. Only numeric IDs accepted, never alphanumeric entity-id's.
 
   Up to 5 URIs may be requested in one call. List responses are capped at 25 items per page.
   When :truncated is true, append ?page=N to fetch the next page (e.g. metabase://database/1/tables?page=2).

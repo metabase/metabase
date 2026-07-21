@@ -10,9 +10,9 @@ export const getMetabotRoutes = () => {
       {getMetabotQuickLinks()}
       <Route
         path="metabot/conversation/:convoId"
-        component={MetabotConversationPage}
+        element={<MetabotConversationPage />}
       />
-      <Route path="slack-connect-success" component={SlackConnectSuccess} />
+      <Route path="slack-connect-success" element={<SlackConnectSuccess />} />
     </>
   );
 };

@@ -67,11 +67,9 @@ const createAskState = ({
   return state;
 };
 
-const TestConversationPage = (
-  props: React.ComponentProps<typeof MetabotConversationPage>,
-) => (
+const TestConversationPage = () => (
   <MetabotProvider>
-    <MetabotConversationPage {...props} />
+    <MetabotConversationPage />
   </MetabotProvider>
 );
 
@@ -96,7 +94,7 @@ const setup = ({
   );
 
   return renderWithProviders(
-    <Route path={CONVERSATION_ROUTE} component={TestConversationPage} />,
+    <Route path={CONVERSATION_ROUTE} element={<TestConversationPage />} />,
     {
       withRouter: true,
       initialRoute: Urls.metabotConversation(urlConversationId),

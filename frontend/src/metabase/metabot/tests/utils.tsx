@@ -281,7 +281,7 @@ export function setup(
     withRouter && initialRoute ? (
       <Route
         path={initialRoute}
-        component={() => <MetabotProvider>{ui}</MetabotProvider>}
+        element={<MetabotProvider>{ui}</MetabotProvider>}
       />
     ) : (
       <MetabotProvider>{ui}</MetabotProvider>

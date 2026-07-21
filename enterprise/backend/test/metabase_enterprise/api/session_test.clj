@@ -25,6 +25,7 @@
                               :config-text-file
                               :content-translation
                               :content-verification
+                              :data-apps
                               :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login
@@ -79,6 +80,7 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
+            :data-apps                      true
             :data-complexity-score          true
             :dashboard_subscription_filters true
             :disable_password_login         true

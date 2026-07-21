@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { useGetMetabotConversationQuery } from "metabase/api/metabot";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { MetabotAsk } from "metabase/metabot/components/MetabotAsk";
@@ -14,18 +15,15 @@ import {
 } from "metabase/metabot/state";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Navigate } from "metabase/router";
+import { Navigate, useParams } from "metabase/router";
 import { getSettingsLoading } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export const IN_PROGRESS_POLL_MS = 2500;
 
-export const MetabotConversationPage = ({
-  params: { convoId: urlConvoId },
-}: {
-  params: { convoId: string };
-}) => {
+export const MetabotConversationPage = () => {
+  const { convoId: urlConvoId } = useParams<{ convoId: string }>();
   const dispatch = useDispatch();
   const { canUseNlq, isLoading } = useUserMetabotPermissions();
   const { conversationId } = useMetabotAgent("ask");
@@ -38,9 +36,10 @@ export const MetabotConversationPage = ({
   const isConvoLoaded = conversationId === urlConvoId;
 
   const { currentData: conversation, isError } = useGetMetabotConversationQuery(
-    urlConvoId,
+    !urlConvoId || !canUseNlq || (isConvoLoaded && !isInProgress)
+      ? skipToken
+      : urlConvoId,
     {
-      skip: !canUseNlq || (isConvoLoaded && !isInProgress),
       pollingInterval: isInProgress ? IN_PROGRESS_POLL_MS : 0,
     },
   );

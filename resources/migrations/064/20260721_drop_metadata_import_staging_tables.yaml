@@ -1,0 +1,179 @@
+## The metadata file importer (POST /api/ee/serialization/metadata/import) has
+## been removed; drop its staging tables. The rollbacks recreate the tables
+## exactly as 062/20260506_metadata_import_staging_tables.yaml defined them —
+## they only ever held scratch data wiped on every import, so no data is lost
+## in either direction.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T11:00:00
+      author: ranquild
+      comment: Drop the metabase_table_import staging table
+      changes:
+        - dropTable:
+            tableName: metabase_table_import
+      rollback:
+        - createTable:
+            tableName: metabase_table_import
+            remarks: Staging table for the metadata file importer's tables phase. Drained outside the merge txn, merged into metabase_table inside it.
+            columns:
+              - column:
+                  name: source_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_metabase_table_import
+              - column:
+                  name: source_db_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: display_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_id
+                  type: int
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: metabase_table_import
+            indexName: idx_mti_target_id
+            columns:
+              - column:
+                  name: target_id
+
+  - changeSet:
+      id: v64.2026-07-21T11:00:01
+      author: ranquild
+      comment: Drop the metabase_field_import staging table
+      changes:
+        - dropTable:
+            tableName: metabase_field_import
+      rollback:
+        - createTable:
+            tableName: metabase_field_import
+            remarks: Staging table for the metadata file importer's fields phase. Drained outside the merge txn, depth-tagged, then merged into metabase_field level by level inside the txn.
+            columns:
+              - column:
+                  name: source_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_metabase_field_import
+              - column:
+                  name: source_table_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_parent_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_fk_target_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: effective_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: semantic_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: coercion_strategy
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: nfc_path
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: depth
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_parent_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_fk_target_id
+                  type: int
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: metabase_field_import
+            indexName: idx_mfi_depth
+            columns:
+              - column:
+                  name: depth
+        - createIndex:
+            tableName: metabase_field_import
+            indexName: idx_mfi_target_id
+            columns:
+              - column:
+                  name: target_id

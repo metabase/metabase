@@ -190,7 +190,6 @@
   Like `mbql-query`, but for native queries."
   [inner-native-query :- :map]
   {:deprecated "0.61.0"}
-  #_{:clj-kondo/ignore [:deprecated-var]}
   {:database (id)
    :type     :native
    :native   (mbql.normalize/normalize ::mbql.s/TopLevelNativeInnerQuery inner-native-query)})
