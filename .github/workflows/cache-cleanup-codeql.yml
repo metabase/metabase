@@ -1,17 +1,8 @@
-# CodeQL's overlay analysis saves a ~400MB "base database" cache on every master run, keyed by commit SHA, and
-# nothing ever removes the old ones. They had grown to 16 entries / 6.4GB — 61% of this repo's entire 10GB Actions
-# cache budget — which pushes GitHub into evicting caches we actually want (M2, node_modules, Cypress) and makes
-# unrelated jobs slower.
+# CodeQL's overlay analysis saves a ~400MB "base database" cache on every master run, keyed by commit SHA.
 #
 # Only the newest entry is ever restored: CodeQL looks its cache up by key *prefix* and takes the most recent match,
-# so everything behind it is dead weight. This job keeps the newest few and deletes the rest, daily.
-#
-# Safe by construction:
-#   - It only ever deletes keys starting with `codeql-overlay-base-database-`; nothing else is touched.
-#   - It keeps the newest `keep` entries, so in-flight runs and the next incremental analysis still get a hit.
-#   - Worst case if it deletes too much: CodeQL builds a full database instead of an incremental one. Slower, same
-#     results. Per the cache doctrine in cache-generator.yml — caches are for speed, never for correctness.
-name: Cache Cleanup (CodeQL)
+# so everything behind it is dead weight. This job keeps the newest few and deletes the rest.
+name: CodeQL Cache Cleanup
 
 on:
   schedule:
@@ -90,12 +81,3 @@ jobs:
             echo "- deleted: **$doomed**"
             echo "- reclaimed: **$((freed / 1000000)) MB**${DRY_RUN:+ (dry run: $DRY_RUN)}"
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Report remaining cache usage
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh api "/repos/${GITHUB_REPOSITORY}/actions/cache/usage" \
-            --jq '"Repo cache usage now: \(.active_caches_size_in_bytes / 1000000000 | .*100 | round / 100) GB across \(.active_caches_count) entries (limit 10 GB)"' \
-            | tee -a "$GITHUB_STEP_SUMMARY"
