@@ -45,3 +45,10 @@
                   (filter string?))
             (vals (api.macros/ns-routes 'metabase.agent-api.api)))
       (into (v2.registry/registered-scopes))))
+
+(defn opt-in-scopes
+  "MCP scopes advertised for a token to request explicitly but excluded from the default DCR
+   grant (see [[metabase.mcp.v2.registry/registered-opt-in-scopes]]). The OAuth server folds these
+   into `scopes_supported` on top of [[all-scopes]]."
+  []
+  (v2.registry/registered-opt-in-scopes))
