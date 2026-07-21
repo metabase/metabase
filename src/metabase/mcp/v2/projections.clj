@@ -133,10 +133,20 @@
    :archived :query_summary :template_tags :parameters])
 
 (def question-detailed-keys
-  "Keys of the `:question` detailed projection — also the columns a row must carry to project."
+  "Keys of the `:question` detailed projection."
   (into question-concise-keys
         [:entity_id :dashboard_id :query_type :collection_position :creator_id :cache_ttl
          :created_at :updated_at]))
+
+(def ^:private question-computed-keys
+  "Projection keys `get_content` derives from the query rather than reading off the Card row.
+   No such column exists, so selecting one by name is a SQL error."
+  #{:query_summary :template_tags})
+
+(def question-detailed-columns
+  "Card columns a row must carry to project `:question` — the detailed keys minus the ones no
+   Card column backs. Pass these, not [[question-detailed-keys]], to `t2/select`."
+  (into [] (remove question-computed-keys) question-detailed-keys))
 
 (register-projection!
  :question

@@ -815,10 +815,18 @@
 
 (deftest list-models-test
   (testing "GHY-4138: list_models returns the database's models and nothing else"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {t-id :id} {:db_id db-id :schema "public" :name "orders"}
+    (mt/with-temp [:model/Database   {db-id :id} {}
+                   :model/Table      {t-id :id} {:db_id db-id :schema "public" :name "orders"}
+                   :model/Collection {c-id :id} {}
+                   ;; every nilable column-backed key is populated, so `compact` drops nothing and
+                   ;; a key absent below means the narrowed select failed to carry it
                    :model/Card     _ {:name "Orders Model" :type :model
-                                      :database_id db-id :table_id t-id}
+                                      :database_id db-id :table_id t-id
+                                      :description "the orders model" :collection_id c-id
+                                      :collection_position 1 :cache_ttl 100
+                                      ;; a real query, so :query_type is populated too
+                                      :dataset_query {:database db-id :type :query
+                                                      :query {:source-table t-id}}}
                    :model/Card     _ {:name "Plain Question" :type :question
                                       :database_id db-id :table_id t-id}]
       (mt/with-full-data-perms-for-all-users!
@@ -827,12 +835,18 @@
             (is (= ["Orders Model"] (map :name (:data envelope)))
                 "plain questions are excluded — only :type :model")
             (is (= 1 (:total envelope))))
-          (testing "every key the detailed projection advertises survives the narrowed column
-                    select — a projection key with no matching column would come back missing"
+          (testing "every column-backed projection key survives the narrowed column select — one
+                    missing from the select would come back missing here"
             (let [[envelope] (call! {:action "list_models" :database_id db-id
-                                     :response_format "detailed"})]
-              (is (= (set projections/question-detailed-keys)
-                     (set (keys (first (:data envelope)))))))))))))
+                                     :response_format "detailed"})
+                  row-keys   (set (keys (first (:data envelope))))]
+              ;; :dashboard_id and :source_card_id stay nil — a dashboard question and a sourced
+              ;; card are separate fixtures, and neither adds anything to what is tested here.
+              (is (= (into #{} (remove #{:dashboard_id :source_card_id})
+                           projections/question-detailed-columns)
+                     row-keys))
+              (is (empty? (filter #{:query_summary :template_tags} row-keys))
+                  "browse rows carry no computed enrichments — get_content derives those"))))))))
 
 (deftest list-models-permission-filtered-test
   (testing "GHY-4138: list_models filters models by their parent collection's read perms, which

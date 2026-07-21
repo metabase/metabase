@@ -235,7 +235,7 @@
   ;; transforms on every model — the expensive part of listing a database with thousands of cards.
   ;; `:card_schema` is never projected, but Card's after-select hook throws without it once the
   ;; row carries `:id` plus any of `:dataset_query`/`:result_metadata`/`:database_id`/`:type`.
-  (into [:model/Card :card_schema] projections/question-detailed-keys))
+  (into [:model/Card :card_schema] projections/question-detailed-columns))
 
 (defn- list-models
   [{:keys [database_id] :as args}]
