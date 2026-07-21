@@ -73,6 +73,7 @@ interface ExplorationGroupVisualizationProps {
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
   wasCommentsSidebarOpen: boolean;
+  onCloseCommentsSidebar: () => void;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
 }
@@ -175,6 +176,7 @@ function ExplorationGroupVisualizationChart({
   setCommentDrafts,
   isCommentsSidebarOpen,
   wasCommentsSidebarOpen,
+  onCloseCommentsSidebar,
   onPreviousPage,
   onNextPage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
@@ -252,11 +254,25 @@ function ExplorationGroupVisualizationChart({
   useEffect(() => {
     setSeeAllEvents([]);
   }, [selectedTimelineId]);
+
+  useEffect(() => {
+    if (isCommentsSidebarOpen) {
+      setSeeAllEvents([]);
+    }
+  }, [isCommentsSidebarOpen]);
   const seeAllEventIds = useMemo(
     () => seeAllEvents.map((event) => event.id),
     [seeAllEvents],
   );
   const closeSeeAllEvents = useCallback(() => setSeeAllEvents([]), []);
+
+  const handleSeeAllEvents = useCallback(
+    (events: TimelineEvent[]) => {
+      setSeeAllEvents(events);
+      onCloseCommentsSidebar();
+    },
+    [onCloseCommentsSidebar],
+  );
 
   const renderCommentExtra = useCallback(
     (comment: Comment) => {
@@ -380,7 +396,7 @@ function ExplorationGroupVisualizationChart({
               mode={clickActionsMode}
               highlighted={highlighted}
               selectedTimelineEventIds={seeAllEventIds}
-              onSeeAllEvents={setSeeAllEvents}
+              onSeeAllEvents={handleSeeAllEvents}
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
@@ -419,7 +435,7 @@ function ExplorationGroupVisualizationChart({
           onClose={closeSeeAllEvents}
         />
       )}
-      {isCommentsSidebarOpen && (
+      {isCommentsSidebarOpen && seeAllEvents.length === 0 && (
         <Box w="23rem" h="100%" className={S.commentsSidebar}>
           <Comments
             // since ExplorationGroupVisualization is keyed on the page, Comments remounts whenever the page changes
