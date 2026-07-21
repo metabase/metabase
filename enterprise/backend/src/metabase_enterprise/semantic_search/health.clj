@@ -202,8 +202,10 @@
      :message (if detail (str base " " detail) base)}))
 
 (defonce ^:private index-measures
-  ;; descriptors for refresh-ai-index-metrics!, populated by register-index-check! at load time
-  (atom []))
+  ;; check-name -> descriptor for refresh-ai-index-metrics!, populated by register-index-check! at load
+  ;; time. A map so re-registration on a namespace reload replaces a descriptor instead of duplicating it
+  ;; (which would run every collector twice per refresh).
+  (atom {}))
 
 (defonce ^:private live-gauge-series
   ;; [gauge-key engine] pairs that have emitted a real value. Only clear these, to avoid even creating a
@@ -245,7 +247,7 @@
                     :measure    measure
                     :collect    collect}]
     (health-inspector/register-check! (:check-name descriptor) #(run-measure! descriptor))
-    (swap! index-measures conj descriptor)
+    (swap! index-measures assoc (:check-name descriptor) descriptor)
     descriptor))
 
 (defn- refresh-measure!
@@ -263,7 +265,7 @@
   "Compute and record all AI-index measures: set the gauges, and persist health rows when the inspector is
   enabled. Run periodically to keep gauges fresh between daily reports."
   []
-  (run! refresh-measure! @index-measures))
+  (run! refresh-measure! (vals @index-measures)))
 
 ;;; ------------------------------------- semantic-search collectors ----------------------------------------
 
