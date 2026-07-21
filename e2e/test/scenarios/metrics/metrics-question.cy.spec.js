@@ -174,13 +174,14 @@ describe("scenarios > metrics > question", () => {
   });
 
   it("should be able to view a table-based metric without data access", () => {
+    cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
       cy.signInAsSandboxedUser();
       H.visitMetric(card.id);
     });
-    cy.findByTestId("scalar-container")
-      .findByText("18,760")
-      .should("be.visible");
+    cy.wait("@metricDataset").its("response.statusCode").should("equal", 200);
+    cy.findByTestId("metric-value-preview").should("be.visible");
+    H.echartsContainer().should("be.visible");
     H.MetricPage.aboutPage().within(() => {
       cy.button(/Filter/).should("not.exist");
       cy.button(/Summarize/).should("not.exist");

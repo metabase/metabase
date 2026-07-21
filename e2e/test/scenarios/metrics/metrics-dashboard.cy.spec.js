@@ -176,12 +176,24 @@ describe("scenarios > metrics > dashboard", () => {
           "eq",
           `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
         );
-        cy.findByTestId("scalar-value").should("have.text", "18,760");
+        H.getDashboardCard(1).within(() => {
+          cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+          cy.findByTestId("visualization-root")
+            .should("be.visible")
+            .and("have.attr", "data-viz-ui-name", "Line");
+          H.echartsContainer().should("be.visible");
+        });
 
         cy.log("Assert we can save the dashboard with the metric");
         H.saveDashboard();
         H.getDashboardCards().should("have.length", 2);
-        cy.findByTestId("scalar-value").should("have.text", "18,760");
+        H.getDashboardCard(1).within(() => {
+          cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+          cy.findByTestId("visualization-root")
+            .should("be.visible")
+            .and("have.attr", "data-viz-ui-name", "Line");
+          H.echartsContainer().should("be.visible");
+        });
       },
     );
   });

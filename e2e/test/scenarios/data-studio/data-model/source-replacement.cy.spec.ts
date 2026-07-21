@@ -1,5 +1,9 @@
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { ConcreteFieldReference } from "metabase-types/api";
+import type {
+  ConcreteFieldReference,
+  Dataset,
+  MetricDatasetRequest,
+} from "metabase-types/api";
 
 const { H } = cy;
 const { SourceReplacement } = H.DataModel;
@@ -194,8 +198,18 @@ describe(
 
         cy.log("metric now aggregates data from the new table");
         cy.get<Cypress.Response<{ id: number }>>("@metric").then(({ body }) => {
+          cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
           H.visitMetric(body.id);
-          H.main().findByText("800").should("be.visible");
+          cy.wait<MetricDatasetRequest, Dataset>("@metricDataset").then(
+            ({ response }) => {
+              expect(response?.statusCode).to.equal(200);
+              const total = response?.body.data.rows.reduce((sum, row) => {
+                return sum + Number(row[row.length - 1]);
+              }, 0);
+              expect(total).to.equal(800);
+            },
+          );
+          H.echartsContainer().should("be.visible");
         });
       });
 

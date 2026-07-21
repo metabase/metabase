@@ -324,6 +324,15 @@ const selectDimensionBreakout = (
   }
 };
 
+const getExpandedMetricAccordion = (metricName: string) => {
+  return H.MetricsViewer.dimensionPickerSidebar()
+    .findByRole("button", { name: metricName })
+    .scrollIntoView()
+    .should("be.visible")
+    .and("have.attr", "aria-expanded", "true")
+    .parent();
+};
+
 const showColumnLabels = () => {
   H.MetricsViewer.getMetricControls()
     .findByLabelText("Column label options")
@@ -1356,7 +1365,17 @@ describe("scenarios > metrics > explorer", () => {
 
         H.MetricsViewer.assertVizType("Line");
 
-        selectDimensionBreakout("State", { seeAll: true });
+        H.MetricsViewer.openDimensionPickerSidebar();
+        H.MetricsViewer.dimensionPickerSidebar()
+          .findByRole("button", { name: "See all" })
+          .click();
+        getExpandedMetricAccordion("Test Measure")
+          .findByRole("button", { name: "State" })
+          .scrollIntoView()
+          .should("be.visible")
+          .click();
+        H.MetricsViewer.closeDimensionPickerSidebar();
+        cy.wait("@dataset");
         H.expectUnstructuredSnowplowEvent({
           event: "metrics_viewer_dimension_selected",
         });
@@ -1419,15 +1438,13 @@ describe("scenarios > metrics > explorer", () => {
           .findByRole("button", { name: "See all" })
           .click();
 
-        H.MetricsViewer.dimensionPickerSidebar().within(() => {
-          cy.findByRole("heading", { name: "All fields" }).should("be.visible");
-          cy.log("unshared fields live in the collapsed per-metric accordion");
-          cy.findByRole("button", { name: "Count of feedback" }).click();
-          cy.findAllByRole("button", { name: "Rating" }).should(
-            "have.length.at.least",
-            1,
-          );
-        });
+        H.MetricsViewer.dimensionPickerSidebar()
+          .findByRole("heading", { name: "All fields" })
+          .should("be.visible");
+        getExpandedMetricAccordion("Count of feedback")
+          .findByRole("button", { name: "Rating" })
+          .scrollIntoView()
+          .should("be.visible");
       });
 
       it("should configure per-metric dimensions for a shared category", () => {
@@ -1560,12 +1577,10 @@ describe("scenarios > metrics > explorer", () => {
           cy.findByRole("button", { name: "Count of products" })
             .scrollIntoView()
             .should("be.visible")
-            .and("have.attr", "aria-expanded", "false")
-            .click();
-          cy.findAllByRole("button", { name: "Category" }).should(
-            "have.length.at.least",
-            1,
-          );
+            .and("have.attr", "aria-expanded", "true");
+          cy.findAllByRole("button", { name: "Category" })
+            .should("be.visible")
+            .and("have.length", 2);
         });
 
         cy.log(
@@ -2630,8 +2645,9 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
       H.MetricsViewer.dimensionPickerSidebar()
         .findByRole("button", { name: "See all" })
         .click();
-      H.MetricsViewer.dimensionPickerSidebar()
+      getExpandedMetricAccordion("Orders with user source")
         .findByRole("button", { name: "Category" })
+        .should("be.visible")
         .click();
       cy.wait(["@dataset", "@dataset"]);
 
@@ -2651,11 +2667,9 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
       });
 
       cy.log("a same-type pick under one metric changes only that metric");
-      H.MetricsViewer.dimensionPickerSidebar()
-        .findByRole("button", { name: "Plain products" })
-        .click();
-      H.MetricsViewer.dimensionPickerSidebar()
+      getExpandedMetricAccordion("Plain products")
         .findByRole("button", { name: "Vendor" })
+        .should("be.visible")
         .click();
       cy.wait("@dataset");
 
@@ -2678,11 +2692,9 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
       H.MetricsViewer.dimensionPickerSidebar()
         .findByRole("button", { name: "See all" })
         .click();
-      H.MetricsViewer.dimensionPickerSidebar()
-        .findByRole("button", { name: "Plain products" })
-        .click();
-      H.MetricsViewer.dimensionPickerSidebar()
+      getExpandedMetricAccordion("Plain products")
         .findByRole("button", { name: "Category" })
+        .should("be.visible")
         .click();
       cy.wait("@dataset");
 

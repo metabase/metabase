@@ -71,7 +71,9 @@ describe("scenarios > metrics > dimensions", () => {
       .and("not.contain", "Vendor");
 
     cy.log("add a dimension from a connected table");
-    dimensionList().findByRole("button", { name: "Add" }).click();
+    dimensionList()
+      .findByRole("button", { name: "Available dimensions" })
+      .click();
     addDimensionsPanel().should("contain", "Product").and("contain", "User");
     addDimensionsPanel().findByText("Category").click();
     cy.wait("@addDimensions");
@@ -100,15 +102,15 @@ describe("scenarios > metrics > dimensions", () => {
     cy.wait("@updateDimension");
 
     cy.log("make it the default dimension");
-    dimensionList().findAllByText("Default").should("not.exist");
-    settingsPanel()
-      .findByRole("button", { name: "Set as default dimension" })
-      .click();
+    dimensionRow("Created At").findByText("Default").should("be.visible");
+    dimensionList().findAllByText("Default").should("have.length", 1);
+    settingsPanel().findByRole("button", { name: "Set as default" }).click();
     cy.wait("@setDefaultDimension");
     dimensionRow("Product type")
       .scrollIntoView()
       .findByText("Default")
       .should("be.visible");
+    dimensionRow("Created At").findByText("Default").should("not.exist");
     settingsPanel().findByText("Default dimension").should("be.visible");
     dimensionList().findAllByText("Default").should("have.length", 1);
 
@@ -127,7 +129,9 @@ describe("scenarios > metrics > dimensions", () => {
     cy.log("bulk remove checked dimensions");
     dimensionRow("Product type").findByLabelText("Product type").click();
     dimensionRow("Tax").findByLabelText("Tax").click();
-    dimensionList().findByRole("button", { name: "Add" }).should("be.disabled");
+    dimensionList()
+      .findByRole("button", { name: "Available dimensions" })
+      .should("be.disabled");
     dimensionList().findByLabelText("Remove").click();
     cy.wait("@removeDimensions");
     allDimensionRows().should("have.length", SEEDED_DIMENSIONS_COUNT - 1);

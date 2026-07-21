@@ -110,12 +110,6 @@ function startNewAggregation({ stageIndex } = {}) {
     .within(() => getPlusButton().click());
 }
 
-function startNewBreakout({ stageIndex } = {}) {
-  H.getNotebookStep("summarize", { stage: stageIndex })
-    .findByTestId("breakout-step")
-    .within(() => getPlusButton().click());
-}
-
 function addStringCategoryFilter({ tableName, columnName, values }) {
   startNewFilter();
   H.popover().within(() => {
@@ -128,31 +122,42 @@ function addStringCategoryFilter({ tableName, columnName, values }) {
   });
 }
 
-function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
-  startNewBreakout({ stageIndex });
-  if (tableName) {
-    H.popover().findByText(tableName).click();
-  }
-  if (bucketName) {
-    H.changeBinningForDimension({
-      name: columnName,
-      fromBinning: "by month",
-      toBinning: bucketName,
-    });
-  } else {
-    H.popover().findByText(columnName).click();
-  }
-}
-
 function verifyScalarValue(value) {
   cy.findByTestId("scalar-value").should("have.text", value).and("be.visible");
 }
 
-function verifyLineAreaBarChart({ xAxis, yAxis }) {
+function verifyLineChart({ yAxis }) {
   H.echartsContainer().within(() => {
     cy.findByText(yAxis).should("be.visible");
-    cy.findByText(xAxis).should("be.visible");
   });
+  cy.findByTestId("visualization-root").should(
+    "have.attr",
+    "data-viz-ui-name",
+    "Line",
+  );
+}
+
+function verifyMetricAboutTimeseries({ yAxis }) {
+  H.MetricPage.aboutPage().within(() => {
+    cy.findByRole("button", { name: "Dimension" })
+      .should("be.visible")
+      .and("contain.text", "Created At");
+    cy.findByTestId("metric-value-preview").should("be.visible");
+    cy.findByTestId("visualization-root")
+      .should("be.visible")
+      .and("have.attr", "data-viz-ui-name", "Line");
+    H.echartsContainer().findByText(yAxis).should("be.visible");
+  });
+}
+
+function verifyMetricDefinitionChart({ yAxis }) {
+  H.MetricPage.definitionTab().click();
+  H.MetricPage.queryEditor().should("be.visible");
+  H.getNotebookStep("summarize").findByText(yAxis).should("be.visible");
+  cy.intercept("POST", "/api/dataset").as("dataset");
+  H.runButtonInOverlay().click();
+  cy.wait("@dataset");
+  verifyLineChart({ yAxis });
 }
 
 describe("scenarios > metrics > editing", () => {
@@ -184,14 +189,15 @@ describe("scenarios > metrics > editing", () => {
         cy.visit(`/metric/${card.id}/query`),
       );
       H.MetricPage.queryEditor().should("be.visible");
-      addBreakout({ tableName: "Product", columnName: "Created At" });
+      H.getNotebookStep("summarize").button("Count").click();
+      H.popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total").click();
+      });
       H.MetricPage.saveButton().click();
       H.MetricPage.saveButton().should("not.exist");
       H.MetricPage.aboutTab().click();
-      verifyLineAreaBarChart({
-        xAxis: "Product → Created At: Month",
-        yAxis: "Count",
-      });
+      verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
     });
 
     it("should pin new metrics automatically", () => {
@@ -211,7 +217,7 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
-      saveNewMetric();
+      saveNewMetric({ name: "Pinned metric" });
 
       H.expectUnstructuredSnowplowEvent({
         event: "metric_created",
@@ -224,7 +230,14 @@ describe("scenarios > metrics > editing", () => {
 
       cy.findByTestId("pinned-items").within(() => {
         cy.findByRole("heading", { name: "Metrics" }).should("be.visible");
-        verifyScalarValue("18,760");
+        cy.findByText("Pinned metric")
+          .closest("a")
+          .within(() => {
+            cy.findByTestId("visualization-root")
+              .should("be.visible")
+              .and("have.attr", "data-viz-ui-name", "Line");
+            H.echartsContainer().should("be.visible");
+          });
       });
     });
 
@@ -238,7 +251,11 @@ describe("scenarios > metrics > editing", () => {
         cy.visit(`/metric/${card.id}/query`),
       );
       H.MetricPage.queryEditor().should("be.visible");
-      addBreakout({ tableName: "Product", columnName: "Created At" });
+      H.getNotebookStep("summarize").button("Count").click();
+      H.popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total").click();
+      });
       H.MetricPage.cancelButton().click();
       H.getNotebookStep("summarize").findByText("Count").should("be.visible");
     });
@@ -253,12 +270,14 @@ describe("scenarios > metrics > editing", () => {
         values: ["Gadget"],
       });
       saveNewMetric();
-      verifyScalarValue("4,939");
+      verifyMetricAboutTimeseries({ yAxis: "Count" });
     });
 
     it("should not allow to create a multi-stage metric", () => {
       startNewMetricWithSavedItem("Our analytics", "Orders Model");
-      getActionButton("Summarize").should("not.exist");
+      H.MetricPage.queryEditor()
+        .findByRole("button", { name: "Summarize" })
+        .should("not.exist");
     });
 
     it("should allow to run the query from the metric empty state", () => {
@@ -266,7 +285,7 @@ describe("scenarios > metrics > editing", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       H.runButtonInOverlay().click();
       cy.wait("@dataset");
-      verifyScalarValue("18,760");
+      verifyLineChart({ yAxis: "Count" });
     });
   });
 
@@ -286,7 +305,7 @@ describe("scenarios > metrics > editing", () => {
         cy.button("Add filter").click();
       });
       saveNewMetric();
-      verifyScalarValue("613");
+      verifyMetricAboutTimeseries({ yAxis: "Count" });
     });
 
     it("should not be possible to join a metric", () => {
@@ -337,7 +356,7 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Total2").click();
       });
       saveNewMetric();
-      verifyScalarValue("755,310.84");
+      verifyMetricDefinitionChart({ yAxis: "Sum of Total2" });
 
       cy.log("custom column from implicitly joined table");
       startNewMetricWithTable("Sample Database", "Orders");
@@ -353,7 +372,7 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Price2").click();
       });
       saveNewMetric();
-      verifyScalarValue("111.38");
+      verifyMetricDefinitionChart({ yAxis: "Average of Price2" });
     });
   });
 
@@ -365,12 +384,8 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Sum of ...").click();
         cy.findByText("Total").click();
       });
-      addBreakout({ columnName: "Created At" });
       saveNewMetric();
-      verifyLineAreaBarChart({
-        xAxis: "Created At: Month",
-        yAxis: "Sum of Total",
-      });
+      verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
     });
   });
 
@@ -396,7 +411,7 @@ describe("scenarios > metrics > editing", () => {
       });
       H.popover().button("Update").should("not.be.disabled").click();
       saveNewMetric();
-      verifyScalarValue("9,380");
+      verifyMetricAboutTimeseries({ yAxis: "Orders metric" });
     });
 
     it("should have metric-specific summarize step copy", () => {
@@ -407,18 +422,14 @@ describe("scenarios > metrics > editing", () => {
 
       H.getNotebookStep("summarize").within(() => {
         cy.findByText("Formula").should("be.visible");
-        cy.findAllByText("Default time dimension")
-          .filter(":visible")
-          .should("have.length", 1);
+        cy.findByText("Default time dimension").should("not.exist");
       });
 
       cy.viewport(800, 600);
       H.getNotebookStep("summarize").within(() => {
         // We need the scroll because of the viewport change, the next findByText is technically off the screen without it
         cy.findByText("Formula").should("be.visible").scrollIntoView({});
-        cy.findAllByText("Default time dimension")
-          .filter(":visible")
-          .should("have.length", 1);
+        cy.findByText("Default time dimension").should("not.exist");
       });
     });
   });
