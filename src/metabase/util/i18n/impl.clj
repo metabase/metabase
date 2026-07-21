@@ -29,13 +29,12 @@
   Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
   ^String [s]
   {:pre [((some-fn nil? string?) s)]}
-  ;; u/lower-case-en would be a circular dep (metabase.util requires i18n)
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (when (string? s)
     (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
-      (let [language (str/lower-case language)]
+      ;; Locale/US casing so a Turkish default locale can't mangle codes like "ID"
+      (let [language (.toLowerCase ^String language Locale/US)]
         (if country
-          (str language \_ (some-> country str/upper-case))
+          (str language \_ (some-> ^String country (.toUpperCase Locale/US)))
           language)))))
 
 (extend-protocol CoerceToLocale

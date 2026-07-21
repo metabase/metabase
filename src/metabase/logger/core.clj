@@ -240,7 +240,7 @@
         (.addAppender new-logger appender (.getLevel new-logger) (.getFilter new-logger)))
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
       (.updateLoggers (context))
-      ;; startup notice for the log4j rewire; goes to stdout
+      ;; deliberately bypasses log4j: this reports logger reconfiguration itself, so it must not depend on it
       #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Created a new logger for" (logger-name a-namespace)))))
 
