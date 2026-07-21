@@ -72,6 +72,7 @@ export {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
 } from "./oss/database";
+export { PLUGIN_DATA_APPS } from "./oss/data-apps";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
 export {
@@ -127,6 +128,10 @@ export {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
+  type PermissionAction,
+  type PermissionConfirmationProps,
+  type PermissionOption,
+  type PostActionFunction,
 } from "./oss/permissions";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export {
@@ -199,6 +204,7 @@ import { reinitialize as reinitializeContentTranslation } from "./oss/content-tr
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeCustomViz } from "./oss/custom-viz";
+import { reinitialize as reinitializeDataApps } from "./oss/data-apps";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeDependencies } from "./oss/dependencies";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
@@ -246,6 +252,7 @@ export function reinitialize() {
   reinitializeContentVerification();
   reinitializeCore();
   reinitializeCustomViz();
+  reinitializeDataApps();
   reinitializeDatabase();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();

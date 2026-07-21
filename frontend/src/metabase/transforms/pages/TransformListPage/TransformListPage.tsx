@@ -1,12 +1,5 @@
 import type { Row } from "@tanstack/react-table";
-import {
-  type PropsWithChildren,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -26,7 +19,7 @@ import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { WithRouterProps } from "metabase/router";
+import { Outlet, type WithRouterProps } from "metabase/router";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -101,12 +94,9 @@ const globalFilterFn = (
   );
 };
 
-type TransformListPageProps = WithRouterProps & PropsWithChildren;
+type TransformListPageProps = WithRouterProps;
 
-export const TransformListPage = ({
-  children,
-  location,
-}: TransformListPageProps) => {
+export const TransformListPage = ({ location }: TransformListPageProps) => {
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const targetCollectionId =
@@ -369,7 +359,7 @@ export const TransformListPage = ({
           )}
         </Card>
       </Stack>
-      {children}
+      <Outlet />
     </PageContainer>
   );
 };

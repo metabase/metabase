@@ -24,7 +24,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Route, redirect } from "metabase/router";
+import { Route, redirect, withRouteProps } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
@@ -69,6 +69,15 @@ import {
   isTenantGroup,
 } from "./utils/utils";
 
+const RoutedTenantCollectionPermissionsPage = withRouteProps(
+  TenantCollectionPermissionsPage,
+);
+const RoutedTenantSpecificCollectionPermissionsPage = withRouteProps(
+  TenantSpecificCollectionPermissionsPage,
+);
+const RoutedExternalGroupDetailApp = withRouteProps(ExternalGroupDetailApp);
+const RoutedExternalPeopleListingApp = withRouteProps(ExternalPeopleListingApp);
+
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
@@ -95,13 +104,13 @@ export function initializePlugin() {
       <>
         <Route
           path="tenant-collections"
-          component={TenantCollectionPermissionsPage}
+          element={<RoutedTenantCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>
         <Route
           path="tenant-specific-collections"
-          component={TenantSpecificCollectionPermissionsPage}
+          element={<RoutedTenantSpecificCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>
@@ -120,16 +129,16 @@ export function initializePlugin() {
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
-        <Route index component={TenantsListingApp} />
-        <Route path="" component={TenantsListingApp}>
+        <Route index element={<TenantsListingApp />} />
+        <Route path="" element={<TenantsListingApp />}>
           {modalRoute("new", NewTenantModal, { noWrap: true })}
           {modalRoute("user-strategy", EditUserStrategyModal, { noWrap: true })}
         </Route>
         <Route path="groups">
-          <Route index component={ExternalGroupsListingApp} />
-          <Route path=":groupId" component={ExternalGroupDetailApp} />
+          <Route index element={<ExternalGroupsListingApp />} />
+          <Route path=":groupId" element={<RoutedExternalGroupDetailApp />} />
         </Route>
-        <Route path="people" component={ExternalPeopleListingApp}>
+        <Route path="people" element={<RoutedExternalPeopleListingApp />}>
           {modalRoute(
             "new",
             (props) => (
@@ -140,7 +149,7 @@ export function initializePlugin() {
             },
           )}
           <Route path=":userId">
-            <Route index component={redirect("/admin/people/tenants/people")} />
+            <Route index element={redirect("/admin/people/tenants/people")} />
             {modalRoute(
               "edit",
               (props) => (
@@ -157,7 +166,7 @@ export function initializePlugin() {
             ))}
           </Route>
         </Route>
-        <Route path=":tenantId" component={TenantsListingApp}>
+        <Route path=":tenantId" element={<TenantsListingApp />}>
           {modalRoute(
             "edit",
             // @ts-expect-error - params prop can't be inferred

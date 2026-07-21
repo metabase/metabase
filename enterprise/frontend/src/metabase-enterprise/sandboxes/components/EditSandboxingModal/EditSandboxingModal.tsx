@@ -78,8 +78,8 @@ const getDraftPolicy = ({
   groupId,
 }: GroupTableAccessPolicyParams): GroupTableAccessPolicyDraft => {
   return {
-    table_id: parseInt(tableId),
-    group_id: parseInt(groupId),
+    table_id: parseInt(String(tableId)),
+    group_id: parseInt(String(groupId)),
     card_id: null,
     attribute_remappings: { "": null },
   };
