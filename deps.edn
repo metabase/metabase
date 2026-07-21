@@ -80,7 +80,8 @@
   hiccup/hiccup                             {:mvn/version "2.0.0"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.15.0"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.571"}
+  io.github.camsaul/toucan2                 {:git/url "https://github.com/dpsutton/toucan2" ; TODO: switch back to :mvn/version once camsaul/toucan2#212 is released
+                                             :git/sha "8063fbdbce541c060a4138477e6881c0d07546b7"}
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
