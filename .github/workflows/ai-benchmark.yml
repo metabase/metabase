@@ -1,104 +1,101 @@
-# Dispatcher for the evals harness (metabase/evals). Two triggers, one job: resolve the PR's
-# head, dispatch `eval-run.yml` over there, and consume the `evals/init` label. Everything
-# after the dispatch happens on the evals side — it posts the "running" and verdict comments
-# back to the PR itself (it knows its own run URL, so no correlation key exists here).
-#
-# `pull_request_target` is safe here by construction: the job never checks out or executes PR
-# code — it is a pure API call — and PR-controlled strings (branch name) are read via the API
-# into shell variables, never interpolated into the script as workflow expressions.
+
 name: evals-dispatch
-run-name: "dispatch evals · PR #${{ github.event.pull_request.number || inputs.pr }}"
+run-name: "dispatch evals · ${{ github.event_name == 'pull_request' && format('smoke PR#{0}', github.event.pull_request.number) || format('PR#{0}', inputs.pr) }}"
 
 on:
-  # Button: label a PR `evals/init` to evaluate its head with the default arms. The label is
-  # removed as soon as the dispatch lands — re-label to run again.
-  pull_request_target:
+  pull_request:
     types: [labeled]
-  # Same thing from the Actions UI, with the arms adjustable.
   workflow_dispatch:
     inputs:
       pr:
-        description: "PR number to evaluate"
-        required: true
-      surfaces:
-        description: "Surfaces to run"
+        description: "Metabase PR number (sets ref to the PR head)"
+        required: false
+        default: ""
+      ref:
+        description: "Metabase ref"
+        required: false
+        default: ""
+      scope:
+        description: "Scope"
         required: true
         type: choice
-        options: [all, cli, mcp, metabot]
-        default: metabot
+        options: [smoke, full, "all (EXPENSIVE)"]
+        default: smoke
       sample:
-        description: "Cases per variant (0 = full suite)"
+        description: "Sample (0 = full suite)"
         required: false
-        default: "2"
-      agent_model:
-        description: "Agent model for the external (CLI/MCP) arms"
+        default: "5"
+      evals_action_ref:
+        description: "Evals workflow ref"
         required: false
-        default: claude-sonnet-4-6
+        default: ci-milestone-3
+      evals_logic_ref:
+        description: "Evals logic ref"
+        required: false
+        default: ci-milestone-3
 
-# Label removal and the fork-PR notice ride the issues API.
 permissions:
+  contents: read
   issues: write
 
 jobs:
-  dispatch:
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'evals/init'
+  uberjar:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.label.name == 'evals/smoke'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+
+  smoke:
+    needs: [uberjar]
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.label.name == 'evals/smoke'
+      && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Resolve PR head
-        id: head
+      - name: Dispatch smoke eval-run
+        env:
+          GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
+            -f ref="ci-milestone-3" \
+            -f "inputs[pr]=$PR" \
+            -f "inputs[scope]=smoke" \
+            -f "inputs[sample]=5" \
+            -f "inputs[evals_ref]=ci-milestone-3"
+
+      - name: Remove label
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
-          case "$PR" in
-            ''|*[!0-9]*) echo "::error::pr must be a number, got '$PR'"; exit 1 ;;
-          esac
-          echo "pr=$PR" >> "$GITHUB_OUTPUT"
-          pull="repos/${{ github.repository }}/pulls/$PR"
-          branch=$(gh api "$pull" --jq .head.ref)
-          sha=$(gh api "$pull" --jq .head.sha)
-          head_repo=$(gh api "$pull" --jq .head.repo.full_name)
-          # eval-run resolves the branch in this repo and verifies the sha sits on it; a fork's
-          # branch doesn't exist here, so a fork PR can't be evaluated. Say so on the PR — a
-          # pressed button must never go silent.
-          if [ "$head_repo" != "${{ github.repository }}" ]; then
-            gh api "repos/${{ github.repository }}/issues/$PR/comments" -f body="<!-- evals-report -->
-          Evals can only run on same-repo PRs — this PR's head lives in \`$head_repo\`, so its branch can't be resolved in ${{ github.repository }}."
-            echo "::error::fork PR ($head_repo) — not evaluable"
-            exit 1
-          fi
-          echo "branch=$branch" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          gh api -X DELETE \
+            "repos/${{ github.repository }}/issues/$PR/labels/evals%2Fsmoke" \
+            || echo "label already gone"
 
-      # The sha is pinned at trigger time, so a push racing the dispatch can't move the target;
-      # eval-run's own resolve verifies the sha is on the branch and that product CI built its
-      # uberjar, and fails loudly (on the PR, via its `pr` input) when not.
+  dispatch:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
       - name: Dispatch eval-run
         env:
           GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
-          BRANCH: ${{ steps.head.outputs.branch }}
-          SHA: ${{ steps.head.outputs.sha }}
-          PR: ${{ steps.head.outputs.pr }}
+          ACTION_REF: ${{ inputs.evals_action_ref }}
+          PR: ${{ inputs.pr }}
+          REF: ${{ inputs.ref }}
+          SCOPE: ${{ inputs.scope }}
+          SAMPLE: ${{ inputs.sample }}
+          LOGIC_REF: ${{ inputs.evals_logic_ref }}
         run: |
-          # Plain REST with an explicit ref: `gh workflow run` would first resolve the default
-          # branch over GraphQL, which the fine-grained PAT (no Contents permission) can't do.
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
-            -f ref=main \
-            -f "inputs[branch]=$BRANCH" \
-            -f "inputs[commit]=$SHA" \
+            -f ref="$ACTION_REF" \
             -f "inputs[pr]=$PR" \
-            -f "inputs[surfaces]=${{ inputs.surfaces || 'metabot' }}" \
-            -f "inputs[sample]=${{ inputs.sample || '2' }}" \
-            -f "inputs[agent_model]=${{ inputs.agent_model || 'claude-sonnet-4-6' }}"
-
-      # Button semantics: the label is consumed by the press, never left as state. 404 means a
-      # concurrent event already removed it — same end state, not a failure.
-      - name: Remove label
-        if: github.event_name == 'pull_request_target'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api -X DELETE \
-            "repos/${{ github.repository }}/issues/${{ steps.head.outputs.pr }}/labels/evals%2Finit" \
-            || echo "label already gone"
+            -f "inputs[ref]=$REF" \
+            -f "inputs[scope]=$SCOPE" \
+            -f "inputs[sample]=$SAMPLE" \
+            -f "inputs[evals_ref]=$LOGIC_REF"
