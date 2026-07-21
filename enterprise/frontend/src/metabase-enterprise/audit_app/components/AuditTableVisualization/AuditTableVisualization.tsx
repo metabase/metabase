@@ -10,7 +10,10 @@ import { displayNameForColumn } from "metabase/utils/formatting";
 import { registerVisualization } from "metabase/visualizations/index";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  AuditTableSorting,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
 import { TABLE_DEFINITION } from "metabase/visualizations/visualizations/Table/definition";
 import type { ClickObject } from "metabase-lib";
 import type { DatasetColumn, RowValues, Series } from "metabase-types/api";
@@ -25,11 +28,6 @@ const getColumnName = (column: DatasetColumn) =>
 // audit queries mark native query text columns with a custom `code` flag
 type AuditDatasetColumn = DatasetColumn & {
   code?: boolean;
-};
-
-type AuditTableSorting = {
-  column: string;
-  isAscending: boolean;
 };
 
 interface AuditTableVisualizationProps {

@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { delay } from "__support__/utils";
+import Visualization from "metabase/visualizations/components/Visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RowValues, Series } from "metabase-types/api";
+import type { CardDisplayType, RowValues, Series } from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
@@ -159,5 +161,37 @@ describe("AuditTableVisualization", () => {
         value: "First question",
       }),
     );
+  });
+
+  describe("when rendered through Visualization", () => {
+    it("receives the sorting props forwarded by Visualization", async () => {
+      const onSortingChange = jest.fn();
+      const rawSeries = [
+        createMockSingleSeries(
+          // the Erroring Questions page stamps this non-saveable display onto its runtime card
+          { display: "audit-table" as CardDisplayType },
+          { data: { cols: [CARD_ID_COLUMN, NAME_COLUMN], rows: DEFAULT_ROWS } },
+        ),
+      ];
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={rawSeries}
+          isSortable
+          sorting={{ column: "card_id", isAscending: true }}
+          onSortingChange={onSortingChange}
+        />,
+      );
+      // the visualization isn't rendered until ExplicitSize measures it
+      await delay(0);
+
+      expect(screen.getByLabelText("chevronup icon")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Name"));
+      expect(onSortingChange).toHaveBeenCalledWith({
+        column: "name",
+        isAscending: true,
+      });
+    });
   });
 });
