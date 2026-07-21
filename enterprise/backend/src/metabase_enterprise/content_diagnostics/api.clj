@@ -242,7 +242,7 @@
                                              [:id sort-direction]]}
                            (request/limit)  (assoc :limit (request/limit))
                            (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page {:top-level-cols [:last_active_at]})
+    {:data         (api.common/hydrate-findings page excluded-personal-ids)
      :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
      :limit        (request/limit)
      :offset       (request/offset)
@@ -293,9 +293,7 @@
                                              [:id sort-direction]]}
                            (request/limit)  (assoc :limit (request/limit))
                            (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page {:top-level-cols                   [:duration_ms]
-                                                      :hydrate-culprits?                true
-                                                      :excluded-personal-collection-ids excluded-personal-ids})
+    {:data         (api.common/hydrate-findings page excluded-personal-ids)
      :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
      :limit        (request/limit)
      :offset       (request/offset)
@@ -346,9 +344,7 @@
                                              [:id sort-direction]]}
                            (request/limit)  (assoc :limit (request/limit))
                            (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page {:top-level-cols                   [:duplicate_count]
-                                                      :hydrate-duplicate-entities?      true
-                                                      :excluded-personal-collection-ids excluded-personal-ids})
+    {:data         (api.common/hydrate-findings page excluded-personal-ids)
      :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
      :limit        (request/limit)
      :offset       (request/offset)

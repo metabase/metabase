@@ -3,7 +3,8 @@
   entity-type <-> model mapping and `attach-entity-attrs`, the scan-time denormalization helper. These
   pin the helper's semantics (batched per-type stamping, checker-set values win, missing entity is nil)
   independently of the full scan/serve pipeline that exercises them end to end, plus the module-wide
-  fail-closed dispatch contract of the per-entity-type multimethods keyed off `common/hierarchy`."
+  fail-closed dispatch contract of the per-entity-type multimethods keyed off `common/hierarchy` and of
+  the per-finding-type `finalize-finding` multimethod in the read layer."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
@@ -59,6 +60,21 @@
       (is (thrown? IllegalArgumentException (@#'api.common/entity-context :not-an-entity-type #{})))
       (is (thrown? IllegalArgumentException (@#'api.common/read-entity-rows :not-an-entity-type #{} nil)))
       (is (thrown? IllegalArgumentException (@#'checkers.duplicated/candidate-rows :not-an-entity-type))))))
+
+(deftest finding-type-multimethod-is-fail-closed-test
+  ;; `finalize-finding` dispatches per row on the stored `finding_type` with NO permissive :default, so a
+  ;; new finding type left unregistered fails here (and at dispatch), not by silently serving an
+  ;; unfinalized row missing its native top-level column / details rewrite.
+  (let [covered-finding-types #{:stale :slow :duplicated}] ; the finding types this branch serves
+    (testing "every served finding-type resolves a method (registry completeness)"
+      (doseq [ftype covered-finding-types]
+        (is (some? (get-method @#'api.common/finalize-finding ftype))
+            (format "finalize-finding has no method for finding-type %s" ftype))))
+    (testing "an unregistered finding-type resolves no method (no catch-all :default)"
+      (is (nil? (get-method @#'api.common/finalize-finding :not-a-finding-type))))
+    (testing "invoking a multimethod with an unregistered finding-type throws at dispatch"
+      (is (thrown? IllegalArgumentException
+                   (@#'api.common/finalize-finding :not-a-finding-type {} {} {}))))))
 
 (deftest attach-entity-attrs-stamps-denormalized-columns-test
   (testing "each finding is stamped with its entity's name/created_at/creator across multiple entity types"
