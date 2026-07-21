@@ -1,6 +1,10 @@
+import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
+  ListMetabotConversationsRequest,
+  ListMetabotConversationsResponse,
+  MetabotConversationTitleResponse,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -32,6 +36,32 @@ export const metabotApi = Api.injectEndpoints({
         listTag("metabot"),
         ...(result?.items || []).map((metabot) => idTag("metabot", metabot.id)),
       ],
+    }),
+    listMetabotConversations: builder.query<
+      ListMetabotConversationsResponse,
+      ListMetabotConversationsRequest | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/metabot/conversations",
+        params,
+      }),
+      providesTags: () => [listTag("metabot-conversations")],
+    }),
+    getMetabotConversationTitle: builder.query<
+      MetabotConversationTitleResponse,
+      string
+    >({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}/title`,
+      }),
+    }),
+    getMetabotConversation: builder.query<MetabotConversationDetail, string>({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}`,
+      }),
     }),
     getMetabotSettings: builder.query<
       MetabotSettingsResponse,
@@ -171,6 +201,8 @@ export const metabotApi = Api.injectEndpoints({
 
 export const {
   useGetMetabotSettingsQuery,
+  useGetMetabotConversationQuery,
+  useListMetabotConversationsQuery,
   useListMetabotsQuery,
   useUpdateMetabotSettingsMutation,
   useUpdateMetabotMutation,

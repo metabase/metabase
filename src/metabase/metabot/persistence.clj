@@ -185,6 +185,17 @@
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
+(def ^:private opening-message-limit 10)
+
+(defn opening-messages
+  "A conversation's first few non-deleted messages in reader order."
+  [conversation-id]
+  (t2/select :model/MetabotMessage
+             :conversation_id conversation-id
+             :deleted_at nil
+             {:order-by [[:created_at :asc] [:id :asc]]
+              :limit    opening-message-limit}))
+
 (defmacro with-conversation-lock
   "Run `body` in a transaction holding a `FOR UPDATE` lock on the conversation row."
   [conversation-id & body]
@@ -454,13 +465,17 @@
            :tool_call_id toolCallId
            :content      content}])))))
 
-(defn- user-row->llm-message
+(defn- message-text
   [{:keys [data]}]
+  (->> data
+       (filter schema.v2/text-part?)
+       (map :text)
+       str/join))
+
+(defn- user-row->llm-message
+  [message]
   {:role    :user
-   :content (->> data
-                 (filter schema.v2/text-part?)
-                 (map :text)
-                 str/join)})
+   :content (message-text message)})
 
 (defn- assistant-row->llm-messages
   [{:keys [data]}]
@@ -484,13 +499,33 @@
           []
           rows))
 
+(defn- replayable-turn
+  [turn-rows]
+  (let [rows  (remove :deleted_at turn-rows)
+        reply (last (filter assistant-row? rows))]
+    (when (replayable-assistant-row? reply)
+      {:rows rows :reply reply})))
+
+(defn first-valid-user-message
+  "Return the first non-blank user message from a live replayable turn.
+
+  `messages` must be in reader order. Soft-deleted rows are ignored. Returns
+  `{:content <text> :profile-id <profile-id>}`, or nil when no turn qualifies."
+  [messages]
+  (some (fn [turn-rows]
+          (when-let [{:keys [rows]} (replayable-turn turn-rows)]
+            (when-let [user-row (first (filter user-row? rows))]
+              (let [content (message-text user-row)]
+                (when-not (str/blank? content)
+                  {:content content :profile-id (:profile_id user-row)})))))
+        (rows->turns messages)))
+
 (defn- turn->llm-messages
   [turn-rows]
-  (let [user-row (first (filter user-row? turn-rows))
-        reply    (last (filter assistant-row? turn-rows))]
-    (when (and reply (replayable-assistant-row? reply))
+  (when-let [{:keys [rows reply]} (replayable-turn turn-rows)]
+    (let [user-row (first (filter user-row? rows))]
       (concat (when user-row [(user-row->llm-message user-row)])
-              (when reply (assistant-row->llm-messages reply))))))
+              (assistant-row->llm-messages reply)))))
 
 (mu/defn history :- ::metabot.schema/messages
   "Reconstruct a conversation's LLM message history from its live
@@ -507,6 +542,20 @@
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
     (t2/update! :model/MetabotMessage msg-id {:slack_msg_id slack-msg-id})))
+
+(defn set-conversation-title-if-missing!
+  "Set a conversation title only when it has not already been generated."
+  [conversation-id title]
+  (when (and conversation-id (not (str/blank? title)))
+    (t2/update! :model/MetabotConversation
+                {:id conversation-id :title nil}
+                {:title title})))
+
+(defn conversation-title
+  "Return the current persisted title for a conversation."
+  [conversation-id]
+  (when conversation-id
+    (t2/select-one-fn :title :model/MetabotConversation :id conversation-id)))
 
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 
@@ -676,23 +725,32 @@
          (< (.toMillis (java.time.Duration/between then (Instant/now)))
             placeholder-grace-period-ms))))
 
+(defn- turn-in-progress-message
+  "Synthetic chat message emitted for an assistant row that is still streaming
+  (an active placeholder). The FE renders it as a 'Response in progress…' row."
+  [row]
+  (cond-> {:id   (or (:external_id row) (str (:id row)))
+           :role "agent"
+           :type "turn_in_progress"}
+    (:external_id row) (assoc :externalId (:external_id row))))
+
 (defn messages->chat-messages
   "Convert a seq of `MetabotMessage` model instances into a flat vector of `MetabotChatMessage` maps.
-  In-flight placeholder rows (assistant rows still streaming) are always
-  skipped. Errored pairs are dropped unless `:include-errored? true`."
+  In-flight placeholder rows (assistant rows still streaming) become a trailing
+  `turn_in_progress` message. Errored pairs are dropped unless `:include-errored? true`."
   ([messages] (messages->chat-messages messages nil))
   ([messages {:keys [include-errored?]}]
-   (let [active (remove placeholder-still-active? messages)]
-     (->> (if include-errored? active (drop-errored-pairs active))
-          (into [] (mapcat message->chat-messages))))))
+   (into []
+         (mapcat (fn [message]
+                   (if (placeholder-still-active? message)
+                     [(turn-in-progress-message message)]
+                     (message->chat-messages message))))
+         (if include-errored? messages (drop-errored-pairs messages)))))
 
 (defn- row->flat-messages
   [row parent-id]
   (let [messages (if (placeholder-still-active? row)
-                   [(cond-> {:id   (or (:external_id row) (str (:id row)))
-                             :role "agent"
-                             :type "turn_in_progress"}
-                      (:external_id row) (assoc :externalId (:external_id row)))]
+                   [(turn-in-progress-message row)]
                    (message->chat-messages row))]
     (reduce (fn [[messages parent-id] message]
               (let [message (assoc message :parent_message_id parent-id)]
@@ -741,7 +799,7 @@
     (let [messages (live-messages conversation-id)]
       {:conversation_id (:id conv)
        :created_at      (:created_at conv)
-       :summary         (:summary conv)
+       :title           (:title conv)
        :user_id         (:user_id conv)
        :state           (conversation-state messages)
        :saved_entities  (mapv (fn [{:keys [id metabot_chart_id]}]
@@ -751,4 +809,4 @@
                                          :metabot_conversation_id conversation-id
                                          :archived false
                                          {:order-by [[:id :asc]]}))
-       :chat_messages   (messages->chat-messages messages)})))
+       :messages        (messages->chat-messages messages)})))

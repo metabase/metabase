@@ -20,6 +20,7 @@ import type {
   MetabotChatMessage,
   MetabotUserChatMessage,
 } from "./types";
+import { hasInProgressMessage } from "./utils";
 
 /*
  * Top Level Selectors
@@ -103,6 +104,21 @@ export const getMetabotConversation = createSelector(
   },
 );
 
+export const getMetabotConversationId = createSelector(
+  getMetabotConversation,
+  (convo) => convo.conversationId,
+);
+
+export const getIsCurrentConversation = (
+  state: State,
+  agentId: MetabotAgentId,
+  conversationId: string,
+  loadId: string,
+) => {
+  const convo = getMetabotConversation(state, agentId);
+  return convo.conversationId === conversationId && convo.loadId === loadId;
+};
+
 export const getMetabotVisible = createSelector(
   getMetabotConversation,
   (convo) => convo.visible,
@@ -111,6 +127,19 @@ export const getMetabotVisible = createSelector(
 export const getMessages = createSelector(
   getMetabotConversation,
   (convo) => convo.messages,
+);
+
+export const getMetabotConversationTitle = createSelector(
+  getMetabotConversation,
+  (convo) => convo.title,
+);
+
+export const getIsPollingForTitle = createSelector(
+  [
+    (state: State) => getMetabotState(state).titlePollingConversationIds,
+    (_state: State, conversationId: string) => conversationId,
+  ],
+  (conversationIds, conversationId) => conversationIds.includes(conversationId),
 );
 
 export const getDeveloperMessage = createSelector(
@@ -198,6 +227,11 @@ export const getMessageIdToRewind = createSelector(
 export const getIsProcessing = createSelector(
   getMetabotConversation,
   (convo) => convo.isProcessing,
+);
+
+export const getIsConversationInProgress = createSelector(
+  getMessages,
+  hasInProgressMessage,
 );
 
 export const getMetabotRequestState = createSelector(

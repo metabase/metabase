@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.api :as metabot.api]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -14,6 +15,15 @@
 
 (defn- seconds-ago [n]
   (t/minus (t/offset-date-time) (t/seconds n)))
+
+(defn- conversation-row [user-id & {:as row}]
+  (merge {:user_id user-id} row))
+
+(defn- message-row [conversation-id user-id created-at & {:as row}]
+  (merge {:conversation_id conversation-id
+          :user_id         user-id
+          :created_at      created-at}
+         row))
 
 (defn- venues-query []
   (lib/query (mt/metadata-provider)
@@ -28,8 +38,8 @@
   (testing "GET /api/metabot/conversations returns only conversations the caller participated in"
     (let [rasta-id (mt/user->id :rasta)
           lucky-id (mt/user->id :lucky)]
-      (mt/with-temp [:model/MetabotConversation {rasta-convo :id} {:user_id rasta-id :summary "rasta's"}
-                     :model/MetabotConversation {lucky-convo :id} {:user_id lucky-id :summary "lucky's"}
+      (mt/with-temp [:model/MetabotConversation {rasta-convo :id} {:user_id rasta-id :title "rasta's"}
+                     :model/MetabotConversation {lucky-convo :id} {:user_id lucky-id :title "lucky's"}
                      :model/MetabotMessage _ {:conversation_id rasta-convo :user_id rasta-id}
                      :model/MetabotMessage _ {:conversation_id lucky-convo :user_id lucky-id}]
         (let [response (mt/user-http-request :rasta :get 200 "metabot/conversations")
@@ -40,7 +50,7 @@
 (deftest list-conversations-includes-legacy-originator-conversations-test
   (testing "GET /api/metabot/conversations keeps legacy originator conversations visible"
     (let [user-id (mt/user->id :rasta)]
-      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :summary "legacy"}
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "legacy"}
                      ;; No :user_id on the message — simulates a legacy row from before user_id stamping.
                      :model/MetabotMessage _ {:conversation_id convo-id
                                               :data            [{:type "text" :text "hello from before user_id stamping"}]}]
@@ -52,7 +62,7 @@
   (testing "GET /api/metabot/conversations includes conversations with multiple participants for each participant"
     (let [rasta-id (mt/user->id :rasta)
           lucky-id (mt/user->id :lucky)]
-      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id rasta-id :summary "shared"}
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id rasta-id :title "shared"}
                      :model/MetabotMessage _ {:conversation_id convo-id :user_id rasta-id}
                      :model/MetabotMessage _ {:conversation_id convo-id :user_id lucky-id}]
         (testing "originator sees it"
@@ -66,21 +76,16 @@
 
 (deftest list-conversations-includes-message-count-test
   (testing "GET /api/metabot/conversations counts and timestamps live messages only"
-    (let [user-id (mt/user->id :rasta)]
-      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :summary "hi"}
-                     :model/MetabotMessage _ {:conversation_id convo-id
-                                              :user_id         user-id
-                                              :role            "user"
-                                              :created_at      (seconds-ago 30)}
-                     :model/MetabotMessage {live-id :id} {:conversation_id convo-id
-                                                          :user_id         user-id
-                                                          :role            "assistant"
-                                                          :created_at      (seconds-ago 20)}
-                     :model/MetabotMessage _ {:conversation_id convo-id
-                                              :user_id         user-id
-                                              :role            "assistant"
-                                              :created_at      (seconds-ago 10)
-                                              :deleted_at      (t/offset-date-time)}]
+    (let [user-id (mt/user->id :rasta)
+          t1      (seconds-ago 30)
+          t2      (seconds-ago 20)
+          t3      (seconds-ago 10)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} (conversation-row user-id :title "hi")
+                     :model/MetabotMessage _ (message-row convo-id user-id t1 :role "user")
+                     :model/MetabotMessage {live-id :id} (message-row convo-id user-id t2 :role "assistant")
+                     :model/MetabotMessage _ (message-row convo-id user-id t3
+                                                          :role       "assistant"
+                                                          :deleted_at (t/offset-date-time))]
         (let [response (mt/user-http-request :rasta :get 200 "metabot/conversations")
               found    (first (filter #(= convo-id (:conversation_id %)) (:data response)))]
           (is (some? found))
@@ -88,10 +93,57 @@
           (is (= (t/instant (t2/select-one-fn :created_at :model/MetabotMessage live-id))
                  (t/instant (t/offset-date-time (:last_message_at found))))))))))
 
+(deftest list-conversations-orders-by-latest-conversation-or-message-created-at-test
+  (testing "GET /api/metabot/conversations orders by the latest conversation or live message timestamp"
+    (let [user-id        (mt/user->id :rasta)
+          oldest         (seconds-ago 400)
+          old            (seconds-ago 300)
+          recent         (seconds-ago 100)
+          most-recent    (seconds-ago 50)]
+      (mt/with-temp [:model/MetabotConversation {old-convo :id}
+                     (conversation-row user-id :title "old" :created_at oldest)
+                     :model/MetabotMessage _ (message-row old-convo user-id old :profile_id "default")
+
+                     :model/MetabotConversation {message-created-convo :id}
+                     (conversation-row user-id :title "message-created" :created_at oldest)
+                     :model/MetabotMessage _ (message-row message-created-convo user-id recent :profile_id "default")
+
+                     :model/MetabotConversation {conversation-created-convo :id}
+                     (conversation-row user-id :title "conversation-created" :created_at most-recent)
+                     :model/MetabotMessage _ (message-row conversation-created-convo user-id old :profile_id "default")]
+        (let [response (mt/user-http-request :rasta :get 200 "metabot/conversations")
+              ids      (->> (:data response)
+                            (map :conversation_id)
+                            (filter #{old-convo message-created-convo conversation-created-convo})
+                            vec)]
+          (is (= [conversation-created-convo message-created-convo old-convo] ids)))))))
+
+(deftest list-conversations-filters-by-last-message-profile-test
+  (testing "GET /api/metabot/conversations?profile_id= filters by the last live message profile"
+    (let [rasta-id (mt/user->id :rasta)
+          lucky-id (mt/user->id :lucky)
+          old      (seconds-ago 60)
+          new      (seconds-ago 30)]
+      (mt/with-temp [:model/MetabotConversation {nlq-convo :id} (conversation-row rasta-id)
+                     :model/MetabotMessage _ (message-row nlq-convo rasta-id old :profile_id "default")
+                     :model/MetabotMessage _ (message-row nlq-convo rasta-id new :profile_id "nlq")
+
+                     :model/MetabotConversation {default-convo :id} (conversation-row rasta-id)
+                     :model/MetabotMessage _ (message-row default-convo rasta-id old :profile_id "nlq")
+                     :model/MetabotMessage _ (message-row default-convo rasta-id new :profile_id "default")
+
+                     :model/MetabotConversation {lucky-convo :id} (conversation-row lucky-id)
+                     :model/MetabotMessage _ (message-row lucky-convo lucky-id new :profile_id "nlq")]
+        (let [response (mt/user-http-request :rasta :get 200 "metabot/conversations?profile_id=nlq")
+              ids      (set (map :conversation_id (:data response)))]
+          (is (= #{nlq-convo} ids))
+          (is (= 1 (:total response)))
+          (is (= "nlq" (-> response :data first :profile_id))))))))
+
 (deftest get-conversation-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id returns the conversation to any participant"
     (let [user-id (mt/user->id :rasta)]
-      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :summary "mine"}
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "mine"}
                      :model/MetabotMessage _ {:conversation_id convo-id
                                               :user_id         user-id
                                               :role            "user"
@@ -99,15 +151,15 @@
         (let [response (mt/user-http-request :rasta :get 200
                                              (str "metabot/conversations/" convo-id))]
           (is (= convo-id (:conversation_id response)))
-          (is (= "mine" (:summary response)))
+          (is (= "mine" (:title response)))
           (is (= user-id (:user_id response)))
-          (is (= 1 (count (:chat_messages response)))))))))
+          (is (= 1 (count (:messages response)))))))))
 
 (deftest get-conversation-second-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id is readable by any participant, not just the originator"
     (let [originator-id (mt/user->id :rasta)
           other-id      (mt/user->id :lucky)]
-      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id originator-id :summary "shared"}
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id originator-id :title "shared"}
                      :model/MetabotMessage _ {:conversation_id convo-id :user_id originator-id}
                      :model/MetabotMessage _ {:conversation_id convo-id :user_id other-id}]
         (let [response (mt/user-http-request :lucky :get 200
@@ -118,7 +170,7 @@
 (deftest get-conversation-superuser-can-read-test
   (testing "GET /api/metabot/conversations/:id is accessible to superusers even if they don't participate"
     (let [owner-id (mt/user->id :rasta)]
-      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id owner-id :summary "rasta's"}]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id owner-id :title "rasta's"}]
         (let [response (mt/user-http-request :crowberto :get 200
                                              (str "metabot/conversations/" convo-id))]
           (is (= convo-id (:conversation_id response)))
@@ -137,6 +189,54 @@
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404
                                  (str "metabot/conversations/" (random-uuid)))))))
+
+(deftest get-conversation-title-status-404-test
+  (testing "GET /api/metabot/conversations/:id/title returns 404 when the conversation does not exist"
+    (is (= "Not found."
+           (mt/user-http-request :rasta :get 404
+                                 (str "metabot/conversations/" (random-uuid) "/title"))))))
+
+(deftest get-conversation-title-status-test
+  (testing "GET /api/metabot/conversations/:id/title returns ready when a title exists"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "Orders by Month"}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id}]
+        (is (= {:status "ready" :title "Orders by Month"}
+               (mt/user-http-request :rasta :get 200
+                                     (str "metabot/conversations/" convo-id "/title")))))))
+  (testing "GET /api/metabot/conversations/:id/title returns missing when no title job is running"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id}]
+        (is (= {:status "missing" :title nil}
+               (mt/user-http-request :rasta :get 200
+                                     (str "metabot/conversations/" convo-id "/title")))))))
+  (testing "GET /api/metabot/conversations/:id/title returns pending for an in-flight title job"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id}]
+        (mt/with-dynamic-fn-redefs [conversation-title/title-status (constantly {:status "pending" :title nil})]
+          (is (= {:status "pending" :title nil}
+                 (mt/user-http-request :rasta :get 200
+                                       (str "metabot/conversations/" convo-id "/title")))))))))
+
+(deftest get-conversation-title-status-non-participant-forbidden-test
+  (testing "GET /api/metabot/conversations/:id/title returns 403 for a non-participant"
+    (let [owner-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id owner-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id owner-id}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :lucky :get 403
+                                     (str "metabot/conversations/" convo-id "/title"))))))))
+
+(deftest get-conversation-title-status-superuser-can-read-test
+  (testing "GET /api/metabot/conversations/:id/title is accessible to superusers, like the conversation itself"
+    (let [owner-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id owner-id :title "A title"}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id owner-id}]
+        (is (= {:status "ready" :title "A title"}
+               (mt/user-http-request :crowberto :get 200
+                                     (str "metabot/conversations/" convo-id "/title"))))))))
 
 (deftest check-conversation-access-test
   (testing "check-conversation-access!"

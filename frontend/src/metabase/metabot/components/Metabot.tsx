@@ -26,9 +26,11 @@ import {
 } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
+import { isHistoryEnabledProfile } from "../constants";
 import type { MetabotAgentId } from "../state";
 
 import { MetabotChat } from "./MetabotChat";
+import { MetabotConversationHistory } from "./MetabotChat/MetabotConversationHistory";
 
 const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
   return (
@@ -63,8 +65,8 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
   const { isConfigured } = useUserMetabotPermissions();
   const dispatch = useDispatch();
 
-  const handleResetChat = () => {
-    metabot.resetConversation();
+  const handleNewConversation = () => {
+    metabot.createNewConversation();
     dispatch(
       metabotApi.util.invalidateTags([
         idTag("metabot-prompt-suggestions", metabot.metabotId),
@@ -80,14 +82,22 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
   return (
     <Flex gap="sm">
       {isConfigured && (
-        <Tooltip label={t`Clear conversation`} position="bottom">
+        <Tooltip label={t`New conversation`} position="bottom">
           <ActionIcon
-            onClick={handleResetChat}
-            data-testid="metabot-reset-chat"
+            onClick={handleNewConversation}
+            aria-label={t`New conversation`}
+            data-testid="metabot-new-conversation"
           >
-            <Icon c="text-primary" name="revert" />
+            <Icon c="text-primary" name="edit_document_outlined" size={16} />
           </ActionIcon>
         </Tooltip>
+      )}
+      {isConfigured && isHistoryEnabledProfile(metabot.profile) && (
+        <MetabotConversationHistory
+          profileId={metabot.profile}
+          activeConversationId={metabot.conversationId}
+          onConversationSelect={metabot.loadConversation}
+        />
       )}
       <ActionIcon onClick={handleCloseChat} data-testid="metabot-close-chat">
         <Icon c="text-primary" name="close" />

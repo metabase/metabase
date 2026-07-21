@@ -7,6 +7,7 @@ import type {
   DatabaseId,
   DatasetQuery,
   DraftTransform,
+  PaginationRequest,
   PaginationResponse,
   RowValue,
   SuggestedTransform,
@@ -162,6 +163,29 @@ export type MetabotAgentRequest = {
 export type MetabotAgentResponse = {
   conversation_id: string;
   state?: MetabotStateContext;
+};
+
+export type MetabotConversation = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  profile_id: string | null;
+  message_count: number;
+  last_message_at: string | null;
+};
+
+export type MetabotConversationTitleResponse =
+  | { status: "ready"; title: string }
+  | { status: "pending"; title: null }
+  | { status: "missing"; title: null };
+
+export type ListMetabotConversationsRequest = PaginationRequest & {
+  profile_id?: string | null;
+};
+
+export type ListMetabotConversationsResponse = PaginationResponse & {
+  data: MetabotConversation[];
 };
 
 export type MetabotProvider =
