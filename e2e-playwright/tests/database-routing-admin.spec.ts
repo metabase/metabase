@@ -560,9 +560,25 @@ test.describe("admin > database > database routing", () => {
         // setup - db routing
         await page.goto("/admin/databases/2");
         await visitDatabaseAdminPage(page, WRITABLE_DB_ID);
+        // The postgres-writable snapshot has model actions ENABLED on db 2
+        // (see the "feature compatibility" describe, which disables them via
+        // the API for the same reason). Routing cannot be configured while
+        // they are on: the backend answers 400 "Cannot enable database routing
+        // for a database with actions enabled".
+        //
+        // The toggle's PUT is async, so the bare click raced the API call
+        // below and the 400 landed intermittently. Anchor on the response
+        // rather than a sleep — same race, and same fix, as FINDINGS #125.
+        const actionsDisabled = page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            new URL(response.url()).pathname === `/api/database/${WRITABLE_DB_ID}` &&
+            response.ok(),
+        );
         await modelsSection(page)
           .getByLabel("Model actions", { exact: true })
           .click({ force: true });
+        await actionsDisabled;
         await configureDbRoutingViaAPI(mb.api, {
           router_database_id: 2,
           user_attribute: "role",

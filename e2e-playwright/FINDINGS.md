@@ -4104,3 +4104,34 @@ open item, not as evidence.
     the next run will say so in one line instead of four mystery timeouts, and
     the honest response is then to gate those tests on the feature rather than
     assume the token carries it.
+
+### An anchor I could not prove load-bearing — stated, not claimed
+
+216. **`database-routing-admin` › "should show for users with db management
+    permissions…" fails in CI with
+    `PUT /api/ee/database-routing/router-database/2 -> 400 Cannot enable
+    database routing for a database with actions enabled`.**
+
+    Diagnosis: the `postgres-writable` snapshot has model actions **enabled by
+    default** on db 2 — the spec's own "feature compatibility" describe disables
+    them via the API for exactly this reason, with the comment saying so. This
+    test instead toggles them off **through the UI**, and the toggle's `PUT` is
+    async, so `configureDbRoutingViaAPI` raced ahead of it.
+
+    Same race and same shape as **#125** (model persistence 400ing because an
+    admin toggle's async mutation outran the next API call).
+
+    **Fix applied:** anchor on the `PUT /api/database/2` response before
+    continuing, rather than a sleep.
+
+    🔴 **But I could not prove the anchor is load-bearing.** The mutation —
+    deleting the `await` — still passes **5/5 locally**. The race does not
+    reproduce on this machine, which is consistent with everything else measured
+    here: CI runners are roughly 5x slower (#214), and the async PUT only loses
+    when the machine is slow enough.
+
+    So this is **"not triggered by any failure mode I could induce"**, not
+    "fixed". The change is correct by construction — depending on a mutation
+    without waiting for it is a bug whether or not it bites today — but **CI is
+    the only thing that can confirm it.** If that test still 400s on the next
+    run, the diagnosis is wrong and the real cause is elsewhere.
