@@ -2541,11 +2541,16 @@
   {:team "UX West"
    :api  #{metabase.usage-metadata.init}
    :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
                     :model/Field
+                    :model/Measure
+                    :model/ModerationReview
                     :model/Query
                     :model/QueryExecution
                     :model/Segment
-                    :model/Table}
+                    :model/Table
+                    :model/ViewLog}
    :uses #{app-db
            lib
            lib-be
