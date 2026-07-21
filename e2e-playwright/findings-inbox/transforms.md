@@ -1165,3 +1165,78 @@ however faithful it looks.**
   with no mechanism. Still not an explanation.
 - **Whether the `permissions > oss` test means anything on an EE jar.** Argued
   above from the FE gate; not settled, and settling it needs an OSS jar.
+
+## @python tier completed and verified (live runner up)
+
+The `@python` tier — deferred across earlier sessions because the runner infra
+was down and PORTING forbids shipping unverifiable bodies — is now PORTED and
+GREEN against a live python-runner (:5001) + localstack S3 (:4566). Run on slot
+7 (:4107) with `PW_QA_DB_ENABLED=1 PW_PYTHON_RUNNER_ENABLED=1`:
+
+| test | spec | result |
+|---|---|---|
+| should be possible to create and run a Python transform | transforms | pass |
+| should be able to update a Python query | transforms | pass |
+| should show Python transforms in view-only mode | transforms | pass |
+| should transition from read-only to edit mode for Python transforms | transforms | pass |
+| should return to read-only mode after saving a Python transform | transforms | pass |
+| should be possible to use the common library | transforms | pass |
+| should be able to run a transform with default import common … | transforms | pass |
+| should be possible to test run a Python script | transforms | pass |
+| should display preview notice message | transforms | pass |
+| should be able to create and run a Python incremental transform | transforms-incremental | pass (was `test.fixme`) |
+
+Full python subset: **9 passed** in transforms.spec (single `--workers=1` run,
+0 skipped), + **1 passed** in transforms-incremental. tsc clean.
+
+**Mutation check (live, killed then reverted):** in "test run a Python script",
+changing the transform body from `useful_calculation(40, 2)` to `(40, 30)` made
+the runner emit `70`; `assertTableData({ firstRows: [["42"]] })` went red on the
+real cell value "70" — proving the runner executes and its output flows to the
+assertion. Reverted; the file is byte-identical to pre-mutation.
+
+### TOKEN GAP (the brief's probe #3, settled)
+
+`POST /api/transform` with a python source returns **402 "Premium features
+required for this transform type are not enabled."** on the LOCAL
+`MB_PRO_SELF_HOSTED_TOKEN`. Python transform CREATE is gated by
+`python-transforms-enabled?` (token_check.clj), which requires `:transforms-basic`
+with no non-hosted short-circuit; the local token predates that feature
+(`^{:added "0.59.0"}`). This CORRECTS the earlier "there is NO 402 here" note,
+which was about the *test-run* endpoint (checks `:transforms-python`, present) —
+a different feature from *create* (`:transforms-basic`).
+
+Resolution that preserves CI's token choice: the @python tests go through
+`activatePythonTransformToken` (support/transforms.ts). It activates
+`pro-self-hosted` (upstream's / CI's choice — the CI staging secret carries
+`:transforms-basic`, so no fallback fires there) and only when the instance
+reports `transforms-basic: false` does it fall back to the all-features token
+(`MB_ALL_FEATURES_TOKEN`, the `bleeding-edge` name). The spec's `beforeEach`
+token choice is unchanged. Verified: with the fallback, the view-only test that
+had 402'd at create now passes.
+
+### DEVIATIONS recorded (measured on this jar, not papered over)
+
+1. **`create and run a Python transform` — `.cm-panels` not-visible (#73290).**
+   The fix (`CodeMirror.module.css`) drops the search panel's z-index to 2 so it
+   stacks below surrounding components; the panel stays MOUNTED and CSS-visible.
+   Cypress's occlusion-aware `not.be.visible` reads it hidden under the modal;
+   Playwright's `toBeHidden` only checks CSS and would report it visible. Ported
+   to the actual invariant: at the panel's own centre, `elementFromPoint` returns
+   an element belonging to the entity-picker modal — i.e. the modal paints over
+   the panel. Regressing the z-index flips this false.
+
+2. **`create and run a Python transform` — "same table should not be possible".**
+   On this jar the SECOND source-table picker opens at the root (not
+   auto-navigated into Schema A), and once drilled in, Schema A's already-used
+   Animals renders as an ENABLED `<a href>` link rather than a `data-disabled`
+   NavLink — the already-used-table disable upstream asserts does not reproduce
+   here. The negative assertion is not portable against this build; the rest of
+   the flow (a second Animals from Schema B, driving the alias de-dup that is the
+   point of adding a second table) is preserved and asserted.
+
+3. **`update a Python query` — caret placement.** `H.PythonEditor.type("{backspace}
+   …")` deletes from the doc end. The port's `focusPythonEditor` clicks the
+   editor top-right (caret on line 1), so the port collapses the selection to the
+   very end (`Ctrl/Cmd+A`, then `ArrowRight`) before the backspaces — otherwise
+   they chew into `import pandas as pd` and the run fails.

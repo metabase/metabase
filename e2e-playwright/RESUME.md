@@ -1,6 +1,40 @@
 # Resume here
 
-**Last updated: 2026-07-22, after the stabilisation pass.**
+**Last updated: 2026-07-22, after the snowplow graduation + python tier.**
+
+## 2026-07-22 (later): two coverage tiers went real
+
+**Snowplow stubs are GONE.** All ~53 specs (plus 9 support modules) that carried
+no-op snowplow stubs now assert for real against the per-slot collector, via the
+new canonical `support/snowplow.ts` (same API shape as upstream's
+e2e-snowplow-helpers, `mb` threaded first). Every runnable conversion was
+mutation-verified (wrong event name → red). PORTING rule 6 is rewritten; the
+old stub form is retired. Facts learned, recorded in rule 6's caveats:
+`enableTracking` needs an admin session (snapshots bake tracking on, so only
+call it where upstream does); the collector drops `page_view` events, so
+upstream's 4 pv assertions in `timelines-collection` have no seam
+(findings-inbox/timelines-collection-snowplow.md). One conversion drift was
+caught and fixed in review (`static_embed_code_copied` collapsed to a bare
+`{event}` over-matches — restored upstream's distinguishing fields).
+
+**The @python tier is PORTED and VERIFIED — no more unwritten bodies.** All 10
+gated placeholders (transforms.spec.ts ×9, transforms-incremental ×1) have real
+bodies verified against a live python-runner (:5001) + localstack (:4566):
+14/0/0 consolidated, gate-off control clean, one live mutation kill. The
+contradictory 402 evidence is settled: python CREATE needs `transforms-basic`
+(the LOCAL pro-self-hosted token predates it), test-run needs
+`transforms-python` (present). `activatePythonTransformToken`
+(support/transforms.ts) keeps CI on pro-self-hosted and falls back to
+all-features only locally. **CI now provisions the tier**
+(e2e-playwright.yml: pulls `metabase/python-runner:v0.1.0-7838dc9` — tag PINNED,
+mutable-tag lesson of #225 — plus localstack, bucket via unsigned curl PUT, and
+sets `PW_PYTHON_RUNNER_ENABLED=1`). Local stack lives in the session scratchpad
+clone; re-provision with `compose.ci.yaml` from metabase/python-runner-container.
+
+**Watch the next CI run**: ~60 files' snowplow assertions go live at once on
+4vCPU runners, plus the python tier's first-ever CI execution. Timing-sensitive
+failures there are NEW-COVERAGE flakes, not port regressions — triage against
+the mutation-verified local green.
 
 ## Status
 

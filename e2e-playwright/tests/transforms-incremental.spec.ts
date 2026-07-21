@@ -10,17 +10,26 @@
  * transform source type:
  *
  *   MBQL + native SQL -> query-transforms-enabled?  (token_check.clj:715)
- *                        short-circuits on (not is-hosted?) -> RUNS.
+ *                        short-circuits on (not is-hosted?) -> RUNS under
+ *                        PW_QA_DB_ENABLED.
  *   python            -> python-transforms-enabled? (token_check.clj:724)
- *                        requires :transforms-basic with NO short-circuit,
- *                        and that feature is absent here -> 402.
+ *                        requires :transforms-basic with NO short-circuit.
+ *                        The LOCAL pro-self-hosted token lacks it, so python
+ *                        CREATE returns 402 here; upstream's CI staging token
+ *                        carries it. The python test additionally needs the
+ *                        runner (:5001) + localstack S3 (:4566), gated on
+ *                        PW_PYTHON_RUNNER_ENABLED.
  *
- * Probed live on :4103, not inferred: the incremental MBQL create+run returns
- * 200/202 with `checkpoint_hi_value: 30`, while a python create returns
+ * Probed live: the incremental MBQL create+run returns 200/202 with
+ * `checkpoint_hi_value: 30`, while a python create returned
  * **402 "Premium features required for this transform type are not enabled."**
- * localstack :4566 (the python runner's S3 dependency) is also down. The python
- * test is `test.fixme` on both, and upstream tags it `@python` besides.
- * Full derivation + probe transcript: support/transforms-incremental.ts.
+ * on the local token. That 402 and the once-dead localstack are BOTH resolved
+ * now: the runner + localstack are up and verified, and the python test goes
+ * through `activatePythonTransformToken` (support/transforms.ts) — which keeps
+ * CI on pro-self-hosted and only falls back to the all-features token locally.
+ * The python test is therefore ported and PASSES under PW_PYTHON_RUNNER_ENABLED
+ * (was `test.fixme`). Full derivation: support/transforms-incremental.ts and
+ * findings-inbox/transforms.md.
  * ===========================================================================
  *
  * QA-DATABASE TIER. Gated on PW_QA_DB_ENABLED; the two query tests EXECUTE when
@@ -83,7 +92,7 @@ import {
   blurNativeEditor,
   fastSetNativeEditor,
 } from "../support/native-reproductions";
-import { miniPicker } from "../support/notebook";
+import { entityPickerModal, miniPicker } from "../support/notebook";
 import {
   WRITABLE_DB_ID,
   queryWritableDB,
@@ -95,8 +104,16 @@ import {
   expectUnstructuredSnowplowEvent,
   installSnowplowCapture,
 } from "../support/search-snowplow";
-import { DataStudio } from "../support/transforms";
-import { resetManySchemasTable } from "../support/transforms-codegen";
+import {
+  DataStudio,
+  activatePythonTransformToken,
+  getPythonDataPicker,
+  setPythonRunnerSettings,
+} from "../support/transforms";
+import {
+  makeManualEdit,
+  resetManySchemasTable,
+} from "../support/transforms-codegen";
 import {
   DB_NAME,
   PYTHON_SKIP_REASON,
@@ -282,35 +299,122 @@ test.describe("scenarios > admin > transforms incremental", () => {
       await expectCheckpointTo(page, /31/);
     });
 
-    // UPSTREAM TAG: { tags: ["@python"] }.
+    // UPSTREAM TAG: { tags: ["@python"] }. Gated on PW_PYTHON_RUNNER_ENABLED
+    // exactly like the @python tier in the sibling transforms.spec.
     //
-    // Blocked twice over on this box, both probed rather than assumed:
-    //   1. TOKEN. `python-transforms-enabled?` (token_check.clj:724) requires
-    //      `:transforms-basic` with no short-circuit, and the local
-    //      pro-self-hosted token lacks it. POST /api/transform with a python
-    //      source returns 402 "Premium features required for this transform
-    //      type are not enabled." This fires first, at create.
-    //   2. INFRA. localstack :4566 — the python runner's S3 dependency — is
-    //      not running (`curl` probe).
-    //
-    // This is the one place where the sibling transforms-inspect finding
-    // ("transforms-basic gates nothing here") genuinely does not transfer:
-    // that spec had no python transform, so it never reached this predicate.
-    // A token refresh alone would NOT recover this test — localstack would
-    // still be down.
-    // Title kept verbatim for traceability; the reason lives in the comment
-    // above and in PYTHON_SKIP_REASON (support/transforms-incremental.ts).
-    test.fixme(
-      "should be able to create and run a Python incremental transform",
-      async () => {
-        // Body intentionally unported: it cannot run on this box (see above),
-        // so a ported-but-never-executed body would be indistinguishable from
-        // a passing test and would rot silently against the real surface.
-        //
-        // Reason (also exported as PYTHON_SKIP_REASON):
-        void PYTHON_SKIP_REASON;
-      },
-    );
+    // History (kept because the earlier double-block finding was measured, not
+    // wrong for its time): this was `test.fixme` because on this box python
+    // transform CREATE returned 402 — `python-transforms-enabled?`
+    // (token_check.clj) requires `:transforms-basic`, which the LOCAL
+    // pro-self-hosted token lacks — AND localstack :4566 was down. BOTH are now
+    // resolved: the python-runner (:5001) + localstack S3 (:4566) are up and
+    // verified, and `activatePythonTransformToken` keeps the spec on
+    // pro-self-hosted while falling back to the all-features token locally so
+    // CREATE returns 200. The 402 was real; it was a local-token gap, not a
+    // product bug. See findings-inbox/transforms.md.
+    test("should be able to create and run a Python incremental transform", async ({
+      page,
+      mb,
+    }) => {
+      test.skip(!process.env.PW_PYTHON_RUNNER_ENABLED, PYTHON_SKIP_REASON);
+      test.setTimeout(240_000);
+      await activatePythonTransformToken(mb.api);
+      await setPythonRunnerSettings(mb.api);
+
+      // create a new transform
+      await visitTransformListPage(page);
+      await page
+        .getByRole("button", { name: "Create a transform", exact: true })
+        .click();
+      await popover(page).getByText("Python script", { exact: true }).click();
+
+      await expectUnstructuredSnowplowEvent(capture, {
+        event: "transform_create",
+        event_detail: "python",
+      });
+
+      await page
+        .getByTestId("python-transform-top-bar")
+        .getByText("Writable Postgres12", { exact: true })
+        .click();
+      await popover(page).getByText(DB_NAME, { exact: true }).click();
+
+      await getPythonDataPicker(page)
+        .getByText("Select a table…", { exact: true })
+        .click();
+      await entityPickerModal(page)
+        .getByText(SOURCE_TABLE, { exact: true })
+        .click();
+
+      // allowFastSet upstream — paste the whole body, no keystrokes.
+      await makeManualEdit(
+        page,
+        "python",
+        [
+          "import pandas as pd",
+          "",
+          "def transform(animals):",
+          '    return pd.DataFrame([{"name": "test", "score": 0}])',
+        ].join("\n"),
+      );
+
+      await getQueryEditor(page)
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
+
+      const saveModal = modal(page);
+      await saveModal.getByLabel("Name", { exact: true }).click();
+      await saveModal.getByLabel("Name", { exact: true }).fill("Python transform");
+      await saveModal
+        .getByLabel("Table name", { exact: true })
+        .fill(TARGET_TABLE);
+      await saveModal
+        .getByRole("switch", { name: /Only process new data/i })
+        .click({ force: true });
+
+      // The one alias upstream awaits; the `@transformId` capture it builds is
+      // never read (same as the other tests in this file).
+      const createTransform = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/transform" &&
+          response.request().method() === "POST",
+      );
+      await saveModal.getByRole("button", { name: "Save", exact: true }).click();
+      await createTransform;
+
+      // run the transform and make sure its table can be queried
+      await DataStudio.Transforms.runTab(page).click();
+      await runTransformAndWaitForSuccess(page);
+      await expectUnstructuredSnowplowEvent(capture, {
+        event: "transform_trigger_manual_run",
+      });
+
+      await openRunDetail(page, /Python transform/i);
+      await expectCheckpointTo(page, /30/);
+
+      // add one element to the source table and run incremental transform again
+      await queryWritableDB(
+        `INSERT INTO "${TARGET_SCHEMA}"."Animals" (name, score) VALUES ('NewRow', 31)`,
+      );
+
+      await page.goBack();
+      await DataStudio.Transforms.runTab(page).click();
+      await runTransformAndWaitForSuccess(page);
+
+      // verify the new element was picked up in the incremental transfer
+      await openRunDetail(page, /Python transform/i, { first: true });
+      await expectCheckpointTo(page, /31/);
+
+      // go to Transform Settings and reset checkpoint
+      await page.goBack();
+      await resetCheckpointFromSettings(page, /31/);
+
+      // go to Runs tab, run again and check the new run has checkpoint to 31
+      await DataStudio.Transforms.runTab(page).click();
+      await runTransformAndWaitForSuccess(page);
+      await openRunDetail(page, /Python transform/i, { first: true });
+      await expectCheckpointTo(page, /31/);
+    });
 
     test("should be able to create and run a native SQL incremental transform", async ({
       page,

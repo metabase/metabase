@@ -900,6 +900,37 @@ export const getLibraryEditorHeader = (page: Page) =>
   page.getByTestId("python-library-header");
 
 /**
+ * Activate a token that can CREATE python transforms, preserving upstream's
+ * `pro-self-hosted` choice for CI.
+ *
+ * Python transform creation is gated by `python-transforms-enabled?`
+ * (token_check.clj), which requires the `:transforms-basic` token feature with
+ * NO non-hosted short-circuit. In CI the `pro-self-hosted` secret is a staging
+ * token that carries `:transforms-basic`, so `POST /api/transform` with a
+ * python source returns 200. The LOCAL `MB_PRO_SELF_HOSTED_TOKEN` predates that
+ * feature (`:transforms-basic` is `^{:added "0.59.0"}`), so the same POST
+ * returns **402** here — measured directly on :4107, and the same root cause
+ * the permissions/incremental tests in this tree already document.
+ *
+ * To keep CI running on `pro-self-hosted` (the spec's token choice) while still
+ * exercising the live runner locally, this activates `pro-self-hosted` first
+ * and only falls back to the all-features token (`MB_ALL_FEATURES_TOKEN`, i.e.
+ * the `bleeding-edge` name) when the instance reports `transforms-basic: false`.
+ * In CI the fallback never fires; locally it is what makes the python tier
+ * green. Documented in the spec header + findings-inbox/transforms.md.
+ */
+export async function activatePythonTransformToken(api: MetabaseApi) {
+  await api.activateToken("pro-self-hosted");
+  const response = await api.get("/api/session/properties");
+  const props = (await response.json()) as {
+    "token-features"?: Record<string, boolean>;
+  };
+  if (!props["token-features"]?.["transforms-basic"]) {
+    await api.activateToken("bleeding-edge");
+  }
+}
+
+/**
  * Port of `H.setPythonRunnerSettings()` (e2e-python-helpers.ts) — points the
  * instance at the python-runner on :5001 and the localstack S3 on :4566.
  */

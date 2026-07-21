@@ -45,10 +45,15 @@
  *    `transforms-inspect` port (which had no python transform and correctly
  *    concluded "nothing is token-blocked"). That conclusion does not transfer.
  *
- * The python test is therefore `test.fixme`, on TWO independent blockers:
- * the 402 above (which fires first, at create), and localstack :4566 being
- * down (the python runner's S3 dependency) — probed, not assumed. Upstream
- * additionally tags that test `@python`, so it is gated there too.
+ * Both blockers are now RESOLVED, so the python test is ported and passes (it
+ * was `test.fixme`):
+ *  - The 402 is a LOCAL-TOKEN gap, not a product block. In CI the pro-self-hosted
+ *    secret is a staging token carrying `:transforms-basic`, so CREATE returns
+ *    200. Locally the test goes through `activatePythonTransformToken`
+ *    (support/transforms.ts), which keeps the spec on pro-self-hosted and only
+ *    falls back to the all-features token when `transforms-basic` is absent.
+ *  - localstack :4566 + the python-runner :5001 are up and verified, so the run
+ *    completes end-to-end. Gated on PW_PYTHON_RUNNER_ENABLED (upstream `@python`).
  *
  * Note there is NO incremental-specific premium feature: grepping the backend
  * for an `incremental`-flavoured feature check returns nothing. Incrementality
@@ -114,10 +119,11 @@ export const QA_DB_SKIP_REASON =
 
 /** See the token-tier block above — both halves probed, neither assumed. */
 export const PYTHON_SKIP_REASON =
-  "Python transforms are 402-blocked on this box (python-transforms-enabled? " +
-  "requires :transforms-basic, which the local pro-self-hosted token lacks), " +
-  "and localstack :4566 (the python runner's S3 dependency) is not running. " +
-  "Upstream also gates this test behind the @python tag.";
+  "Needs the python-runner (:5001) + localstack S3 (:4566) that " +
+  "H.setPythonRunnerSettings points at (set PW_PYTHON_RUNNER_ENABLED). Python " +
+  "transform CREATE also needs :transforms-basic, absent from the local " +
+  "pro-self-hosted token — handled by activatePythonTransformToken, which keeps " +
+  "CI on pro-self-hosted and falls back to the all-features token locally.";
 
 // ---------------------------------------------------------------------------
 // Warehouse fixtures

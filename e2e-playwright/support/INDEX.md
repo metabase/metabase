@@ -1,5 +1,29 @@
 # Helper index (generated — do not edit; run scripts/build-helper-index.mjs)
 
+## actions-in-object-detail-view.ts
+- `createModelFromTableName` — Port of H.createModelFromTableName (e2e-qa-databases-helpers.js).
+- `isGetModelActions` — cy.intercept("GET", "/api/action?model-id=*") — never awaited upstream. */
+- `isExecuteAction` — cy.intercept("POST", "/api/action/&ast;/execute"). */
+- `isPrefetchValues` — cy.intercept("GET", "/api/action/&ast;/execute?parameters=*"). */
+- `recordAlias` — `cy.wait("@alias")` pops the next UNCONSUMED response from a queue that
+- `waitForAlias` — Port of `cy.wait("@alias")` — pops the next unconsumed response. */
+- `actionForm` — cy.findByTestId("action-form"). */
+- `objectDetailModal` — cy.findByTestId("object-detail"). */
+- `actionExecuteModal` — cy.findByTestId("action-execute-modal"). */
+- `deleteObjectModal` — cy.findByTestId("delete-object-modal"). */
+- `actionsMenu` — cy.findByTestId("actions-menu"). */
+- `tableInteractive` — Port of H.tableInteractive(): cy.findByTestId("table-root"). */
+- `undoToastList` — Port of H.undoToastList(): cy.findAllByTestId("toast-undo"). */
+- `openUpdateObjectModal` — Port of the spec-local openUpdateObjectModal. */
+- `openDeleteObjectModal` — Port of the spec-local openDeleteObjectModal. */
+- `assertActionsDropdownExists` — Port of the spec-local assertActionsDropdownExists.
+- `assertActionsDropdownNotExists` — Port of the spec-local assertActionsDropdownNotExists. */
+- `assertInputValue` — Port of the spec-local assertInputValue.
+- `assertDateInputValue` — Port of the spec-local assertDateInputValue:
+- `assertScoreFormPrefilled` — Port of the spec-local assertScoreFormPrefilled. */
+- `assertToast` — Port of the spec-local assertSuccessfullUpdateToast /
+- `closeObjectDetailModal` — Port of `objectDetailModal().icon("close").click()`. */
+
 ## actions-on-dashboards.ts
 - `queryWritableDB` — Port of H.queryWritableDB(sql, type) — the Cypress version runs through
 - `resetTestTable` — Port of H.resetTestTable({ type, table }) (cy.task("resetTable") →
@@ -12,12 +36,83 @@
 - `moveDnDKitListElement` — Port of H.moveDnDKitListElement(dataTestId, { startIndex, dropIndex }):
 - `aside` — The click-behavior sidebar. Cypress used a bare cy.get("aside"). */
 
+## actions-reproductions.ts
+- `actionButtonContainer` — Port of the file-level `actionButtonContainer()`
+- `dashCard` — Port of the file-level `dashCard()`:
+- `scrollHeightOf` — `el.scrollHeight`, read inside the browser. */
+- `setupBasicActionsInModel` — Port of the file-level `setupBasicActionsInModel()`:
+- `getTable` — Port of H.getTable({ databaseId, name })
+- `createModelFromTable` — Port of H.createModelFromTableName (e2e-qa-databases-helpers.js), returning
+- `appendToInput` — Type into a text input the way Cypress's `.type()` does on a pre-filled
+
 ## ad-hoc-question.ts
 - `openTable` — Port of H.openTable: open a table as an ad-hoc question in simple or notebook
 - `openProductsTable` — Port of H.openProductsTable. */
 - `openOrdersTable` — Port of H.openOrdersTable. */
 - `openPeopleTable` — Port of H.openPeopleTable. */
 - `openReviewsTable` — Port of H.openReviewsTable. */
+
+## add-initial-data.ts
+- `CSV_FILE` — The CSV payload every upload test in this spec uses. Upstream builds it
+- `addDataModal` — Port of the spec-local `addDataModal()`. */
+- `getTab` — Port of the spec-local `getTab(tab)`.
+- `openTab` — Port of the spec-local `openTab(tab)`. */
+- `openAddDataModalFromSidebar` — Port of the spec-local `openAddDataModalFromSidebar()`.
+- `sidebarSectionButton` — `navigationSidebar().findByRole("section", { name }).findByLabelText(label)`.
+- `frameNavigationSidebar` — Frame-scoped twin of `ui.ts navigationSidebar` / `sidebarSection`, for the
+- `frameSidebarSection`
+- `expectAnyContains` — Port of `cy.findAllByRole("option").should("contain", text)`.
+- `expectNoneContains` — Port of `.and("not.contain", text)` on a multi-element subject: the
+- `expectPathname` — Port of `cy.location("pathname").should("eq", …)` / `cy.location("search")`.
+- `expectSearch`
+- `dropFileOn` — Port of `cy.selectFile(payload, { action: "drag-drop" })` onto the
+
+## admin-databases.ts
+- `SAMPLE_DB_ID` — Mirrors e2e/support/cypress_data.js. */
+- `WRITABLE_DB_ID`
+- `QA_MYSQL_PORT`
+- `QA_MONGO_PORT`
+- `QA_POSTGRES_PORT`
+- `button` — Port of `cy.button(name)` (e2e/support/commands/ui/button.ts):
+- `typeAndBlurUsingLabel` — Deliberately NOT reusing `database-routing-admin.typeAndBlurUsingLabel`:
+- `labeled` — `findByLabelText` semantics: exact for strings, regex passed through. */
+- `toggleFieldWithDisplayName` — Port of the spec-local `toggleFieldWithDisplayName`:
+- `selectFieldOption` — Port of the spec-local `selectFieldOption(fieldName, option)`:
+- `chooseDatabase` — Port of the spec-local `chooseDatabase`. */
+- `editDatabase` — Port of the module-level `editDatabase()` at the bottom of the spec. */
+- `fieldInfoIcon` — The `info` tooltip icon inside a labelled field's input wrapper.
+- `visitDatabase` — Port of `visitDatabase(id)` (e2e/test/scenarios/admin/helpers/e2e-database-helpers.js):
+- `ResponseRecorder` — - `waitForDbSync` calls `cy.wait("@getDatabases")` in a loop, so a
+- `waitForDbSync` — Port of `waitForDbSync(maxRetries = 10)`: consume `@getDatabases` responses
+- `pathnameIs` — `(url) => url.pathname === path` — the common recorder/route matcher. */
+- `pathnameMatches` — `(url) => regex.test(url.pathname)` — for the `/api/database/*` globs. */
+- `patchJsonResponse` — Patch a JSON response in flight — the port of
+- `expectConcatenatedTextToContain` — Port of `cy.findAllByTestId(x).should("contain.text", y)` on a MULTI-element
+
+## admin-datamodel-reproductions.ts
+- `getFieldNameInput` — Port of DataModel.FieldSection.getNameInput()
+- `waitForFieldSyncToFinish` — Port of the spec-local `waitForFieldSyncToFinish`: poll `GET /api/field/:id`
+- `isScrollableVertically` — Port of H.isScrollableVertically (e2e-ui-elements-overflow-helpers.js),
+- `closestListSection` — `closest("[data-element-id=list-section]")` for the column-picker rows.
+- `clickPickerOption` — Click an option inside a picker popover, scrolling the list until the row is
+
+## admin-datamodel.ts
+- `ALL_USERS_GROUP` — USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js). */
+- `tablePicker` — Port of H.DataModel.TablePicker.get(). */
+- `getSyncOptionsButton` — Port of DataModel.TableSection.getSyncOptionsButton(). */
+- `getSortDoneButton` — Port of DataModel.TableSection.getSortDoneButton(). */
+- `waitForDataset` — POST /api/dataset — the spec's `@dataset` alias. */
+- `waitForTablesUpdate` — PUT /api/table — the spec's `@updateTables` alias (bulk visibility). */
+- `waitForUpdateFieldOrder` — PUT /api/table/:id/fields/order — the spec's `@updateFieldOrder` alias. */
+- `waitForUpdateFieldDimension` — POST /api/field/:id/dimension — the spec's `@updateFieldDimension` alias. */
+- `tableRowButton` — Port of `TablePicker.getTable(name).button(label)`. `cy.button` is
+- `clickTableRowButton`
+- `verifyToastAndUndo` — Port of the spec-local verifyToastAndUndo.
+- `verifyTablesVisible` — Port of the spec-local verifyTablesVisible: each named table row carries a
+- `verifyTablesHidden` — Port of the spec-local verifyTablesHidden. Upstream asserts
+- `foreignWritableSchemas` — `Schema A`…`Schema Z` behind for everyone.
+- `turnTableVisibilityOff` — Port of the spec-local turnTableVisibilityOff. */
+- `setDataModelPermissions` — Port of the spec-local setDataModelPermissions. */
 
 ## admin-extras.ts
 - `seedSecurityAdvisories` — Nuke all existing security advisories and insert the provided ones. */
@@ -26,6 +121,24 @@
 - `configureSmtpSettings` — Stand-in for H.setupSMTP: the Cypress helper PUTs /api/email, which
 - `pressDownloadDiagnosticsShortcut` — The "Download diagnostics" shortcut is tinykeys "$mod+f1"
 - `downloadDiagnosticInfo` — Port of the error-reporting spec's getDiagnosticInfoFile: click Download in
+
+## admin-people.ts
+- `ALL_USERS` — Port of USERS (e2e/support/cypress_data.js). The Playwright
+- `TOTAL_USERS` — `Object.entries(USERS).length` in the Cypress spec. */
+- `USER_GROUPS` — Port of USER_GROUPS — `Object.entries(USER_GROUPS).length` is TOTAL_GROUPS. */
+- `TOTAL_GROUPS`
+- `getFullName` — Port of H.getFullName. */
+- `userRow` — The `<tr>` containing the given full name. The `has:` text locator is built
+- `showUserOptions` — Port of showUserOptions: open the row's ellipsis menu. */
+- `clickButton` — Port of clickButton: `cy.button(name).should("not.be.disabled").click()`.
+- `assertTableRowsCount` — Port of assertTableRowsCount.
+- `generateUsers` — Port of generateUsers: `count` users created straight through the API. */
+- `generateGroups` — Port of generateGroups. */
+- `removeUserFromGroup` — Port of removeUserFromGroup: click the row's close icon. */
+- `setupGoogleAuth` — Port of setupGoogleAuth. */
+- `assertLinkMatchesUrl` — Port of assertLinkMatchesUrl. */
+- `confirmLosingAbilityToManageGroup` — Port of the group-managers describe's confirmLosingAbilityToManageGroup.
+- `toggleUserTypeInRow` — The membership-type toggle inside a `GroupMembersTable` row is wrapped in a
 
 ## admin-permissions.ts
 - `ADMIN_GROUP` — Mirrors USER_GROUPS (e2e/support/cypress_data.js) — fixed ids baked into
@@ -37,6 +150,22 @@
 - `assertSidebarItems` — Port of H.assertSidebarItems: the sidebar's menuitems have exactly these
 - `assertPermissionOptions` — Port of H.assertPermissionOptions: the open permission popover shows exactly
 - `mockSessionPropertiesMerging` — Port of the split-permission tests' `cy.intercept("/api/session/properties",
+
+## admin-reproductions.ts
+- `SAMPLE_DB_ID` — Mirrors e2e/support/cypress_data.js */
+- `WRITABLE_DB_ID`
+- `segmentEditorPopover` — Port of H.segmentEditorPopover (e2e-ui-elements-helpers.js:605):
+- `setPickerStartingFrom` — Port of H.relativeDatePicker.setStartingFrom (e2e-relative-date-picker-helpers.js).
+- `scopeWritableDbToPublicSchema` — all of them (37 tables), which makes the data mini-picker insert a SCHEMA
+- `waitForSyncToFinish` — reports `initial_sync_status === "complete"`, giving up after 40 iterations.
+
+## admin-settings.ts
+- `unpinSiteUrl` — validation under test (`metabase.system.settings/normalize-site-url`,
+- `waitForSetting` — The `waitForResponse` side of a `cy.intercept(...).as(alias)` +
+- `expectDisplayValue` — `cy.findByDisplayValue(value)` used as an ASSERTION (upstream calls it with
+- `expectNoDisplayValue` — The retrying negative of expectDisplayValue. */
+- `mockBillingTokenFeatures` — Port of the spec-local `mockBillingTokenFeatures`: stub the token-status
+- `setFirstWeekDayTo` — Port of the spec-local setFirstWeekDayTo. */
 
 ## admin-tools-help.ts
 - `mockSessionPropertiesTokenFeatures` — Port of H.mockSessionPropertiesTokenFeatures: intercept GET
@@ -73,6 +202,23 @@
 - `visitHomeAndWaitForXray` — Register the xray-candidates wait, navigate home, await it (PORTING rule 2). */
 - `signInViaCookie` — Sign in as an arbitrary user (not one of the cached USERS) by POSTing
 - `typeAndBlur` — Port of H.typeAndBlurUsingLabel for the admin settings text inputs: `fill`
+
+## alert-permissions.ts
+- `ADMIN_FULL_NAME`
+- `NORMAL_FULL_NAME`
+- `directTextContaining` — which testing-library's `getNodeText` does not — it reads only direct child
+- `createBasicAlert` — - `cy.findByText("Done")` → `getByRole("button", …)`. Under Playwright the
+- `createSetupHarness` — has to drive the UI needs its own context. `browser` and the custom
+
+## alert-types.ts
+- `multiSeriesQuestionWithGoal` — Port of the spec's module-level `multiSeriesQuestionWithGoal`.
+- `waitForChannels` — `cy.wait("@channel")`.
+- `waitForAlertSave` — Port of `cy.intercept("POST", "/api/notification").as("updateAlert")` +
+
+## alert.ts
+- `isWebhookTesterRunning` — Availability probe for the `@external` webhook describe. Same shape as the
+- `addEmailRecipient` — - `cy.type()` clicks its subject first, so the click is explicit here, and
+- `setAllowedDomains` — Port of the EE describe's spec-local `setAllowedDomains`. */
 
 ## api-keys.ts
 - `ADMINISTRATORS_GROUP_ID` — Fixed group ids from the `default` snapshot — mirrors USER_GROUPS
@@ -382,6 +528,24 @@
 - `selectSidebarItem` — Port of H.selectSidebarItem (e2e-permissions-helpers.js):
 - `visitRootCollection` — Port of visitRootCollection (cy.visit("/collection/root")). */
 
+## collections-uploads.ts
+- `FIXTURE_DIR` — Port of FIXTURE_PATH from e2e-upload-helpers.js. Cypress resolves it through
+- `VALID_CSV_FILES` — Port of VALID_CSV_FILES (e2e/support/helpers/e2e-upload-helpers.js). */
+- `INVALID_CSV_FILES` — Port of INVALID_CSV_FILES. */
+- `enableUploads` — Port of H.enableUploads(dialect). Note it points uploads at WRITABLE_DB_ID
+- `fixturePayload` — The bytes + metadata Playwright's `setInputFiles` wants for a fixture. */
+- `waitForUpload` — Port of rule 2 for the upload endpoints: registered BEFORE the triggering
+- `statusRoot`
+- `uploadFile` — Port of H.uploadFile(inputId, collectionName, testFile, uploadMode).
+- `uploadFileToCollection` — Port of the spec-local `uploadFileToCollection(testFile, viewModel = true)`.
+- `uploadToExisting` — Port of the spec-local `uploadToExisting({...})`. */
+- `headlessUpload` — Port of H.headlessUpload(collectionId, file).
+- `expectCsvUploadEvent` — `csvupload` events are **backend-emitted** (`src/metabase/upload/impl.clj`
+- `queryQaDB`
+- `foreignWritableSchemasWithTables` — `writable_db` has only an empty `public` (never synced, no tables) plus
+- `listUploadTables` — Tables this spec's uploads created, in one schema of one database. */
+- `dropUploadTables`
+
 ## collections.ts
 - `getPinnedSection` — Port of H.getPinnedSection. */
 - `getUnpinnedSection` — Port of H.getUnpinnedSection. */
@@ -477,6 +641,16 @@
 - `pressFormatShortcut` — Port of the format keyboard shortcut (Shift + $mod + f) upstream fires with
 - `removeNotebookClauseByText` — Port of `H.getNotebookStep(step).findByText(name).icon("close").click()`:
 
+## custom-column-2.ts
+- `helpTextHeader` — Port of H.CustomExpressionEditor.helpTextHeader(). */
+- `helpText` — Port of H.CustomExpressionEditor.helpText(). */
+- `completions` — Port of H.CustomExpressionEditor.completions(): the suggestion dropdown. */
+- `completionOptions` — The `role="option"` rows inside the suggestion dropdown.
+- `selectCompletion` — Port of H.CustomExpressionEditor.selectCompletion(name):
+- `typeInExpressionEditor` — Port of H.CustomExpressionEditor.type()'s escape-sequence handling for the
+- `blurExpressionEditor` — Port of H.CustomExpressionEditor.blur().
+- `enterCustomColumnDetails` — Port of H.enterCustomColumnDetails, with the escape-sequence-aware type()
+
 ## custom-column-3.ts
 - `focusCustomExpressionEditor` — Port of H.CustomExpressionEditor.focus(): click the editor, confirm
 - `clearCustomExpressionEditor` — Port of H.CustomExpressionEditor.clear(): focus, select all, backspace. */
@@ -495,6 +669,32 @@
 - `sortInStep` — Port of H.sort() scoped to a notebook step. */
 - `assertLastColumnData` — Port of the spec-local assertTableData({ title, value }) used by the path
 - `scrollTableRight` — Port of H.tableInteractiveScrollContainer().scrollTo("right"). */
+
+## custom-column-reproductions-1.ts
+- `resetColorsTable` — Port of H.resetTestTable({ type: "postgres", table: "colors27745" })
+- `syncWritableDbAndWaitForTable` — Upstream fires `POST /api/database/:id/sync_schema` and never waits for it —
+- `pasteIntoExpressionEditor` — Port of H.CustomExpressionEditor.paste(content): the upstream builds a
+- `typeInEditor` — set this spec uses ({end}/{home}/{leftarrow}/{rightarrow}/{uparrow}/
+- `enterCustomColumnDetails` — Port of H.enterCustomColumnDetails — escape-aware (see typeInEditor) and
+- `blurExpressionEditor` — Port of H.CustomExpressionEditor.blur(): the upstream clicks the
+- `focusedElement` — The element `cy.focused()` would resolve to. */
+- `previewExpressionStep` — Port of the spec-local previewCustomColumnNotebookStep (issue 21135): click
+- `unselectFieldsPickerColumn` — Port of the spec-local unselectColumn (issue 20229):
+- `acceptCompletionWith` — Port of H.CustomExpressionEditor.acceptCompletion(key): assert the popup is
+- `selectedCompletion` — The `[role=option][aria-selected=true]` row of the completions popup. */
+
+## custom-column-reproductions-2.ts
+- `dispatchClick` — clicks whatever is topmost at those coordinates (PORTING).
+- `focusEditor` — Port of `H.CustomExpressionEditor.focus()`. The upstream is
+- `clearEditor` — Port of `H.CustomExpressionEditor.clear()` on top of focusEditor. */
+- `typeExpression` — `H.CustomExpressionEditor.type(text)` with the default `focus: true`, using
+- `enterExpressionDetails` — Port of `H.enterCustomColumnDetails` — same clear → type → blur → name
+- `blurEditor` — Port of `H.CustomExpressionEditor.blur()`: the upstream clicks the
+- `fastSetExpression` — helpers.focus();
+- `clickCompletion` — rather than inventing a mechanism. It is the reverse of the usual
+- `expectNotScrollableHorizontally` — Port of `H.isScrollableHorizontally(element)`
+- `expectNotOverflowingHorizontally` — `H.isScrollableHorizontally` infers a scrollbar from the layout height it
+- `stubDocsOrigin` — Cypress can only assert `cy.url()` after a same-tab navigation, so issue
 
 ## custom-column.ts
 - `customExpressionEditor` — Port of H.CustomExpressionEditor.value()'s target: the CodeMirror content
@@ -516,10 +716,6 @@
 - `CUSTOM_VIZ_IDENTIFIER_3_SECURITY`
 - `CUSTOM_VIZ_IDENTIFIER_4_SECURITY_COMPONENT`
 - `CUSTOM_VIZ_DISPLAY` — Frontend display type: "custom:{identifier}". */
-- `resetSnowplow`
-- `enableTracking`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `addCustomVizPlugin` — Port of H.addCustomVizPlugin: upload a packaged .tgz bundle and register it
 - `getCustomVizFixtureHash` — Port of H.getCustomVizFixtureHash: the SHA-256 of a .tgz on disk. The chip
 - `visitCustomVizSettings`
@@ -543,6 +739,21 @@
 - `expectConsoleMatch` — Like the above but matches any console channel (some membrane logs use warn). */
 - `expectConsoleCalledWith` — Port of `should("have.been.calledWith", ...args)` — exact joined text. */
 - `countCanaryRequests` — Count requests to the sandbox canary URL. Port of
+
+## dashboard-back-navigation.ts
+- `PG_DB_ID` — Port of the spec's `PG_DB_ID = 2`.
+- `QA_DB_SKIP_REASON`
+- `InterceptAlias` — 2. `cy.get("@alias.all").should("have.length", n)` counts **interceptions**,
+- `datasetAlias` — `cy.intercept("POST", "/api/dataset").as("dataset")` */
+- `cardAlias` — `cy.intercept("GET", "/api/card/*").as("card")` */
+- `cardQueryAlias` — `cy.intercept("POST", "/api/card/*&#47;query").as("cardQuery")` */
+- `updateCardAlias` — `cy.intercept("PUT", "/api/card/*").as("updateCard")` */
+- `dashboardAlias` — `cy.intercept("GET", "/api/dashboard/*").as("dashboard")` — single
+- `dashcardQueryAlias` — `cy.intercept("POST", "/api/dashboard/*&#47;dashcard/*&#47;card/*&#47;query")` */
+- `createDashboardWithCards` — Port of the spec-local createDashboardWithCards: a question card, a text
+- `createDashboardWithNativeCard` — Port of the spec-local createDashboardWithNativeCard. */
+- `createDashboardWithSlowCard` — Port of the spec-local createDashboardWithSlowCard: a native QA-Postgres
+- `createDashboardWithPermissionError` — Port of the spec-local createDashboardWithPermissionError: two Orders
 
 ## dashboard-card-fetching.ts
 - `ORDERS_COUNT_QUESTION_ID` — Ports of ORDERS_COUNT_QUESTION_ID / ORDERS_BY_YEAR_QUESTION_ID
@@ -576,6 +787,10 @@
 - `inputWithValue` — Port of cy.findByDisplayValue: find the input in `scope` whose current
 - `moveDnDKitElement` — Port of H.moveDnDKitElementByAlias — but with real mouse input instead of
 - `moveDnDKitElementOnto` — Deterministic dnd-kit sortable move: drag `element` so its center lands
+
+## dashboard-chained-filters.ts
+- `valuesWidget` — Port of the spec-local `valuesWidget()`:
+- `WRITABLE_PG_SKIP_REASON` — The gate message for the `@external` test — the writable postgres QA
 
 ## dashboard-core.ts
 - `ORDERS_DASHBOARD_ENTITY_ID`
@@ -688,6 +903,23 @@
 - `getTableCell` — Port of the spec-local getTableCell: find the column index by header text,
 - `addQuestionFromQueryBuilder` — Port of the spec-local addQuestionFromQueryBuilder: from the QB, add a
 
+## dashboard-filters-boolean.ts
+- `DIALECT`
+- `TABLE_NAME`
+- `QUESTION_NAME`
+- `QUESTION_2_NAME`
+- `DASHBOARD_NAME`
+- `DASHBOARD_2_NAME`
+- `PARAMETER_NAME`
+- `COLUMN_NAME`
+- `FIELD_NAME`
+- `createQuestionAndDashboard` — Port of the spec-local createQuestionAndDashboard(): an MBQL question over
+- `createNativeQuestionWithFieldFilterAndDashboard` — Port of the spec-local createNativeQuestionWithFieldFilterAndDashboard():
+- `createNativeQuestionWithVariableAndDashboard` — Port of the spec-local createNativeQuestionWithVariableAndDashboard(): a SQL
+- `createAndMapParameter` — Port of the spec-local createAndMapParameter(): add a Boolean dashboard
+- `setupDashboardClickBehavior` — Port of the spec-local setupDashboardClickBehavior(): build the destination
+- `testParameterWidget` — Port of the spec-local testParameterWidget().
+
 ## dashboard-filters-clear-and-restore.ts
 - `mapFilterToQuestion` — Port of the spec-local mapFilterToQuestion. findByText strings are exact. */
 - `editFilter` — Port of the spec-local editFilter: click a filter pill by name in the
@@ -766,6 +998,11 @@
 - `checkResetAllFiltersWorksAcrossTabs` — Port of the spec-local checkResetAllFiltersWorksAcrossTabs. */
 - `checkResetAllFiltersToDefaultWorksAcrossTabs` — Port of the spec-local checkResetAllFiltersToDefaultWorksAcrossTabs. */
 
+## dashboard-filters-source.ts
+- `setFilterQuestionSource` — Full port of H.setFilterQuestionSource({ question, field, labelField }).
+- `resetIpAddressesTable` — Port of the `ip_addresses` factory in e2e/support/test_tables.js.
+- `fieldValuesValueIn` — Port of H.fieldValuesValue(index) scoped to a popover, as upstream's
+
 ## dashboard-filters-sql-management.ts
 - `questionDetails`
 - `setupSqlManagementDashboard` — Port of the number-filter describe's beforeEach: create the native question +
@@ -789,6 +1026,14 @@
 - `dashboardDetails`
 - `setupRequiredSimpleFilterDashboard` — Port of the Cypress beforeEach body: create the native question + dashboard,
 - `removeDefaultFilterValue` — Port of the spec-local removeDefaultFilterValue:
+
+## dashboard-filters-sql-text-category.ts
+- `PG_DB_ID` — The spec's own `const PG_DB_ID = 2`. Under the `postgres-12` snapshot
+- `QA_DB_SKIP_REASON`
+- `queryQADB` — Port of H.queryQADB(query) — `cy.task("connectAndQueryDB", { connectionConfig:
+- `getTableId` — Port of H.getTableId({ databaseId = WRITABLE_DB_ID, name, schema })
+- `getFieldId` — Port of H.getFieldId({ tableId, name }). */
+- `SQL_QUERY_DETAILS` — The spec's `sqlQueryDetails`, byte-for-byte (indentation included). */
 
 ## dashboard-filters-text-category.ts
 - `DASHBOARD_TEXT_FILTERS`
@@ -944,6 +1189,53 @@
 - `savePermissionsGraph` — Port of the spec-local savePermissionsGraph. */
 - `waitForTableMetadata` — GET /api/table/:id/query_metadata — the Cypress @tableMetadataFetch alias. */
 
+## data-model-shared-2.ts
+- `getTriggeredFromArea` — Port of Shared.getTriggeredFromArea(area). */
+- `button` — Port of `cy.button(name)` (e2e/support/commands/ui/button.ts):
+- `FieldSection` — The FieldSection getters this spec needs on top of the shared ones.
+- `clickCoercionToggle` — Upstream: `FieldSection.getCoercionToggle().parent().click(...)`.
+- `clickAway` — Port of the spec-local `clickAway()` — `cy.get("body").click(0, 0)`. */
+- `responseCounter`
+- `queryMetadataCounter` — GET /api/table/:id/query_metadata — the spec's `@metadata` alias. */
+- `requestRecorder` — A passive request recorder — the port of
+- `fieldValuesRecorder` — GET /api/field/:id/values — the spec's `@fieldValues` alias. */
+- `expectToastsContainText` — `cy.get("[data-testid=toast-undo]").should("contain.text", msg)` on a
+- `verifyAndCloseToast` — VIOLATION whenever a previous toast is still exiting — measured on
+- `scrollElementTo` — Port of `cy.get(el).scrollTo("top" | "bottom")` — Cypress sets `scrollTop`
+- `clientRect` — `getBoundingClientRect()` read inside the browser — `boundingBox()` is a
+- `backgroundColor` — Computed `background-color` of a single element. */
+
+## data-model-shared-3.ts
+- `FieldSection` — The FieldSection getters this spec needs on top of the shared-1 / shared-2
+- `namePrefix` — The `Json:` style prefix chip rendered next to an unfolded field's name. */
+- `tooltip` — Port of H.tooltip(). */
+- `expectTooltipContainsText` — `tooltip().should("contain.text", x)` — chai-jquery CONCATENATES the text of
+- `expectTooltipHasText` — `tooltip().should("have.text", x)` — also a concatenation (`$el.text()`). */
+- `expectTooltipVisible` — `tooltip().should("be.visible")` — chai-jquery resolves this to
+- `expectNoTooltip` — `tooltip().should("not.exist")`. */
+- `expectNoToast` — `H.undoToast().should("not.exist")`. */
+- `responseQueue`
+- `fieldDimensionQueue` — POST /api/field/:id/dimension — the spec's `@updateFieldDimension`. */
+- `fieldValuesQueue` — POST /api/field/:id/values — the spec's `@updateFieldValues`. */
+- `waitForSyncSchema` — POST /api/database/:id/sync_schema — the spec's `@sync_schema`. */
+- `fieldPutRecorder` — Passive recorder of `PUT /api/field/:id` — the port of the spec's
+- `blurFocusedElement` — Blur whatever input/textarea currently holds focus.
+- `remappingInputWithAttrValue` — jQuery's `.filter("[value=…]")` matches the ATTRIBUTE, and so does the CSS
+- `getDatabaseTableIds` — Port of the `H.withDatabase` shape this spec uses: the shared
+- `getDatabaseSchemas` — GET /api/database/:id/schemas — the spec reads `body[0]`. */
+- `resetManyDataTypesTable` — Port of `H.resetTestTable({ type: "postgres", table: "many_data_types" })`
+- `waitForUnfoldedJsonField` — `resyncDatabase({ tables })` alone is NOT enough here (PORTING): a stale
+
+## data-model-shared-4.ts
+- `TableSection` — The TableSection getters this spec needs on top of the shared-1 ones.
+- `FieldSection` — The FieldSection getters this spec needs on top of the shared-1/2/3 ones.
+- `clickMiniBarChartToggle` — Upstream: `FieldSection.getMiniBarChartToggle().parent().click(...)`.
+- `fieldOrderOption` — Port of the SegmentedControl option click in the field-order picker.
+- `fieldOrderRadio` — `getSortOrderInput().findByDisplayValue(v).should("be.checked")` — the
+- `typeAppend` — Cypress `.type(text)` on a focused input appends at the END of the existing
+- `verifyToastAndUndo` — chai-jquery CONCATENATION — ported as a join, never `.first()`.
+- `stubServerErrors` — Install the 500 stubs. Must run before the navigation under test. */
+
 ## data-model.ts
 - `SAMPLE_DB_SCHEMA_ID` — Mirrors e2e/support/cypress_data.js */
 - `areas`
@@ -973,11 +1265,27 @@
 - `dataStudioNav`
 - `visitDataStudio`
 
+## data-studio-bulk-table.ts
+- `getDatabaseToggle` — Port of `DataModel.TablePicker.getDatabaseToggle(name)`:
+- `selectHasValue` — Port of `H.selectHasValue(label, value)` (e2e/support/helpers/e2e-ui-select.ts):
+- `selectDropdown` — Port of `H.selectDropdown()` — `popover().findByRole("listbox")`.
+- `clickSelectOption` — Port of `H.selectDropdown().contains(label).click()`.
+- `setBulkAttribute` — Open a bulk-attribute select (asserting it is unset) and pick an option —
+- `undoToastList` — Port of `H.undoToastList()` — `cy.findAllByTestId("toast-undo")`. */
+- `undoToastListContainer` — Port of `H.undoToastListContainer()` — `cy.findByTestId("undo-list")`. */
+- `getTableInSchema` — unambiguous while only one schema is expanded, but NOT in the search view:
+- `treeTableItems` — All rendered table rows in the picker tree (`data-type="table"` tree-items). */
+- `waitForSchema` — The spec's `@getSchema`:
+- `waitForSyncSchema` — `@syncSchema` — `POST /api/data-studio/table/sync-schema`. */
+- `waitForRescanValues` — `@rescanValues` — `POST /api/data-studio/table/rescan-values`. */
+- `waitForDiscardValues` — `@discardValues` — `POST /api/data-studio/table/discard-values`. */
+- `waitForPublishTables` — `@publishTables` — `POST /api/ee/data-studio/table/publish-tables`. */
+- `waitForUnpublishTables` — `@unpublishTables` — `POST /api/ee/data-studio/table/unpublish-tables`. */
+- `expectTableAction` — Assert a bulk table action posted exactly `tableIds` and answered 204 — the
+- `getTableId` — Port of the spec-local `getTableId(tables, tableName)`. */
+- `resetTestTableManySchemas` — Port of `H.resetTestTable({ type: "postgres", table: "many_schemas" })`
+
 ## data-studio-library.ts
-- `resetSnowplow`
-- `enableTracking`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `TRUSTED_ORDERS_METRIC` — Port of TRUSTED_ORDERS_METRIC (e2e/support/test-library-data.ts). */
 - `dataStudioNav` — Port of H.DataStudio.nav(). */
 - `dataStudioBreadcrumbs` — Port of H.DataStudio.breadcrumbs(). */
@@ -1008,6 +1316,22 @@
 - `waitForUpdateCard` — The `@updateCard` alias: cy.intercept("PUT", "/api/card/*"). */
 - `waitForUpdateCacheConfig` — The `@updateCacheConfig` alias: cy.intercept("PUT", "/api/cache"). */
 - `renameMetricTitle` — Rename the metric's EditableText title (the `aboutPage` header) and commit
+
+## data-studio-single-table.ts
+- `selectHasValue` — Port of `H.selectHasValue(label, value)`:
+- `selectIsDisabled` — Port of `H.selectIsDisabled(label)`:
+- `selectDropdown` — Port of `H.selectDropdown()` — `popover().findByRole("listbox")`. */
+- `clickSelectOption` — Port of `H.selectDropdown().contains(label).click()`.
+- `setSelectValue` — `selectHasValue(...).click()` + `selectDropdown().contains(...).click()` —
+- `undoToast` — Port of `H.undoToast()` — `cy.findByTestId("toast-undo")` (SINGULAR). */
+- `undoToastListContainer` — Port of `H.undoToastListContainer()` — `cy.findByTestId("undo-list")`. */
+- `closeUndoToast` — for the length of its exit animation. A second toast arriving in that window
+- `waitForPublishTables` — `@publishTables` — `POST /api/ee/data-studio/table/publish-tables`. */
+- `waitForUnpublishTables` — `@unpublishTables` — `POST /api/ee/data-studio/table/unpublish-tables`. */
+- `waitForTableMetadata` — `@metadata` — `GET /api/table/:id/query_metadata`. */
+- `allLibraryTableItems` — Port of `H.DataStudio.Library.allTableItems()` —
+- `resetTestTableManySchemas` — (cy.task("resetTable") -> e2e/support/test_tables.js `many_schemas`),
+- `dropTransformTargetTable` — MEASURED, not assumed: before this was added, the transform test failed with
 
 ## data-studio-snippets.ts
 - `newSnippetPage` — Port of H.DataStudio.Snippets.newPage(). */
@@ -1050,6 +1374,10 @@
 - `fieldSectionCloseButton` — Port of H.DataModel.FieldSection.getCloseButton():
 - `replaceEditableText` — `.clear().type(text).blur()` on an EditableText textarea.
 
+## database-connection-strings.ts
+- `paste` — with `fill()` / `pressSequentially()`:
+- `typeAppending` — `cy.findByLabelText(x).type(text)` on a field that ALREADY has a value:
+
 ## database-routing-admin.ts
 - `SAMPLE_DB_ID` — Mirrors e2e/support/cypress_data.js SAMPLE_DB_ID / WRITABLE_DB_ID. */
 - `WRITABLE_DB_ID`
@@ -1071,14 +1399,92 @@
 - `enableUploadsViaApi` — Port of H.enableUploads("postgres") (e2e-upload-helpers.js). */
 - `setupModelPersistence` — Port of the spec-local setupModelPersistence. */
 - `enableGlobalModelPersistence` — Port of the spec-local enableGlobalModelPersistence. */
-- `assertDbRoutingNotDisabled` — Port of the spec-local assertDbRoutingNotDisabled: the toggle is enabled, and
-- `assertDbRoutingDisabled` — CAPABILITY PROBE (see the spec header + findings): upstream had to use
+- `assertDbRoutingNotDisabled` — Upstream calls `realHover()` directly on the `<input>` inside the Mantine
+- `assertDbRoutingDisabled` — Chrome v122+ headless hit-tested CDP mouse events to the disabled <input>
+
+## database-routing-usage.ts
+- `QA_DB_CREDENTIALS` — Mirrors QA_DB_CREDENTIALS (e2e/support/cypress_data.js). */
+- `DB_ROUTER_USERS`
+- `queryWritableDB` — Port of H.queryWritableDB(sql) — the writable postgres is the connection the
+- `routingDbName` — parallelIndex-not-workerIndex choice are the SAME ones the warehouse
+- `createDbWithIdentifierTable` — Port of createDbWithIdentifierTable (e2e-database-routing-helpers.ts).
+- `waitForDatabaseSyncToFinish` — true of a sync that is still sitting in the queue. Callers reach this only
+- `addPostgresDatabase` — database, which after `restore("postgres-writable")` is the pre-existing
+- `getDbIdentifierIds` — The `GET /api/database/:id/metadata?include_hidden=true` +
+
+## database-writable-connection.ts
+- `queryDB` — Port of `H.queryWritableDB(query, "mysql")` — the spec's `queryDB`. */
+- `mainConnectionSection` — `cy.findByTestId("database-connection-info-section")` */
+- `writableConnectionSection` — `cy.findByTestId("writable-connection-info-section")` */
+- `connectionHealthInfo` — `cy.findByTestId("database-connection-health-info")`.
+- `fillInCredentials` — NOT `fill()`. The form is `DatabaseForm` (Formik) and its submit button is
+- `createWritableConnection` — Port of `createWritableConnection`. `getWritableConnectionInfoSection()
+- `updateWritableConnection` — Port of `updateWritableConnection`. */
+- `updateMainConnection` — Port of `updateMainConnection`. Note both sections render an "Edit connection
+- `removeWritableConnection` — Port of `removeWritableConnection` (button + confirmation modal). */
+- `runTransformAndWaitForFailure` — Port of `H.runTransformAndWaitForFailure` (e2e-transform-helpers.ts:58) —
+- `refreshModelPersistenceAndAwaitStatus` — Port of `refreshModelPersistenceAndAwaitStatus` — POST the refresh, then
+- `enablePersistenceForModel` — Port of `enablePersistenceForModel`. */
+- `runAction` — Ports of `runAction` / `performTableEdit` / `performUpload`. Upstream sends
+- `performTableEdit`
+- `performUpload` — Port of `performUpload`.
+
+## datamodel-data-studio-search.ts
+- `getDatabaseCheckbox` — Port of `DataModel.TablePicker.getDatabaseCheckbox(name)` —
+- `getSchemaCheckbox` — Port of `DataModel.TablePicker.getSchemaCheckbox(name)` —
+- `getDatabaseToggle` — Port of `DataModel.TablePicker.getDatabaseToggle(name)` —
+- `getSchemaToggle` — Port of `DataModel.TablePicker.getSchemaToggle(name)` —
+- `selectedTablesHeading` — The spec's repeated `cy.findByRole("heading", { name: /N tables selected/i })`.
+- `noTablesFound` — The picker's "No tables found" empty state (`SearchNew.tsx`). */
+- `waitForTableSearch` — table-picker search returned. The picker is backed by
+- `typeSearch` — instead of appending, and it sets the value in one shot without per-character
+- `selectFilterOptionInForm` — The shared port in `support/datamodel-data-studio.ts` looks the field's
+- `setBulkVisibilityLayer` — closed itself — `FilterPopover`'s `onSubmit` calls `close()`), `table-section`
+- `waitForBulkTableUpdate` — `useUpdateTableListMutation` endpoint) was WRONG and timed out: that hook
+- `clearAndTypeSearch`
+
+## datamodel-data-studio.ts
+- `getFilterForm` — Port of DataModel.TablePicker.getFilterForm(). */
+- `openFilterPopover` — Port of DataModel.TablePicker.openFilterPopover(). */
+- `selectFilterOption` — Port of DataModel.TablePicker.selectFilterOption(fieldLabel, optionLabel).
+- `clickPopoverOption` — Click an option in the open Mantine `Select` dropdown.
+- `applyFilters` — Port of DataModel.TablePicker.applyFilters(): click Apply and wait on the
+- `waitForListTables` — The spec's `cy.intercept("GET", "/api/table?*").as("listTables")`. */
+- `clickDetailsTab` — Port of DataModel.TableSection.clickDetailsTab(). */
+- `getDependencyGraphLink` — Port of DataModel.TableSection.getDependencyGraphLink(). */
+- `getSortOrderInput` — Port of DataModel.TableSection.getSortOrderInput() (a SegmentedControl with
+- `getSortOrderRadio` — Port of `TableSection.getSortOrderInput().findByDisplayValue(value)` — the
+- `getSortOrderOption` — Port of `TableSection.getSortOrderInput().findByLabelText(label)`. The label
+- `getActionsMenuButton` — Port of DataModel.TableSection.getActionsMenuButton(). */
+- `getSortableField` — Port of DataModel.TableSection.getSortableField(name) — same locator as
+- `getSortableFields` — Port of DataModel.TableSection.getSortableFields(). */
+- `getVisibilityTypeInput` — Port of DataModel.TableSection.getVisibilityTypeInput(). */
+- `getTableSectionCloseButton` — Port of DataModel.TableSection.getCloseButton(). */
+- `getFieldSectionCloseButton` — Port of DataModel.FieldSection.getCloseButton(). */
+- `getFieldValuesButton` — Port of DataModel.FieldSection.getFieldValuesButton(). */
+- `getFilteringInput` — Port of DataModel.FieldSection.getFilteringInput(). */
+- `getDisplayValuesInput` — Port of DataModel.FieldSection.getDisplayValuesInput(). */
+- `getDisplayValuesFkTargetInput` — Port of DataModel.FieldSection.getDisplayValuesFkTargetInput(). */
+- `getTableId` — Port of the spec-local getTableId (matches on display_name OR name). */
+- `updateTableAttributes` — Port of the spec-local updateTableAttributes. */
+- `setUserAsAnalyst` — Port of H.setUserAsAnalyst (e2e-users-helpers.ts). */
+- `findSearchResultByTableId` — Port of the spec-local findSearchResultByTableId. */
+- `expectTableVisible` — Port of the spec-local expectTableVisible (upstream asserts existence). */
+- `expectTableNotVisible` — Port of the spec-local expectTableNotVisible. */
+- `selectOwnerByName` — Port of the spec-local selectOwnerByName. */
+- `selectOwnerByEmail` — Port of the spec-local selectOwnerByEmail. `cy.type()` clicks its subject
+- `toggleUnusedFilter` — Port of the spec-local toggleUnusedFilter. */
+- `openWritableDomesticSchema` — Port of the spec-local openWritableDomesticSchema. */
+- `stubEstimatedRowCount` — Port of the spec's `cy.intercept` that rewrites `estimated_row_count` on the
+- `getDatabaseCheckbox` — The tree-item checkbox helpers the select/deselect test defines inline. */
+- `getSchemaCheckbox`
+- `getTableCheckbox`
+- `escapeRegExp`
+- `verifyAndCloseToastFirst` — Local variant of `Shared.verifyAndCloseToast` (support/data-model.ts).
+- `closeToast` — Close the newest undo toast.
+- `blurFocused` — Blur whatever currently holds focus. `cy.type()` targets
 
 ## datamodel-segments.ts
-- `resetSnowplow`
-- `enableTracking`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `segmentListApp`
 - `segmentRow` — The <tr> in the segment list containing the given segment name. Cypress
 - `segmentRowMenuTrigger` — The hover-independent row ellipsis (`.Icon-ellipsis`, a stable Icon class). */
@@ -1093,6 +1499,16 @@
 - `runTransform` — Port of H.runTransform (e2e-transform-helpers.ts). */
 - `waitForTransformRuns` — Port of H.waitForTransformRuns (e2e-transform-helpers.ts): poll
 - `deleteTransformTable` — Port of the spec-local dropTransformTable: DELETE /api/transform/:id/table. */
+
+## dependency-checks.ts
+- `FIXTURE_SCHEMA` — On this shared box it is not: the `many_schemas` fixture creates
+- `resetSpecTargetTables`
+- `createMbqlQuestionWithDependentMbqlQuestions` — Port of the spec-local createMbqlQuestionWithDependentMbqlQuestions.
+- `createMetricWithDependentMbqlQuestionsAndTransforms` — Port of the spec-local createMetricWithDependentMbqlQuestionsAndTransforms.
+- `createSqlTransformWithDependentMbqlQuestions` — Port of the spec-local createSqlTransformWithDependentMbqlQuestions.
+- `createMbqlTransformWithDependentMbqlTransforms` — Port of the spec-local createMbqlTransformWithDependentMbqlTransforms.
+- `visitTransform` — Port of H.visitTransform (e2e-transform-helpers.ts). `support/transforms.ts`
+- `expectNoBadSnowplowEvents` — `Access-Control-Allow-Credentials`, so the tracker's `credentials:"include"`
 
 ## dependency-graph.ts
 - `DependencyGraph` — Port of H.DependencyGraph (e2e-dependency-helpers.ts) — the graph screen's
@@ -1262,15 +1678,19 @@
 - `MAPPED_QUESTION_CREATE_INFO`
 - `createMappedDashcard` — Port of the spec-local createMappedDashcard: a Products dashcard mapped to
 - `EVENTS`
-- `resetSnowplow`
-- `enableTracking`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
+
+## email-alert.ts
+- `ALERT_BRANDING_HREF` — The href the "Made with Metabase" anchor carries in
+- `directText` — Local copy of the `directText` matcher (support/transforms-template-tags.ts
+- `escapeRegExp` — Escape a string for embedding in a RegExp. */
+- `countPosts` — Counts POSTs to an exact pathname, the way `cy.intercept("POST", "/api/card")
+- `openAlertForQuestion` — Port of the spec-local openAlertForQuestion(id).
+- `saveAlert` — Port of the spec-local saveAlert().
+- `sendAlertAndVisitIt` — Port of H.sendAlertAndVisitIt (e2e-email-helpers.js): press "Send now" in the
+- `waitForInbox` — Poll maildev until at least one email is stored. */
+- `linksContaining` — `cy.findAllByRole("link").filter(":contains(text)")`.
 
 ## embed-resource-downloads.ts
-- `resetSnowplow`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `deleteDownloadsFolder` — Port of cy.deleteDownloadsFolder — a no-op here: Playwright downloads land in
 - `waitLoading` — Port of `H.main().findByText("Loading...").should("not.exist")`. */
 - `getEmbeddedDashboardCardMenu` — Port of H.getEmbeddedDashboardCardMenu (e2e-dashboard-helpers.ts): the
@@ -1295,6 +1715,15 @@
 - `assertEmbeddingParameter` — Port of H.assertEmbeddingParameter. */
 - `getRequiredToggle` — Port of H.getRequiredToggle. */
 - `toggleRequiredParameter` — Port of H.toggleRequiredParameter (the real input is hidden in Mantine). */
+
+## embedding-hub.ts
+- `ALL_EXTERNAL_USERS_GROUP_ID` — Mirrors ALL_EXTERNAL_USERS_GROUP_ID (cypress_sample_instance_data.js):
+- `STATIC_ORDERS_ID` — Mirrors SAMPLE_DB_TABLES.STATIC_ORDERS_ID (cypress_data.js). */
+- `QA_DB_SKIP_MESSAGE`
+- `adminLayoutContent` — Port of cy.findByTestId("admin-layout-content"). */
+- `closestButton` — Port of Cypress's `.closest("button")` on a setup-guide card title.
+- `addPostgresDatabase` — Port of H.addPostgresDatabase (e2e-qa-databases-helpers.js) INCLUDING its
+- `resetMultiSchemaTable` — Port of H.resetTestTable({ type: "postgres", table: "multi_schema" })
 
 ## embedding-linked-filters.ts
 - `nativeQuestionDetails`
@@ -1377,6 +1806,38 @@
 - `createTenantCollection` — Port of the spec-local createTenantCollection: a collection in the
 - `setupTenantCollections` — Port of the spec-local setupTenantCollections: a tenant collection + sub-collection.
 
+## entity-picker.ts
+- `ADMIN_PERSONAL_COLLECTION_ID` — Ports of the *_PERSONAL_COLLECTION_ID exports (cypress_sample_instance_data.js). */
+- `NORMAL_PERSONAL_COLLECTION_ID`
+- `NO_COLLECTION_PERSONAL_COLLECTION_ID`
+- `ALL_USERS_GROUP` — USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js) — a fixed id. */
+- `WRITABLE_DB_ID` — WRITABLE_DB_ID (e2e/support/cypress_data.js). */
+- `cardDetails` — The spec's module-level `cardDetails`. */
+- `entityPickerModal`
+- `entityPickerModalLevel`
+- `dashboardOnTheGoModal` — Port of H.dashboardOnTheGoModal(). */
+- `collectionOnTheGoModal` — Port of H.collectionOnTheGoModal(). */
+- `entityPickerModalItem` — Port of H.entityPickerModalItem(level, name):
+- `clickPickerItem` — A single, PACED picker click. The column re-renders as children load, so a
+- `pickEntity` — Port of H.pickEntity — but paced (see clickPickerItem).
+- `enterSearchText` — Port of the spec-local enterSearchText:
+- `enterSearchTextDeferred` — `enterSearchText` split in two, for the handful of upstream assertions that
+- `globalSearchTab` — Port of the spec-local globalSearchTab: cy.findByLabelText("Everywhere"). */
+- `selectGlobalSearchTab` — Port of the spec-local selectGlobalSearchTab. The SegmentedControl inputs are
+- `localSearchTab` — Port of the spec-local localSearchTab: cy.findByLabelText(selectedItem).
+- `selectLocalSearchTab` — Port of the spec-local selectLocalSearchTab. findByText is exact. */
+- `findSearchItem` — Port of the spec-local findSearchItem: scoped to level 1's scroll container
+- `assertSearchResults` — Port of the spec-local assertSearchResults. */
+- `createTestCards` — Port of the spec-local createTestCards. Also polls the search index: the
+- `createTestCollections` — Port of the spec-local createTestCollections. Returns the "Another collection" id. */
+- `createTestDashboards` — Port of the spec-local createTestDashboards. */
+- `waitForSearchable` — Poll `/api/search` until a just-created entity is indexed. Search-backed
+- `createTestDashboardWithEmptyCard` — Port of the spec-local createTestDashboardWithEmptyCard. */
+- `testCardSearchForNormalUser` — Port of the spec-local testCardSearchForNormalUser. */
+- `testCardSearchForInaccessibleRootCollection` — Port of the spec-local testCardSearchForInaccessibleRootCollection. */
+- `testCardSearchForAllPersonalCollections` — Port of the spec-local testCardSearchForAllPersonalCollections. */
+- `assertNoSearchScopeSelectorYet` — resolves to **0** here and to **1** the moment the search returns — the
+
 ## env.ts
 - `BASE_URL`
 
@@ -1388,6 +1849,12 @@
 - `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard. Threads `tabs` +
 - `createDashboardWithQuestions` — Port of H.createDashboardWithQuestions (api/createDashboardWithQuestions.ts):
 - `createDashboardWithTabs` — Port of H.createDashboardWithTabs (api/createDashboardWithTabs.ts): create the
+
+## filter-bigint.ts
+- `BIGINT_PK_TABLE_NAME`
+- `DECIMAL_PK_TABLE_NAME`
+- `resetTestTable` — Port of H.resetTestTable({ type: "postgres", table }) for the two tables
+- `setupTables` — Port of the spec's module-level setupTables(): restore the postgres-writable
 
 ## filter-bulk.ts
 - `hovercard` — Port of H.hovercard: the visible Mantine HoverCard dropdown. */
@@ -1402,6 +1869,11 @@
 - `expectVisibleInPopover` — Port of the isVisibleInPopover custom command (metabase#14307): the element
 - `expectChartCirclesWithColors` — Port of `H.cartesianChartCircleWithColors(colors)`: each color's data-point
 - `expectFocusedRole` — Port of `cy.focused().should("have.attr", "role", role)`. */
+
+## filters-reproductions.ts
+- `pickMiniPickerTable` — skips the schema level entirely). Our container is shared across five slots
+- `assertDescendantsNotOverflowContainer` — Port of H.assertDescendantNotOverflowsContainer
+- `rectOf` — `getBoundingClientRect()` read inside the page — `boundingBox()` is a second
 
 ## filters-repros-2.ts
 - `dashboardParametersDoneButton` — Port of H.dashboardParametersDoneButton: the "Done" button inside the
@@ -1442,14 +1914,23 @@
 ## fixtures.ts
 - `test`
 
+## forgot-password.ts
+- `emailAddressInput` — `findByLabelText("Email address")` → exact (PORTING rule 1). The input is a
+- `sendResetEmailButton` — `findByText("Send password reset email")` → exact (PORTING rule 1).
+- `resetEmailSentMessage` — The ForgotPasswordSuccess message. Upstream is a bare
+- `forgotPasswordTitle` — `ForgotPasswordForm`'s `PasswordFormTitle`. Positive anchor for the
+- `createPasswordInput` — `findByLabelText("Create a password")` → exact (PORTING rule 1). */
+- `confirmPasswordInput` — `findByLabelText("Confirm your password")` → exact (PORTING rule 1). */
+- `saveNewPasswordButton` — `findByText("Save new password")` → exact (PORTING rule 1). */
+- `passwordUpdatedToast` — `findByText("You've updated your password.")` → exact (PORTING rule 1).
+- `getResetLink` — Port of the spec-local `getResetLink()`: the href of the email's first
+- `inboxIds` — The ids currently in the shared inbox — snapshot this immediately before
+- `waitForOwnResetEmail` — 3. **the body links at our own site URL.** `forgot-password-impl`
+
 ## funnel-title-navigation.ts
 - `createFunnelVisualizerDashboard` — Port of the UXW-2692 setup: a native funnel question, a dashboard, and one
 
 ## homepage.ts
-- `resetSnowplow`
-- `enableTracking`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `waitForXrayDashboard` — Register a wait for the automagic-dashboards GET the x-ray drill fires
 - `waitForXrayCandidates` — Register a wait for the x-ray candidates GET (Cypress `@getXrayCandidates`
 - `waitForRecentItems`
@@ -1466,6 +1947,21 @@
 ## i18n.ts
 - `selectLocale` — Port of the spec-local `selectLocale`: open the profile page, pick a locale
 - `visitPath` — Tolerant navigation, mirroring cy.visit's resilience: the homepage fires a
+
+## iglu-validate.ts
+- `validateIgluPayloads` — Validate decoded self-describing payloads against their declared Iglu
+
+## impersonated.ts
+- `PG_DB_ID` — The spec's own `const PG_DB_ID = 2`. Under the `postgres-12` snapshot the QA
+- `PG_DB_NAME` — The QA Postgres12 database's display name, as the data picker labels it. */
+- `IMPERSONATED_USER_EMAIL` — The `impersonated` fixture user (e2e/support/cypress_data.js:158-170):
+- `IMPERSONATED_ROLE`
+- `signInAsImpersonatedUser`
+- `assertRunsAs` — Proves which user an API client is actually bound to. This is the guard
+- `assertGroupIds` — Run-time re-check of the two group ids, resolved BY NAME from the live
+- `assertPgDbId` — Verifies the spec's `PG_DB_ID = 2` literal against the live instance. */
+- `setImpersonatedPermission` — Port of the spec-local `setImpersonatedPermission()`.
+- `getImpersonations` — Reads back the impersonation policy the graph write installed. Used as the
 
 ## instance-analytics.ts
 - `ANALYTICS_COLLECTION_NAME`
@@ -1520,6 +2016,16 @@
 
 ## joins-custom-expressions.ts
 - `addJoinConditionCustomExpression` — Add one side of a join condition through the Custom Expression editor: the
+
+## joins-reproductions.ts
+- `MYSQL_SKIP_REASON`
+- `POSTGRES_SKIP_REASON`
+- `waitForDataset` — POST /api/dataset — the "@dataset" / "@postDataset" alias. */
+- `waitForXray` — GET /api/automagic-dashboards/adhoc/** — the "@xray" alias. */
+- `countDatasetResponses` — Port of `cy.wait("@postDataset")` repeated N times.
+- `modifyColumn` — Port of the spec-local modifyColumn(columnName, action). `findByLabelText`
+- `assertTableHeader` — Port of the spec-local assertTableHeader(index, name):
+- `containsText` — Port of `cy.contains(text)` inside a scope: a case-sensitive SUBSTRING match
 
 ## joins.ts
 - `visitQuestionAdhocNotebook` — Port of H.visitQuestionAdhoc's notebook-mode branch: no results render in
@@ -1576,7 +2082,7 @@
 - `maildevSmtpPort` — The SMTP port THIS worker's backend must be configured to deliver to. */
 - `maildevEndpoint` — Human-readable endpoint pair, for the per-worker log line. */
 - `ensureMaildev` — Bring up this worker's maildev if it isn't already up, then report whether a
-- `removeSlotMaildevContainers` — Remove every per-slot maildev container. Called from global teardown, and
+- `removeSlotMaildevContainers` — Remove per-slot maildev containers. Called from global teardown, and safe to
 
 ## maps.ts
 - `toggleFieldSelectElement` — Port of the spec-local toggleFieldSelectElement: open a chart-setting select
@@ -1600,10 +2106,6 @@
 - `clickLinkWithoutFollowing` — Port of the spec's "click but preventDefault so the cursor:// deeplink is not
 
 ## measures-data-studio.ts
-- `resetSnowplow`
-- `enableTracking`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `getMeasuresBaseUrl`
 - `waitForMetadata` — GET /api/table/:id/query_metadata — the `@metadata` alias predicate. */
 - `waitForCreateMeasure` — POST /api/measure — the `@createMeasure` alias predicate. */
@@ -1703,6 +2205,11 @@
 - `metabotFinishPart` — The trailing finish event; carries the finish reason and usage metadata. */
 - `mockMetabotResponse` — Port of H.mockMetabotResponse. Fulfils POST /api/metabot/agent-streaming with
 
+## metric-page.ts
+- `MetricPageExtras` — The remaining MetricPage locators (e2e-metric-page-helpers.ts). Header tabs
+- `setupNotificationChannel` — Port of H.setupNotificationChannel (e2e-notification-helpers.ts): register an
+- `editMetricDescription` — sidebar.within(() => cy.findByText(old).click());
+
 ## metrics-browse.ts
 - `metricsTable` — Port of the spec-local metricsTable: cy.findByLabelText("Table of metrics"). */
 - `findMetric` — Port of the spec-local findMetric: metricsTable().findByText(name) (exact). */
@@ -1775,11 +2282,72 @@
 - `triggerDownload` — Open the download popover, pick the file type, and trigger the export.
 - `expectDownloadError` — Port of the final assertion: the aborted stream surfaces as a download error,
 
+## model-actions.ts
+- `IMPERSONATED_USER_ID` — Port of IMPERSONATED_USER_ID (e2e/support/cypress_sample_instance_data.js) —
+- `USER_GROUPS` — Mirrors USER_GROUPS (e2e/support/cypress_data.js:42) — fixed ids baked into
+- `getCreatePostgresRoleIfNotExistSql` — Port of getCreatePostgresRoleIfNotExistSql (e2e/support/test_roles.js). */
+- `updatePermissionsGraph` — Port of cy.updatePermissionsGraph (e2e/support/commands/permissions/
+- `createImplicitActions` — Port of H.createImplicitActions (e2e-action-helpers.js). */
+- `isGetModel` — cy.intercept("GET", "/api/card/*") — the Cypress glob stops at "/". */
+- `isGetAction` — cy.intercept("GET", "/api/action/*"). */
+- `isUpdateAction` — cy.intercept("PUT", "/api/action/*"). */
+- `isCreateAction` — cy.intercept("POST", "/api/action"). */
+- `isExecuteAction` — cy.intercept("POST", "/api/action/:id/execute") (glob "/api/action/&ast;/execute"). */
+- `isEnableActionSharing` — cy.intercept("POST", "/api/action/:id/public_link"). */
+- `isDisableActionSharing` — cy.intercept("DELETE", "/api/action/:id/public_link"). */
+- `actionList` — cy.findByLabelText("Action list") — the <ul aria-label="Action list">. */
+- `actionListItem` — cy.findByRole("listitem", { name }) — <li aria-label={action.name}>. */
+- `fillActionQuery` — Port of H.fillActionQuery — NativeEditor.type(query) (append at caret end). */
+- `recordGetAction` — Port of `cy.intercept("GET", "/api/action/*").as("getAction")`.
+- `waitForGetAction` — Port of cy.wait("@getAction") — pops the next unconsumed response. */
+- `runActionFor` — Port of the spec-local runActionFor: click the row's play icon, then
+- `openActionMenuFor` — Port of the spec-local openActionMenuFor. */
+- `openActionEditorFor` — Port of the spec-local openActionEditorFor. */
+- `assertQueryEditorDisabled` — Port of the spec-local assertQueryEditorDisabled.
+- `createBasicActions` — Port of the spec-local createBasicActions.
+- `enableSharingFor` — Port of the spec-local enableSharingFor. Returns the public URL rather than
+- `disableSharingFor` — Port of the spec-local disableSharingFor. */
+- `verifyScoreValue` — Port of the spec-local verifyScoreValue. */
+- `resetAndVerifyScoreValue` — Port of the spec-local resetAndVerifyScoreValue. */
+- `formFieldContainer` — cy.findAllByTestId("form-field-container").filter(":contains('X')") — the
+
 ## model-indexes.ts
 - `selectModelColumn` — Select a column in the model metadata editor. The shared
 - `createModelIndex` — Port of H.createModelIndex({ modelId, pkName, valueName }): field ids are
 - `waitForIndexedValueSearchable` — Wait until a freshly indexed value is searchable. Creating a model index
 - `trackCardGets` — Port of the spec's `@cardGet` intercept + `expectCardQueries` assertion:
+
+## model-to-transform.ts
+- `QA_DB_SKIP_REASON`
+- `SOURCE_TABLE`
+- `OUTPUT_TABLE_SLUG`
+- `OUTPUT_TABLE_LABEL`
+- `SOURCE_TABLE_LABEL`
+- `MIGRATE_MODELS_PATH`
+- `SOURCE_ROW_NAME`
+- `SOURCE_ROW_NAME_2`
+- `CATEGORY_FILTER_ID`
+- `dropAllTestTables` — Port of the spec-local dropAllTestTables. */
+- `createTestTables` — Port of the spec-local createTestTables.
+- `getWritableTableId` — Port of the spec-local getTableId (which pins databaseId to WRITABLE_DB_ID). */
+- `createSourceModel` — Port of the spec-local createSourceModel. */
+- `createQuestionOnModel` — Port of the spec-local createQuestionOnModel. */
+- `createQuestionOnCard` — Port of the spec-local createQuestionOnCard. Byte-identical in body to
+- `createQuestionJoiningModel` — Port of the spec-local createQuestionJoiningModel. */
+- `createFilteredDashboardOnModel` — Port of the spec-local createFilteredDashboardOnModel. */
+- `waitForModelInSearch` — `MigrateModelsPage` reads its model list from
+- `waitForDependencyBackfill` — `waitForReplacementToComplete` is happy and the failure surfaces much later
+- `openMigrateModelsPage` — Port of the spec-local openMigrateModelsPage. */
+- `selectModelInTable` — Port of the spec-local selectModelInTable. */
+- `convertTriggerButton` — The sidebar's "Convert to a transform" trigger. */
+- `openReplaceWithTransformModal` — Port of the spec-local openReplaceWithTransformModal. */
+- `tableNameInput` — `findByLabelText` is EXACT; Playwright's `getByLabel` is a SUBSTRING match
+- `getSubmitButton` — Port of the spec-local getSubmitButton. */
+- `submitReplaceWithTransformForm` — Port of the spec-local submitReplaceWithTransformForm.
+- `waitForReplacementToComplete` — Port of the spec-local waitForReplacementToComplete.
+- `convertModelToTransform` — Port of the spec-local convertModelToTransform. */
+- `assertSourceRowsVisible` — Port of the spec-local assertSourceRowsVisible. `findAllByText(string)` is an
+- `assertDataSourceIs` — Port of the spec-local assertDataSourceIs.
 
 ## models-core.ts
 - `turnIntoModel` — Port of turnIntoModel (e2e-models-helpers.js): open the question actions,
@@ -1883,6 +2451,18 @@
 - `embedDashcardQueryResponse` — /api/embed/dashboard/*​/dashcard/*​/card/* (the "@embedDashcardQuery"). */
 - `toggleColumn` — The "add or remove columns" checkbox toggle used by the viz-settings tests. */
 
+## native-database-source.ts
+- `QA_DB_SKIP_REASON`
+- `nativeQueryTopBar` — cy.findByTestId("native-query-top-bar"). */
+- `selectedDatabase` — cy.findByTestId("selected-database"). */
+- `startNativeQuestion` — Port of the spec-local `startNativeQuestion()`.
+- `startNativeModel` — Port of the spec-local `startNativeModel()`.
+- `assertNoDatabaseSelected` — Port of the spec-local `assertNoDatabaseSelected()`.
+- `selectDatabase` — Port of the spec-local `selectDatabase(database)`. */
+- `assertSelectedDatabase` — Port of the spec-local `assertSelectedDatabase(name)`. Returns the
+- `enableModelActionsForDatabase` — Port of the spec-local `enableModelActionsForDatabase(id)`. */
+- `PersistDatabaseRecorder` — The `@persistDatabase` alias:
+
 ## native-editor.ts
 - `adhocQuestionHash` — Port of adhocQuestionHash (the btoa'd card definition in the URL hash). */
 - `startNewNativeQuestion` — Port of H.startNewNativeQuestion: visit the ad-hoc URL that clicking
@@ -1905,6 +2485,14 @@
 - `resetManyDataTypesTable` — Port of H.resetTestTable({ type: "postgres", table: "many_data_types" }).
 - `createNativeQuestionWithParameters` — Port of H.createNativeQuestion for the remapping spec's card shape:
 
+## native-filters-reproductions.ts
+- `expectLocationSearch` — Port of `cy.location("search").should("eq", value)`. Cypress RETRIES this
+- `nextSibling` — Port of a Cypress `.next()`: the element's immediately following sibling. */
+- `variableNameFields` — Port of `cy.findAllByText("Variable name").parent()` — the tag-editor blocks,
+- `variableNameLabels` — Port of `cy.findAllByText("Variable name").next()` — the input that follows
+- `addDefaultStringFilter` — cy.findByText("Enter a default value…").click();
+- `visitQuestionUrlAwaitingCardQuery` — `cy.visit(url)` for a saved question, waiting on the same
+
 ## native-filters.ts
 - `openTypePickerFromDefaultFilterType` — Port of SQLFilter.openTypePickerFromSelectedFilterType /
 - `chooseType` — Port of SQLFilter.chooseType. */
@@ -1923,6 +2511,29 @@
 - `ensureEchartsContainerHasSvg` — Port of H.ensureEchartsContainerHasSvg (e2e-visual-tests-helpers.js): the
 - `applyBrushFilter` — Port of the spec-local applyBrushFilter: wait for the chart svg to exist,
 - `applyBoxFilter` — .realMouseDown({ x: left, y: top })
+
+## native-reproductions-js.ts
+- `clearBrowserCache` — Port of H.clearBrowserCache: `Cypress.automation("remote:debugger:protocol",
+- `recordRequests` — Passive request recorder — the Playwright shape for
+- `isAutocompleteRequest` — Matcher for the autocomplete endpoint of a given database. */
+
+## native-reproductions.ts
+- `startNewNativeModel` — Port of H.startNewNativeModel: the hash clicking "New" > "Model" >
+- `startNewNativeQuestionWithoutDatabase` — Port of H.startNewNativeQuestion({ database: null, query: "" }) — the
+- `fastSetNativeEditor` — Port of H.NativeEditor.type(text, { allowFastSet: true }).
+- `blurNativeEditor` — Port of H.NativeEditor.blur(): jQuery `.blur()` on `.cm-content`. */
+- `selectAllInNativeEditor` — Port of H.NativeEditor.selectAll(): focus, then cmd/ctrl+A. */
+- `pressNextCompletion` — Port of `{nextcompletion}` in H.NativeEditor.type: a 50ms settle, then
+- `createTestNativeQuery` — Port of H.createTestNativeQuery (api/createTestQuery.ts). */
+- `createCard` — Port of H.createCard (api/createCard.ts) including its DEFAULT_CARD_DETAILS. */
+- `findOverflowingDescendants` — Port of H.assertDescendantNotOverflowsContainer applied to every descendant
+- `outerSize` — jQuery `.outerWidth()` / `.outerHeight()` — the element's border box. */
+- `triggerMouseEvent` — Port of Cypress `.trigger("mousedown"|"mousemove"|"mouseup", ...)`: a
+- `clientRect` — The viewport rect of an element, read page-side in one round trip. */
+- `repeatAssertion` — Port of H.repeatAssertion(assertFn, timeout = 4000, interval = 400): run the
+- `getRunQueryButton` — Port of `cy.findByTestId("native-query-editor-container").findByTestId("run-button")`. */
+- `nativeEditorDataSource` — Port of H.nativeEditorDataSource(): `findAllByTestId("gui-builder-data").first()`. */
+- `expectNotDirty` — Assert the play icon is gone — the tail of H.runNativeQuery, which runs
 
 ## native-sql-generation.ts
 - `inlinePrompt`
@@ -1945,6 +2556,22 @@
 - `variableTypeSelect` — Port of `cy.findByTestId("variable-type-select")`. */
 - `mapTableTag` — Assign the currently-shown template tag the "Table" variable type and map it
 
+## native.ts
+- `MONGO_SKIP_REASON`
+- `waitForDataset` — POST /api/dataset — the spec's "@dataset" alias. */
+- `waitForDatasetNative` — POST /api/dataset/native — the spec's "@datasetNative" alias. */
+- `waitForCardPost` — POST /api/card — the spec's "@card" alias. */
+- `waitForCardGet` — GET /api/card/:id — the spec's "@cardQuestion" alias. */
+- `runQuery` — Port of the spec-local `runQuery()`:
+- `sidebarHeaderTitle` — Port of the spec-local `sidebarHeaderTitle()`. */
+- `dataReferenceSidebar` — Port of the spec-local `dataReferenceSidebar()`. */
+- `expectEditorTextContent` — The exact `textContent` of the editor, i.e. what chai-jquery's
+- `expectLineTextContent` — Same, for a single `.cm-line`. */
+- `nativeEditorValue` — Port of H.NativeEditor.value(): join the editor's `.cm-line` text nodes
+- `setViewport` — Port of `cy.viewport(w, h)` + the spec's `cy.wait(100)` "wait for UI to
+- `pressRepeatedly` — Press a key `times` times, paced.
+- `clickAndType` — Port of `cy.type()` onto an input whose placeholder is its only handle.
+
 ## nested-questions.ts
 - `waitForDataset` — Register a wait for the next POST /api/dataset response. Must be called
 - `summarize` — Port of H.summarize (default, non-notebook mode). */
@@ -1957,12 +2584,47 @@
 ## new-menu.ts
 - `openNewMenu` — Port of the spec beforeEach's `cy.visit("/")` + `cy.findByText("New").click()`:
 
+## notebook-data-source.ts
+- `QA_DB_SKIP_REASON`
+- `TOKEN_SKIP_REASON`
+- `ORDERS_MODEL_ID` — Ports of cypress_sample_instance_data.js lookups. */
+- `ORDERS_COUNT_QUESTION_ID`
+- `SECOND_COLLECTION_ID`
+- `openDataSelector` — Port of the spec-local openDataSelector(). */
+- `dataStepCell`
+- `clickMiniPickerItem` — The mini picker's item list is a `VirtualizedList` (@tanstack/react-virtual,
+- `assertDataPickerEntitySelected` — Port of assertDataPickerEntitySelected(level, name):
+- `assertDataPickerEntityNotSelected` — Port of assertDataPickerEntityNotSelected(level, name):
+- `moveToCollection` — Port of the spec-local moveToCollection(collection).
+- `recordCollectionTree` — Records GET /api/collection/tree* responses from the point of the call. */
+- `recordResponses` — A minimal port of Cypress's alias queue: responses matching `predicate` are
+- `saveQuestionToCollection` — Port of H.saveQuestionToCollection(name) → H.saveQuestion(name, undefined,
+
 ## notebook-link-to-data-source.ts
 - `METAKEY` — Port of METAKEY (frontend/src/metabase/utils/browser.ts): "⌘" on macOS, else
 - `SANDBOXED_ATTR_UID` — USERS.sandboxed.login_attributes.attr_uid === "1" (cypress_data.js). The port's
 - `metaClick` — Port of H.click(H.holdMetaKey): ctrl/cmd-click. "ControlOrMeta" maps to Meta on
 - `openDataSourceInSameTab` — Port of the beforeEach window.open stub. The app opens a data source in a new
 - `assertDatasetReqIsSandboxed` — Port of H.assertDatasetReqIsSandboxed (e2e-permissions-helpers.js): the
+
+## notebook-native-preview-sidebar.ts
+- `MONGO_SKIP_REASON`
+- `ORDERS_COUNT_QUESTION_ID` — Port of ORDERS_COUNT_QUESTION_ID (e2e/support/cypress_sample_instance_data.js:26).
+- `openReviewsTableNotebook` — builds ONE query object (`{"source-table", limit}`) and `mode` only picks the
+- `previewSidebar`
+- `openSidebar` — Port of the spec-local `openSidebar(variant)`.
+- `closeSidebar` — Port of the spec-local `closeSidebar(variant)`. */
+- `previewEditor` — The preview's CodeMirror content, scoped to the sidebar.
+- `previewSql` — The generated SQL as RAW text.
+- `expectPreviewSql` — Poll the preview's raw text until `assertion` holds. Cypress's
+- `waitForNativeDataset` — POST /api/dataset/native — the spec's "@nativeDataset" alias. */
+- `waitForDataset` — POST /api/dataset — the spec's "@dataset" alias (convertToSql). */
+- `waitForSessionProperties` — GET /api/session/properties — the spec's "@sessionProperties" alias. */
+- `waitForUpdateSidebarWidth` — PUT /api/setting/notebook-native-preview-sidebar-width — "@updateSidebarWidth". */
+- `sidebarWidth` — The sidebar's rendered width, i.e. `$sidebar[0].getBoundingClientRect().width`. */
+- `resizeSidebar` — attaches `mousedown` through React's delegated listener on the handle and then
+- `scrollResultsToCell` — container's documents, not of Metabase. Measured on this box's
+- `convertToSql` — Port of the spec-local `convertToSql()`. */
 
 ## notebook.ts
 - `queryBuilderMain`
@@ -1984,6 +2646,25 @@
 ## nulls.ts
 - `findGridcell` — Port of the spec-local `findGridcell(text)`:
 - `nextCell` — Port of jQuery `.next()` on a gridcell: the immediately-following sibling
+
+## object-detail.ts
+- `QA_DB_SKIP`
+- `COMPOSITE_PK_TABLE`
+- `NO_PK_TABLE`
+- `resetTestTable` — Port of H.resetTestTable({ type, table }) (cy.task("resetTable") →
+- `listWritableTables` — Diagnostic used to record what the shared writable container actually holds
+- `getRow` — Port of the spec-local `getRow(rowIndex)` — `cy.get('[data-index=N]')`.
+- `getShortcutRow` — The frozen-quadrant copy of a row — the one carrying `detail-shortcut`. */
+- `getObjectDetailShortcut` — Port of the spec-local `getObjectDetailShortcut(rowIndex)`:
+- `drillPK` — Port of the spec-local `drillPK({ id })`:
+- `drillFK` — Port of the spec-local `drillFK({ id })`. */
+- `assertDetailView` — Port of the spec-local `assertDetailView({ id, heading, subtitle, byFK })`.
+- `assertOrderDetailView`
+- `assertUserDetailView`
+- `getPreviousObjectDetailButton` — Port of the spec-local getPreviousObjectDetailButton. */
+- `getNextObjectDetailButton` — Port of the spec-local getNextObjectDetailButton. */
+- `objectDetail` — `cy.findByTestId("object-detail")`. */
+- `waitForDataset` — Register BEFORE the triggering action; await after (rule 2). */
 
 ## official-collections.ts
 - `COLLECTION_NAME`
@@ -2027,6 +2708,21 @@
 - `notificationList` — Port of H.notificationList: findByRole("list", { name: "undo-list" }). */
 - `openUserNotifications` — Port of the spec's openUserNotifications: visit /account/notifications and
 
+## onboarding-setup.ts
+- `restoreBlank` — pass `failOnStatusCode: false` there — **throws**.
+- `setupForms` — `cy.findByTestId("setup-forms")`. */
+- `typeInto` — `cy.type()` fires a real key event per character and re-resolves its subject
+- `clearAndType` — `.clear().type(text)` */
+- `skipWelcomePage` — Port of the spec's `skipWelcomePage`. */
+- `fillUserAndContinue` — Port of the spec's `fillUserAndContinue`. Call with `setupForms(page)`. */
+- `skipLicenseStepOnEE` — Port of the spec's `skipLicenseStepOnEE`. Call with `setupForms(page)`. */
+- `typeToken` — Port of the spec's `typeToken`. Upstream flips the input to `type=password`
+- `navigateToDatabaseStep` — Port of the spec's `navigateToDatabaseStep`: visit /setup with the user
+- `selectLanguage` — Port of the spec's `selectLanguage`. The translations request is registered
+- `expectSetupCardNotVisible` — after a DB is selected  (shown):   y = 574  -> within the fold, fails
+- `expectPathname` — `cy.location("pathname").should("eq", expected)` — retried, per PORTING. */
+- `lastSection` — The last `<section>` on the page — upstream's `cy.get("section").last()`. */
+
 ## onboarding-sso.ts
 - `setupFakeGoogleAuth` — Port of the spec's beforeEach block: set a fake Google client ID and enable
 - `signInWithEmailLink` — The "Sign in with email" link on the SSO card screen (PasswordButton renders
@@ -2063,6 +2759,21 @@
 - `cancelConfirmationModal` — Port of the spec-local cancelConfirmationModal. The confirm-modal test id is
 - `preemptiveCachingSwitch` — Port of the spec-local preemptiveCachingSwitch. */
 - `preemptiveCachingSwitchInput` — The role="switch" input inside the preemptive-caching switch. Toggled by
+
+## permissions-reproductions-js.ts
+- `NODATA_USER_ID` — Port of NODATA_USER_ID (cypress_sample_instance_data.js). DERIVED, not
+- `PG_DB_ID` — The spec's own `const PG_DB_ID = 2`. Under the `postgres-12` snapshot
+- `POSTGRES_SKIP_REASON`
+- `TOKEN_SKIP_REASON`
+- `MAILDEV_SKIP_REASON`
+- `withDatabase` — Port of H.withDatabase(dbId, callback): the Cypress helper hands its
+- `isDatasetResponse` — POST /api/dataset — the "@dataset" alias. */
+- `isPermissionsGraphPut` — PUT /api/permissions/graph — the "@updatePermissions" alias. */
+- `isCreateCardResponse` — POST /api/card — the "@createCard" alias. */
+- `hideTables` — Port of the spec-local hideTables(). */
+- `changePermissions` — Port of the spec-local changePermissions(from, to).
+- `saveChanges` — Port of the spec-local saveChanges(): "Save changes" then the "Yes"
+- `assertSearchResultsExcludeSampleDatabase` — Port of the spec-local assert(): search for "S" from the home page and
 
 ## permissions.ts
 - `ADMIN_PERSONAL_COLLECTION_ID` — Port of ADMIN_PERSONAL_COLLECTION_ID from
@@ -2127,10 +2838,6 @@
 - `downloadPublicQuestionCsv` — Port of `H.downloadAndAssert({ publicUuid, isDashboard: false, isEmbed: true,
 
 ## public-sharing-embed-button-behavior.ts
-- `resetSnowplow`
-- `enableTracking`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `createResource` — Port of the spec-local `createResource`. Question: a native PRODUCTS query
 - `createPublicResourceLink` — Port of the spec-local `createPublicResourceLink`. */
 - `visitResource` — Port of the spec-local `visitResource`. */
@@ -2150,6 +2857,10 @@
 - `visitPublishedTableSegmentsPage` — Port of H.DataStudio.Tables.visitSegmentsPage(tableId). */
 - `visitPublishedTableSegmentPage` — Port of H.DataStudio.Tables.visitSegmentPage(tableId, segmentId). */
 - `tableSegmentsTab` — Port of H.DataStudio.Tables.segmentsTab(): header().findByText("Segments"). */
+
+## query-external.ts
+- `QA_DB_SKIP_REASON`
+- `getTableIdByName` — Note the trailing slash: the endpoint is `/api/database/:id/schema/:schema`
 
 ## question-management.ts
 - `ORDERS_COUNT_QUESTION_ID`
@@ -2180,6 +2891,34 @@
 - `waitForCreateQuestion` — Register a wait for the next POST /api/card response ("@createQuestion"). */
 - `waitForCreateDashboard` — Register a wait for the next POST /api/dashboard response ("@createDashboard"). */
 
+## question-notebook.ts
+- `openTableNotebookInDb` — Port of H.openTable({ database, table, mode: "notebook" }) for a NON-sample
+- `assertTableRowCount` — Port of the spec-local assertTableRowCount: the preview table's non-FK ID
+- `addSimpleCustomColumn` — Port of the spec-local addSimpleCustomColumn: type `[Category]`, then click
+- `moveNotebookElement` — Port of the drag-and-drop spec's `moveElement`: drag the notebook clause
+- `pickMiniPickerTable` — Pick a database + table in the mini picker (the repeated beforeEach shape). */
+
+## question-reproductions-1.ts
+- `QA_DB_SKIP_REASON`
+- `waitForDataset` — POST /api/dataset — the "@dataset" alias. */
+- `waitForCreateCard` — POST /api/card — the "@card" alias (issue 17910). */
+- `waitForUpdateCard` — PUT /api/card/:id — the description edit in issue 17910. */
+- `waitForCardQuery` — POST /api/card/:id/query — the "@cardQuery" alias (issue 19341). */
+- `waitForDashcardQuery` — POST /api/dashboard/:dashboardId/dashcard/*\/card/:cardId/query — the
+- `waitForSearch` — GET /api/search — gate for the entity-picker search box (issue 19341). */
+- `waitForUpdateTable` — PUT /api/table/:id — the "Hide table" toggle (issue 19742). */
+- `focusCustomExpressionEditorForced` — LOAD-BEARING — the editor's own portalled overlays sit on top of
+- `clearCustomExpressionEditorForced` — Port of H.CustomExpressionEditor.clear(): focus, select all, backspace. */
+- `typeCustomExpressionForced` — Port of H.CustomExpressionEditor.type() for the plain-text formulas this
+- `blurCustomExpressionEditor` — Port of H.CustomExpressionEditor.blur(). */
+- `enterCustomColumnDetailsForced` — Port of H.enterCustomColumnDetails({ formula, format }) — the shared
+- `typeExpressionName` — Port of `H.CustomExpressionEditor.nameInput().type(name)`. Cypress's
+- `POPOVER_ELEMENT` — H.POPOVER_ELEMENT (e2e-ui-elements-helpers.js:4). Deliberately NOT the
+- `assertNoOpenPopover` — Port of the spec-local assertNoOpenPopover.
+- `setAdHocFilterTimeBucket` — Port of setAdHocFilter (e2e-date-filter-helpers.js), `timeBucket` branch —
+- `openTableNotebookInDatabase` — than the H2 sample.
+- `openEllipsisMenuFor` — Port of the spec-local openEllipsisMenuFor:
+
 ## question-reproductions-2.ts
 - `EXPRESSION_NAME` — The custom-column expression the "Custom columns visualization settings"
 - `goToExpressionSidebarVisualizationSettings` — Port of the spec-local goToExpressionSidebarVisualizationSettings: open the
@@ -2189,6 +2928,63 @@
 - `isCardQueryResponse` — Matcher for POST /api/card/:id/query (the "@cardQuery" alias). */
 - `waitForCardQueryMetadata` — Register a wait for the next GET /api/card/:id/query_metadata (the
 - `waitForSearchContaining` — Register a wait for the next GET /api/search whose query string contains
+
+## question-reproductions-3.ts
+- `QA_DB_SKIP_REASON`
+- `MONGO_SKIP_REASON`
+- `waitForDataset` — The "@dataset" alias: POST /api/dataset. */
+- `waitForCardQuery` — The "@cardQuery" alias H.visitQuestion registers: POST /api/card/:id/query. */
+- `waitForCardPivotQuery` — POST /api/card/pivot/:id/query — the "@cardPivotQuery" alias. */
+- `waitForUpdateCard` — The "@updateCard" / "@updateQuestion" aliases: PUT /api/card/:id. */
+- `visualizeEitherEndpoint` — `H.visualize()` for a question that may already be SAVED. The shared
+- `setCurrentUserLocale` — Port of the beforeEach that switches the current user's locale (issue 33079). */
+- `moveColumnDown` — Port of H.moveColumnDown (e2e-ui-elements-helpers.js): a raw 4-event mouse
+- `assertPlanFieldValues` — Port of the spec's module-level assertPlanFieldValues (issue 34414). */
+- `removeFilter` — Port of the spec's module-level removeFilter (issue 42010). */
+- `saveQuestionWithDefaults` — Port of `H.saveQuestion()` called with NO name and no pickEntity options:
+- `searchMiniPickerAndSelect` — Pick an entry in the notebook's mini picker by typing into its search box.
+- `resetUuidPkTable` — Port of `H.resetTestTable({ type: "postgres", table: "uuid_pk_table" })`
+- `writableTableRelfilenode` — The `relfilenode` of a table in the writable postgres container — changes
+- `currentUserPersonalCollectionId` — NO_COLLECTION_PERSONAL_COLLECTION_ID (cypress_sample_instance_data.js),
+
+## question-reproductions-4.ts
+- `QA_DB_SKIP_REASON`
+- `waitForDataset` — POST /api/dataset — the "@dataset" alias. */
+- `waitForCardQuery` — POST /api/card/:id/query — the "@cardQuery" alias. */
+- `waitForUpdateCard` — PUT /api/card/:id — the "@updateCard" alias. */
+- `waitForCreateCard` — POST /api/card — the "@createQuestion" alias. */
+- `visualizeEitherEndpoint` — `H.visualize()` for a question that may already be SAVED. The shared
+- `responseCounter` — `cy.intercept(...).as(x)` + `cy.wait("@x")` counts responses that arrived
+- `withDatabase`
+- `enterCustomColumnDetailsFormatted` — Port of `H.enterCustomColumnDetails({ formula, name, format: true })`.
+- `expectNoScrollbarContainer` — Port of the spec-local `expectNoScrollbarContainer(element)`:
+- `assertEqualHeight` — Port of the spec-local `assertEqualHeight` (jQuery `.outerHeight()`). */
+- `expectCypressHidden` — Cypress's `should("not.be.visible")` requires the element to EXIST and be
+- `zIndexOf` — Computed `z-index` of an element, as a number (NaN when `auto`). */
+
+## question-reproductions.ts
+- `QA_DB_SKIP_REASON`
+- `MONGO_SKIP_REASON`
+- `waitForDataset` — POST /api/dataset — the "@dataset" alias. */
+- `waitForUpdateCard` — PUT /api/card/:id — the "@updateCard" alias. */
+- `waitForCreateCard` — POST /api/card — the "@cardCreate" alias. */
+- `createMockParameter` — Port of createMockParameter (metabase-types/api/mocks/parameters.ts). The
+- `updateSetting` — Port of H.updateSetting (api/updateSetting.ts): PUT /api/setting/:key. */
+- `runButtonOverlay` — Port of H.runButtonOverlay (e2e-misc-helpers.js). */
+- `mainAside` — Port of H.sidebar (e2e-ui-elements-helpers.js) — `cy.get("main aside")`. */
+- `miniPickerOurAnalytics` — Port of H.miniPickerOurAnalytics (e2e-ui-elements-helpers.js). */
+- `ensureParameterColumnValue` — Port of H.ensureParameterColumnValue (e2e-ui-elements-helpers.js): EVERY
+- `countDisplayValue` — against a subtree that is unmounting `count()` can observe the container and
+- `findByDisplayValue` — Retrying variant of the above, for the steady-state title lookups. */
+- `expectCypressHidden` — the element is hidden when `document.elementFromPoint` at its centre is
+- `getSyncedFieldId` — Why this is not over-engineering: the `postgres-writable` snapshot's APP DB
+- `datePickerNextButton` — `nextButton()` / `previousButton()` upstream are
+- `datePickerPreviousButton`
+- `measureInitialValues` — Port of the spec-local measureInitialValues. `H.popover().then(([$el]) =>
+- `assertNoLayoutShift` — choice: upstream's two rect assertions are
+- `checkSingleDateFilter` — Port of the spec-local checkSingleDateFilter (4 "next" clicks). */
+- `checkDateRangeFilter` — Port of the spec-local checkDateRangeFilter (1 "next" click). */
+- `clearAndType` — `cy.clear().type(text)` on a text input: Cypress's `type` clicks the subject
 
 ## question-saved.ts
 - `SECOND_COLLECTION_ID`
@@ -2204,7 +3000,7 @@
 - `WEBHOOK_TEST_URL`
 - `resetWebhookTester` — Port of H.resetWebhookTester (404s when there are no requests yet). */
 - `getAlertChannel` — Port of H.getAlertChannel. */
-- `setupSMTP` — Requires the maildev container:
+- `setupSMTP` — Requires a maildev instance. Endpoints resolve through support/maildev.ts:
 - `removeNotificationHandlerChannel` — Port of H.removeNotificationHandlerChannel. */
 - `addNotificationHandlerChannel` — Port of H.addNotificationHandlerChannel. */
 
@@ -2239,9 +3035,6 @@
 
 ## remote-sync.ts
 - `REMOTE_QUESTION_NAME`
-- `resetSnowplow`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `setupGitSync` — CI-robustness (support/snippets.ts's git-sync just failed CI): the branch is
 - `teardownGitSync` — Remove a repo created by setupGitSync. */
 - `copySyncedCollectionFixture` — Port of H.copySyncedCollectionFixture (cy.task copyDirectory → fs.cpSync). */
@@ -2272,6 +3065,10 @@
 - `enableTenants` — Port of H.enableTenants. */
 - `createSharedTenantCollection` — Port of H.createSharedTenantCollection. namespace must be
 
+## reset-writable-db.ts
+- `resetWritableDb` — Drops all non-`public` schemas and all `public` tables (postgres), or every
+- `writableDialectFor` — Upstream's dialect rule from e2e-setup-helpers.js:46 — the snapshot name
+
 ## revisions.ts
 - `sidesheet`
 - `questionInfoButton`
@@ -2300,6 +3097,71 @@
 - `LOGIN_CACHE` — Session ids cached at snapshot-creation time. The sessions live in the
 - `USERS` — Credentials fallback for users without a cached session. */
 
+## sandboxing-misconfiguration.ts
+- `preparePermissions` — Port of the `before` hook's three `H.blockUserGroupPermissions(group,
+- `setUpProductsTable` — Port of the `before` hook's "Create a simple editable products table".
+- `dropCategoryColumn` — Port of `H.queryWritableDB("ALTER TABLE products DROP COLUMN category")`. */
+- `resyncProductsTable` — `tableName` gates on "a table called products has initial_sync_status
+- `waitForSyncedField` — Poll until `products` has a field named `name`, and return its table id. */
+- `getProductsTableId` — Port of H.getTableId({ name: "products" }) for this spec. */
+- `configureSandboxPolicyOnColumn` — (`resetWritableDb` is unported), so it accumulates debris schemas from
+- `assertResponseFailsClosed` — Port of `assertResponseFailsClosed` (e2e-sandboxing-helpers.ts:646-649).
+
+## sandboxing-via-api.ts
+- `ALL_USERS_GROUP` — USER_GROUPS (e2e/support/cypress_data.js) — fixed ids baked into the
+- `COLLECTION_GROUP`
+- `DATA_GROUP`
+- `READONLY_GROUP`
+- `SANDBOXED_USER` — USERS.sandboxed.login_attributes (e2e/support/cypress_data.js). */
+- `SANDBOXED_ATTR_UID` — `Number(USERS.sandboxed.login_attributes.attr_uid)` — the value every
+- `VIEW_DATA_PERMISSION_INDEX` — The spec's VIEW_DATA_PERMISSION_INDEX. */
+- `NORMAL_USER_ID` — Port of NORMAL_USER_ID (cypress_sample_instance_data.js). */
+- `ORDERS_DASHBOARD_DASHCARD_ID` — Port of ORDERS_DASHBOARD_DASHCARD_ID (cypress_sample_instance_data.js):
+- `preparePermissions` — Port of the spec-local preparePermissions(). */
+- `createJoinedQuestion` — Port of the spec-local createJoinedQuestion(name, { visitQuestion }).
+- `isCardQueryResponse` — POST /api/card/**\/:id/query — the `cardQuery` / `cardQuery<id>` aliases.
+- `visitQuestionCapturingCardQuery` — H.visitQuestion(id) with the card-query response handed back. Mirrors the
+- `isDatasetResponse` — POST /api/dataset — the `dataset` / `datasetQuery` aliases. */
+- `isDashcardQueryResponse` — POST /api/dashboard/:dash/dashcard/:dashcard/card/:card/query — the
+- `openTableCapturingDataset` — Port of H.openTable / H.openOrdersTable etc. with the `callback` option:
+- `savePermissions` — Port of H.savePermissions (e2e-permissions-helpers.js). Distinct from
+- `dashboardCards` — Port of H.dashboardCards (e2e-ui-elements-helpers.js). */
+- `tableInteractive` — Port of H.tableInteractive (cy.findByTestId("table-root")). */
+- `firstColumnCells` — `cy.get(".test-TableInteractive-cellWrapper--firstColumn")` — the spec's
+- `createUserFromRawData` — Port of cy.createUserFromRawData: POST /api/user, then dismiss the
+- `signInWithCredentials` — Port of `cy.request("POST", "/api/session", { username, password })` for a
+
+## sandboxing-via-ui.ts
+- `ALL_USERS_GROUP` — Port of USER_GROUPS (e2e/support/cypress_data.js:42-49). These are literals
+- `ADMIN_GROUP`
+- `COLLECTION_GROUP`
+- `DATA_GROUP`
+- `READONLY_GROUP`
+- `assertUserGroupIds` — Cross-check the mirrored group ids against the running instance. */
+- `questionCustomView`
+- `modelCustomView`
+- `adhocQuestionData`
+- `gizmoViewer` — Non-admin who should only see Gizmos once sandboxing is applied. */
+- `widgetViewer` — Non-admin who should only see Widgets once sandboxing is applied. */
+- `createUserFromRawData` — Port of cy.createUserFromRawData. Inlined rather than imported from
+- `signInAs` — Port of the helper `signInAs` — see the module header for why the session
+- `assertRunningAs` — ADDED BY THE PORT (not upstream), and deliberately so: this is the assertion
+- `assignAttributeToUser`
+- `preparePermissions`
+- `createSandboxingDashboardAndQuestions` — Port of createSandboxingDashboardAndQuestions: creates all questions and
+- `configureSandboxPolicy`
+- `getDashcardResponses` — Port of getDashcardResponses: visit the dashboard and take the first
+- `getCardResponses` — Port of getCardResponses — MUST run as the sandboxed user. */
+- `visitAdhocQuestionCapturingDataset` — H.visitQuestionAdhoc(adhocQuestionData) with the /api/dataset response kept. */
+- `getFieldValuesForProductCategories`
+- `getParameterValuesForProductCategories`
+- `rowsShouldContainGizmosAndWidgets`
+- `rowsShouldContainOnlyOneCategory`
+- `valuesShouldContainGizmosAndWidgets`
+- `valuesShouldContainOnlyOneCategory`
+- `assertNoResultsOrValuesAreSandboxed`
+- `assertAllResultsAndValuesAreSandboxed`
+
 ## sankey.ts
 - `sankeyEdge` — Port of H.sankeyEdge(color): the sankey link paths, which render with the
 - `mockDevelopmentMode` — Port of the spec's `cy.intercept("/api/session/properties", ...)` that flips
@@ -2323,7 +3185,7 @@
 - `expectNodeInViewport` — Port of assertNodeInViewport — bounding-rect overlap, retried. */
 - `queryWritableDB` — Port of H.queryWritableDB(sql, "postgres") — the Cypress version runs
 - `getTableId` — Port of H.getTableId (e2e-qa-databases-helpers.js). */
-- `resyncDatabase` — Port of H.resyncDatabase + waitForSyncToFinish
+- `resyncDatabase` — `writable_db_w0`, holding a table the spec had already created, that no sync
 
 ## sdk-embed-setup-guest-embed-ee.ts
 - `capturePreviewEmbedRequests` — Port of `cy.intercept("GET", "api/preview_embed/card/*").as("previewEmbed")`
@@ -2477,10 +3339,6 @@
 - `createCollection` — Port of H.createCollection. */
 
 ## segments-data-studio.ts
-- `resetSnowplow`
-- `enableTracking`
-- `expectNoBadSnowplowEvents`
-- `expectUnstructuredSnowplowEvent`
 - `getSegmentsBaseUrl`
 - `visitDataStudioSegments` — Port of H.DataModel.visitDataStudioSegments — navigate to a table's segments
 - `visitDataStudioTable` — Port of the spec-local visitDataStudioTable → H.DataModel.visitDataStudio
@@ -2494,6 +3352,22 @@
 - `saveAndOverwrite` — Port of the spec-local `saveAndOverwrite`: click the QB header Save, then
 - `openNativeEditor` — Port of `cy.contains(/open editor/i).click()` /
 - `reorderColumnAPastColumnB` — The Cypress original fired raw `.trigger("mousedown"/"mousemove"/"mouseup")`
+
+## sharing-reproductions.ts
+- `ADMIN_USER_ID` — Port of ADMIN_USER_ID (cypress_sample_instance_data.js). */
+- `ADMIN` — USERS.admin (e2e/support/cypress_data.js) — the harness USERS map carries
+- `ADMIN_FULL_NAME` — Port of H.getFullName (e2e-users-helpers.ts) for the admin fixture. */
+- `clickSend` — Port of H.clickSend: click "Send email now" and wait for POST
+- `openAndAddEmailsToSubscriptions` — Port of H.openAndAddEmailsToSubscriptions. */
+- `sendEmailAndGetFirst` — Port of H.sendEmailAndAssert's inbox read: send, then resolve with the
+- `sendEmailAndVisitIt` — Port of H.sendEmailAndVisitIt: send, then navigate the browser to maildev's
+- `fetchEmailAttachment` — maildev exposes an email's attachment bytes at this path. */
+- `emailAttachments` — maildev's attachment metadata — not modelled by the shared MaildevEmail. */
+- `mockSlackConfigured` — Port of H.mockSlackConfigured: read the real /api/pulse/form_input (so the
+- `mockDashboardCard` — Local stand-in for createMockDashboardCard (metabase-types/api/mocks) — the
+- `sidebar` — Port of H.sidebar (e2e-ui-elements-helpers.js): `cy.get("main aside")`. */
+- `openDashboardSubscriptionsMenu` — Port of H.openDashboardMenu("Subscriptions"). Inlined rather than imported
+- `iframeBodyFontFamily` — The computed font-family of the embed preview iframe's body.
 
 ## sharing.ts
 - `sharingMenuButton`
@@ -2537,6 +3411,27 @@
 - `setupGitSync` — Port of H.setupGitSync (e2e-remote-sync-helpers.ts): create a local git repo
 - `teardownGitSync` — Remove a repo created by setupGitSync. */
 - `configureGitAndPullChangesReadOnly` — Port of H.configureGitAndPullChanges (read-only branch): PUT the remote-sync
+
+## snowplow-collector.ts
+- `SnowplowCollector`
+- `expectCollectedSnowplowEvent` — Collector-side port of `H.expectSnowplowEvent({ event: { event_name } })`.
+- `expectNoBadCollectedSnowplowEvents` — Upstream asks snowplow-micro which events failed **Iglu schema validation**.
+- `collectorPortFor` — The collector port for a slot backend. Derived from the backend port so the
+
+## snowplow.ts
+- `enableTracking` — Port of H.enableTracking — `updateSetting("anon-tracking-enabled", true)`. */
+- `resetSnowplow` — Port of H.resetSnowplow (micro/reset), scoped to this slot's collector.
+- `expectUnstructuredSnowplowEvent` — Port of H.expectUnstructuredSnowplowEvent(eventData, count).
+- `assertNoUnstructuredSnowplowEvent` — Port of H.assertNoUnstructuredSnowplowEvent. Same caveat as upstream: an
+- `expectNoBadSnowplowEvents` — Port of H.expectNoBadSnowplowEvents — the real one: structural decode check
+
+## source-replacement.ts
+- `SourceReplacement` — Port of H.DataModel.SourceReplacement (e2e-datamodel-helpers.ts).
+- `waitForReplaceSource` — POST /api/ee/replacement/replace-source — the `@replaceSource` alias. */
+- `waitForDependents` — GET /api/ee/dependencies/graph/dependents* — the `@dependents` alias.
+- `visitDataStudioSegments` — Port of H.DataModel.visitDataStudioSegments for an arbitrary database /
+- `visitDataStudioMeasures` — Port of H.DataModel.visitDataStudioMeasures, database-parameterised. */
+- `visitTransform` — Port of H.visitTransform (e2e-transform-helpers.ts) — a bare visit. */
 
 ## sql-filters-reset-clear.ts
 - `NO_DEFAULT_NON_REQUIRED`
@@ -2592,6 +3487,19 @@
 - `waitForUpdateSettings` — The `@updateSettings` alias: PUT /api/setting (the bulk endpoint). */
 - `waitForUpdateSetting` — The `@updateSetting` alias: PUT /api/setting/<key> (the single-key endpoint). */
 
+## sso-ldap.ts
+- `getLdapCard` — Port of the spec-local getLdapCard:
+- `waitForUpdateLdapSettings` — The `@updateLdapSettings` alias: PUT /api/ldap/settings. */
+- `LDAP_BIND_PASSWORD` — Fixture credentials for the local OpenLDAP container.
+- `LDAP_USER_PASSWORD`
+- `LDAP_USERNAME` — The fixture account the container provisions (a username, not a secret). */
+- `ldapReachable`
+- `ldapUnavailableReason` — Undefined when the LDAP-dependent tests can run; otherwise the skip reason. */
+- `setupLdap` — Port of H.setupLdap (e2e/support/helpers/e2e-ldap-helpers.js).
+- `expectDisplayValueCount` — Playwright has no `getByDisplayValue`, and a `[value="..."]` locator is not a
+- `enterLdapPort` — Port of the spec-local enterLdapPort. */
+- `enterLdapSettings` — Port of the spec-local enterLdapSettings. */
+
 ## sso-saml.ts
 - `getSamlCard` — Port of the spec-local getSamlCard:
 - `typeAndBlurUsingLabel` — Port of H.typeAndBlurUsingLabel (e2e-misc-helpers.js):
@@ -2600,6 +3508,32 @@
 - `visitAuthSettings` — The group-mappings settings page for an auth method, with the two GETs the
 - `crudGroupMappingsWidget` — Port of crudGroupMappingsWidget(authenticationMethod). */
 - `checkGroupConsistencyAfterDeletingMappings` — Port of checkGroupConsistencyAfterDeletingMappings(authenticationMethod). */
+
+## subscriptions.ts
+- `openDashboardSubscriptions` — Port of the spec-local openDashboardSubscriptions. */
+- `recipientInput` — The RecipientPicker's TokenField input. */
+- `tokenFieldInput` — The TokenField's raw input — what H.openAndAddEmailsToSubscriptions targets
+- `typeRecipient` — - cy.type() clicks its subject first, so the click is explicit here.
+- `assignRecipient` — Port of the spec-local assignRecipient. */
+- `assignRecipients` — Port of the spec-local assignRecipients: open the picker, click each user in
+- `clickButton` — Port of the spec-local clickButton(name). */
+- `createEmailSubscription` — Port of the spec-local createEmailSubscription. */
+- `openSlackCreationForm` — Port of the spec-local openSlackCreationForm. */
+- `setTextFilter` — Port of the spec-local setTextFilter: H.setFilter("Text or Category", "Is"). */
+- `addParametersToDashboard` — Port of the spec-local addParametersToDashboard. */
+- `addConnectedAndUnconnectedParameterToDashboard` — Port of the spec-local addConnectedAndUnconnectedParameterToDashboard. */
+- `clickSend` — Port of H.clickSend. `scope` mirrors the one caller that runs it inside an
+- `sendEmailAndAssert` — Port of H.sendEmailAndAssert: click send, then read the inbox's FIRST email.
+- `sendEmailAndVisitIt` — Port of H.sendEmailAndVisitIt: click send, then navigate to the LAST email's
+- `viewEmailPage` — Port of H.viewEmailPage: open the maildev UI and click the email by subject. */
+- `openEmailPage` — Port of H.openEmailPage: open the maildev UI, click the first email with
+- `openAndAddEmailsToSubscriptions` — Port of H.openAndAddEmailsToSubscriptions. */
+- `setupSubscriptionWithRecipients` — Port of H.setupSubscriptionWithRecipients. */
+- `openPulseSubscription` — Port of H.openPulseSubscription. */
+- `emailSubscriptionRecipients` — Port of H.emailSubscriptionRecipients. */
+- `mockSlackConfigured` — Port of H.mockSlackConfigured: read the real /api/pulse/form_input (to keep
+- `waitForInbox` — Poll maildev until at least one email is stored. The backend hands the
+- `escapeRegExp`
 
 ## summarization.ts
 - `createTestQuery` — Port of H.createTestQuery (api/createTestQuery.ts): POST the MBQL5 test-query
@@ -2675,7 +3609,7 @@
 - `backToDashboard` — Port of the spec-local backToDashboard. */
 - `addTemporalUnitParameter` — Port of the spec-local addTemporalUnitParameter (H.setFilter("Time grouping")). */
 - `addQuestion` — Port of the spec-local addQuestion. */
-- `removeQuestion` — Port of the spec-local removeQuestion (the close icon is hover-gated). */
+- `removeQuestion` — Skipping the *stable* check is what bit us: in the two blocks where
 - `selectDashboardFilter` — Faithful port of H.selectDashboardFilter (e2e-dashboard-helpers.ts): the real
 - `editParameter` — Port of the spec-local editParameter. */
 - `ensureDashboardCardHasText` — Port of H.ensureDashboardCardHasText — note the `dashcard` testid (distinct
@@ -2690,6 +3624,38 @@
 - `sidebarCollectionItem` — Port of `cy.findByText(name).closest("li")` inside the navigation sidebar.
 - `pickerRowLink` — Port of `cy.findByText(name).closest("a")` inside the entity picker: the
 - `expectIconVisible` — Port of `cy.icon(name).should("be.visible")`.
+
+## tenants.ts
+- `GIZMO_TENANT`
+- `DOOHICKEY_TENANT`
+- `GIZMO_USER`
+- `DOOHICKEY_USER`
+- `SECOND_DOOHICKEY_USER`
+- `TENANTS`
+- `USERS`
+- `getFullName` — Port of H.getFullName (e2e/support/helpers/e2e-user-helpers.ts). */
+- `GIZMO_FULL_NAME`
+- `ALL_EXTERNAL_USERS_GROUP_ID` — Mirrors ALL_EXTERNAL_USERS_GROUP_ID / COLLECTION_GROUP_ID
+- `COLLECTION_GROUP_ID`
+- `STATIC_ORDERS_ID` — Mirrors SAMPLE_DB_TABLES (e2e/support/cypress_data.js). */
+- `STATIC_PRODUCTS_ID`
+- `createTenants` — Port of the spec-local createTenants: POST each fixture tenant. */
+- `createUsers` — Port of the spec-local createUsers: GET the tenant list, resolve each
+- `provisionViaJwt` — It deliberately does NOT go through `mb.api`. `/auth/sso` responds with a
+- `loginWithJwt` — Port of `cy.task("signJwt")` + `cy.visit("/auth/sso?…")`: navigate the
+- `typeTenantName` — Port of `cy.findByRole("textbox", { name: "Give this tenant a name" })
+- `visitTenantUsers` — the FE's session-properties cache. When the setting was written moments
+- `adminContentTable` — cy.findByTestId("admin-content-table"). */
+- `adminLayoutContent` — cy.findByTestId("admin-layout-content"). */
+- `adminPeopleListTable` — cy.findByTestId("admin-people-list-table"). */
+- `peopleNav` — cy.findByRole("navigation", { name: "people-nav" }). */
+- `rowContaining` — Port of `cy.findAllByRole("row").contains("tr", text)`: Cypress's
+- `globeIconFor` — Port of the spec-local `hasGlobeIcon` / `lacksGlobeIcon`:
+- `expectGlobeIcon`
+- `expectNoGlobeIcon`
+- `assertPermissionTableColumnsExist` — Port of the spec-local assertPermissionTableColumnsExist. `findByRole` with
+- `createTenantGroupFromUI` — Port of the spec-local createTenantGroupFromUI. The `@createGroup` wait is
+- `tenantOption` — Port of `H.popover().findByText(name).click()` for the tenant picker in the
 
 ## text-cards.ts
 - `addTextBoxWhileEditing` — Port of H.addTextBoxWhileEditing: assumes the dashboard is already in edit
@@ -2766,6 +3732,221 @@
 - `assertAcceptRejectUI` — Port of assertAcceptRejectUI: the accept/reject buttons are visible or absent.
 - `sendCodgenBotMessage` — Port of sendCodgenBotMessage: send the message, wait for the agent-streaming
 
+## transforms-incremental.ts
+- `DB_NAME`
+- `SOURCE_TABLE`
+- `TARGET_SCHEMA`
+- `SCHEMA_B`
+- `TARGET_TABLE` — (e.g. `incremental_transform_table`) does NOT escape that LIKE pattern, so
+- `QA_DB_SKIP_REASON`
+- `PYTHON_SKIP_REASON` — See the token-tier block above — both halves probed, neither assumed. */
+- `resetIncrementalTargetTables` — the spec never picks one, so the app defaults it — and it does NOT default to
+- `removeAppendedSourceRows` — Restore the source rows this spec mutates.
+- `visitTransformListPage` — Port of the spec-local visitTransformListPage(). */
+- `getQueryEditor` — Port of the spec-local getQueryEditor(). */
+- `editorSidebar` — Port of the spec-local editorSidebar(). */
+- `getPythonDataPicker` — Port of the spec-local getPythonDataPicker(). */
+- `getRunButton` — Port of the spec-local getRunButton(): `findAllByTestId("run-button").eq(0)`.
+- `runTransformAndWaitForSuccess` — getRunButton().click();
+- `openRunDetail` — Port of:
+- `expectCheckpointTo` — Port of:
+- `resetCheckpointFromSettings` — cy.findByRole("group", { name: /Last processed/i }).within(() => {
+
+## transforms-indexes.ts
+- `SOURCE_TABLE`
+- `TARGET_SCHEMA`
+- `INDEX_TABLE_COLUMNS`
+- `LIST_TARGET_TABLE` — The two physical target tables this spec's transforms write into.
+- `LIFECYCLE_TARGET_TABLE`
+- `QA_DB_SKIP_REASON`
+- `queryWritableDBRows` — Port of `H.queryWritableDB(sql, "postgres")` — ROW-RETURNING.
+- `execWritableDB` — Fire-and-forget variant, for the `CREATE INDEX` the spec runs as a DBA. */
+- `resetIndexesTargetTables` — from scratch. THIS HARNESS'S `mb.restore()` DOES NOT — it only restores the
+- `btreeIndex` — Port of the spec-local `btreeIndex(name, columns)`. */
+- `createIndexRequest` — Port of the spec-local `createIndexRequest()`.
+- `deleteIndexRequest` — Port of upstream's inline `cy.request("DELETE", "/api/index/request/:id")`.
+- `indexesTable` — Port of the spec-local `indexesTable()`. */
+- `matchHeaderName` — Port of the spec-local `matchHeaderName(label)` — `new RegExp("^" + label)`.
+- `visitIndexes` — Port of `H.DataStudio.Transforms.visitIndexes(id)` — a plain `cy.visit`.
+- `indexesTab` — Port of `H.DataStudio.Transforms.indexesTab()`. */
+- `undoToast` — Port of `H.undoToast()`. */
+- `indexesContent` — Port of the spec-local `indexesContent()` anchor (`transforms-indexes-content`). */
+
+## transforms-inspect.ts
+- `SOURCE_TABLE`
+- `TARGET_SCHEMA`
+- `JOIN_SCHEMA`
+- `QA_DB_SKIP_REASON`
+- `resetNoPkTable` — Port of H.resetTestTable({ type: "postgres", table: "no_pk_table" })
+- `resetInspectTargetTables` — No counterpart in the Cypress original, and the same reasoning as
+- `visitInspect` — Port of H.DataStudio.Transforms.visitInspect (e2e-data-studio-helpers.ts:49). */
+- `createTestQuery` — Port of H.createTestQuery (e2e/support/helpers/api/createTestQuery.ts):
+- `createMbqlTransform` — Port of H.createMbqlTransform (e2e-transform-helpers.ts:77). The `limit: 5`
+- `createAndRunMbqlTransform` — Port of H.createAndRunMbqlTransform (e2e-transform-helpers.ts:273). */
+- `createAndRunSqlTransform` — Port of H.createAndRunSqlTransform (e2e-transform-helpers.ts:295). */
+- `createAndRunMbqlJoinTransform` — Port of the spec-local createAndRunMbqlJoinTransform
+- `recordInspectorResponses` — Port of the two beforeEach aliases:
+- `waitForInspectorDiscovery` — Port of cy.wait("@inspectorDiscovery"). */
+- `waitForInspectorLens` — Port of cy.wait("@inspectorLens"). */
+
+## transforms-permissions.ts
+- `ALL_USERS_GROUP` — USER_GROUPS.ALL_USERS_GROUP — "All internal users". Measured: 1. */
+- `COLLECTION_GROUP` — USER_GROUPS.COLLECTION_GROUP — the group literally named "collection". Measured: 5. */
+- `DATA_GROUP` — USER_GROUPS.DATA_GROUP — the group literally named "data". Measured: 6. */
+- `NORMAL_USER_ID` — NORMAL_USER_ID (cypress_sample_instance_data.js). Measured: 2. */
+- `CREATE_QUERIES_PERMISSION_INDEX`
+- `TRANSFORMS_PERMISSION_INDEX`
+- `SOURCE_TABLE`
+- `TARGET_TABLE`
+- `TARGET_SCHEMA`
+- `DB_NAME`
+- `QA_DB_SKIP_REASON`
+- `DataPermissionValue` — Port of `DataPermissionValue` (frontend/src/metabase-types/api/permissions.ts).
+- `grantTransformsPermissionToAllGroups` — Port of the spec-local grantTransformsPermissionToAllGroups. */
+- `denyTransformsPermissionToAllGroups` — Port of the spec-local denyTransformsPermissionToAllGroups. */
+- `getTransformsNavLink` — Port of the spec-local getTransformsNavLink. */
+- `resetPermissionTestTables` — `driver/table-exists?`) is a check against the REAL warehouse, which the
+
+## transforms-reproductions.ts
+- `SOURCE_TABLE`
+- `TARGET_SCHEMA`
+- `DB_NAME`
+- `TARGET_TABLE` — Upstream `TARGET_TABLE = "transform_table"`, renamed. See the "TWO RENAMES"
+- `DELETED_TRANSFORM_TARGET_TABLE` — Upstream `TRANSFORM_TARGET_TABLE = "deleted_transform_table"` (spec line
+- `QA_DB_SKIP_REASON`
+- `resetEmptySchema` — The upstream fixture (e2e/support/test_tables.js:291) is exactly
+- `resetReproTargetTables` — `POST /api/transform`'s already-exists guard is a physical check. See the
+- `visitTransformListPage` — Port of the spec-local `visitTransformListPage()`. */
+- `getQueryEditor` — Port of the spec-local `getQueryEditor()`. */
+- `visitTransformSettingsTab` — Port of `H.DataStudio.Transforms.visitSettingsTab(id)`
+- `createMockSearchResult`
+
+## transforms-template-tags.ts
+- `DB_NAME`
+- `SOURCE_TABLE`
+- `TARGET_SCHEMA`
+- `TARGET_TABLE` — against the same container all five slots share. Any name still containing
+- `TRANSFORM_NAME` — the sibling incremental port: name "MBQL" -> table "mbql"), and test 3 then
+- `TRANSFORM_TARGET_TABLE` — The table `TRANSFORM_NAME` auto-derives into, needed only for cleanup. */
+- `QA_DB_SKIP_REASON`
+- `resetTemplateTagTargetTables` — #85 compliance: this drops TWO EXACT TABLE NAMES, both chosen above to be
+- `visitTransformListPage` — Port of `visitTransformListPage()`: cy.visit("/data-studio/transforms"). */
+- `editorSidebar` — Port of `editorSidebar()`: cy.findByTestId("editor-sidebar"). */
+- `getRunButton` — Port of `getRunButton()`: cy.findAllByTestId("run-button").eq(0).
+- `nativeEditorActionButtons` — The native editor's action-button cluster (data reference / snippets / preview). */
+- `nativeQueryTopBar` — The native editor's top bar (holds the "Variables" toggle). */
+- `undoToast` — `H.undoToast()`: cy.findByTestId("toast-undo"). */
+- `dismissUndoToast` — 🔴 Not cosmetic. `UndoListing.tsx:203` picks its transition group with
+- `nativeEditorValue` — be a no-op for this particular value, but reading raw keeps the assertion
+- `expectNativeEditorValue` — Assert `H.NativeEditor.value()` equals `expected`, retried. */
+- `directText` — where testing-library's succeeds.)
+- `assertNoParameterSettingsAreVisible` — Port of `assertNoParameterSettingsAreVisible()` (spec:374-382).
+- `assertIsTransformRunnable` — Port of `assertIsTransformRunnable()` (spec:363-368): switch to the Run tab,
+- `typeAppend` — Type into an input the way Cypress `.type()` does: APPEND at the end of any
+
+## transforms.ts
+- `DB_NAME`
+- `SOURCE_TABLE`
+- `TARGET_TABLE`
+- `TARGET_TABLE_2`
+- `TARGET_SCHEMA`
+- `TARGET_SCHEMA_2`
+- `CUSTOM_SCHEMA`
+- `QA_DB_SKIP_REASON`
+- `tooltip` — Scope-aware visible tooltip. Delegates to the canonical charts.ts helper. */
+- `resetTransformTargetTables` — It deliberately does NOT drop foreign SCHEMAS, even though one of them
+- `resetCompositePkTable` — Port of H.resetTestTable({ type: "postgres", table: "composite_pk_table" }) —
+- `waitForApi`
+- `waitForCreateTransform` — cy.intercept("POST", "/api/transform").as("createTransform") */
+- `waitForUpdateTransform` — cy.intercept("PUT", "/api/transform/*").as("updateTransform") */
+- `waitForDeleteTransform` — cy.intercept("DELETE", "/api/transform/*").as("deleteTransform") */
+- `waitForDeleteTransformTable` — cy.intercept("DELETE", "/api/transform/*&#47;table").as("deleteTransformTable") */
+- `waitForUpdateField` — cy.intercept("PUT", "/api/field/*").as("updateField") */
+- `waitForCreateTag` — cy.intercept("POST", "/api/transform-tag").as("createTag") */
+- `waitForUpdateTag` — cy.intercept("PUT", "/api/transform-tag/*").as("updateTag") */
+- `waitForDeleteTag` — cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag") */
+- `DataStudio`
+- `verifyDisconnectedDatabaseBanner`
+- `getTransformsNavLink`
+- `getRunsNavLink`
+- `getTransformsList`
+- `getTransformsTargetContent`
+- `getQueryEditor`
+- `getRunButton` — Port of getRunButton(): findAllByTestId("run-button").eq(0). */
+- `getCancelButton`
+- `getRunStatus`
+- `getRunListLink`
+- `getRunErrorInfoButton`
+- `getTableLink` — Port of getTableLink({ isActive }) — the Cypress getter carries an assertion
+- `getDatabaseLink`
+- `getSchemaLink`
+- `getQueryVisualization`
+- `getSchedulePicker`
+- `getScheduleFrequencyInput`
+- `getScheduleTimeInput` — `{ exact: true }` is not decoration. testing-library's `findByLabelText`
+- `getCronInput` — The real placeholder is `"For example 5   0   *   Aug   ?"` — three spaces
+- `getTagsInput`
+- `getTagsInputContainer` — Port of getTagsInputContainer(): getTagsInput().parent(). */
+- `getFieldPicker`
+- `getIncrementalSwitch`
+- `isIncrementalSwitchEnabled`
+- `isIncrementalSwitchDisabled`
+- `getJobTransformTable`
+- `getTransformRunTable`
+- `getTransformFilterWidget`
+- `getStatusFilterWidget`
+- `getTagFilterWidget`
+- `getRunMethodFilterWidget`
+- `getStartAtFilterWidget`
+- `getEndAtFilterWidget`
+- `visitTransformListPage`
+- `visitJobListPage`
+- `visitRunListPage`
+- `getJobRow` — Port of getJobRow(name): the job list's row containing `name`. */
+- `openBulkActionsMenu`
+- `runTransformInUiAndWaitForSuccess` — Port of runTransformAndWaitForSuccess() — the UI one (there is also an API
+- `runTransformInUiAndWaitForFailure`
+- `runJobAndWaitForSuccess`
+- `runJobAndWaitForFailure`
+- `createMbqlTransform` — Port of the spec-local createMbqlTransform() wrapper + H.createMbqlTransform. */
+- `createSqlTransform` — Port of the spec-local createSqlTransform() wrapper + H.createSqlTransform. */
+- `createPythonTransform` — Port of the spec-local createPythonTransform() wrapper + H.createPythonTransform. */
+- `pythonSourceTables` — Port of the spec-local pythonSourceTables(alias, tableId). */
+- `createTransformCollection` — Port of H.createTransformCollection (e2e-transform-helpers.ts). */
+- `createTransformTag` — Port of H.createTransformTag (e2e/support/helpers/api/createTransformTag.ts). */
+- `createTransformJob` — Port of H.createTransformJob (e2e/support/helpers/api/createTransformJob.ts).
+- `visitTransformJob` — Port of `cy.visit("/data-studio/transforms/jobs/:id")` — the
+- `waitForSucceededTransformRuns` — Port of H.waitForSucceededTransformRuns (e2e-transform-helpers.ts:71) —
+- `waitForCreateJob` — cy.intercept("POST", "/api/transform-job").as("createJob") */
+- `waitForUpdateJob` — cy.intercept("PUT", "/api/transform-job/*").as("updateJob") — note that the
+- `waitForDeleteJob` — cy.intercept("DELETE", "/api/transform-job/*").as("deleteJob") */
+- `waitForBulkUpdateJobActive` — cy.intercept("PUT", "/api/transform-job/active").as("bulkUpdateJobActive") */
+- `waitForApiRequestBody` — Port of `cy.wait("@alias").its("request.body").should("deep.equal", body)`.
+- `createPythonLibrary` — Port of the spec-local createPythonLibrary(path, source). */
+- `getPythonDataPicker`
+- `runPythonScriptAndWaitForSuccess` — Port of runPythonScriptAndWaitForSuccess(). */
+- `assertTableDoesNotExistError` — Port of assertTableDoesNotExistError(). */
+- `assertOptionSelected` — Port of assertOptionSelected(name) — the tags input shows the pill. */
+- `assertOptionNotSelected` — Port of assertOptionNotSelected(name). */
+- `getRowNames` — Port of getRowNames(): the transform list's tree-node names, trimmed. */
+- `checkSortingOrder` — Port of checkSortingOrder(transformNames). */
+- `pythonEditorContent` — Port of codeMirrorHelpers("python-editor").get(). */
+- `focusPythonEditor` — Port of PythonEditor.focus(): click, assert cm-focused. */
+- `clearPythonEditor` — Port of PythonEditor.clear(): focus + select-all + Backspace. */
+- `typePythonEditor` — Port of PythonEditor.type(text) — the non-`allowFastSet` branch, i.e. real
+- `pythonEditorValue` — Port of PythonEditor.value(): the `.cm-line` textContents joined by newline,
+- `visitCommonLibrary` — Port of the spec-local visitCommonLibrary(path = "common.py"). */
+- `getLibraryEditorHeader` — Port of the spec-local getLibraryEditorHeader(). */
+- `activatePythonTransformToken` — python source returns 200. The LOCAL `MB_PRO_SELF_HOSTED_TOKEN` predates that
+- `setPythonRunnerSettings` — Port of `H.setPythonRunnerSettings()` (e2e-python-helpers.ts) — points the
+- `collectionPickerDialog` — Port of `cy.findByRole("dialog", { name: "Select a collection" })`. */
+- `collectionPickerButton`
+- `collectionRowOptions` — Port of
+- `transformsSearchInput`
+- `getTransformNameInput` — Port of `H.DataStudio.Transforms.header().findByPlaceholderText("Name")`. */
+- `getTransformHeaderEllipsis` — Port of `H.DataStudio.Transforms.header().icon("ellipsis")`. */
+- `getTransformHistoryList`
+
 ## ui.ts
 - `icon` — `.Icon-<name>` locator. Canonical home for the helper that had been
 - `modal` — The open Mantine modal dialog. Canonical home for the helper that had been
@@ -2794,6 +3975,49 @@
 - `stubCurrentUser` — Port of the spec-local stubCurrentUser: replace GET /api/user/current with
 - `goToProfile` — Port of H.goToProfile: open the profile menu and click "Account settings". */
 - `waitForGetUser` — Register a wait for the next GET /api/user/current (cy.wait("@getUser")). */
+
+## view-data-permissions.ts
+- `DATA_ACCESS_PERM_IDX` — The spec's three permission-column indices. */
+- `CREATE_QUERIES_PERM_IDX`
+- `DOWNLOAD_PERM_IDX`
+- `QA_DB_SKIP_REASON`
+- `assertPermissionTable` — upstream — it asserts nothing.
+- `savePermissions` — Port of H.savePermissions (e2e-permissions-helpers.js):
+- `assertSameBeforeAndAfterSave` — Port of H.assertSameBeforeAndAfterSave: run the assertions, save, run them
+- `selectImpersonatedAttribute` — Port of H.selectImpersonatedAttribute: open the impersonation dialog's
+- `saveImpersonationSettings` — Port of H.saveImpersonationSettings: the dialog's Save button. */
+- `createTestRoles`
+- `makeOrdersSandboxed` — Port of the spec-local makeOrdersSandboxed(): from the group-focused schema
+- `configureSandboxColumnAndAttribute` — The shared tail of every sandboxing-modal block in this spec: pick the
+- `configureSandboxColumnAndAttributeInModal` — Same as the above, but with every step scoped to the modal — the form the
+- `lackPermissionsView` — Port of the spec-local lackPermissionsView(shouldExist).
+
+## visualizations-charts-reproductions.ts
+- `MONGO_SKIP_REASON`
+- `visitAdhoc`
+- `visitNativeAdhoc`
+- `visitAdhocNotebook` — Port of `H.visitQuestionAdhoc(question, { mode: "notebook" })`. The Cypress
+- `cartesianChartCircles`
+- `testPairedTooltipValues` — Port of H.testPairedTooltipValues(val1, val2):
+- `toggleFieldSelectElement` — Port of the issue-18063 spec-local toggleFieldSelectElement:
+- `countResponses` — The counting side of a `cy.intercept(...).as(alias)` whose only use is
+- `withDatabase` — Port of H.withDatabase's `{ TABLE: { FIELD: id }, TABLE_ID: id }` map
+
+## visualizations-table.ts
+- `headerCells` — Port of the spec-local `headerCells()` — `cy.findAllByTestId("header-cell")`.
+- `tableHeaderText` — Port of `H.tableHeaderColumn(name)` — note it returns the `findByText`
+- `getColumnWidth` — Port of `H.getColumnWidth(columnId)` —
+- `outerWidth` — Port of `H.tableHeaderColumn(x).invoke("outerWidth")` — jQuery `.outerWidth()`
+- `scrollTableTo` — Port of `H.tableInteractiveScrollContainer().scrollTo(corner)`. Cypress's
+- `triggerMouseEvent` — Cypress `.trigger(type, ...)` is a synthetic event dispatch at the element's
+- `expectAnyCellContains` — Port of `cy.get(sel).should("contain", value)` on a MULTI-element subject:
+- `expectNoCellContains`
+- `assertClientSideTableSorting` — Port of the spec-local `assertClientSideTableSorting`. `columnName` is the
+- `columnHeaderOf` — `H.tableHeaderColumn(name).closest("[role=columnheader]")`.
+- `tableHeaderClickScoped` — `H.tableHeaderClick(name)` on the header text (see notebook.ts). */
+- `assertCanViewOrdersTableDashcard` — Port of the spec-local `assertCanViewOrdersTableDashcard`. Called once on the
+- `getWritableTable` — Port of `H.getTable({ name })` (e2e-qa-databases-helpers.js): the writable
+- `hoverForHovercard` — Dispatch `mouseover` and wait for the field-metadata hovercard, re-nudging if
 
 ## visualizer-basics.ts
 - `ORDERS_COUNT_BY_CREATED_AT`
@@ -2941,6 +4165,34 @@
 
 ## worker-backend.ts
 - `startWorkerBackend`
+
+## workspace-instance.ts
+- `QA_DB_SKIP_REASON`
+- `WorkspaceListPage`
+- `SetupWorkspaceModal`
+- `CurrentWorkspacePage`
+- `LeaveWorkspaceModal`
+- `clearWorkspaceInstanceConfig` — Port of H.clearWorkspaceInstanceConfig (api/setWorkspaceInstanceConfig.ts). */
+- `createAndRunTransform` — Port of the spec-local `createAndRunTransform` (upstream lines 258-287).
+
+## workspace-manager.ts
+- `QA_DB_SKIP_REASON`
+- `WorkspaceListPage` — NAME MATCHING. Every `findByRole(..., { name })` below becomes
+- `NewWorkspaceModal`
+- `RenameWorkspaceModal`
+- `DeleteWorkspaceModal`
+- `enableWorkspaces` — Port of the spec-local `enableWorkspaces(databaseId)` (upstream 116-122):
+
+## writable-db.ts
+- `QA_POSTGRES_PORT` — Connection facts, mirroring WRITABLE_DB_CONFIG in e2e/support/cypress_data.js. */
+- `QA_MYSQL_PORT`
+- `writableDbSlot` — This process's slot, or `null` when per-worker isolation is off.
+- `writableDbName` — The writable database THIS worker owns. `writable_db` when isolation is off. */
+- `writableDbConnection` — Bare connection object for this worker's writable database — what `new
+- `writableDbConfig` — Knex config for this worker's writable database. Every helper that talks to
+- `writableDbDetailsPatch` — `dbname` is the key for BOTH engines — see `convertToWritable`
+- `writableDbClient` — A client for this worker's writable database. */
+- `provisionWritableDb` — Create this worker's writable database if it does not exist.
 
 ## x-rays.ts
 - `getDashcardByTitle` — Port of the spec-local getDashcardByTitle: the dashcard in the dashboard

@@ -146,6 +146,49 @@ jobs:
           postgres: true
           mysql: true
           mongo: true
+
+      # Python-transforms tier: python-runner (:5001) + localstack S3 (:4566),
+      # the pair H.setPythonRunnerSettings points at. Cypress CI builds the
+      # runner from source in a dedicated `python` job (setup-python-runner.sh,
+      # private-repo clone); here the published image is pulled instead so
+      # every shard can run the @python-gated tests wherever sharding places
+      # them. Without this step AND PW_PYTHON_RUNNER_ENABLED below, those
+      # tests skip silently — same invisibility the QA-DB comment above
+      # describes. The image tag is pinned because `latest` is mutable and a
+      # mutable warehouse tag has already produced one phantom regression
+      # (#225, mysql-sample-8).
+      - name: Start python-runner and localstack
+        run: |
+          docker network create python-runner-net
+          # The backend hands the runner `http://localstack:4566` as its S3
+          # endpoint (python-storage-s-3-container-endpoint in
+          # H.setPythonRunnerSettings), so the container MUST be resolvable
+          # as `localstack` on the runner's network.
+          docker run -d --name localstack --network python-runner-net \
+            -p 127.0.0.1:4566:4566 localstack/localstack:4.9.2
+          docker run -d --name python-runner --network python-runner-net \
+            -p 127.0.0.1:5001:5000 \
+            -v /tmp/python-exec-work:/tmp/python-exec-work \
+            -e AWS_ACCESS_KEY_ID=test -e AWS_SECRET_ACCESS_KEY=test \
+            -e AWS_DEFAULT_REGION=us-east-1 \
+            -e AWS_ENDPOINT_URL=http://localstack:4566 \
+            -e AUTH_TOKEN=dev-token-12345 \
+            metabase/python-runner:v0.1.0-7838dc9
+          for i in $(seq 1 30); do
+            curl -s http://localhost:4566/_localstack/health >/dev/null && break
+            sleep 2
+          done
+          # localstack accepts unsigned S3 requests; a plain PUT creates the
+          # bucket without pulling the aws-cli image.
+          curl -sf -X PUT http://localhost:4566/metabase-python-runner
+          for i in $(seq 1 15); do
+            curl -sf -H "Authorization: Bearer dev-token-12345" \
+              http://localhost:5001/v1/status >/dev/null && break
+            sleep 2
+          done
+          curl -sf -H "Authorization: Bearer dev-token-12345" \
+            http://localhost:5001/v1/status
+
       # Only needed because snapshot generation is still a Cypress run.
       - name: Prepare Cypress environment
         id: cypress-prep
@@ -193,6 +236,9 @@ jobs:
           # Opens the QA-database tier. Without it every @external-gated test
           # reports as skipped rather than failing, so its absence is invisible.
           PW_QA_DB_ENABLED: "1"
+          # Opens the python-transforms tier (runner + localstack started
+          # above). Same silent-skip failure mode as the QA gate.
+          PW_PYTHON_RUNNER_ENABLED: "1"
           # Worker backends boot from the fetched jar with capped heaps.
           JAR_PATH: ${{ github.workspace }}/target/uberjar/metabase.jar
           PW_WORKER_MAX_HEAP: 1500m
