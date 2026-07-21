@@ -6,6 +6,8 @@ import { trackTransformRunsViewToggled } from "metabase/transforms/analytics";
 import { Switch } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import S from "./DetailedViewSwitch.module.css";
+
 type DetailedViewSwitchProps = {
   detailed: boolean;
   params: Urls.CommonRunListParams;
@@ -35,7 +37,7 @@ export function DetailedViewSwitch({
       labelPosition="left"
       checked={detailed}
       onChange={handleChange}
-      styles={{ label: { whiteSpace: "nowrap" } }}
+      classNames={{ label: S.label }}
       data-testid="detailed-view-switch"
     />
   );

@@ -18,6 +18,7 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
+import { isActiveRunStatus } from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
@@ -69,9 +70,7 @@ function useScheduledDagRun(transform: Transform) {
   const dagFinished =
     members != null &&
     members.length > 0 &&
-    !members.some(
-      (run) => run.status === "started" || run.status === "canceling",
-    );
+    !members.some((run) => isActiveRunStatus(run.status));
 
   const dagUnavailable = error != null;
 

@@ -2,7 +2,7 @@ export { TransformGraphRunTable } from "./TransformGraphRunTable";
 export {
   getRowKey,
   formatRunName,
-  renderRunName,
+  RunName,
   formatRunType,
   isDeletedRun,
 } from "./utils";

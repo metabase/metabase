@@ -19,6 +19,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
+import { isActiveRunStatus } from "metabase/transforms/utils";
 import {
   ActionIcon,
   Badge,
@@ -40,7 +41,7 @@ import type {
 } from "metabase-types/api";
 
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
-import { isDeletedRun, renderRunName } from "../TransformGraphRunTable";
+import { RunName, isDeletedRun } from "../TransformGraphRunTable";
 
 import { TransformGraphRunInfoSection } from "./TransformGraphRunInfoSection";
 import S from "./TransformGraphRunSidebar.module.css";
@@ -123,12 +124,9 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
     .exhaustive();
 
   const shouldPoll =
-    run.status === "started" ||
-    run.status === "canceling" ||
-    transformRuns.some(
-      (transformRun) =>
-        transformRun.status === "started" ||
-        transformRun.status === "canceling",
+    isActiveRunStatus(run.status) ||
+    transformRuns.some((transformRun) =>
+      isActiveRunStatus(transformRun.status),
     );
   if (isPolling !== shouldPoll) {
     setIsPolling(shouldPoll);
@@ -279,7 +277,9 @@ function TransformGraphRunSidebarHeader({
       gap="sm"
       data-testid="transform-graph-run-sidebar-header"
     >
-      <Title order={3}>{renderRunName(run, { gap: "sm" })}</Title>
+      <Title order={3}>
+        <RunName run={run} gap="sm" />
+      </Title>
       <Group gap="xs" wrap="nowrap">
         <HeaderEntityActions run={run} />
         <ActionIcon aria-label={t`Close`} onClick={onClose}>

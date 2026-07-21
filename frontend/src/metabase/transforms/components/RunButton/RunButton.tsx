@@ -23,6 +23,7 @@ import type {
   TransformRun,
 } from "metabase-types/api";
 
+import { isActiveRunStatus } from "../../utils";
 import { LockedTransformsHoverCard } from "../LockedTransformsHoverCard/LockedTransformsHoverCard";
 
 const RECENT_TIMEOUT = 5000;
@@ -72,7 +73,7 @@ export const RunButton = forwardRef(function RunButton(
     setIsRecent(false);
   }, [id]);
 
-  const isRunning = run?.status === "started" || run?.status === "canceling";
+  const isRunning = isActiveRunStatus(run?.status);
   const showMenu = menuItems != null && !isRunning;
 
   const runButton = (

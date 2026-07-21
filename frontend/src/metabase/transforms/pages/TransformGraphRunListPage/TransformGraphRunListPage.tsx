@@ -16,6 +16,7 @@ import { useDispatch } from "metabase/redux";
 import { replace } from "metabase/router";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
+import { isActiveRunStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformGraphRun } from "metabase-types/api";
@@ -204,7 +205,5 @@ export function TransformGraphRunListPage({
 }
 
 export function isPollingNeeded(runs: TransformGraphRun[] = []) {
-  return runs.some(
-    (run) => run.status === "started" || run.status === "canceling",
-  );
+  return runs.some((run) => isActiveRunStatus(run.status));
 }

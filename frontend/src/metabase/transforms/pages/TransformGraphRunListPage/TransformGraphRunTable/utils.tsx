@@ -1,5 +1,4 @@
 import type { SortingState } from "@tanstack/react-table";
-import type { ReactNode } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { TimezoneIndicator } from "metabase/transforms/components/TimezoneIndicator";
@@ -66,7 +65,7 @@ export function formatRunName(run: TransformGraphRun): string {
     : `${name} › ${dependentsText(count)}`;
 }
 
-function renderRunEntityName(run: TransformGraphRun): ReactNode {
+function RunEntityName({ run }: { run: TransformGraphRun }) {
   const name = run.name ?? t`Deleted`;
   if (!isDeletedRun(run)) {
     return <Ellipsified fw="bold">{name}</Ellipsified>;
@@ -82,18 +81,15 @@ function renderRunEntityName(run: TransformGraphRun): ReactNode {
   );
 }
 
-type RenderRunNameOptions = {
+type RunNameProps = {
+  run: TransformGraphRun;
   gap?: MantineSize;
 };
 
-export function renderRunName(
-  run: TransformGraphRun,
-  { gap = "xs" }: RenderRunNameOptions = {},
-): ReactNode {
-  const name = renderRunEntityName(run);
+export function RunName({ run, gap = "xs" }: RunNameProps) {
   const count = dagDependencyCount(run);
   if (count == null) {
-    return name;
+    return <RunEntityName run={run} />;
   }
   const chevron = (
     <Icon
@@ -130,11 +126,11 @@ export function renderRunName(
         <>
           {countText}
           {chevron}
-          {name}
+          <RunEntityName run={run} />
         </>
       ) : (
         <>
-          {name}
+          <RunEntityName run={run} />
           {chevron}
           {countText}
         </>
@@ -153,7 +149,7 @@ function getRunColumn(): TreeTableColumnDef<TransformGraphRun> {
     header: t`Run`,
     width: 320,
     accessorFn: (run) => formatRunName(run),
-    cell: ({ row }) => renderRunName(row.original),
+    cell: ({ row }) => <RunName run={row.original} />,
   };
 }
 
@@ -248,7 +244,7 @@ function getEndedAtColumn(
       if (value == null) {
         return EMPTY_CELL_PLACEHOLDER;
       }
-      return <Ellipsified>{String(value)}</Ellipsified>;
+      return <Ellipsified>{value}</Ellipsified>;
     },
   };
 }

@@ -3,7 +3,9 @@ import type { ReactNode } from "react";
 import { mockSettings } from "__support__/settings";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Menu } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
+import { createMockTransformRun } from "metabase-types/api/mocks";
 
 import { RunButton } from "./RunButton";
 
@@ -47,6 +49,32 @@ describe("RunButton", () => {
       act(() => jest.runAllTimers());
       expect(
         screen.queryByTestId("locked-transforms-hover-card"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("calls onRun when the run button is clicked", () => {
+    const { onRun } = setup();
+
+    fireEvent.click(screen.getByTestId("run-button"));
+
+    expect(onRun).toHaveBeenCalledTimes(1);
+  });
+
+  describe("with menu items", () => {
+    const menuItems = <Menu.Item>{"Run upstream"}</Menu.Item>;
+
+    it("shows the run options menu toggle when idle", () => {
+      setup({ menuItems });
+
+      expect(screen.getByTestId("run-options-button")).toBeInTheDocument();
+    });
+
+    it("hides the run options menu toggle while a run is in progress", () => {
+      setup({ menuItems, run: createMockTransformRun({ status: "started" }) });
+
+      expect(
+        screen.queryByTestId("run-options-button"),
       ).not.toBeInTheDocument();
     });
   });
