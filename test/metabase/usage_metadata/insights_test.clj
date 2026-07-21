@@ -13,6 +13,7 @@
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.models.source-segment-composite-daily]
+   [metabase.usage-metadata.query-source :as query-source]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -425,6 +426,28 @@
         (is (= :model (:type (by-id official-id))))
         (is (true? (:verified? (by-id verified-id))))
         (is (true? (:popular? (by-id popular-id))))))))
+
+(deftest candidate-source-cards-accept-custom-query-source-test
+  (let [query (orders-base-query)]
+    (mt/with-temp [:model/Card {selected-id :id} {:name          "candidate mining explicitly selected"
+                                                  :type          :question
+                                                  :dataset_query query
+                                                  :view_count    0}
+                   :model/Card {unselected-id :id} {:name          "candidate mining not selected"
+                                                    :type          :question
+                                                    :dataset_query query
+                                                    :view_count    1000000}]
+      (let [source (reify query-source/CandidateQuerySource
+                     (card-ids [_] #{selected-id}))
+            cards  (candidate-source-cards {:query-source source :min-view-count 10})
+            by-id  (into {} (map (juxt :id identity)) cards)]
+        (testing "the source controls inclusion instead of the default curation/popularity gate"
+          (is (contains? by-id selected-id))
+          (is (not (contains? by-id unselected-id))))
+        (testing "curation and popularity are still recorded as ranking evidence"
+          (is (false? (:verified? (by-id selected-id))))
+          (is (false? (:official-collection? (by-id selected-id))))
+          (is (false? (:popular? (by-id selected-id)))))))))
 
 (deftest candidate-measures-return-valid-definition-and-skip-existing-test
   (let [query (orders-measure-query)]

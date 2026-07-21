@@ -6,6 +6,7 @@
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.usage-metadata.query-source :as query-source]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -26,7 +27,9 @@
 
 (mr/def ::candidate-opts
   [:map {:closed true}
-   [:min-view-count {:optional true, :description "Minimum lifetime Card view_count that qualifies an otherwise uncurated source item."}
+   [:query-source   {:optional true, :description "Saved-query producer that controls which questions and models are analyzed."}
+    [:maybe [:fn {:error/message "expected a candidate query source"} query-source/candidate-query-source?]]]
+   [:min-view-count {:optional true, :description "Lifetime Card view_count used by the default source and as popularity evidence."}
     [:maybe nat-int?]]
    [:limit          {:optional true, :description "Maximum number of candidates to return."}
     [:maybe pos-int?]]])
