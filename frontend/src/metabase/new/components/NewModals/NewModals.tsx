@@ -19,20 +19,21 @@ import type {
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import type { WithRouterProps } from "metabase/router";
-import { push, withRouter } from "metabase/router";
+import { push, useRouter } from "metabase/router";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
-export const NewModals = withRouter((props: WithRouterProps) => {
+export const NewModals = () => {
+  const { location, params } = useRouter();
   const { pathname } = useLocation();
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
     getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );
   const dispatch = useDispatch();
-  const collectionId = useInitialCollectionId(props) ?? undefined;
+  const collectionId =
+    useInitialCollectionId({ location, params }) ?? undefined;
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {
@@ -105,6 +106,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         </Modal>
       );
     case "embed": {
+      // Unjustified type cast. FIXME
       const props = currentNewModalProps as SdkIframeEmbedSetupModalProps;
       return (
         <SdkIframeEmbedSetupModal
@@ -115,6 +117,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
       );
     }
     case STATIC_LEGACY_EMBEDDING_TYPE: {
+      // Unjustified type cast. FIXME
       const props = currentNewModalProps as LegacyStaticEmbeddingModalProps;
 
       return (
@@ -137,4 +140,4 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         />
       );
   }
-});
+};

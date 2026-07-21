@@ -122,6 +122,7 @@ export function EditorPanel({
                 <ColorSwatchCard
                   key={key}
                   label={label()}
+                  // Unjustified type cast. FIXME
                   value={(colors[key] as string) ?? ""}
                   showAlpha
                   onChange={(color) => editor.setColor(key, color ?? "")}
@@ -174,6 +175,7 @@ export function EditorPanel({
                   <ColorSwatchCard
                     key={key}
                     label={label()}
+                    // Unjustified type cast. FIXME
                     value={(colors[key] as string) ?? ""}
                     showAlpha
                     onChange={(color) => editor.setColor(key, color ?? "")}

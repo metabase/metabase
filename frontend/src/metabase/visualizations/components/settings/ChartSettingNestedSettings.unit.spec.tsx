@@ -24,11 +24,7 @@ const ComposedComponent = ({ object, onChangeObjectSettings }: any) => (
   </button>
 );
 
-const WrappedComponent = chartSettingNestedSettings({
-  getObjectKey,
-  getObjectSettings,
-  getSettingsWidgetsForObject: () => [],
-})(ComposedComponent);
+const WrappedComponent = chartSettingNestedSettings(ComposedComponent);
 
 describe("chartSettingNestedSettings", () => {
   it("does not write undefined entries for objects without stored settings (EMB-1940)", async () => {
@@ -39,6 +35,10 @@ describe("chartSettingNestedSettings", () => {
       <WrappedComponent
         series={[]}
         objects={objects}
+        getObjectKey={getObjectKey}
+        getObjectSettings={getObjectSettings}
+        getSettingDefinitionsForObject={() => ({})}
+        getComputedSettingsForObject={() => ({})}
         // only object B has stored settings
         value={{ '["name","B"]': { column_title: "Old title" } }}
         initialKey={getObjectKey(objects[1])}

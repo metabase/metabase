@@ -95,7 +95,7 @@ export const openAndAddEmailsToSubscriptions = (recipients) => {
     cy.findByTestId("token-field")
       .find("input")
       .click()
-      .type(`${recipient}{enter}`)
+      .type(`${recipient}{downarrow}{enter}`)
       .blur();
   });
 };

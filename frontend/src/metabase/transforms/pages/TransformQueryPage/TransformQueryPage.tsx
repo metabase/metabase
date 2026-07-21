@@ -304,6 +304,7 @@ function TransformQueryPageBody({
         onClose={closeTurnOffIncremental}
       />
       <LeaveRouteConfirmModal
+        // Unjustified type cast. FIXME
         route={route as Route}
         isEnabled={isDirty && !isSaving}
         onConfirm={rejectProposed}

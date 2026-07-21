@@ -21,6 +21,7 @@ function setup(
     {},
   );
 
+  // Unjustified type cast. FIXME
   const store = _store as Omit<typeof _store, "getState" | "dispatch"> & {
     getState: () => State;
     dispatch: ThunkDispatch<State, void, AnyAction>;

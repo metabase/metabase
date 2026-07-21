@@ -86,6 +86,7 @@ function setup({
     collection: { id: 6464 },
     collectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: dataCollection.id as number,
         name: dataCollection.name,
         model: "collection",

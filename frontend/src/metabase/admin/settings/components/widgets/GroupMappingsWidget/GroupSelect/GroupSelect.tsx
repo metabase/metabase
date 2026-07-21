@@ -8,7 +8,7 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
+} from "metabase/common/utils/groups";
 import {
   Box,
   Checkbox,

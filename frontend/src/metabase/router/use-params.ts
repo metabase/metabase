@@ -19,10 +19,12 @@ export function useParams<
   const params = useRouter().params;
 
   if (!("splat" in params)) {
+    // Unjustified type cast. FIXME
     return params as Result;
   }
 
   const { splat, ...rest } = params;
   const remapped: typeof params = { ...rest, "*": splat };
+  // Unjustified type cast. FIXME
   return remapped as Result;
 }

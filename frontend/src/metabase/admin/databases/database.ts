@@ -70,6 +70,7 @@ export const databasesReducer = combineReducers({
       (_state, action) => action.payload.error,
     );
   }),
+  // Unjustified type cast. FIXME
   deletes: createReducer([] as DatabaseId[], (builder) => {
     builder
       .addCase(DELETE_DATABASE_STARTED, (state, action) =>

@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
@@ -13,7 +12,7 @@ import { CreateDashboardForm } from "./CreateDashboardForm";
 export interface CreateDashboardModalProps {
   opened: boolean;
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
-  targetCollection?: SdkCollectionId | null;
+  targetCollection?: CollectionId | null;
   onCreate?: (dashboard: Dashboard) => void;
   onClose: () => void;
 }

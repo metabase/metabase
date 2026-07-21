@@ -284,6 +284,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
+      // Unjustified type cast. FIXME
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
@@ -329,6 +330,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
+      // Unjustified type cast. FIXME
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
@@ -443,6 +445,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
+      // Unjustified type cast. FIXME
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)
@@ -529,6 +532,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
+      // Unjustified type cast. FIXME
       expect(JSON.parse(requestBody as string).creator_id).toBe(7);
     });
   });

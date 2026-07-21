@@ -188,8 +188,10 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
                             databaseId={table.db_id!}
                             field={entity}
                             url={`/reference/segments/${segment.id}/fields/${entity.id}`}
+                            // Unjustified type cast. FIXME
                             icon={getIconForField(entity) as IconName}
                             isEditing={isEditing}
+                            // Unjustified type cast. FIXME
                             formField={getNestedFormField(entity.id as FieldId)}
                           />
                         </li>
@@ -213,4 +215,5 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(SegmentFieldList as unknown as React.ComponentType);

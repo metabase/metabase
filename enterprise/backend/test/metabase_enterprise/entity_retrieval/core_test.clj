@@ -10,9 +10,14 @@
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
+
+;; the dedicated-harness tests below hit the app db before any auto-initializing mt helper — on the
+;; appdb-mode CI job this namespace can be an early db touch in a fresh JVM
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
@@ -34,7 +39,8 @@
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
     ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
-    ;; available? is false, so search returns [] and the write-path nudge no-ops rather than throwing.
+    ;; entity retrieval is dedicated-only, so no URL means available? is false, search returns [] and the
+    ;; write-path nudge no-ops rather than throwing.
     (mt/with-premium-features #{:library :library-retrieval}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (= [] (mirror/search "anything" 10)))
@@ -134,9 +140,11 @@
               ":library without :library-retrieval does not entitle the tool"))
         (mt/with-premium-features #{:library :library-retrieval}
           (is (true? (entity-retrieval.core/available?)))))
-      ;; pgvector unconfigured -> unavailable regardless of license
+      ;; no URL -> unconfigured and unavailable regardless of license, even on a pgvector-capable
+      ;; Postgres app db: entity retrieval's tables aren't schema-isolated yet, so it stays dedicated-only
       (with-redefs [semantic.db.datasource/db-url nil]
         (mt/with-premium-features #{:library :library-retrieval}
+          (is (false? (entity-retrieval.core/pgvector-configured?)))
           (is (false? (entity-retrieval.core/available?))))))
     (testing "fully licensed + pgvector, but no way to compute embeddings -> unavailable"
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]

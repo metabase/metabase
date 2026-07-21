@@ -73,10 +73,9 @@ const elements = [
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
   createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-iframe-sdk",
     pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk/**",
-    enforceOutgoing: false,
   }),
   createElement({
     type: "app",
@@ -95,17 +94,12 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "app", name: "mcp-app", pattern, mode: "full" }),
   ),
-  createElement({ type: "shared", name: "embedding", enforceOutgoing: false }),
+  createElement({ type: "shared", name: "embedding" }),
+  createElement({ type: "shared", name: "embedding-sdk" }),
   createElement({
-    type: "shared",
-    name: "embedding-sdk",
-    enforceOutgoing: false,
-  }),
-  createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-sdk-bundle",
     pattern: "frontend/src/embedding-sdk-bundle/**",
-    enforceOutgoing: false,
   }),
   createElement({
     type: "shared",
@@ -122,12 +116,25 @@ const elements = [
     name: "embedding-sdk-package",
     pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
+  // Window-global bridges between the SDK bundle and the npm package. They
+  // stay shared tier (both artifacts compile them in), but their payload
+  // types are owned by the bundle, hence the type-only allow rule below.
   ...[
-    "frontend/src/embedding-sdk-shared/**",
-    "frontend/src/embedding-sdk-shared/.storybook/**",
+    "frontend/src/embedding-sdk-shared/lib/ensure-metabase-provider-props-store.ts",
+    "frontend/src/embedding-sdk-shared/lib/metabot-state-channel.ts",
   ].map((pattern) =>
-    createElement({ type: "shared", name: "embedding-sdk-shared", pattern }),
+    createElement({
+      type: "shared",
+      name: "embedding-sdk-window-bridge",
+      pattern,
+      mode: "full",
+    }),
   ),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-shared",
+    pattern: "frontend/src/embedding-sdk-shared/**",
+  }),
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
@@ -177,6 +184,15 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
+  // The theme editor preview renders the live embed via the app-tier EAJS
+  // runtime; the edge is whitelisted via the allow rules below.
+  createElement({
+    type: "feature",
+    name: "admin-theme-preview",
+    pattern:
+      "frontend/src/metabase/admin/embedding/components/ThemeEditor/ResourcePreview.tsx",
+    mode: "full",
+  }),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
@@ -213,6 +229,22 @@ const elements = [
       mode: "full",
     }),
   ),
+  // The Near-Membrane sandbox + its ABI (globals map, factory/provider-props
+  // contract). Feature tier on purpose: it's a library consumed by the app-tier
+  // entries (runtime + SDK package dev preset), and the tier guarantees it only
+  // reaches shared/lib — keep the sandbox's dependency surface auditable.
+  createElement({
+    type: "feature",
+    name: "data-app-sandbox",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    mode: "full",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-runtime",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    mode: "full",
+  }),
   createElement({
     type: "feature",
     name: "enterprise",
@@ -234,7 +266,6 @@ const elements = [
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
-    "frontend/src/metabase/app-static-viz-cli.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
@@ -257,6 +288,9 @@ const elements = [
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
     "frontend/src/metabase/static-viz/index.tsx",
+    // Storybook config is a composition root: preview wires app-tier decorators.
+    // Needs its own pattern because ** doesn't match dot-folders.
+    "frontend/src/embedding-sdk-shared/.storybook/**",
   ].map((path) =>
     createElement({
       type: "app",
@@ -359,6 +393,25 @@ const rules = [
   {
     from: ["shared/monitor"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
+  },
+  // Whitelisted cross-tier edges. Keep this list short; every entry should
+  // eventually be removed.
+  // Window-bridge ABI: the payload shapes are owned by the bundle.
+  // TODO(embedding-modules): decouple with shared contracts.
+  {
+    from: ["shared/embedding-sdk-window-bridge"],
+    allow: ["app/embedding-sdk-bundle"],
+    importKind: "type",
+  },
+  // Admin theme preview drives the live embed through the EAJS runtime.
+  // Remove once the preview is lifted out of admin.
+  {
+    from: ["feature/admin-theme-preview"],
+    allow: ["feature/admin", "app/embedding-iframe-sdk"],
+  },
+  {
+    from: ["feature/admin"],
+    allow: ["feature/admin-theme-preview"],
   },
 ];
 

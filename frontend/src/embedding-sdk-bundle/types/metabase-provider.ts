@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 
-import type { MetabaseAuthConfig } from "./auth-config";
 import type { SdkEventHandlersConfig } from "./events";
 import type { MetabaseGlobalPluginsConfig } from "./plugins";
 import type { SdkErrorComponent } from "./ui";

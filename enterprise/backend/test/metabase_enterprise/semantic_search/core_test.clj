@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.core :as semantic.core]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
@@ -15,6 +17,18 @@
    [metabase.test :as mt]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+
+(deftest supported?-requires-an-embedder-test
+  (testing "a pgvector store alone is not enough to select the engine — auto-activation without a
+            configured embedding backend would loop every index and query embed into failure"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly true)]
+        (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                    (constantly {:provider "no-such-provider"})]
+          (is (false? (semantic.core/supported?))))
+        (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                    (constantly semantic.tu/mock-embedding-model)]
+          (is (true? (semantic.core/supported?))))))))
 
 (deftest fallback-engine-available-with-semantic-test
   (mt/with-premium-features #{:semantic-search}
@@ -40,7 +54,10 @@
                 reset-called-atoms! #(do (reset! semantic-called? false)
                                          (reset! appdb-called? false)
                                          (reset! legacy-called? false))]
-            (mt/with-dynamic-fn-redefs [semantic.pgvector-api/query
+            (mt/with-dynamic-fn-redefs [;; supported? requires a configured embedder; pin the mock so semantic is selectable
+                                        semantic.embedding/get-configured-model
+                                        (constantly semantic.tu/mock-embedding-model)
+                                        semantic.pgvector-api/query
                                         (fn [& _]
                                           (reset! semantic-called? true)
                                           {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}]

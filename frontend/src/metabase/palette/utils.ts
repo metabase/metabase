@@ -96,6 +96,7 @@ export const getCommandPaletteIcon = (
   item: PaletteActionImpl,
 ): { name: IconName; c: ColorName } => {
   const icon = {
+    // Unjustified type cast. FIXME
     name: item.icon as IconName,
     c: item.extra?.iconColor || "core-brand",
   };

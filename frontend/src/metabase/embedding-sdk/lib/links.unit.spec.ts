@@ -58,6 +58,7 @@ describe("removeInternalClickBehaviors", () => {
   });
 
   it("does not crash on undefined column settings entries (EMB-1940)", () => {
+    // Unjustified type cast. FIXME
     const settings = {
       column_settings: {
         // columns without stored settings can end up as `undefined` entries

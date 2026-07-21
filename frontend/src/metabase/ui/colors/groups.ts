@@ -31,6 +31,7 @@ export const getAccentColors = (
 const getBaseAccentsNames = (withGray = false) => {
   const accents: ColorName[] = _.times(
     ACCENT_COUNT,
+    // Unjustified type cast. FIXME
     (i) => `accent${i}` as ColorName,
   );
   if (withGray) {
@@ -55,6 +56,7 @@ export const getLightAccentColors = (
   withGray = false,
 ): string[] => {
   return getBaseAccentsNames(withGray).map((accent) =>
+    // Unjustified type cast. FIXME
     Color(color(`${accent}-light` as ColorName, palette)).hex(),
   );
 };
@@ -64,6 +66,7 @@ export const getDarkAccentColors = (
   withGray = false,
 ) => {
   return getBaseAccentsNames(withGray).map((accent) =>
+    // Unjustified type cast. FIXME
     Color(color(`${accent}-dark` as ColorName, palette)).hex(),
   );
 };

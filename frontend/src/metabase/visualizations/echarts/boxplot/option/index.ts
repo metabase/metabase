@@ -180,6 +180,7 @@ export const getBoxPlotOption = (
 
   const datasets: { source: OptionSourceData; dimensions: string[] }[] = [
     {
+      // Unjustified type cast. FIXME
       source: chartModel.boxDataset as OptionSourceData,
       dimensions: boxDimensions,
     },
@@ -187,18 +188,21 @@ export const getBoxPlotOption = (
 
   if (pointsDatasetIndices.outlierAbove >= 0) {
     datasets.push({
+      // Unjustified type cast. FIXME
       source: chartModel.outlierAbovePointsDataset as OptionSourceData,
       dimensions: pointsDimensions,
     });
   }
   if (pointsDatasetIndices.outlierBelow >= 0) {
     datasets.push({
+      // Unjustified type cast. FIXME
       source: chartModel.outlierBelowPointsDataset as OptionSourceData,
       dimensions: pointsDimensions,
     });
   }
   if (pointsDatasetIndices.nonOutlier >= 0) {
     datasets.push({
+      // Unjustified type cast. FIXME
       source: chartModel.nonOutlierPointsDataset as OptionSourceData,
       dimensions: pointsDimensions,
     });

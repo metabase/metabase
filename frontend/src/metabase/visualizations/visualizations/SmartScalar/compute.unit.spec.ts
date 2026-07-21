@@ -72,7 +72,15 @@ describe("SmartScalar > compute", () => {
         return [
           createMockSingleSeries(
             { dataset_query: createMockNativeDatasetQuery() },
-            { data: { rows, cols } },
+            {
+              data: {
+                rows,
+                cols: cols.map((col) => ({
+                  ...col,
+                  source: "native" as const,
+                })),
+              },
+            },
           ),
         ];
       }
@@ -1220,6 +1228,7 @@ describe("SmartScalar > compute", () => {
               // type casting is required for invalid values testing
               {
                 id: "1",
+                // Unjustified type cast. FIXME
                 type: type as SmartScalarComparisonType,
               } as SmartScalarComparison,
             ],
@@ -2580,6 +2589,7 @@ function createMockDateTimeColumn(opts: Partial<DatasetColumn>) {
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: null,
+    source: "breakout",
     ...opts,
   });
 }
@@ -2589,6 +2599,7 @@ function createMockNumberColumn(opts: Partial<DatasetColumn>) {
     base_type: "type/Integer",
     effective_type: "type/Integer",
     semantic_type: "type/Number",
+    source: "aggregation",
     ...opts,
   });
 }

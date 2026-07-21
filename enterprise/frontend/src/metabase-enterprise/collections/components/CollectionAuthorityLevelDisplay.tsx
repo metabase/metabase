@@ -14,6 +14,7 @@ export const CollectionAuthorityLevelDisplay = ({
   const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
   const iconProps = useMemo(
     () =>
+      // Unjustified type cast. FIXME
       getIcon({
         ...collection,
         model: "collection",

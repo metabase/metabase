@@ -376,6 +376,7 @@ export async function loadCustomVizPlugin(
 
     const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
       defineSetting(definition) {
+        // Unjustified type cast. FIXME
         return definition as unknown as CustomVisualizationSettingDefinition<
           Record<string, unknown>
         >;
@@ -515,12 +516,15 @@ function createCustomVizWrapper(
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
+      // Unjustified type cast. FIXME
       series: series as unknown as GenericVizPluginProps["series"],
       settings,
       colorScheme: resolvedColorScheme,
+      // Unjustified type cast. FIXME
       onClick: onVisualizationClick as unknown as (
         clickObject: CustomVizClickObject<Record<string, unknown>> | null,
       ) => void,
+      // Unjustified type cast. FIXME
       onHover: onHoverChange as unknown as (
         hoverObject?: CustomVizHoverObject | null,
       ) => void,

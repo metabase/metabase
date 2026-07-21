@@ -3,7 +3,7 @@ import {
   PLUGIN_REPLACEMENT,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { IndexRoute, Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -24,33 +24,55 @@ import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformSettingsPage } from "./pages/TransformSettingsPage";
 import { TransformsNotDisabled } from "./route-guards";
 
+const RoutedTransformListPage = withRouteProps(TransformListPage);
+const RoutedRunListPage = withRouteProps(RunListPage);
+const RoutedNewJobPage = withRouteProps(NewJobPage);
+const RoutedJobPage = withRouteProps(JobPage);
+const RoutedJobRunListPage = withRouteProps(JobRunListPage);
+const RoutedNewQueryTransformPage = withRouteProps(NewQueryTransformPage);
+const RoutedNewNativeTransformPage = withRouteProps(NewNativeTransformPage);
+const RoutedNewCardTransformPage = withRouteProps(NewCardTransformPage);
+const RoutedTransformQueryPage = withRouteProps(TransformQueryPage);
+const RoutedTransformRunPage = withRouteProps(TransformRunPage);
+const RoutedTransformSettingsPage = withRouteProps(TransformSettingsPage);
+const RoutedTransformIndexesPage = withRouteProps(TransformIndexesPage);
+const RoutedTransformDependenciesPage = withRouteProps(
+  TransformDependenciesPage,
+);
+
 export function getDataStudioTransformRoutes() {
   return (
-    <Route component={TransformsNotDisabled}>
-      <IndexRoute component={TransformListPage} />
-      <Route path="runs" component={RunListPage} />
-      <Route path="jobs" component={JobSectionLayout}>
-        <IndexRoute component={JobListPage} />
-        <Route path="new" component={NewJobPage} />
-        <Route path=":jobId" component={JobPage} />
-        <Route path=":jobId/runs" component={JobRunListPage} />
+    <Route element={<TransformsNotDisabled />}>
+      <Route index element={<RoutedTransformListPage />} />
+      <Route path="runs" element={<RoutedRunListPage />} />
+      <Route path="jobs" element={<JobSectionLayout />}>
+        <Route index element={<JobListPage />} />
+        <Route path="new" element={<RoutedNewJobPage />} />
+        <Route path=":jobId" element={<RoutedJobPage />} />
+        <Route path=":jobId/runs" element={<RoutedJobRunListPage />} />
       </Route>
 
-      <Route path="new/query" component={NewQueryTransformPage} />
-      <Route path="new/native" component={NewNativeTransformPage} />
-      <Route path="new/card/:cardId" component={NewCardTransformPage} />
-      <Route path=":transformId" component={TransformQueryPage} />
-      <Route path=":transformId/edit" component={TransformQueryPage} />
-      <Route path=":transformId/run" component={TransformRunPage} />
-      <Route path=":transformId/settings" component={TransformSettingsPage} />
-      <Route path=":transformId/indexes" component={TransformIndexesPage} />
+      <Route path="new/query" element={<RoutedNewQueryTransformPage />} />
+      <Route path="new/native" element={<RoutedNewNativeTransformPage />} />
+      <Route path="new/card/:cardId" element={<RoutedNewCardTransformPage />} />
+      <Route path=":transformId" element={<RoutedTransformQueryPage />} />
+      <Route path=":transformId/edit" element={<RoutedTransformQueryPage />} />
+      <Route path=":transformId/run" element={<RoutedTransformRunPage />} />
+      <Route
+        path=":transformId/settings"
+        element={<RoutedTransformSettingsPage />}
+      />
+      <Route
+        path=":transformId/indexes"
+        element={<RoutedTransformIndexesPage />}
+      />
       {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path=":transformId/dependencies"
-          component={TransformDependenciesPage}
+          element={<RoutedTransformDependenciesPage />}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
       {PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes()}

@@ -243,7 +243,6 @@ describe("issues 55617, 55618", () => {
     cy.intercept("GET", "/api/segment").as("getSegments");
     H.createSegment({
       name: "My segment",
-      table_id: ORDERS_ID,
       definition: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],

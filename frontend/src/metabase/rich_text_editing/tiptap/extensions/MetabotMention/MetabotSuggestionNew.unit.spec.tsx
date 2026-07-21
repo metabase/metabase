@@ -57,6 +57,7 @@ const setup = (props: Partial<MetabotMentionSuggestionProps> = {}) => {
   const onClose = jest.fn();
   const ref = createRef<BareSuggestionRendererRef>();
   const focusMock = jest.fn();
+  // Unjustified type cast. FIXME
   const editor = {
     commands: {
       focus: focusMock,

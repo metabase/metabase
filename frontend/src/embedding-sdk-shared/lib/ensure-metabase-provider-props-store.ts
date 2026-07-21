@@ -20,6 +20,7 @@ export type MetabaseProviderPropsStoreInternalProps = {
   loadingError?: SdkLoadingError | null;
   reduxStore?: ComponentProviderProps["reduxStore"] | null;
   singleInstanceIdsMap?: Record<string, string[]>;
+  dataApp?: { name: string; isDev?: boolean } | null;
 };
 
 /**
@@ -88,6 +89,7 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
       listeners.forEach((callback) => callback());
     },
     setProps(props) {
+      // Unjustified type cast. FIXME
       state = {
         ...state,
         props: {

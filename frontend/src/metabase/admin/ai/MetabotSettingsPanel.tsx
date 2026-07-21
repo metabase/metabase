@@ -212,6 +212,7 @@ function MetabotCollectionConfigurationPane({
             model: "collection",
           }}
           onChange={(item) =>
+            // Unjustified type cast. FIXME
             handleUpdateCollectionId(item as Pick<MetabotInfo, "id" | "name">)
           }
           onClose={close}

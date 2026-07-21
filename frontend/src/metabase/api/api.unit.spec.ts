@@ -5,6 +5,7 @@ import { api } from "metabase/api/client";
 import { baseQuery } from "./api";
 
 describe("baseQuery (RTK Query adapter)", () => {
+  // Unjustified type cast. FIXME
   const ctx = { signal: new AbortController().signal } as BaseQueryApi;
 
   afterEach(() => {

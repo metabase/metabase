@@ -80,6 +80,7 @@ describe("getLoadingMessage", () => {
   it('should show no loading message when "loading-message" is set to an invalid enum value', () => {
     const states = createMockState({
       settings: createMockSettingsState({
+        // Unjustified type cast. FIXME
         "loading-message": "bad-enum-bad" as any,
       }),
     });

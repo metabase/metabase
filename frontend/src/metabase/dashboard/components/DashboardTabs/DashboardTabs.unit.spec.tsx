@@ -15,7 +15,7 @@ import {
   Link,
   Route,
   type WithRouterProps,
-  withRouter,
+  withRouteProps,
 } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -53,21 +53,19 @@ function setup({
     },
   };
 
-  const RoutedDashboardComponent = withRouter(
-    ({ location }: { location: Location }) => {
-      const { selectedTabId } = useDashboardTabs();
-      useDashboardUrlQuery(createMockRouter(), location);
-      return (
-        <>
-          <DashboardTabs />
-          <span>Selected tab id is {selectedTabId}</span>
-          <br />
-          <span>Path is {location.pathname + location.search}</span>
-          <Link to="/someotherpath">Navigate away</Link>
-        </>
-      );
-    },
-  );
+  const RoutedDashboardComponent = ({ location }: { location: Location }) => {
+    const { selectedTabId } = useDashboardTabs();
+    useDashboardUrlQuery(createMockRouter(), location);
+    return (
+      <>
+        <DashboardTabs />
+        <span>Selected tab id is {selectedTabId}</span>
+        <br />
+        <span>Path is {location.pathname + location.search}</span>
+        <Link to="/someotherpath">Navigate away</Link>
+      </>
+    );
+  };
 
   const OtherComponent = () => {
     const selectedTabId = useSelector(getSelectedTabId);
@@ -81,32 +79,31 @@ function setup({
     );
   };
 
+  const DashboardRoute = withRouteProps((props: WithRouterProps) => {
+    return (
+      <MockDashboardContext
+        dashboardId={1}
+        dashboard={{
+          ...TEST_DASHBOARD_STATE.dashboards[1],
+          dashcards: dashcards
+            ? Object.values(dashcards)
+            : TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
+                (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
+              ),
+          tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
+        }}
+        navigateToNewCardFromDashboard={null}
+        isEditing={isEditing}
+      >
+        <RoutedDashboardComponent {...props} />
+      </MockDashboardContext>
+    );
+  });
+
   const { store } = renderWithProviders(
     <>
-      <Route
-        path="dashboard/:slug(/:tabSlug)"
-        component={(props: WithRouterProps) => {
-          return (
-            <MockDashboardContext
-              dashboardId={1}
-              dashboard={{
-                ...TEST_DASHBOARD_STATE.dashboards[1],
-                dashcards: dashcards
-                  ? Object.values(dashcards)
-                  : TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
-                      (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
-                    ),
-                tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
-              }}
-              navigateToNewCardFromDashboard={null}
-              isEditing={isEditing}
-            >
-              <RoutedDashboardComponent {...props} />
-            </MockDashboardContext>
-          );
-        }}
-      />
-      <Route path="someotherpath" component={OtherComponent} />
+      <Route path="dashboard/:slug(/:tabSlug)" element={<DashboardRoute />} />
+      <Route path="someotherpath" element={<OtherComponent />} />
     </>,
     {
       storeInitialState: { dashboard },
@@ -125,6 +122,7 @@ function queryTab(numOrName: number | string) {
 }
 
 async function selectTab(num: number) {
+  // Unjustified type cast. FIXME
   const selectedTab = queryTab(num) as HTMLElement;
   await userEvent.click(selectedTab);
   return selectedTab;
