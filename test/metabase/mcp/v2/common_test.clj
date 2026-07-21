@@ -230,3 +230,17 @@
           (let [h (mbql-handle! sid uid)]
             (mt/with-no-data-perms-for-all-users!
               (is (= 403 (first (thrown #(common/resolve-query-handle! sid uid h))))))))))))
+
+(deftest resolve-query-handle-for-save-allows-native-test
+  (mt/with-model-cleanup [:model/McpQueryHandle]
+    (let [uid (mt/user->id :rasta)
+          sid (str (random-uuid))]
+      (mt/with-current-user uid
+        (testing "a stored NATIVE query resolves on the save path (no native reject)"
+          (let [native {:database (mt/id)
+                        :stages [{:lib/type "mbql.stage/native" :native "SELECT 1"}]}
+                h (common/mint-query-handle! sid uid (common/encode-serialized-query native))]
+            (is (= native (:query (common/resolve-query-handle-for-save! sid uid h))))))
+        (testing "an unknown handle is a teaching error, not a 500"
+          (is (= [400 "Query handle not found — it may have expired; run the query again."]
+                 (thrown #(common/resolve-query-handle-for-save! sid uid (str (random-uuid)))))))))))

@@ -354,6 +354,21 @@
     (query-guards/check-token-query-permissions! query)
     {:query query :prompt prompt}))
 
+(defn resolve-query-handle-for-save!
+  "Like [[resolve-query-handle!]] but for the save/write path: resolves `handle` for `user-id`,
+   re-runs the shape and permission guards, and — unlike the MBQL read path — DOES allow a native
+   query through. `execute_sql` mints handles specifically so their SQL can be saved; the
+   native-reject guard would otherwise make those handles unsaveable. Returns
+   `{:query <decoded map> :prompt <string-or-nil>}`, or throws a teaching error."
+  [mcp-session-id user-id handle]
+  (let [{:keys [encoded_query prompt]}
+        (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
+            (throw-teaching-error "Query handle not found — it may have expired; run the query again."))
+        query (decode-stored-query encoded_query)]
+    (query-guards/validate-serialized-query! query)
+    (query-guards/check-token-query-permissions! query)
+    {:query query :prompt prompt}))
+
 ;;; ------------------------------------------------ Argument plumbing ---------------------------------------------
 
 (defn drop-nil-args
