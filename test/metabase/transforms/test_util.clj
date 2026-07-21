@@ -174,7 +174,7 @@
 (defn test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "transform/%s/run" transform-id))
-        timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+        timeout-s 120 ; timeout to finish execution and sync; BigQuery runs routinely take 50-70s in CI
         deadline  (seconds-from-now-ns timeout-s)]
     (is (=? {:message "Transform run started"}
             resp))

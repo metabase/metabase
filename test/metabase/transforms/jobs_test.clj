@@ -608,8 +608,10 @@
                                                                       {:run-method :manual})}
                                        (catch Exception e
                                          {:error e})))
-                              results [(deref fut1 30000 {:error :timeout})
-                                       (deref fut2 30000 {:error :timeout})]]
+                              ;; generous timeout: each run-transforms! does a real transform execution,
+                              ;; which routinely takes 50-70s on BigQuery in CI
+                              results [(deref fut1 120000 {:error :timeout})
+                                       (deref fut2 120000 {:error :timeout})]]
                           (is (every? #(= :succeeded (-> % :result ::jobs/status)) results)
                               "Both threads should succeed"))))))))))))))
 
