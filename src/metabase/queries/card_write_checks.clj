@@ -1,4 +1,4 @@
-(ns metabase.queries.models.card.check
+(ns metabase.queries.card-write-checks
   "The pre-write permission and validation check stack for creating and updating cards. Extracted
    from the REST card endpoints so the REST API and the MCP `question_write` tool run the exact
    same checks and can't drift apart."
@@ -27,7 +27,7 @@
 
 (defn check-no-save-cycle!
   "Run [[metabase.lib.core/check-card-overwrite]] for `card-id`/`query` (cycle detection),
-   re-throwing its error as a 400. Pass `:metabase.queries.models.card.check/no-id` for `card-id`
+   re-throwing its error as a 400. Pass `:metabase.queries.card-write-checks/no-id` for `card-id`
    on create."
   [card-id query]
   (try

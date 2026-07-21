@@ -1,9 +1,9 @@
 (ns metabase.queries.core
   (:require
    [metabase.queries.card]
+   [metabase.queries.card-write-checks]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
-   [metabase.queries.models.card.check]
    [metabase.queries.models.card.metadata]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
@@ -11,8 +11,8 @@
 
 (comment metabase.queries.card/keep-me
          metabase.queries.metadata/keep-me
+         metabase.queries.card-write-checks/keep-me
          metabase.queries.models.card/keep-me
-         metabase.queries.models.card.check/keep-me
          metabase.queries.models.card.metadata/keep-me
          metabase.queries.models.parameter-card/keep-me
          metabase.queries.models.query/keep-me)
@@ -23,7 +23,7 @@
   card-param-remapped-value]
  [metabase.queries.models.card
   create-card!]
- [metabase.queries.models.card.check
+ [metabase.queries.card-write-checks
   actual-collection-id
   check-allowed-to-create-card!
   check-allowed-to-update-card!
