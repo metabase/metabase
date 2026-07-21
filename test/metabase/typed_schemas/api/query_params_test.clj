@@ -13,7 +13,7 @@
           :include-models?          true
           :questions-only?          false}
          (query-params/query-params->options
-          {:database-name        " Boba "
+          {:database             " Boba "
            :library-collections  " 10, 20 "
            :question-collections " question-entity-id-1 "
            :include-models       true
