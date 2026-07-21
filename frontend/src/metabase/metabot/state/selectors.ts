@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
-import { getLocation } from "metabase/selectors/routing";
 import * as Urls from "metabase/urls";
 import type { TransformId } from "metabase-types/api";
 
@@ -280,27 +279,34 @@ export const getProfileOverride = createSelector(
   (convo) => convo.profileOverride,
 );
 
-export const getProfile = createSelector(
-  [getProfileOverride, getDebugMode, getLocation],
-  (profileOverride, debugMode, location): MetabotProfileId | undefined => {
-    const isTransformsPage = location.pathname.startsWith(Urls.transformList());
-    return match({ debugMode, isTransformsPage })
-      .returnType<MetabotProfileId | undefined>()
-      .with(
-        { debugMode: false, isTransformsPage: true },
-        () => "transforms_codegen",
-      )
-      .with(
-        { debugMode: true, isTransformsPage: true },
-        () => profileOverride ?? "transforms_codegen",
-      )
-      .otherwise(() => profileOverride);
-  },
-);
+export const getProfile = (
+  state: State,
+  agentId: MetabotAgentId,
+  isTransformsPage: boolean,
+): MetabotProfileId | undefined => {
+  const profileOverride = getProfileOverride(state, agentId);
+  const debugMode = getDebugMode(state);
+  return match({ debugMode, isTransformsPage })
+    .returnType<MetabotProfileId | undefined>()
+    .with(
+      { debugMode: false, isTransformsPage: true },
+      () => "transforms_codegen",
+    )
+    .with(
+      { debugMode: true, isTransformsPage: true },
+      () => profileOverride ?? "transforms_codegen",
+    )
+    .otherwise(() => profileOverride);
+};
 
 export const getAgentRequestMetadata = createSelector(
   [
-    getProfile,
+    (
+      state: State,
+      agentId: MetabotAgentId,
+      _retryMessageId: string | undefined,
+      isTransformsPage: boolean,
+    ) => getProfile(state, agentId, isTransformsPage),
     getLastAgentMessageExternalId,
     (
       _state: State,

@@ -325,6 +325,7 @@ export const submitInput = createAsyncThunk<
     metabot_id?: string;
     profile?: MetabotProfileId;
     retryMessageId?: string;
+    isTransformsPage?: boolean;
   }
 >(
   "metabase/metabot/submitInput",
@@ -335,6 +336,7 @@ export const submitInput = createAsyncThunk<
       message: rawPrompt,
       profile,
       retryMessageId,
+      isTransformsPage,
       ...data
     } = payload;
     const convo = getMetabotConversation(state, agentId);
@@ -380,6 +382,7 @@ export const submitInput = createAsyncThunk<
         getState(),
         agentId,
         retryMessageId,
+        isTransformsPage ?? false,
       );
       const messageId = createMessageId();
       const userMessageId = retryMessageId ?? uuid();
@@ -793,11 +796,12 @@ export const retryPrompt = createAsyncThunk<
     context: MetabotChatContext;
     metabot_id?: string;
     agentId: MetabotAgentId;
+    isTransformsPage?: boolean;
   }
 >(
   "metabase/metabot/retryPrompt",
   async (
-    { messageId, context, metabot_id, agentId },
+    { messageId, context, metabot_id, agentId, isTransformsPage },
     { getState, dispatch },
   ) => {
     const state = getState();
@@ -825,6 +829,7 @@ export const retryPrompt = createAsyncThunk<
         context,
         metabot_id,
         retryMessageId: prompt.externalId,
+        isTransformsPage,
       }),
     ).unwrap();
   },
