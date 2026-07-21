@@ -140,11 +140,17 @@
 (defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
 
 (defmulti get-embedding
-  "Returns a single embedding vector for the given text"
+  "Returns a single embedding vector for the given text.
+  `opts` (kwargs, honoured by the production providers; ollama ignores them):
+  - `:record-tokens?` — write a token-tracking row for the call
+  - `:type`           — what the embedding is for (`:query`/`:index`), recorded with the tokens
+  - `:snowplow?`      — ai-service only, default true; synthetic callers (e.g. the health probe) pass
+                        false so the call emits no token_usage event"
   {:arglists '([embedding-model text & opts])} dispatch-provider)
 
 (defmulti get-embeddings-batch
-  "Returns a sequential collection of embedding vectors, in the same order as the input texts."
+  "Returns a sequential collection of embedding vectors, in the same order as the input texts.
+  Takes the same `opts` as [[get-embedding]], minus `:snowplow?` (batch callers are all organic)."
   {:arglists '([embedding-model texts & opts])} dispatch-provider)
 
 (defmulti pull-model
@@ -438,8 +444,6 @@
              :api-key        api-key
              :model-name     model-name
              :texts          [text]
-             ;; Callers (e.g. the health probe) can pass snowplow? false to avoid firing a phantom
-             ;; token_usage event for synthetic traffic; organic embedding keeps the default true.
              :snowplow?      snowplow?
              :record-tokens? record-tokens?
              :type           type}))))

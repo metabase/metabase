@@ -3,6 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [metabase.health-inspector.settings :as setting]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as schema]
@@ -90,7 +91,7 @@
   "Delete health-inspector runs older than [[run-retention-days]]."
   []
   (t2/delete! :health_inspector_runs
-              :run_at [:< (.minusDays (java.time.OffsetDateTime/now) run-retention-days)]))
+              :run_at [:< (t/minus (t/offset-date-time) (t/days run-retention-days))]))
 
 (defn save-report
   "Run every registered check and persist the results (not-applicable (nil) checks are omitted), then prune
@@ -104,7 +105,8 @@
   [check-name]
   ;; Tie-break on id: back-to-back inserts can share a run_at, and run_at alone would then pick a
   ;; non-deterministic row, breaking the dedup below (id is a monotonic auto-increment PK).
-  (t2/select-one :health_inspector_runs :check_name (name check-name) {:order-by [[:run_at :desc] [:id :desc]]}))
+  (t2/select-one [:health_inspector_runs :health :message] :check_name (name check-name)
+                 {:order-by [[:run_at :desc] [:id :desc]]}))
 
 (defn save-check-result!
   "Persist a precomputed check `result` (a `{:health :message}` map, or nil to skip), deduplicated against the

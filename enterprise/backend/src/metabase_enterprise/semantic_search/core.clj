@@ -207,13 +207,9 @@
           ;; Re-gate all provided documents, populating the repair table as we go
           (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents
                                                :repair-table repair-table-name)
-          ;; Garbage for the health metric, measured on the *active index* (rows absent from the candidate
-          ;; set), not the gate lost-delete count -- the latter includes retained tombstones for rows the
-          ;; indexer already removed, which would keep the metric inflated until tombstone cleanup. Counted
-          ;; BEFORE this run's gate-deletes so the lost deletes found below (in-flight cleanup the indexer
-          ;; typically clears within minutes) don't read as a critical garbage spike that stands until the
-          ;; next hourly repair; only tombstones the indexer watermark has already passed count as garbage
-          ;; (a fresher tombstone -- e.g. a bulk delete just before this run -- is backlog, not garbage).
+          ;; Counted BEFORE this run's gate-deletes, so the lost deletes found below (in-flight cleanup the
+          ;; indexer typically clears within minutes) don't read as a garbage spike that stands until the
+          ;; next hourly repair; see [[semantic.repair/count-stale-orphans]] for the full contract.
           (let [orphans (semantic.repair/count-stale-orphans pgvector
                                                              (-> active-state :index :table-name)
                                                              (:gate-table-name index-metadata)
