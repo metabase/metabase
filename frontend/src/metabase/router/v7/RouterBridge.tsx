@@ -2,10 +2,10 @@ import type { Location as HistoryLocation, LocationDescriptor } from "history";
 import { type ReactNode, useContext, useMemo, useRef } from "react";
 import {
   type NavigateOptions,
+  type To,
   UNSAFE_RouteContext,
   type NavigateFunction as V7NavigateFunction,
   Outlet as V7Outlet,
-  type To,
   useNavigationType,
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
@@ -85,6 +85,8 @@ export function RouterBridge({
         navigateRef.current(to, options);
       }
     };
+    // `NavigateFunction` is an overloaded signature (a `To` or a delta); the
+    // wrapper implements both arms but TS cannot infer it back into the overload.
     return makeRouterShim(navigateLatest as V7NavigateFunction);
   }, []);
 
@@ -124,6 +126,8 @@ function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
       ? location
       : `${location.pathname ?? ""}${location.search ?? ""}${location.hash ?? ""}`;
 
+  // Cast because v3's own `InjectedRouter` type omits `listen`, even though both
+  // engines expose it at runtime.
   return {
     push: (location) => navigate(...toNavigateArgs(location)),
     replace: (location) =>
@@ -140,10 +144,8 @@ function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
     createPath: href,
     createHref: href,
     isActive: () => false,
-    // v3's `router.listen` (used by e.g. `use-dashboard-url-query`) is absent from
-    // v3's own `InjectedRouter` type, so the cast re-adds it. `V7ReduxBridge` feeds
-    // these subscribers every location change.
-    listen: (callback: (location: HistoryLocation) => void) =>
-      subscribeLocation(callback),
+    // Stands in for v3's `router.listen` (used by e.g. `use-dashboard-url-query`).
+    // `V7ReduxBridge` feeds these subscribers every location change.
+    listen: subscribeLocation,
   } as InjectedRouter;
 }

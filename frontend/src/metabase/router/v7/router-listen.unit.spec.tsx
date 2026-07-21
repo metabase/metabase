@@ -1,9 +1,15 @@
+import type { Location as HistoryLocation } from "history";
 import { useEffect, useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { Outlet, Route, push, useRouter } from "metabase/router";
 
 import type { RouterEngine } from "../engine";
+
+// Both engines expose `listen` at runtime; v3's `InjectedRouter` type omits it.
+type RouterWithListen = {
+  listen: (callback: (location: HistoryLocation) => void) => () => void;
+};
 
 // v3's `router.listen` fires a callback on every location change and returns an
 // unsubscribe function. The v7 engine has no native equivalent, so the shim wires
@@ -13,8 +19,8 @@ function Harness() {
   const { router } = useRouter();
   const [seen, setSeen] = useState<string[]>([]);
   useEffect(() => {
-    // `listen` is absent from v3's `InjectedRouter` type but present at runtime.
-    return router.listen((location) => {
+    // Cast because v3's `InjectedRouter` type omits `listen` (see above).
+    return (router as unknown as RouterWithListen).listen((location) => {
       setSeen((previous) => [...previous, location.pathname]);
     });
   }, [router]);
