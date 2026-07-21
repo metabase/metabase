@@ -182,6 +182,42 @@ class MetabaseHarness {
         .catch(() => undefined);
       await adminApi.put(`/api/database/${WRITABLE_DB_ID}`, {
         details: writableDbDetailsPatch(current?.details, dialect),
+        // Disable BACKGROUND scheduled syncs on db 2 for the duration of the
+        // test. Explicit POST /sync_schema calls (which several specs make on
+        // purpose) are unaffected — this only removes the Quartz actor.
+        //
+        // Why it matters: the snapshot's app-DB metadata is a LIE. It lists 8
+        // tables for database 2 (orders, products, reviews, ...) inherited from
+        // QA Postgres12, because upstream's convertToWritable only re-points
+        // `dbname` — while resetWritableDb (#157) empties the actual warehouse.
+        // Tests then select against metadata describing tables that do not
+        // exist. Any metadata sync reconciles the lie by DELETING them:
+        // measured, /schemas goes ["public"] -> [] in under a second.
+        //
+        // The snapshot also bakes in metadata_sync_schedule "0 31 * * * ? *"
+        // AND restores the QRTZ_* tables with fire times from snapshot creation
+        // (2026-07-17), i.e. massively overdue — so a restore can hand Quartz a
+        // trigger that misfires immediately. That wiped db 2 mid-spec and cost
+        // data-studio-bulk-table 4 deterministic CI failures, whose symptom was
+        // a waitForResponse timeout on a schema GET the FE never issued
+        // (because there were no tables left to expand).
+        //
+        // This hazard is INHERITED, not introduced: upstream Cypress runs the
+        // same emptied warehouse against the same hourly trigger and is green
+        // only because the minute rarely lines up.
+        //
+        // This narrows the window rather than closing it — the restore-to-PUT
+        // gap remains. The complete fix is to repopulate the warehouse after
+        // resetWritableDb so the metadata stops being a lie.
+        // "daily" is deliberate: it is the only schedule_type whose cron needs
+        // nothing but `hours` (util/cron.clj:103), so the payload cannot be
+        // rejected for a missing schedule_frame the way "monthly" would be. A
+        // 3am daily sync never fires inside a minutes-long test run, and
+        // re-issuing it pushes the snapshot's overdue Quartz trigger forward.
+        schedules: {
+          metadata_sync: { schedule_type: "daily", schedule_hour: 3 },
+          cache_field_values: { schedule_type: "daily", schedule_hour: 3 },
+        },
       });
     }
   }
