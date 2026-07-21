@@ -61,7 +61,6 @@
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.
 ;; Until then, I think this is ideal.
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest undo-redo-single-user-single-table-single-record-integration-test
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
@@ -121,7 +120,6 @@
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.
 ;; Until then, I think this is ideal.
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest undo-redo-multi-user-single-table-single-record-integration-test
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}

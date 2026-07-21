@@ -3,12 +3,14 @@ import { type PropsWithChildren, createContext, useMemo } from "react";
 
 import { useHistory } from "metabase/history";
 
+import { type RouterEngine, getRouterEngine } from "./engine";
 import {
   ReactRouterRoute,
   Router,
   type WithRouterProps,
   reactRouterWithRouter,
 } from "./react-router";
+import { RouterProviderV7 } from "./v7/RouterProviderV7";
 
 type RouterContextType = WithRouterProps;
 
@@ -53,7 +55,7 @@ type RouterProviderProps = {
  * component that establishes the router context, so it cannot itself consume that
  * context through `<Outlet/>`.
  */
-export const RouterProvider = ({
+const RouterProviderV3 = ({
   children,
 }: PropsWithChildren<RouterProviderProps>) => {
   const { history } = useHistory();
@@ -64,4 +66,27 @@ export const RouterProvider = ({
       </ReactRouterRoute>
     </Router>
   );
+};
+
+type RouterProviderPropsWithEngine = RouterProviderProps & {
+  /**
+   * Which engine hosts the app. Defaults to the `use-v7-router` flag; tests pass
+   * it explicitly to exercise both engines. Goes away with the v3 engine.
+   */
+  engine?: RouterEngine;
+};
+
+/**
+ * Hosts the app on either engine. On v7 the facade hooks read the same
+ * `RouterContext`, filled per route by the `RouterBridge` instead of v3's
+ * `withRouter`, so nothing downstream changes.
+ */
+export const RouterProvider = ({
+  children,
+  engine = getRouterEngine(),
+}: PropsWithChildren<RouterProviderPropsWithEngine>) => {
+  if (engine === "v7") {
+    return <RouterProviderV7>{children}</RouterProviderV7>;
+  }
+  return <RouterProviderV3>{children}</RouterProviderV3>;
 };
