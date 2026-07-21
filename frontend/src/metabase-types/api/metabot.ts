@@ -127,6 +127,12 @@ export type MetabotDocumentInfo = {
   id: number;
 };
 
+export type MetabotAdminSettingsInfo = {
+  type: "admin_settings";
+  section: string;
+  path: string;
+};
+
 export type MetabotTransformInfo =
   | ({ type: "transform"; error?: string } & Transform) // edit
   | ({ type: "transform"; error?: string } & SuggestedTransform) // edit saved suggested
@@ -137,6 +143,7 @@ export type MetabotEntityInfo =
   | MetabotDashboardInfo
   | MetabotAdhocQueryInfo
   | MetabotDocumentInfo
+  | MetabotAdminSettingsInfo
   | MetabotTransformInfo;
 
 export type MetabotCodeEdit = {

@@ -33,7 +33,12 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
-import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import {
+  AppContainer,
+  AppContent,
+  AppContentContainer,
+  AppMain,
+} from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
 import { trackPageView } from "./analytics";
@@ -131,21 +136,21 @@ function App({
             {isAppBarVisible && <AppBarContainer />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
-              <AppContent ref={setViewportElement}>
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
-                >
-                  {errorPage ? getErrorComponent(errorPage) : <Outlet />}
-                </ContentViewportContext.Provider>
-              </AppContent>
+              <AppMain>
+                <AppContent ref={setViewportElement}>
+                  <ContentViewportContext.Provider
+                    value={viewportElement ?? null}
+                  >
+                    {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+                  </ContentViewportContext.Provider>
+                </AppContent>
+                <Metabot
+                  hide={isDataStudioApp || isMonitorApp || isDataApp}
+                />
+              </AppMain>
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <Metabot
-                hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
-                }
-              />
             </AppContentContainer>
           </AppContainer>
           <Palette />
