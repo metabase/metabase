@@ -108,7 +108,7 @@
 (deftest native-transform-requires-query-builder-and-native-test
   (testing "Writing a native-query transform requires \"Query builder and native\" on the source database, even if the
             group was misconfigured with transforms permission but only query-builder access (no native)."
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
                      :model/Transform native-transform
