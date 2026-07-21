@@ -13,7 +13,8 @@
         org.babashka/json {:mvn/version "0.1.6"} ;; json parsing
         table/table {:mvn/version "0.5.0"} ;; table printing
         }
- :pods {org.babashka/postgresql {:version "0.1.0"}}
+ ;; No :pods key on purpose: bb resolves it at startup, so a pod missing for the current os/arch breaks
+ ;; every mage command. mage.bot.setup-worktree loads the postgresql pod lazily and is the only user.
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
