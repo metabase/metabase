@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.sso.oidc.discovery :as oidc.discovery]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http]))
 
 (deftest ^:parallel get-authorization-endpoint-test
   (testing "Gets authorization endpoint from discovery document"
@@ -213,14 +214,13 @@
 ;;; ================================================== Endpoint Extraction Validation Tests ==================================================
 
 (deftest get-token-endpoint-blocks-internal-hosts-test
-  (testing "get-token-endpoint rejects internal hosts when oidc-allowed-networks is :external-only"
-    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
-      (let [config {:discovery-document {:token_endpoint "http://169.254.169.254/latest/meta-data/"}}]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"address not allowed by network restrictions"
-                              (oidc.discovery/get-token-endpoint config))))))
-  (testing "get-token-endpoint allows all hosts when oidc-allowed-networks is :allow-all"
-    (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
+  (testing "get-token-endpoint rejects internal hosts (external-only, always)"
+    (let [config {:discovery-document {:token_endpoint "http://169.254.169.254/latest/meta-data/"}}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"address not allowed by network restrictions"
+                            (oidc.discovery/get-token-endpoint config)))))
+  (testing "get-token-endpoint allows a public host"
+    (with-redefs [u.http/external-host? (constantly true)]
       (let [config {:discovery-document {:token_endpoint "https://provider.example.com/token"}}]
         (is (= "https://provider.example.com/token"
                (oidc.discovery/get-token-endpoint config)))))))

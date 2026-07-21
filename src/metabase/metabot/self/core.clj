@@ -9,6 +9,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -814,6 +815,8 @@
 (defn request
   "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
   [{:keys [url headers]} req]
+  ;; customer-configured BYOK URL
   (http/request (-> req
                     (update :url #(str url %))
-                    (update :headers merge headers))))
+                    (update :headers merge headers)
+                    (merge u.http/ssrf-safe-request-opts))))

@@ -17,14 +17,18 @@
 
 (defmethod fetch-auth* :http
   [_ _database-id {:keys [http-auth-url http-auth-headers]}]
-  (u.http/*fetch-as-json* http-auth-url http-auth-headers))
+  ;; user-controlled URL
+  (u.http/*fetch-as-json* http-auth-url http-auth-headers u.http/ssrf-safe-request-opts))
 
 (defmethod fetch-auth* :oauth
   [_ _database-id {:keys [oauth-token-url oauth-token-headers]}]
-  (u.http/*fetch-as-json* oauth-token-url oauth-token-headers))
+  ;; user-controlled URL
+  (u.http/*fetch-as-json* oauth-token-url oauth-token-headers u.http/ssrf-safe-request-opts))
 
 (defmethod fetch-auth* :azure-managed-identity
   [_ _database-id {:keys [azure-managed-identity-client-id]}]
+  ;; hardcoded constant (not user input) -> intentionally not hardened; external-only would just break
+  ;; managed-identity auth
   (u.http/*fetch-as-json* (str "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fossrdbms-aad.database.windows.net&client_id="
                                azure-managed-identity-client-id)
                           {"Metadata" "true"}))

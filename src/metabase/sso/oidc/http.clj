@@ -1,11 +1,8 @@
 (ns metabase.sso.oidc.http
-  "Centralized HTTP client for OIDC operations.
-
-   All server-side OIDC HTTP requests should go through this namespace
-   to ensure SSRF validation via `oidc-allowed-networks`."
+  "Centralized HTTP client for OIDC operations. All requests go through here so they are external-only
+   (via `ssrf-safe-request-opts`)."
   (:require
    [clj-http.client :as http]
-   [metabase.sso.settings :as sso.settings]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
@@ -18,29 +15,26 @@
    :socket-timeout   5000})
 
 (defn- validate-url!
-  "Validate that a URL is allowed by the current `oidc-allowed-networks` setting.
-   Throws `ex-info` if the URL is blocked."
+  "Fast-fail check: reject a URL whose host resolves to a non-public address. Advisory -- the real gate
+   is `ssrf-safe-request-opts` on the request. Throws `ex-info` if blocked."
   [url]
-  (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) url)
-    (log/warnf "OIDC request to %s blocked by network restrictions (oidc-allowed-networks = %s)"
-               url (sso.settings/oidc-allowed-networks))
+  (when-not (u.http/external-host? url)
+    (log/warnf "OIDC request to %s blocked: host does not resolve to a public address (external-only)" url)
     (throw (ex-info "OIDC request blocked: address not allowed by network restrictions"
                     {:url url}))))
 
 (defn oidc-get
-  "Perform a validated GET request for OIDC operations.
-   Validates the URL against `oidc-allowed-networks` before making the request."
+  "GET for OIDC operations, external-only (via `ssrf-safe-request-opts`)."
   ([url]
    (oidc-get url {}))
   ([url opts]
    (validate-url! url)
-   (http/get url (merge default-opts opts))))
+   (http/get url (merge default-opts opts u.http/ssrf-safe-request-opts))))
 
 (defn oidc-post
-  "Perform a validated POST request for OIDC operations.
-   Validates the URL against `oidc-allowed-networks` before making the request."
+  "POST for OIDC operations, external-only (via `ssrf-safe-request-opts`)."
   ([url]
    (oidc-post url {}))
   ([url opts]
    (validate-url! url)
-   (http/post url (merge default-opts opts))))
+   (http/post url (merge default-opts opts u.http/ssrf-safe-request-opts))))

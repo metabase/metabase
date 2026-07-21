@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.sso.oidc.http :as oidc.http]
-   [metabase.sso.settings :as sso.settings]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
@@ -98,7 +97,8 @@
 
 (defn- get-endpoint
   "Extract an endpoint from the discovery document or manual configuration.
-   Validates the endpoint URL against `oidc-allowed-networks`.
+   Fast-fail SSRF check on the endpoint URL (external-only); the fetch itself is pinned via
+   `metabase.sso.oidc.http`.
 
    Parameters:
    - config: Map containing either :discovery-document or manual endpoint configurations
@@ -109,7 +109,7 @@
   [config discovery-key manual-key]
   (when-let [url (or (get-in config [:discovery-document discovery-key])
                      (get config manual-key))]
-    (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) url)
+    (when-not (u.http/external-host? url)
       (throw (ex-info "OIDC endpoint blocked: address not allowed by network restrictions"
                       {:url url :endpoint-key discovery-key})))
     url))

@@ -9,28 +9,34 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest valid-host?-test
-  (testing "external-only strategy (default)"
-    (is (true? (http/valid-host? :external-only "https://example.com")))
-    (is (false? (http/valid-host? :external-only "http://localhost")))
-    (is (false? (http/valid-host? :external-only "http://192.168.1.1"))))
-  (testing "external-only strategy explicitly"
-    (is (true? (http/valid-host? :external-only "https://example.com")))
-    (is (false? (http/valid-host? :external-only "http://localhost")))
-    (is (false? (http/valid-host? :external-only "http://192.168.1.1"))))
-  (testing "allow-private strategy allows private networks but not localhost"
-    (is (true? (http/valid-host? :allow-private "https://example.com")))
-    (is (true? (http/valid-host? :allow-private "http://192.168.1.1")))
-    (is (true? (http/valid-host? :allow-private "http://10.0.0.1")))
-    (is (true? (http/valid-host? :allow-private "http://172.16.0.1")))
-    (is (false? (http/valid-host? :allow-private "http://localhost")))
-    (is (false? (http/valid-host? :allow-private "http://127.0.0.1")))
-    (is (false? (http/valid-host? :allow-private "http://169.254.1.1"))))
-  (testing "allow-all strategy allows everything"
-    (is (true? (http/valid-host? :allow-all "https://example.com")))
-    (is (true? (http/valid-host? :allow-all "http://localhost")))
-    (is (true? (http/valid-host? :allow-all "http://192.168.1.1")))
-    (is (true? (http/valid-host? :allow-all "http://169.254.1.1")))))
+;; NOTE: the legacy `valid-host?` (with :external-only / :allow-private / :allow-all strategies) was
+;; retired 2026-07-19. Every caller now enforces external-only via `public-address?` through
+;; `external-host?` (advisory, create-time) or `ssrf-safe-request-opts` (authoritative, fetch-time).
+;; All cases below are network-free: IP literals parse without DNS, and `localhost` resolves via the
+;; hosts file to loopback.
+
+(deftest ^:parallel external-host?-test
+  (testing "public IP-literal hosts are allowed"
+    (doseq [url ["https://8.8.8.8/x" "http://1.1.1.1" "https://[2606:4700:4700::1111]/x"]]
+      (is (true? (http/external-host? url)) (str "should be allowed: " url))))
+  (testing "loopback / link-local (IMDS) / RFC1918 / any-local / ULA hosts are rejected"
+    (doseq [url ["http://127.0.0.1" "https://169.254.169.254/latest" "http://10.0.0.5"
+                 "http://192.168.1.1" "http://172.16.0.1" "http://0.0.0.0"
+                 "http://[::1]" "http://[fe80::1]" "http://[fc00::1]"
+                 "http://2130706433"            ; decimal form of 127.0.0.1 (normalized by InetAddress)
+                 "http://localhost"]]           ; resolves to loopback, no network
+      (is (false? (http/external-host? url)) (str "should be rejected: " url))))
+  (testing "malformed input fails closed"
+    (doseq [url ["not a url" "https:///x" "" "http://"]]
+      (is (false? (http/external-host? url)) (str "should be rejected: " url)))))
+
+(deftest ^:parallel ssrf-safe-request-opts-test
+  (testing "disables redirect following"
+    (is (= :none (:redirect-strategy http/ssrf-safe-request-opts))))
+  (testing "pins the resolver to public addresses (rejects loopback via localhost, no network)"
+    (is (thrown? ExceptionInfo
+                 (.resolve ^org.apache.http.conn.DnsResolver
+                           (:dns-resolver http/ssrf-safe-request-opts) "localhost")))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; SSRF-hardened fetch ([[metabase.util.http/fetch-bytes]] and its helpers). Everything below is

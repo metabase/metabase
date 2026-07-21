@@ -8,6 +8,7 @@
    [metabase.geojson.settings :as geojson.settings]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -16,7 +17,6 @@
    [ring.util.response :as response])
   (:import
    (java.io BufferedReader)
-   (java.net InetAddress)
    (org.apache.commons.io.input ReaderInputStream)
    (org.apache.http.conn DnsResolver)
    (org.apache.http.impl.conn SystemDefaultDnsResolver)))
@@ -27,15 +27,16 @@
 
 (def ^DnsResolver ^:private ^:dynamic  *system-dns-resolver* (SystemDefaultDnsResolver.))
 
-(def ^:private non-link-local-dns-resolver
+(def ^:private ssrf-safe-dns-resolver
+  "Pins every resolved IP to a public address ([[u.http/public-address?]]) inside the opened connection."
   (reify
     DnsResolver
     (^"[Ljava.net.InetAddress;" resolve [_ ^String host]
       (let [addresses (.resolve *system-dns-resolver* host)]
-        (if (some #(.isLinkLocalAddress ^InetAddress %) addresses)
-          (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400
-                                                                   :link-local true}))
-          addresses)))))
+        (if (every? u.http/public-address? addresses)
+          addresses
+          (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code     400
+                                                                   :blocked-address true})))))))
 
 (defn- url->geojson
   [url]
@@ -44,10 +45,10 @@
                                  :socket-timeout     connection-timeout-ms
                                  :connection-timeout connection-timeout-ms
                                  :throw-exceptions   false
-                                 :dns-resolver       non-link-local-dns-resolver})
+                                 :dns-resolver       ssrf-safe-dns-resolver})
                   (catch Throwable e
-                    (if (:link-local (ex-data e))
-                      (throw (ex-info (ex-message e) (dissoc (ex-data e) :link-local) e))
+                    (if (:blocked-address (ex-data e))
+                      (throw (ex-info (ex-message e) (dissoc (ex-data e) :blocked-address) e))
                       (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
         ;; only 2xx is a real success — a 3xx redirect isn't followed (`:redirect-strategy :none`, for SSRF
         ;; protection), so its (empty) body must be treated as a failed load rather than streamed as GeoJSON.
