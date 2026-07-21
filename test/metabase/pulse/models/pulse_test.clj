@@ -572,8 +572,8 @@
                      :model/User   {caller-id :id}       {:tenant_id tenant-id}]
         (mt/with-current-user caller-id
           (let [pulses   [{:channels [{:recipients [{:id 1 :tenant_id tenant-id}
-                                                     {:id 2 :tenant_id other-tenant-id}
-                                                     {:email "ext@example.com"}]}]}]
+                                                    {:id 2 :tenant_id other-tenant-id}
+                                                    {:email "ext@example.com"}]}]}]
                 kept     (-> (models.pulse/maybe-filter-pulses-recipients pulses)
                              first :channels first :recipients)]
             (testing "same-tenant Metabase user survives"
