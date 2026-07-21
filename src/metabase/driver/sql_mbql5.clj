@@ -45,7 +45,10 @@
    (reduce
     (fn [[prev-hsql prev-stage] stage]
       (let [stage-hsql (stage->honeysql driver stage)]
-        (if prev-hsql
+        ;; A stage with `:persisted-info/native` is replaced wholesale by the persisted cache lookup (`select * from
+        ;; <cache-table>`), which materializes the results of that stage AND every stage before it, so any previously
+        ;; compiled stages must be discarded rather than nested as a source query (#78240).
+        (if (and prev-hsql (not (:persisted-info/native stage)))
           (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
                 columns-metadata (get-in prev-stage [:lib/stage-metadata :columns])
                 desired-aliases (mapv :lib/desired-column-alias columns-metadata)
