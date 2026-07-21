@@ -484,6 +484,13 @@ function ExplorationCartesianChart({
   selectedTimelineEventIds,
   onSeeAllEvents,
 }: ExplorationCartesianChartProps) {
+  const handleBrush = useCallback<OnBrush>(
+    ({ clickObject, openClickActions }) => {
+      openClickActions(clickObject);
+    },
+    [],
+  );
+
   return (
     <ExplorationVisualization
       rawSeries={series}
@@ -493,9 +500,7 @@ function ExplorationCartesianChart({
       highlighted={highlighted}
       selectedTimelineEventIds={selectedTimelineEventIds}
       onSeeAllEvents={onSeeAllEvents}
-      onBrush={({ clickObject, openClickActions }) => {
-        openClickActions(clickObject);
-      }}
+      onBrush={handleBrush}
     />
   );
 }
