@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -293,6 +294,19 @@ export const SdkQuestionProvider = ({
     [updateQuestion],
   );
 
+  // How the user's `navigateToNewCard` prop maps to the context value:
+  //   - null      → navigation disabled (e.g. StaticQuestion / ad-hoc questions).
+  //                 Passed through as null; `Visualization` turns it into
+  //                 `undefined`, so the chart never wires `onChangeCardAndRun`
+  //                 (which would load a card by its undefined id → `/card/undefined`).
+  //   - undefined → the SDK's internal navigation (the default).
+  //   - a handler → run through the drill-through wrapper.
+  const contextNavigateToNewCard: SdkQuestionContextType["navigateToNewCard"] =
+    match(userNavigateToNewCard)
+      .with(null, () => null)
+      .with(undefined, () => navigateToNewCardWithSdkInternalNavigation)
+      .otherwise(() => navigateToNewCardWithDrillThrough);
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
     lastVisibleStageIndex,
@@ -307,10 +321,7 @@ export const SdkQuestionProvider = ({
     updateQuestion,
     updateAndNormalizeQuestion,
     updateParameterValues,
-    navigateToNewCard:
-      userNavigateToNewCard !== undefined
-        ? navigateToNewCardWithDrillThrough
-        : navigateToNewCardWithSdkInternalNavigation,
+    navigateToNewCard: contextNavigateToNewCard,
     plugins,
     question,
     originalQuestion,

@@ -3,9 +3,8 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.database-routing.e2e-test :refer [with-temp-dbs! execute-statement!]]
+   [metabase-enterprise.database-routing.e2e-test :refer [execute-statement! with-routing-setup!]]
    [metabase.driver.settings :as driver.settings]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -41,11 +40,7 @@
   (testing "Guest embedding should work with database routing by bypassing routing"
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
-        (with-temp-dbs! [router-db destination-db]
-          ;; Set up router and destination database
-          (t2/update! :model/Database (u/the-id destination-db) {:name "destination-db" :router_database_id (u/the-id router-db)})
-          ;; Sync the router database to ensure tables are available
-          (sync/sync-database! router-db)
+        (with-routing-setup! [router-db [[destination-db "destination-db"]]]
           ;; Set up database routing configuration
           (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                   :user_attribute "db_name"}

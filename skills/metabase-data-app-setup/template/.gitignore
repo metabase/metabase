@@ -1,0 +1,16 @@
+node_modules
+.env.local
+.vite
+dist
+.idea
+
+# Lockfiles — the template is package-manager agnostic; don't commit any
+# generated lockfile from `npm install` / `yarn` / `pnpm install` / `bun install`.
+# Downstream projects scaffolded from this template should DELETE these lines
+# from their own .gitignore once they pick a package manager — they'll want
+# their lockfile committed for reproducible installs.
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lock
+bun.lockb

@@ -43,9 +43,7 @@ export type AddOnProductType =
   | "transforms-basic"
   | "transforms-basic-metered"
   | "transforms-advanced"
-  | "transforms-advanced-metered"
-  | "dwh-rent"
-  | "etl-connections";
+  | "transforms-advanced-metered";
 
 interface IBillingInfoData {
   billing_period_months?: number | null;

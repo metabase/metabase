@@ -2,13 +2,13 @@ import { useLayoutEffect } from "react";
 
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { Outlet, replace } from "metabase/router";
 
 const FALLBACK_PATH = "/admin/metabot/";
 
 /** Redirects Metabot admin sub-pages to the index until AI is configured. */
 export const RequireMetabotConfigured = ({
-  children,
+  children = <Outlet />,
 }: {
   children?: React.ReactNode;
 }) => {
