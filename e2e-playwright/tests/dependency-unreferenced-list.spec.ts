@@ -12,9 +12,9 @@
  * runtime-unverified here — a green run on the jar means "correctly skipped",
  * not "passing". Mirrors the dependency-graph.spec.ts precedent.
  *
- * Snowplow helpers are no-op stubs (rule 6): the spike stubs snowplow, so the
- * upstream reset / expectNoBadSnowplowEvents / expectUnstructuredSnowplowEvent
- * assertions have nothing to assert against.
+ * Snowplow helpers run real assertions, backed by the per-slot collector via
+ * ../support/snowplow: the upstream reset / expectNoBadSnowplowEvents /
+ * expectUnstructuredSnowplowEvent assertions assert for real.
  *
  * New helpers live in support/dependency-unreferenced-list.ts
  * (DependencyDiagnostics locators, waitForUnreferencedEntities). Shared helpers
@@ -48,6 +48,11 @@ import {
   getTableId,
   resyncDatabase,
 } from "../support/schema-viewer";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover } from "../support/ui";
 
 const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -70,14 +75,6 @@ const ADMIN_USER_ID = (() => {
 // `createdBy`. Kept here so the table-owner assertion reads the same value the
 // Cypress `${USERS.admin.first_name} ${USERS.admin.last_name}` produced.
 const ADMIN_FULL_NAME = "Bobby Tables";
-
-// TODO: no snowplow-micro container in the spike harness — snowplow is stubbed
-// (rule 6). resetSnowplow / expectNoBadSnowplowEvents / the
-// dependency_diagnostics_entity_selected + dependency_entity_selected
-// assertions are all no-ops here.
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 // Silence unused-import lints when the describe is gated-skipped: USERS is only
 // referenced for parity documentation above.
@@ -194,11 +191,11 @@ test.describe("scenarios > dependencies > unreferenced list", () => {
     await mb.api.updateSetting("transforms-enabled", true);
     await resyncDatabase(mb.api, { dbId: WRITABLE_DB_ID, tables: [TABLE_NAME] });
     await page.setViewportSize({ width: 1600, height: 1400 });
-    await resetSnowplow();
+    await resetSnowplow(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test.describe("analysis", () => {
@@ -457,7 +454,7 @@ test.describe("scenarios > dependencies > unreferenced list", () => {
       await DependencyDiagnostics.list(page)
         .getByText(TABLE_DISPLAY_NAME, { exact: true })
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "dependency_diagnostics_entity_selected",
         triggered_from: "unreferenced",
         event_detail: "table",
@@ -532,7 +529,7 @@ test.describe("scenarios > dependencies > unreferenced list", () => {
       await page
         .getByRole("link", { name: "View in dependency graph", exact: true })
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "dependency_entity_selected",
         triggered_from: "diagnostics-unreferenced-list",
         event_detail: "snippet",

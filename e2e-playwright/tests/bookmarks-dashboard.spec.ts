@@ -1,12 +1,17 @@
 /**
  * Playwright port of e2e/test/scenarios/organization/bookmarks-dashboard.cy.spec.js
  *
- * Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- * harness); the UI flow those events decorate is ported for real.
+ * Snowplow assertions are real, backed by the per-slot collector via
+ * ../support/snowplow; the UI flow those events decorate is ported for real too.
  */
 import { dashboardHeader } from "../support/dashboard";
 import { icon } from "../support/dashboard-cards";
 import { test, expect } from "../support/fixtures";
+import {
+  enableTracking,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { ORDERS_DASHBOARD_ID } from "../support/sample-data";
 import {
   navigationSidebar,
@@ -14,20 +19,12 @@ import {
   visitDashboard,
 } from "../support/ui";
 
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: unknown,
-  _count?: number,
-) => {};
-
 test.describe("scenarios > dashboard > bookmarks", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
   test("should add, update bookmark name when dashboard name is updated, and then remove bookmark", async ({
@@ -39,7 +36,7 @@ test.describe("scenarios > dashboard > bookmarks", () => {
 
     // Add bookmark
     await icon(dashboardHeader(page), "bookmark").click();
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "bookmark_added",
       event_detail: "dashboard",
       triggered_from: "dashboard_header",
@@ -83,6 +80,7 @@ test.describe("scenarios > dashboard > bookmarks", () => {
     await icon(dashboardHeader(page), "bookmark_filled").click();
     // Removing a bookmark should not be tracked
     await expectUnstructuredSnowplowEvent(
+      mb,
       {
         event: "bookmark_added",
         event_detail: "dashboard",

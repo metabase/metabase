@@ -4,8 +4,8 @@
  * Port notes:
  * - The "Snowplow analytics" describe is gated on snowplow in Cypress
  *   (resetSnowplow / expectNoBadSnowplowEvents / expectUnstructuredSnowplowEvent).
- *   The spike harness has no snowplow-micro container, so those are no-op stubs
- *   (PORTING.md rule 6); the trash/restore UI flow inside is ported for real.
+ *   Those run real assertions here, backed by the per-slot collector via
+ *   ../support/snowplow; the trash/restore UI flow inside is ported for real too.
  * - Cypress intercept aliases (cy.intercept + cy.wait) for the highlight-trash
  *   test are dropped: the visit* helpers already await the responses they need.
  * - The sidebar-drag "@updateDashboard.all" counters become countRequests()
@@ -39,6 +39,11 @@ import { sidebar } from "../support/dashboard";
 import { countRequests } from "../support/dashboard-parameters";
 import { READ_ONLY_PERSONAL_COLLECTION_ID } from "../support/documents-core";
 import { test, expect } from "../support/fixtures";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { miniPickerBrowseAll } from "../support/joins";
 import { entityPickerModal, miniPicker } from "../support/notebook";
 import {
@@ -59,14 +64,15 @@ import {
   visitQuestion,
 } from "../support/ui";
 
-// TODO: no snowplow-micro container in the spike harness (PORTING.md rule 6).
-// The originals gate on H.resetSnowplow / H.expectNoBadSnowplowEvents in
-// before/after hooks and assert individual "moved-to-trash" events via
-// H.expectUnstructuredSnowplowEvent; the trash/restore UI flow is ported for
-// real and only the analytics assertions are stubbed away.
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_matcher?: unknown) => {};
+const movedToTrashEvent =
+  (eventDetail: string, triggeredFrom: string) =>
+  (event: Record<string, unknown>) =>
+    event.event === "moved-to-trash" &&
+    event.event_detail === eventDetail &&
+    typeof event.target_id === "number" &&
+    event.triggered_from === triggeredFrom &&
+    typeof event.duration_ms === "number" &&
+    event.result === "success";
 
 const isDashboardPut = (method: string, pathname: string) =>
   method === "PUT" && pathname.startsWith("/api/dashboard/");
@@ -175,12 +181,12 @@ test.describe("scenarios > collections > trash", () => {
   });
 
   test.describe("Snowplow analytics", () => {
-    test.beforeEach(async () => {
-      await resetSnowplow();
+    test.beforeEach(async ({ mb }) => {
+      await resetSnowplow(mb);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("should be able to trash & restore dashboards/collections/questions on entity page and from parent collection", async ({
@@ -203,15 +209,24 @@ test.describe("scenarios > collections > trash", () => {
       // move to trash from collection view
       await toggleEllipsisMenuFor(page, /Collection A/);
       await popover(page).getByText("Move to trash", { exact: true }).click();
-      await expectUnstructuredSnowplowEvent();
+      await expectUnstructuredSnowplowEvent(
+        mb,
+        movedToTrashEvent("collection", "collection"),
+      );
 
       await toggleEllipsisMenuFor(page, "Dashboard A");
       await popover(page).getByText("Move to trash", { exact: true }).click();
-      await expectUnstructuredSnowplowEvent();
+      await expectUnstructuredSnowplowEvent(
+        mb,
+        movedToTrashEvent("dashboard", "collection"),
+      );
 
       await toggleEllipsisMenuFor(page, "Question A");
       await popover(page).getByText("Move to trash", { exact: true }).click();
-      await expectUnstructuredSnowplowEvent();
+      await expectUnstructuredSnowplowEvent(
+        mb,
+        movedToTrashEvent("question", "collection"),
+      );
 
       // restore items from trash collection view
       await navigationSidebar(page).getByText("Trash", { exact: true }).click();
@@ -247,7 +262,10 @@ test.describe("scenarios > collections > trash", () => {
       // page.goBack() restores that page from bfcache, and a still-open modal
       // overlay would be frozen into the snapshot and block the banner click.
       await expect(modal(page)).toHaveCount(0);
-      await expectUnstructuredSnowplowEvent();
+      await expectUnstructuredSnowplowEvent(
+        mb,
+        movedToTrashEvent("collection", "detail_page"),
+      );
       await ensureCanRestoreFromPage(page, "Collection A");
       await ensureBookmarkVisible(page, "Collection A");
 
@@ -265,7 +283,10 @@ test.describe("scenarios > collections > trash", () => {
       // page.goBack() restores that page from bfcache, and a still-open modal
       // overlay would be frozen into the snapshot and block the banner click.
       await expect(modal(page)).toHaveCount(0);
-      await expectUnstructuredSnowplowEvent();
+      await expectUnstructuredSnowplowEvent(
+        mb,
+        movedToTrashEvent("dashboard", "detail_page"),
+      );
       await visitRootCollection(page);
       await expect(
         collectionTable(page).getByText("Dashboard A", { exact: true }),
@@ -290,7 +311,10 @@ test.describe("scenarios > collections > trash", () => {
       // page.goBack() restores that page from bfcache, and a still-open modal
       // overlay would be frozen into the snapshot and block the banner click.
       await expect(modal(page)).toHaveCount(0);
-      await expectUnstructuredSnowplowEvent();
+      await expectUnstructuredSnowplowEvent(
+        mb,
+        movedToTrashEvent("question", "detail_page"),
+      );
       await visitRootCollection(page);
       await expect(
         collectionTable(page).getByText("Question A", { exact: true }),

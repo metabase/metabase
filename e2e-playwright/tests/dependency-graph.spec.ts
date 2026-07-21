@@ -10,8 +10,9 @@
  * faithful-by-construction but runtime-unverified here — a green run means
  * "correctly skipped", not "passing".
  *
- * Snowplow helpers are no-op stubs (rule 6): the spike stubs snowplow, and the
- * upstream `dependency_entity_selected` assertion has nothing to assert against.
+ * Snowplow helpers run real assertions, backed by the per-slot collector via
+ * ../support/snowplow: the upstream `dependency_entity_selected` assertion
+ * asserts for real.
  *
  * New helpers live in support/dependency-graph.ts (DependencyGraph locators,
  * waitForBackfillComplete, createTransform, runTransformAndWaitForSuccess, the
@@ -46,12 +47,12 @@ import { entityPickerModalItem } from "../support/question-new";
 import { FIRST_COLLECTION_ID } from "../support/sample-data";
 import { WRITABLE_DB_ID, getTableId, resyncDatabase } from "../support/schema-viewer";
 import { SECOND_COLLECTION_ID } from "../support/question-new";
+import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+  type SnowplowCapable,
+} from "../support/snowplow";
 import { icon, popover } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness — snowplow is stubbed
-// (rule 6). The upstream `dependency_entity_selected` assertion is a no-op here.
-const resetSnowplow = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 const BASE_URL = "/data-studio/dependencies";
 const TABLE_NAME = "scoreboard_actions";
@@ -109,12 +110,13 @@ test.describe("scenarios > dependencies > dependency graph", () => {
     await mb.api.updateSetting("transforms-enabled", true);
     await resyncDatabase(mb.api, { dbId: WRITABLE_DB_ID, tables: [TABLE_NAME] });
     scoreboardTableId = await getTableId(mb.api, { name: TABLE_NAME });
-    await resetSnowplow();
+    await resetSnowplow(mb);
   });
 
   test.describe("entity search", () => {
     async function testEntitySearch(
       page: Page,
+      mb: SnowplowCapable,
       {
         itemName,
         itemIcon,
@@ -125,7 +127,7 @@ test.describe("scenarios > dependencies > dependency graph", () => {
       await DependencyGraph.entrySearchInput(page).clear();
       await DependencyGraph.entrySearchInput(page).pressSequentially(itemName);
       await popover(page).getByText(itemName, { exact: true }).click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "dependency_entity_selected",
         triggered_from: "dependency-graph",
         event_detail: "table",
@@ -202,27 +204,27 @@ test.describe("scenarios > dependencies > dependency graph", () => {
       await createTableBasedTransform(mb.api, { tableName: TABLE_NAME });
       await visitGraph(page);
 
-      await testEntitySearch(page, {
+      await testEntitySearch(page, mb, {
         itemName: "Products",
         itemIcon: "table",
         isRecentItem: true,
       });
-      await testEntitySearch(page, {
+      await testEntitySearch(page, mb, {
         itemName: "Orders, Count, Grouped by Created At (year)",
         itemIcon: "line",
         isRecentItem: true,
       });
-      await testEntitySearch(page, {
+      await testEntitySearch(page, mb, {
         itemName: "Orders Model",
         itemIcon: "model",
         isRecentItem: true,
       });
-      await testEntitySearch(page, {
+      await testEntitySearch(page, mb, {
         itemName: TABLE_BASED_METRIC_NAME,
         itemIcon: "metric",
         isRecentItem: false,
       });
-      await testEntitySearch(page, {
+      await testEntitySearch(page, mb, {
         itemName: TABLE_BASED_TRANSFORM_NAME,
         itemIcon: "transform",
         isRecentItem: false,

@@ -13,9 +13,9 @@
  * not "passing". Mirrors the dependency-graph / dependency-unreferenced-list
  * precedents.
  *
- * Snowplow helpers are no-op stubs (rule 6): the spike stubs snowplow, so the
- * upstream resetSnowplow / expectNoBadSnowplowEvents /
- * expectUnstructuredSnowplowEvent assertions have nothing to assert against.
+ * Snowplow helpers run real assertions, backed by the per-slot collector via
+ * ../support/snowplow: the upstream resetSnowplow / expectNoBadSnowplowEvents /
+ * expectUnstructuredSnowplowEvent assertions assert for real.
  *
  * New helpers live in support/dependency-broken-list.ts. The
  * `DependencyDiagnostics` locators (support/dependency-unreferenced-list.ts),
@@ -44,16 +44,13 @@ import {
   getTableId,
   resyncDatabase,
 } from "../support/schema-viewer";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { getFieldId } from "../support/table-editing";
 import { popover } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness — snowplow is stubbed
-// (rule 6). resetSnowplow / expectNoBadSnowplowEvents / the
-// dependency_diagnostics_entity_selected + dependency_entity_selected
-// assertions are all no-ops here.
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 const TABLE_NAME = "test_transform_table";
 const TABLE_DISPLAY_NAME = "Test Transform Table";
@@ -147,14 +144,14 @@ test.describe("scenarios > dependencies > broken list", () => {
     await mb.api.activateToken("pro-self-hosted");
     await mb.api.updateSetting("transforms-enabled", true);
     await createContent(mb.api);
-    await resetSnowplow();
+    await resetSnowplow(mb);
   });
 
   test.afterEach(async ({ mb }) => {
     if (transformId != null) {
       await deleteTransformTable(mb.api, transformId);
     }
-    await expectNoBadSnowplowEvents();
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test.describe("analysis", () => {
@@ -170,6 +167,7 @@ test.describe("scenarios > dependencies > broken list", () => {
   test.describe("selecting entities", () => {
     test("should show sidebar for broken dependents and trigger snowplow event", async ({
       page,
+      mb,
     }) => {
       await visitBrokenDependencies(page);
 
@@ -183,7 +181,7 @@ test.describe("scenarios > dependencies > broken list", () => {
         missingColumns: ["score"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
       });
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "dependency_diagnostics_entity_selected",
         triggered_from: "broken",
         event_detail: "table",
@@ -213,7 +211,7 @@ test.describe("scenarios > dependencies > broken list", () => {
       await page
         .getByRole("link", { name: "View in dependency graph", exact: true })
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "dependency_entity_selected",
         triggered_from: "diagnostics-broken-list",
         event_detail: "card",

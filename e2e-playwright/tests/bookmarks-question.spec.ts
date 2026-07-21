@@ -1,8 +1,8 @@
 /**
  * Playwright port of e2e/test/scenarios/organization/bookmarks-question.cy.spec.js
  *
- * Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- * harness); the UI flows in those tests are ported for real.
+ * Snowplow assertions are real, backed by the per-slot collector via
+ * ../support/snowplow; the UI flows in those tests are ported for real too.
  */
 import { modal } from "../support/dashboard";
 import { icon } from "../support/dashboard-cards";
@@ -14,6 +14,12 @@ import {
   toggleQuestionBookmarkStatus,
   undoToastList,
 } from "../support/organization";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { ORDERS_QUESTION_ID } from "../support/sample-data";
 import {
   navigationSidebar,
@@ -22,34 +28,26 @@ import {
   visitQuestion,
 } from "../support/ui";
 
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: unknown,
-  _count?: number,
-) => {};
-
 test.describe("scenarios > question > bookmarks", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should add, update bookmark name when question name is updated, then remove bookmark from question page", async ({
     page,
+    mb,
   }) => {
     await visitQuestion(page, ORDERS_QUESTION_ID);
     await toggleQuestionBookmarkStatus(page);
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "bookmark_added",
       event_detail: "question",
       triggered_from: "qb_action_panel",
@@ -123,6 +121,7 @@ test.describe("scenarios > question > bookmarks", () => {
     // Remove bookmark
     await toggleQuestionBookmarkStatus(page, { wasSelected: true });
     await expectUnstructuredSnowplowEvent(
+      mb,
       {
         event: "bookmark_added",
         event_detail: "question",
@@ -137,11 +136,11 @@ test.describe("scenarios > question > bookmarks", () => {
     ).toHaveCount(0);
   });
 
-  test("should bookmark a model", async ({ page }) => {
+  test("should bookmark a model", async ({ page, mb }) => {
     await visitModel(page, ORDERS_MODEL_ID);
 
     await toggleQuestionBookmarkStatus(page);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "bookmark_added",
       event_detail: "model",
       triggered_from: "qb_action_panel",
@@ -150,6 +149,7 @@ test.describe("scenarios > question > bookmarks", () => {
     // Remove the bookmark and expect the number of events to stay the same
     await toggleQuestionBookmarkStatus(page, { wasSelected: true });
     await expectUnstructuredSnowplowEvent(
+      mb,
       {
         event: "bookmark_added",
         event_detail: "model",

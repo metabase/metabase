@@ -2,9 +2,9 @@
  * Playwright port of e2e/test/scenarios/collections/collections.cy.spec.js
  *
  * Port notes:
- * - Snowplow helpers ("new collection button" describe) are no-op stubs — the
- *   spike harness has no snowplow-micro container (PORTING.md rule 6). The UI
- *   flows in those tests are ported for real.
+ * - Snowplow helpers ("new collection button" describe) run real assertions,
+ *   backed by the per-slot collector via ../support/snowplow. The UI flows in
+ *   those tests are ported for real too.
  * - The Cypress beforeEach intercepts become per-test waitForResponse promises
  *   registered before their triggering action. `@getPinnedItems` was never
  *   awaited in the source, so it is dropped.
@@ -50,6 +50,12 @@ import { updatePermissionsGraph } from "../support/dashboard-repros";
 import { READ_ONLY_PERSONAL_COLLECTION_ID } from "../support/documents-core";
 import { test, expect } from "../support/fixtures";
 import { entityPickerModal } from "../support/notebook";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { openCollectionItemMenu } from "../support/bookmarks-extras";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "../support/permissions";
 import { openOrdersTable } from "../support/question-settings";
@@ -84,12 +90,6 @@ const { ORDERS, ORDERS_ID, FEEDBACK_ID } = SAMPLE_DATABASE;
 const revokedUsersPersonalCollectionName =
   "No Collection Tableton's Personal Collection";
 
-// TODO: no snowplow-micro container in the spike harness (PORTING.md rule 6).
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
-
 const visitRootCollection = (page: Page) => visitCollection(page, "root");
 
 // The pagination range renders as `{n} - {m}` text nodes inside a span that
@@ -116,17 +116,18 @@ test.describe("scenarios > collection defaults", () => {
   test.describe("new collection button", () => {
     test.beforeEach(async ({ mb }) => {
       await mb.restore();
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.signInAsAdmin();
-      await enableTracking();
+      await enableTracking(mb);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("should show the new collection button in the root collection", async ({
       page,
+      mb,
     }) => {
       await visitRootCollection(page);
       await page
@@ -134,7 +135,7 @@ test.describe("scenarios > collection defaults", () => {
         .getByLabel("Create a new collection", { exact: true })
         .click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "plus_button_clicked",
         triggered_from: "collection-header",
       });
@@ -173,7 +174,7 @@ test.describe("scenarios > collection defaults", () => {
           .getByRole("dialog", { name: "New collection" })
           .filter({ visible: true }),
       ).toBeVisible();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "plus_button_clicked",
         triggered_from: "collection-nav",
       });

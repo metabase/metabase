@@ -10,9 +10,9 @@
  * Port notes:
  * - @EE + pro-self-hosted token: activated in beforeEach; the whole describe is
  *   skipped without it (PORTING rule 7). The jar activates it.
- * - Snowplow assertions → no-op stubs (PORTING rule 6; no snowplow-micro in the
- *   spike harness). The UI flows still run; only the event assertions are
- *   stubbed. TODO: wire snowplow-micro to make these real.
+ * - Snowplow assertions are real, backed by the per-slot collector via
+ *   ../support/snowplow. The UI flows still run and the event assertions assert
+ *   for real.
  * - cy.intercept(...).as + cy.wait → page.waitForResponse registered before the
  *   triggering action (PORTING rule 2).
  * - cy.findByText/findByLabelText/findByPlaceholderText string args are EXACT
@@ -44,9 +44,7 @@ import {
   MeasureList,
   MeasureRevisionHistory,
   createMeasure,
-  expectUnstructuredSnowplowEvent,
   getMeasuresBaseUrl,
-  resetSnowplow,
   visitDataModelMeasure,
   visitDataStudioMeasures,
   visitDataStudioTable,
@@ -55,6 +53,10 @@ import {
   waitForUpdateMeasure,
 } from "../support/measures-data-studio";
 import { undoToast } from "../support/metrics";
+import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { getNotebookStep, visualize } from "../support/notebook";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
 import { modal, popover } from "../support/ui";
@@ -154,7 +156,7 @@ test.describe("scenarios > data studio > data model > measures", () => {
 
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
     await mb.api.activateToken("pro-self-hosted");
   });
@@ -162,6 +164,7 @@ test.describe("scenarios > data studio > data model > measures", () => {
   test.describe("Measure list", () => {
     test("should show empty state and navigation when no measures exist", async ({
       page,
+      mb,
     }) => {
       await visitDataStudioMeasures(page, ORDERS_ID);
 
@@ -179,8 +182,8 @@ test.describe("scenarios > data studio > data model > measures", () => {
       await MeasureList.getNewMeasureLink(page).scrollIntoViewIfNeeded();
       await MeasureList.getNewMeasureLink(page).click();
 
-      // verify measure_create_started event (snowplow stubbed)
-      await expectUnstructuredSnowplowEvent({
+      // verify measure_create_started event
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "measure_create_started",
         triggered_from: "data_studio_measures_list",
         target_id: ORDERS_ID,
@@ -251,6 +254,7 @@ test.describe("scenarios > data studio > data model > measures", () => {
   test.describe("Measure creation", () => {
     test("should create a measure with aggregation and verify across features", async ({
       page,
+      mb,
     }) => {
       await visitDataStudioMeasures(page, ORDERS_ID);
 
@@ -258,8 +262,8 @@ test.describe("scenarios > data studio > data model > measures", () => {
       await MeasureList.getNewMeasureLink(page).scrollIntoViewIfNeeded();
       await MeasureList.getNewMeasureLink(page).click();
 
-      // verify measure_create_started event (snowplow stubbed)
-      await expectUnstructuredSnowplowEvent({
+      // verify measure_create_started event
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "measure_create_started",
         triggered_from: "data_studio_measures_list",
         target_id: ORDERS_ID,
@@ -286,8 +290,8 @@ test.describe("scenarios > data studio > data model > measures", () => {
         id: number;
       };
 
-      // verify measure_created success event (snowplow stubbed)
-      await expectUnstructuredSnowplowEvent({
+      // verify measure_created success event
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "measure_created",
         triggered_from: "data_studio_measures",
         result: "success",

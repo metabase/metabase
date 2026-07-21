@@ -2,8 +2,8 @@
  * Playwright port of e2e/test/scenarios/onboarding/command-palette.cy.spec.js
  *
  * Notes:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness); the "shortcuts" describe is tagged ["@actions"] upstream.
+ * - Snowplow helpers run real assertions, backed by the per-slot collector via
+ *   ../support/snowplow; the "shortcuts" describe is tagged ["@actions"] upstream.
  * - `cy.findByRole("button", { name: /search/i })` clicks are ported as
  *   commandPaletteButton (the same app-bar element, pre-scoped against
  *   strict-mode multi-matches).
@@ -43,6 +43,11 @@ import {
   startNewCollectionFromSidebar,
 } from "../support/command-palette";
 import { modal } from "../support/dashboard";
+import {
+  enableTracking,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { entityPickerModal } from "../support/notebook";
 import { ORDERS_COUNT_QUESTION_ID } from "../support/organization";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "../support/permissions";
@@ -77,14 +82,6 @@ const TAB_4 = { id: 4, name: "Tab 4" };
  * beat instead.
  */
 const REAL_PRESS_DELAY = 100;
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: unknown,
-  _count?: number,
-) => {};
 
 test.describe("command palette", () => {
   test.beforeEach(async ({ mb }) => {
@@ -629,10 +626,10 @@ test.describe("command palette", () => {
 // Tagged ["@actions"] upstream.
 test.describe("shortcuts", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
   test("should render a shortcuts modal, and global shortcuts should be available", async ({
@@ -686,7 +683,7 @@ test.describe("shortcuts", () => {
     await expect(
       page.getByRole("dialog", { name: /collection/i }),
     ).toHaveCount(0);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "keyboard_shortcut_performed",
       event_detail: "create-new-collection",
     });
@@ -710,6 +707,7 @@ test.describe("shortcuts", () => {
     // Using a command palette action registered as a shortcut should only
     // emit snowplow events when using keyboard shortcuts, not command palette
     await expectUnstructuredSnowplowEvent(
+      mb,
       {
         event: "keyboard_shortcut_performed",
         event_detail: "create-new-dashboard",
@@ -726,6 +724,7 @@ test.describe("shortcuts", () => {
     // See close-transition note above.
     await expect(page.getByRole("dialog", { name: /dashboard/i })).toHaveCount(0);
     await expectUnstructuredSnowplowEvent(
+      mb,
       {
         event: "keyboard_shortcut_performed",
         event_detail: "create-new-dashboard",
@@ -752,6 +751,7 @@ test.describe("shortcuts", () => {
       expect(navigationSidebar(page)).toBeVisible({ timeout: 3000 }),
     );
     await expectUnstructuredSnowplowEvent(
+      mb,
       {
         event: "keyboard_shortcut_performed",
         event_detail: "toggle-navbar",
@@ -765,7 +765,7 @@ test.describe("shortcuts", () => {
         { timeout: 3000 },
       ),
     );
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "keyboard_shortcut_performed",
       event_detail: "navigate-personal-collection",
     });
@@ -773,7 +773,7 @@ test.describe("shortcuts", () => {
     await pressShortcut(page, ["g", "t"], () =>
       page.waitForURL((url) => url.pathname === "/trash", { timeout: 3000 }),
     );
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "keyboard_shortcut_performed",
       event_detail: "navigate-trash",
     });
@@ -783,7 +783,7 @@ test.describe("shortcuts", () => {
         timeout: 3000,
       }),
     );
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "keyboard_shortcut_performed",
       event_detail: "navigate-data-studio",
     });

@@ -1,8 +1,6 @@
 /**
  * Playwright port of e2e/test/scenarios/metrics/metrics-explorer.cy.spec.ts
  *
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness); the UI flows in those tests are ported for real.
  * - The Cypress before() builds a seeded snapshot once per spec run; here
  *   the snapshot is built once per worker (module-level flag — each worker
  *   owns its backend) and restored in beforeEach, same as upstream.
@@ -48,16 +46,16 @@ import {
   getTableId,
   resyncDatabase,
 } from "../support/schema-viewer";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover } from "../support/ui";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
   SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 type CompactMetricsViewerUrlState = {
   t?: Array<{
@@ -593,12 +591,12 @@ test.describe("scenarios > metrics > explorer", () => {
     await mb.signInAsAdmin();
     await waitForSeededSearchIndex(mb.api);
 
-    await resetSnowplow();
-    await enableTracking();
+    await resetSnowplow(mb);
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test.describe("Entry points", () => {
@@ -659,12 +657,12 @@ test.describe("scenarios > metrics > explorer", () => {
   });
 
   test.describe("Adding metrics and measures", () => {
-    test("should add multiple metrics", async ({ page }) => {
+    test("should add multiple metrics", async ({ page, mb }) => {
       await MetricsViewer.goToViewer(page);
 
       await addMetric(page, "Count of products");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_metric_added",
         event_detail: "metric",
       });
@@ -677,7 +675,7 @@ test.describe("scenarios > metrics > explorer", () => {
 
       // Should allow me to add measures
       await addMetricInputSequence(page, [{ nameOrPath: testMeasurePath }]);
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_metric_added",
         event_detail: "measure",
       });
@@ -1467,6 +1465,7 @@ test.describe("scenarios > metrics > explorer", () => {
 
       test("should select dimension categories from the sidebar", async ({
         page,
+        mb,
       }) => {
         await addMetricInputSequence(page, [
           { nameOrPath: "Count of orders" },
@@ -1477,7 +1476,7 @@ test.describe("scenarios > metrics > explorer", () => {
         await MetricsViewer.assertVizType(page, "Line");
 
         await selectDimensionBreakout(page, "State", { seeAll: true });
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "metrics_viewer_dimension_selected",
         });
         await MetricsViewer.assertAllVizTypes(page, "Map", 2);
@@ -1809,6 +1808,7 @@ test.describe("scenarios > metrics > explorer", () => {
 
     test("should stack series into panels when the stack series button is toggled", async ({
       page,
+      mb,
     }) => {
       await addMetric(page, "Count of products");
 
@@ -1816,7 +1816,7 @@ test.describe("scenarios > metrics > explorer", () => {
       await MetricsViewer.assertVizType(page, "Line");
       await expect(page.getByTestId("chart-layout-picker")).toBeVisible();
       await page.getByLabel("Stack layout", { exact: true }).click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "stack_series_enabled",
         triggered_from: "metrics_viewer",
       });
@@ -1867,7 +1867,7 @@ test.describe("scenarios > metrics > explorer", () => {
       await addMetric(page, "Count of orders");
     });
 
-    test("should apply a categorical filter to a metric", async ({ page }) => {
+    test("should apply a categorical filter to a metric", async ({ page, mb }) => {
       await selectBreakout(page, "Count of orders", "Category");
       const legend = MetricsViewer.breakoutLegend(page);
       await expect(legend).toContainText("Doohickey");
@@ -1890,7 +1890,7 @@ test.describe("scenarios > metrics > explorer", () => {
       await expect(filterPills.first()).toContainText("Gadget");
       await expect(filterPills.first()).toContainText("Category");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_filter_added",
         triggered_from: "metric_filter",
       });
@@ -1902,7 +1902,7 @@ test.describe("scenarios > metrics > explorer", () => {
         .getByRole("button", { name: "Update filter", exact: true })
         .click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_filter_edited",
         triggered_from: "metric_filter",
       });
@@ -1941,7 +1941,7 @@ test.describe("scenarios > metrics > explorer", () => {
         MetricsViewer.getMetricVisualization(page),
       ).not.toContainText("Gizmo");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_filter_added",
         triggered_from: "dimension_filter",
       });
@@ -1962,7 +1962,7 @@ test.describe("scenarios > metrics > explorer", () => {
       );
       await expect(MetricsViewer.getAllFilterPills(page)).toHaveCount(0);
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_filter_removed",
         triggered_from: "metric_filter",
       });
@@ -2032,6 +2032,7 @@ test.describe("scenarios > metrics > explorer", () => {
 
     test("should allow me to apply filters to each metric individually", async ({
       page,
+      mb,
     }) => {
       await addMetric(page, "Count of products");
       await selectDimensionBreakout(page, "Category");
@@ -2107,7 +2108,7 @@ test.describe("scenarios > metrics > explorer", () => {
         .getByRole("button", { name: "Update filter", exact: true })
         .click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_filter_edited",
         triggered_from: "dimension_filter",
       });
@@ -2122,7 +2123,7 @@ test.describe("scenarios > metrics > explorer", () => {
         MetricsViewer.getMetricVisualizationDataPoints(page),
       ).toHaveCount(85);
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_filter_removed",
         triggered_from: "dimension_filter",
       });
@@ -2247,7 +2248,7 @@ test.describe("scenarios > metrics > explorer", () => {
       await expect(filterPills).toHaveCount(1);
       await expect(filterPills.first()).toContainText(SEGMENT_NAME);
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_filter_added",
         triggered_from: "metric_filter",
       });
@@ -2260,7 +2261,7 @@ test.describe("scenarios > metrics > explorer", () => {
 
       await expect(MetricsViewer.getAllFilterPills(page)).toHaveCount(0);
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metrics_viewer_filter_removed",
         triggered_from: "metric_filter",
       });

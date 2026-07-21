@@ -15,9 +15,11 @@
  *   them all globally) → page.waitForResponse registered at the true trigger
  *   (PORTING.md rule 2).
  * - cy.findByText string args are exact (rule 1).
- * - The final "scenarios > collections > timelines" describe is snowplow-tagged;
- *   snowplow helpers are no-op stubs (rule 6, no snowplow-micro container). The
- *   UI flow is ported for real.
+ * - The final "scenarios > collections > timelines" describe is snowplow-tagged.
+ *   Only the self-describing `new_event_created` event is asserted: the per-slot
+ *   collector records self-describing (`ue`) events only, so upstream's four
+ *   `page_view` assertions are not observable here (see
+ *   findings-inbox/timelines-collection-snowplow.md).
  * - cy.icon(name).should("be.visible") is an ANY-match → .filter({visible:true})
  *   .first() (rule 3 / wave-9 gotcha).
  */
@@ -46,6 +48,12 @@ import {
   waitForUpdateEvent,
   waitForUpdateTimeline,
 } from "../support/timelines-collection";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { icon, modal, popover } from "../support/ui";
 
 function eventList(page: Page): Locator {
@@ -745,63 +753,37 @@ test.describe("scenarios > organization > timelines > collection", () => {
   });
 });
 
-// TODO: no snowplow-micro container in the spike harness (PORTING.md rule 6).
-// The snowplow helpers are no-op stubs; the UI flow below is ported for real.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectSnowplowEvent = async (_event: unknown, _count?: number) => {};
-
 test.describe("scenarios > collections > timelines", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should send snowplow events when creating a timeline event", async ({
     page,
+    mb,
   }) => {
     await page.goto("/collection/root");
-    await expectSnowplowEvent({
-      eventType: "page_view",
-      event: { page_urlpath: "/collection/root" },
-    });
+
+    // Upstream also asserts four `page_view` events across this flow; the
+    // per-slot collector records only self-describing events, so they are not
+    // observable here (findings-inbox/timelines-collection-snowplow.md).
 
     await icon(page, "calendar").click();
-    await expectSnowplowEvent({
-      eventType: "page_view",
-      event: { page_urlpath: "/collection/root/timelines" },
-    });
 
     await page.getByText("Create event", { exact: true }).click();
     await page.getByLabel("Event name", { exact: true }).fill("Event");
     await page.getByLabel("Date", { exact: true }).fill("10/20/2026");
-    await expectSnowplowEvent({
-      eventType: "page_view",
-      event: { page_urlpath: "/collection/root/timelines/new/events/new" },
-    });
 
     const createEvent = waitForCreateEvent(page);
     await page.getByRole("button", { name: "Create", exact: true }).click();
     await createEvent;
-    await expectSnowplowEvent({
-      event: {
-        unstruct_event: { data: { data: { event: "new_event_created" } } },
-      },
-    });
-
-    await expectSnowplowEvent(
-      {
-        eventType: "page_view",
-        event: { page_urlpath: "/collection/root/timelines" },
-      },
-      2,
-    ); // we viewed this page twice
+    await expectUnstructuredSnowplowEvent(mb, { event: "new_event_created" });
   });
 });

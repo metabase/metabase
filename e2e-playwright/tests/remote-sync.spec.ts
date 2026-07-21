@@ -21,7 +21,8 @@
  *   local git repo + EE token (default snapshot) and RUN on the jar.
  *
  * Port notes:
- * - Snowplow helpers → no-op stubs (PORTING rule 6; no snowplow-micro here).
+ * - Snowplow helpers run real assertions, backed by the per-slot collector via
+ *   ../support/snowplow.
  * - `H.interceptTask()` (a cy.intercept alias) is DROPPED — waitForTask polls
  *   the current-task endpoint directly.
  * - cy.wait("@updateDashboard"/"@saveSettings"/"@exportChanges") →
@@ -72,15 +73,12 @@ import {
   createBranchViaSettings,
   createSharedTenantCollection,
   enableTenants,
-  expectNoBadSnowplowEvents,
-  expectUnstructuredSnowplowEvent,
   getGitSyncControls,
   getPushOption,
   getSettingsBranchSwitcher,
   getSyncStatusIndicators,
   goToSyncedCollection,
   moveCollectionItemToSyncedCollection,
-  resetSnowplow,
   setupGitSync,
   switchBranchViaSettings,
   teardownGitSync,
@@ -89,6 +87,12 @@ import {
   waitForTask,
   wrapSyncedCollection,
 } from "../support/remote-sync";
+import {
+  type SnowplowCapable,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -101,8 +105,8 @@ test.describe("Remote Sync", () => {
     "requires the pro-self-hosted token (MB_PRO_SELF_HOSTED / CYPRESS_...)",
   );
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   // -------------------------------------------------------------------------
@@ -118,7 +122,7 @@ test.describe("Remote Sync", () => {
 
     test.beforeEach(async ({ mb }) => {
       await mb.restore("postgres-writable");
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.signInAsAdmin();
       await mb.api.activateToken("pro-self-hosted");
       await mb.api.updateSetting("transforms-enabled", true);
@@ -160,7 +164,7 @@ test.describe("Remote Sync", () => {
       await modal(page).getByRole("button", { name: /Push changes/ }).click();
 
       await waitForTask(page, { taskName: "export" });
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "remote_sync_push_changes",
         triggered_from: "app-bar",
       });
@@ -185,7 +189,7 @@ test.describe("Remote Sync", () => {
       await clickPullOption(page);
 
       await waitForTask(page, { taskName: "import" });
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "remote_sync_pull_changes",
         triggered_from: "app-bar",
       });
@@ -330,11 +334,16 @@ test.describe("Remote Sync", () => {
         branchCount = 0;
       });
 
-      const createNewBranch = async (page: import("@playwright/test").Page, newBranchName: string) => {
+      const createNewBranch = async (
+        mb: SnowplowCapable,
+        page: import("@playwright/test").Page,
+        newBranchName: string,
+      ) => {
         branchCount++;
         await createBranchViaSettings(page, newBranchName);
 
         await expectUnstructuredSnowplowEvent(
+          mb,
           {
             event: "remote_sync_branch_created",
             triggered_from: "branch-picker",
@@ -377,7 +386,7 @@ test.describe("Remote Sync", () => {
         await expect(collectionTable(page)).toHaveCount(0);
         await expect(page.getByTestId("collection-empty-state")).toBeVisible();
 
-        await createNewBranch(page, NEW_BRANCH_1);
+        await createNewBranch(mb, page, NEW_BRANCH_1);
 
         // Move something into synced collection for the new branch
         await page.goto("/collection/root");
@@ -390,7 +399,7 @@ test.describe("Remote Sync", () => {
         await pushUpdates(page);
 
         // Create a second branch (off the first) and add different content
-        await createNewBranch(page, NEW_BRANCH_2);
+        await createNewBranch(mb, page, NEW_BRANCH_2);
 
         await page.goto("/collection/root");
         await moveCollectionItemToSyncedCollection(
@@ -411,7 +420,7 @@ test.describe("Remote Sync", () => {
         await switchBranchViaSettings(page, NEW_BRANCH_1);
         await waitForTask(page, { taskName: "import" });
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "remote_sync_branch_switched",
           triggered_from: "admin-settings",
         });
@@ -444,7 +453,7 @@ test.describe("Remote Sync", () => {
         await expect(collectionTable(page)).toHaveCount(0);
         await expect(page.getByTestId("collection-empty-state")).toBeVisible();
 
-        await createNewBranch(page, NEW_BRANCH);
+        await createNewBranch(mb, page, NEW_BRANCH);
 
         // Move something into synced collection for the new branch
         await page.goto("/collection/root");
@@ -614,7 +623,7 @@ test.describe("Remote Sync", () => {
       teardownGitSync(repo);
     });
 
-    test("can set up read-write mode", async ({ page }) => {
+    test("can set up read-write mode", async ({ page, mb }) => {
       await page.goto("/admin/settings/remote-sync");
       const urlField = page.getByLabel(/repository url/i);
       await expect(urlField).toBeVisible();
@@ -627,7 +636,7 @@ test.describe("Remote Sync", () => {
         .click();
       await page.getByRole("button", { name: "Set up remote sync" }).click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "remote_sync_settings_changed",
         triggered_from: "admin-settings",
       });
@@ -766,7 +775,7 @@ test.describe("Remote Sync", () => {
       ).toBeVisible();
       await modal(page).getByRole("button", { name: "Disable" }).click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "remote_sync_deactivated",
         triggered_from: "admin-settings",
       });
@@ -1154,7 +1163,7 @@ test.describe("Remote Sync", () => {
 
     test.beforeEach(async ({ mb }) => {
       await mb.restore("postgres-writable");
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.signInAsAdmin();
       await mb.api.activateToken("pro-self-hosted");
       await mb.api.updateSetting("transforms-enabled", true);

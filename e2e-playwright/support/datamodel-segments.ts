@@ -4,24 +4,11 @@
  *
  * New module per PORTING rule 9 — imports read-only from the shared support
  * modules (ui.ts, etc.) and does not edit them.
- *
- * Snowplow helpers → no-op stubs (PORTING rule 6; no snowplow-micro in the
- * spike harness). The UI actions still fire, only the assertions are stubbed.
- * TODO: wire snowplow-micro to make these real.
  */
 import type { Locator, Page } from "@playwright/test";
 
 import { expect } from "./fixtures";
 import { icon } from "./ui";
-
-// === Snowplow stubs (PORTING rule 6) ================================
-export const resetSnowplow = async () => {};
-export const enableTracking = async () => {};
-export const expectNoBadSnowplowEvents = async () => {};
-export const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};
 
 // === Segment list ===================================================
 

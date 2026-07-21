@@ -2,8 +2,7 @@
  * Playwright port of e2e/test/scenarios/dashboard/dashboard.cy.spec.js
  *
  * Port notes:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness).
+ * - Snowplow assertions run against the per-slot collector (support/snowplow).
  * - cy.spy() request-count intercepts become page.on("request") counters
  *   (countDashboardUpdates and the field-API counters).
  * - The 500-revert stub (cy.intercept with a body) becomes page.route.
@@ -83,6 +82,12 @@ import { openDashboardMenu } from "../support/organization";
 import { checkSavedToCollectionQuestionToast } from "../support/question-new";
 import { openQuestionsSidebar, sidesheet } from "../support/revisions";
 import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
+import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
   SAMPLE_DATABASE,
@@ -102,15 +107,6 @@ import {
 } from "../support/ui";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};
 
 // There's a race condition when saving a dashboard
 // and then immediately editing it again. After saving,
@@ -1573,14 +1569,14 @@ test.describe("scenarios > dashboard", () => {
 
 test.describe("scenarios > dashboard", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should be possible to add an iframe card", async ({ page, mb }) => {
@@ -1600,7 +1596,7 @@ test.describe("scenarios > dashboard", () => {
     await saveDashboard(page);
     await validateIFrame(page, "https://example.com");
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "new_iframe_card_created",
       target_id: id,
       event_detail: "example.com",
@@ -1620,7 +1616,7 @@ test.describe("scenarios > dashboard", () => {
     await heading.pressSequentially(newTitle);
     await heading.blur();
     await saveDashboard(page);
-    await expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+    await expectUnstructuredSnowplowEvent(mb, { event: "dashboard_saved" });
   });
 
   test("should allow users to add link cards to dashboards", async ({
@@ -1663,7 +1659,9 @@ test.describe("scenarios > dashboard", () => {
         .getByText(/orders in a dashboard/i),
     ).toBeVisible();
 
-    await expectUnstructuredSnowplowEvent({ event: "new_link_card_created" });
+    await expectUnstructuredSnowplowEvent(mb, {
+      event: "new_link_card_created",
+    });
   });
 
   test("should track enabling the hide empty cards setting", async ({
@@ -1687,6 +1685,7 @@ test.describe("scenarios > dashboard", () => {
     await switchInput.click({ force: true }); // enable
 
     await expectUnstructuredSnowplowEvent(
+      mb,
       {
         event: "card_set_to_hide_when_no_results",
         dashboard_id: ORDERS_DASHBOARD_ID,
@@ -1741,7 +1740,7 @@ test.describe("scenarios > dashboard", () => {
     await page.getByLabel("Toggle width").click();
     await popover(page).getByLabel("Full width").click();
     await assertDashboardFullWidth(page);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_width_toggled",
       full_width: true,
     });
@@ -1756,7 +1755,7 @@ test.describe("scenarios > dashboard", () => {
     await page.getByLabel("Toggle width").click();
     await popover(page).getByLabel("Full width").click();
     await assertDashboardFixedWidth(page);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_width_toggled",
       full_width: false,
     });
@@ -1787,7 +1786,7 @@ test.describe("scenarios > dashboard", () => {
     await sheet.getByTestId("question-revert-button").click();
     await firstRevert;
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "revert_version_clicked",
       event_detail: "dashboard",
     });

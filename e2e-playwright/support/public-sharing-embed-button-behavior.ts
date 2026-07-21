@@ -8,13 +8,6 @@
  * NEW helpers live here (parallel-agent rule: no edits to shared modules). The
  * sharing-menu, embed-modal, factory, api, ui and notebook helpers are IMPORTED
  * read-only from the shared modules.
- *
- * Snowplow: the upstream `beforeEach`/`afterEach` call H.resetSnowplow /
- * H.enableTracking / H.expectNoBadSnowplowEvents and the "snowplow events"
- * describes assert H.expectUnstructuredSnowplowEvent. Per PORTING rule 6 these
- * become no-op stubs (the spike stubs snowplow) — kept as callable functions so
- * the spec's structure mirrors the original and the real UI flows (opening the
- * modal, clicking copy/publish/unpublish) still execute.
  */
 import type { Page, Response } from "@playwright/test";
 import { expect } from "@playwright/test";
@@ -25,15 +18,6 @@ import { sharingMenu, sharingMenuButton, openSharingMenu } from "./sharing";
 import { visitDashboard, visitQuestion } from "./ui";
 import { createPublicQuestionLink } from "./sharing";
 import { createPublicDashboardLink } from "./visualizer-basics";
-
-// === snowplow no-op stubs (PORTING rule 6) ===
-
-export const resetSnowplow = async () => {};
-export const enableTracking = async () => {};
-export const expectNoBadSnowplowEvents = async () => {};
-export const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-) => {};
 
 export type Resource = "question" | "dashboard";
 

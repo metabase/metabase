@@ -54,14 +54,3 @@ export const EVENTS = {
   duplicateTab: { event: "dashboard_tab_duplicated" },
   saveDashboard: { event: "dashboard_saved" },
 };
-
-// TODO: no snowplow-micro container in the spike harness (port rule 6). Both
-// tests keep their real UI actions; only the snowplow event assertions
-// (reset/enable/expect) are neutered.
-export const resetSnowplow = async () => {};
-export const enableTracking = async () => {};
-export const expectNoBadSnowplowEvents = async () => {};
-export const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};

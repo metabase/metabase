@@ -4,10 +4,9 @@
  *
  * Notes:
  * - Snowplow helpers (resetSnowplow / enableTracking / expectNoBadSnowplowEvents /
- *   expectUnstructuredSnowplowEvent) are no-op stubs — no snowplow-micro
- *   container in the spike harness (PORTING.md rule 6). The "chart click
- *   actions analytics" describe still exercises the full UI; only the event
- *   assertions are stubbed away.
+ *   expectUnstructuredSnowplowEvent) run real assertions, backed by the per-slot
+ *   collector via ../support/snowplow. The "chart click actions analytics"
+ *   describe exercises the full UI and asserts the events for real.
  * - H.createQuestion(details, { visitQuestion: true }) → api.createQuestion +
  *   visitQuestion(page, id).
  * - cy.wait("@dataset") pairs → page.waitForResponse registered before the
@@ -35,6 +34,12 @@ import {
 } from "../support/notebook";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "../support/question-saved";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover, visitDashboard, visitQuestion } from "../support/ui";
 import {
   assertEChartsTooltip,
@@ -46,13 +51,6 @@ import {
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness — these mirror the
-// H snowplow helpers as no-ops (PORTING.md rule 6).
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 function waitForDataset(page: import("@playwright/test").Page) {
   return page.waitForResponse(
@@ -886,20 +884,20 @@ test.describe("scenarios > visualizations > drillthroughs > chart drill", () => 
 
   test.describe("chart click actions analytics", () => {
     test.beforeEach(async ({ mb }) => {
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.restore();
       await mb.signInAsAdmin();
-      await enableTracking();
+      await enableTracking(mb);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     // This list is not exhaustive. It only covers the events that were defined
     // in a ticket defined by Product. The full list can be found in
     // frontend/src/metabase/visualizations/types/click-actions.ts
-    test("should track clicks on action sections", async ({ page }) => {
+    test("should track clicks on action sections", async ({ mb, page }) => {
       await visitQuestion(page, ORDERS_BY_YEAR_QUESTION_ID);
 
       const circle = () => cartesianChartCircles(page).nth(1);
@@ -909,7 +907,7 @@ test.describe("scenarios > visualizations > drillthroughs > chart drill", () => 
       await popover(page)
         .getByText(/^See these/)
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "click_action",
         triggered_from: "records",
       });
@@ -920,7 +918,7 @@ test.describe("scenarios > visualizations > drillthroughs > chart drill", () => 
       await popover(page)
         .getByText(/^See this year/)
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "click_action",
         triggered_from: "zoom",
       });
@@ -930,7 +928,7 @@ test.describe("scenarios > visualizations > drillthroughs > chart drill", () => 
       await popover(page)
         .getByText(/^Break out by/)
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "click_action",
         triggered_from: "breakout",
       });
@@ -938,7 +936,7 @@ test.describe("scenarios > visualizations > drillthroughs > chart drill", () => 
       await expect(circle()).toBeVisible();
       await circle().click();
       await popover(page).getByText(">", { exact: true }).click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "click_action",
         triggered_from: "filter",
       });
@@ -950,13 +948,13 @@ test.describe("scenarios > visualizations > drillthroughs > chart drill", () => 
       await popover(page)
         .getByText(/^Automatic insights/)
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "click_action",
         triggered_from: "auto",
       });
 
       await popover(page).getByText("X-ray", { exact: true }).click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "x-ray_automatic_insights_clicked",
         event_detail: "x-ray",
       });
@@ -969,7 +967,7 @@ test.describe("scenarios > visualizations > drillthroughs > chart drill", () => 
         .getByText(/^Automatic insights/)
         .click();
       await popover(page).getByText("Compare to the rest", { exact: true }).click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "x-ray_automatic_insights_clicked",
         event_detail: "compare_to_rest",
       });

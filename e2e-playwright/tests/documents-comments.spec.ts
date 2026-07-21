@@ -1,8 +1,8 @@
 /**
  * Playwright port of e2e/test/scenarios/documents/comments.cy.spec.ts
  *
- * - Snowplow: H.resetSnowplow is a no-op stub (no snowplow-micro container
- *   in the spike harness); the spec had no snowplow assertions anyway.
+ * - Snowplow: resetSnowplow is real, backed by the per-slot collector via
+ *   ../support/snowplow; the spec had no snowplow assertions anyway.
  * - Email notifications run for REAL against the maildev container
  *   (SMTP :1025, web API :1080) and skip gracefully when it isn't running
  *   (isMaildevRunning gate, same pattern as onboarding-notifications).
@@ -85,10 +85,8 @@ import {
 } from "../support/onboarding-extras";
 import { ORDERS_QUESTION_ID } from "../support/sample-data";
 import { menu } from "../support/schema-viewer";
+import { resetSnowplow } from "../support/snowplow";
 import { popover } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
 
 const META = "ControlOrMeta";
 
@@ -361,7 +359,7 @@ test.describe("document comments", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
     await mb.signInAsAdmin();
-    await resetSnowplow();
+    await resetSnowplow(mb);
   });
 
   test("allows to comment on every type of node", async ({ page, mb }) => {

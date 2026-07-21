@@ -13,8 +13,6 @@
  *   preview content instead — see support/data-model.ts.
  * - `cy.wait(100) // React effects` sleeps are dropped — the retrying
  *   assertions that follow cover them.
- * - H.resetSnowplow is a no-op stub (no snowplow-micro container in the
- *   spike harness). TODO: wire up when snowplow support lands.
  * - @external content (QA MySQL8 / Writable Postgres12) is gated on
  *   PW_QA_DB_ENABLED. NOTE: upstream "should restore previously selected
  *   table when expanding the tree" restores the mysql-8 snapshot WITHOUT an
@@ -60,10 +58,8 @@ import {
   queryWritableDB,
   resyncDatabase,
 } from "../support/schema-viewer";
+import { resetSnowplow } from "../support/snowplow";
 import { queryBuilderHeader } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -83,7 +79,7 @@ for (const area of areas) {
 
     test.beforeEach(async ({ mb }) => {
       await mb.restore();
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.signInAsAdmin();
       await mb.api.activateToken("pro-self-hosted");
     });

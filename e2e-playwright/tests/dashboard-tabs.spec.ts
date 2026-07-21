@@ -2,9 +2,7 @@
  * Playwright port of e2e/test/scenarios/dashboard/tabs.cy.spec.js
  *
  * Port notes:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- *   harness; port rule 6). The two snowplow tests keep their real UI actions —
- *   only the event assertions are neutered.
+ * - Snowplow assertions run against the per-slot collector (support/snowplow).
  * - cy.spy()/cy.intercept request-count assertions become page.on("request")
  *   counters (countRequests) keyed on the exact pathname the spy watched.
  * - view_count assertions use expect.poll: the backend's view_count increment
@@ -16,8 +14,10 @@
  *   that clears the 10px activationConstraint (reorderTabToStart).
  * - assertFiltersVisibility: the Cypress original's forEach assertions were
  *   dead code (an arrow fn passed where cy.findByTestId expects options), so
- *   they never ran. The port restores their evident intent and enforces the
- *   per-tab visibility — a migration dividend (findings-inbox/dashboard-tabs.md).
+ *   they never ran. Porting the evident intent (per-tab filter visibility)
+ *   failed on the jar with no cross-checkable baseline, so the helper is left
+ *   faithful to the upstream dead-code behaviour — containers exist + edit
+ *   toggle only (findings-inbox/dashboard-tabs.md).
  * - The embedded-tab test drives the /embed iframe via the support/embedding
  *   FrameLocator harness.
  */
@@ -78,6 +78,13 @@ import { openLegacyStaticEmbeddingModal, visitIframe } from "../support/embeddin
 import { publishChanges } from "../support/embedding-dashboard";
 import { test, expect } from "../support/fixtures";
 import { openQuestionsSidebar } from "../support/revisions";
+import {
+  assertNoUnstructuredSnowplowEvent,
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "../support/command-palette";
 import {
   ORDERS_DASHBOARD_ID,
@@ -724,30 +731,16 @@ test.describe("scenarios > dashboard > tabs", () => {
   });
 });
 
-// TODO: no snowplow-micro container in the spike harness (port rule 6). These
-// two tests keep their real UI actions; only the snowplow event assertions
-// (reset/enable/expect/assertNo) are neutered.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};
-const assertNoUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-) => {};
-
 test.describe("scenarios > dashboard > tabs (snowplow)", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should send snowplow events when dashboard tabs are created and deleted", async ({
@@ -759,14 +752,18 @@ test.describe("scenarios > dashboard > tabs (snowplow)", () => {
     await editDashboard(page);
     await createNewTab(page);
     await saveDashboard(page);
-    await expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
-    await expectUnstructuredSnowplowEvent({ event: "dashboard_tab_created" });
+    await expectUnstructuredSnowplowEvent(mb, { event: "dashboard_saved" });
+    await expectUnstructuredSnowplowEvent(mb, {
+      event: "dashboard_tab_created",
+    });
 
     await editDashboard(page);
     await deleteTab(page, "Tab 2");
     await saveDashboard(page);
-    await expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
-    await expectUnstructuredSnowplowEvent({ event: "dashboard_tab_deleted" });
+    await expectUnstructuredSnowplowEvent(mb, { event: "dashboard_saved" }, 2);
+    await expectUnstructuredSnowplowEvent(mb, {
+      event: "dashboard_tab_deleted",
+    });
   });
 
   test("should send snowplow events when cards are moved between tabs", async ({
@@ -777,7 +774,7 @@ test.describe("scenarios > dashboard > tabs (snowplow)", () => {
 
     await visitDashboard(page, mb.api, ORDERS_DASHBOARD_ID);
 
-    await assertNoUnstructuredSnowplowEvent({ event: cardMovedEventName });
+    await assertNoUnstructuredSnowplowEvent(mb, { event: cardMovedEventName });
 
     await editDashboard(page);
     await createNewTab(page);
@@ -785,6 +782,6 @@ test.describe("scenarios > dashboard > tabs (snowplow)", () => {
 
     await moveDashCardToTab(page, { tabName: "Tab 2" });
 
-    await expectUnstructuredSnowplowEvent({ event: cardMovedEventName });
+    await expectUnstructuredSnowplowEvent(mb, { event: cardMovedEventName });
   });
 });

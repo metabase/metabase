@@ -4,9 +4,9 @@
  * Who can view/edit/share a document based on its collection permissions.
  *
  * Notes:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness — porting rule 6). The one snowplow assertion the spec
- *   makes (document_created) becomes a no-op.
+ * - Snowplow helpers run real assertions, backed by the per-slot collector via
+ *   ../support/snowplow. The one snowplow assertion the spec makes
+ *   (document_created) is asserted for real.
  * - `cy.signIn("none")` targets a user that lives in the snapshot login cache
  *   but not the harness USERS credential map, so signIn resolves it via the
  *   cache — hence the `as UserName` widening (same shape as documents.spec's
@@ -32,11 +32,11 @@ import { test, expect } from "../support/fixtures";
 import { entityPickerModal, entityPickerModalLevel } from "../support/notebook";
 import { entityPickerModalItem } from "../support/question-new";
 import type { UserName } from "../support/sample-data";
+import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { appBar, collectionTable } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness (porting rule 6).
-const resetSnowplow = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 const documentTitleInput = (page: Page) =>
   page.getByRole("textbox", { name: "Document Title", exact: true });
@@ -45,7 +45,7 @@ test.describe("document permissions", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
     await mb.signInAsAdmin();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signOut();
   });
 
@@ -96,7 +96,7 @@ test.describe("document permissions", () => {
     await expect.poll(() => new URL(page.url()).pathname).toMatch(/^\/document\/\d+/);
     await expect(page).toHaveTitle("User Document · Metabase");
 
-    await expectUnstructuredSnowplowEvent({ event: "document_created" });
+    await expectUnstructuredSnowplowEvent(mb, { event: "document_created" });
 
     await appBar(page)
       .getByRole("link", { name: /Personal Collection/ })

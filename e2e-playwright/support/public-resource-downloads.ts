@@ -8,7 +8,8 @@
  * Only the genuinely NEW public-download helpers live here. Everything reusable
  * is IMPORTED read-only from shared modules:
  * - createPublicLink            → public-sharing.ts
- * - snowplow stubs / waitLoading / getEmbeddedDashboardCardMenu /
+ * - snowplow assertions (real, per-slot collector) → ../support/snowplow
+ * - waitLoading / getEmbeddedDashboardCardMenu /
  *   deleteDownloadsFolder / downloadEmbedQuestion → embed-resource-downloads.ts
  * - main / popover              → ui.ts
  * - getDashboardCard           → dashboard.ts

@@ -14,18 +14,6 @@ import type { MetabaseApi } from "./api";
 import { openUnpinnedItemMenu } from "./collections";
 import { icon, popover } from "./ui";
 
-// === Snowplow stubs (porting rule 6) ===============================
-// TODO: no snowplow-micro container in the spike harness. The real UI actions
-// these guard are kept; only the reset/enable/expect analytics calls become
-// no-ops. Only the fidelity cross-check needs the container (PORTING.md).
-export const resetSnowplow = async () => {};
-export const enableTracking = async () => {};
-export const expectNoBadSnowplowEvents = async () => {};
-export const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};
-
 // === x-ray response waits ==========================================
 
 /**

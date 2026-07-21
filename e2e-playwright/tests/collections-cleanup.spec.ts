@@ -4,10 +4,9 @@
  * Port notes:
  * - The "clean up collection modal" describe is gated on snowplow in Cypress
  *   (resetSnowplow / enableTracking / expectNoBadSnowplowEvents /
- *   expectUnstructuredSnowplowEvent). The spike harness has no snowplow-micro
- *   container, so those are no-op stubs (PORTING.md rule 6); the clean-up UI
- *   flow inside is ported for real and only the analytics assertions are
- *   stubbed away.
+ *   expectUnstructuredSnowplowEvent). Those run real assertions here, backed by
+ *   the per-slot collector via ../support/snowplow; the clean-up UI flow inside
+ *   is ported for real too.
  * - The whole "ee" describe needs the pro-self-hosted feature, so it is gated
  *   with resolveToken (PORTING rule 7). The jar activates it.
  * - The "oss" test asserts the feature is ABSENT on an OSS build; it is gated
@@ -46,23 +45,15 @@ import {
   setDateFilter,
 } from "../support/collections-cleanup";
 import { test, expect } from "../support/fixtures";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { visitCollection } from "../support/question-new";
 import { FIRST_COLLECTION_ID, ORDERS_QUESTION_ID } from "../support/sample-data";
 import { main, modal, navigationSidebar, popover } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness (PORTING.md rule 6).
-// The originals gate on H.resetSnowplow / H.enableTracking /
-// H.expectNoBadSnowplowEvents in before/after hooks and assert individual
-// "moved-to-trash" / "stale_items_archived" events via
-// H.expectUnstructuredSnowplowEvent; the clean-up UI flow is ported for real
-// and only the analytics assertions are stubbed away.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _matcher?: unknown,
-  _count?: number,
-) => {};
 
 const sixMonthsAgo = () =>
   dayjs().startOf("day").subtract(6, "months").format("YYYY-MM-DD");
@@ -198,14 +189,14 @@ test.describe("scenarios > collections > clean up", () => {
 
     test.describe("clean up collection modal", () => {
       test.beforeEach(async ({ mb }) => {
-        await resetSnowplow();
+        await resetSnowplow(mb);
         await mb.signInAsAdmin();
         await mb.api.activateToken("pro-self-hosted");
-        await enableTracking();
+        await enableTracking(mb);
       });
 
-      test.afterEach(async () => {
-        await expectNoBadSnowplowEvents();
+      test.afterEach(async ({ mb }) => {
+        await expectNoBadSnowplowEvents(mb);
       });
 
       test("should be able to clean up stale items", async ({ page, mb }) => {
@@ -301,9 +292,29 @@ test.describe("scenarios > collections > clean up", () => {
         await moveToTrash(page);
         await assertNoPagination(page);
 
-        // snowplow "moved-to-trash" (x10) + "stale_items_archived" — stubbed
-        await expectUnstructuredSnowplowEvent();
-        await expectUnstructuredSnowplowEvent();
+        await expectUnstructuredSnowplowEvent(
+          mb,
+          (event) =>
+            event.event === "moved-to-trash" &&
+            (event.event_detail === "dashboard" ||
+              event.event_detail === "question") &&
+            typeof event.target_id === "number" &&
+            event.triggered_from === "cleanup_modal" &&
+            typeof event.duration_ms === "number" &&
+            event.result === "success",
+          10,
+        );
+
+        // cutoff_date is relative to the current date, so just assert it is a
+        // string — the Iglu schema validates its format.
+        await expectUnstructuredSnowplowEvent(
+          mb,
+          (event) =>
+            event.event === "stale_items_archived" &&
+            event.collection_id === seedData.collection.id &&
+            event.total_items_archived === 10 &&
+            typeof event.cutoff_date === "string",
+        );
 
         await undo(page);
         await assertStaleItemCount(page, seedData.totalStaleItemCount);
@@ -339,8 +350,15 @@ test.describe("scenarios > collections > clean up", () => {
         // should no longer show alert if user has used the clean up feature
         await closeCleanUpModal(page);
 
-        // snowplow "stale_items_archived" with collection_id null — stubbed
-        await expectUnstructuredSnowplowEvent();
+        // Stale items in Our Analytics are marked with a null collection id.
+        await expectUnstructuredSnowplowEvent(
+          mb,
+          (event) =>
+            event.event === "stale_items_archived" &&
+            event.collection_id === null &&
+            event.total_items_archived === 1 &&
+            typeof event.cutoff_date === "string",
+        );
       });
 
       test("show empty and error states correctly", async ({ page, mb }) => {

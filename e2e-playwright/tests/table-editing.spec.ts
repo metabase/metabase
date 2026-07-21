@@ -15,7 +15,6 @@
  *   (even the "table editing bugs" describe inherits the parent beforeEach's
  *   writable restore before touching the Sample DB). The port is faithful by
  *   construction and runs when the writable container + snapshot are enabled.
- * - Snowplow helpers → no-op stubs (rule 6): no snowplow-micro container here.
  * - cy.intercept(...).as() + cy.wait("@x") → waitForResponse predicates
  *   registered before the triggering action, awaited after (rule 2).
  * - resetTestTable / queryWritableDB reuse the actions-on-dashboards knex
@@ -52,6 +51,10 @@ import {
   setTableEditingEnabledForDB,
 } from "../support/table-editing";
 import { undoToast } from "../support/metrics";
+import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { icon, modal, popover } from "../support/ui";
 
 const { ORDERS_ID, PRODUCTS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -67,10 +70,6 @@ const EDITABLE_SOURCE_TABLE_NAME = "many_data_types";
 const EDITABLE_SOURCE_TABLE_NAME_REGEX = new RegExp("Many Data Types", "i");
 const INLINE_EDIT_TEST_TABLE_NAME = "editing_test";
 const DEFAULT_FIELD = "UUID";
-
-// === snowplow no-op stubs (rule 6 — no snowplow-micro container) ===
-const resetSnowplow = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 const skipUnlessQaDb = () =>
   test.skip(
@@ -124,7 +123,7 @@ test.describe("scenarios > table-editing", () => {
   skipUnlessQaDb();
 
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
 
     await mb.restore("postgres-writable");
     await resetTestTable({
@@ -174,15 +173,13 @@ test.describe("scenarios > table-editing", () => {
     ).toHaveCount(0);
   });
 
-  test("should allow to open table data edit mode", async ({ page }) => {
+  test("should allow to open table data edit mode", async ({ page, mb }) => {
     await openTableBrowser(page);
 
     const getTable = page.waitForResponse(isGetTable);
     await openTableEdit(page, EDITABLE_SOURCE_TABLE_NAME_REGEX);
 
-    // The Cypress test looks the table id up here only to assert a snowplow
-    // event (no-op stub).
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "edit_data_button_clicked",
       triggered_from: "table-browser",
     });
@@ -243,7 +240,7 @@ test.describe("scenarios > table-editing", () => {
 
   test.describe("table edit mode", () => {
     test.beforeEach(async ({ page, mb }) => {
-      await resetSnowplow();
+      await resetSnowplow(mb);
 
       await queryWritableDB(
         `CREATE TABLE IF NOT EXISTS ${INLINE_EDIT_TEST_TABLE_NAME} AS SELECT id, uuid, integer, tinyint, string, date, datetime, boolean FROM ${EDITABLE_SOURCE_TABLE_NAME}`,
@@ -376,7 +373,7 @@ test.describe("scenarios > table-editing", () => {
       await expect(modal(page).getByTestId("ID-field-input")).toHaveText(rowId);
     });
 
-    test("should allow to edit a row using a modal", async ({ page }) => {
+    test("should allow to edit a row using a modal", async ({ page, mb }) => {
       await openEditRowModal(page, 1);
 
       const integerInput = modal(page).getByTestId("Integer-field-input");
@@ -399,7 +396,7 @@ test.describe("scenarios > table-editing", () => {
         undoToast(page).getByText("Successfully updated", { exact: true }).first(),
       ).toBeVisible();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "edit_data_record_modified",
         event_detail: "update",
         triggered_from: "modal",
@@ -429,6 +426,7 @@ test.describe("scenarios > table-editing", () => {
       for (const { dataType, column, value } of cases) {
         test(`should allow to edit a cell with type ${dataType}`, async ({
           page,
+          mb,
         }) => {
           // Locate the table and the specific cell to edit — the second row.
           const targetCell = tableInteractiveBody(page)
@@ -451,7 +449,7 @@ test.describe("scenarios > table-editing", () => {
           expect(body.outputs[0].op).toBe("updated");
           expect(body.outputs[0].row[column]).toBe(value);
 
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "edit_data_record_modified",
             event_detail: "update",
             triggered_from: "inline",
@@ -602,7 +600,7 @@ test.describe("scenarios > table-editing", () => {
 
   test.describe("create / delete row", () => {
     test.beforeEach(async ({ page, mb }) => {
-      await resetSnowplow();
+      await resetSnowplow(mb);
 
       await mb.restore("postgres-writable");
       await resetTestTable({ type: "postgres", table: "scoreboard_actions" });
@@ -622,7 +620,7 @@ test.describe("scenarios > table-editing", () => {
       await getTableMetadata;
     });
 
-    test("should allow to create a row", async ({ page }) => {
+    test("should allow to create a row", async ({ page, mb }) => {
       await page.getByTestId("new-record-button").click();
 
       await expect(
@@ -668,7 +666,7 @@ test.describe("scenarios > table-editing", () => {
       ).toBeVisible();
       await expect(tableRoot.getByText("987", { exact: true })).toBeVisible();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "edit_data_record_modified",
         event_detail: "create",
         triggered_from: "modal",

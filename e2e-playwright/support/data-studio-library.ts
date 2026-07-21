@@ -12,9 +12,6 @@
  *
  * New module per PORTING rule 9 — imports read-only from the shared support
  * modules (api.ts, ui.ts, factories.ts) and does not edit them.
- *
- * Snowplow helpers → no-op stubs (PORTING rule 6; no snowplow-micro in the
- * spike harness). The UI actions still fire, only the assertions are stubbed.
  */
 import type { Locator, Page } from "@playwright/test";
 
@@ -25,15 +22,6 @@ import { SAMPLE_DATABASE } from "./sample-data";
 import { caseSensitiveSubstring } from "./text";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
-
-// === Snowplow stubs (PORTING rule 6) ================================
-export const resetSnowplow = async () => {};
-export const enableTracking = async () => {};
-export const expectNoBadSnowplowEvents = async () => {};
-export const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};
 
 // === Types ==========================================================
 

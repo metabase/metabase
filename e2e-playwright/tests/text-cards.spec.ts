@@ -2,9 +2,7 @@
  * Playwright port of e2e/test/scenarios/dashboard/text-cards.cy.spec.js
  *
  * Port notes:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- *   harness; port rule 6). The "text and headings" describe keeps its real UI
- *   actions — only the reset/enable/expect/assertNo snowplow calls are neutered.
+ * - Snowplow assertions run against the per-slot collector (support/snowplow).
  * - Text cards render Markdown, so typed `Text *text* __text__` is asserted via
  *   getByText("Text text text") on the rendered <p> — never toHaveValue.
  * - The text card's "Show visualization options" opens a Mantine Modal
@@ -50,17 +48,14 @@ import {
 import { addTextBoxWhileEditing } from "../support/text-cards";
 import { popover, visitDashboard } from "../support/ui";
 import { test, expect } from "../support/fixtures";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
-
-// Snowplow stubs — no snowplow-micro container in the spike harness (port
-// rule 6). Real UI actions are preserved; only the event bookkeeping is neutered.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-) => {};
 
 const EDITING_TEXT = "You're editing this dashboard.";
 const TEXT_PLACEHOLDER =
@@ -75,10 +70,10 @@ async function blurCardEditor(page: Page) {
 
 test.describe("scenarios > dashboard > text and headings", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
   test.describe("text", () => {
@@ -86,19 +81,22 @@ test.describe("scenarios > dashboard > text and headings", () => {
       await visitDashboard(page, mb.api, ORDERS_DASHBOARD_ID);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("should allow creation, editing, and saving of text boxes", async ({
       page,
+      mb,
     }) => {
       // should be able to create new text box
       await editDashboard(page);
       await page.getByLabel("Add a heading or text box").click();
       await popover(page).getByText("Text", { exact: true }).click();
 
-      await expectUnstructuredSnowplowEvent({ event: "new_text_card_created" });
+      await expectUnstructuredSnowplowEvent(mb, {
+        event: "new_text_card_created",
+      });
 
       const card = getDashboardCard(page, 1);
       // textarea should: 1. be auto-focused; 2. have no value;
@@ -161,13 +159,16 @@ test.describe("scenarios > dashboard > text and headings", () => {
 
     test("should have a scroll bar for long text (metabase#8333)", async ({
       page,
+      mb,
     }) => {
       await addTextBox(
         page,
         "Lorem ipsum dolor sit amet,\n\nfoo\n\nbar\n\nbaz\n\nboo\n\nDonec quis enim porta.",
       );
 
-      await expectUnstructuredSnowplowEvent({ event: "new_text_card_created" });
+      await expectUnstructuredSnowplowEvent(mb, {
+        event: "new_text_card_created",
+      });
 
       await saveDashboard(page);
 
@@ -203,19 +204,20 @@ test.describe("scenarios > dashboard > text and headings", () => {
       await visitDashboard(page, mb.api, ORDERS_DASHBOARD_ID);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("should allow creation, editing, and saving of heading component", async ({
       page,
+      mb,
     }) => {
       // should be able to create new heading
       await editDashboard(page);
       await page.getByLabel("Add a heading or text box").click();
       await popover(page).getByText("Heading", { exact: true }).click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "new_heading_card_created",
       });
 

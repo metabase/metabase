@@ -3,10 +3,6 @@
  *
  * Create/edit a metric in the notebook editor: aggregation + filter + breakout,
  * save, verify the metric question.
- *
- * Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- * harness); the UI flows are ported for real. The metric-creation snowplow
- * assertions ("should pin new metrics automatically") thus don't verify tracking.
  */
 import { ORDERS_MODEL_ID } from "../support/organization";
 
@@ -42,12 +38,12 @@ import { miniPickerBrowseAll } from "../support/joins";
 import { SAMPLE_DATABASE } from "../support/sample-data";
 import { modal, popover } from "../support/ui";
 import { findDisplayValue } from "../support/pivot-tables";
+import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 const ORDERS_SCALAR_METRIC = {
   name: "Orders metric",
@@ -94,7 +90,7 @@ const PRODUCTS_SCALAR_METRIC = {
 test.describe("scenarios > metrics > editing", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsNormalUser();
   });
 
@@ -147,14 +143,14 @@ test.describe("scenarios > metrics > editing", () => {
       });
     });
 
-    test("should pin new metrics automatically", async ({ page }) => {
+    test("should pin new metrics automatically", async ({ page, mb }) => {
       await page.goto("/browse/metrics");
       await page
         .getByTestId("browse-metrics-header")
         .getByLabel("Create a new metric")
         .click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metric_create_started",
         triggered_from: "browse_metrics",
       });
@@ -164,7 +160,7 @@ test.describe("scenarios > metrics > editing", () => {
       await miniPicker(page).getByText("Orders", { exact: true }).click();
       await saveNewMetric(page);
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metric_created",
         triggered_from: "main_app",
         result: "success",

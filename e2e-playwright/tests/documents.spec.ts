@@ -2,8 +2,8 @@
  * Playwright port of e2e/test/scenarios/documents/documents.cy.spec.ts
  *
  * Notes:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness).
+ * - Snowplow helpers run real assertions, backed by the per-slot collector via
+ *   ../support/snowplow.
  * - "should support formatting via floating menu" was accidentally declared
  *   as an it() NESTED INSIDE the markdown it() upstream, so it never ran in
  *   Cypress. It's ported as a real sibling test (see FINDINGS note).
@@ -84,6 +84,10 @@ import { entityPickerModalItem } from "../support/question-new";
 import { ORDERS_QUESTION_ID, type UserName } from "../support/sample-data";
 import { main } from "../support/sharing";
 import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
+import {
   appBar,
   collectionTable,
   navigationSidebar,
@@ -92,13 +96,6 @@ import {
   popover,
   sidebarSection,
 } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: unknown,
-  _count?: number,
-) => {};
 
 /** Case-sensitive substring regex (cy.contains semantics). */
 const cs = (value: string) =>
@@ -211,7 +208,7 @@ test.describe("documents", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
     await mb.signInAsAdmin();
-    await resetSnowplow();
+    await resetSnowplow(mb);
   });
 
   test.describe("duplicating documents", () => {
@@ -437,19 +434,20 @@ test.describe("documents", () => {
     await expect.poll(() => pathname(page)).toBe("/document/1");
     await expect(page).toHaveTitle("Test Document · Metabase");
 
-    await expectUnstructuredSnowplowEvent({ event: "document_created" });
+    await expectUnstructuredSnowplowEvent(mb, { event: "document_created" });
     expect(documentGetRequests).toBe(0);
 
     await page.getByLabel("More options", { exact: true }).click();
-    // Upstream's next step is expectUnstructuredSnowplowEvent, which polls
-    // snowplow-micro until bookmark_added arrives — an accidental wait for the
-    // POST below. Our snowplow stub is a no-op, so without this the DELETE
-    // races ahead of the POST, deletes nothing, and the doc stays bookmarked.
+    // The bookmark_added assertion below now polls the real collector until the
+    // event arrives — and it fires only after the POST — so the DELETE further
+    // down no longer races the POST on its own. This explicit wait is kept as
+    // belt-and-suspenders, pinning bookmark-created-before-deleted independently
+    // of the tracking event.
     const bookmarkCreated = waitForBookmarkCreate(page);
     await popover(page).getByText("Bookmark", { exact: true }).click();
     await bookmarkCreated;
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "bookmark_added",
       event_detail: "document",
       triggered_from: "document_header",
@@ -489,7 +487,7 @@ test.describe("documents", () => {
     await openCollectionItemMenu(page, "Test Document");
 
     await popover(page).getByText("Bookmark", { exact: true }).click();
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "bookmark_added",
       event_detail: "document",
       triggered_from: "collection_list",
@@ -668,6 +666,7 @@ test.describe("documents", () => {
 
   test("should handle navigating from /new to /new gracefully", async ({
     page,
+    mb,
   }) => {
     await page.goto("/");
     await newDocumentFromNewMenu(page);
@@ -682,6 +681,7 @@ test.describe("documents", () => {
 
     await newDocumentFromNewMenu(page);
     await expectUnstructuredSnowplowEvent(
+      mb,
       { event: "unsaved_changes_warning_displayed" },
       1,
     );
@@ -693,6 +693,7 @@ test.describe("documents", () => {
 
     await newDocumentFromNewMenu(page);
     await expectUnstructuredSnowplowEvent(
+      mb,
       { event: "unsaved_changes_warning_displayed" },
       2,
     );
@@ -828,7 +829,7 @@ test.describe("documents", () => {
         ).toBeVisible();
       });
 
-      test("should allow you to print", async ({ page }) => {
+      test("should allow you to print", async ({ page, mb }) => {
         await visitDocument(page, doc.id);
         await page
           .getByRole("button", { name: "More options", exact: true })
@@ -855,7 +856,7 @@ test.describe("documents", () => {
           )
           .toBe(1);
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "document_print",
           target_id: doc.id,
         });
@@ -1344,6 +1345,7 @@ test.describe("documents", () => {
 
       test("should support adding cards and updating viz settings", async ({
         page,
+        mb,
       }) => {
         await documentContent(page).click();
         await addToDocument(page, "/", false);
@@ -1357,7 +1359,7 @@ test.describe("documents", () => {
         await page.keyboard.press("ArrowDown");
         await addToDocument(page, "\n", false);
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "document_add_card",
           target_id: doc.id,
         });
@@ -1473,7 +1475,7 @@ test.describe("documents", () => {
           .getByRole("button", { name: "Select", exact: true })
           .click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "document_replace_card",
           target_id: doc.id,
         });
@@ -1717,7 +1719,7 @@ test.describe("documents", () => {
         }
       });
 
-      test("should copy an added card on save", async ({ page }) => {
+      test("should copy an added card on save", async ({ page, mb }) => {
         // initial load
         await documentContent(page).click();
 
@@ -1764,11 +1766,11 @@ test.describe("documents", () => {
         await documentUpdate;
         await documentGet;
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "document_saved",
           target_id: doc.id,
         });
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "document_add_smart_link",
           target_id: doc.id,
         });
@@ -1835,6 +1837,7 @@ test.describe("documents", () => {
 
     test("should allow creating a new notebook question and embedding it in the document", async ({
       page,
+      mb,
     }) => {
       await visitDocument(page, doc.id);
       await documentContent(page).click();
@@ -1868,7 +1871,7 @@ test.describe("documents", () => {
       // Verify the question is embedded in the document
       await expect(getDocumentCard(page, "Orders")).toBeAttached();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "document_add_card",
         target_id: doc.id,
       });
@@ -1889,6 +1892,7 @@ test.describe("documents", () => {
 
     test("should allow creating a new native SQL question and embedding it in the document", async ({
       page,
+      mb,
     }) => {
       // Upstream registered the "@database" intercept at test start, so its
       // wait matched the earliest GET /api/database — register before goto.
@@ -1929,15 +1933,16 @@ test.describe("documents", () => {
         exact: true,
       });
       await expect(saveButton).toBeVisible();
-      // Upstream's expectUnstructuredSnowplowEvent below polls until
-      // document_add_card arrives, which incidentally waits out this save. The
-      // stub is a no-op, so without an explicit wait the rename below races the
-      // re-render the save triggers and the pencil click lands on a stale node.
+      // The document_add_card assertion below now polls the real collector until
+      // the event arrives (after this save lands), so the save is no longer
+      // unguarded. This explicit wait on the update response is kept anyway,
+      // pinning the save before the rename so the pencil click below doesn't
+      // land on a node the save's re-render is about to replace.
       const documentSaved = waitForDocumentUpdate(page);
       await saveButton.click();
       await documentSaved;
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "document_add_card",
         target_id: doc.id,
       });

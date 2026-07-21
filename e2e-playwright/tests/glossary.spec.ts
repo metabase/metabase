@@ -4,8 +4,8 @@
  * - Cypress asserted the POST/PUT request bodies inside cy.intercept
  *   callbacks; here the same deep-equal assertions run on
  *   response.request().postDataJSON() after awaiting the matching response.
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness) — the tracking tests still exercise the UI flows.
+ * - Snowplow helpers run real assertions, backed by the per-slot collector via
+ *   ../support/snowplow — the tracking tests exercise the UI flows too.
  * - The "data studio > glossary" describe needs the pro-self-hosted token.
  */
 import type { Page } from "@playwright/test";
@@ -14,10 +14,10 @@ import { resolveToken } from "../support/api";
 import type { MetabaseApi } from "../support/api";
 import { dataStudioNav, visitDataStudio } from "../support/data-reference";
 import { test, expect } from "../support/fixtures";
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
+import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 
 async function executeCreateGlossaryTermFlow(page: Page) {
   await page.getByRole("button", { name: /new term/i }).click();
@@ -189,7 +189,7 @@ test.describe("data studio > glossary", () => {
 
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
     await mb.api.activateToken("pro-self-hosted");
   });
@@ -204,10 +204,11 @@ test.describe("data studio > glossary", () => {
 
   test("should allow creating a new definition and trigger tracking event", async ({
     page,
+    mb,
   }) => {
     await visitDataStudioGlossary(page);
     await executeCreateGlossaryTermFlow(page);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "data_studio_glossary_term_created",
     });
   });
@@ -219,7 +220,7 @@ test.describe("data studio > glossary", () => {
     await executeUpdateGlossaryTermFlow(page, mb.api, () =>
       visitDataStudioGlossary(page),
     );
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "data_studio_glossary_term_updated",
     });
   });
@@ -231,7 +232,7 @@ test.describe("data studio > glossary", () => {
     await executeDeleteGlossaryTermFlow(page, mb.api, () =>
       visitDataStudioGlossary(page),
     );
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "data_studio_glossary_term_deleted",
     });
   });

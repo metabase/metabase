@@ -10,9 +10,6 @@
  * Port notes:
  * - The library is an EE token feature ("library"); the whole describe skips
  *   without `pro-self-hosted` (PORTING rule 7).
- * - Snowplow assertions → no-op stubs (PORTING rule 6). The two events the
- *   first test checks (`data_studio_opened`, `data_studio_library_created`)
- *   are therefore NOT verified here; the UI actions that fire them still run.
  * - `cy.intercept(...).as()` + `cy.wait()` → `page.waitForResponse` registered
  *   BEFORE the triggering action (PORTING rule 2).
  * - `should("have.attr", "data-disabled")` is a presence check on a data-*
@@ -65,6 +62,10 @@ import {
   teardownGitSync,
 } from "../support/remote-sync";
 import { SAMPLE_DATABASE } from "../support/sample-data";
+import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { modal, popover, visitQuestion } from "../support/ui";
 import { undoToast } from "../support/metrics";
 
@@ -77,12 +78,14 @@ test.describe("scenarios > data studio > library", () => {
 
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
     await mb.api.activateToken("pro-self-hosted");
   });
 
   test("should create library via UI and verify collections", async ({
     page,
+    mb,
   }) => {
     // Navigate to Data Studio via the profile menu, exercising the nav path
     // (and, upstream, the data_studio_opened analytics event).
@@ -92,8 +95,10 @@ test.describe("scenarios > data studio > library", () => {
       .getByText(/Data studio/)
       .click();
 
-    // TODO(snowplow): expectUnstructuredSnowplowEvent({
-    //   event: "data_studio_opened", triggered_from: "nav_menu" })
+    await expectUnstructuredSnowplowEvent(mb, {
+      event: "data_studio_opened",
+      triggered_from: "nav_menu",
+    });
     await dataStudioNav(page).getByLabel("Library", { exact: true }).click();
 
     // Create library via the inline empty state.
@@ -117,8 +122,9 @@ test.describe("scenarios > data studio > library", () => {
     await createLibrary;
     await collectionTree;
 
-    // TODO(snowplow): expectUnstructuredSnowplowEvent({
-    //   event: "data_studio_library_created" })
+    await expectUnstructuredSnowplowEvent(mb, {
+      event: "data_studio_library_created",
+    });
 
     await expect(collectionItem(page, "Data")).toBeVisible();
     await expect(collectionItem(page, "Metrics")).toBeVisible();

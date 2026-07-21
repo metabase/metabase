@@ -2,9 +2,7 @@
  * Port of e2e/test/scenarios/dashboard-cards/duplicate-dashcards-tabs.cy.spec.js.
  *
  * Notes on the port:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- *   harness; port rule 6). Both tests keep their real UI actions — only the
- *   snowplow event assertions are neutered (see support/duplicate-dashcards-tabs.ts).
+ * - Snowplow assertions run against the per-slot collector (support/snowplow).
  * - The beforeEach's `cy.request("PUT", ...)` that attaches the mapped dashcard
  *   is ported to a direct api.put; dashboardId is stashed per test.
  */
@@ -17,11 +15,13 @@ import {
   EVENTS,
   MAPPED_QUESTION_CREATE_INFO,
   createMappedDashcard,
+} from "../support/duplicate-dashcards-tabs";
+import {
   enableTracking,
   expectNoBadSnowplowEvents,
   expectUnstructuredSnowplowEvent,
   resetSnowplow,
-} from "../support/duplicate-dashcards-tabs";
+} from "../support/snowplow";
 import { createDashboard, createQuestion } from "../support/factories";
 import { popover } from "../support/ui";
 import { visitDashboard } from "../support/ui";
@@ -31,9 +31,9 @@ test.describe("scenarios > dashboard cards > duplicate", () => {
 
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
 
     const mappedQuestion = await createQuestion(mb.api, MAPPED_QUESTION_CREATE_INFO);
     const dashboard = await createDashboard(mb.api, DASHBOARD_CREATE_INFO);
@@ -43,8 +43,8 @@ test.describe("scenarios > dashboard cards > duplicate", () => {
     dashboardId = dashboard.id;
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should allow the user to duplicate a dashcard", async ({ page, mb }) => {
@@ -55,7 +55,7 @@ test.describe("scenarios > dashboard cards > duplicate", () => {
     const card = getDashboardCard(page, 0);
     await card.hover();
     await card.getByLabel("Duplicate", { exact: true }).click();
-    await expectUnstructuredSnowplowEvent(EVENTS.duplicateDashcard);
+    await expectUnstructuredSnowplowEvent(mb, EVENTS.duplicateDashcard);
 
     // check that the new card loads _before_ saving
     await expect(page.getByText("Products", { exact: true })).toHaveCount(2);
@@ -63,7 +63,7 @@ test.describe("scenarios > dashboard cards > duplicate", () => {
     await expect(page.getByText("Small Marble Shoes", { exact: true })).toHaveCount(2);
 
     await saveDashboard(page);
-    await expectUnstructuredSnowplowEvent(EVENTS.saveDashboard);
+    await expectUnstructuredSnowplowEvent(mb, EVENTS.saveDashboard);
 
     // 2. Confirm filter still works
     await filterWidget(page).click();
@@ -79,7 +79,7 @@ test.describe("scenarios > dashboard cards > duplicate", () => {
     await editDashboard(page);
 
     await duplicateTab(page, "Tab 1");
-    await expectUnstructuredSnowplowEvent(EVENTS.duplicateTab);
+    await expectUnstructuredSnowplowEvent(mb, EVENTS.duplicateTab);
 
     const card = getDashboardCard(page);
     await expect(card.getByText("Products", { exact: true })).toBeVisible();
@@ -87,7 +87,7 @@ test.describe("scenarios > dashboard cards > duplicate", () => {
     await expect(card.getByText(/(Problem|Error)/i)).toHaveCount(0);
 
     await saveDashboard(page);
-    await expectUnstructuredSnowplowEvent(EVENTS.saveDashboard);
+    await expectUnstructuredSnowplowEvent(mb, EVENTS.saveDashboard);
 
     await expect(dashboardCards(page).getByText("Products", { exact: true })).toBeVisible();
 

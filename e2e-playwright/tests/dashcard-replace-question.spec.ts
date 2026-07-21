@@ -2,8 +2,7 @@
  * Playwright port of
  * e2e/test/scenarios/dashboard-cards/dashcard-replace-question.cy.spec.js
  *
- * Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- * harness); the UI flow those events decorate is ported for real.
+ * Snowplow assertions run against the per-slot collector (support/snowplow).
  */
 import { saveDashboard } from "../support/dashboard";
 import {
@@ -27,24 +26,21 @@ import { createDashboard, createQuestion } from "../support/factories";
 import { test, expect } from "../support/fixtures";
 import { FIRST_COLLECTION_ID } from "../support/sample-data";
 import { undoToastList } from "../support/organization";
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: unknown,
-  _count?: number,
-) => {};
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 
 test.describe("scenarios > dashboard cards > replace question", () => {
   let dashboardId: number;
 
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
 
     const mappedQuestion = await createQuestion(
       mb.api,
@@ -58,8 +54,8 @@ test.describe("scenarios > dashboard cards > replace question", () => {
     });
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should replace a dashboard card question (metabase#36984)", async ({
@@ -77,7 +73,9 @@ test.describe("scenarios > dashboard cards > replace question", () => {
     await replaceQuestion(findTargetDashcard(page), {
       nextQuestionName: "Orders",
     });
-    await expectUnstructuredSnowplowEvent({ event: "dashboard_card_replaced" });
+    await expectUnstructuredSnowplowEvent(mb, {
+      event: "dashboard_card_replaced",
+    });
     await assertDashCardTitle(findTargetDashcard(page), "Orders");
     await expect(
       findTargetDashcard(page).getByText("Product ID", { exact: true }),

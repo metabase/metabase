@@ -7,9 +7,9 @@
  * homepage flows (admin setting + home-page CTA, redirect/toast behaviour).
  *
  * Port notes:
- * - Snowplow is stubbed to no-ops (porting rule 6): reset/enable/expect become
- *   no-ops; the real UI actions they guarded are kept. New helpers live in
- *   support/homepage.ts; everything else is imported read-only.
+ * - Snowplow assertions are real, backed by the per-slot collector via
+ *   ../support/snowplow; the real UI actions they guard are kept too. New
+ *   helpers live in support/homepage.ts; everything else is imported read-only.
  * - Cypress `beforeEach` registered response aliases and waited later; under
  *   Playwright the wait is registered right before the triggering navigation
  *   (porting rule 2) via the waitFor* factories in support/homepage.ts.
@@ -30,12 +30,8 @@ import { createDashboard } from "../support/factories";
 import { expect, test } from "../support/fixtures";
 import {
   addSqliteDatabase,
-  enableTracking,
-  expectNoBadSnowplowEvents,
-  expectUnstructuredSnowplowEvent,
   getDatabaseFields,
   pinItem,
-  resetSnowplow,
   stubXrayCandidates,
   waitForCardQuery,
   waitForCollectionItems,
@@ -45,6 +41,12 @@ import {
   waitForXrayCandidates,
   waitForXrayDashboard,
 } from "../support/homepage";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { entityPickerModal } from "../support/notebook";
 import { undoToast } from "../support/metrics";
 import { ADMIN_PERSONAL_COLLECTION_ID, signInWithCachedSession } from "../support/permissions";
@@ -75,17 +77,17 @@ function waitForPutSettings(page: Page) {
 test.describe("scenarios > home > homepage", () => {
   test.describe("after setup", () => {
     test.beforeEach(async ({ mb }) => {
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.restore("setup");
       await mb.signInAsAdmin();
-      await enableTracking();
+      await enableTracking(mb);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
-    test("should display x-rays for the Sample Database", async ({ page }) => {
+    test("should display x-rays for the Sample Database", async ({ mb, page }) => {
       await visitHomeAndWaitForXray(page);
 
       const homePage = page.getByTestId("home-page");
@@ -100,7 +102,7 @@ test.describe("scenarios > home > homepage", () => {
       await homePage.getByRole("link", { name: /Orders/ }).first().click();
       await ordersXray;
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "x-ray_clicked",
         event_detail: "table",
         triggered_from: "homepage",
@@ -118,7 +120,7 @@ test.describe("scenarios > home > homepage", () => {
         .click();
       await zoomIn;
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "x-ray_clicked",
         event_detail: "zoom-in",
         triggered_from: "suggestion_sidebar",
@@ -135,7 +137,7 @@ test.describe("scenarios > home > homepage", () => {
         .click();
       await zoomOut;
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "x-ray_clicked",
         event_detail: "zoom-out",
         triggered_from: "suggestion_sidebar",
@@ -152,7 +154,7 @@ test.describe("scenarios > home > homepage", () => {
         .click();
       await related;
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "x-ray_clicked",
         event_detail: "related",
         triggered_from: "suggestion_sidebar",
@@ -173,7 +175,7 @@ test.describe("scenarios > home > homepage", () => {
       await expect(header.getByText("See it", { exact: true })).toBeVisible();
       await expect(header.getByText("Saved", { exact: true })).toBeVisible();
 
-      await expectUnstructuredSnowplowEvent({ event: "x-ray_saved" });
+      await expectUnstructuredSnowplowEvent(mb, { event: "x-ray_saved" });
     });
 
     test("should display x-rays for a user database", async ({ mb, page }) => {
@@ -813,16 +815,16 @@ test.describe("scenarios > home > custom homepage", () => {
 test.describe("scenarios > setup", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
-  test("should send snowplow events through admin settings", async ({ page }) => {
+  test("should send snowplow events through admin settings", async ({ mb, page }) => {
     await page.goto("/admin/settings/general");
     const putSettings = waitForPutSettings(page);
     await page
@@ -844,13 +846,13 @@ test.describe("scenarios > setup", () => {
       undoToast(page).getByText("Changes saved", { exact: true }).first(),
     ).toBeVisible();
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "homepage_dashboard_enabled",
       source: "admin",
     });
   });
 
-  test("should send snowplow events through homepage", async ({ page }) => {
+  test("should send snowplow events through homepage", async ({ mb, page }) => {
     await page.goto("/");
     await main(page).getByText("Customize", { exact: true }).click();
     await modal(page).getByText("Pick a dashboard", { exact: true }).click();
@@ -860,19 +862,19 @@ test.describe("scenarios > setup", () => {
       .click();
     await modal(page).getByText("Done", { exact: true }).click();
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "homepage_dashboard_enabled",
       source: "homepage",
     });
   });
 
-  test("should track when 'New' button is clicked", async ({ page }) => {
+  test("should track when 'New' button is clicked", async ({ mb, page }) => {
     await page.goto("/");
 
     // From the app bar.
     await newButton(page).click();
     await expect(page.getByRole("menu", { name: /new/i })).toBeVisible();
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "new_button_clicked",
       triggered_from: "app-bar",
     });
@@ -880,8 +882,7 @@ test.describe("scenarios > setup", () => {
     // Track closing the button as well.
     await newButton(page).click();
     await expect(page.getByRole("menu", { name: /new/i })).toHaveCount(0);
-    await expectUnstructuredSnowplowEvent(
-      {
+    await expectUnstructuredSnowplowEvent(mb, {
         event: "new_button_clicked",
         triggered_from: "app-bar",
       },
@@ -899,13 +900,14 @@ test.describe("scenarios > setup", () => {
     await emptyState.getByText("New", { exact: true }).click();
 
     await expect(page.getByRole("menu", { name: /new/i })).toBeVisible();
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "new_button_clicked",
       triggered_from: "empty-collection",
     });
   });
 
   test("should track when a 'New' button's menu item is clicked", async ({
+    mb,
     page,
   }) => {
     await page.goto("/");
@@ -918,7 +920,7 @@ test.describe("scenarios > setup", () => {
     await expect(
       page.getByTestId("new-dashboard-modal").getByRole("dialog"),
     ).toBeVisible();
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "new_button_item_clicked",
       triggered_from: "dashboard",
     });
@@ -945,8 +947,7 @@ test.describe("scenarios > setup", () => {
     await expect(
       page.getByTestId("new-dashboard-modal").getByRole("dialog"),
     ).toBeVisible();
-    await expectUnstructuredSnowplowEvent(
-      {
+    await expectUnstructuredSnowplowEvent(mb, {
         event: "new_button_item_clicked",
         triggered_from: "dashboard",
       },

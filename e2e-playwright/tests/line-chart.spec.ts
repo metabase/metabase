@@ -4,8 +4,8 @@
  *
  * Notes:
  * - Snowplow helpers (resetSnowplow / enableTracking / expectNoBadSnowplowEvents
- *   / expectUnstructuredSnowplowEvent) are no-op stubs — the ports stub snowplow
- *   to no-ops (no snowplow-micro container in the port harness). See TODO below.
+ *   / expectUnstructuredSnowplowEvent) run real assertions, backed by the
+ *   per-slot collector via ../support/snowplow.
  * - ECharts SVG axis/tick `<text>` carries surrounding whitespace and Playwright's
  *   getByText does not trim, so exact tick/label matches go through
  *   echartsExactText (whitespace-anchored regex). Substring `cy.get("text").contains`
@@ -41,6 +41,12 @@ import { splitPanelAxisLines } from "../support/metrics-explorer";
 import { cartesianChartCircles } from "../support/metrics";
 import { queryBuilderMain } from "../support/notebook";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover } from "../support/ui";
 import {
   assertEChartsTooltip,
@@ -50,13 +56,6 @@ import {
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-
-// TODO(snowplow): the "with tracking" describe drives snowplow events. The port
-// harness has no snowplow-micro container, so these are no-op stubs (port rule 6).
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 const testQuery = {
   type: "query" as const,
@@ -850,15 +849,16 @@ test.describe("scenarios > visualizations > line chart", () => {
   test.describe("with tracking", () => {
     test.beforeEach(async ({ mb }) => {
       await mb.signInAsAdmin();
-      await resetSnowplow();
-      await enableTracking();
+      await resetSnowplow(mb);
+      await enableTracking(mb);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("should split series into panels and render each series in its own panel", async ({
+      mb,
       page,
     }) => {
       await visitLineChartAdhoc(page, {
@@ -885,7 +885,7 @@ test.describe("scenarios > visualizations > line chart", () => {
       await leftSidebar(page).getByText("Display", { exact: true }).click();
       await leftSidebar(page).getByText("Stack series", { exact: true }).click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "stack_series_enabled",
         triggered_from: "viz_settings",
       });

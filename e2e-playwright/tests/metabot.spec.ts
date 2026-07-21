@@ -9,10 +9,10 @@
  * Port notes:
  * - Token-gated (EE). The describes activate "pro-self-hosted" and skip if the
  *   token env var is missing.
- * - Snowplow helpers are no-op stubs (PORTING rule 6; no snowplow-micro in the
- *   spike harness). The "metabot events" describe keeps every real UI action —
- *   only the reset/enable/expect/assertNo snowplow bookkeeping is neutered, so
- *   those tests degrade to pure UI assertions.
+ * - Snowplow helpers run real assertions, backed by the per-slot collector via
+ *   ../support/snowplow. The "metabot events" describe keeps every real UI
+ *   action and asserts its reset/enable/expect/assertNo snowplow bookkeeping
+ *   for real.
  * - cy.intercept(GET .../candidates).as("xrayCandidates") + cy.wait →
  *   page.waitForResponse registered before the navigation, awaited after
  *   (PORTING rule 2).
@@ -46,20 +46,16 @@ import {
 } from "../support/metabot";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "../support/sample-data";
 import { visitFullAppEmbeddingUrl } from "../support/search";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { icon, visitQuestion } from "../support/ui";
 
 const loremIpsum =
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer auctor id erat non sollicitudin. ";
-
-// Snowplow stubs — no snowplow-micro container in the spike harness (PORTING
-// rule 6). Real UI actions are preserved; only the event bookkeeping is neutered.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};
 
 // The canned SSE bodies are built at call time (they depend only on the pure
 // builders, but must be constructed after the module loads).
@@ -215,26 +211,26 @@ test.describe("Metabot UI", () => {
 
   test.describe("metabot events", () => {
     test.beforeEach(async ({ mb }) => {
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.restore();
       await mb.signInAsAdmin();
-      await enableTracking();
+      await enableTracking(mb);
       await mb.api.activateToken("pro-self-hosted");
       await mb.api.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
-    test("should track Metabot chart explainer", async ({ page }) => {
+    test("should track Metabot chart explainer", async ({ page, mb }) => {
       await visitQuestion(page, ORDERS_BY_YEAR_QUESTION_ID);
       await expect(
         page.getByLabel("Explain this chart", { exact: true }),
       ).toBeVisible();
       await page.getByLabel("Explain this chart", { exact: true }).click();
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "metabot_explain_chart_clicked",
       });
     });
@@ -244,24 +240,25 @@ test.describe("Metabot UI", () => {
         await visitHomeAndWaitForXray(page);
       });
 
-      test("should be able to be opened and closed", async ({ page }) => {
+      test("should be able to be opened and closed", async ({ page, mb }) => {
         await openMetabotViaSearchButton(page);
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "metabot_chat_opened",
           triggered_from: "header",
         });
         await closeMetabotViaCloseButton(page);
       });
 
-      test("should be controlled via keyboard shortcut", async ({ page }) => {
+      test("should be controlled via keyboard shortcut", async ({ page, mb }) => {
         await openMetabotViaShortcutKey(page);
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "metabot_chat_opened",
           triggered_from: "keyboard_shortcut",
         });
         await closeMetabotViaShortcutKey(page);
         // We don't track closing the chat via kbd
         await expectUnstructuredSnowplowEvent(
+          mb,
           {
             event: "metabot_chat_opened",
             triggered_from: "keyboard_shortcut",
@@ -272,6 +269,7 @@ test.describe("Metabot UI", () => {
 
       test("should allow a user to send a message to the agent and handle successful or failed responses", async ({
         page,
+        mb,
       }) => {
         await openMetabotViaSearchButton(page);
         await expect(chatMessages(page)).toHaveCount(0);
@@ -281,7 +279,7 @@ test.describe("Metabot UI", () => {
           body: whoIsYourFavoriteResponse,
         });
         await sendMetabotMessage(page, "Who is your favorite?");
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "metabot_request_sent",
         });
 

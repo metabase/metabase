@@ -1,8 +1,6 @@
 /**
  * Playwright port of e2e/test/scenarios/onboarding/onboarding-checklist.cy.spec.ts
  *
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness) — the events tests still exercise the UI flows.
  * - The ChecklistItemValue type import (frontend source) is outside this
  *   project's tsconfig include; the item list is inlined `as const` instead.
  * - "Inaccessible" describe needs the pro-self-hosted token (full-app
@@ -13,13 +11,13 @@ import { getHelpSubmenu } from "../support/command-palette";
 import { test, expect } from "../support/fixtures";
 import { expectPathname } from "../support/onboarding";
 import { embedFrame, visitFullAppEmbeddingUrl } from "../support/search";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 test.describe("Onboarding checklist page", () => {
   test.beforeEach(async ({ page, mb }) => {
@@ -139,16 +137,17 @@ test.describe("Onboarding checklist events", () => {
     await mb.restore();
     await mb.signInAsAdmin();
 
-    await resetSnowplow();
-    await enableTracking();
+    await resetSnowplow(mb);
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test('should track clicking on "How to use Metabase" button', async ({
     page,
+    mb,
   }) => {
     await page.goto("/");
     await page
@@ -156,13 +155,13 @@ test.describe("Onboarding checklist events", () => {
       .getByRole("listitem", { name: "How to use Metabase", exact: true })
       .click();
     await expectPathname(page, "/getting-started");
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "onboarding_checklist_opened",
     });
   });
 
   test.describe("Onboarding checklist page", () => {
-    test("should track each item when expanded", async ({ page }) => {
+    test("should track each item when expanded", async ({ page, mb }) => {
       // ChecklistItemValue values, inlined (see spec header).
       const items = [
         "invite",
@@ -179,7 +178,7 @@ test.describe("Onboarding checklist events", () => {
 
       for (const item of items) {
         await page.getByTestId(`${item}-item`).click();
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "onboarding_checklist_item_expanded",
           triggered_from: item,
         });
@@ -188,6 +187,7 @@ test.describe("Onboarding checklist events", () => {
 
     test("should track individual items' cta(s) when clicked", async ({
       page,
+      mb,
     }) => {
       await page.goto("/getting-started");
       // Not strictly necessary but reduces the flakiness by allowing the page to load fully
@@ -201,7 +201,7 @@ test.describe("Onboarding checklist events", () => {
         .getByTestId("database-cta")
         .getByRole("button", { name: "Add Database", exact: true })
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "database",
         event_detail: "primary",
@@ -214,7 +214,7 @@ test.describe("Onboarding checklist events", () => {
         .getByTestId("invite-cta")
         .getByRole("button", { name: "Invite people", exact: true })
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "invite",
         event_detail: "primary",
@@ -226,7 +226,7 @@ test.describe("Onboarding checklist events", () => {
         .getByTestId("invite-cta")
         .getByRole("button", { name: "Set up Single Sign-on", exact: true })
         .click();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "invite",
         event_detail: "secondary",

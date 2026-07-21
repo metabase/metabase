@@ -14,8 +14,8 @@
  *   in one element) → matched via case-sensitive substring regex inside
  *   extractColumnAndCheck (PORTING.md mixed-content-text-nodes).
  * - Snowplow helpers (resetSnowplow / expectNoBadSnowplowEvents /
- *   expectUnstructuredSnowplowEvent) are no-op stubs — no snowplow-micro in the
- *   spike harness (PORTING.md rule 6). The extraction itself still runs.
+ *   expectUnstructuredSnowplowEvent) run real assertions, backed by the per-slot
+ *   collector via ../support/snowplow. The extraction itself still runs.
  */
 import { test, expect } from "../support/fixtures";
 import {
@@ -38,6 +38,11 @@ import {
 } from "../support/sample-data";
 import { tableInteractive } from "../support/models";
 import { tableInteractiveBody } from "../support/question-new";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover, visitQuestion } from "../support/ui";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -48,12 +53,6 @@ const URL_CASES = [
     example: "/en/docs/feature",
   } as { option: string; value?: string; example: string },
 ];
-
-// TODO: no snowplow-micro container in the spike harness — these mirror the
-// H snowplow helpers as no-ops (PORTING.md rule 6).
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 test.describe("extract action", () => {
   test.beforeEach(async ({ page, mb }) => {
@@ -284,16 +283,17 @@ test.describe("extract action", () => {
 test.describe("extract action", () => {
   test.beforeEach(async ({ page, mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
     await page.setViewportSize({ width: 1600, height: 800 });
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should create a snowplow event for the column extraction action", async ({
+    mb,
     page,
   }) => {
     await openOrdersTable(page, { limit: 1 });
@@ -305,7 +305,7 @@ test.describe("extract action", () => {
       extraction: "Extract day, month…",
     });
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "column_extract_via_column_header",
       custom_expressions_used: ["get-year"],
       database_id: SAMPLE_DB_ID,

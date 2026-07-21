@@ -19,7 +19,6 @@
  * git repo + EE token and run on the jar.
  *
  * Port notes:
- * - Snowplow helpers → no-op stubs (PORTING rule 6; no snowplow-micro here).
  * - `H.interceptTask()` (a cy.intercept alias) is DROPPED: the Playwright
  *   `waitForTask` polls the current-task endpoint directly.
  * - `cy.exec("git …")` / `cy.task("copyDirectory"|"readDirectory")` /
@@ -56,16 +55,6 @@ const SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH = join(
 );
 
 export const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
-
-// === Snowplow stubs (PORTING rule 6) ================================
-// No snowplow-micro in the spike harness; the UI actions still fire, only the
-// assertions are stubbed. TODO: wire snowplow-micro to make these real.
-export const resetSnowplow = async () => {};
-export const expectNoBadSnowplowEvents = async () => {};
-export const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};
 
 // === Local git repo lifecycle ======================================
 

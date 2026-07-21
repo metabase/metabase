@@ -6,9 +6,9 @@
  * and permission-gated variants, driven from the question's details sidebar.
  *
  * Notes on the port:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- *   harness); the UI flow they wrap ("Turn into a model" click) is ported for
- *   real.
+ * - Snowplow helpers run real assertions, backed by the per-slot collector via
+ *   ../support/snowplow; the UI flow they wrap ("Turn into a model" click) is
+ *   ported for real too.
  * - The `cy.intercept("PUT","/api/card/:id").as("updateQuestion")` alias in the
  *   Cypress beforeEach becomes per-action `waitForCardUpdate` registrations
  *   (Playwright waits must be registered before the triggering action).
@@ -25,6 +25,12 @@ import { openQuestionActions } from "../support/models";
 import { entityPickerModal, entityPickerModalLevel } from "../support/notebook";
 import { entityPickerModalItem } from "../support/question-new";
 import { questionInfoButton } from "../support/revisions";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { pickEntity } from "../support/dashboard";
 import {
   ORDERS_DASHBOARD_ID,
@@ -591,31 +597,27 @@ test.describe("question moving", () => {
   });
 });
 
-// TODO: no snowplow-micro container in the spike harness — the tracking helpers
-// are no-op stubs; the "Turn into a model" UI flow is exercised for real.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
-
 test.describe("send snowplow question events", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should send event when clicking `Turn into a model`", async ({
     page,
+    mb,
   }) => {
     await visitQuestion(page, ORDERS_QUESTION_ID);
     await openQuestionActions(page);
     await popover(page).getByText("Turn into a model", { exact: true }).click();
-    await expectUnstructuredSnowplowEvent({ event: "turn_into_model_clicked" });
+    await expectUnstructuredSnowplowEvent(mb, {
+      event: "turn_into_model_clicked",
+    });
   });
 });

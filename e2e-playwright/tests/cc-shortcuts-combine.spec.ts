@@ -8,9 +8,9 @@
  *
  * Notes:
  * - Snowplow helpers (resetSnowplow / expectNoBadSnowplowEvents /
- *   expectUnstructuredSnowplowEvent) are no-op stubs — no snowplow-micro
- *   container in the spike harness (PORTING.md rule 6). The final test still
- *   exercises the full UI; only the event assertion is stubbed away.
+ *   expectUnstructuredSnowplowEvent) run real assertions, backed by the per-slot
+ *   collector via ../support/snowplow. The final test exercises the full UI and
+ *   asserts the event for real.
  * - H.CustomExpressionEditor.value().should("equal", …) → expectCustomExpressionValue.
  * - The Separator input is a plain HTML text input (not CodeMirror); it is
  *   empty by default whenever the test types into it (the combine-example
@@ -30,15 +30,14 @@ import { test, expect } from "../support/fixtures";
 import { addCustomColumn, openTableNotebook } from "../support/joins";
 import { expressionEditorWidget } from "../support/notebook";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover } from "../support/ui";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness — these mirror the
-// H snowplow helpers as no-ops (PORTING.md rule 6).
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 test.describe("scenarios > question > custom column > expression shortcuts > combine", () => {
   test.beforeEach(async ({ mb }) => {
@@ -185,15 +184,15 @@ test.describe("scenarios > question > custom column > expression shortcuts > com
 test.describe("scenarios > question > custom column > combine shortcuts", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsNormalUser();
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
-  test("should send an event for combine columns", async ({ page }) => {
+  test("should send an event for combine columns", async ({ mb, page }) => {
     await openTableNotebook(page, ORDERS_ID);
     await addCustomColumn(page);
     await selectCombineColumns(page);
@@ -205,7 +204,7 @@ test.describe("scenarios > question > custom column > combine shortcuts", () => 
       .getByRole("button", { name: "Done", exact: true })
       .click();
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "column_combine_via_shortcut",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,

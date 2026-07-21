@@ -11,8 +11,8 @@
  * - H.createQuestion(details, { visitQuestion: true }) → createQuestion(api) +
  *   visitQuestion(page, id).
  * - Snowplow helpers (resetSnowplow / expectNoBadSnowplowEvents /
- *   expectUnstructuredSnowplowEvent) are no-op stubs — no snowplow-micro in the
- *   spike harness (PORTING.md rule 6). The combine flow itself still runs.
+ *   expectUnstructuredSnowplowEvent) run real assertions, backed by the per-slot
+ *   collector via ../support/snowplow. The combine flow itself still runs.
  * - The freshly-opened column dropdown is a second popover on top of the combine
  *   popover → popover(page).last() (precedent: column-shortcuts.ts selectColumn).
  * - cy.findAllByRole("textbox").last() / findByLabelText("Separator") →
@@ -28,24 +28,23 @@ import {
   peopleIdEmailQuestionDetails,
 } from "../support/combine-column-drill";
 import { SAMPLE_DB_ID } from "../support/sample-data";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { caseSensitiveSubstring } from "../support/text";
 import { popover, visitQuestion } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness — these mirror the
-// H snowplow helpers as no-ops (PORTING.md rule 6).
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 test.describe("scenarios > visualizations > drillthroughs > table_drills > combine columns", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should be possible to combine columns from the a table header", async ({
@@ -98,7 +97,7 @@ test.describe("scenarios > visualizations > drillthroughs > table_drills > combi
       "Combined Email, Name, ID",
     );
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "column_combine_via_column_header",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,

@@ -2,8 +2,8 @@
  * Playwright port of e2e/test/scenarios/organization/bookmarks-collection.cy.spec.js
  *
  * Port notes:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness); the UI flows in those tests are ported for real.
+ * - Snowplow assertions are real, backed by the per-slot collector via
+ *   ../support/snowplow; the UI flows in those tests are ported for real too.
  * - "removes items from bookmarks list when they are archived" now asserts
  *   the Bookmarks section actually disappears after each archive — the
  *   Cypress original never checked the removal it was named after.
@@ -16,6 +16,11 @@ import type { Page } from "@playwright/test";
 import { openPinnedItemMenu } from "../support/collections";
 import { icon } from "../support/dashboard-cards";
 import { test, expect } from "../support/fixtures";
+import {
+  enableTracking,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { openCollectionItemMenu } from "../support/bookmarks-extras";
 import { tableHeaderColumn } from "../support/notebook";
 import { getSidebarSectionTitle } from "../support/organization";
@@ -28,20 +33,12 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const adminPersonalCollectionName = "Bobby Tables's Personal Collection";
 
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: unknown,
-  _count?: number,
-) => {};
-
 test.describe("scenarios > organization > bookmarks > collection", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
   test("cannot add bookmark to root collection", async ({ page }) => {
@@ -53,13 +50,14 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
 
   test("can add, update bookmark name when collection name is updated, and remove bookmarks from collection from its page", async ({
     page,
+    mb,
   }) => {
     await visitCollection(page, FIRST_COLLECTION_ID);
 
     // Add bookmark
     await icon(page, "bookmark").click();
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "bookmark_added",
       event_detail: "collection",
       triggered_from: "collection_header",
@@ -191,15 +189,17 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
   test.describe("collection items", () => {
     test("can add/remove bookmark from unpinned Question in collection", async ({
       page,
+      mb,
     }) => {
       await addBookmarkTo(page, "Orders");
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "bookmark_added",
         event_detail: "question",
         triggered_from: "collection_list",
       });
       await removeBookmarkFrom(page, "Orders");
       await expectUnstructuredSnowplowEvent(
+        mb,
         {
           event: "bookmark_added",
           event_detail: "question",
@@ -211,6 +211,7 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
 
     test("can add/remove bookmark from pinned Question in collection", async ({
       page,
+      mb,
     }) => {
       const name = "Orders";
       await visitCollection(page, "root");
@@ -219,7 +220,7 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
       await expect(tableHeaderColumn(page, "ID")).toBeVisible();
       await bookmarkPinnedItem(page, name);
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "bookmark_added",
         event_detail: "question",
         triggered_from: "collection_list",
@@ -228,15 +229,17 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
 
     test("can add/remove bookmark from unpinned Dashboard in collection", async ({
       page,
+      mb,
     }) => {
       await addBookmarkTo(page, "Orders in a dashboard");
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "bookmark_added",
         event_detail: "dashboard",
         triggered_from: "collection_list",
       });
       await removeBookmarkFrom(page, "Orders in a dashboard");
       await expectUnstructuredSnowplowEvent(
+        mb,
         {
           event: "bookmark_added",
           event_detail: "dashboard",
@@ -248,6 +251,7 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
 
     test("can add/remove bookmark from pinned Dashboard in collection", async ({
       page,
+      mb,
     }) => {
       const name = "Orders in a dashboard";
       await visitCollection(page, "root");
@@ -255,7 +259,7 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
       await pin(page, name);
       await expect(page.getByText("A dashboard", { exact: true })).toBeVisible();
       await bookmarkPinnedItem(page, name);
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "bookmark_added",
         event_detail: "dashboard",
         triggered_from: "collection_list",
@@ -276,7 +280,7 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
       });
 
       await addBookmarkTo(page, "Orders Model");
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "bookmark_added",
         event_detail: "model",
         triggered_from: "collection_list",
@@ -284,6 +288,7 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
 
       await removeBookmarkFrom(page, "Orders Model");
       await expectUnstructuredSnowplowEvent(
+        mb,
         {
           event: "bookmark_added",
           event_detail: "model",
@@ -293,11 +298,11 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
       );
     });
 
-    test("can bookmark a collection", async ({ page }) => {
+    test("can bookmark a collection", async ({ page, mb }) => {
       const collectionName = "First collection";
 
       await addBookmarkTo(page, collectionName);
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "bookmark_added",
         event_detail: "collection",
         triggered_from: "collection_list",
@@ -305,6 +310,7 @@ test.describe("scenarios > organization > bookmarks > collection", () => {
 
       await removeBookmarkFrom(page, collectionName);
       await expectUnstructuredSnowplowEvent(
+        mb,
         {
           event: "bookmark_added",
           event_detail: "collection",

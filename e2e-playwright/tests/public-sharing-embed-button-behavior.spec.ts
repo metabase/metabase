@@ -8,15 +8,9 @@
  * embedding modal and the (snowplow) copy/publish/unpublish flows.
  *
  * Porting notes:
- * - Snowplow (PORTING rule 6): the spike stubs snowplow, so resetSnowplow /
- *   enableTracking / expectNoBadSnowplowEvents / expectUnstructuredSnowplowEvent
- *   are no-op stubs (support/public-sharing-embed-button-behavior.ts). The
- *   "snowplow events" describes therefore still drive the real UI (open modal,
- *   copy, publish/unpublish) but assert nothing snowplow-specific.
  * - Clock (cy.clock) in the published/unpublished snowplow tests only existed to
- *   satisfy the stubbed `time_since_*` assertions; page.clock doesn't freeze time
- *   (PORTING) and the assertion is a no-op, so the clock is dropped and only the
- *   Publish/Unpublish UI actions are ported.
+ *   satisfy the `time_since_*` assertions; page.clock doesn't freeze time
+ *   (PORTING) and those fields are not asserted here, so the clock is dropped.
  * - Token: the "paid instance" Embed-JS test and the Pro/EE snowplow describe
  *   are skip-gated on resolveToken("pro-self-hosted") (activated on the jar).
  * - @OSS: the OSS Embed-JS test is skip-gated on isOssBackend (the spike/jar is
@@ -54,14 +48,16 @@ import {
   assertValidPublicLink,
   createPublicResourceLink,
   createResource,
-  enableTracking,
-  expectNoBadSnowplowEvents,
-  expectUnstructuredSnowplowEvent,
   publishChanges,
-  resetSnowplow,
   unpublishChanges,
   visitResource,
 } from "../support/public-sharing-embed-button-behavior";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 
 const RESOURCES: Resource[] = ["dashboard", "question"];
 
@@ -384,7 +380,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
     test.beforeEach(async ({ mb }) => {
       await mb.restore();
       await mb.signInAsAdmin();
-      await enableTracking();
+      await enableTracking(mb);
       resourceId = await createResource(mb.api, resource);
     });
 
@@ -454,17 +450,17 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
 
     test.beforeEach(async ({ page, mb }) => {
       await mb.restore();
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.signInAsAdmin();
-      await enableTracking();
+      await enableTracking(mb);
       resourceId = await createResource(mb.api, resource);
       await page
         .context()
         .grantPermissions(["clipboard-read", "clipboard-write"]);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test.describe(`when embedding ${resource}`, () => {
@@ -478,7 +474,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
           await openSharingMenu(page, /public link/i);
           await page.getByTestId("copy-button").first().click();
           if (resource === "dashboard") {
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "public_link_copied",
               artifact: "dashboard",
               format: null,
@@ -486,7 +482,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
           }
 
           if (resource === "question") {
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "public_link_copied",
               artifact: "question",
               format: "html",
@@ -494,7 +490,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
 
             await popover(page).getByText("csv", { exact: true }).click();
             await page.getByTestId("copy-button").first().click();
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "public_link_copied",
               artifact: "question",
               format: "csv",
@@ -502,7 +498,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
 
             await popover(page).getByText("xlsx", { exact: true }).click();
             await page.getByTestId("copy-button").first().click();
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "public_link_copied",
               artifact: "question",
               format: "xlsx",
@@ -510,7 +506,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
 
             await popover(page).getByText("json", { exact: true }).click();
             await page.getByTestId("copy-button").first().click();
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "public_link_copied",
               artifact: "question",
               format: "json",
@@ -528,7 +524,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
           await popover(page)
             .getByRole("button", { name: "Remove public link" })
             .click();
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "public_link_removed",
             artifact: resource,
             source: "public-share",
@@ -547,7 +543,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
 
           await page.getByTestId("copy-button").first().click();
 
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "public_link_copied",
             artifact: resource,
           });
@@ -565,7 +561,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
             .getByText("Remove public link", { exact: true })
             .click();
 
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "public_link_removed",
             artifact: resource,
             source: "public-share",
@@ -593,8 +589,12 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
             .getByTestId("embed-frontend")
             .getByTestId("copy-button")
             .click();
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "static_embed_code_copied",
+            artifact: resource,
+            language: "pug",
+            location: "code_overview",
+            code: "view",
           });
 
           // Parameters tab
@@ -607,8 +607,12 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
             .getByTestId("embed-backend")
             .getByTestId("copy-button")
             .click();
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "static_embed_code_copied",
+            artifact: resource,
+            language: "ruby",
+            location: "code_params",
+            code: "backend",
           });
 
           // Appearance (Look and Feel) tab
@@ -634,8 +638,13 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
             .getByTestId("embed-backend")
             .getByTestId("copy-button")
             .click();
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "static_embed_code_copied",
+            artifact: resource,
+            language: "python",
+            location: "code_appearance",
+            code: "backend",
+            appearance: { background: true, theme: "night" },
           });
 
           // Question doesn't have an option to disable background (metabase#43838)
@@ -646,8 +655,13 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
               .getByTestId("embed-backend")
               .getByTestId("copy-button")
               .click();
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "static_embed_code_copied",
+              artifact: resource,
+              language: "python",
+              location: "code_appearance",
+              code: "backend",
+              appearance: { background: false, theme: "night" },
             });
           }
         });
@@ -681,8 +695,12 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
               .getByTestId("embed-frontend")
               .getByTestId("copy-button")
               .click();
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "static_embed_code_copied",
+              artifact: resource,
+              language: "pug",
+              location: "code_overview",
+              code: "view",
             });
 
             // Parameters tab
@@ -697,8 +715,12 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
               .getByTestId("embed-backend")
               .getByTestId("copy-button")
               .click();
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "static_embed_code_copied",
+              artifact: resource,
+              language: "ruby",
+              location: "code_params",
+              code: "backend",
             });
 
             // Appearance (Look and Feel) tab
@@ -738,8 +760,17 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
               .getByTestId("embed-backend")
               .getByTestId("copy-button")
               .click();
-            await expectUnstructuredSnowplowEvent({
+            await expectUnstructuredSnowplowEvent(mb, {
               event: "static_embed_code_copied",
+              artifact: resource,
+              language: "python",
+              location: "code_appearance",
+              code: "backend",
+              appearance: {
+                font: "custom",
+                theme: "night",
+                enabled_download_types: { pdf: false, results: false },
+              },
             });
           });
 
@@ -766,8 +797,15 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
                 .getByTestId("embed-backend")
                 .getByTestId("copy-button")
                 .click();
-              await expectUnstructuredSnowplowEvent({
+              await expectUnstructuredSnowplowEvent(mb, {
                 event: "static_embed_code_copied",
+                artifact: resource,
+                language: "node",
+                location: "code_appearance",
+                code: "backend",
+                appearance: {
+                  enabled_download_types: { pdf: false, results: true },
+                },
               });
 
               // Enable PDF exports again
@@ -780,8 +818,15 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
                 .getByTestId("embed-backend")
                 .getByTestId("copy-button")
                 .click();
-              await expectUnstructuredSnowplowEvent({
+              await expectUnstructuredSnowplowEvent(mb, {
                 event: "static_embed_code_copied",
+                artifact: resource,
+                language: "node",
+                location: "code_appearance",
+                code: "backend",
+                appearance: {
+                  enabled_download_types: { pdf: true, results: false },
+                },
               });
             });
           }
@@ -811,7 +856,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
             .getByText("Discard changes", { exact: true })
             .click();
 
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "static_embed_discarded",
             artifact: resource,
           });
@@ -832,7 +877,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
             .getByRole("button", { name: "Publish", exact: true })
             .click();
 
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "static_embed_published",
             artifact: resource,
           });
@@ -860,7 +905,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
             .getByRole("button", { name: "Publish", exact: true })
             .click();
 
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "static_embed_published",
             artifact: resource,
           });
@@ -883,7 +928,7 @@ for (const { resource, apiPath } of LEGACY_RESOURCES) {
             .getByText("Unpublish", { exact: true })
             .click();
 
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "static_embed_unpublished",
             artifact: resource,
           });

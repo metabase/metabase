@@ -10,8 +10,8 @@
  * faithful structural translation for when the feature — and the upstream
  * skip — are lifted.
  *
- * Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- * harness) — rule 6, same pattern as cc-shortcuts / metrics-question.
+ * Snowplow helpers run real assertions, backed by the per-slot collector via
+ * ../support/snowplow — same pattern as cc-shortcuts / metrics-question.
  *
  * `cy.get("@questionId")` alias + wrapId/idAlias → capture the id from the API
  * create call directly. `_.omit(info, "step1Title")` is dropped: the drill-text
@@ -41,6 +41,11 @@ import {
 } from "../support/notebook";
 import { rightSidebar } from "../support/question-saved";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover } from "../support/ui";
 import { visitQuestion } from "../support/ui";
 import type { Page } from "@playwright/test";
@@ -226,11 +231,6 @@ const CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE = [
   "count",
 ];
 
-// TODO (rule 6): no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
-
 async function createAndVisitQuestion(
   page: Page,
   api: MetabaseApi,
@@ -245,12 +245,12 @@ async function createAndVisitQuestion(
 test.describe.skip("scenarios > question > column compare", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test.describe("no aggregations", () => {
@@ -454,7 +454,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -508,7 +508,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -567,7 +567,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -634,7 +634,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -697,7 +697,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -752,7 +752,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -808,7 +808,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -873,7 +873,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -935,7 +935,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -989,7 +989,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -1045,7 +1045,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -1101,7 +1101,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
@@ -1201,7 +1201,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1261,7 +1261,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1321,7 +1321,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1392,7 +1392,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1447,7 +1447,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1503,7 +1503,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1567,7 +1567,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1629,7 +1629,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1689,7 +1689,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1745,7 +1745,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,
@@ -1802,7 +1802,7 @@ test.describe.skip("scenarios > question > column compare", () => {
         await toggleColumnPickerItems(page, ["Value difference"]);
         await popover(page).getByRole("button", { name: "Done", exact: true }).click();
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_compare_via_shortcut",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
           database_id: SAMPLE_DB_ID,

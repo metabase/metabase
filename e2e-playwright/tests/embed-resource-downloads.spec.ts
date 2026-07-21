@@ -14,9 +14,6 @@
  *   additionally assert the GET embed-export response is a 200 with the right
  *   content type (downloadAndAssertEmbedQuestion), strictly stronger than the
  *   Cypress intercept-and-redirect.
- * - Snowplow (resetSnowplow / expectNoBadSnowplowEvents /
- *   expectUnstructuredSnowplowEvent) → no-op stubs (PORTING rule 6); kept called
- *   so the structure mirrors upstream.
  * - Gating: every upstream setup block calls H.activateToken("pro-self-hosted")
  *   (the `downloads` flag is an EE feature — without a token downloads can't be
  *   disabled). The whole file is skip-gated on resolveToken("pro-self-hosted");
@@ -38,12 +35,14 @@ import {
   deleteDownloadsFolder,
   downloadAndAssertEmbedQuestion,
   downloadEmbedQuestion,
-  expectNoBadSnowplowEvents,
-  expectUnstructuredSnowplowEvent,
   getEmbeddedDashboardCardMenu,
-  resetSnowplow,
   waitLoading,
 } from "../support/embed-resource-downloads";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { exportFromDashcard } from "../support/downloads";
 import {
   createDashboardWithQuestions,
@@ -75,8 +74,8 @@ test.describe("Static embed dashboards/questions downloads (results and export a
     "Requires MB_PRO_SELF_HOSTED_TOKEN and an EE backend",
   );
 
-  test.beforeEach(async () => {
-    await resetSnowplow();
+  test.beforeEach(async ({ mb }) => {
+    await resetSnowplow(mb);
     await deleteDownloadsFolder();
   });
 
@@ -92,8 +91,8 @@ test.describe("Static embed dashboards/questions downloads (results and export a
       await mb.api.activateToken("pro-self-hosted");
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("#downloads=false should disable both PDF downloads and dashcard results downloads", async ({
@@ -154,7 +153,7 @@ test.describe("Static embed dashboards/questions downloads (results and export a
 
       expect(download.suggestedFilename()).toBe("Orders in a dashboard.pdf");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "dashboard_pdf_exported",
         dashboard_id: 0,
         dashboard_accessed_via: "static-embed",
@@ -186,7 +185,7 @@ test.describe("Static embed dashboards/questions downloads (results and export a
       const download = await exportFromDashcard(page, ".csv");
       expect(download.suggestedFilename()).toContain(".csv");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "download_results_clicked",
         resource_type: "dashcard",
         accessed_via: "static-embed",
@@ -271,7 +270,7 @@ test.describe("Static embed dashboards/questions downloads (results and export a
         const download = await exportFromDashcard(page, ".csv");
         expect(download.suggestedFilename()).toContain(".csv");
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "download_results_clicked",
           resource_type: "dashcard",
           accessed_via: "static-embed",
@@ -341,7 +340,7 @@ test.describe("Static embed dashboards/questions downloads (results and export a
       const download = await downloadEmbedQuestion(page, ".png");
       expect(download.suggestedFilename()).toContain(".png");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "download_results_clicked",
         resource_type: "question",
         accessed_via: "static-embed",
@@ -372,7 +371,7 @@ test.describe("Static embed dashboards/questions downloads (results and export a
       const download = await downloadEmbedQuestion(page, ".csv");
       expect(download.suggestedFilename()).toContain(".csv");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "download_results_clicked",
         resource_type: "question",
         accessed_via: "static-embed",
@@ -472,7 +471,7 @@ test.describe("Static embed dashboards/questions downloads (results and export a
           fileType: "csv",
         });
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",

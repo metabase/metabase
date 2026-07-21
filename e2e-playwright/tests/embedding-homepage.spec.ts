@@ -1,13 +1,13 @@
 /**
  * Playwright port of e2e/test/scenarios/onboarding/embedding-homepage.cy.spec.ts
  *
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the
- *   spike harness), same as onboarding-checklist.spec.ts.
- * - With the snowplow asserts inert, each test anchors on the real product
- *   effect of the tracked action instead: the example-dashboard button
- *   navigates to /dashboard/1 (the mocked example-dashboard-id), and the
- *   dismissal PUTs embedding-homepage="dismissed-done" — the same
- *   dismiss_reason the Cypress spec could only see via the snowplow payload.
+ * - Snowplow assertions are real, backed by the per-slot collector via
+ *   ../support/snowplow, same as onboarding-checklist.spec.ts.
+ * - Each test also anchors on the real product effect of the tracked action:
+ *   the example-dashboard button navigates to /dashboard/1 (the mocked
+ *   example-dashboard-id), and the dismissal PUTs
+ *   embedding-homepage="dismissed-done" — the same dismiss_reason the Cypress
+ *   spec could only see via the snowplow payload.
  * - The Cypress spec mocked three session properties in one intercept;
  *   mockSessionProperties in onboarding-extras.ts is the multi-property
  *   variant of admin-extras' mockSessionProperty.
@@ -15,17 +15,17 @@
 import { test, expect } from "../support/fixtures";
 import { mockSessionProperties } from "../support/onboarding-extras";
 import { main } from "../support/sharing";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 test.describe("scenarios > embedding-homepage > snowplow events", () => {
   test.beforeEach(async ({ page, mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
 
     await mb.signInAsAdmin();
     await mockSessionProperties(page, {
@@ -35,12 +35,13 @@ test.describe("scenarios > embedding-homepage > snowplow events", () => {
     });
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("opening the example dashboard from the button should send the 'embedding_homepage_example_dashboard_click' event", async ({
     page,
+    mb,
   }) => {
     await page.goto("/");
 
@@ -52,13 +53,14 @@ test.describe("scenarios > embedding-homepage > snowplow events", () => {
     // (even on a permission error page) is the observable effect.
     await page.waitForURL((url) => url.pathname === "/dashboard/1");
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "embedding_homepage_example_dashboard_click",
     });
   });
 
   test("dismissing the homepage should send the 'embedding_homepage_dismissed' event", async ({
     page,
+    mb,
   }) => {
     await page.goto("/");
 
@@ -81,7 +83,7 @@ test.describe("scenarios > embedding-homepage > snowplow events", () => {
       value: "dismissed-done",
     });
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "embedding_homepage_dismissed",
       dismiss_reason: "dismissed-done",
     });

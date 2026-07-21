@@ -1,8 +1,7 @@
 /**
  * Playwright port of e2e/test/scenarios/dashboard-filters/parameters.cy.spec.js
  *
- * Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- * harness); the UI flows those events decorate are ported for real.
+ * Snowplow assertions run against the per-slot collector (support/snowplow).
  *
  * Deviations from the original, both in "should remove filters correctly"
  * (question dashcards): the `findByText("Count").should("not.exist")` check
@@ -87,16 +86,16 @@ import {
   SAMPLE_DB_ID,
 } from "../support/sample-data";
 import { isScrollableHorizontally } from "../support/search";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover, visitDashboard } from "../support/ui";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 /** Port of cy.location("search").should("eq", …) — retried, not one-shot. */
 const expectSearch = (page: Page, search: string) =>
@@ -2868,14 +2867,14 @@ test.describe("scenarios > dashboard > parameters", () => {
 
 test.describe("scenarios > dashboard > parameters", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should track dashboard_filter_created event when adding a filter", async ({
@@ -2889,7 +2888,7 @@ test.describe("scenarios > dashboard > parameters", () => {
     await setDashCardFilter(page, 0, "Text or Category", null, "Category");
     await selectDashboardFilter(getDashboardCard(page, 0), "Category");
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_filter_created",
       triggered_from: "table",
       event_detail: "string",
@@ -2904,7 +2903,7 @@ test.describe("scenarios > dashboard > parameters", () => {
     await addHeadingWhileEditing(page, "Heading Text");
     await setDashCardFilter(page, 1, "Text or Category", null, "Category 2");
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_filter_created",
       triggered_from: "heading",
       event_detail: "string",
@@ -2918,7 +2917,7 @@ test.describe("scenarios > dashboard > parameters", () => {
     // Ensure tracking is triggered for dashboard parameters
     await setFilter(page, "ID");
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_filter_created",
       triggered_from: null,
       event_detail: "id",
@@ -2963,7 +2962,7 @@ test.describe("scenarios > dashboard > parameters", () => {
     }).click();
 
     await moveDashboardFilter(page, "test question");
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_filter_moved",
       triggered_from: null,
       event_detail: "bar",
@@ -2971,7 +2970,7 @@ test.describe("scenarios > dashboard > parameters", () => {
     });
 
     await moveDashboardFilter(page, "heading card");
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_filter_moved",
       triggered_from: "bar",
       event_detail: "heading",
@@ -2979,7 +2978,7 @@ test.describe("scenarios > dashboard > parameters", () => {
     });
 
     await moveDashboardFilter(page, "Top of page");
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_filter_moved",
       triggered_from: "heading",
       event_detail: null,

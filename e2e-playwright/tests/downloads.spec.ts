@@ -5,8 +5,6 @@
  * - Downloads really complete here: downloadAndAssert (support/downloads.ts)
  *   waits for the browser download and parses the file, instead of
  *   intercepting the export request and redirecting it away.
- * - Snowplow helpers are no-op stubs (see TODO below) — the spike harness has
- *   no snowplow-micro container.
  * - cy.deleteDownloadsFolder/cy.verifyDownload have no equivalent: Playwright
  *   saves each download to a unique temp path, so filename assertions run on
  *   the Download object directly.
@@ -41,6 +39,12 @@ import {
   SAMPLE_DB_ID,
 } from "../support/sample-data";
 import { openSharingMenu } from "../support/sharing";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover, visitDashboard, visitQuestion } from "../support/ui";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -89,17 +93,17 @@ test.describe("scenarios > question > download", () => {
   });
 
   test.describe("[snowplow]", () => {
-    test.beforeEach(async () => {
-      await resetSnowplow();
-      await enableTracking();
+    test.beforeEach(async ({ mb }) => {
+      await resetSnowplow(mb);
+      await enableTracking(mb);
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     for (const fileType of testCases) {
-      test(`downloads ${fileType} file`, async ({ page }) => {
+      test(`downloads ${fileType} file`, async ({ page, mb }) => {
         await startNewQuestion(page);
         const picker = miniPicker(page);
         await picker.getByText("Our analytics", { exact: true }).click();
@@ -110,7 +114,7 @@ test.describe("scenarios > question > download", () => {
 
         await downloadAndAssert(page, { fileType });
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "download_results_clicked",
           resource_type: "ad-hoc-question",
           accessed_via: "internal",
@@ -600,13 +604,13 @@ test.describe("scenarios > dashboard > download pdf", () => {
 test.describe("[snowplow] scenarios > dashboard", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should allow you to download a PDF of a dashboard", async ({
@@ -628,7 +632,7 @@ test.describe("[snowplow] scenarios > dashboard", () => {
 
     await downloadEvent;
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_pdf_exported",
       dashboard_id: dashboard.id,
       dashboard_accessed_via: "internal",
@@ -653,7 +657,7 @@ test.describe("[snowplow] scenarios > dashboard", () => {
 
     await exportFromDashcard(page, ".png");
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "download_results_clicked",
       resource_type: "dashcard",
       accessed_via: "internal",
@@ -676,17 +680,6 @@ async function assertOrdersExport(page: Page, rowCount: number) {
     assertRowCount: rowCount,
   });
 }
-
-// TODO(snowplow): the Playwright spike has no snowplow-micro instance, so the
-// tracking helpers (H.resetSnowplow, H.enableTracking,
-// H.expectUnstructuredSnowplowEvent, H.expectNoBadSnowplowEvents) are no-ops.
-// Port them for real once the harness grows snowplow support.
-async function resetSnowplow() {}
-async function enableTracking() {}
-async function expectNoBadSnowplowEvents() {}
-async function expectUnstructuredSnowplowEvent(
-  _event: Record<string, unknown>,
-) {}
 
 // === local ports of `H` helpers not yet in support/ ===
 

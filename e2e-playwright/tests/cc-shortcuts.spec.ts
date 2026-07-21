@@ -1,8 +1,8 @@
 /**
  * Playwright port of e2e/test/scenarios/custom-column/cc-shortcuts.cy.spec.ts
  *
- * Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- * harness) — same pattern as metrics-question.spec.ts.
+ * Snowplow assertions are real, backed by the per-slot collector via
+ * ../support/snowplow — same pattern as metrics-question.spec.ts.
  */
 import type { Page } from "@playwright/test";
 
@@ -14,14 +14,14 @@ import { test, expect } from "../support/fixtures";
 import { addCustomColumn } from "../support/joins";
 import { expressionEditorWidget } from "../support/notebook";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { popover } from "../support/ui";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 async function selectExtractColumn(page: Page) {
   await popover(page).getByText("Extract columns", { exact: true }).click();
@@ -217,15 +217,15 @@ test.describe("scenarios > question > custom column > expression shortcuts > ext
 test.describe("[snowplow] scenarios > question > custom column > expression shortcuts > extract", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsNormalUser();
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
-  test("should track column extraction via shortcut", async ({ page }) => {
+  test("should track column extraction via shortcut", async ({ mb, page }) => {
     await openTableNotebookWithLimit(page, ORDERS_ID, 1);
     await addCustomColumn(page);
     await selectExtractColumn(page);
@@ -234,7 +234,7 @@ test.describe("[snowplow] scenarios > question > custom column > expression shor
 
     await extractionButton(page, "Hour of day").click();
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "column_extract_via_shortcut",
       custom_expressions_used: ["get-hour"],
       database_id: SAMPLE_DB_ID,

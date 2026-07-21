@@ -20,9 +20,6 @@
  *   type) via waitForResponse, strictly stronger than the Cypress
  *   intercept-and-redirect. Public dashcard = POST /api/public/dashboard/..., the
  *   public question = GET /public/question/<uuid>.<type> (downloads.ts).
- * - Snowplow (resetSnowplow / expectNoBadSnowplowEvents /
- *   expectUnstructuredSnowplowEvent) → no-op stubs (PORTING rule 6); kept called
- *   so the structure mirrors upstream.
  * - Gating: every upstream setup calls H.activateToken("pro-self-hosted") (the
  *   `downloads` flag is EE — without a token downloads can't be disabled). The
  *   whole file is skip-gated on resolveToken("pro-self-hosted"); the jar
@@ -33,12 +30,14 @@ import { resolveToken } from "../support/api";
 import {
   deleteDownloadsFolder,
   downloadEmbedQuestion,
-  expectNoBadSnowplowEvents,
-  expectUnstructuredSnowplowEvent,
   getEmbeddedDashboardCardMenu,
-  resetSnowplow,
   waitLoading,
 } from "../support/embed-resource-downloads";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { createNativeQuestion } from "../support/factories";
 import { test, expect } from "../support/fixtures";
 import { createPublicLink } from "../support/public-sharing";
@@ -64,8 +63,8 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
     "Requires MB_PRO_SELF_HOSTED_TOKEN and an EE backend",
   );
 
-  test.beforeEach(async () => {
-    await resetSnowplow();
+  test.beforeEach(async ({ mb }) => {
+    await resetSnowplow(mb);
     await deleteDownloadsFolder();
   });
 
@@ -87,8 +86,8 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
       await mb.signOut();
     });
 
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("#downloads=false should disable both PDF downloads and dashcard results downloads", async ({
@@ -195,6 +194,7 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
 
     test("should be able to download a public dashboard as PDF", async ({
       page,
+      mb,
     }) => {
       await page.goto(`${publicLink}#downloads=true`);
       await waitLoading(page);
@@ -208,7 +208,7 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
 
       expect(download.suggestedFilename()).toBe("Orders in a dashboard.pdf");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "dashboard_pdf_exported",
         dashboard_id: 0,
         dashboard_accessed_via: "public-link",
@@ -217,6 +217,7 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
 
     test("should be able to download a public dashcard as CSV", async ({
       page,
+      mb,
     }) => {
       await page.goto(publicLink);
       await waitLoading(page);
@@ -228,7 +229,7 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
         dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
       });
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "download_results_clicked",
         resource_type: "dashcard",
         accessed_via: "public-link",
@@ -279,14 +280,17 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
       ).toHaveCount(0);
     });
 
-    test("should be able to download the question as PNG", async ({ page }) => {
+    test("should be able to download the question as PNG", async ({
+      page,
+      mb,
+    }) => {
       await page.goto(publicLink);
       await waitLoading(page);
 
       const download = await downloadEmbedQuestion(page, ".png");
       expect(download.suggestedFilename()).toContain(".png");
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "download_results_clicked",
         resource_type: "question",
         accessed_via: "public-link",
@@ -294,7 +298,10 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
       });
     });
 
-    test("should be able to download a public card as CSV", async ({ page }) => {
+    test("should be able to download a public card as CSV", async ({
+      page,
+      mb,
+    }) => {
       await page.goto(publicLink);
       await waitLoading(page);
 
@@ -302,7 +309,7 @@ test.describe("Public dashboards/questions downloads (results and pdf)", () => {
 
       await downloadPublicQuestionCsv(page, { uuid });
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "download_results_clicked",
         resource_type: "question",
         accessed_via: "public-link",

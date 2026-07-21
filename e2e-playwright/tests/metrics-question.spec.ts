@@ -1,8 +1,5 @@
 /**
  * Playwright port of e2e/test/scenarios/metrics/metrics-question.cy.spec.js
- *
- * Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- * harness); the UI flows in those tests are ported for real.
  */
 import type { Page } from "@playwright/test";
 
@@ -26,15 +23,15 @@ import {
   visualize,
 } from "../support/notebook";
 import { SAMPLE_DATABASE } from "../support/sample-data";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { navigationSidebar, popover, visitQuestion } from "../support/ui";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -296,14 +293,14 @@ test.describe("scenarios > metrics > question", () => {
 
 test.describe("metrics", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should bookmark a metric", async ({ page, mb }) => {
@@ -330,7 +327,7 @@ test.describe("metrics", () => {
     await barEntry.hover();
     await icon(barEntry, "ellipsis").click();
     await popover(page).getByText("Bookmark", { exact: true }).click();
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "bookmark_added",
       event_detail: "metric",
       triggered_from: "collection_list",
@@ -357,7 +354,7 @@ test.describe("metrics", () => {
     await fooRow.hover();
     await icon(fooRow, "ellipsis").click();
     await popover(page).getByText("Bookmark", { exact: true }).click();
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "bookmark_added",
       event_detail: "metric",
       triggered_from: "browse_metrics",

@@ -25,7 +25,7 @@
  *   `@createTransform` POST /api/transform, `@updateTransform` PUT
  *   /api/transform/*) are DROPPED — none is ever awaited. sendCodgenBotMessage
  *   registers its own waitForResponse on agent-streaming (PORTING rule 2).
- * - H.resetSnowplow() → no-op stub (PORTING rule 6; no snowplow-micro here).
+ * - H.resetSnowplow() → real reset of this slot's collector (../support/snowplow).
  * - cy.url().should("include", …) → expect.poll (Cypress retried the URL).
  * - Metabot chat sidebar / suggestion / editor helpers live in
  *   support/transforms-codegen.ts (new file — PORTING rule 9). Native-editor
@@ -34,6 +34,7 @@
 import { test, expect } from "../support/fixtures";
 import { resolveToken } from "../support/api";
 import { mockMetabotResponse } from "../support/metabot";
+import { resetSnowplow } from "../support/snowplow";
 import { WRITABLE_DB_ID, getTableId, resyncDatabase } from "../support/schema-viewer";
 import {
   SOURCE_TABLE,
@@ -73,7 +74,7 @@ test.describe("scenarios > metabot > transforms codegen", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore("postgres-writable");
     await resetManySchemasTable();
-    // H.resetSnowplow() — no-op (PORTING rule 6).
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
     await mb.api.activateToken("pro-self-hosted");
     await mb.api.updateSetting("transforms-enabled", true);

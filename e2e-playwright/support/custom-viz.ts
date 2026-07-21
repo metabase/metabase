@@ -17,8 +17,6 @@
  *   context's session cookie, so it runs authenticated as the current user.
  * - getCustomVizFixtureHash computes the SHA-256 in-process (node:crypto)
  *   instead of shelling out to `shasum`.
- * - Snowplow helpers are no-op stubs (PORTING rule 6) — the spike harness has
- *   no snowplow-micro; only the fidelity cross-check needs it.
  * - Console assertions read from a collector wired to `page.on("console")`;
  *   Error args are resolved to their `.message` in the page realm so the
  *   membrane's thrown errors are matchable (Playwright's msg.text() can render
@@ -80,16 +78,6 @@ export const CUSTOM_VIZ_IDENTIFIER_4_SECURITY_COMPONENT =
 export const CUSTOM_VIZ_DISPLAY = `custom:${CUSTOM_VIZ_IDENTIFIER}` as const;
 
 export type CustomVizPlugin = { id: number } & Record<string, unknown>;
-
-// === snowplow (no-op stubs, PORTING rule 6) ==================================
-
-export const resetSnowplow = async () => {};
-export const enableTracking = async () => {};
-export const expectNoBadSnowplowEvents = async () => {};
-export const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-  _count?: number,
-) => {};
 
 // === plugin management (api/customVizPlugin.ts) ==============================
 

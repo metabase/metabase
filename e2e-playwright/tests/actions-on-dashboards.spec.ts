@@ -12,8 +12,6 @@
  *   default) all tests skip; there is no subset that can run without the
  *   writable DB, since even the WRK-67 modal test needs a model built from a
  *   writable table.
- * - Snowplow helpers → no-op stubs (rule 6): no snowplow-micro container in
- *   the spike harness.
  * - cy.intercept(...).as() + cy.wait("@x") → waitForResponse predicates
  *   registered before the triggering action, awaited after (rule 2).
  * - H.moveDnDKitListElement's synthetic pointer sequence → real-mouse drag
@@ -61,14 +59,14 @@ import {
   WRITABLE_DB_ID,
   resyncDatabase,
 } from "../support/schema-viewer";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { icon, modal, popover } from "../support/ui";
 import { visitDashboard } from "../support/ui";
-
-// === snowplow no-op stubs (rule 6 — no snowplow-micro container) ===
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
-const expectNoBadSnowplowEvents = async () => {};
 
 const TEST_TABLE = "scoreboard_actions";
 const TEST_COLUMNS_TABLE = "many_data_types";
@@ -445,11 +443,11 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
       let modelId: number;
 
       test.beforeEach(async ({ page, mb }) => {
-        await resetSnowplow();
+        await resetSnowplow(mb);
         await mb.restore(`${dialect}-writable`);
         await resetTestTable({ type: dialect, table: TEST_TABLE });
         await mb.signInAsAdmin();
-        await enableTracking();
+        await enableTracking(mb);
         await resyncDatabase(mb.api, {
           dbId: WRITABLE_DB_ID,
           tables: [TEST_TABLE],
@@ -460,8 +458,8 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         });
       });
 
-      test.afterEach(async () => {
-        await expectNoBadSnowplowEvents();
+      test.afterEach(async ({ mb }) => {
+        await expectNoBadSnowplowEvents(mb);
       });
 
       test("action creation modal can be closed on click outside (WRK-67)", async ({
@@ -541,7 +539,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           idFilter: true,
         });
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "new_action_card_created",
         });
 
@@ -572,7 +570,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           actionName: "Create",
         });
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "new_action_card_created",
         });
 
@@ -605,7 +603,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           idFilter: true,
         });
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "new_action_card_created",
         });
 
@@ -666,7 +664,7 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           actionName: "Delete",
         });
 
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "new_action_card_created",
         });
 

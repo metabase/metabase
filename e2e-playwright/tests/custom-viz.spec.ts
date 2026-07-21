@@ -12,8 +12,8 @@
  *   keeps the spec fully jar-runnable (no external DB) without changing what is
  *   exercised. The plugins themselves are added over the API each test, not from
  *   any snapshot.
- * - Snowplow assertions are no-op stubs (PORTING rule 6); the spike harness has
- *   no snowplow-micro. The UI actions they guard are all preserved.
+ * - Snowplow assertions are real, backed by the per-slot collector via
+ *   ../support/snowplow. The UI actions they guard are all preserved.
  * - The "development mode" test is gate-skipped: it drives Cypress node tasks
  *   (SDK build, CLI scaffolding, a spawned Vite dev server on :5174, hot reload)
  *   that have no Playwright equivalent in this harness.
@@ -56,16 +56,12 @@ import {
   expectConsoleCalledWith,
   expectConsoleErrorMatch,
   expectConsoleMatch,
-  expectNoBadSnowplowEvents,
-  expectUnstructuredSnowplowEvent,
-  enableTracking,
   getAddVisualizationLink,
   getCustomVizFixtureHash,
   getCustomVizPluginIcon,
   interceptFailingBundle,
   interceptInjectedBundle,
   mainAppLinkText,
-  resetSnowplow,
   updateAdvancedPermissionsGraph,
   visitCustomVizEditForm,
   visitCustomVizNewForm,
@@ -119,6 +115,12 @@ import {
 } from "../support/ui";
 import { saveSavedQuestion, vizSettingsSidebar } from "../support/viz-charts-repros";
 import { visitEmbeddedPage, visitPublicDashboard } from "../support/question-saved";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 
 const customVizQuestionDetails: StructuredQuestionDetails = {
   name: "Custom Viz Dashboard Question",
@@ -300,9 +302,10 @@ test.describe("admin > custom visualizations", () => {
 
     test("should add a plugin via the form and show it in the list", async ({
       page,
+      mb,
     }) => {
-      await resetSnowplow();
-      await enableTracking();
+      await resetSnowplow(mb);
+      await enableTracking(mb);
       await visitCustomVizSettings(page);
 
       await getAddVisualizationLink(page).click();
@@ -323,11 +326,11 @@ test.describe("admin > custom visualizations", () => {
 
       // Should redirect to the list and show the plugin
       await expect(main(page).getByText("demo-viz")).toBeVisible();
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "custom_viz_plugin_created",
         result: "success",
       });
-      await expectNoBadSnowplowEvents();
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("should display manifest information and bundle hash after upload", async ({
@@ -417,9 +420,12 @@ test.describe("admin > custom visualizations", () => {
         await mb.api.activateToken("bleeding-edge");
       });
 
-      test("should replace the bundle via the edit form", async ({ page }) => {
-        await resetSnowplow();
-        await enableTracking();
+      test("should replace the bundle via the edit form", async ({
+        page,
+        mb,
+      }) => {
+        await resetSnowplow(mb);
+        await enableTracking(mb);
         const plugin = await addCustomVizPlugin(page, CUSTOM_VIZ_FIXTURE_TGZ);
         await visitCustomVizSettings(page);
 
@@ -450,11 +456,11 @@ test.describe("admin > custom visualizations", () => {
           "/admin/settings/custom-visualizations",
         );
         await expect(main(page).getByText("demo-viz")).toBeVisible();
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "custom_viz_plugin_updated",
           result: "success",
         });
-        await expectNoBadSnowplowEvents();
+        await expectNoBadSnowplowEvents(mb);
       });
 
       test("should surface an inline error when replacing with a non-matching bundle", async ({
@@ -496,8 +502,8 @@ test.describe("admin > custom visualizations", () => {
         page,
         mb,
       }) => {
-        await resetSnowplow();
-        await enableTracking();
+        await resetSnowplow(mb);
+        await enableTracking(mb);
         await addCustomVizPlugin(page, CUSTOM_VIZ_FIXTURE_TGZ);
         // Single-value question (Count of Orders) — demo-viz requires exactly
         // one row with one numeric column.
@@ -531,7 +537,7 @@ test.describe("admin > custom visualizations", () => {
         await main(page).getByText("demo-viz").hover();
         await page.getByRole("button", { name: "Plugin actions" }).click();
         await popover(page).getByText("Disable").click();
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "custom_viz_plugin_toggled",
           event_detail: "disabled",
         });
@@ -552,7 +558,7 @@ test.describe("admin > custom visualizations", () => {
         // Custom viz section should not appear in chart type selector
         await page.getByTestId("viz-type-button").click();
         await expect(page.getByText("Custom visualizations")).toHaveCount(0);
-        await expectNoBadSnowplowEvents();
+        await expectNoBadSnowplowEvents(mb);
 
         // make sure fallback is used after reload
         await page.reload();
@@ -569,8 +575,8 @@ test.describe("admin > custom visualizations", () => {
         page,
         mb,
       }) => {
-        await resetSnowplow();
-        await enableTracking();
+        await resetSnowplow(mb);
+        await enableTracking(mb);
         await addCustomVizPlugin(page, CUSTOM_VIZ_FIXTURE_TGZ);
         const card = await createQuestion(mb.api, {
           name: "Custom Viz Delete Test",
@@ -596,7 +602,7 @@ test.describe("admin > custom visualizations", () => {
         await expect(
           main(page).getByText("You don't have any custom visualizations."),
         ).toBeVisible();
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "custom_viz_plugin_deleted",
         });
 
@@ -607,7 +613,7 @@ test.describe("admin > custom visualizations", () => {
         // Custom viz section should not appear in chart type selector
         await page.getByTestId("viz-type-button").click();
         await expect(page.getByText("Custom visualizations")).toHaveCount(0);
-        await expectNoBadSnowplowEvents();
+        await expectNoBadSnowplowEvents(mb);
       });
     });
   });
@@ -642,9 +648,12 @@ test.describe("admin > custom visualizations", () => {
       await page.getByTestId("viz-type-button").click();
     }
 
-    test("renders the selected custom viz for the question", async ({ page }) => {
-      await resetSnowplow();
-      await enableTracking();
+    test("renders the selected custom viz for the question", async ({
+      page,
+      mb,
+    }) => {
+      await resetSnowplow(mb);
+      await enableTracking(mb);
       await visitQuestion(page, questionId);
       await switchToDemoViz(page);
 
@@ -654,8 +663,8 @@ test.describe("admin > custom visualizations", () => {
       await expect(main(page).getByText(/Value: \d+/)).toBeVisible();
       // Default threshold from getDefault
       await expect(main(page).getByText("Threshold: 0")).toBeVisible();
-      await expectUnstructuredSnowplowEvent({ event: "custom_viz_selected" });
-      await expectNoBadSnowplowEvents();
+      await expectUnstructuredSnowplowEvent(mb, { event: "custom_viz_selected" });
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("persists the selected custom viz and its settings across reloads", async ({
@@ -2262,6 +2271,9 @@ test.describe("sandbox", () => {
     ).not.toHaveAttribute("data-pwned-by-plugin", /.*/);
   });
 
+  // FIXME: deliberately red pending an answer from the custom-viz owners about
+  // master commit 07cb2f0a6c7 removing the containment boundary; see
+  // FINDINGS.md #224 — do not delete without reading that entry.
   test("confines custom viz and custom viz setting widget to its container (GDGT-2400)", async ({
     page,
     mb,

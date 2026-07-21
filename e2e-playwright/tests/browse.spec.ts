@@ -9,9 +9,8 @@
  * the table-name tooltip overflow #74433).
  *
  * Port notes:
- * - Snowplow is stubbed to no-ops (PORTING rule 6): reset/enable/expect become
- *   no-ops (imported from support/homepage.ts); the real UI actions they guarded
- *   are kept.
+ * - Snowplow assertions are real, backed by the per-slot collector via
+ *   ../support/snowplow; the real UI actions they guard are kept too.
  * - findByText / findByRole(name: string) are exact matches (rule 1).
  * - `cy.intercept(...).as` + `cy.wait` become page.waitForResponse registered
  *   before the triggering action (rule 2).
@@ -41,7 +40,7 @@ import {
   expectNoBadSnowplowEvents,
   expectUnstructuredSnowplowEvent,
   resetSnowplow,
-} from "../support/homepage";
+} from "../support/snowplow";
 import {
   getWindowOpenCalls,
   spyOnWindowOpen,
@@ -122,17 +121,17 @@ test.describe("browse > models", () => {
 
 test.describe("scenarios > browse", () => {
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
-  test("can browse to a model", async ({ page }) => {
+  test("can browse to a model", async ({ mb, page }) => {
     await page.goto("/");
     await navigationSidebar(page).getByLabel("Browse models").click();
     await expect
@@ -142,13 +141,13 @@ test.describe("scenarios > browse", () => {
     await expect
       .poll(() => page.url())
       .toContain(`/model/${ORDERS_MODEL_ID}-`);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "browse_data_model_clicked",
       model_id: ORDERS_MODEL_ID,
     });
   });
 
-  test("can browse to a table in a database", async ({ page }) => {
+  test("can browse to a table in a database", async ({ mb, page }) => {
     await page.goto("/");
     await browseDatabases(page).click();
     await page
@@ -159,7 +158,7 @@ test.describe("scenarios > browse", () => {
       page.getByRole("button", { name: /Summarize/ }),
     ).toBeVisible();
     await page.getByRole("link", { name: /Sample Database/ }).click();
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "browse_data_table_clicked",
       table_id: PRODUCTS_ID,
     });
@@ -201,7 +200,7 @@ test.describe("scenarios > browse", () => {
     await expect.poll(() => new URL(page.url()).hash).not.toBe("");
   });
 
-  test("can generate x-ray dashboard from a browse page", async ({ page }) => {
+  test("can generate x-ray dashboard from a browse page", async ({ mb, page }) => {
     await page.goto(`/browse/databases/${SAMPLE_DB_ID}`);
 
     const schemas = page.getByTestId("browse-schemas");
@@ -217,14 +216,14 @@ test.describe("scenarios > browse", () => {
       .first()
       .click();
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "x-ray_clicked",
       event_detail: "table",
       triggered_from: "browse_database",
     });
   });
 
-  test("tracks when a new model creation is initiated", async ({ page }) => {
+  test("tracks when a new model creation is initiated", async ({ mb, page }) => {
     await page.goto("/browse/models");
     const createModel = page
       .getByTestId("browse-models-header")
@@ -232,13 +231,13 @@ test.describe("scenarios > browse", () => {
     await expect(createModel).toBeVisible();
     await createModel.click();
     await expect.poll(() => new URL(page.url()).pathname).toBe("/model/new");
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "plus_button_clicked",
       triggered_from: "model",
     });
   });
 
-  test("tracks when a new metric creation is initiated", async ({ page }) => {
+  test("tracks when a new metric creation is initiated", async ({ mb, page }) => {
     await page.goto("/browse/metrics");
     const createMetric = page
       .getByTestId("browse-metrics-header")
@@ -247,7 +246,7 @@ test.describe("scenarios > browse", () => {
     await createMetric.click();
     await expect(miniPicker(page)).toBeVisible();
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "plus_button_clicked",
       triggered_from: "metric",
     });
@@ -277,14 +276,14 @@ test.describe("scenarios > browse", () => {
     expect(otherSchemasCalls).toBe(0);
   });
 
-  test("can visit 'Learn about our data' page", async ({ page }) => {
+  test("can visit 'Learn about our data' page", async ({ mb, page }) => {
     await page.goto("/");
     await browseDatabases(page).click();
     await page.getByRole("link", { name: /Learn about our data/ }).click();
     await expect
       .poll(() => new URL(page.url()).pathname)
       .toBe("/reference/databases");
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "learn_about_our_data_clicked",
     });
     await page.goBack();
@@ -339,15 +338,15 @@ test.describe("scenarios > browse (EE)", () => {
   );
 
   test.beforeEach(async ({ mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
     await mb.api.activateToken("pro-self-hosted");
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   async function browseModels(page: Page) {

@@ -7,9 +7,9 @@
  * read-only remote-sync (published-table) case.
  *
  * Port notes:
- * - Snowplow helpers → no-op stubs (PORTING rule 6; no snowplow-micro in the
- *   spike harness). The UI flows still run; only the event assertions are
- *   stubbed. The "segment_created" / x-ray tests keep real coverage of the
+ * - Snowplow helpers run real assertions, backed by the per-slot collector via
+ *   ../support/snowplow. The UI flows still run and the event assertions are
+ *   real. The "segment_created" / x-ray tests keep real coverage of the
  *   create/x-ray flows.
  * - cy.intercept(...).as + cy.wait → page.waitForResponse registered before the
  *   triggering action (PORTING rule 2). The triple @metadata wait is a
@@ -25,15 +25,17 @@
 import { resolveToken } from "../support/api";
 import {
   assertRevisionHistory,
-  enableTracking,
-  expectNoBadSnowplowEvents,
-  expectUnstructuredSnowplowEvent,
   openSegmentRowMenu,
-  resetSnowplow,
   segmentListApp,
   segmentRowMenuTrigger,
   trackMetadataRequests,
 } from "../support/datamodel-segments";
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { pickEntity } from "../support/dashboard";
 import { createSegment } from "../support/filter-bulk";
 import { expect, test } from "../support/fixtures";
@@ -56,7 +58,7 @@ const hasToken = Boolean(resolveToken("pro-self-hosted"));
 test.describe("scenarios > admin > datamodel > segments", () => {
   test.beforeEach(async ({ page, mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
     await page.setViewportSize({ width: 1400, height: 860 });
   });
@@ -120,6 +122,7 @@ test.describe("scenarios > admin > datamodel > segments", () => {
 
     test("should track segment_created event when saving a new segment", async ({
       page,
+      mb,
     }) => {
       await page.goto("/admin/datamodel/segments");
 
@@ -127,8 +130,8 @@ test.describe("scenarios > admin > datamodel > segments", () => {
         .getByRole("button", { name: "New segment", exact: true })
         .click();
 
-      // verify segment_create_started event was tracked (snowplow stubbed)
-      await expectUnstructuredSnowplowEvent({
+      // verify segment_create_started event was tracked
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "segment_create_started",
         triggered_from: "admin_datamodel_segments",
       });
@@ -179,8 +182,8 @@ test.describe("scenarios > admin > datamodel > segments", () => {
       await page.getByRole("button", { name: /Save/ }).click();
       await createSegmentResponse;
 
-      // verify segment_created event was tracked (snowplow stubbed)
-      await expectUnstructuredSnowplowEvent({
+      // verify segment_created event was tracked
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "segment_created",
         triggered_from: "admin_datamodel_segments",
         result: "success",
@@ -454,15 +457,15 @@ test.describe("scenarios > admin > datamodel > segments", () => {
   });
 
   test.describe("x-ray", () => {
-    test.afterEach(async () => {
-      await expectNoBadSnowplowEvents();
+    test.afterEach(async ({ mb }) => {
+      await expectNoBadSnowplowEvents(mb);
     });
 
     test("should track x-raying a segment", async ({ page, mb }) => {
-      await resetSnowplow();
+      await resetSnowplow(mb);
       await mb.restore();
       await mb.signInAsAdmin();
-      await enableTracking();
+      await enableTracking(mb);
 
       const { id } = await createSegment(mb.api, {
         name: "Foo",
@@ -490,7 +493,7 @@ test.describe("scenarios > admin > datamodel > segments", () => {
         .click();
       await xray1;
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "x-ray_clicked",
         event_detail: "segment",
         triggered_from: "data_reference",
@@ -513,7 +516,7 @@ test.describe("scenarios > admin > datamodel > segments", () => {
         .click();
       await xray2;
 
-      await expectUnstructuredSnowplowEvent({
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "x-ray_clicked",
         event_detail: "compare",
         triggered_from: "suggestion_sidebar",

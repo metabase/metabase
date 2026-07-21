@@ -8,11 +8,6 @@
  * shared modules (embedding-dashboard.ts, downloads.ts, data-model.ts,
  * factories.ts, ui.ts, dashboard.ts).
  *
- * Snowplow: the upstream `beforeEach`/`afterEach` call H.resetSnowplow /
- * H.expectNoBadSnowplowEvents and each test asserts H.expectUnstructuredSnowplowEvent.
- * Per PORTING rule 6 these become no-op stubs (the spike stubs snowplow) — kept
- * as callable functions so the spec's structure mirrors the original.
- *
  * Downloads: the Cypress original could not let a download complete (it wedged
  * the runner) so it intercepted the export request and redirected it away; here
  * the real browser download lands as a file (page.waitForEvent("download")) and
@@ -23,14 +18,6 @@ import type { Download, Page } from "@playwright/test";
 
 import { getDashboardCard } from "./dashboard";
 import { main, popover } from "./ui";
-
-// === snowplow no-op stubs (PORTING rule 6) ===
-
-export const resetSnowplow = async () => {};
-export const expectNoBadSnowplowEvents = async () => {};
-export const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-) => {};
 
 /**
  * Port of cy.deleteDownloadsFolder — a no-op here: Playwright downloads land in

@@ -10,9 +10,9 @@
  * Port notes:
  * - @EE + pro-self-hosted token: activated in beforeEach; the whole describe is
  *   skipped without it (PORTING rule 7). The jar activates it.
- * - Snowplow assertions → no-op stubs (PORTING rule 6; no snowplow-micro in the
- *   spike harness). The UI flows still run; only the event assertions are
- *   stubbed. TODO: wire snowplow-micro to make these real.
+ * - Snowplow assertions are real, backed by the per-slot collector via
+ *   ../support/snowplow. The UI flows still run and the event assertions assert
+ *   for real.
  * - cy.intercept(...).as + cy.wait → page.waitForResponse registered before the
  *   triggering action (PORTING rule 2).
  * - cy.findByText/findByLabelText/findByPlaceholderText string args are EXACT
@@ -43,13 +43,15 @@ import {
   SegmentEditor,
   SegmentList,
   SegmentRevisionHistory,
-  expectUnstructuredSnowplowEvent,
   getSegmentsBaseUrl,
-  resetSnowplow,
   visitDataModelSegment,
   visitDataStudioSegments,
   visitDataStudioTable,
 } from "../support/segments-data-studio";
+import {
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import type { MetabaseApi } from "../support/api";
 import { modal, popover } from "../support/ui";
 
@@ -175,7 +177,7 @@ test.describe("scenarios > data studio > data model > segments", () => {
 
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
     await mb.api.activateToken("pro-self-hosted");
   });
@@ -269,6 +271,7 @@ test.describe("scenarios > data studio > data model > segments", () => {
   test.describe("Segment creation", () => {
     test("should create a segment with filters and verify across features", async ({
       page,
+      mb,
     }) => {
       await visitDataStudioSegments(page, ORDERS_ID);
 
@@ -276,8 +279,8 @@ test.describe("scenarios > data studio > data model > segments", () => {
       await SegmentList.getNewSegmentLink(page).scrollIntoViewIfNeeded();
       await SegmentList.getNewSegmentLink(page).click();
 
-      // verify segment_create_started event was tracked (snowplow stubbed)
-      await expectUnstructuredSnowplowEvent({
+      // verify segment_create_started event was tracked
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "segment_create_started",
         triggered_from: "data_studio_segments",
         target_id: ORDERS_ID,
@@ -305,8 +308,8 @@ test.describe("scenarios > data studio > data model > segments", () => {
       await SegmentEditor.getSaveButton(page).click();
       await created;
 
-      // verify segment_created event was tracked (snowplow stubbed)
-      await expectUnstructuredSnowplowEvent({
+      // verify segment_created event was tracked
+      await expectUnstructuredSnowplowEvent(mb, {
         event: "segment_created",
         triggered_from: "data_studio_segments",
         result: "success",

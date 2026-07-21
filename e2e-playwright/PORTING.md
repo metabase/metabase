@@ -35,7 +35,7 @@ Running the original (two traps that cost a session ~40 min):
   ```
 - **Snowplow-tagged specs need `snowplow-micro` up** (`snowplow/docker-compose.yml`,
   `:9090`) — it is *not* in "Local services the ports assume" because the ports
-  stub snowplow to no-ops (rule 6), but the **original** `cy.request()`s
+  use the per-slot collector, not micro (rule 6), but the **original** `cy.request()`s
   `/micro/reset` in a `beforeEach` and `/micro/bad` in an `afterEach`. With the
   container down the entire describe dies in the before-each hook and looks
   catastrophic. Only the cross-check needs it.
@@ -220,11 +220,21 @@ lead that survived did so because the agent happened to narrate it out loud.
    the mount, the first keystrokes go to `<body>`, and the damage surfaces far
    from the cause — a dropped `+` became "2 pills, expected 1" and an
    unrelated mini-picker timeout.
-6. Snowplow helpers → no-op stubs with a TODO block — **but ONLY where snowplow
-   is incidental to the spec. If the events ARE the subject, capture them at the
-   browser boundary instead (see "Capturing snowplow without micro" below);
-   stubbing there makes every test a no-op.** `@external`-tagged content (QA DBs)
-   → `test.skip` gated on `QA_DB_ENABLED`.
+6. Snowplow helpers → the REAL helpers in `support/snowplow.ts`
+   (`enableTracking(mb)` / `resetSnowplow(mb)` /
+   `expectUnstructuredSnowplowEvent(mb, …)` / `expectNoBadSnowplowEvents(mb)`),
+   backed by the per-slot collector — it sees both FE and BE events and
+   Iglu-validates them. **The old "no-op stub" form of this rule is RETIRED**
+   (2026-07-22): every stub was graduated to real assertions, each verified by
+   mutation. The browser-boundary capture (`support/search-snowplow.ts`, see
+   "Capturing snowplow without micro" below) predates the collector and remains
+   valid where already used; new ports should use `support/snowplow.ts`.
+   Two caveats: `enableTracking` PUTs a setting and needs an ADMIN session
+   (snapshots bake in `anon-tracking-enabled=true`, so only call it where
+   upstream does), and the collector records only self-describing events —
+   upstream `page_view` assertions have no seam yet
+   (findings-inbox/timelines-collection-snowplow.md).
+   `@external`-tagged content (QA DBs) → `test.skip` gated on `QA_DB_ENABLED`.
 7. EE/token: `mb.api.activateToken("pro-self-hosted")`;
    `test.skip(!resolveToken("pro-self-hosted"), ...)` for gated describes.
 8. Full-app embedding (`visitFullAppEmbeddingUrl` in Cypress) → the iframe
@@ -1845,8 +1855,9 @@ for *advancing* time.
   `getPersonalCollectionName`.
 - **`savePermissionsGraph`** (data-model-permissions.ts) ≡ **`saveAndConfirmPermissions`**
   (download-permissions.ts) — promote to one shared permissions helper.
-- **The snowplow no-op stub block** is copy-pasted across `homepage.ts`,
-  `datamodel-segments.ts`, `segments-data-studio.ts` — hoist to one module.
+- ~~**The snowplow no-op stub block** is copy-pasted across `homepage.ts`,
+  `datamodel-segments.ts`, `segments-data-studio.ts` — hoist to one module.~~
+  DONE 2026-07-22: all stub blocks deleted; `support/snowplow.ts` is the module.
 - **`undoToast`** (metrics.ts) ≡ **`undoToastList`** (organization.ts) —
   byte-identical `getByTestId("toast-undo")`; unify into `ui.ts`.
 - **Two `MeasureEditor` helper objects** — `measures-queries.ts` (library route)

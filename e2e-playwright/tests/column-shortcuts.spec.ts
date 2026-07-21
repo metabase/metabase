@@ -7,9 +7,9 @@
  *
  * Notes:
  * - Snowplow helpers (resetSnowplow / expectNoBadSnowplowEvents /
- *   expectUnstructuredSnowplowEvent) are no-op stubs — no snowplow-micro
- *   container in the spike harness (PORTING.md rule 6). The tests still
- *   exercise the full UI; only the event assertions are stubbed away.
+ *   expectUnstructuredSnowplowEvent) run real assertions, backed by the per-slot
+ *   collector via ../support/snowplow. The tests exercise the full UI and assert
+ *   the events for real.
  * - H.createQuestion(details, { visitQuestion: true }) → api.createQuestion +
  *   visitQuestion(page, id).
  * - cy.wait("@dataset") pairs are handled inside the extract/combine helpers
@@ -35,16 +35,15 @@ import {
 import { tableInteractive } from "../support/models";
 import { tableInteractiveScrollContainer } from "../support/table-column-settings";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
+import {
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { caseSensitiveSubstring } from "../support/text";
 import { popover, visitQuestion } from "../support/ui";
 
 const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
-
-// TODO: no snowplow-micro container in the spike harness — these mirror the
-// H snowplow helpers as no-ops (PORTING.md rule 6).
-const resetSnowplow = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
 
 const DATE_CASES = [
   { option: "Hour of day", value: "21", example: "0, 1", expressions: ["get-hour"] },
@@ -94,18 +93,18 @@ const URL_CASES = [
 test.describe("extract shortcut", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test.describe("date columns", () => {
     test.describe("should add a date expression for each option", () => {
       for (const { option, value, example, expressions } of DATE_CASES) {
-        test(option, async ({ page }) => {
+        test(option, async ({ mb, page }) => {
           await openOrdersTable(page, { limit: 1 });
           await extractColumnAndCheck(page, {
             column: "Created At",
@@ -113,7 +112,7 @@ test.describe("extract shortcut", () => {
             value,
             example,
           });
-          await expectUnstructuredSnowplowEvent({
+          await expectUnstructuredSnowplowEvent(mb, {
             event: "column_extract_via_plus_modal",
             custom_expressions_used: expressions,
             database_id: SAMPLE_DB_ID,
@@ -189,7 +188,7 @@ test.describe("extract shortcut", () => {
           value,
           example,
         });
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
@@ -226,7 +225,7 @@ test.describe("extract shortcut", () => {
           value,
           example,
         });
-        await expectUnstructuredSnowplowEvent({
+        await expectUnstructuredSnowplowEvent(mb, {
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
@@ -332,11 +331,11 @@ test.describe("scenarios > visualizations > combine shortcut", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
     await mb.signInAsNormalUser();
-    await resetSnowplow();
+    await resetSnowplow(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should be possible add a new column through the combine columns shortcut", async ({
@@ -362,7 +361,7 @@ test.describe("scenarios > visualizations > combine shortcut", () => {
       newValue: "borer-hudson@yahoo.com1",
     });
 
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "column_combine_via_plus_modal",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,

@@ -7,9 +7,7 @@
  * clicked; when ON, filter changes re-query immediately.
  *
  * Porting notes:
- * - Snowplow helpers are no-op stubs (no snowplow-micro container in the spike
- *   harness; port rule 6). The two snowplow tests keep their real UI actions;
- *   only the reset/enable/expect/assertNo event assertions are neutered.
+ * - Snowplow assertions run against the per-slot collector (support/snowplow).
  * - The `cy.intercept(...).as("@cardQuery")` waits become waitForCardQuery /
  *   waitForPublicCardQuery / waitForEmbedCardQuery, registered BEFORE the
  *   triggering action (rule 2). Where upstream had no explicit `cy.wait` but
@@ -68,6 +66,13 @@ import {
 } from "../support/question-saved";
 import { visitEmbeddedDashboard } from "../support/filters-repros";
 import { visitFullAppEmbeddingUrl } from "../support/search";
+import {
+  assertNoUnstructuredSnowplowEvent,
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 import { expectInputWithValue } from "../support/interactive-embedding";
 import {
   applyFilterButton,
@@ -629,29 +634,16 @@ test.describe("scenarios > dashboards > filters > auto apply", () => {
 
 // === snowplow describe (separate top-level describe upstream) ===
 
-// TODO: no snowplow-micro container in the spike harness (port rule 6). These
-// two tests keep their real UI actions; only the snowplow event assertions
-// (reset/enable/expect/assertNo) are neutered.
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-) => {};
-const assertNoUnstructuredSnowplowEvent = async (
-  _event: Record<string, unknown>,
-) => {};
-
 test.describe("scenarios > dashboards > filters > auto apply (snowplow)", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should send snowplow events when disabling auto-apply filters", async ({
@@ -663,7 +655,7 @@ test.describe("scenarios > dashboards > filters > auto apply (snowplow)", () => 
 
     await openDashboardSettingsSidebar(page);
     await disableAutoApply(page);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "auto_apply_filters_disabled",
     });
   });
@@ -679,7 +671,7 @@ test.describe("scenarios > dashboards > filters > auto apply (snowplow)", () => 
 
     await openDashboardSettingsSidebar(page);
     await enableAutoApply(page);
-    await assertNoUnstructuredSnowplowEvent({
+    await assertNoUnstructuredSnowplowEvent(mb, {
       event: "auto_apply_filters_disabled",
     });
   });

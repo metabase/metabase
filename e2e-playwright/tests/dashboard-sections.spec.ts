@@ -6,10 +6,7 @@
  * section" (+) menu in edit mode; inserting a section adds a group of
  * placeholder ("Select question") cards.
  *
- * - Snowplow helpers (resetSnowplow / enableTracking /
- *   expectUnstructuredSnowplowEvent / expectNoBadSnowplowEvents) are no-op
- *   stubs — no snowplow-micro container in the spike harness (PORTING rule 6).
- *   The UI flow those events decorate is ported for real.
+ * - Snowplow assertions run against the per-slot collector (support/snowplow).
  * - The @cardQuery intercept is registered inside selectQuestion before the
  *   pick that triggers it (PORTING rule 2).
  */
@@ -34,13 +31,12 @@ import { createDashboard } from "../support/factories";
 import { READ_ONLY_PERSONAL_COLLECTION_ID } from "../support/documents-core";
 import { ORDERS_DASHBOARD_ID } from "../support/sample-data";
 import { goToTab, visitDashboard } from "../support/ui";
-
-// TODO: no snowplow-micro container in the spike harness — these mirror the
-// H snowplow helpers as no-ops (PORTING.md rule 6).
-const resetSnowplow = async () => {};
-const enableTracking = async () => {};
-const expectNoBadSnowplowEvents = async () => {};
-const expectUnstructuredSnowplowEvent = async (_event: unknown) => {};
+import {
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectUnstructuredSnowplowEvent,
+  resetSnowplow,
+} from "../support/snowplow";
 
 // Port of createMockParameter({ id: "1", name: "Category", type: "string/=" }) —
 // slug stays "text" (the mock default; name is not derived into slug).
@@ -53,10 +49,10 @@ const CATEGORY_FILTER = {
 
 test.describe("scenarios > dashboard cards > sections", () => {
   test.beforeEach(async ({ page, mb }) => {
-    await resetSnowplow();
+    await resetSnowplow(mb);
     await mb.restore();
     await mb.signInAsAdmin();
-    await enableTracking();
+    await enableTracking(mb);
 
     await mb.api.put(`/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [CATEGORY_FILTER],
@@ -64,19 +60,20 @@ test.describe("scenarios > dashboard cards > sections", () => {
     await visitDashboard(page, mb.api, ORDERS_DASHBOARD_ID);
   });
 
-  test.afterEach(async () => {
-    await expectNoBadSnowplowEvents();
+  test.afterEach(async ({ mb }) => {
+    await expectNoBadSnowplowEvents(mb);
   });
 
   test("should add sections and select a question for an empty card", async ({
     page,
+    mb,
   }) => {
     await editDashboard(page);
 
     await expect(getDashboardCards(page)).toHaveCount(1);
     await addSection(page, "KPIs w/ large chart below");
     await expect(getDashboardCards(page)).toHaveCount(7);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_section_added",
       section_layout: "kpi_chart_below",
     });
@@ -92,7 +89,7 @@ test.describe("scenarios > dashboard cards > sections", () => {
     await expect(getDashboardCards(page)).toHaveCount(0);
     await addSection(page, "KPI grid");
     await expect(getDashboardCards(page)).toHaveCount(5);
-    await expectUnstructuredSnowplowEvent({
+    await expectUnstructuredSnowplowEvent(mb, {
       event: "dashboard_section_added",
       section_layout: "kpi_grid",
     });
