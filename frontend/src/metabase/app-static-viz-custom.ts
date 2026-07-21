@@ -32,7 +32,10 @@ export function registerCustomVizPlugin(
   };
   const factory = globals.__customVizPlugin__;
   globals.__customVizPlugin__ = undefined;
-  if (typeof factory === "function") {
-    registerCustomVizPluginImpl(factory, identifier, pluginId);
+  if (typeof factory !== "function") {
+    throw new Error(
+      `Custom viz plugin "${identifier}" did not assign a factory function to __customVizPlugin__ (got ${typeof factory}).`,
+    );
   }
+  registerCustomVizPluginImpl(factory, identifier, pluginId);
 }
