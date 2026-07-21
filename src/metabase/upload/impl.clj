@@ -732,7 +732,8 @@
 
 (mu/defn replace-csv-table!
   "Full-refresh a CSV-backed table: drop the physical table and rebuild it from `file`, keeping the app-db Table row.
-  Any schema change is allowed since the table is recreated from scratch. Used by seeds (enterprise)."
+  Any schema change is allowed since the table is recreated from scratch. Used by seeds (enterprise).
+  Not transactional: if rebuild fails after the drop, the physical table is gone but the Table row remains, and the caller owns recovery."
   [{:keys [table filename ^File file]}
    :- [:map
        [:table :map]
