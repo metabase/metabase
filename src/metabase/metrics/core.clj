@@ -107,11 +107,12 @@
        :dimension-mappings dimension-mappings})))
 
 (defn- seed-metric-dimensions!
-  "First initialization of a v2 metric: seed dimensions from the entity's own (main-table) columns
-   only. Joinable/FK columns are not added by default — they remain available to add via the
-   dimension CRUD endpoints."
+  "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit
+   query joins. Implicitly joinable FK columns remain available via the dimension CRUD endpoints."
   [entity computed-pairs]
-  (let [seed-pairs (filterv lib-metric/main-group? computed-pairs)
+  (let [seed-pairs (filterv #(or (lib-metric/main-group? %)
+                                 (= :source/joins (get-in % [:dimension :lib/source])))
+                            computed-pairs)
         {:keys [dimensions dimension-mappings]}
         (lib-metric/reconcile-dimensions-and-mappings seed-pairs nil nil)
         dimensions (lib-metric/extract-persisted-dimensions dimensions)
