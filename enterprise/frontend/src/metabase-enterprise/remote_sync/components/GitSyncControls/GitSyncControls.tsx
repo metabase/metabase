@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 import {
   Button,
   Combobox,
@@ -48,6 +49,11 @@ export const GitSyncControls = () => {
   // Branch switching now lives in the instance Settings panel (behind destructive-action guard rails),
   // so these controls show the current branch read-only and expose only Push/Pull.
   const { isVisible, currentBranch } = useGitSyncVisible();
+  // Per-user branch checkout: when the user has a branch checked out, the controls
+  // operate on it — the label shows it, and pull/push target it directly.
+  const currentUser = useSelector(getUser);
+  const userBranch = currentUser?.branch ?? null;
+  const displayBranch = userBranch ?? currentBranch;
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -128,6 +134,13 @@ export const GitSyncControls = () => {
 
     combobox.closeDropdown();
 
+    // A personal branch push commits the branch view wholesale; the export
+    // preflight only understands the global sync branch, so skip it.
+    if (userBranch) {
+      togglePushModal();
+      return;
+    }
+
     // Find out up front whether the remote has advanced, so we open the right modal directly instead of
     // collecting a commit message and only then discovering the divergence.
     setIsCheckingPreflight(true);
@@ -158,6 +171,7 @@ export const GitSyncControls = () => {
     runExportPreflight,
     togglePushModal,
     showBranchMismatchIfPresent,
+    userBranch,
   ]);
 
   const handlePullClick = useCallback(async () => {
@@ -166,6 +180,23 @@ export const GitSyncControls = () => {
     }
 
     combobox.closeDropdown();
+
+    // A personal branch pull is self-contained: no global-branch staleness guard,
+    // no dirty/merge machinery — just fetch the branch's latest content.
+    if (userBranch) {
+      try {
+        await importChanges({ branch: userBranch }).unwrap();
+        trackPullChanges({ triggeredFrom: "app-bar", force: false });
+        sendToast({ message: t`Pulled the latest changes from ${userBranch}` });
+      } catch {
+        sendToast({
+          icon: "warning",
+          toastColor: "feedback-negative",
+          message: t`Sorry, we were unable to pull ${userBranch}.`,
+        });
+      }
+      return;
+    }
 
     // With un-pushed local changes, a straight pull would clobber them. Check whether a clean local
     // merge is possible and let the user choose (merge / force / new branch / discard).
@@ -231,6 +262,7 @@ export const GitSyncControls = () => {
     runExportPreflight,
     sendToast,
     showBranchMismatchIfPresent,
+    userBranch,
   ]);
 
   const handleCloseSyncConflictModal = useCallback(() => {
@@ -279,14 +311,14 @@ export const GitSyncControls = () => {
             data-testid="git-sync-controls"
           >
             <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
-              {currentBranch}
+              {displayBranch}
             </Text>
           </Button>
         </Combobox.Target>
 
         <GitSyncOptionsDropdown
           onCheckoutClick={() => setShowCheckoutModal(true)}
-          isPullDisabled={!hasRemoteChanges}
+          isPullDisabled={userBranch ? false : !hasRemoteChanges}
           isPullError={hasRemoteChangesError}
           isLoadingPull={isFetchingRemoteChanges}
           isPushDisabled={!isDirty || isLoading}
@@ -295,9 +327,9 @@ export const GitSyncControls = () => {
         />
       </Combobox>
 
-      {showPushModal && (
+      {showPushModal && displayBranch && (
         <PushChangesModal
-          currentBranch={currentBranch}
+          currentBranch={displayBranch}
           onClose={togglePushModal}
         />
       )}

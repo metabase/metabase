@@ -8,16 +8,14 @@ import { getUser } from "metabase/selectors/user";
 import {
   Button,
   Combobox,
+  Group,
   Icon,
   Modal,
   Stack,
   Text,
   useCombobox,
 } from "metabase/ui";
-import {
-  useCheckoutBranchMutation,
-  useImportChangesMutation,
-} from "metabase-enterprise/api";
+import { useCheckoutBranchMutation } from "metabase-enterprise/api";
 
 import { BranchDropdown } from "../GitSyncControls/BranchDropdown";
 
@@ -28,9 +26,9 @@ interface CheckoutBranchModalProps {
 
 /**
  * Per-user branch checkout: pick an existing git branch (or create a new one)
- * and start working on it. Checking out an existing branch pulls it; a freshly
- * created branch is materialized locally from the branch you were on, so there
- * is nothing to pull yet.
+ * and confirm to start working on it. The switch itself is immediate — content
+ * is not pulled automatically; use "Pull changes" afterwards to fetch the
+ * branch's latest state.
  */
 export const CheckoutBranchModal = ({
   opened,
@@ -41,55 +39,44 @@ export const CheckoutBranchModal = ({
   const [sendToast] = useToast();
   const currentUser = useSelector(getUser);
   const currentBranch = currentUser?.branch ?? null;
-  const [checkoutBranch, { isLoading: isCheckingOut }] =
-    useCheckoutBranchMutation();
-  const [importChanges, { isLoading: isPulling }] = useImportChangesMutation();
+  const [checkoutBranch, { isLoading }] = useCheckoutBranchMutation();
   const [selected, setSelected] = useState<string | null>(null);
 
-  const handleSelect = async (branch: string, isNewBranch?: boolean) => {
-    setSelected(branch);
-    try {
-      await checkoutBranch({ branch }).unwrap();
-      if (!isNewBranch) {
-        await importChanges({ branch }).unwrap();
-      }
-      await dispatch(refreshCurrentUser());
-      sendToast({ message: t`Checked out ${branch}` });
-      onClose();
-    } catch (error) {
-      console.error(error);
-      sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
-        message: t`Sorry, we were unable to check out ${branch}.`,
-      });
-    } finally {
-      setSelected(null);
-    }
+  const handleClose = () => {
+    setSelected(null);
+    onClose();
   };
 
-  const handleLeave = async () => {
+  const switchTo = async (branch: string | null) => {
     try {
-      await checkoutBranch({ branch: null }).unwrap();
+      await checkoutBranch({ branch }).unwrap();
       await dispatch(refreshCurrentUser());
-      sendToast({ message: t`Back on the main sync branch` });
-      onClose();
+      sendToast({
+        message: branch
+          ? t`Switched to ${branch}`
+          : t`Back on the main sync branch`,
+      });
+      handleClose();
     } catch {
       sendToast({
         icon: "warning",
         toastColor: "feedback-negative",
-        message: t`Sorry, we were unable to switch back.`,
+        message: t`Sorry, we were unable to switch branches.`,
       });
     }
   };
 
-  const isBusy = isCheckingOut || isPulling;
+  const canConfirm =
+    selected != null && selected !== currentBranch && !isLoading;
 
   return (
-    <Modal opened={opened} onClose={onClose} title={t`Checkout branch`}>
+    <Modal opened={opened} onClose={handleClose} title={t`Checkout branch`}>
       <Stack gap="md">
         <Text c="text-secondary" size="sm">
-          {t`Work on a git branch of your own: pick an existing branch to pull it, or create a new one from the branch you're on.`}
+          {currentBranch
+            ? t`You are working on ${currentBranch}.`
+            : t`You are working on the main sync branch.`}{" "}
+          {t`Pick an existing branch or create a new one from the branch you're on.`}
         </Text>
         <Combobox
           store={combobox}
@@ -100,8 +87,7 @@ export const CheckoutBranchModal = ({
           <Combobox.Target>
             <Button
               variant="default"
-              disabled={isBusy}
-              loading={isBusy}
+              disabled={isLoading}
               onClick={() => combobox.toggleDropdown()}
               leftSection={<Icon name="git_branch" size={14} />}
               rightSection={<Icon name="chevrondown" size={10} />}
@@ -116,15 +102,36 @@ export const CheckoutBranchModal = ({
           <BranchDropdown
             baseBranch={currentBranch ?? "main"}
             combobox={combobox}
-            onChange={handleSelect}
-            value={currentBranch ?? ""}
+            onChange={(branch) => setSelected(branch)}
+            value={selected ?? currentBranch ?? ""}
           />
         </Combobox>
-        {currentBranch != null && (
-          <Button variant="subtle" onClick={handleLeave} disabled={isBusy}>
-            {t`Back to the main branch`}
-          </Button>
-        )}
+        <Group justify="space-between">
+          {currentBranch != null ? (
+            <Button
+              variant="subtle"
+              onClick={() => switchTo(null)}
+              disabled={isLoading}
+            >
+              {t`Back to the main branch`}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <Group gap="sm">
+            <Button variant="default" onClick={handleClose}>
+              {t`Cancel`}
+            </Button>
+            <Button
+              variant="filled"
+              disabled={!canConfirm}
+              loading={isLoading}
+              onClick={() => selected && switchTo(selected)}
+            >
+              {t`Switch branch`}
+            </Button>
+          </Group>
+        </Group>
       </Stack>
     </Modal>
   );
