@@ -61,6 +61,42 @@
                 :total-view-count 12}}]
    :unsupported-source-items []})
 
+(def ^:private sample-candidate-metric
+  {:definition {:lib/type :mbql/query
+                :database 1
+                :stages [{:lib/type :mbql.stage/mbql
+                          :source-table 42
+                          :aggregation [[:sum {} [:field {} 10]]]
+                          :filters [[:= {} [:field {} 11] "paid"]]}]}
+   :suggested-name "Paid revenue"
+   :suggested-description "Revenue from paid orders"
+   :aggregation [:sum {} [:field {} 10]]
+   :required-tables [{:id 42
+                      :database-id 1
+                      :database-name "DB"
+                      :schema nil
+                      :name "orders"
+                      :display-name "Orders"
+                      :description nil
+                      :data-layer :final
+                      :data-authority :authoritative
+                      :view-count 7
+                      :published? true}]
+   :evidence {:source-items [{:id 99
+                              :name "Paid revenue question"
+                              :type :question
+                              :verified? true
+                              :official-collection? false
+                              :popular? true
+                              :view-count 12
+                              :stage-numbers [0]
+                              :joined? false}]
+              :distinct-source-count 1
+              :verified-source-count 1
+              :official-source-count 0
+              :popular-source-count 1
+              :total-view-count 12}})
+
 (deftest candidate-tables-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (with-redefs [insights/candidate-tables
@@ -69,6 +105,16 @@
                     sample-candidate-table-report)]
       (is (= sample-candidate-table-report
              (usage-metadata/candidate-tables {:limit 3})))
+      (is (= {:limit 3} @captured-args)))))
+
+(deftest candidate-metrics-delegate-to-insights-test
+  (let [captured-args (atom nil)]
+    (with-redefs [insights/candidate-metrics
+                  (fn [opts]
+                    (reset! captured-args opts)
+                    [sample-candidate-metric])]
+      (is (= [sample-candidate-metric]
+             (usage-metadata/candidate-metrics {:limit 3})))
       (is (= {:limit 3} @captured-args)))))
 
 (deftest implicit-segments-delegate-to-insights-test

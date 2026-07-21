@@ -14,6 +14,13 @@
   [opts :- ::usage-metadata.schema/candidate-opts]
   (insights/candidate-tables opts))
 
+(mu/defn candidate-metrics :- [:sequential ::usage-metadata.schema/candidate-metric]
+  "Deterministically mine creation-ready Metric Card candidates from selected questions and models.
+  Plain table aggregations remain Measure candidates; Metrics require reusable semantic context and
+  dependencies that resolve to published or publishable physical tables."
+  [opts :- ::usage-metadata.schema/candidate-opts]
+  (insights/candidate-metrics opts))
+
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
   "Deterministically mine creation-ready Measure candidates from questions and models selected by
   `:query-source`. Without one, verified, official-collection, or popular items are used. Bare row

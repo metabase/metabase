@@ -2,6 +2,7 @@
   "Read-side helpers over usage-metadata rollups — consumer of the batch pipeline."
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -266,7 +267,7 @@
       json/encode))
 
 (def ^:private candidate-card-columns
-  [:model/Card :id :name :type :database_id :dataset_query :card_schema :collection_id :view_count])
+  [:model/Card :id :name :description :type :database_id :dataset_query :card_schema :collection_id :view_count])
 
 (defn- select-candidate-source-cards
   [source]
@@ -328,6 +329,13 @@
               (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
                          :archived false
                          :type :model)))
+
+(defn- candidate-lineage-card-index
+  []
+  (u/index-by :id
+              (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+                         :archived false
+                         :type [:in [:question :model]])))
 
 (defn- clauses-of-type
   [clause-type x]
@@ -745,17 +753,21 @@
    {:table-source-items [], :unsupported []}
    cards))
 
-(defn- eligible-candidate-table?
+(defn- usable-table-dependency?
   [table database]
   (boolean
    (and (:active table)
         (nil? (:visibility_type table))
         (not= :hidden (:data_layer table))
-        (not (:is_published table))
         database
         (not (:is_audit database))
         (not (:is_sample database))
         (nil? (:router_database_id database)))))
+
+(defn- eligible-candidate-table?
+  [table database]
+  (and (usable-table-dependency? table database)
+       (not (:is_published table))))
 
 (defn- candidate-table-index
   [table-ids]
@@ -787,6 +799,39 @@
                            :data-layer     data_layer
                            :data-authority data_authority
                            :view-count     (long (or view_count 0))}]))))
+          tables)))
+
+(defn- metric-required-table-index
+  [table-ids]
+  (let [table-ids (into #{} (filter pos-int?) table-ids)
+        tables    (when (seq table-ids)
+                    (t2/select [:model/Table :id :db_id :schema :name :display_name :description
+                                :data_layer :data_authority :view_count :active :visibility_type
+                                :is_published]
+                               :id [:in table-ids]))
+        db-ids    (into #{} (keep :db_id) tables)
+        databases (when (seq db-ids)
+                    (u/index-by :id
+                                (t2/select [:model/Database :id :name :is_audit :is_sample
+                                            :router_database_id]
+                                           :id [:in db-ids])))]
+    (into {}
+          (keep (fn [{:keys [id db_id schema name display_name description data_layer data_authority
+                             view_count is_published]
+                      :as table}]
+                  (let [database (databases db_id)]
+                    (when (usable-table-dependency? table database)
+                      [id {:id             id
+                           :database-id    db_id
+                           :database-name  (:name database)
+                           :schema         schema
+                           :name           name
+                           :display-name   (or display_name name)
+                           :description    description
+                           :data-layer     data_layer
+                           :data-authority data_authority
+                           :view-count     (long (or view_count 0))
+                           :published?     (boolean is_published)}]))))
           tables)))
 
 (defn- candidate-table-sort-key
@@ -928,6 +973,261 @@
         (dissoc ::metadata-provider)
         (assoc :suggested-name (u.str/elide suggested-name candidate-name-max-length)
                :suggested-description (description-on-source description source)))))
+
+(defn- resolve-transparent-card-source
+  [database-id source-card-id card-index seen]
+  (when (and (pos-int? source-card-id)
+             (not (contains? seen source-card-id)))
+    (when-let [{card-database-id :database_id
+                card-query-map   :dataset_query
+                :keys            [id name]} (card-index source-card-id)]
+      (when (= database-id card-database-id)
+        (when-let [card-query (wrap-query database-id card-query-map)]
+          (let [stage  (when (= 1 (lib/stage-count card-query))
+                         (lib/query-stage card-query 0))
+                source (cond
+                         (pos-int? (:source-table stage))
+                         {:table-id (:source-table stage), :model-lineage []}
+
+                         (pos-int? (:source-card stage))
+                         (resolve-transparent-card-source database-id
+                                                          (:source-card stage)
+                                                          card-index
+                                                          (conj seen source-card-id))
+
+                         :else nil)]
+            (when (and source
+                       (transparent-model-query? card-query (:table-id source)))
+              (update source :model-lineage conj {:id id, :name name}))))))))
+
+(defn- metric-result-shaping-stage?
+  [stage]
+  (or (seq (:fields stage))
+      (some? (:limit stage))
+      (some? (:page stage))
+      (some? (:pivot stage))))
+
+(defn- rewrite-metric-clause-list
+  [query clauses table-id allow-no-fields?]
+  (reduce (fn [rewritten clause]
+            (when rewritten
+              (when-let [{physical :clause}
+                         (physical-clause query 0 clause table-id allow-no-fields?)]
+                (conj rewritten physical))))
+          []
+          clauses))
+
+(defn- rewrite-metric-stage-to-table
+  [query stage table-id]
+  (when (and (not (seq (:joins stage)))
+             (not (seq (:expressions stage))))
+    (let [aggregations (rewrite-metric-clause-list query (:aggregation stage) table-id true)
+          filters      (rewrite-metric-clause-list query (:filters stage) table-id false)
+          breakouts    (rewrite-metric-clause-list query (:breakout stage) table-id false)]
+      (when (and (= (count aggregations) (count (:aggregation stage)))
+                 (= (count filters) (count (:filters stage)))
+                 (= (count breakouts) (count (:breakout stage))))
+        (cond-> (-> stage
+                    (dissoc :source-card :order-by)
+                    (assoc :source-table table-id))
+          (seq aggregations) (assoc :aggregation aggregations)
+          (seq filters)      (assoc :filters filters)
+          (seq breakouts)    (assoc :breakout breakouts))))))
+
+(defn- clean-metric-definition
+  [query stage]
+  (-> {:lib/type :mbql/query
+       :database (:database query)
+       :stages   [(dissoc stage :order-by)]}
+      remove-clause-presentation-metadata
+      lib.schema.util/remove-lib-uuids
+      (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)))
+
+(defn- metric-table-ids
+  [query]
+  (into (or (lib/all-source-table-ids query) #{})
+        (or (lib/all-implicitly-joined-table-ids query) #{})))
+
+(defn- prepare-metric-definition
+  [card card-index]
+  (try
+    (when-let [query (wrap-query (:database_id card) (:dataset_query card))]
+      (when (and (not (lib/any-native-stage? query))
+                 (= 1 (lib/stage-count query)))
+        (let [stage        (lib/query-stage query 0)
+              source-card  (:source-card stage)
+              direct-table (:source-table stage)]
+          (when (and (= :mbql.stage/mbql (:lib/type stage))
+                     (= 1 (count (:aggregation stage)))
+                     (<= (count (:breakout stage)) 1)
+                     (every? lib/raw-temporal-bucket (:breakout stage))
+                     (not (metric-result-shaping-stage? stage)))
+            (when-let [{:keys [stage model-lineage]}
+                       (cond
+                         (pos-int? direct-table)
+                         {:stage stage, :model-lineage []}
+
+                         (pos-int? source-card)
+                         (when-let [{:keys [table-id model-lineage]}
+                                    (resolve-transparent-card-source (:database_id card)
+                                                                     source-card
+                                                                     card-index
+                                                                     #{})]
+                           (when-let [rewritten (rewrite-metric-stage-to-table query stage table-id)]
+                             {:stage rewritten, :model-lineage model-lineage}))
+
+                         :else nil)]
+              (let [definition (clean-metric-definition query stage)]
+                (when-let [validated (wrap-query (:database_id card) definition)]
+                  (let [table-ids (metric-table-ids validated)]
+                    (when (and (lib/can-save? validated :metric)
+                               (seq table-ids)
+                               (empty? (lib/all-source-card-ids validated))
+                               (empty? (lib/all-segment-ids validated))
+                               (empty? (lib/all-measure-ids validated)))
+                      {:definition        definition
+                       :query             validated
+                       :model-lineage     model-lineage
+                       :table-ids         table-ids
+                       :aggregation       (get-in definition [:stages 0 :aggregation 0])
+                       :temporal-breakout (get-in definition [:stages 0 :breakout 0])})))))))))
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
+      (log/debug e "Failed to prepare candidate Metric definition")
+      nil)))
+
+(defn- meaningful-metric-context?
+  [{:keys [query]}]
+  (let [stage       (lib/query-stage query 0)
+        table-id    (:source-table stage)
+        aggregation (first (lib/aggregations query 0))]
+    (or (seq (:filters stage))
+        (joined-stage? stage)
+        (seq (:expressions stage))
+        (nil? (simple-aggregation query 0 aggregation table-id)))))
+
+(defn- raw-metric-candidates
+  [cards card-index]
+  (into []
+        (keep (fn [card]
+                (when-let [{:keys [definition query model-lineage table-ids aggregation temporal-breakout]
+                            :as prepared}
+                           (prepare-metric-definition card card-index)]
+                  (when (meaningful-metric-context? prepared)
+                    (cond-> {::signature         (canonical-signature definition)
+                             ::source-item       (assoc card
+                                                        :model-lineage model-lineage
+                                                        :stage-number 0
+                                                        :joined? (joined-stage? (lib/query-stage query 0)))
+                             ::query             query
+                             ::table-ids         table-ids
+                             :definition         definition
+                             :aggregation        aggregation}
+                      temporal-breakout (assoc :temporal-breakout temporal-breakout))))))
+        cards))
+
+(defn- existing-metric-definition-signatures
+  [card-index]
+  (into #{}
+        (keep (fn [card]
+                (some-> (prepare-metric-definition card card-index)
+                        :definition
+                        canonical-signature)))
+        (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+                   :type :metric
+                   :archived false)))
+
+(defn- metric-source-sort-key
+  [{source-item ::source-item}]
+  [(if (:verified? source-item) 0 1)
+   (if (:official-collection? source-item) 0 1)
+   (- (:view-count source-item))
+   (:id source-item)])
+
+(defn- metric-candidate-sort-key
+  [{:keys [evidence], signature ::signature}]
+  [(- (:verified-source-count evidence))
+   (- (:official-source-count evidence))
+   (- (:distinct-source-count evidence))
+   (- (:popular-source-count evidence))
+   (- (:total-view-count evidence))
+   signature])
+
+(defn- required-table-sort-key
+  [{:keys [database-name schema name id]}]
+  [(or database-name "") (or schema "") (or name "") id])
+
+(defn- metric-fallback-description
+  [definition suggested-name]
+  (let [aggregation-description (safe-definition-description definition :aggregation suggested-name)
+        filter-description      (when (seq (:filters (lib/query-stage definition 0)))
+                                  (safe-definition-description definition :filters nil))]
+    (if (str/blank? filter-description)
+      aggregation-description
+      (tru "{0}; {1}" aggregation-description filter-description))))
+
+(defn- metric-suggestions
+  [candidate naming-candidate]
+  (let [source-item        (::source-item naming-candidate)
+        naming-definition  (::query naming-candidate)
+        source-name        (when-not (str/blank? (:name source-item))
+                             (:name source-item))
+        source-description (when-not (str/blank? (:description source-item))
+                             (:description source-item))
+        suggested-name     (or source-name
+                               (when naming-definition
+                                 (safe-display-name naming-definition
+                                                    (first (lib/aggregations naming-definition 0))
+                                                    (tru "Metric")))
+                               (tru "Metric"))
+        description        (or source-description
+                               (when naming-definition
+                                 (metric-fallback-description naming-definition suggested-name))
+                               suggested-name)]
+    (assoc candidate
+           :suggested-name (u.str/elide suggested-name candidate-name-max-length)
+           :suggested-description description)))
+
+(defn- merge-metric-candidates
+  [raw-candidates existing-signatures table-index limit]
+  (->> raw-candidates
+       (remove #(contains? existing-signatures (::signature %)))
+       (group-by ::signature)
+       (keep (fn [[signature candidates]]
+               (let [candidate        (first candidates)
+                     table-ids        (::table-ids candidate)
+                     required-tables  (->> table-ids (keep table-index) (sort-by required-table-sort-key) vec)
+                     naming-candidate (first (sort-by metric-source-sort-key candidates))]
+                 (when (= (count table-ids) (count required-tables))
+                   (-> candidate
+                       (assoc :required-tables required-tables
+                              :evidence (candidate-evidence (map ::source-item candidates))
+                              ::signature signature)
+                       (metric-suggestions naming-candidate)
+                       (dissoc ::source-item ::query ::table-ids))))))
+       (sort-by metric-candidate-sort-key)
+       (take limit)
+       (mapv #(dissoc % ::signature))))
+
+(mu/defn candidate-metrics :- [:sequential ::usage-metadata.schema/candidate-metric]
+  "Creation-ready Metric Card candidates mined from selected questions and models.
+
+  V1 promotes only whole, single-stage MBQL queries that already have one aggregation and at most one
+  temporal breakout. Plain Measure-shaped aggregations are excluded. Projection-only saved-Card chains
+  are rewritten to physical tables; opaque Card dependencies, saved Measure/Segment references, and
+  unpublishable physical table dependencies are rejected. Existing exact Metric definitions are excluded."
+  ([] (candidate-metrics {}))
+  ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
+   (lib-be/with-metadata-provider-cache
+     (let [limit               (or limit candidate-default-limit)
+           cards               (candidate-source-cards opts)
+           card-index          (candidate-lineage-card-index)
+           raw-candidates      (raw-metric-candidates cards card-index)
+           existing-signatures (existing-metric-definition-signatures card-index)
+           table-index         (metric-required-table-index (into #{} (mapcat ::table-ids) raw-candidates))]
+       (merge-metric-candidates raw-candidates existing-signatures table-index limit)))))
 
 (defn- merge-candidates
   ([raw-candidates source-index existing-signatures limit]
