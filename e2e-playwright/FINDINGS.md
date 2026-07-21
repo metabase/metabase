@@ -4786,3 +4786,78 @@ it without weakening anything, the minimal fixture-side fix is to connect once a
 `readonly_user` through mysql2 inside `createUser` to warm the server cache —
 proven to flip validation to `valid: true`. That masks a real product limitation,
 so it should only be done alongside reporting #225 to the drivers owners.
+
+**#222 SUBSTANTIATED, and three of my own claims corrected (2026-07-22).**
+The magnitude gap this finding explicitly left open is now closed, and the two
+`impersonated` failures are confirmed to share one cause.
+
+**Why this spec specifically.** `apply-impersonation`
+(`enterprise/.../impersonation/middleware.clj:30`) routes **every native query on
+an impersonation-configured DB — all users, admins included** (its own comment:
+"Validate for ALL users if impersonation is configured on this DB") through
+`driver/validate-impersonated-query` -> `validate-impersonated-query*`
+(`driver/sql.clj:337-355`) -> `sql-tools/is-single-stmt-of-type?` -> GraalPy /
+sqlglot, **synchronously inside QP preprocessing**, blocking the `/api/dataset`
+response. Native queries elsewhere do not do this. Both failing tests reach
+`models.ts:64` via `runNativeQuery`, so the shared line is structural, not
+coincidence.
+
+**Magnitude — the gap is closed.** Isolated via nREPL
+(`is-single-stmt-of-type? :postgres "select * from reviews"`):
+
+| condition | first call | warm |
+|---|---|---|
+| one cold JVM, idle machine | 6998 ms | 3-12 ms |
+| two cold JVMs x 3 concurrent contexts | 17190 / 17423 ms | |
+| same, second replicate | **23819 / 23656 ms** | |
+
+At HTTP level, CI-shaped locally (2 cold JVMs, `--workers=2 --fully-parallel`,
+1500m heap): first native `POST /api/dataset` took **12598 ms** ("have limited
+access") and **8864 ms** ("caching..."), both ~100 ms on the warm repeat.
+
+23.8s of a 30s budget on an idle M-series Mac is not "a plausible further 5x" —
+the budget is reached. CI is ~2x slower again (these tests take 38-74s there vs
+~37s locally), with a heap cap and cold page cache.
+
+**Correction 1 — the backend's 30s timeout does NOT cover the expensive part.**
+I wrote that the two 30s timers race and Playwright always wins by a hair.
+Wrong. `do-with-python-context` (`graal.clj:228-233`) calls `.acquire` on the
+pool **first**, and wraps only `f` in `with-timeout*`. Cold context generation
+happens inside `.acquire`, **unbounded**. Corroborated by the concurrency shape:
+three concurrent calls returned within 1 ms of each other (17190/17190/17191),
+i.e. generation serialises inside `acquire` rather than building in parallel.
+
+**Correction 2 — the metrics route I recommended would not have worked.**
+`is-single-stmt-of-type?` (`sql_tools/core.clj:228-231`) is the **only**
+sql-tools entry point not wrapped in `with-operation-timing`; every neighbour
+has it. The exact call that pays the cost is uninstrumented.
+
+**Correction 3 — the "genuine hang" reading is refuted.** A real hang logs
+`"Python execution timed out after 30000 ms - GraalVM interrupted"`
+(`graal.clj:242`). `slot-backend-logs-s25` from run 29866774427 spans both the
+failed first attempt and the passing retry of this spec: **zero** graal/sqlglot/
+timeout lines. Slow cold start, not a hang.
+
+**Correction 4 — warming IS viable, contrary to my closing note.** I said a
+warm-up "would have to run a native query, which is the very thing being timed".
+That is true only *inside* the timed interaction. The `beforeEach` is not timed;
+a single `POST /api/dataset` against the impersonated DB there moves the cold
+cost outside the measured window while leaving the warm path fully observable.
+NOT done — the agent could not reproduce the failure, so could not
+mutation-test that it changes the outcome.
+
+**Why the two tests fail semi-independently (3/4 and 2/4, not together):**
+`--fully-parallel` with per-worker backends lets them land on **different** JVMs,
+each with a `min 0` pool, so each pays a full cold start rather than one warming
+the other.
+
+**Durable fix is product-side:** `min-size 1` on the context pool, or an eager
+warm at boot. A one-line `with-operation-timing` around
+`is-single-stmt-of-type?` would also attribute this directly in any CI run.
+
+**What settles it without app changes:** the trace fix (`18a02dd000c`) now
+uploads reports for flaky-but-passing shards. On a failing attempt no response is
+recorded, so a trace will not show a duration — but it **will** show whether the
+request was ever *sent*, which is exactly the discriminator between "slow
+response" and "the click never fired a query". Nothing so far has separated
+those.
