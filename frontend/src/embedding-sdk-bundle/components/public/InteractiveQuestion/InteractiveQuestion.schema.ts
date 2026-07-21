@@ -4,9 +4,18 @@ import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
 import type { InteractiveQuestionInternalProps } from "./InteractiveQuestion";
 
-// Typed against the internal shape so runtime validation still accepts the
-// `query` prop used by the `useMetabot` hook. The public API (see
-// `InteractiveQuestionProps`) intentionally doesn't expose `query` to users.
+const hasEntityProp = (
+  props: InteractiveQuestionInternalProps | null | undefined,
+) =>
+  props != null &&
+  (props.questionId !== undefined ||
+    props.token !== undefined ||
+    props.card !== undefined ||
+    props.query !== undefined);
+
+// Typed against the internal shape so runtime validation accepts both the
+// public object `query` prop and the internal string `query` prop used by the
+// `useMetabot` hook.
 const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
@@ -36,13 +45,9 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   })
     .optional()
     .noUnknown(),
-  questionId: Yup.mixed().when(["token", "query"], {
-    is: (token: unknown, query: unknown) =>
-      token !== undefined || query !== undefined,
-    then: (schema) => schema.optional(),
-    otherwise: (schema) => schema.required(),
-  }),
+  questionId: Yup.mixed().optional(),
   token: Yup.mixed().optional(),
+  card: Yup.mixed().optional(),
   query: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   targetCollection: Yup.mixed().optional(),
@@ -56,7 +61,13 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   withAlerts: Yup.mixed().optional(),
   onDrillThrough: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
-}).noUnknown();
+})
+  .test(
+    "has-entity-prop",
+    "questionId, token, card, or query is required",
+    hasEntityProp,
+  )
+  .noUnknown();
 
 export const interactiveQuestionSchema: FunctionSchema = {
   input: [propsSchema],

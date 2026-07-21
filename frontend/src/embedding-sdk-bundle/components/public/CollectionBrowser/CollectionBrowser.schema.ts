@@ -10,6 +10,7 @@ const propsSchema: Yup.SchemaOf<CollectionBrowserProps> = Yup.object({
   collectionId: Yup.mixed().optional(),
   onClick: Yup.mixed().optional(),
   pageSize: Yup.mixed().optional(),
+  showDashboardQuestions: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   visibleColumns: Yup.mixed().optional(),
   visibleEntityTypes: Yup.mixed().optional(),
