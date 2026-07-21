@@ -52,9 +52,12 @@ export function NewSeedModal({
       return;
     }
     try {
-      const table = await createSeed({ name, file }).unwrap();
+      const seed = await createSeed({ name, file }).unwrap();
       dispatch(addUndo({ message: t`Seed ${name} created` }));
-      dispatch(push(Urls.dataStudioTable(table.id)));
+      onClose();
+      if (seed.table_id != null) {
+        dispatch(push(Urls.dataStudioTable(seed.table_id)));
+      }
     } catch (error: any) {
       const message = error?.data?.message ?? t`Could not create the seed`;
       dispatch(addUndo({ message, icon: "warning" }));
