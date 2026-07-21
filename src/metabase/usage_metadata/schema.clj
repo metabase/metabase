@@ -139,6 +139,30 @@
   [:fn {:error/message "expected an MBQL clause"}
    (fn [x] (and (vector? x) (keyword? (first x))))])
 
+(mr/def ::candidate-metric-required-table
+  [:map {:closed true}
+   [:id             pos-int?]
+   [:database-id    pos-int?]
+   [:database-name  [:maybe :string]]
+   [:schema         [:maybe :string]]
+   [:name           [:maybe :string]]
+   [:display-name   [:maybe :string]]
+   [:description    [:maybe :string]]
+   [:data-layer     [:maybe :keyword]]
+   [:data-authority [:maybe :keyword]]
+   [:view-count     nat-int?]
+   [:published?     :boolean]])
+
+(mr/def ::candidate-metric
+  [:map {:closed true}
+   [:definition            :map]
+   [:suggested-name        ::lib.schema.common/non-blank-string]
+   [:suggested-description ::lib.schema.common/non-blank-string]
+   [:aggregation           ::mbql-clause]
+   [:temporal-breakout     {:optional true} ::mbql-clause]
+   [:required-tables       [:sequential {:min 1} ::candidate-metric-required-table]]
+   [:evidence              ::candidate-evidence]])
+
 (mr/def ::candidate-measure
   [:map {:closed true}
    [:source                ::source]

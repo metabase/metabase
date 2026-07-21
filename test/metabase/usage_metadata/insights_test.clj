@@ -38,9 +38,11 @@
 (def ^:private merge-candidates            @#'insights/merge-candidates)
 (def ^:private card-table-dependencies     @#'insights/card-table-dependencies)
 (def ^:private eligible-candidate-table?   @#'insights/eligible-candidate-table?)
+(def ^:private merge-metric-candidates     @#'insights/merge-metric-candidates)
 (def ^:private raw-table-candidate-analysis @#'insights/raw-table-candidate-analysis)
 (def ^:private rank-candidate-tables       @#'insights/rank-candidate-tables)
 (def ^:private table-candidate-evidence    @#'insights/table-candidate-evidence)
+(def ^:private usable-table-dependency?    @#'insights/usable-table-dependency?)
 
 (deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}
@@ -351,6 +353,49 @@
                 (lib/and (lib/= product-id 987654)
                          (lib/> subtotal 12345)))))
 
+(defn- orders-filtered-metric-query
+  ([] (orders-filtered-metric-query 987654))
+  ([product-value]
+   (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+         product-id (lib.metadata/field mp (mt/id :orders :product_id))
+         subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+     (-> (orders-base-query)
+         (lib/filter (lib/= product-id product-value))
+         (lib/aggregate (lib/sum subtotal))))))
+
+(defn- orders-filtered-count-metric-query []
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))]
+    (-> (orders-base-query)
+        (lib/filter (lib/= product-id 987654))
+        (lib/aggregate (lib/count)))))
+
+(defn- orders-temporal-metric-query
+  ([] (orders-temporal-metric-query :month))
+  ([unit]
+   (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+         created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+     (lib/breakout (orders-filtered-metric-query)
+                   (lib/with-temporal-bucket created-at unit)))))
+
+(defn- orders-breakout-only-query []
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+    (lib/breakout (orders-measure-query)
+                  (lib/with-temporal-bucket created-at :month))))
+
+(defn- orders-categorical-breakout-metric-query []
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))]
+    (lib/breakout (orders-filtered-metric-query) product-id)))
+
+(defn- orders-expression-metric-query []
+  (let [mp       (lib-be/application-database-metadata-provider (mt/id))
+        subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (as-> (orders-base-query) query
+      (lib/expression query "Adjusted subtotal" (lib/* subtotal 2))
+      (lib/aggregate query (lib/sum (lib/expression-ref query "Adjusted subtotal"))))))
+
 (defn- model-source-query
   [card-id]
   (let [mp (lib-be/application-database-metadata-provider (mt/id))]
@@ -401,6 +446,11 @@
         target-ref      (assoc-in (lib/ref target-field) [1 :source-field] source-field-id)]
     (lib/filter (orders-base-query)
                 (lib/= target-ref "Gadget"))))
+
+(defn- orders-implicit-join-metric-query []
+  (let [mp       (lib-be/application-database-metadata-provider (mt/id))
+        subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (lib/aggregate (orders-implicit-join-query) (lib/sum subtotal))))
 
 (defn- selected-cards-source
   [& card-ids]
@@ -597,18 +647,23 @@
 (deftest eligible-candidate-table-exclusions-test
   (let [table    {:active true, :visibility_type nil, :data_layer :internal, :is_published false}
         database {:is_audit false, :is_sample false, :router_database_id nil}]
+    (is (true? (usable-table-dependency? table database)))
+    (is (true? (usable-table-dependency? (assoc table :is_published true) database))
+        "published tables remain valid Metric dependencies")
     (is (true? (eligible-candidate-table? table database))
         "internal data-layer tables remain eligible")
     (is (true? (eligible-candidate-table? (assoc table :data_layer :final) database)))
     (doseq [excluded-table [(assoc table :active false)
                             (assoc table :visibility_type :technical)
-                            (assoc table :data_layer :hidden)
-                            (assoc table :is_published true)]]
+                            (assoc table :data_layer :hidden)]]
+      (is (false? (usable-table-dependency? excluded-table database)))
       (is (false? (eligible-candidate-table? excluded-table database))))
+    (is (false? (eligible-candidate-table? (assoc table :is_published true) database)))
     (doseq [excluded-database [nil
                                (assoc database :is_audit true)
                                (assoc database :is_sample true)
                                (assoc database :router_database_id 123)]]
+      (is (false? (usable-table-dependency? table excluded-database)))
       (is (false? (eligible-candidate-table? table excluded-database))))))
 
 (deftest candidate-table-ranking-applies-every-tier-before-limit-test
@@ -634,6 +689,308 @@
            (mapv :label limited)))
     (is (= 8 (count limited)))
     (is (not-any? #(= :tie-loser (:label %)) limited))))
+
+(deftest ^:parallel candidate-metric-ranking-applies-every-tier-before-limit-test
+  (letfn [(source-items [n {:keys [verified? official? popular? total-views]}]
+            (mapv (fn [i]
+                    {:id                   i
+                     :name                 (str "Source " i)
+                     :description          "Source description"
+                     :type                 :question
+                     :verified?            (boolean (and verified? (zero? i)))
+                     :official-collection? (boolean (and official? (zero? i)))
+                     :popular?             (boolean (and popular? (zero? i)))
+                     :view-count           (if (zero? i) (or total-views 0) 0)
+                     :stage-number         0
+                     :joined?              false})
+                  (range n)))
+          (raw-candidates [[label signature evidence]]
+            (mapv (fn [source-item]
+                    {:metabase.usage-metadata.insights/signature   signature
+                     :metabase.usage-metadata.insights/source-item source-item
+                     :metabase.usage-metadata.insights/table-ids   #{1}
+                     :label                                        label
+                     :definition                                   {}
+                     :aggregation                                  [:count {}]})
+                  (source-items (:distinct-sources evidence) evidence)))]
+    (let [raw-candidates (mapcat raw-candidates
+                                 [[:signature-b "b" {:distinct-sources 1}]
+                                  [:signature-a "a" {:distinct-sources 1}]
+                                  [:views "views" {:distinct-sources 1 :total-views 100}]
+                                  [:popular "popular" {:distinct-sources 1 :popular? true}]
+                                  [:distinct "distinct" {:distinct-sources 2}]
+                                  [:official "official" {:distinct-sources 1 :official? true}]
+                                  [:verified "verified" {:distinct-sources 1 :verified? true}]])
+          table-index   {1 {:id 1, :database-name "db", :schema "schema", :name "table"}}
+          limited       (merge-metric-candidates raw-candidates #{} table-index 6)]
+      (is (= [:verified :official :distinct :popular :views :signature-a]
+             (mapv :label limited)))
+      (is (= 6 (count limited)))
+      (is (not-any? #(= :signature-b (:label %)) limited))
+      (is (empty? (merge-metric-candidates raw-candidates #{} {} 6))
+          "a candidate is rejected if any required physical table is unavailable"))))
+
+(deftest candidate-metrics-return-creation-ready-filtered-and-temporal-definitions-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "Paid revenue"
+                                            :description "Revenue for the selected product"
+                                            :type :question
+                                            :dataset_query (orders-temporal-metric-query)
+                                            :view_count 0}]
+    (let [candidates (insights/candidate-metrics
+                      {:query-source (selected-cards-source card-id), :limit 1000})
+          candidate  (first candidates)
+          definition (:definition candidate)
+          validated  (lib/query (lib-be/application-database-metadata-provider (mt/id)) definition)]
+      (is (= 1 (count candidates)))
+      (is (lib/can-save? validated :metric))
+      (is (= :sum (first (:aggregation candidate))))
+      (is (= :month (get-in candidate [:temporal-breakout 1 :temporal-unit])))
+      (is (= "Paid revenue" (:suggested-name candidate)))
+      (is (= "Revenue for the selected product" (:suggested-description candidate)))
+      (is (= [(mt/id :orders)] (mapv :id (:required-tables candidate))))
+      (is (false? (get-in candidate [:required-tables 0 :published?])))
+      (is (= [card-id] (mapv :id (get-in candidate [:evidence :source-items]))))
+      (is (= candidates
+             (insights/candidate-metrics
+              {:query-source (selected-cards-source card-id), :limit 1000}))
+          "the canonical result is deterministic across repeated runs"))))
+
+(deftest candidate-metrics-include-filtered-count-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "Paid order count"
+                                            :type :question
+                                            :dataset_query (orders-filtered-count-metric-query)
+                                            :view_count 0}]
+    (let [candidate (first (insights/candidate-metrics
+                            {:query-source (selected-cards-source card-id), :limit 1000}))]
+      (is (= :count (first (:aggregation candidate))))
+      (is (seq (get-in candidate [:definition :stages 0 :filters])))
+      (is (nil? (:temporal-breakout candidate))))))
+
+(deftest candidate-metrics-aggregate-curation-and-use-best-source-for-naming-test
+  (mt/with-temp [:model/Collection {official-collection-id :id} {:authority_level "official"}
+                 :model/Card {official-id :id} {:name "Official metric name"
+                                                :description "Official metric description"
+                                                :type :question
+                                                :dataset_query (orders-filtered-metric-query)
+                                                :collection_id official-collection-id
+                                                :view_count 100}
+                 :model/Card {verified-id :id} {:name "Verified metric name"
+                                                :description "Verified metric description"
+                                                :type :model
+                                                :dataset_query (orders-filtered-metric-query)
+                                                :view_count 0}]
+    (moderation/create-review! {:moderated_item_id   verified-id
+                                :moderated_item_type "card"
+                                :moderator_id        (mt/user->id :crowberto)
+                                :status              "verified"})
+    (let [candidate (first (insights/candidate-metrics
+                            {:query-source (selected-cards-source official-id verified-id)
+                             :min-view-count 10
+                             :limit 1000}))]
+      (is (= "Verified metric name" (:suggested-name candidate)))
+      (is (= "Verified metric description" (:suggested-description candidate)))
+      (is (= {:distinct-source-count 2
+              :verified-source-count 1
+              :official-source-count 1
+              :popular-source-count 1
+              :total-view-count 100}
+             (dissoc (:evidence candidate) :source-items))))))
+
+(deftest candidate-metrics-keep-direct-joins-and-report-all-required-tables-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "Joined revenue"
+                                            :type :question
+                                            :dataset_query (orders-joined-query)
+                                            :view_count 0}]
+    (let [candidate (first (insights/candidate-metrics
+                            {:query-source (selected-cards-source card-id), :limit 1000}))]
+      (is (= #{(mt/id :orders) (mt/id :products)}
+             (into #{} (map :id) (:required-tables candidate))))
+      (is (seq (get-in candidate [:definition :stages 0 :joins])))
+      (is (true? (get-in candidate [:evidence :source-items 0 :joined?]))))))
+
+(deftest candidate-metrics-report-implicitly-joined-required-tables-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "Implicitly joined revenue"
+                                            :type :question
+                                            :dataset_query (orders-implicit-join-metric-query)
+                                            :view_count 0}]
+    (let [candidate (first (insights/candidate-metrics
+                            {:query-source (selected-cards-source card-id), :limit 1000}))]
+      (is (= #{(mt/id :orders) (mt/id :products)}
+             (into #{} (map :id) (:required-tables candidate))))
+      (is (true? (get-in candidate [:evidence :source-items 0 :joined?]))))))
+
+(deftest candidate-metrics-keep-direct-expressions-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "Adjusted revenue"
+                                            :type :question
+                                            :dataset_query (orders-expression-metric-query)
+                                            :view_count 0}]
+    (let [candidate (first (insights/candidate-metrics
+                            {:query-source (selected-cards-source card-id), :limit 1000}))]
+      (is (some? candidate))
+      (is (seq (get-in candidate [:definition :stages 0 :expressions])))
+      (is (= [(mt/id :orders)] (mapv :id (:required-tables candidate)))))))
+
+(deftest candidate-metrics-exclude-measure-shaped-queries-test
+  (mt/with-temp [:model/Card {sum-id :id} {:name "Plain sum"
+                                           :type :question
+                                           :dataset_query (orders-measure-query)
+                                           :view_count 0}
+                 :model/Card {count-id :id} {:name "Plain count"
+                                             :type :question
+                                             :dataset_query (orders-count-query)
+                                             :view_count 0}
+                 :model/Card {breakout-id :id} {:name "Plain sum by month"
+                                                :type :question
+                                                :dataset_query (orders-breakout-only-query)
+                                                :view_count 0}]
+    (is (empty? (insights/candidate-metrics
+                 {:query-source (selected-cards-source sum-id count-id breakout-id), :limit 1000})))))
+
+(deftest candidate-metrics-rewrite-transparent-card-lineage-test
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (mt/with-temp [:model/Card {base-model-id :id} {:name "metric base model"
+                                                    :type :model
+                                                    :dataset_query (lib/with-fields
+                                                                     (orders-base-query)
+                                                                     [product-id subtotal])
+                                                    :view_count 0}
+                   :model/Card {outer-card-id :id} {:name "metric projection question"
+                                                    :type :question
+                                                    :dataset_query (model-source-query base-model-id)
+                                                    :view_count 0}
+                   :model/Card {card-id :id} {:name "metric from transparent cards"
+                                              :type :question
+                                              :dataset_query (-> (model-source-query outer-card-id)
+                                                                 (lib/filter (lib/= product-id 987654))
+                                                                 (lib/aggregate (lib/sum subtotal)))
+                                              :view_count 0}]
+      (let [candidate (first (insights/candidate-metrics
+                              {:query-source (selected-cards-source card-id), :limit 1000}))]
+        (is (= (mt/id :orders) (get-in candidate [:definition :stages 0 :source-table])))
+        (is (nil? (get-in candidate [:definition :stages 0 :source-card])))
+        (is (= [{:id base-model-id, :name "metric base model"}
+                {:id outer-card-id, :name "metric projection question"}]
+               (get-in candidate [:evidence :source-items 0 :model-lineage])))))))
+
+(deftest candidate-metrics-exclude-opaque-card-lineage-test
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (mt/with-temp [:model/Card {model-id :id} {:name "metric opaque model"
+                                               :type :model
+                                               :dataset_query (lib/filter (orders-base-query)
+                                                                          (lib/= product-id 1))
+                                               :view_count 0}
+                   :model/Card {card-id :id} {:name "metric from opaque model"
+                                              :type :question
+                                              :dataset_query (-> (model-source-query model-id)
+                                                                 (lib/filter (lib/= product-id 2))
+                                                                 (lib/aggregate (lib/sum subtotal)))
+                                              :view_count 0}]
+      (is (empty? (insights/candidate-metrics
+                   {:query-source (selected-cards-source card-id), :limit 1000}))))))
+
+(deftest candidate-metrics-protect-against-card-lineage-cycles-test
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (mt/with-temp [:model/Card {card-a-id :id} {:name "metric cycle A"
+                                                :type :question
+                                                :dataset_query (orders-filtered-metric-query)
+                                                :view_count 0}
+                   :model/Card {card-b-id :id} {:name "metric cycle B"
+                                                :type :model
+                                                :dataset_query (model-source-query card-a-id)
+                                                :view_count 0}]
+      (t2/update! :model/Card card-a-id
+                  {:dataset_query (-> (model-source-query card-b-id)
+                                      (lib/filter (lib/= product-id 1))
+                                      (lib/aggregate (lib/sum subtotal)))})
+      (is (empty? (insights/candidate-metrics
+                   {:query-source (selected-cards-source card-a-id), :limit 1000}))))))
+
+(deftest candidate-metrics-exclude-unsupported-query-shapes-test
+  (let [native-query  (lib/native-query (lib-be/application-database-metadata-provider (mt/id)) "select 1")
+        pivot-query   (orders-temporal-metric-query)
+        breakout-uuid (get-in pivot-query [:stages 0 :breakout 0 1 :lib/uuid])]
+    (mt/with-temp [:model/Card {native-id :id} {:name "native metric source"
+                                                :type :question
+                                                :dataset_query native-query
+                                                :view_count 0}
+                   :model/Card {multi-stage-id :id} {:name "multi-stage metric source"
+                                                     :type :question
+                                                     :dataset_query (orders-multi-stage-query)
+                                                     :view_count 0}
+                   :model/Card {multi-aggregation-id :id} {:name "multi-aggregation metric source"
+                                                           :type :question
+                                                           :dataset_query (orders-conditional-measure-query)
+                                                           :view_count 0}
+                   :model/Card {limited-id :id} {:name "limited metric source"
+                                                 :type :question
+                                                 :dataset_query (lib/limit (orders-filtered-metric-query) 10)
+                                                 :view_count 0}
+                   :model/Card {paginated-id :id} {:name "paginated metric source"
+                                                   :type :question
+                                                   :dataset_query (assoc-in (orders-filtered-metric-query)
+                                                                            [:stages 0 :page]
+                                                                            {:page 1, :items 10})
+                                                   :view_count 0}
+                   :model/Card {categorical-breakout-id :id} {:name "categorical breakout metric source"
+                                                              :type :question
+                                                              :dataset_query (orders-categorical-breakout-metric-query)
+                                                              :view_count 0}
+                   :model/Card {pivot-id :id} {:name "pivot metric source"
+                                               :type :question
+                                               :dataset_query (assoc-in pivot-query
+                                                                        [:stages 0 :pivot]
+                                                                        {:rows [breakout-uuid], :columns []})
+                                               :view_count 0}
+                   :model/Card {malformed-id :id} {:name "malformed metric source"
+                                                   :type :question
+                                                   :dataset_query {}
+                                                   :view_count 0}]
+      (is (empty? (insights/candidate-metrics
+                   {:query-source (selected-cards-source native-id
+                                                         multi-stage-id
+                                                         multi-aggregation-id
+                                                         limited-id
+                                                         paginated-id
+                                                         categorical-breakout-id
+                                                         pivot-id
+                                                         malformed-id)
+                    :limit 1000}))))))
+
+(deftest candidate-metrics-deduplicate-existing-full-definitions-test
+  (let [candidate-query (orders-filtered-metric-query 2)]
+    (mt/with-temp [:model/Card {card-id :id} {:name "candidate metric source"
+                                              :type :question
+                                              :dataset_query candidate-query
+                                              :view_count 0}
+                   :model/Card _existing {:name "existing different metric"
+                                          :type :metric
+                                          :dataset_query (orders-filtered-metric-query 1)}]
+      (testing "a different filter remains a distinct Metric definition"
+        (is (= 1 (count (insights/candidate-metrics
+                         {:query-source (selected-cards-source card-id), :limit 1000})))))
+      (mt/with-temp [:model/Card _same {:name "existing identical metric"
+                                        :type :metric
+                                        :dataset_query candidate-query}]
+        (testing "the complete identical definition is excluded"
+          (is (empty? (insights/candidate-metrics
+                       {:query-source (selected-cards-source card-id), :limit 1000}))))))))
+
+(deftest candidate-metrics-keep-different-temporal-grains-distinct-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "monthly candidate metric"
+                                            :type :question
+                                            :dataset_query (orders-temporal-metric-query :month)
+                                            :view_count 0}
+                 :model/Card _existing {:name "existing yearly metric"
+                                        :type :metric
+                                        :dataset_query (orders-temporal-metric-query :year)}]
+    (is (= 1 (count (insights/candidate-metrics
+                     {:query-source (selected-cards-source card-id), :limit 1000}))))))
 
 (deftest candidate-measures-return-valid-definition-and-skip-existing-test
   (let [query (orders-measure-query)]
