@@ -38,48 +38,6 @@
   [alert]
   (m/find-first #(= :email (keyword (:channel_type %))) (:channels alert)))
 
-(defn- maybe-filter-pulses-recipients
-  "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
-  themselves. Recipients that are plain email addresses are preserved.
-
-  If the current user is not a superuser, also filters the list of recipients to remove users from a different tenant."
-  [pulses]
-  (cond->> pulses
-    (perms/sandboxed-or-impersonated-user?)
-    (map (fn [pulse]
-           (assoc pulse :channels
-                  (for [channel (:channels pulse)]
-                    (assoc channel :recipients
-                           (filter (fn [recipient]
-                                     (or (not (:id recipient))
-                                         (= (:id recipient) api/*current-user-id*)))
-                                   (:recipients channel)))))))
-
-    (not api/*is-superuser?*)
-    (map (fn [pulse]
-           (assoc pulse :channels
-                  (for [channel (:channels pulse)]
-                    (assoc channel :recipients
-                           (filter (fn [recipient]
-                                     (or (not (:id recipient))
-                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
-                                   (:recipients channel)))))))))
-
-(defn- maybe-filter-pulse-recipients
-  [pulse]
-  (first (maybe-filter-pulses-recipients [pulse])))
-
-(defn- maybe-strip-sensitive-metadata
-  "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
-  being the creator or a recipient, we return it with some metadata removed."
-  [pulse]
-  (if (mi/current-user-has-full-permissions? :read pulse)
-    pulse
-    (-> (dissoc pulse :cards)
-        (update :channels
-                (fn [channels]
-                  (map #(dissoc % :recipients) channels))))))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -113,9 +71,9 @@
                                                                  :dashboard-id dashboard-id
                                                                  :user-id      (when creator-or-recipient api/*current-user-id*)})
                                   (filter (if creator-or-recipient mi/can-read? mi/can-write?))
-                                  maybe-filter-pulses-recipients)
+                                  models.pulse/maybe-filter-pulses-recipients)
         pulses               (if creator-or-recipient
-                               (map maybe-strip-sensitive-metadata pulses)
+                               (map models.pulse/maybe-strip-sensitive-metadata pulses)
                                pulses)]
     (mapv
      (fn [pulse]
@@ -192,8 +150,8 @@
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
     (-> pulse
-        maybe-filter-pulse-recipients
-        maybe-strip-sensitive-metadata
+        models.pulse/maybe-filter-pulse-recipients
+        models.pulse/maybe-strip-sensitive-metadata
         (t2/hydrate :can_write))))
 
 (defn- maybe-add-recipients

@@ -43,8 +43,13 @@ export function setupListTransformJobsEndpoint(jobs: TransformJob[]) {
 export function setupListTransformJobTransformsEndpoint(
   jobId: TransformJobId,
   transforms: Transform[],
+  options?: { delay?: number },
 ) {
-  fetchMock.get(`path:/api/transform-job/${jobId}/transforms`, transforms);
+  fetchMock.get(
+    `path:/api/transform-job/${jobId}/transforms`,
+    transforms,
+    options,
+  );
 }
 
 export function setupListTransformJobTransformsEndpointWithError(

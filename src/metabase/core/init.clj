@@ -23,7 +23,7 @@
    [metabase.channel.init]
    [metabase.classloader.init]
    [metabase.cloud-migration.init]
-   [metabase.collections-rest.init]
+   [metabase.collections.init]
    [metabase.comments.init]
    [metabase.config.core :as config]
    [metabase.content-verification.init]
@@ -90,5 +90,4 @@
 ;; load EE init code on system launch if it exists.
 (when (and (not *compile-files*)
            config/ee-available?)
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (require 'metabase-enterprise.core.init))

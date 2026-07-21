@@ -26,9 +26,8 @@ describe("Add data modal (EE with token)", () => {
       });
 
       await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
+      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
       expect(await screen.findByText("Enable uploads")).toBeInTheDocument();
-      // The uploads settings link only shows once uploads are enabled.
-      expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
     });
 
     it("should offer a setting manager to manage (csv) uploads", async () => {

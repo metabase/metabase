@@ -191,7 +191,6 @@
        :rows rows
        :metadata metadata})))
 
-#_:clj-kondo/ignore
 (defmacro with-test-table
   [[table-id table-name] [schema data] & body]
   `(let [table-name# (if (= :redshift driver/*driver*)

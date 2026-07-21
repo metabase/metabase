@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { useToast } from "metabase/common/hooks";
@@ -11,6 +11,8 @@ import type { RemoteSyncOutcome, RemoteSyncTaskType } from "metabase-types/api";
 interface SyncProgressModalProps {
   taskType: RemoteSyncTaskType;
   progress: number;
+  isStalled?: boolean;
+  minutesSinceLastUpdate?: number | null;
   isError: boolean;
   errorMessage: string;
   isSuccess: boolean;
@@ -21,6 +23,8 @@ interface SyncProgressModalProps {
 export function SyncProgressModal({
   progress,
   taskType,
+  isStalled = false,
+  minutesSinceLastUpdate = null,
   isError,
   errorMessage,
   isSuccess,
@@ -106,8 +110,18 @@ export function SyncProgressModal({
       withCloseButton={false}
     >
       <Stack mt="md" gap="md">
-        <Text ta="center">{progressLabel}</Text>
-        <Progress value={progress * 100} transitionDuration={300} animated />
+        {isStalled ? (
+          <Text ta="center">{getStalledMessage(minutesSinceLastUpdate)}</Text>
+        ) : (
+          <>
+            <Text ta="center">{progressLabel}</Text>
+            <Progress
+              value={progress * 100}
+              transitionDuration={300}
+              animated
+            />
+          </>
+        )}
         <Text size="sm">
           {t`Please wait until this finishes before editing content.`}
         </Text>
@@ -123,6 +137,19 @@ export function SyncProgressModal({
         )}
       </Stack>
     </Modal>
+  );
+}
+
+function getStalledMessage(minutesSinceLastUpdate: number | null): string {
+  if (minutesSinceLastUpdate == null) {
+    return t`Still working…`;
+  }
+
+  const minutes = minutesSinceLastUpdate;
+  return ngettext(
+    msgid`Still working. No update for ${minutes} minute.`,
+    `Still working. No update for ${minutes} minutes.`,
+    minutes,
   );
 }
 

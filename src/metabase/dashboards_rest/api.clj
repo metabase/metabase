@@ -12,7 +12,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.render.core :as channel.render]
-   [metabase.collections-rest.api :as api.collection]
+   [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -645,7 +645,6 @@
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/pdf" :- :any
   "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render charts) and stream it
   back as a file download.
@@ -729,9 +728,9 @@
                        :offset (request/offset)}))
         cards      (app-db/query query)]
     {:total  (count cards)
-     :data   (api.collection/post-process-rows {}
-                                               (t2/select-one :model/Collection :id (:collection_id dashboard))
-                                               cards)
+     :data   (collections.children/post-process-rows {}
+                                                     (t2/select-one :model/Collection :id (:collection_id dashboard))
+                                                     cards)
      :limit  (request/limit)
      :offset (request/offset)
      :models (if (seq cards) ["card"] [])}))
