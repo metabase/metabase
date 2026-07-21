@@ -207,6 +207,13 @@
         started   (u/start-timer)
         diff      (reconcile/reconcile! ds configured-model)
         ran-ms    (elapsed-ms started)]
+    ;; Deliberately does NOT consume `dirty-entities`, even though a full reconcile covers every entity.
+    ;; Clearing the entries it covered would cost at most one redundant targeted run, but two ways of
+    ;; losing a write pay for it: `dirty-entities` is a set, so an entity re-dirtied *during* the reconcile
+    ;; is indistinguishable from its pre-run marker and would be cleared along with it; and
+    ;; `reconcile/reconcile!` catches per-batch embedding failures and returns normally, so a "successful"
+    ;; run can have left some entities un-updated. Doing it safely needs per-entity generations plus a
+    ;; failed-entity report out of `reconcile!` — more machinery than the redundant run it saves.
     (record-run! "full" diff ran-ms)
     {:index     (select-keys diff [:inserted :deleted :unchanged])
      :execution {:waited_ms waited-ms :ran_ms ran-ms}}))
@@ -309,10 +316,16 @@
     (format "(%s) - (CASE %s ELSE 0.0 END)" distance-expr cases)))
 
 (defn- query-embedding
-  "Embed a library-retrieval query with the model-family prefix used for asymmetric retrieval models."
+  "Embed a library-retrieval query with the model-family prefix used for asymmetric retrieval models.
+  The `ee-embedding-query-prefix` setting is inherited only while this index runs the globally configured
+  model: it is written for that model, so an ee-library-embedding-* override would otherwise get a prefix
+  its own model was never trained on. The family default, derived from the model in use, always applies."
   [model user-search-prompt]
   (embedding/get-embedding model
-                           (embedding/prefix-search-query model user-search-prompt)
+                           (embedding/prefix-search-query
+                            model user-search-prompt
+                            :inherit-configured-prefix? (= (:model-name model)
+                                                           (:model-name (embedding/get-configured-model))))
                            {:type :query :record-tokens? true}))
 
 (defenterprise search

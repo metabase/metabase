@@ -35,7 +35,7 @@ jobs:
     - uses: actions/checkout@v6
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-    # The pinned INT8 model files are ~1.2 GB from HuggingFace. Restore older entries too: the build verifies
+    # The pinned model files are expensive to redownload. Restore older entries too: the build verifies
     # every cached file's SHA-256, so a model bump downloads only files whose expected hash changed.
     - name: Cache embedder model downloads
       uses: actions/cache@v5

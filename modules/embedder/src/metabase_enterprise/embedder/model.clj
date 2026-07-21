@@ -2,7 +2,7 @@
   "DJL + ONNX Runtime plumbing for the in-process embedder.
   Holds a registry of loaded models keyed by model name, so different consumers (semantic search, the
   library entity index, the complexity-score synonym axis) can run different models in one JVM.
-  Each loaded model stays resident; the expensive part (~430 MB DJL/ONNX Runtime native init) is per-JVM,
+  Each loaded model stays resident; the substantial DJL/ONNX Runtime native initialization cost is per-JVM,
   not per-model — an additional model costs its weights.
   See [[metabase-enterprise.embedder.core]] for the public API and packaging story."
   (:require
@@ -26,6 +26,11 @@
 (def ^:private default-model-bundle-name
   "Canonical bundle/registry name for [[default-model-name]]."
   "snowflake-arctic-embed-l-v2.0")
+
+(def ^:private minilm-model-bundle-name
+  "Canonical bundle/registry name for the complexity-score synonym axis's model — and the only model the
+  dev-only zoo download covers."
+  "all-MiniLM-L6-v2")
 
 (def ^:private minilm-model-zoo-url
   "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2")
@@ -59,8 +64,8 @@
   complexity-score synonym axis defaults to MiniLM). Only pinned aliases collapse: HF repo names are
   namespace-scoped, so another org's identically named model needs its own `MB_EMBEDDER_MODEL_SOURCES`
   entry."
-  {"sentence-transformers/all-MiniLM-L6-v2" "all-MiniLM-L6-v2"
-   default-model-name                        default-model-bundle-name})
+  {"sentence-transformers/all-MiniLM-L6-v2" minilm-model-bundle-name
+   default-model-name                       default-model-bundle-name})
 
 (def ^:private model-runtime-options
   "Non-default translator options for pinned models. Arctic's official inference contract uses CLS
@@ -100,75 +105,63 @@
               {}
               parsed))))
 
-(defn- model-source
-  "Where to load `model-name` from, in priority order:
-
-  1. An `MB_EMBEDDER_MODEL_SOURCES` entry for the name — a local directory (`:path`) or any DJL-supported
-     model URL (`:url`: `file:`, `https:`, `s3:`, `djl://` zoo, `jar:///` classpath).
-     Consumers select a model by name via their embedding settings (e.g. `MB_EE_EMBEDDING_MODEL` +
-     `MB_EE_EMBEDDING_MODEL_DIMENSIONS`), so the name/dimensions they declare must describe the model the
-     entry loads.
-  2. A per-arch INT8 bundle packed into this jar's resources at build time (the production default).
-     A pinned HF repo alias (see [[model-name-aliases]]) resolves to its bare bundled name, so the consumer
-     defaults find the Arctic and MiniLM bundles; other qualified names never collapse.
-  3. For the MiniLM bundle name (or its pinned alias) only: the DJL model-zoo URL, downloading into
-     `~/.djl.ai/` — dev-only, and only with `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` so production can
-     never silently reach the network. Arctic is intentionally build-pinned rather than downloaded at
-     runtime.
-
-  Each source carries the translator options required by that pinned model: Arctic uses CLS pooling and
-  two graph inputs, while MiniLM uses mean pooling and three. An override inherits the pinned model's
-  options and can replace them when its custom source differs."
-  [requested-name]
-  ;; Normalize before anything else: the override lookup, the bundle path and the zoo-download gate must all
-  ;; agree on one canonical name, or an alias would pick up some of them and miss the others.
-  (let [model-name      (normalize-model-name requested-name)
-        resource-path   (str "metabase-embedder/" model-name "-" (bundled-model-arch) ".zip")
-        ;; `find`, not `get`: a present-but-nil entry must be treated as malformed, not as absent.
-        [_ override
-         :as entry]     (find (model-source-overrides) model-name)
-        ;; Only the recognized keys, so a stray key in the entry (e.g. :type) can't clobber the internal
-        ;; source-map discriminator and surface as a cryptic downstream error.
-        model-options   (merge {:include-token-types? true}
-                               (get model-runtime-options model-name))
-        override-source (fn [type-key]
-                          (merge model-options
-                                 {:origin :override}
-                                 (select-keys override [:model-file-name :include-token-types? :pooling])
-                                 {:type type-key, type-key (str (get override type-key))}))]
-    ;; A malformed entry must fail loudly here: falling through to the bundled/zoo branches would either
-    ;; claim no entry exists or silently load a different model than the one the entry meant to select.
-    (when (and entry (not (or (:path override) (:url override))))
+(defn- override-model-source
+  "Source map for `model-name`'s `MB_EMBEDDER_MODEL_SOURCES` entry, nil when the env names no source for it.
+  A local directory (`:path`) or any DJL-supported model URL (`:url`: `file:`, `https:`, `s3:`, `djl://`
+  zoo, `jar:///` classpath). `model-options` supplies the pinned model's translator defaults, which the
+  entry may replace.
+  A present entry with neither key throws rather than falling through, which would either claim no entry
+  exists or silently load a different model than the entry meant to select."
+  [model-name requested-name model-options]
+  ;; `find`, not `get`: a present-but-nil entry must be treated as malformed, not as absent.
+  (when-let [[_ override] (find (model-source-overrides) model-name)]
+    (when-not (or (:path override) (:url override))
       (throw (ex-info (format "MB_EMBEDDER_MODEL_SOURCES entry for %s must have a :path or :url key."
                               (pr-str model-name))
                       {:model-name model-name :requested-name requested-name :entry override})))
-    (cond
-      (:path override)
-      (override-source :path)
-
-      (:url override)
-      (override-source :url)
-
-      (bundled-model-resource resource-path)
+    (let [type-key (if (:path override) :path :url)]
+      ;; Only the recognized keys, so a stray key in the entry (e.g. :type) can't clobber the internal
+      ;; source-map discriminator and surface as a cryptic downstream error.
       (merge model-options
-             {:type   :url
-              :url    (str "jar:///" resource-path)
-              :origin :built-in})
+             {:origin :override}
+             (select-keys override [:model-file-name :include-token-types? :pooling])
+             {:type type-key, type-key (str (get override type-key))}))))
 
-      (and (= model-name "all-MiniLM-L6-v2")
-           (= "true" (getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD")))
-      {:type :url
-       :url minilm-model-zoo-url
-       :include-token-types? false
-       :origin :built-in}
-
-      :else
-      (throw (ex-info (format (str "No source for embedder model %s: this build carries no matching "
-                                   "bundle, MB_EMBEDDER_MODEL_SOURCES has no entry for it, and downloads "
-                                   "are not enabled (MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true, dev only, "
-                                   "default model only).")
-                              (pr-str model-name))
-                      {:model-name model-name :requested-name requested-name :resource resource-path})))))
+(defn- model-source
+  "Where to load `model-name` from, in priority order: an `MB_EMBEDDER_MODEL_SOURCES` entry, then a per-arch
+  INT8 bundle packed into this jar at build time (the production default), then — for MiniLM alone, and only
+  under `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` — the DJL model zoo, so production can never silently reach
+  the network. Arctic is intentionally build-pinned rather than downloaded at runtime.
+  A pinned HF repo alias (see [[model-name-aliases]]) resolves to its bare bundled name; other qualified
+  names never collapse.
+  The returned map carries the translator options the model needs — Arctic uses CLS pooling and two graph
+  inputs, MiniLM mean pooling and three — which an override entry may replace."
+  [requested-name]
+  ;; Normalize before anything else: the override lookup, the bundle path and the zoo-download gate must all
+  ;; agree on one canonical name, or an alias would pick up some of them and miss the others.
+  (let [model-name    (normalize-model-name requested-name)
+        resource-path (str "metabase-embedder/" model-name "-" (bundled-model-arch) ".zip")
+        model-options (merge {:include-token-types? true}
+                             (get model-runtime-options model-name))]
+    (or (override-model-source model-name requested-name model-options)
+        (when (bundled-model-resource resource-path)
+          (merge model-options
+                 {:type   :url
+                  :url    (str "jar:///" resource-path)
+                  :origin :built-in}))
+        (when (and (= model-name minilm-model-bundle-name)
+                   (= "true" (getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD")))
+          {:type                 :url
+           :url                  minilm-model-zoo-url
+           :include-token-types? false
+           :origin               :built-in})
+        (throw (ex-info (format (str "No source for embedder model %s: this build carries no matching "
+                                     "bundle and MB_EMBEDDER_MODEL_SOURCES has no entry for it. The "
+                                     "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true fallback is dev-only and covers "
+                                     "MiniLM alone; every other model — including the Arctic default — needs "
+                                     "a bundled build or an explicit MB_EMBEDDER_MODEL_SOURCES entry.")
+                                (pr-str model-name))
+                        {:model-name model-name :requested-name requested-name :resource resource-path})))))
 
 (defn- sanitized-url
   "Reduce a model-source URL to a form safe to log, or `\"<redacted>\"` when no part of it can be kept.
@@ -245,7 +238,12 @@
 
 (defn reset-models!
   "Close and discard all loaded models so the next embed reloads them.
-  REPL affordance."
+  REPL and test affordance — NOT safe to call while embeddings are in flight. `locking` here serializes
+  access to the registry, but [[embed-texts]] reads its model out of the registry and runs `.batchPredict`
+  outside any lock, so closing a `ZooModel` under a running predictor frees the ONNX Runtime session
+  beneath it: a native use-after-free that takes down the JVM rather than raising. Making this safe for
+  concurrent use would need reference counting (or a quiesce barrier) around every predictor, which a
+  dev-only reset doesn't justify — so call it only when you know nothing is embedding."
   []
   (locking models*
     ;; instance? check: tests stash stub sentinels in the registry, which have nothing to close.

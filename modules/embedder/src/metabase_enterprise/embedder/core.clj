@@ -10,8 +10,8 @@
   (metabase-embedder-plugin.jar) that the plugin loader adds to the classpath at boot, and
   `metabase-enterprise.semantic-search.embedding` resolves it dynamically when the `in-process` provider
   is selected.
-  Nothing here is loaded — and none of the ~430 MB DJL/ONNX Runtime native init is paid — until the first
-  embedding is requested."
+  Nothing here is loaded — and none of the DJL/ONNX Runtime native initialization cost is paid — until
+  the first embedding is requested."
   (:require
    [metabase-enterprise.embedder.model :as embedder.model]
    [metabase.util.log :as log]))

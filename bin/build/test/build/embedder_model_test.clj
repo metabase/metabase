@@ -18,6 +18,23 @@
   (with-redefs-fn {#'embedder-model/bundle-dir (str bundle-dir)}
     #(#'embedder-model/clear-bundle-dir!)))
 
+(defn- assert-symlink-not-traversed!
+  "Point `link-path` at a throwaway external directory holding a file, clear `clear-target`, then assert the
+  link is gone and its target survived. The symlink cases differ only in where the link sits — inside the
+  bundle dir, or as the bundle root itself — so they share this body."
+  [^Path link-path ^File clear-target removed-message]
+  (let [^File external-dir  (temp-dir "metabase-embedder-external-")
+        ^File external-file (io/file external-dir "keep.txt")]
+    (spit external-file "keep me")
+    (Files/createSymbolicLink link-path (.toPath external-dir) (make-array FileAttribute 0))
+    (try
+      (clear! clear-target)
+      (is (not (.exists clear-target)) removed-message)
+      (is (= "keep me" (slurp external-file)) "the symlink target must remain untouched")
+      (finally
+        (io/delete-file external-file true)
+        (io/delete-file external-dir true)))))
+
 (deftest bundled-models-test
   (let [models (var-get #'embedder-model/bundled-models)]
     (testing "the plugin ships the defaults used by its three consumers"
@@ -42,34 +59,19 @@
       (is (not (.exists bundle-dir))
           "the generated bundle tree should be removed completely")))
   (testing "deletes a directory symlink without traversing into its target"
-    (let [^File bundle-dir    (temp-dir "metabase-embedder-bundles-")
-          ^File external-dir  (temp-dir "metabase-embedder-external-")
-          ^File external-file (io/file external-dir "keep.txt")
-          ^Path link-path     (.resolve (.toPath bundle-dir) "linked-directory")]
-      (spit external-file "keep me")
-      (Files/createSymbolicLink link-path (.toPath external-dir) (make-array FileAttribute 0))
-      (try
-        (clear! bundle-dir)
-        (is (not (.exists bundle-dir)) "the generated bundle tree should be removed")
-        (is (= "keep me" (slurp external-file)) "the symlink target must remain untouched")
-        (finally
-          (io/delete-file external-file true)
-          (io/delete-file external-dir true)))))
+    (let [^File bundle-dir (temp-dir "metabase-embedder-bundles-")]
+      (assert-symlink-not-traversed! (.resolve (.toPath bundle-dir) "linked-directory")
+                                     bundle-dir
+                                     "the generated bundle tree should be removed")))
   (testing "deletes a symlinked bundle root without traversing into its target"
-    (let [^File link-parent    (temp-dir "metabase-embedder-link-parent-")
-          ^File external-dir   (temp-dir "metabase-embedder-external-")
-          ^File external-file  (io/file external-dir "keep.txt")
-          ^File bundle-link    (.toFile (.resolve (.toPath link-parent) "bundles"))]
-      (spit external-file "keep me")
-      (Files/createSymbolicLink (.toPath bundle-link) (.toPath external-dir) (make-array FileAttribute 0))
+    (let [^File link-parent (temp-dir "metabase-embedder-link-parent-")
+          ^File bundle-link (.toFile (.resolve (.toPath link-parent) "bundles"))]
       (try
-        (clear! bundle-link)
-        (is (not (.exists bundle-link)) "the bundle-root symlink should be removed")
-        (is (= "keep me" (slurp external-file)) "the symlink target must remain untouched")
+        (assert-symlink-not-traversed! (.toPath bundle-link)
+                                       bundle-link
+                                       "the bundle-root symlink should be removed")
         (finally
-          (io/delete-file link-parent true)
-          (io/delete-file external-file true)
-          (io/delete-file external-dir true)))))
+          (io/delete-file link-parent true)))))
   (testing "a bundle dir that doesn't exist yet is not an error"
     ;; The clean-checkout case: nothing to clear before the first build. Worth pinning because
     ;; clear-bundle-dir! deletes strictly (io/delete-file throws), so losing its exists? guard would

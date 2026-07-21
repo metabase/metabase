@@ -3105,7 +3105,6 @@
            api
            app-db
            audit-app
-           classloader
            collections
            config
            driver
@@ -3117,7 +3116,6 @@
            startup
            task
            util
-           enterprise/embedder
            enterprise/embeddings
            enterprise/semantic-search}
    :model-imports #{:model/Card

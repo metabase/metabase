@@ -15,10 +15,15 @@
    [metabase.app-db.core :as mdb]
    [metabase.plugins.core :as plugins]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
+
+;; The fingerprint and appdb-mode tests read settings, which touch the app db before any auto-initializing
+;; mt helper does — so in a fresh JVM this namespace can be the first db touch and finds an empty database.
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private representation-fixture-dir
   "enterprise/backend/test_resources/data_complexity_score/representation_fixture")

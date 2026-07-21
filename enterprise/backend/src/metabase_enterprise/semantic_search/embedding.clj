@@ -436,7 +436,7 @@
 ;; already has one for openai). Every other provider is an HTTP call, so an unchunked batch costs one large
 ;; request; in-process is the first where it costs *local* memory — DJL pads the whole batch to its longest
 ;; sequence, so a 1000-document indexer poll becomes one ~1000×512 tensor plus activations on top of the
-;; ~430 MB native footprint. Pre-existing shape, new consequence.
+;; resident model and native runtime. Pre-existing shape, new consequence.
 (defmethod get-embeddings-batch "in-process"
   [{:keys [model-name] :as embedding-model} texts & {:keys [record-tokens? type]}]
   (when (str/blank? model-name)
@@ -461,7 +461,7 @@
 (defmethod pull-model "in-process"
   [{:keys [model-name]}]
   ;; The model ships inside the plugin jar, so there is nothing to download. Instead this acts as an
-  ;; explicit warm-up hook: the first embed pays the one-time DJL/ONNX Runtime native init (~430 MB RSS),
+  ;; explicit warm-up hook: the first embed pays the one-time DJL/ONNX Runtime native initialization cost,
   ;; and calling this lets operators choose when that happens rather than paying it on the first index run.
   ((resolve-in-process-fn 'warm-up!) model-name))
 
@@ -486,9 +486,17 @@
 (defn prefix-search-query
   "Prepend the query prefix expected by `embedding-model` to `search-string`.
   The `ee-embedding-query-prefix` setting overrides the per-model-family default and is prepended verbatim.
-  Returns `search-string` unchanged when neither applies."
-  [embedding-model search-string]
-  (str (or (not-empty (semantic-settings/ee-embedding-query-prefix))
+  Returns `search-string` unchanged when neither applies.
+
+  `:inherit-configured-prefix?` (default true) — pass false when `embedding-model` is *not* the globally
+  configured one. The setting is written for the global model, so applying it verbatim to a consumer
+  running a different model (the library entity index's ee-library-embedding-* overrides) would prepend a
+  prefix that model was never trained on, silently degrading retrieval. The model-family default still
+  applies, since it is derived from the model actually in use."
+  [embedding-model search-string & {:keys [inherit-configured-prefix?]
+                                    :or   {inherit-configured-prefix? true}}]
+  (str (or (when inherit-configured-prefix?
+             (not-empty (semantic-settings/ee-embedding-query-prefix)))
            (default-query-prefix (:model-name embedding-model)))
        search-string))
 
@@ -575,7 +583,7 @@
   ;; MB_EE_EMBEDDING_MODEL: optional override (leave empty for provider defaults)
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"
-  ;;   - in-process: "all-MiniLM-L6-v2" with MB_EE_EMBEDDING_MODEL_DIMENSIONS=384 (requires the
+  ;;   - in-process uses the shared semantic-search model and dimension defaults (requires the
   ;;     metabase-embedder plugin jar in the plugins directory)
   ;; MB_EE_EMBEDDING_SERVICE_BASE_URL: URL of the embedding service (for ai-service provider)
   ;; MB_EE_EMBEDDING_SERVICE_API_KEY: API key for the embedding service

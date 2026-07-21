@@ -1,5 +1,5 @@
 (ns build-embedder-plugin
-  "Build metabase-embedder-plugin.jar: the modules/embedder source, the bundled INT8 model, and the
+  "Build metabase-embedder-plugin.jar: the modules/embedder source, the bundled INT8 models, and the
   DJL/ONNX Runtime dependency stack — minus every lib the core Metabase uberjar already provides.
 
   The jar deliberately has no metabase-plugin.yaml manifest: manifest-less jars in the plugins directory

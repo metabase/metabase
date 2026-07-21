@@ -100,8 +100,22 @@
                   (reset! call [actual-model text (first opts)])
                   ::embedding))
     (try
-      (is (= ::embedding (#'entity-retrieval.core/query-embedding model "find orders")))
-      (is (= [model "query: find orders" {:type :query :record-tokens? true}] @call))
+      (mt/with-temporary-setting-values [ee-embedding-model            "Snowflake/snowflake-arctic-embed-l-v2.0"
+                                         ee-embedding-model-dimensions 1024
+                                         ee-embedding-query-prefix     nil]
+        (is (= ::embedding (#'entity-retrieval.core/query-embedding model "find orders")))
+        (is (= [model "query: find orders" {:type :query :record-tokens? true}] @call))
+        (testing "the ee-embedding-query-prefix setting applies while this index runs the global model"
+          (mt/with-temporary-setting-values [ee-embedding-query-prefix "search_query: "]
+            (#'entity-retrieval.core/query-embedding model "find orders")
+            (is (= "search_query: find orders" (second @call)))))
+        (testing "but not once an ee-library-embedding-* override puts this index on a different model"
+          ;; The setting is written for the global model; applying it verbatim to another model would
+          ;; prepend a prefix that model was never trained on. The family default still applies.
+          (mt/with-temporary-setting-values [ee-embedding-model        "text-embedding-3-small"
+                                             ee-embedding-query-prefix "search_query: "]
+            (#'entity-retrieval.core/query-embedding model "find orders")
+            (is (= "query: find orders" (second @call))))))
       (finally
         (remove-method semantic.embedding/get-embedding ::query-prefix-test)))))
 

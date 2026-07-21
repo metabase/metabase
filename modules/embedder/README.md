@@ -11,9 +11,9 @@ both consumer defaults:
   complexity-score synonym axis.
 
 This module is **not** part of the core uberjar. It ships as a separate plugin jar that the plugin
-loader adds to the classpath at boot; nothing is loaded (and none of the ~430 MB DJL/ONNX Runtime
-native init is paid) until the first embedding is requested. The init cost is per-JVM; each loaded model
-then adds its own weights.
+loader adds to the classpath at boot; nothing is loaded (and none of the DJL/ONNX Runtime native
+initialization cost is paid) until the first embedding is requested. The init cost is per-JVM; each loaded
+model then adds its own weights.
 
 ## Using it
 
@@ -95,13 +95,15 @@ loading anything.
 
 ## Release
 
-Not wired into CI yet. Intended shape: a release workflow runs `bin/build-embedder-plugin.sh` and
-publishes the jar (S3 / GitHub release) for Cloud images and self-hosted download. The fetch step
-needs network access to huggingface.co or a warm `target/model-download/` cache.
+CI already builds the jar: the `test-embedder` job in `.github/workflows/build-scripts.yml` runs
+`bin/build-embedder-plugin.sh` on embedder changes, checks the artifact is non-empty, and runs the
+integration tests against the bundles it produced. What's missing is *publishing* — a release workflow
+that ships the jar (S3 / GitHub release) for Cloud images and self-hosted download. The fetch step needs
+network access to huggingface.co or a warm `target/model-download/` cache.
 
 Follow-up hooks:
 
-- Platform-trimming the ONNX Runtime jar (linux-x64-only cuts the deps from ~154 MB to ~40 MB;
-  measured in the BOT-1531 spike) via `:exclude` patterns on `ai/onnxruntime/native/<platform>/**`.
+- Excluding unused ONNX Runtime native platforms to reduce the plugin's dependency footprint via
+  `:exclude` patterns on `ai/onnxruntime/native/<platform>/**`.
 - `ai.djl.huggingface/tokenizers` ships no osx-x64 native, so the embedder can't run on Intel Macs;
   integration tests self-skip there.
