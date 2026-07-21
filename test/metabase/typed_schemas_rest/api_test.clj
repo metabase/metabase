@@ -79,11 +79,16 @@
    400
    "typed-schemas/v1/typescript?library-collections=1,2&database=1"))
 
+(deftest semantic-schema-options-reject-unknown-options-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Invalid semantic schema options\."
+                        (typed-schemas/build-semantic-schema {:unknown-option true}))))
+
 (deftest collections-schema-includes-selected-data-and-metric-collections-test
   (let [selected-table-ids (atom nil)]
-    (with-redefs [typed-schemas.scope/library-collections-scope
-                  (fn [collection-values]
-                    (is (= [{:id 10} {:id 20}] collection-values))
+    (with-redefs [typed-schemas.scope/library-scope
+                  (fn [{:keys [library-collection-refs]}]
+                    (is (= [{:id 10} {:id 20}] library-collection-refs))
                     {:metric-collection-ids #{20}
                      :data-collection-ids   #{10}})
                   typed-schemas.schema.model/model-schemas
@@ -195,9 +200,9 @@
       (is (= {} (:metrics schema))))))
 
 (deftest library-and-question-collections-can-be-combined-test
-  (with-redefs [typed-schemas.scope/library-collections-scope
-                (fn [collection-values]
-                  (is (= [{:id 10}] collection-values))
+  (with-redefs [typed-schemas.scope/library-scope
+                (fn [{:keys [library-collection-refs]}]
+                  (is (= [{:id 10}] library-collection-refs))
                   {:metric-collection-ids #{10}
                    :data-collection-ids   #{10}})
                 typed-schemas.scope/collection-scope
@@ -231,9 +236,9 @@
       (is (= #{2} (->> (:metrics schema) vals (map :id) set))))))
 
 (deftest library-and-question-collections-can-be-combined-with-include-models-test
-  (with-redefs [typed-schemas.scope/library-collections-scope
-                (fn [collection-values]
-                  (is (= [{:id 10}] collection-values))
+  (with-redefs [typed-schemas.scope/library-scope
+                (fn [{:keys [library-collection-refs]}]
+                  (is (= [{:id 10}] library-collection-refs))
                   {:metric-collection-ids #{10}
                    :data-collection-ids   #{10}})
                 typed-schemas.scope/collection-scope

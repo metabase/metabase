@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private library-data-entity-id
-  "Entity id of the root Data library collection."
+  "Entity id of the root data library collection."
   "librarylibrarydatadat")
 
 (def ^:private library-metrics-entity-id
@@ -65,7 +65,7 @@
   (throw (ex-info "Not found." {:status-code 404})))
 
 (defn collection-scope
-  "Returns ids for requested normal collections and descendants."
+  "Returns ids for requested collections and its descendants."
   [collection-refs]
   (when (seq collection-refs)
     (let [collections (for [collection-ref collection-refs]
@@ -93,14 +93,12 @@
      :data-collection-ids   (ids-for-type collection/library-data-collection-type)
      :metric-collection-ids (ids-for-type collection/library-metrics-collection-type)}))
 
-(defn library-collections-scope
-  "Returns the library scope for requested library collection refs."
+(defn- library-collections-for-refs
   [collection-refs]
   (when (seq collection-refs)
-    (let [collections (for [collection-ref collection-refs]
-                        (or (library-collection-for-ref collection-ref)
-                            (not-found!)))]
-      (library-collection-scope* collections))))
+    (for [collection-ref collection-refs]
+      (or (library-collection-for-ref collection-ref)
+          (not-found!)))))
 
 (defn- included-library-root-collections
   [{:keys [include-data-library? include-metric-library?]}]
@@ -114,15 +112,8 @@
 (defn library-scope
   "Returns the requested library scope for semantic schema options."
   [{:keys [library-collection-refs] :as options}]
-  (let [included-roots            (included-library-root-collections options)
-        collection-scope          (when (seq library-collection-refs)
-                                    (library-collections-scope library-collection-refs))]
-    (cond
-      (and collection-scope (seq included-roots))
-      (library-collection-scope* (concat (:library-collections collection-scope) included-roots))
-
-      (seq included-roots)
-      (library-collection-scope* included-roots)
-
-      :else
-      collection-scope)))
+  (let [library-collections (library-collections-for-refs library-collection-refs)
+        included-roots      (included-library-root-collections options)
+        all-collections     (seq (concat library-collections included-roots))]
+    (when all-collections
+      (library-collection-scope* all-collections))))

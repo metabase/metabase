@@ -34,22 +34,26 @@
 
 (def SemanticSchemaOptions
   "Schema generation options accepted by [[build-semantic-schema]]."
-  [:map
+  [:map {:closed true}
    [:database {:optional true}
-    [:maybe {:description "Scopes the schema to a database. Accepts `{:id <database-id>}` or `{:name <database-name>}`."}
+    [:maybe {:description (str "Scopes the schema to a database. "
+                               "Accepts `{:id <database-id>}` or `{:name <database-name>}`.")}
      DatabaseRef]]
    [:library-collection-refs {:optional true}
-    [:sequential {:description "Limits tables and metrics to library collections. Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`."}
+    [:sequential {:description (str "Limits tables and metrics to library collections. "
+                                    "Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`.")}
      CollectionRef]]
    [:question-collection-refs {:optional true}
-    [:sequential {:description "Includes saved questions from collections. Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`."}
+    [:sequential {:description (str "Includes saved questions from collections. "
+                                    "Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`.")}
      CollectionRef]]
    [:include-data-library? {:optional true}
     [:boolean {:description "Whether to include the root data library."}]]
    [:include-metric-library? {:optional true}
     [:boolean {:description "Whether to include the root metrics library."}]]
    [:include-models? {:optional true}
-    [:boolean {:description "Whether to include readable models with actions. Database scope applies when provided."}]]])
+    [:boolean {:description (str "Whether to include readable models with actions. "
+                                 "Database scope applies when provided.")}]]])
 
 (defn- invalid-options!
   [message]
@@ -65,7 +69,8 @@
                                   (seq question-collection-refs)
                                   include-library-root?)]
     (when (and collection-scoped? database)
-      (invalid-options! "Collection-scoped query parameters and database query parameters are mutually exclusive."))))
+      (invalid-options!
+       "Collection-scoped query parameters and database query parameters are mutually exclusive."))))
 
 (defn- semantic-schema-for-library-scope
   [library-scope models]
