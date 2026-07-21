@@ -183,8 +183,9 @@
    [:param-mapping         ::parameters.schema/parameter-mapping]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
-(mu/defn- card->filterable-columns-query :- [:maybe ::lib.schema/query]
-  "Build the lib query whose filterable columns we want for `card` at `stage-number`, or nil when `card` has no query."
+(mu/defn card->filterable-columns-query :- [:maybe ::lib.schema/query]
+  "The lib query whose filterable columns we want for `card` at `stage-number`, or nil when `card` has no query. Models
+  and metrics are wrapped as source cards; a non-negative `stage-number` gets a filter stage appended."
   [card         :- :metabase.queries.schema/card
    stage-number :- :int]
   (when (and (seq (:dataset_query card)) (pos-int? (:database_id card)))
@@ -197,8 +198,10 @@
       ;; for backward compatibility, append a filter stage only with explicit stage numbers
       (cond-> query (>= stage-number 0) lib/ensure-filter-stage))))
 
-(mu/defn- filterable-columns-for-query :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  "Get the filterable columns of `card`'s query at `stage-number`."
+(mu/defn filterable-columns-for-query :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "The columns of `card`'s query a filter can target at `stage-number`, or nil when `card` has no query or
+  `stage-number` is out of range. Models and metrics are wrapped as source cards, and a non-negative `stage-number`
+  gets a filter stage appended first."
   [card         :- :metabase.queries.schema/card
    stage-number :- :int]
   (when-let [query (card->filterable-columns-query card stage-number)]
