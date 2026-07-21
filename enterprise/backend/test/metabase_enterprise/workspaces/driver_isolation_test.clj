@@ -1059,15 +1059,16 @@
                           :when (some? pw)]
                     (is (not (str/includes? text pw))
                         (str "workspace password leaked into exception text:\n" text)))
-                  ;; pgjdbc (and redshift's fork of it) echoes the aborted
-                  ;; statement in the batch exception message; requiring the
-                  ;; redaction marker proves this test reached the CREATE USER
-                  ;; echo rather than failing earlier and passing vacuously.
-                  ;; Only these two drivers get the database-level CREATE
-                  ;; grant that lets execution reach CREATE USER.
+                  ;; init unwraps the JDBC batch envelope (which echoed the
+                  ;; aborted CREATE USER statement) and rethrows the scrubbed
+                  ;; server error. Requiring the create-role permission error
+                  ;; proves this test reached CREATE USER rather than failing
+                  ;; earlier and passing vacuously. Only these two drivers get
+                  ;; the database-level CREATE grant that lets execution reach
+                  ;; CREATE USER.
                   (when (#{:postgres :redshift} driver)
-                    (is (str/includes? text "****")
-                        (str "expected redacted CREATE USER echo in exception text:\n" text)))))))
+                    (is (re-find #"(?i)permission denied|must be superuser|not authorized|privilege" text)
+                        (str "expected the CREATE USER permission error in exception text:\n" text)))))))
           (finally
             ;; If init for ws-b unexpectedly succeeded (isolation regression),
             ;; a user with a live password exists — tear it down too. Also
@@ -1129,3 +1130,31 @@
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during password-reset test cleanup"
                               driver)))))))))
+
+(deftest ^:synchronized grant-failure-is-not-a-batch-envelope-test
+  ;; Every SQL-JDBC grant-workspace-read-access! impl batches its statements
+  ;; and rethrows the per-statement exception via `driver.u/batch-exception`,
+  ;; so a failed grant reads as the plain server error instead of "Batch entry
+  ;; N ... Call getNextException to see other errors in the batch."
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+    (testing "a failed grant! surfaces the underlying server error, not a JDBC batch envelope"
+      (let [schema    (case driver/*driver*
+                        :postgres "public"
+                        :h2       "PUBLIC"
+                        "nonexistent_input_schema")
+            workspace {:id               (rand-int Integer/MAX_VALUE)
+                       :name             "ws-grant-envelope"
+                       :database_details {:user "mb_no_such_user_x1"
+                                          :role "mb_no_such_role_x1"}}
+            thrown    (try
+                        (driver/grant-workspace-read-access! driver/*driver* (mt/db) workspace [schema])
+                        nil
+                        (catch Throwable t t))]
+        (is (some? thrown)
+            "granting to a nonexistent user should have thrown")
+        (when thrown
+          (let [sql-ex (find-sql-exception thrown)]
+            (when sql-ex
+              (is (not (re-find #"Batch entry|getNextException" (str (ex-message sql-ex))))
+                  (str "the JDBC batch envelope wording should not leak into the message:\n"
+                       (ex-message sql-ex))))))))))

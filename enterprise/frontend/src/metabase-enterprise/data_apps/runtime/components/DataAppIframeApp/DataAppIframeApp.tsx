@@ -1,4 +1,10 @@
-import { Component, type ErrorInfo, type ReactNode, useMemo } from "react";
+import {
+  Component,
+  type ErrorInfo,
+  type ReactNode,
+  useEffect,
+  useMemo,
+} from "react";
 import { t } from "ttag";
 
 import { Center, Loader } from "metabase/ui";
@@ -7,6 +13,7 @@ import { color } from "metabase/ui/colors";
 import { type ErrorDetail, describeError } from "../../lib/describe-error";
 import { readNameFromUrl } from "../../lib/read-name-from-url";
 import { reportErrorToParent } from "../../lib/report-error-to-parent";
+import { reportReadyToParent } from "../../lib/report-ready-to-parent";
 import { useDataAppBundle } from "../../lib/use-data-app-bundle";
 import { DataAppProvider } from "../DataAppProvider/DataAppProvider";
 
@@ -64,6 +71,12 @@ class BundleErrorBoundary extends Component<
  */
 function BundleHost({ name }: { name: string }) {
   const { data, failed } = useDataAppBundle(name);
+
+  useEffect(() => {
+    if (data && !failed) {
+      reportReadyToParent();
+    }
+  }, [data, failed]);
 
   // On failure we report the error up to the host `AppView` (see
   // `reportErrorToParent`), which renders the themed failure screen in its own

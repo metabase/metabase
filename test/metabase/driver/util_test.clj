@@ -654,3 +654,33 @@
           trace    (.getStackTrace original)
           e        (driver.u/scrub-exceptions original ["s3cret"])]
       (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))
+
+(deftest batch-exception-scrub-test
+  (testing "unwrapping the batch envelope composes with password scrubbing (the init-workspace-isolation! shape)"
+    (let [inner    (java.sql.SQLException. "ERROR: syntax error in CREATE USER \"u\" PASSWORD 's3cret'")
+          batch    (doto (java.sql.BatchUpdateException. "Batch entry 0 CREATE USER ... PASSWORD 's3cret' was aborted" (int-array 0))
+                     (.setNextException inner))
+          scrubbed (driver.u/scrub-exceptions (driver.u/batch-exception batch) ["s3cret"])]
+      (is (not (instance? java.sql.BatchUpdateException scrubbed))
+          "the batch envelope is gone")
+      (is (not (str/includes? (ex-message scrubbed) "s3cret"))
+          "the password is gone from the message")
+      (is (str/includes? (ex-message scrubbed) "****")
+          "the password is redacted, not silently dropped"))))
+
+(deftest batch-exception-test
+  (testing "unwraps the underlying per-statement exception of a BatchUpdateException"
+    (let [inner (java.sql.SQLException. "user cannot be dropped")
+          batch (doto (java.sql.BatchUpdateException. "Batch entry 18 ..." (int-array 0))
+                  (.setNextException inner))]
+      (is (identical? inner (driver.u/batch-exception batch)))))
+  (testing "the MariaDB-connector shape chains the real exception via the cause"
+    (let [inner (java.sql.SQLException. "You are not allowed to create a user with GRANT")
+          batch (java.sql.BatchUpdateException. "envelope" nil 0 (int-array 0) inner)]
+      (is (identical? inner (driver.u/batch-exception batch)))))
+  (testing "the mssql-jdbc shape (no next exception, no cause) passes through — its message is already the plain server error"
+    (let [batch (java.sql.BatchUpdateException. "Cannot find the schema 'x'" "S0001" 208 (int-array 0))]
+      (is (identical? batch (driver.u/batch-exception batch)))))
+  (testing "non-batch throwables pass through"
+    (let [e (ex-info "boom" {})]
+      (is (identical? e (driver.u/batch-exception e))))))

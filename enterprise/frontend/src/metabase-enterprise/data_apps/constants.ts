@@ -1,8 +1,3 @@
-/**
- * `postMessage` type the iframe-top app (`DataAppIframeApp`) sends to the host
- * (`AppView`) when the bundle can't be loaded or crashes at runtime, so the host
- * can render the failure screen in its own (correctly themed) realm.
- */
 export const DATA_APP_ERROR_MESSAGE_TYPE = "metabase.data-app.error" as const;
 
 export type DataAppBundleErrorMessage = {
@@ -14,3 +9,5 @@ export type DataAppBundleErrorMessage = {
   /** The error's stack, when one could be read. */
   stack?: string;
 };
+
+export const DATA_APP_READY_MESSAGE_TYPE = "metabase.data-app.ready" as const;

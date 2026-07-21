@@ -4,7 +4,10 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
-import { DATA_APP_ERROR_MESSAGE_TYPE } from "../../constants";
+import {
+  DATA_APP_ERROR_MESSAGE_TYPE,
+  DATA_APP_READY_MESSAGE_TYPE,
+} from "../../constants";
 
 import { DataAppView } from "./DataAppView";
 
@@ -69,9 +72,15 @@ describe("DataAppView", () => {
   });
 
   /** Post a `message` event as if it came from `source`. */
-  function postMessage(source: MessageEventSource | null, data: unknown) {
+  function postMessage(
+    source: MessageEventSource | null,
+    data: unknown,
+    origin: string = window.location.origin,
+  ) {
     act(() => {
-      window.dispatchEvent(new MessageEvent("message", { data, source }));
+      window.dispatchEvent(
+        new MessageEvent("message", { data, source, origin }),
+      );
     });
   }
 
@@ -118,5 +127,52 @@ describe("DataAppView", () => {
       screen.queryByText("This data app isn’t ready yet"),
     ).not.toBeInTheDocument();
     expect(screen.getByTitle("Sales")).toBeInTheDocument();
+  });
+
+  it("ignores messages from another origin, even sent through its own frame", () => {
+    const iframe = setupIframe();
+
+    postMessage(
+      iframe.contentWindow,
+      { type: DATA_APP_ERROR_MESSAGE_TYPE, notReady: true },
+      "https://not-metabase.example.com",
+    );
+
+    expect(
+      screen.queryByText("This data app isn’t ready yet"),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("loading overlay", () => {
+    it("covers the frame until the app reports it's on screen", () => {
+      const iframe = setupIframe();
+
+      expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
+
+      postMessage(iframe.contentWindow, { type: DATA_APP_READY_MESSAGE_TYPE });
+
+      expect(screen.queryByTestId("data-app-loading")).not.toBeInTheDocument();
+    });
+
+    it("stays up on the iframe's load event alone — that fires before the bundle renders", () => {
+      const iframe = setupIframe();
+
+      // The frame's document is parsed, but the bundle hasn't been fetched,
+      // sandboxed or drawn yet. Lifting the overlay here is what caused the
+      // white flash, so `load` must not dismiss it.
+      act(() => {
+        iframe.dispatchEvent(new Event("load"));
+      });
+
+      expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
+    });
+
+    it("ignores a ready message that isn't from its own iframe", () => {
+      setupIframe();
+
+      postMessage(window, { type: DATA_APP_READY_MESSAGE_TYPE });
+
+      expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
+    });
   });
 });

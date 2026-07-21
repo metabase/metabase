@@ -162,13 +162,12 @@
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't
   need to require the model namespaces in order to use it."
   [x]
-  (when (and (keyword? x)
-             (= (namespace x) "model")
-             ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
-             ;; been required
-             (not (isa? x :metabase/model)))
-    ;; [[classloader/require]] for thread safety
-    (classloader/require (model->namespace x)))
+  (when (keyword? x)
+    ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
+    ;; before side effects like `deftransforms` and `define-before-insert` have run
+    (when-let [nspace (get model->namespace x)]
+      ;; [[classloader/require]] for thread safety
+      (classloader/require nspace)))
   x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
