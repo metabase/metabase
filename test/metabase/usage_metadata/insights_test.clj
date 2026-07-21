@@ -36,6 +36,11 @@
 (def ^:private canonical-signature         @#'insights/canonical-signature)
 (def ^:private add-segment-suggestions     @#'insights/add-segment-suggestions)
 (def ^:private merge-candidates            @#'insights/merge-candidates)
+(def ^:private card-table-dependencies     @#'insights/card-table-dependencies)
+(def ^:private eligible-candidate-table?   @#'insights/eligible-candidate-table?)
+(def ^:private raw-table-candidate-analysis @#'insights/raw-table-candidate-analysis)
+(def ^:private rank-candidate-tables       @#'insights/rank-candidate-tables)
+(def ^:private table-candidate-evidence    @#'insights/table-candidate-evidence)
 
 (deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}
@@ -389,6 +394,19 @@
         (lib/filter (lib/= orders-product (lib/with-join-alias products-id join-alias)))
         (lib/aggregate (lib/sum orders-subtotal)))))
 
+(defn- orders-implicit-join-query []
+  (let [mp              (lib-be/application-database-metadata-provider (mt/id))
+        source-field-id (mt/id :orders :product_id)
+        target-field    (lib.metadata/field mp (mt/id :products :category))
+        target-ref      (assoc-in (lib/ref target-field) [1 :source-field] source-field-id)]
+    (lib/filter (orders-base-query)
+                (lib/= target-ref "Gadget"))))
+
+(defn- selected-cards-source
+  [& card-ids]
+  (reify query-source/CandidateQuerySource
+    (card-ids [_] (set card-ids))))
+
 (defn- candidates-from-card
   [card-id candidates]
   (filterv (fn [candidate]
@@ -448,6 +466,174 @@
           (is (false? (:verified? (by-id selected-id))))
           (is (false? (:official-collection? (by-id selected-id))))
           (is (false? (:popular? (by-id selected-id)))))))))
+
+(deftest candidate-tables-resolve-complete-mbql-dependencies-test
+  (mt/with-temp [:model/Card {joined-id :id} {:name "candidate table joined question"
+                                              :type :question
+                                              :dataset_query (orders-joined-query)
+                                              :view_count 0}
+                 :model/Card {implicit-id :id} {:name "candidate table implicit join question"
+                                                :type :question
+                                                :dataset_query (orders-implicit-join-query)
+                                                :view_count 0}
+                 :model/Card {multi-stage-id :id} {:name "candidate table multi-stage question"
+                                                   :type :question
+                                                   :dataset_query (orders-multi-stage-query)
+                                                   :view_count 0}]
+    (let [opts       {:query-source (selected-cards-source joined-id implicit-id multi-stage-id)
+                      :limit 1000}
+          report     (insights/candidate-tables opts)
+          candidates (into {} (map (juxt #(get-in % [:table :id]) identity)) (:candidates report))
+          orders     (candidates (mt/id :orders))
+          products   (candidates (mt/id :products))]
+      (testing "direct, explicit-join, implicit-join, and multi-stage table references are discovered"
+        (is (= #{(mt/id :orders) (mt/id :products)} (set (keys candidates))))
+        (is (= #{joined-id implicit-id multi-stage-id}
+               (into #{} (map :id) (get-in orders [:evidence :source-items]))))
+        (is (= #{joined-id implicit-id}
+               (into #{} (map :id) (get-in products [:evidence :source-items])))))
+      (testing "each direct source-to-table endorsement has one direct dependency path"
+        (is (every? #(= [{:direct? true, :models []}] (:dependency-paths %))
+                    (concat (get-in orders [:evidence :source-items])
+                            (get-in products [:evidence :source-items])))))
+      (is (empty? (:unsupported-source-items report)))
+      (is (= report (insights/candidate-tables opts))
+          "repeating the same analysis returns byte-for-byte deterministic output"))))
+
+(deftest candidate-tables-preserve-curation-through-model-lineage-test
+  (mt/with-temp [:model/Collection {official-collection-id :id} {:authority_level "official"}
+                 :model/Card {base-model-id :id} {:name "candidate table base model"
+                                                  :type :model
+                                                  :dataset_query (orders-base-query)
+                                                  :view_count 0}
+                 :model/Card {outer-model-id :id} {:name "candidate table outer model"
+                                                   :type :model
+                                                   :dataset_query (model-source-query base-model-id)
+                                                   :view_count 0}
+                 :model/Card {verified-id :id} {:name "candidate table verified question"
+                                                :type :question
+                                                :dataset_query (model-source-query outer-model-id)
+                                                :view_count 0}
+                 :model/Card {official-id :id} {:name "candidate table official question"
+                                                :type :question
+                                                :dataset_query (model-source-query outer-model-id)
+                                                :collection_id official-collection-id
+                                                :view_count 0}]
+    (moderation/create-review! {:moderated_item_id verified-id
+                                :moderated_item_type "card"
+                                :moderator_id (mt/user->id :crowberto)
+                                :status "verified"})
+    (let [report    (insights/candidate-tables
+                     {:query-source (selected-cards-source verified-id official-id)
+                      :limit 1000})
+          candidate (first (filter #(= (mt/id :orders) (get-in % [:table :id]))
+                                   (:candidates report)))
+          items     (into {} (map (juxt :id identity)) (get-in candidate [:evidence :source-items]))
+          path      [{:id outer-model-id :name "candidate table outer model"}
+                     {:id base-model-id :name "candidate table base model"}]]
+      (is (= 2 (get-in candidate [:evidence :distinct-source-count])))
+      (is (= 1 (get-in candidate [:evidence :verified-source-count])))
+      (is (= 1 (get-in candidate [:evidence :official-source-count])))
+      (is (true? (:verified? (items verified-id))))
+      (is (true? (:official-collection? (items official-id))))
+      (is (= [{:direct? false, :models path}]
+             (:dependency-paths (items verified-id))))
+      (is (= [{:direct? false, :models path}]
+             (:dependency-paths (items official-id)))))))
+
+(deftest candidate-table-dependency-traversal-preserves-paths-and-guards-cycles-test
+  (let [root   {:id 1
+                :name "Root"
+                :type :question
+                :verified? false
+                :official-collection? false
+                :popular? true
+                :view-count 10
+                :dataset_query {:models #{2 3}}}
+        models {2 {:id 2, :name "Left", :dataset_query {:tables #{99}, :models #{2}}}
+                3 {:id 3, :name "Right", :dataset_query {:tables #{99}}}}
+        analyze (fn []
+                  (card-table-dependencies root models [] #{1}))]
+    (with-redefs-fn {#'insights/wrap-query (fn [_ query] query)
+                     #'lib/any-native-stage? (constantly false)
+                     #'lib/all-source-table-ids :tables
+                     #'lib/all-implicitly-joined-table-ids (constantly nil)
+                     #'lib/all-source-card-ids :models}
+      (fn []
+        (is (= #{{:direct? false, :models [{:id 2, :name "Left"}]}
+                 {:direct? false, :models [{:id 3, :name "Right"}]}}
+               (get-in (analyze) [:table-paths 99])))
+        (is (empty? (:unsupported (analyze))))
+        (let [rows     (:table-source-items (raw-table-candidate-analysis [root] models))
+              evidence (table-candidate-evidence (map :source-item rows))]
+          (is (= 1 (count rows)) "the source/table pair is emitted once despite two model paths")
+          (is (= 1 (:distinct-source-count evidence)))
+          (is (= 2 (count (get-in evidence [:source-items 0 :dependency-paths])))))))))
+
+(deftest candidate-tables-report-native-and-unreadable-sources-test
+  (mt/with-temp [:model/Card {native-id :id} {:name "candidate table native question"
+                                              :type :question
+                                              :dataset_query (lib/native-query
+                                                              (lib-be/application-database-metadata-provider (mt/id))
+                                                              "select 1")
+                                              :view_count 0}
+                 :model/Card {unreadable-id :id} {:name "candidate table unreadable question"
+                                                  :type :question
+                                                  :dataset_query {}
+                                                  :view_count 0}]
+    (let [report (insights/candidate-tables
+                  {:query-source (selected-cards-source native-id unreadable-id)})]
+      (is (empty? (:candidates report)))
+      (is (= [{:id native-id
+               :name "candidate table native question"
+               :type :question
+               :reason :native-query}
+              {:id unreadable-id
+               :name "candidate table unreadable question"
+               :type :question
+               :reason :unreadable-query}]
+             (:unsupported-source-items report))))))
+
+(deftest eligible-candidate-table-exclusions-test
+  (let [table    {:active true, :visibility_type nil, :data_layer :internal, :is_published false}
+        database {:is_audit false, :is_sample false, :router_database_id nil}]
+    (is (true? (eligible-candidate-table? table database))
+        "internal data-layer tables remain eligible")
+    (is (true? (eligible-candidate-table? (assoc table :data_layer :final) database)))
+    (doseq [excluded-table [(assoc table :active false)
+                            (assoc table :visibility_type :technical)
+                            (assoc table :data_layer :hidden)
+                            (assoc table :is_published true)]]
+      (is (false? (eligible-candidate-table? excluded-table database))))
+    (doseq [excluded-database [nil
+                               (assoc database :is_audit true)
+                               (assoc database :is_sample true)
+                               (assoc database :router_database_id 123)]]
+      (is (false? (eligible-candidate-table? table excluded-database))))))
+
+(deftest candidate-table-ranking-applies-every-tier-before-limit-test
+  (let [base-table {:id 100, :database-name "db", :schema "schema", :name "z"
+                    :data-authority :unconfigured, :data-layer :internal, :view-count 0}
+        evidence   {:verified-source-count 0, :official-source-count 0, :distinct-source-count 1
+                    :popular-source-count 0, :total-view-count 0}
+        candidate  (fn [label table-overrides evidence-overrides]
+                     {:label label
+                      :table (merge base-table table-overrides)
+                      :evidence (merge evidence evidence-overrides)})
+        candidates [(candidate :tie-loser {:id 102, :name "zz"} {})
+                    (candidate :table-views {:id 90, :view-count 1} {})
+                    (candidate :total-views {:id 80} {:total-view-count 1})
+                    (candidate :popular {:id 70} {:popular-source-count 1})
+                    (candidate :distinct {:id 60} {:distinct-source-count 2})
+                    (candidate :final {:id 50, :data-layer :final} {})
+                    (candidate :authoritative {:id 40, :data-authority :authoritative} {})
+                    (candidate :official {:id 30} {:official-source-count 1})
+                    (candidate :verified {:id 20} {:verified-source-count 1})]
+        limited    (rank-candidate-tables candidates 8)]
+    (is (= [:verified :official :authoritative :final :distinct :popular :total-views :table-views]
+           (mapv :label limited)))
+    (is (= 8 (count limited)))
+    (is (not-any? #(= :tie-loser (:label %)) limited))))
 
 (deftest candidate-measures-return-valid-definition-and-skip-existing-test
   (let [query (orders-measure-query)]
