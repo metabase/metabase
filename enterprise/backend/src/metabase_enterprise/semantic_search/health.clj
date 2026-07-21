@@ -86,13 +86,14 @@
 
 (defn index-health-check
   "Health-inspector check for semantic search, registered as `:semantic-search-index`.
-  Returns nil when semantic search isn't enabled (so the check is omitted), otherwise a `{:health :message}`
-  map: healthy when an active index is present, queryable, un-stalled, and the embedding service is
-  reachable; degraded (naming the failing conditions) otherwise."
+  Returns nil when the semantic engine isn't active on this instance (so the check is omitted), otherwise a
+  `{:health :message}` map: healthy when an active index is present, queryable, un-stalled, and the
+  embedding service is reachable; degraded (naming the failing conditions) otherwise."
   []
-  ;; semantic-search-available? gates on the kill switch too, so a disabled instance neither records runs
-  ;; nor probes the embedder.
-  (when (semantic.util/semantic-search-available?)
+  ;; Active, not merely available: an available-but-inactive engine (another engine selected) has no index
+  ;; by design, and must not read as a standing "No active semantic search index" incident. Active folds in
+  ;; the license and kill switch, so a disabled instance neither records runs nor probes the embedder.
+  (when (semantic.util/semantic-search-active?)
     ;; Acquire the datasource inside the try, so a malformed MB_PGVECTOR_DB_URL reads as degraded instead of
     ;; throwing out of the check.
     (let [active (try

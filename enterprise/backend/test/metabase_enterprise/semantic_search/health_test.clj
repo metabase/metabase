@@ -16,24 +16,26 @@
   {:index {:table-name "index_test_table"} :metadata-row {:indexer_stalled_at nil}})
 
 (defn- do-with-enabled!
-  "Run `thunk` with semantic search available and the pgvector accessors stubbed to harmless values, so
+  "Run `thunk` with the semantic engine active and the pgvector accessors stubbed to harmless values, so
   each test only has to override the signal it cares about."
   [thunk]
   (mt/with-dynamic-fn-redefs
-    [semantic.util/semantic-search-available?    (constantly true)
-     semantic-settings/semantic-search-enabled   (constantly true)
-     semantic.env/get-pgvector-datasource!       (constantly ::pgvector)
-     semantic.env/get-index-metadata             (constantly ::index-metadata)]
+    [semantic.util/semantic-search-active? (constantly true)
+     semantic.env/get-pgvector-datasource! (constantly ::pgvector)
+     semantic.env/get-index-metadata       (constantly ::index-metadata)]
     (thunk)))
 
 (deftest not-enabled-is-omitted-test
-  (testing "unconfigured/unlicensed -> nil (omitted, not a misleading 100)"
-    (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly false)]
+  (testing "an inactive engine (unlicensed, unconfigured, or another engine selected) -> nil (omitted, not a
+           misleading 'No active semantic search index' incident)"
+    (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-active? (constantly false)]
       (is (nil? (semantic.health/index-health-check)))))
-  (testing "the semantic-search-enabled kill switch off -> nil, even with pgvector + license present"
-    (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-capable?     (constantly true)
-                                semantic-settings/semantic-search-enabled (constantly false)]
-      (is (nil? (semantic.health/index-health-check))))))
+  (testing "the semantic-search-enabled kill switch off -> nil through the real engine chain, even with
+           pgvector + license present"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-capable?    (constantly true)
+                                  semantic-settings/semantic-search-enabled (constantly false)]
+        (is (nil? (semantic.health/index-health-check)))))))
 
 (deftest pgvector-unreachable-test
   (testing "a pgvector error while resolving the active index reports as degraded, not as no-index"
