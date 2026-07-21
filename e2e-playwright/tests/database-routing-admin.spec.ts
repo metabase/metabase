@@ -27,10 +27,16 @@
  * - Mantine Switch toggles: click the labeled input with { force: true }
  *   (PORTING rule 4) — this covers upstream's `.click({ force: true })` and its
  *   `.parent("label").click()`, which toggle the same control.
- * - CAPABILITY PROBE: the disabled-toggle tooltip (assertDbRoutingDisabled in
- *   support/database-routing-admin.ts) uses Playwright's real hover() where
- *   Cypress headless needed `cy.trigger("mouseenter")`. Unverifiable here (the
- *   spec never runs without the QA postgres); no dividend claimed.
+ * - CAPABILITY PROBE — SETTLED: the disabled-toggle tooltip
+ *   (assertDbRoutingDisabled in support/database-routing-admin.ts) uses
+ *   Playwright's real hover() where Cypress headless needed
+ *   `cy.trigger("mouseenter")` (Chrome v122+ hit-tested CDP mouse events to the
+ *   disabled <input> and swallowed the boundary events). Run against a live
+ *   writable QA postgres with PW_QA_DB_ENABLED=1, real hover() on the
+ *   `database-routing-toggle-wrapper` Box fires the Tooltip reliably — React's
+ *   synthetic onMouseEnter fires for descendants, so hitting the inner disabled
+ *   input still triggers the wrapper's handler. Dividend confirmed: Playwright
+ *   needs no synthetic-event workaround here.
  * - The "Table editing" describe has two upstream tests with an identical title
  *   — Playwright treats duplicate titles as a hard load error, so the second is
  *   suffixed " (2)" faithfully.
@@ -112,6 +118,44 @@ function waitForDeleteDatabase(page: Page) {
   );
 }
 
+/**
+ * The `postgres-writable` snapshot ships db 2 with model actions ENABLED, and
+ * the backend refuses routing while they are on ("Cannot enable database
+ * routing for a database with actions enabled"). Several upstream tests turn
+ * them off by clicking the "Model actions" Switch and then immediately proceed;
+ * in Cypress the per-command overhead lets the PUT land, but Playwright races
+ * it. Anchor on the response instead of sleeping (PORTING rule 2 / FINDINGS
+ * #125).
+ */
+function waitForDatabaseSettingsUpdate(page: Page, databaseId: number) {
+  return page.waitForResponse(
+    (r) =>
+      r.request().method() === "PUT" &&
+      new URL(r.url()).pathname === `/api/database/${databaseId}` &&
+      r.ok(),
+  );
+}
+
+/**
+ * Port of upstream's repeated
+ * `H.undoToast().within(() => { cy.findByText(msg).should("exist");
+ * cy.icon("close").click(); })`.
+ *
+ * `H.undoToast()` is `cy.findByTestId("toast-undo")` — **singular** — so
+ * upstream structurally can never have two toasts on screen at a step that uses
+ * it. Closing a toast only starts a dismiss animation, and Playwright drives the
+ * next action fast enough that the closing toast is still mounted when the
+ * following toast appears, which turns the singular locator into a strict-mode
+ * violation. Waiting for the close to actually land asserts upstream's implicit
+ * one-toast-at-a-time invariant rather than relaxing the locator to `.first()`.
+ */
+async function closeUndoToast(page: Page, message: string) {
+  const toast = undoToast(page);
+  await expect(toast.getByText(message, { exact: true })).toBeVisible();
+  await icon(toast, "close").click();
+  await expect(toast).toHaveCount(0);
+}
+
 test.describe("admin > database > database routing", () => {
   skipUnlessQaDb();
 
@@ -137,35 +181,41 @@ test.describe("admin > database > database routing", () => {
       // setup
       await visitDatabaseAdminPage(page, WRITABLE_DB_ID);
       // disable model actions
-      await page.getByLabel("Model actions", { exact: true }).click({ force: true });
+      // As the first test in the file this can land on a just-booted backend,
+      // where the admin page renders its feature sections only once the
+      // database (and its driver features) have loaded. The default action
+      // timeout was not always enough, so anchor on the control being present
+      // before clicking it rather than letting the click race the render.
+      const modelActions = modelsSection(page).getByLabel("Model actions", {
+        exact: true,
+      });
+      await expect(modelActions).toBeVisible({ timeout: 30_000 });
+      const actionsDisabled = waitForDatabaseSettingsUpdate(
+        page,
+        WRITABLE_DB_ID,
+      );
+      await modelActions.click({ force: true });
+      await actionsDisabled;
 
       // enabling — turn the feature on
       const enableToggle = page.getByLabel("Enable database routing", {
         exact: true,
       });
       await expect(enableToggle).not.toBeChecked();
+      // …and only becomes clickable once the refetched database says actions
+      // are off. A forced click on the still-disabled input is a silent no-op,
+      // which is what left the "Add" button unrendered.
+      await expect(enableToggle).toBeEnabled();
       await enableToggle.click({ force: true }); // mantine toggle hides the real input
       await expect(page.getByRole("button", { name: /Add/ })).toBeDisabled();
       await page.getByTestId("db-routing-user-attribute").click();
       await popover(page).getByText("attr_uid", { exact: true }).click();
-      {
-        const toast = undoToast(page);
-        await expect(
-          toast.getByText("Database routing enabled", { exact: true }),
-        ).toBeVisible();
-        await icon(toast, "close").click();
-      }
+      await closeUndoToast(page, "Database routing enabled");
 
       // configuring — change the user attribute routed on
       await page.getByTestId("db-routing-user-attribute").click();
       await popover(page).getByText("role", { exact: true }).click();
-      {
-        const toast = undoToast(page);
-        await expect(
-          toast.getByText("Database routing updated", { exact: true }),
-        ).toBeVisible();
-        await icon(toast, "close").click();
-      }
+      await closeUndoToast(page, "Database routing updated");
 
       // database creation
       await expect(
@@ -191,15 +241,7 @@ test.describe("admin > database > database routing", () => {
         await m.getByRole("button", { name: "Save", exact: true }).click();
         await created;
       }
-      {
-        const toast = undoToast(page);
-        await expect(
-          toast.getByText("Destination database created successfully", {
-            exact: true,
-          }),
-        ).toBeVisible();
-        await icon(toast, "close").click();
-      }
+      await closeUndoToast(page, "Destination database created successfully");
       await expect(
         dbRoutingSection(page).getByText("Destination DB 1", { exact: true }),
       ).toBeVisible();
@@ -294,15 +336,7 @@ test.describe("admin > database > database routing", () => {
           .click();
         await updated;
       }
-      {
-        const toast = undoToast(page);
-        await expect(
-          toast.getByText("Destination database updated successfully", {
-            exact: true,
-          }),
-        ).toBeVisible();
-        await icon(toast, "close").click();
-      }
+      await closeUndoToast(page, "Destination database updated successfully");
 
       // remove a database
       await icon(
@@ -334,13 +368,7 @@ test.describe("admin > database > database routing", () => {
       await expect(enableToggle2).toBeChecked();
       await enableToggle2.click({ force: true }); // mantine toggle hides the real input
       await expect(enableToggle2).not.toBeChecked();
-      {
-        const toast = undoToast(page);
-        await expect(
-          toast.getByText("Database routing disabled", { exact: true }),
-        ).toBeVisible();
-        await icon(toast, "close").click();
-      }
+      await closeUndoToast(page, "Database routing disabled");
 
       // should not remove destination databases when turning the feature off
       await expandDbRouting(page);
@@ -363,7 +391,9 @@ test.describe("admin > database > database routing", () => {
       // setup db routing via API
       await page.goto("/admin/databases/2");
       // disable model actions
+      const actionsDisabled = waitForDatabaseSettingsUpdate(page, 2);
       await page.getByLabel("Model actions", { exact: true }).click({ force: true });
+      await actionsDisabled;
       await configureDbRoutingViaAPI(mb.api, {
         router_database_id: 2,
         user_attribute: "role",
@@ -569,11 +599,9 @@ test.describe("admin > database > database routing", () => {
         // The toggle's PUT is async, so the bare click raced the API call
         // below and the 400 landed intermittently. Anchor on the response
         // rather than a sleep — same race, and same fix, as FINDINGS #125.
-        const actionsDisabled = page.waitForResponse(
-          (response) =>
-            response.request().method() === "PUT" &&
-            new URL(response.url()).pathname === `/api/database/${WRITABLE_DB_ID}` &&
-            response.ok(),
+        const actionsDisabled = waitForDatabaseSettingsUpdate(
+          page,
+          WRITABLE_DB_ID,
         );
         await modelsSection(page)
           .getByLabel("Model actions", { exact: true })

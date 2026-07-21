@@ -116,25 +116,39 @@ export async function ensureParameterColumnValue(
  * testing-library's query covers them (Metabase's EditableText titles are
  * textareas).
  *
- * One-shot on purpose: upstream passes `{ timeout: 10 }` precisely so the
- * check samples the instant after the create response, before the dialog
- * closes ("It is important to have extremely short timeout in order to catch
- * the issue"). A retrying `toHaveCount(0)` would be satisfied by the modal
- * simply going away, which is the opposite of what the test guards.
+ * The scan is a single atomic DOM read, and must stay one. An imperative
+ * `count()` + `nth(i).inputValue()` loop is one round trip per control, so
+ * against a subtree that is unmounting `count()` can observe the container and
+ * the following `inputValue()` then hangs for the full actionability timeout
+ * on a node that has since been removed. `evaluateAll` does not auto-wait and
+ * samples every control in one pass; a scope that has already unmounted yields
+ * zero nodes, i.e. 0 — the same outcome Cypress gives when
+ * `findByDisplayValue` finds nothing.
+ *
+ * Note the corollary: because this is a snapshot, it only means anything if
+ * the container is known to be mounted when it runs. It is NOT a way to catch
+ * a transient state on a closing dialog — see issue 55631 in the spec, which
+ * needs a page-side poll installed before the action instead.
  */
 export async function countDisplayValue(
   scope: Locator,
   value: string,
 ): Promise<number> {
-  const controls = scope.locator("input, textarea, select");
-  const count = await controls.count();
-  let matches = 0;
-  for (let index = 0; index < count; index++) {
-    if ((await controls.nth(index).inputValue()) === value) {
-      matches += 1;
-    }
-  }
-  return matches;
+  return scope
+    .locator("input, textarea, select")
+    .evaluateAll(
+      (controls, target) =>
+        controls.filter(
+          (control) =>
+            (
+              control as
+                | HTMLInputElement
+                | HTMLTextAreaElement
+                | HTMLSelectElement
+            ).value === target,
+        ).length,
+      value,
+    );
 }
 
 /** Retrying variant of the above, for the steady-state title lookups. */
@@ -286,7 +300,9 @@ export async function getSyncedFieldId(
     const field = (body.fields ?? []).find((field) => field.name === name);
     if (!field) {
       throw new Error(
-        `Field ${name} not synced yet on table ${tableId} (have: ${(body.fields ?? [])
+        `Field ${name} not synced yet on table ${tableId} (have: ${(
+          body.fields ?? []
+        )
           .map((f) => f.name)
           .join(", ")})`,
       );

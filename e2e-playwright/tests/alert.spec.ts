@@ -351,7 +351,7 @@ test.describe("scenarios > alert", () => {
         dialog.getByText("New alert", { exact: true }),
       ).toBeVisible();
 
-      await addEmailRecipient(dialog.getByTestId("token-field"), deniedEmail);
+      await addEmailRecipient(dialog, deniedEmail);
 
       await expect(
         dialog.getByText(adminAlertError, { exact: true }),
@@ -399,7 +399,7 @@ test.describe("scenarios > alert", () => {
         dialog.getByText("New alert", { exact: true }),
       ).toBeVisible();
 
-      await addEmailRecipient(dialog.getByTestId("token-field"), deniedEmail);
+      await addEmailRecipient(dialog, deniedEmail);
 
       await dialog
         .getByRole("button", { name: "Done", exact: true })

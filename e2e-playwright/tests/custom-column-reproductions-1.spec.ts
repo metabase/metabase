@@ -90,6 +90,7 @@ import {
   queryBuilderMain,
   startNewQuestion,
   tableHeaderClick,
+  tableHeaderColumn,
   visualize,
 } from "../support/notebook";
 import { visitQuestionAdhoc } from "../support/permissions";
@@ -643,7 +644,14 @@ test.describe("issue 20229", () => {
   };
 
   async function ccAssertion(page: Page) {
-    await expect(page.getByText("Adjective", { exact: true })).toBeVisible();
+    // Scoped to the rendered table header rather than the whole page:
+    // useMeasureColumnWidths renders a hidden (visibility:hidden, off-screen)
+    // clone of every header cell into a detached container on document.body
+    // while it sizes the columns. Playwright locators match hidden nodes, so a
+    // page-wide getByText("Adjective") hits 2 elements and dies on strict mode
+    // before the clone is torn down. Cypress never saw this because it retries
+    // findByText until the clone is gone.
+    await expect(tableHeaderColumn(page, "Adjective")).toBeVisible();
     await expect(page.getByText(/expensive/).first()).toBeVisible();
     await expect(page.getByText(/cheap/).first()).toBeVisible();
   }

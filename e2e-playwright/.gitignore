@@ -1,5 +1,6 @@
 node_modules/
 test-results/
+test-results-slot*/
 playwright-report/
 target/
 scratchpad/

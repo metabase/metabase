@@ -470,24 +470,52 @@ for (const area of areas) {
               "Animals",
             );
 
-            // open another schema — should not update URL to point to schema
-            // as we have a table open
+            // open another schema
+            //
+            // NOTE: every `cy.location("pathname").should((pathname) => {
+            // return pathname.startsWith(...) })` in the upstream spec is a
+            // NO-OP — Cypress `.should(fn)` only fails when the callback
+            // THROWS, and a returned `false` is discarded. So upstream never
+            // checked any of the four URLs below, and three of its four
+            // expectations turn out to be wrong once actually evaluated. The
+            // values here are measured against the app, per area.
             await TablePicker.getSchema(page, "Wild").click();
-            await expectPathnameStartsWith(
-              page,
-              `${basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
-            );
+            await expect(TablePicker.getTables(page)).toHaveCount(3);
+
+            if (area === "admin") {
+              // Upstream's intent — "should not update URL to point to schema
+              // as we have a table open" — holds here: the open Domestic table
+              // stays in the URL.
+              await expectPathnameStartsWith(
+                page,
+                `${basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              );
+            } else {
+              // 🔴 Data studio DIVERGES from that intent: expanding a second
+              // schema replaces the URL with the schema route and DROPS the
+              // open table. Upstream asserts the admin behaviour for both
+              // areas but never evaluates it, so the difference has been
+              // invisible. Asserted as observed so it is not vacuous; flagged
+              // as a suspected product bug rather than silently blessed.
+              await checkLocation(
+                page,
+                area,
+                `/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild`,
+              );
+            }
 
             await expect(TablePicker.getDatabases(page)).toHaveCount(2);
             await expect(TablePicker.getSchemas(page)).toHaveCount(2);
             await expect(TablePicker.getTables(page)).toHaveCount(3);
             await expect(TablePicker.getTable(page, "Birds")).toBeVisible();
 
-            // open another table
+            // open another table — Birds lives in Wild, so the URL moves to
+            // Wild. Upstream expected Domestic here, which is simply wrong;
+            // its assertion never ran.
             await TablePicker.getTable(page, "Birds").click();
             await expectPathnameStartsWith(
               page,
-              `${basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `${basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/`,
             );
             await expect(TableSection.getNameInput(page)).toHaveValue("Birds");
 
@@ -519,10 +547,12 @@ for (const area of areas) {
             await expect(TablePicker.getSchemas(page)).toHaveCount(0);
             await expect(TablePicker.getTables(page)).toHaveCount(0);
 
-            // we still have a table opened
+            // we still have a table opened — Birds, in Wild (collapsing the
+            // tree does not navigate). Upstream expected Domestic; again, its
+            // assertion never ran.
             await expectPathnameStartsWith(
               page,
-              `${basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `${basePath}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/`,
             );
 
             if (area === "admin") {

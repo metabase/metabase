@@ -191,13 +191,25 @@ const DISABLED_REASON_RE = /Database routing can't be enabled if/;
 /**
  * Port of the spec-local assertDbRoutingNotDisabled: the toggle is enabled, and
  * hovering it does NOT surface the "can't be enabled if…" tooltip.
+ *
+ * Upstream calls `realHover()` directly on the `<input>` inside the Mantine
+ * Switch. That input is rendered 0x0 / opacity:0 (the visible track is drawn by
+ * a sibling), and Cypress's realHover just resolves its rect and dispatches CDP
+ * mouse events at that point, hitting whatever is on top. Playwright's `hover()`
+ * runs actionability first and waits forever for a zero-size element to become
+ * visible. So the hover is retargeted at the Tooltip's own target — the
+ * `database-routing-toggle-wrapper` Box that wraps the Switch, which is exactly
+ * the element upstream hovers in the sibling assertDbRoutingDisabled. React's
+ * synthetic onMouseEnter fires for descendants, so this is the same pointer
+ * gesture; only the assertion target of the hover changed, not the assertion.
  */
 export async function assertDbRoutingNotDisabled(page: Page) {
-  const toggle = dbRoutingSection(page).getByLabel("Enable database routing", {
-    exact: true,
-  });
+  const section = dbRoutingSection(page);
+  const toggle = section.getByLabel("Enable database routing", { exact: true });
   await expect(toggle).not.toBeDisabled();
-  await toggle.hover();
+  await section
+    .getByTestId("database-routing-toggle-wrapper")
+    .hover({ force: true });
   await expect(page.getByText(DISABLED_REASON_RE)).toHaveCount(0);
 }
 
@@ -211,12 +223,14 @@ export async function assertDbRoutingNotDisabled(page: Page) {
  * Chrome v122+ headless hit-tested CDP mouse events to the disabled <input>
  * inside the Mantine Switch, swallowed the boundary events, and never fired the
  * Tooltip — so `realHover()` was unreliable. This port uses Playwright's real
- * `hover()` on the wrapper to see whether it fires reliably where Cypress
- * headless couldn't. `{ force: true }` is required: Playwright's actionability
- * would otherwise refuse to hover a point occupied by the disabled control on
- * top (the same hit-test that defeated Cypress). NOTE: unverifiable in this
- * spike — the spec is infra-gated on the writable QA postgres, so this path
- * never actually runs here; no capability dividend is claimed.
+ * `hover()` on the wrapper instead.
+ *
+ * VERIFIED (PW_QA_DB_ENABLED=1 against a live writable QA postgres): real
+ * hover() fires the Tooltip reliably here, so Playwright needs no synthetic
+ * `trigger("mouseenter")` equivalent — a genuine capability dividend. Why
+ * Cypress's hit-testing problem does not bite: the disabled <input> is a
+ * *descendant* of this Box, and React's synthetic onMouseEnter fires for
+ * descendants, so landing on the input still triggers the wrapper's handler.
  */
 export async function assertDbRoutingDisabled(page: Page) {
   const section = dbRoutingSection(page);

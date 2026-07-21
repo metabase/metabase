@@ -292,6 +292,12 @@ test.describe("issue 20551", () => {
   });
 });
 
+/**
+ * PRODUCTS id 9, created 2028-02-07 — a Monday in the sample data shipped on
+ * this branch. See the note at the absence assertion in issue 21979.
+ */
+const MONDAY_PRODUCT = "Practical Bronze Computer";
+
 test.describe("issue 21979", () => {
   test.beforeEach(async ({ mb }) => {
     await mb.restore();
@@ -318,10 +324,30 @@ test.describe("issue 21979", () => {
 
     await (await visualize(page));
 
-    // Make sure the query is correct
-    // (a product called "Enormous Marble Wallet" is created on Monday)
+    // Anchor on the results grid actually having painted before asserting the
+    // absence below. `visualize()` resolves on the /api/dataset RESPONSE, which
+    // lands before React renders the table — so a bare `toHaveCount(0)` passes
+    // on its first poll against an empty DOM and asserts nothing. `Rustic Paper
+    // Wallet` is PRODUCTS id 1 (created on a Sunday), so it survives every
+    // exclusion this test applies and is a stable presence anchor.
     await expect(
-      queryBuilderMain(page).getByText("Enormous Marble Wallet", {
+      queryBuilderMain(page).getByText("Rustic Paper Wallet", { exact: true }),
+    ).toBeVisible();
+
+    // Make sure the query is correct.
+    //
+    // Upstream names "Enormous Marble Wallet" here and calls it a Monday
+    // product. That was true of the OLD sample database (2016-10-03), but the
+    // bundled sample data has since been re-dated by +9 years: that row is now
+    // 2025-10-03, a FRIDAY, and it is no longer excluded by "excludes Mondays".
+    // Verified against `resources/sample-database.db.mv.db` and the copy inside
+    // `target/uberjar/metabase.jar` — both agree, so upstream's premise is
+    // stale in Cypress too. The day pair (Monday/Thursday) is what issue 21979
+    // is about and is kept verbatim; only the product is re-pointed at one that
+    // really is created on a Monday: PRODUCTS id 9, 2028-02-07 (a Monday), and
+    // therefore also present again once the exclusion moves to Thursdays.
+    await expect(
+      queryBuilderMain(page).getByText(MONDAY_PRODUCT, {
         exact: true,
       }),
     ).toHaveCount(0);
@@ -338,7 +364,7 @@ test.describe("issue 21979", () => {
     await dataset;
 
     await expect(
-      queryBuilderMain(page).getByText("Enormous Marble Wallet", {
+      queryBuilderMain(page).getByText(MONDAY_PRODUCT, {
         exact: true,
       }),
     ).toBeVisible();

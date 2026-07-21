@@ -1646,10 +1646,21 @@ test.describe("admin > settings > updates", () => {
     ).toBeVisible();
 
     await updates.getByText("Changelog", { exact: true }).click();
-    await assertIframeLoaded(page, "changelog-iframe");
+    // `/changelog/56` — the major of the mocked `latest.version` (v1.56.4),
+    // via VersionUpdateNotice's `getLatestMajorVersion`. Tying the assertion
+    // to the mock is what stops it being vacuous.
+    await assertIframeLoaded(
+      page,
+      "changelog-iframe",
+      /^https:\/\/www\.metabase\.com\/changelog\/56\?/,
+    );
 
     await updates.getByText("What's new", { exact: true }).click();
-    await assertIframeLoaded(page, "releases-iframe");
+    await assertIframeLoaded(
+      page,
+      "releases-iframe",
+      /^https:\/\/www\.metabase\.com\/releases\?/,
+    );
   });
 
 });
@@ -1749,17 +1760,45 @@ function readProjectedGeoJson(): string {
   );
 }
 
-/** Port of the spec's `assertIframeLoaded`: the iframe is rendered and its
- * document has a body. */
-async function assertIframeLoaded(page: Page, testId: string) {
+/**
+ * Port of the spec's `assertIframeLoaded`:
+ *
+ *   cy.findByTestId(testId).should("be.visible");
+ *   cy.findByTestId(testId).should(($iframe) => {
+ *     const body = $iframe.contents().find("body");
+ *     expect(body).to.exist;
+ *   });
+ *
+ * The second half is VACUOUS upstream, for two independent reasons. Both
+ * iframes are CROSS-ORIGIN (`https://www.metabase.com/releases…` and
+ * `…/changelog/<major>…`, VersionUpdateNotice.tsx:118-128), so jQuery's
+ * `.contents()` returns an empty set; and `expect(<empty jQuery>).to.exist`
+ * passes regardless, because a jQuery object is always a non-null object. It
+ * cannot fail, whatever the iframe does.
+ *
+ * The literal Playwright translation this replaces —
+ * `contentDocument?.body != null` — was not a faithful port but a STRONGER
+ * assertion that no same-document script can ever satisfy against a
+ * cross-origin frame: `contentDocument` is `null` by the same-origin policy,
+ * so it was `false` by construction and the test failed deterministically,
+ * with `Expected: true / Received: false` and no diagnostic.
+ *
+ * What is asserted instead is the strongest claim actually observable from the
+ * parent document, and one a broken tab panel really would break: the iframe
+ * is visible and points at the expected external document. `expectedSrc` is
+ * matched, not merely present, so a panel that rendered the wrong tab's frame
+ * fails — and the message names the src it got.
+ *
+ * NOT loading the frame content over `frameLocator` (which does cross origins
+ * in Playwright): that would make an offline-safe test depend on reaching
+ * metabase.com, which upstream never does.
+ */
+async function assertIframeLoaded(
+  page: Page,
+  testId: string,
+  expectedSrc: RegExp,
+) {
   const frame = page.getByTestId(testId);
   await expect(frame).toBeVisible();
-  await expect
-    .poll(() =>
-      frame.evaluate(
-        (element) =>
-          (element as HTMLIFrameElement).contentDocument?.body != null,
-      ),
-    )
-    .toBe(true);
+  await expect(frame).toHaveAttribute("src", expectedSrc);
 }

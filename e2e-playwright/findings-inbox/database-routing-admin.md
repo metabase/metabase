@@ -6,7 +6,21 @@ Port of `admin/database-routing/database-routing-admin.cy.spec.ts` →
 read-only). All 15 tests ported faithfully; issue-free (no upstream `metabase#`
 numbers in this spec). tsc clean.
 
-## Runtime status: INFRA-GATED (correctly skipped)
+## Runtime status: RESOLVED — the spec runs, and is green (2026-07-21)
+
+> **The "infra-gated" claim below is superseded.** CI now provisions the QA
+> containers and sets `PW_QA_DB_ENABLED=1`, so the whole spec executes. Latest
+> run: **14 passed, 1 skipped (OSS-gated), 0 failed.** Three tests were
+> genuinely broken and are fixed (async `PUT /api/database/:id` race; a
+> `hover()` retarget; two stacked undo toasts). Ten of the fifteen tests had
+> never actually executed before this.
+>
+> Caveat kept deliberately: that is a **single** green run. Test 1 is long and
+> serial and failed at three progressively later points before passing, so it
+> is not yet established as flake-free — `--repeat-each=3` is what would
+> justify that claim.
+
+## Runtime status (SUPERSEDED): INFRA-GATED (correctly skipped)
 
 The whole spec restores the `postgres-writable` snapshot and drives
 WRITABLE_DB_ID (the writable QA postgres, port 5404). Destination "mirror"
@@ -21,7 +35,25 @@ Verification on the jar (slot 2): **15 skipped**, and **30 skipped** under
 skipped", not "passing". The EE describe is additionally token-gated
 (pro-self-hosted); the OSS test is gated on an OSS build (this backend is EE).
 
-## Tooltip capability probe — VERDICT: UNVERIFIABLE (no dividend claimed)
+## Tooltip capability probe — VERDICT: CONFIRMED (2026-07-21)
+
+> **Superseding the "unverifiable" verdict below.** The exact settling
+> conditions it specified have now been met: run with `PW_QA_DB_ENABLED=1`
+> against a live writable QA postgres. The probe **executed and passed**.
+>
+> Real Playwright `hover()` fires the Mantine Tooltip where Cypress headless
+> needed a synthetic `cy.trigger("mouseenter")` (the Chrome v122+ issue). The
+> mechanism, established while fixing a separate hover timeout in this spec:
+> the disabled `<input>` is a *descendant* of the wrapper Box, and React's
+> synthetic `onMouseEnter` fires for descendants, so a pointer landing on the
+> input still triggers the wrapper's handler. Cypress's problem was never that
+> the gesture was impossible — it was that CDP hit-testing resolved to the
+> disabled input and Cypress had no way to express "hover the wrapper".
+>
+> Scope honestly: this is one probe passing in one spec. It is a real
+> dividend, not a general claim that Playwright fixes every v122+ hover.
+
+## Tooltip capability probe (SUPERSEDED): VERDICT: UNVERIFIABLE
 
 The special-interest test is `assertDbRoutingDisabled`, the disabled-toggle
 tooltip. Upstream had to work around Chrome v122+ headless: `realHover()` on the

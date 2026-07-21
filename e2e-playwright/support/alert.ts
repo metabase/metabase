@@ -52,23 +52,40 @@ export async function isWebhookTesterRunning(): Promise<boolean> {
 /**
  * Port of the EE describe's spec-local `addEmailRecipient`:
  *
- *   cy.findAllByRole("textbox").first().click().type(`${email}`).blur();
+ *   cy.findByTestId("token-field")
+ *     .findByRole("combobox")
+ *     .click()
+ *     .type(`${email}`)
+ *     .blur();
+ *
+ * `scope` is the enclosing `H.modal()` / `H.sidebar()` that upstream is
+ * `.within()` when it calls this — the helper does its own `findByTestId`
+ * lookup, so the caller passes the container, not the token-field.
+ *
+ * NOTE — this shape changed under us. Until master 184c415f6e3 ("GDGT-2578
+ * Replace TokenField") the recipient picker was the legacy `TokenField`, whose
+ * inner control was a bare `<input>` (role `textbox`), and upstream reached it
+ * with `cy.findAllByRole("textbox").first()`. It is now `MultiAutocomplete`
+ * (Mantine `PillsInput` + `Combobox`), whose field carries `role="combobox"` —
+ * so the old `getByRole("textbox")` matches nothing at all. That single
+ * component swap is the root cause of every failure in this spec's EE
+ * describe; the selector is now the one upstream itself moved to.
  *
  * Two things the literal shape would drop:
  * - `cy.type()` clicks its subject first, so the click is explicit here, and
- *   the characters go in with `pressSequentially` (not `fill`) because
- *   TokenField only tracks `inputValue` through real keystrokes.
- * - Upstream sends NO `{enter}`: the token is committed by the blur alone
- *   (TokenField.tsx `onInputBlur` → `updateOnInputBlur && parseFreeformValue`).
- *   `blur()` on the resolved Cypress subject is reproduced by blurring the live
- *   `document.activeElement` — the RecipientPicker drops its placeholder as
- *   soon as `recipients.length > 0` (RecipientPicker.tsx:49), so a locator
- *   captured before the commit can stop resolving mid-blur. This is also the
+ *   the characters go in with `pressSequentially` (not `fill`) because the
+ *   combobox only tracks its search value through real keystrokes.
+ * - Upstream sends NO `{enter}`: the free-form value is committed by the blur
+ *   alone (`MultiAutocomplete` → `use-multi-autocomplete`'s blur handler runs
+ *   `parseValue`). `blur()` on the resolved Cypress subject is reproduced by
+ *   blurring the live `document.activeElement` — the picker drops its
+ *   placeholder as soon as `recipients.length > 0`, so a locator captured
+ *   before the commit can stop resolving mid-blur. This is also the
  *   MultiAutocomplete/PillsInput submit trap: the "Done" assertions that follow
  *   only mean something once focus has left the input.
  */
 export async function addEmailRecipient(scope: Scope, email: string) {
-  const input = scope.getByRole("textbox").first();
+  const input = scope.getByTestId("token-field").getByRole("combobox");
   await input.click();
   await input.pressSequentially(email);
   await input.page().evaluate(() => {

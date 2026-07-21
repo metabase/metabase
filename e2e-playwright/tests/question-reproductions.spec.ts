@@ -61,11 +61,7 @@ import { updatePermissionsGraph } from "../support/dashboard-repros";
 import { pickEntity } from "../support/entity-picker";
 import { createNativeQuestion, createQuestion } from "../support/factories";
 import { queryBuilderFooter } from "../support/filter-bulk";
-import {
-  filterNotebook,
-  join,
-  miniPickerBrowseAll,
-} from "../support/joins";
+import { filterNotebook, join, miniPickerBrowseAll } from "../support/joins";
 import { ensureChartIsActive } from "../support/metrics-explorer";
 import { visitModel } from "../support/models";
 import {
@@ -87,10 +83,7 @@ import {
   visualize,
 } from "../support/notebook";
 import { entityPickerModalItem } from "../support/question-new";
-import {
-  ORDERS_QUESTION_ID,
-  SAMPLE_DATABASE,
-} from "../support/sample-data";
+import { ORDERS_QUESTION_ID, SAMPLE_DATABASE } from "../support/sample-data";
 import { createCard, createTestQuery } from "../support/summarization";
 import {
   icon,
@@ -106,7 +99,6 @@ import {
   checkDateRangeFilter,
   checkSingleDateFilter,
   clearAndType,
-  countDisplayValue,
   createMockParameter,
   datePickerPreviousButton,
   ensureParameterColumnValue,
@@ -495,7 +487,9 @@ test.describe("issue 53404", () => {
       .getByRole("button", { name: "Save", exact: true })
       .click();
     const updateCard = waitForUpdateCard(page);
-    await modal(page).getByRole("button", { name: "Save", exact: true }).click();
+    await modal(page)
+      .getByRole("button", { name: "Save", exact: true })
+      .click();
     await updateCard;
     await expect(
       modal(page).getByText("Cannot save card with cycles.", { exact: true }),
@@ -798,15 +792,75 @@ test.describe("issue 55631", () => {
       select: true,
     });
 
-    const cardCreate = waitForCreateCard(page);
-    await modal(page).getByRole("button", { name: "Save", exact: true }).click();
-    await cardCreate;
+    // Upstream samples the DOM once, immediately after `cy.wait("@cardCreate")`,
+    // with `{ timeout: 10 }` — "It is important to have extremely short timeout
+    // in order to catch the issue before the dialog closes."
+    //
+    // That shape does not survive the port. Cypress queries the DOM in-process,
+    // synchronously, in the same event loop as the app. Playwright's sample is
+    // an out-of-process round trip that lands *after* `waitForResponse`
+    // resolves, and by then the modal has already unmounted — measured: the
+    // modal contained ZERO controls on 5/5 runs. The absence check was passing
+    // for the one reason that makes it worthless, and the intermittent
+    // `inputValue` timeouts were the same race landing on the other side (the
+    // old imperative `count()` + `nth(i).inputValue()` scan could see the modal
+    // on the count and then hang on a node that had since been removed).
+    //
+    // So the sample is replaced with continuous observation, which is what the
+    // test name actually claims: a *flash* is the title momentarily reverting
+    // to "Orders" while the dialog is still up. A 4ms page-side poll installed
+    // just before Save (the name field reads "Custom" at that point) catches it
+    // regardless of where the modal's unmount lands relative to the response.
+    // No timeout was raised and nothing was loosened — the assertion got
+    // strictly harder to pass.
+    await page.evaluate(() => {
+      const MODAL = "[role='dialog'][aria-modal='true']";
+      const state = { sawDefaultTitle: false, samplesWithModalOpen: 0 };
+      (window as unknown as Record<string, unknown>).__flash55631 = state;
 
-    // It is important to have extremely short timeout in order to catch the
-    // issue before the dialog closes — upstream uses `{ timeout: 10 }`, so
-    // this is deliberately a ONE-SHOT count, not a retrying toHaveCount(0)
-    // (which the modal merely closing would satisfy).
-    expect(await countDisplayValue(modal(page), "Orders")).toBe(0);
+      const sample = () => {
+        const dialogs = document.querySelectorAll(MODAL);
+        if (dialogs.length === 0) {
+          return;
+        }
+        state.samplesWithModalOpen += 1;
+        dialogs.forEach((dialog) => {
+          dialog
+            .querySelectorAll("input, textarea, select")
+            .forEach((control) => {
+              if ((control as HTMLInputElement).value === "Orders") {
+                state.sawDefaultTitle = true;
+              }
+            });
+        });
+      };
+
+      sample();
+      (window as unknown as Record<string, unknown>).__flash55631Timer =
+        window.setInterval(sample, 4);
+    });
+
+    const cardCreate = waitForCreateCard(page);
+    await modal(page)
+      .getByRole("button", { name: "Save", exact: true })
+      .click();
+    await cardCreate;
+    await expect(modal(page)).toHaveCount(0);
+
+    const flash = await page.evaluate(() => {
+      const win = window as unknown as Record<string, unknown>;
+      window.clearInterval(win.__flash55631Timer as number);
+      return win.__flash55631 as {
+        sawDefaultTitle: boolean;
+        samplesWithModalOpen: number;
+      };
+    });
+
+    // Guard, not a product assertion: proves the observation window was real,
+    // i.e. the poll ran while the dialog was still mounted. Without this the
+    // absence check below could silently go vacuous again.
+    expect(flash.samplesWithModalOpen).toBeGreaterThan(0);
+    expect(flash.sawDefaultTitle).toBe(false);
   });
 });
 
@@ -1020,9 +1074,9 @@ test.describe("issue 13347", { tag: "@external" }, () => {
     await expect(
       picker.getByText("13347 structured", { exact: true }),
     ).toHaveCount(0);
-    await expect(
-      picker.getByText("13347 native", { exact: true }),
-    ).toHaveCount(0);
+    await expect(picker.getByText("13347 native", { exact: true })).toHaveCount(
+      0,
+    );
   });
 
   test("should not display questions in big data picker that cannot be used for new questions (metabase#13347)", async ({

@@ -248,7 +248,9 @@ test.describe("documents", () => {
       await page.getByLabel("More options", { exact: true }).click();
       await popover(page).getByText("Duplicate", { exact: true }).click();
 
-      await expect(modalContentByTestId(page, "save-confirmation")).toBeVisible();
+      await expect(
+        modalContentByTestId(page, "save-confirmation"),
+      ).toBeVisible();
 
       await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
@@ -294,7 +296,9 @@ test.describe("documents", () => {
       await page.getByLabel("More options", { exact: true }).click();
       await popover(page).getByText("Duplicate", { exact: true }).click();
 
-      await expect(modalContentByTestId(page, "save-confirmation")).toBeVisible();
+      await expect(
+        modalContentByTestId(page, "save-confirmation"),
+      ).toBeVisible();
       await page
         .getByRole("button", { name: "Save changes", exact: true })
         .click();
@@ -373,7 +377,9 @@ test.describe("documents", () => {
         .inputValue();
 
       const copyRequest = waitForDocumentCopy(page);
-      await page.getByRole("button", { name: "Duplicate", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Duplicate", exact: true })
+        .click();
 
       const copyResponse = await copyRequest;
       const copiedId = ((await copyResponse.json()) as { id: number }).id;
@@ -558,9 +564,12 @@ test.describe("documents", () => {
     // navigation didn't happen.
     await expect.poll(() => pathname(page)).toBe("/trash");
 
-    const trashedDocument = getUnpinnedSection(page).getByText("Test Document", {
-      exact: true,
-    });
+    const trashedDocument = getUnpinnedSection(page).getByText(
+      "Test Document",
+      {
+        exact: true,
+      },
+    );
     await expect(trashedDocument).toBeAttached();
 
     // The trash list remounts its rows while the items request settles, so the
@@ -577,9 +586,10 @@ test.describe("documents", () => {
     // test that deleted documents cannot be edited (metabase#63112)
     await expect(documentTitleInput(page)).toBeVisible();
     await expect(documentTitleInput(page)).toHaveAttribute("readonly");
-    await expect(
-      documentContent(page).getByRole("textbox"),
-    ).toHaveAttribute("contenteditable", "false");
+    await expect(documentContent(page).getByRole("textbox")).toHaveAttribute(
+      "contenteditable",
+      "false",
+    );
   });
 
   test("should default the save modal to a selectable collection when Library is enabled (#73538)", async ({
@@ -833,7 +843,9 @@ test.describe("documents", () => {
           };
         });
 
-        await popover(page).getByText("Print Document", { exact: true }).click();
+        await popover(page)
+          .getByText("Print Document", { exact: true })
+          .click();
 
         await expect
           .poll(() =>
@@ -1098,16 +1110,80 @@ test.describe("documents", () => {
           "Requires the QA Postgres container (set PW_QA_DB_ENABLED)",
         );
 
+        const dialogContainer = (
+          dialog: "command" | "mention" | "metabot" = "command",
+        ) =>
+          dialog === "command"
+            ? commandSuggestionDialog(page)
+            : dialog === "mention"
+              ? documentMentionDialog(page)
+              : documentMetabotDialog(page);
+
+        /**
+         * These lists are backed by async search/database requests, and typing
+         * a prefix fires one request per keystroke. Until the last response
+         * lands the list keeps re-rendering, and a re-render resets the
+         * highlighted index to 0 — so ArrowDown presses that land mid-flight
+         * navigate a list that is about to be replaced, and the assertion then
+         * fails *steadily* (nothing re-drives the keyboard).
+         *
+         * Cypress never sees this: `cy.realType` and each `cy.realPress` carry
+         * enough command-queue overhead that the list has settled by the time
+         * the arrows land. Playwright drives real input with no such padding,
+         * so the port needs an explicit positive anchor.
+         *
+         * Waiting for two consecutive identical samples of the option labels
+         * is that anchor: it is the settled precondition upstream gets for
+         * free, and it asserts nothing the upstream test does not.
+         */
+        const waitForSuggestionsToSettle = async (
+          dialog: "command" | "mention" | "metabot" = "command",
+        ) => {
+          const options = dialogContainer(dialog).locator('[role="option"]');
+          const labels = () =>
+            options.evaluateAll((nodes) =>
+              nodes.map((node) => node.textContent ?? ""),
+            );
+
+          let previous: string | null = null;
+          await expect(async () => {
+            const current = JSON.stringify(await labels());
+            const settled = current !== "[]" && current === previous;
+            previous = current;
+            if (!settled) {
+              throw new Error(`Suggestion list still changing: ${current}`);
+            }
+          }).toPass({ intervals: [150] });
+        };
+
+        /**
+         * Port of `cy.realHover()`.
+         *
+         * Playwright drives one real pointer for the whole test, and
+         * `locator.click()` physically moves it onto whatever was clicked.
+         * Cypress's `cy.click()` does not: it dispatches synthetic events at
+         * the element and leaves the CDP pointer wherever the last
+         * `realHover()` parked it. So upstream's `realHover()` is always a
+         * genuine boundary crossing, whereas here the pointer can already sit
+         * inside the target — e.g. clicking "Ask Metabot" in the command
+         * dialog leaves it exactly over the Metabot dialog's first option.
+         * Moving to the same coordinates emits no `mouseenter`, the
+         * component's hover handler never runs, and the highlight never moves.
+         *
+         * Parking the pointer off the list first restores upstream's implicit
+         * precondition. It changes no assertion — it makes the hover the test
+         * claims to perform actually happen.
+         */
+        const realHover = async (locator: Locator) => {
+          await page.mouse.move(0, 0);
+          await locator.hover();
+        };
+
         const assertOnlyOneOptionActive = async (
           name: string | RegExp,
           dialog: "command" | "mention" | "metabot" = "command",
         ) => {
-          const container =
-            dialog === "command"
-              ? commandSuggestionDialog(page)
-              : dialog === "mention"
-                ? documentMentionDialog(page)
-                : documentMetabotDialog(page);
+          const container = dialogContainer(dialog);
 
           await expect(
             container.getByRole("option", {
@@ -1137,18 +1213,19 @@ test.describe("documents", () => {
         await assertOnlyOneOptionActive("Link");
 
         // Hover over Quote
-        await commandSuggestionItem(page, /Quote/).hover();
+        await realHover(commandSuggestionItem(page, /Quote/));
 
         await assertOnlyOneOptionActive(/Quote/);
 
         await addToDocument(page, "pro", false);
+        await waitForSuggestionsToSettle();
 
         await assertOnlyOneOptionActive(/Products by Category/);
 
         await page.keyboard.press("ArrowDown");
         await assertOnlyOneOptionActive(/Products average/);
 
-        await commandSuggestionItem(page, /Products by Category/).hover();
+        await realHover(commandSuggestionItem(page, /Products by Category/));
 
         await assertOnlyOneOptionActive(/Products by Category/);
 
@@ -1157,15 +1234,18 @@ test.describe("documents", () => {
         await clearDocumentContent(page);
 
         await addToDocument(page, "@ord", false);
+        await waitForSuggestionsToSettle("mention");
 
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowDown");
 
         await assertOnlyOneOptionActive(/Orders, Count$/, "mention");
 
-        await documentMentionDialog(page)
-          .getByRole("option", { name: /Browse all/ })
-          .hover();
+        await realHover(
+          documentMentionDialog(page).getByRole("option", {
+            name: /Browse all/,
+          }),
+        );
 
         await assertOnlyOneOptionActive(/Browse all/, "mention");
 
@@ -1175,12 +1255,13 @@ test.describe("documents", () => {
 
         await commandSuggestionItem(page, /Ask Metabot/).click();
         await addToDocument(page, "@", false);
+        await waitForSuggestionsToSettle("metabot");
 
         await assertOnlyOneOptionActive(/QA Postgres/, "metabot");
         await page.keyboard.press("ArrowDown");
         await assertOnlyOneOptionActive(/Sample/, "metabot");
 
-        await documentMetabotSuggestionItem(page, /QA Postgres/).hover();
+        await realHover(documentMetabotSuggestionItem(page, /QA Postgres/));
         await assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
@@ -1255,7 +1336,10 @@ test.describe("documents", () => {
           .getByText("Line", { exact: true })
           .click();
         await sidebar.getByText("Axes", { exact: true }).click();
-        const axisLabelInput = await inputWithValue(sidebar, "Created At: Month");
+        const axisLabelInput = await inputWithValue(
+          sidebar,
+          "Created At: Month",
+        );
         await axisLabelInput.fill("Foo Axes");
 
         await expect(
@@ -1647,7 +1731,9 @@ test.describe("documents", () => {
 
         await cartesianChartCircles(page).nth(1).click();
 
-        await popover(page).getByText("See these Orders", { exact: true }).click();
+        await popover(page)
+          .getByText("See these Orders", { exact: true })
+          .click();
 
         await page.getByLabel("Back to Foo Document", { exact: true }).click();
 
@@ -1711,7 +1797,10 @@ test.describe("documents", () => {
       });
 
       // Verify document can be saved with a new question
-      const saveButton = page.getByRole("button", { name: "Save", exact: true });
+      const saveButton = page.getByRole("button", {
+        name: "Save",
+        exact: true,
+      });
       await expect(saveButton).toBeVisible();
       await saveButton.click();
       await expect(saveButton).toHaveCount(0);
@@ -1758,7 +1847,10 @@ test.describe("documents", () => {
 
       // Verify the SQL query is embedded in the document
       await expect(getDocumentCard(page, "New question")).toBeAttached();
-      const saveButton = page.getByRole("button", { name: "Save", exact: true });
+      const saveButton = page.getByRole("button", {
+        name: "Save",
+        exact: true,
+      });
       await expect(saveButton).toBeVisible();
       // Upstream's expectUnstructuredSnowplowEvent below polls until
       // document_add_card arrives, which incidentally waits out this save. The
@@ -1816,9 +1908,10 @@ test.describe("documents", () => {
       await page.keyboard.press("Enter");
 
       // Verify notebook option is selected by default
-      await expect(
-        commandSuggestionItem(page, /New Question/),
-      ).toHaveAttribute("aria-selected", "true");
+      await expect(commandSuggestionItem(page, /New Question/)).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
 
       // Navigate to SQL option
       await page.keyboard.press("ArrowDown");

@@ -97,13 +97,41 @@ export async function createBasicAlert(
     // expresses directly. A literal `getByText("Email", { exact: true })` would
     // strict-mode-violate: ChannelSettingsBlock nests the label `<Text>` inside
     // a `<Group>` whose full textContent is also exactly "Email".
+    // `.findByTestId("token-field").findByRole("combobox").type("<name>{enter}")`
+    //
+    // NOTE — this shape changed under us. Until master 184c415f6e3
+    // ("GDGT-2578 Replace TokenField") the recipient picker was the legacy
+    // `TokenField`: its options were plain `<li>`s, so upstream opened the
+    // dropdown with a click on the token-field and then clicked the option by
+    // text (`cy.findByText(getFullName(normal)).click()`). It is now
+    // `MultiAutocomplete` (Mantine `PillsInput` + `Combobox`), and upstream
+    // moved to typing the name into the `role="combobox"` field and committing
+    // with Enter. Both halves of the old shape are now wrong: the field is not
+    // a `textbox`, and a click on the token-field TOGGLES a dropdown Mantine
+    // has often already opened, which is exactly how this timed out on CI —
+    // the trace shows the option list rendered at the moment of the click and
+    // gone immediately after it.
     await page
       .getByTestId("alert-configured-channel")
       .getByTestId("channel-block")
       .filter({ hasText: /^Email/ })
       .getByTestId("token-field")
-      .click();
-    await directTextContaining(page, NORMAL_FULL_NAME).click();
+      .getByRole("combobox")
+      .pressSequentially(NORMAL_FULL_NAME);
+    await page.keyboard.press("Enter");
+
+    // Not upstream. `{enter}` on a Combobox is a no-op if no option is
+    // highlighted, and the failure would be silent: the alert saves with only
+    // the default recipient, and "should let you see other alerts where you
+    // are a recipient" then fails somewhere else entirely. Anchor on the pill
+    // the commit produces.
+    await expect(
+      page
+        .getByTestId("alert-configured-channel")
+        .getByTestId("channel-block")
+        .filter({ hasText: /^Email/ })
+        .getByText(NORMAL_FULL_NAME, { exact: true }),
+    ).toBeVisible();
   }
 
   const saved = page.waitForResponse(

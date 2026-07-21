@@ -24,6 +24,7 @@
  */
 import type { Locator, Page } from "@playwright/test";
 
+import { resetTestTable } from "../support/actions-on-dashboards";
 import type { MetabaseApi } from "../support/api";
 import {
   assertDescendantsNotOverflowDashcards,
@@ -105,8 +106,9 @@ function waitForResponseMatching(
 }
 
 test.describe("issue 18067", () => {
-  // @external: requires the mysql-writable QA database + resetTestTable docker
-  // task, neither of which the spike harness provides. Gated + faithful shape.
+  // @external: requires the mysql-writable QA database. Gated on
+  // PW_QA_DB_ENABLED; H.resetTestTable is covered by the knex-backed
+  // resetTestTable port in support/actions-on-dashboards.
   test.skip(
     !process.env.PW_QA_DB_ENABLED,
     "Requires the mysql-writable QA database (set PW_QA_DB_ENABLED)",
@@ -124,9 +126,10 @@ test.describe("issue 18067", () => {
     const dialect = "mysql";
     const TEST_TABLE = "many_data_types";
     await mb.restore(`${dialect}-writable`);
-    // NOTE: upstream H.resetTestTable({ type: dialect, table: TEST_TABLE }) runs
-    // a docker task with no spike-harness equivalent; the writable snapshot is
-    // expected to already carry the table when PW_QA_DB_ENABLED is set.
+    // Port of H.resetTestTable({ type: dialect, table: TEST_TABLE }). The
+    // writable snapshot does NOT carry many_data_types — without this the
+    // resyncDatabase wait below never sees the table and the test hangs.
+    await resetTestTable({ type: dialect, table: TEST_TABLE });
     await mb.signInAsAdmin();
     await resyncDatabase(mb.api, { dbId: WRITABLE_DB_ID, tables: [TEST_TABLE] });
 

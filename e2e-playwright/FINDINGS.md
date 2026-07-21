@@ -4232,3 +4232,102 @@ open item, not as evidence.
     field-values search on `ORDERS.USER_ID`. It appears in **none** of the three
     CI runs, and this box's Sample Database is the stale 4-table copy (#213), so
     it is almost certainly that. Not chased.
+
+---
+
+### #218 PRODUCT BUG (app code, NOT ours to fix): data studio drops the open
+### table from the URL when another schema is expanded
+
+**Status: confirmed from source and from a measured e2e run. No app code changed.**
+Reported here for whoever owns data studio to triage. We deliberately did *not*
+fix the product; the port now asserts the observed behaviour so it cannot
+regress silently either way.
+
+**The behaviour.** With a table open in the data-model table picker, expanding a
+*different* schema should leave the URL pointing at the open table. Admin does
+this. Data studio does not — it replaces the URL with the schema route and drops
+the open table.
+
+Measured (console.log checkpoints, one locked run, `data-model-shared-1`):
+
+| checkpoint | admin | data studio |
+|---|---|---|
+| after Animals click | `…/2:Domestic/table/201` | `…/2:Domestic/table/201` |
+| **after Wild schema click** | `…/2:Domestic/table/201` | **`…/2:Wild`** (table lost) |
+| after Birds click | `…/2:Wild/table/203` | `…/2:Wild/table/203` |
+
+**The cause.** The two areas are forked copies of the picker, and the data-studio
+fork dropped the guard.
+
+`frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/wrappers.tsx:17-36`
+(admin) — the guard, and a comment stating the intent verbatim:
+
+```ts
+// Update URL only when either opening a table or no table has been opened yet.
+// We want to keep user looking at a table when navigating databases/schemas.
+const canUpdateUrl = value.tableId != null || props.tableId == null;
+```
+
+`frontend/src/metabase/data-studio/data-model/components/TablePicker/wrappers.tsx:30-34`
+(data studio) — no guard at all:
+
+```ts
+const onChange = useCallback((value: TreePath) => {
+  setValue(value);
+  dispatch(replace(Urls.dataStudioData(value)));
+}, [dispatch]);
+```
+
+Both URL builders (`Urls.dataModel` admin.ts:87, `Urls.dataStudioData`
+data-studio.ts:59) are pure functions of their argument and neither preserves a
+previously-open table — correctly so. The preservation lives *only* in the
+caller, and only the admin caller has it.
+
+Secondary divergence at the same site: data studio uses `replace` for **all**
+navigation, so this also clobbers history; admin uses `push` for user-initiated
+clicks and `replace` only for programmatic selection.
+
+**Why nobody noticed.** Upstream asserts the correct behaviour for *both* areas —
+and the assertion has never once executed. It is one of the 8 vacuous
+`.should(callback)` sites (see below): the callback `return`s a boolean instead
+of throwing, and Cypress `.should(fn)` only fails when the callback throws, so
+the return value is discarded. The bug has been sitting behind a dead assertion.
+
+`e2e/test/scenarios/data-model/data-model-shared-1.cy.spec.ts:337-344`:
+
+```js
+cy.log("should not update URL to point to schema as we have a table open");
+cy.location("pathname").should((pathname) => {
+  return pathname.startsWith(`…/schema/${WRITABLE_DB_ID}:Domestic/table/`);
+});
+```
+
+That this is an error and not a house convention is settled by line 184 of the
+*same file*, which uses the asserting form `should("eq", …)`.
+
+**Caveat on the source read:** git history is squashed here (both files show
+only `d1f282210c3`), so blame cannot say whether the guard was dropped
+deliberately during the fork or lost by accident. That is the one part a human
+owner needs to decide.
+
+### #219 8 vacuous `.should(callback)` sites in the Cypress suite
+
+Same mechanism as #218. `.should(fn)` retries until the callback stops
+*throwing* and discards its return value, so a callback whose body is
+`return <boolean>` asserts nothing, forever, silently. All 8 are
+`pathname.startsWith` URL checks:
+
+| file | count |
+|---|---|
+| `e2e/test/scenarios/data-model/data-model-shared-1.cy.spec.ts` | 6 |
+| `e2e/test/scenarios/admin/datamodel/datamodel.cy.spec.ts` | 1 |
+| `e2e/test/scenarios/data-studio/data-model/datamodel-data-studio.cy.spec.ts` | 1 |
+
+Magnitude honestly stated: 8 sites is a contained defect class, not a suite-wide
+crisis. It is worth recording because it is cheap to verify and because it hid a
+real product bug (#218), not because it is large.
+
+Porting consequence: converting these to real assertions is correct, but the
+expected values in them have never been validated — three of the four in
+`data-model-shared-1` were simply wrong (`Domestic` copy-pasted throughout).
+A dead assertion carries no evidence that its expectation was ever right.

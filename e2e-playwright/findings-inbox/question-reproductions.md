@@ -201,7 +201,7 @@ the kind first suspected).
 | M6 | `create-queries: "no"` → `"query-builder"` | 13347 ×2 | mini-picker test: the absence checks (tail). Big-picker test: **SURVIVED** → Finding 3 |
 | M7 | last case sends a real `date_style` instead of unsetting | 68574 | the 4th/last `assertParameterFormat` — tail |
 | M9 | drop the "View SQL" click | #67903 | the occlusion assertion |
-| M10 | save under the name the absence check looks for | 55631 | the one-shot `countDisplayValue` — **proves that absence check is not vacuous** |
+| M10 | save under the name the absence check looks for | 55631 | ~~**proves that absence check is not vacuous**~~ — **RETRACTED, see below** |
 
 Notes on method:
 - M1 is the one that matters for Finding 2: it is precisely the mutation the
@@ -242,3 +242,43 @@ claim is made anywhere in this port.
 - **`getTableId`** exists in 3 modules (`schema-viewer`, `datamodel-data-studio`,
   `interactive-embedding`) and only `schema-viewer`'s takes a `schema` option —
   which #85 says every caller should be passing.
+
+---
+
+## RETRACTION (2026-07-21): M10 did not prove what it claimed
+
+**M10's conclusion — "proves that absence check is not vacuous" — was wrong.**
+It was reading a timing coin-flip, and the check *was* vacuous.
+
+Measured directly: instrumenting the sample point showed the save modal
+contained **zero controls on 5/5 runs**. It had already unmounted by the time
+the assertion ran. The check was passing for the one reason that makes a test
+worthless — there was nothing there to find. The `inputValue` 30s timeout seen
+in CI was the same race landing on the other side: the imperative
+`count()` + `nth(i).inputValue()` scan costs one round trip per control, so
+`count()` could observe the dialog and the very next `inputValue()` would hang
+on a node already removed.
+
+**Why the mutation test lied.** A mutant that dies proves sensitivity *only if
+the observation window is reliably open*. Here the window was open sometimes.
+On the run where M10 was evaluated, the modal happened still to be present; the
+mutant died; the conclusion was recorded as settled. Re-run, it would have
+survived. A single mutation run cannot distinguish "assertion is sensitive"
+from "assertion got lucky" when the thing under test is transient.
+
+**Root cause of the port gap.** Upstream's `{ timeout: 10 }` one-shot works
+because Cypress queries the DOM in-process, synchronously, inside the app's own
+event loop. Playwright's sample is an out-of-process round trip that lands
+*after* `waitForResponse` resolves. **That shape does not survive the port.**
+
+**Replaced with continuous observation:** a 4ms page-side poll installed before
+the Save click records whether any control in the modal ever holds "Orders" —
+which is what the test name actually claims, and is timing-independent. Guarded
+with `samplesWithModalOpen > 0` so it can never silently go vacuous again.
+Mutation-verified against a value genuinely present in the window ("Custom"),
+which makes it fail.
+
+**Methodology rule for the register:** when mutation-testing an assertion about
+a *transient* state, repeat the mutant run. A mutant that dies once against a
+race proves nothing. See also [[FINDINGS #202]] and #218/#219 — the same
+"passes because it never looked" family.

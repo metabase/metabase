@@ -5,6 +5,15 @@ import { BASE_URL } from "./support/env";
 export default defineConfig({
   testDir: "./tests",
 
+  // Per-slot output dir. Playwright CLEARS outputDir at run start, so concurrent
+  // invocations sharing the default `test-results/` delete each other's traces
+  // and error-context.md — a sibling wiped the only page snapshot for a
+  // database-routing-admin failure mid-diagnosis. PW_SLOT_OFFSET already
+  // partitions backends between concurrent invocations; reuse it here.
+  outputDir: process.env.PW_SLOT_OFFSET
+    ? `test-results-slot${process.env.PW_SLOT_OFFSET}`
+    : "test-results",
+
   // The whole suite shares one backend, and restore() resets the entire app
   // DB, so tests must not interleave across workers. Per-worker backends are
   // the follow-up experiment; the spike stays serial like a Cypress shard.
