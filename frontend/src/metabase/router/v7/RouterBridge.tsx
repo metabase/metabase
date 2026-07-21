@@ -45,9 +45,18 @@ export function RouterBridge({
   const v7Location = useV7Location();
   const navigate = useV7Navigate();
   const action = useNavigationType();
+  const v7Params = useV7Params();
   // v7's `useParams` returns v7's readonly `Params`; the context wants v3's shape,
-  // which is structurally the same string map.
-  const params = useV7Params() as WithRouterProps["params"];
+  // which is structurally the same string map apart from the splat: v3 exposed the
+  // wildcard match as `splat`, v7 names it `*`. Republish it under both so v3-era
+  // readers (`params.splat` in `AutomaticDashboardApp`) keep working.
+  const params = useMemo<WithRouterProps["params"]>(() => {
+    const { "*": splat, ...rest } = v7Params;
+    const v3Params = splat === undefined ? rest : { ...rest, splat };
+    // Cast because v7 types params as readonly and partial; v3's shape is the same
+    // string map.
+    return v3Params as WithRouterProps["params"];
+  }, [v7Params]);
 
   // `useMatches` is data-router-only, so read the matched branch from the route
   // context that also drives `<Outlet>` (available in declarative mode). Each
