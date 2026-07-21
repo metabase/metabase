@@ -3697,6 +3697,7 @@
            collections
            config
            connection-pool
+           embeddings
            events
            health-inspector
            lib-be
