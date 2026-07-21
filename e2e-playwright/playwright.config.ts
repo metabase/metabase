@@ -69,7 +69,23 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // AFTER the spread, deliberately. `devices["Desktop Chrome"]` carries
+        // its own viewport of 1280x720, and project-level `use` overrides
+        // top-level `use` — so the 1280x800 set above never took effect and the
+        // harness has been running at 720 (FINDINGS #41/#111). Cypress runs
+        // 1280x800, so this restores fidelity rather than changing it.
+        //
+        // Not cosmetic: at 720 the expression popover flips ABOVE its anchor
+        // (measured y=26 vs y=402) and covers "Pick columns", which broke four
+        // tests in a way that reads exactly like port drift. Any spec whose
+        // layout depends on fold position has been running at the wrong size,
+        // so a port that "fixed" such a failure locally may have encoded a
+        // workaround for a harness defect — those become unnecessary or wrong
+        // at 800 and need re-running.
+        viewport: { width: 1280, height: 800 },
+      },
     },
   ],
 });
