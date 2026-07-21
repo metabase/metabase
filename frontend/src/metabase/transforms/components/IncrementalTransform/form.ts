@@ -2,6 +2,7 @@ import * as Yup from "yup";
 
 import * as Errors from "metabase/utils/errors";
 import type {
+  LookbackUnit,
   Transform,
   TransformSource,
   TransformTarget,
@@ -15,6 +16,10 @@ export type IncrementalSettingsFormValues = {
   // Comma-separated target column names. Empty → append. Non-empty → the target is upserted
   // (merge/restate) on these columns instead of appended.
   uniqueKey: string;
+  // Lookback window: re-read this much data behind the checkpoint on every run. Null → none.
+  // Only supported for temporal checkpoint columns.
+  lookbackValue: number | null;
+  lookbackUnit: LookbackUnit;
 };
 
 export const VALIDATION_SCHEMA = Yup.object({
@@ -30,6 +35,8 @@ export const VALIDATION_SCHEMA = Yup.object({
       otherwise: (schema) => schema.nullable().defined(),
     }),
   uniqueKey: Yup.string().default(""),
+  lookbackValue: Yup.number().nullable().positive().integer().default(null),
+  lookbackUnit: Yup.mixed<LookbackUnit>().default("day"),
 });
 
 export const getInitialValues = (
@@ -39,6 +46,8 @@ export const getInitialValues = (
   sourceStrategy: "checkpoint",
   checkpointFilterFieldId: null,
   uniqueKey: "",
+  lookbackValue: null,
+  lookbackUnit: "day",
   ...defaults,
 });
 
@@ -60,6 +69,8 @@ export const getIncrementalSettingsFromTransform = (
       ? (strategy["checkpoint-filter-field-id"] ?? null)
       : null;
 
+  const lookback = strategy?.type === "checkpoint" ? strategy.lookback : null;
+
   const targetStrategy =
     transform.target.type === "table-incremental"
       ? transform.target["target-incremental-strategy"]
@@ -72,6 +83,8 @@ export const getIncrementalSettingsFromTransform = (
       isIncremental && checkpointFilterFieldId != null
         ? String(checkpointFilterFieldId)
         : null,
+    lookbackValue: lookback?.value ?? null,
+    lookbackUnit: lookback?.unit ?? "day",
     uniqueKey:
       targetStrategy?.type === "merge"
         ? targetStrategy["unique-key"]
@@ -116,6 +129,13 @@ export const buildIncrementalSource = (
             "checkpoint-filter-field-id": Number(
               formValues.checkpointFilterFieldId,
             ),
+            lookback:
+              formValues.lookbackValue != null
+                ? {
+                    value: formValues.lookbackValue,
+                    unit: formValues.lookbackUnit,
+                  }
+                : undefined,
           }
         : undefined,
   };
