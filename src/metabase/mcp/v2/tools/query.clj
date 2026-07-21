@@ -13,7 +13,7 @@
    kill switch and native-query permission. It also mints a handle on every call (including
    `validate_only`, which replaces v1's `construct_native_query`), so saving or visualizing SQL
    needs no separate construct step. Never a cursor: arbitrary SQL can't be rewritten with a
-   server-side keyset predicate, so truncation steers to narrowing the SQL or `export`."
+   server-side keyset predicate, so truncation steers to narrowing the SQL or raising `row_limit`."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -166,8 +166,8 @@
   (if next-cursor
     (format "returned %d rows, more available — continue with `cursor`, or narrow the query (filter/aggregate)"
             returned)
-    (format "returned %d rows — narrow the query (filter/aggregate) or `export` for the full set"
-            returned)))
+    (format "returned %d rows, more available — narrow the query (filter/aggregate), or raise `row_limit` (max %d)"
+            returned max-row-limit)))
 
 (defn- mint-handle!
   [session-id serialized-query prompt]
@@ -228,7 +228,7 @@
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-query
-  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks the query against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; when a response carries next_cursor, fetch the next page by calling again with cursor (pass row_limit alongside it to keep the same page size), otherwise narrow the query (filter/aggregate) or export for the full set.
+  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks the query against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; when a response carries next_cursor, fetch the next page by calling again with cursor (pass row_limit alongside it to keep the same page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
 
 Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAMES first (search, browse_data) — never invent identifiers, never use numeric ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}. Each stage has \"lib/type\": \"mbql.stage/mbql\" plus either source-table: [\"<db>\", \"<schema-or-null>\", \"<table>\"] or source-card: \"<entity_id>\" on the FIRST stage only; later stages implicitly read the previous stage's output. Every clause is [\"op\", {}, ...args] with a MANDATORY options map at position 1. Field refs are [\"field\", {}, [\"<db>\", \"<schema-or-null>\", \"<table>\", \"<column>\"]] — a 4-segment portable name array — or a bare column-name string for a previous stage's output ([\"field\", {}, \"count\"]). Per-stage clause keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Minimal example (order count by month): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}. The full grammar (operators, joins, expressions, multi-stage queries) is available as an MCP resource. Native SQL is rejected at any depth — use execute_sql for raw SQL."
   {:name        "execute_query"
@@ -319,8 +319,8 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
 
 (defn- sql-steering-line
   [returned]
-  (format "returned %d rows — narrow the SQL (add filters/aggregation) or export for the full set"
-          returned))
+  (format "returned %d rows, more available — narrow the SQL (add filters/aggregation), or raise `row_limit` (max %d)"
+          returned max-row-limit))
 
 (defn- validate-sql-response!
   [session-id serialized-query prompt]
@@ -364,7 +364,7 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-sql
-  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the target database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql string runs verbatim against the warehouse, so it is the injection surface — never splice caller-supplied or user-supplied values into it. Put values behind {{tag}} placeholders and pass them in template_tag_values instead: they bind as driver-level prepared-statement parameters, injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (template tags and permissions checked; the SQL text itself is not validated) — use it to stage SQL for saving or visualizing without pulling rows into context. Every call returns a query_handle accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination for SQL: when a result is truncated, narrow the SQL (add filters/aggregation) or export for the full set."
+  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the target database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql string runs verbatim against the warehouse, so it is the injection surface — never splice caller-supplied or user-supplied values into it. Put values behind {{tag}} placeholders and pass them in template_tag_values instead: they bind as driver-level prepared-statement parameters, injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (template tags and permissions checked; the SQL text itself is not validated) — use it to stage SQL for saving or visualizing without pulling rows into context. Every call returns a query_handle accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination for SQL: when a result is truncated, narrow the SQL (add filters/aggregation) or raise row_limit (max 2000)."
   {:name  "execute_sql"
    :scope metabot.scope/agent-sql-execute
    :args  execute-sql-args-schema}

@@ -266,7 +266,11 @@
           (is (= 5 (:returned body)))
           (is (true? (:truncated body)))
           (is (nil? (:next_cursor body)))
-          (is (str/includes? (steering-line result) "narrow the query")))))))
+          (is (str/includes? (steering-line result) "narrow the query"))
+          (testing "the dead end names an affordance that exists"
+            (is (str/includes? (steering-line result) "raise `row_limit`"))
+            (is (not (str/includes? (steering-line result) "export"))
+                "no export tool exists in v2 — steering at one sends the agent after an affordance it does not have")))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest aggregated-query-cursor-test

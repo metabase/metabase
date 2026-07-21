@@ -97,8 +97,10 @@
                 "any other key is internal metadata leaking onto the wire")))
         (testing "a truncated page steers to narrowing the SQL — SQL results never mint a cursor"
           (is (not (contains? body :next_cursor)))
-          (is (= "returned 3 rows — narrow the SQL (add filters/aggregation) or export for the full set"
-                 (steering-line result))))
+          (is (= "returned 3 rows, more available — narrow the SQL (add filters/aggregation), or raise `row_limit` (max 2000)"
+                 (steering-line result)))
+          (is (not (str/includes? (steering-line result) "export"))
+              "no export tool exists in v2 — steering at one sends the agent after an affordance it does not have"))
         (testing "the response is text-only; there is no structuredContent channel to diverge from it"
           (is (nil? (:structuredContent result))))))))
 
