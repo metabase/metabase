@@ -78,6 +78,22 @@ export async function assertDatasetReqIsSandboxed(
     const colIndex = data.cols.findIndex((col) => col.id === columnId);
     expect(colIndex).toBeGreaterThanOrEqual(0);
     const values = data.rows.map((row) => row[colIndex]);
+    // DECLARED STRENGTHENING (security surface). Upstream is
+    // `expect(values.every(assertionFn)).to.equal(true)` with no non-empty
+    // guard — and `[].every(...)` is `true`, so a sandboxed query returning
+    // ZERO rows satisfies "every value equals X" while proving nothing. That
+    // is the same shape as FINDINGS #202, and it matters more here because
+    // this helper is the primary evidence in the sandboxing specs.
+    //
+    // Passing columnId + columnAssertion means "every value in this column is
+    // X", which is only meaningful if there are values. A test that expects an
+    // empty result asserts on is_sandboxed or a row count instead, and does not
+    // reach this branch.
+    expect(
+      values.length,
+      "sandboxed query returned no rows, so the per-value assertion below " +
+        "would pass vacuously",
+    ).toBeGreaterThan(0);
     expect(values.every((value) => value === columnAssertion)).toBe(true);
   }
 }

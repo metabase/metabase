@@ -4135,3 +4135,37 @@ open item, not as evidence.
     without waiting for it is a bug whether or not it bites today — but **CI is
     the only thing that can confirm it.** If that test still 400s on the next
     run, the diagnosis is wrong and the real cause is elsewhere.
+
+### The sandboxing evidence helper could pass on ZERO rows — strengthened, declared
+
+217. **`assertDatasetReqIsSandboxed` (`support/notebook-link-to-data-source.ts`)
+    ran `expect(values.every(v => v === columnAssertion)).toBe(true)` with no
+    non-empty guard.** `[].every(...)` is `true`, so **a sandboxed query
+    returning zero rows satisfied "every value in this column equals X" while
+    proving nothing** — on the helper that is the primary evidence across the
+    sandboxing specs.
+
+    **Upstream is identical** (`e2e-permissions-helpers.js:148-154`), so this is
+    an upstream weakness, not port drift. Per the faithfulness rule that would
+    normally mean record-don't-fix — but this is a **security surface**, where
+    strengthening is permitted if declared, and #202 had already established the
+    same shape in a neighbouring helper.
+
+    **Added a `values.length > 0` guard with the reasoning inline**, and verified
+    it three ways rather than assuming:
+    - **All six consumers still pass** — `sandboxing-via-api` (29),
+      `sandboxing-via-ui` (18), `sandboxing-misconfiguration` (1),
+      `dashboard-reproductions` (40), `permissions-reproductions-js` (11),
+      `notebook-link-to-data-source` (16). So no test legitimately depends on
+      the empty case.
+    - **The guard discriminates:** inverting it to `toBe(0)` fails **11 of 29**
+      in `sandboxing-via-api`, proving those queries really do return rows and
+      the guard is not decorative.
+    - Passing `columnId` + `columnAssertion` means "every value in this column
+      is X", which is only meaningful with values; tests expecting an empty
+      result assert on `is_sandboxed` or a row count and never reach this branch.
+
+    **A porting gap found alongside, and NOT a defect:** upstream accepts a
+    **function** as `columnAssertion` (`_.isFunction(columnAssertion)`), which
+    our port does not. Checked every call site — all pass `Number(...)`, so the
+    narrowing is safe in practice. Recorded rather than silently relied upon.
