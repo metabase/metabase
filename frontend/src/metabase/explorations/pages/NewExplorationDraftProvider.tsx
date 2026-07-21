@@ -61,11 +61,11 @@ export function NewExplorationDraftProvider(props: {
 function NewExplorationDraft({ children }: { children?: ReactNode }) {
   const selection = useExplorationSelection();
 
-  const { resetConversation } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
+  const { createNewConversation } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
 
   useEffect(() => {
-    resetConversation();
-  }, [resetConversation]);
+    createNewConversation();
+  }, [createNewConversation]);
 
   return (
     <NewExplorationDraftContext.Provider value={selection}>
