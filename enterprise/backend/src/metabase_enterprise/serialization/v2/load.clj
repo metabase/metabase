@@ -10,6 +10,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.branching :as remote-sync.branching]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -214,12 +215,20 @@
               _                  (when (seq deps)
                                    (log/debug "Ended loading dependencies" {:entity_id (:entity_id ingested)
                                                                             :level     (count expanding)}))
-              local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))]
+              local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))
+              ;; content branching: scope entity resolution to (entity_id, branch) and stamp
+              ;; :branch on the loaded row; identity outside a branch context
+              [ingested
+               local-or-nil]     (remote-sync.branching/serdes-load-target
+                                  (:model (peek rebuilt-path)) ingested local-or-nil)]
           (try
             (with-retries 3 200
               (fn []
                 (t2/with-transaction [_tx]
-                  (serdes/load-one! ingested local-or-nil))))
+                  (let [result (serdes/load-one! ingested local-or-nil)]
+                    ;; content branching: persist branch membership post-load
+                    (remote-sync.branching/stamp-loaded-row! (:model (peek rebuilt-path)) result)
+                    result))))
             ctx
             (catch Exception e
               ;; if the entity was part of a dependency loop, a stripped version of it may already be committed; with

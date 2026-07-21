@@ -1,7 +1,18 @@
 (ns metabase.remote-sync.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.branching]
+   [potemkin :as p]
    [toucan2.core :as t2]))
+
+(comment metabase.remote-sync.branching/keep-me)
+
+(p/import-vars
+ [metabase.remote-sync.branching
+  current-branch
+  branch-filter-clause
+  visible-on-current-branch?
+  check-branch-visible])
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

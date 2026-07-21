@@ -27,6 +27,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
@@ -259,7 +260,7 @@
    {legacy-mbql? :legacy-mbql
     :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
+        card (remote-sync/check-branch-visible (get-card resolved-id))]
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]

@@ -766,6 +766,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            request
            revisions
            util
@@ -1836,6 +1837,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            request
            revisions
            search
@@ -1939,8 +1941,7 @@
 
   remote-sync
   {:team "UX West"
-   :api  #{metabase.remote-sync.core
-           metabase.remote-sync.init}
+   :api  #{metabase.remote-sync.branching metabase.remote-sync.core metabase.remote-sync.init}
    :uses #{api
            models
            premium-features}
@@ -3608,7 +3609,9 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
-           metabase-enterprise.serialization.v2.backfill-ids}
+           metabase-enterprise.serialization.v2.backfill-ids
+           metabase-enterprise.serialization.v2.ingest
+           metabase-enterprise.serialization.v2.load}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
@@ -3621,6 +3624,7 @@
            models
            plugins
            premium-features
+           remote-sync
            search
            server
            setup

@@ -1,0 +1,113 @@
+## Content branching: every branchable (git-synced) entity carries a `branch`
+## column — NULL for content not under git sync, the git branch name otherwise.
+## The same entity (same entity_id) can be materialized as one row per branch,
+## so the single-column entity_id unique constraints are dropped (cross-branch
+## (entity_id, branch) uniqueness is maintained by the branching code).
+## core_user.branch is the branch the user has checked out; entity queries
+## filter on it.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T21:00:00
+      author: ranquild
+      comment: Drop single-column entity_id unique constraints on branchable content tables
+      runInTransaction: false
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropContentEntityIdUniqueConstraints"
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:01
+      author: ranquild
+      comment: Add branch column to branchable content tables
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: measure
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch materializing this row; NULL when not under git sync
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:02
+      author: ranquild
+      comment: Index branch on the high-traffic content tables
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_branch
+            columns:
+              - column:
+                  name: branch
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_branch
+            columns:
+              - column:
+                  name: branch
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:03
+      author: ranquild
+      comment: Add core_user.branch — the git branch the user has checked out
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch this user has checked out, or null for the main sync branch
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:04
+      author: ranquild
+      comment: Add index on core_user.branch
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_branch
+            columns:
+              - column:
+                  name: branch

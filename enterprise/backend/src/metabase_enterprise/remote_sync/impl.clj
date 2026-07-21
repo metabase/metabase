@@ -4,6 +4,7 @@
    [diehard.core :as dh]
    [java-time.api :as t]
    [metabase-enterprise.data-apps.sync :as data-apps.sync]
+   [metabase-enterprise.remote-sync.branching :as branching]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -850,7 +851,9 @@
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
     (into [] (keep (fn [instance]
                      (when-let [row (id->row (:id instance))]
-                       [row (serdes/extract-one model_type opts instance)])))
+                       ;; content branching: only serialize rows visible on the operation's branch
+                       (when (branching/exportable-instance? instance)
+                         [row (serdes/extract-one model_type opts instance)]))))
           (serdes/extract-query model_type opts))))
 
 (defn- path-free?
@@ -1437,6 +1440,39 @@
                             :details details
                             :user-id user-id})))
 
+(defn- branch-import!
+  "Pull a user branch: load the branch's serialized tree with the branch bound —
+  branchable entities land as branch rows (see serdes-load-target). None of the
+  main-branch reconciliation (RemoteSyncObject table, version pointer, unsynced
+  cleanup) runs; those track the global sync branch."
+  [branch snapshot task-id]
+  (let [path-filters    (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+        base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+        ingestable      (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
+    (serdes/with-cache
+      (serialization/load-metabase! ingestable))
+    {:status  :success
+     :outcome {:kind "pulled" :branch branch}}))
+
+(defn- branch-export!
+  "Push a user branch: re-serialize the branch's tree (its rows plus unbranched
+  legacy rows — other branches' rows are filtered at extraction) and commit it to
+  the branch. No main-side bookkeeping."
+  [branch snapshot task-id message]
+  (let [export-rows (vec (exportable-write-rows))]
+    (when (empty? export-rows)
+      (throw (ex-info "No remote-syncable content available." {})))
+    (let [report            (remote-sync.task/make-progress-reporter task-id)
+          opts              (serdes/storage-base-context)
+          [_synced version] (commit-staged! snapshot message
+                                            (fn [commit]
+                                              (source.p/replace-all! commit)
+                                              (stage-writes commit opts export-rows nil))
+                                            report)]
+      (if (= version :remote-sync/empty-commit)
+        {:status :success :outcome {:kind "push-skipped" :branch branch}}
+        {:status :success :outcome {:kind "pushed" :branch branch}}))))
+
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
 
@@ -1466,6 +1502,8 @@
                (log/error e "Remote sync task :on-success function failed")))))))
     task))
 
+(declare async-global-import! async-global-export!)
+
 (defn async-import!
   "Imports remote-synced collections from a remote source repository asynchronously.
 
@@ -1481,6 +1519,18 @@
   are unsaved changes and neither force? nor merge? is set."
   [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
   (guards/ensure-no-active-task!)
+  (if-let [user-branch branching/*branch*]
+    (let [source   (source/source-from-settings user-branch)
+          snapshot (source.p/snapshot source)]
+      (run-async! "import" (settings/remote-sync-branch)
+                  (fn [task-id] (branch-import! user-branch snapshot task-id))
+                  :on-success on-success))
+    (async-global-import! branch force? import-args
+                          :on-success on-success :merge? merge? :force-deletion? force-deletion?)))
+
+(defn- async-global-import!
+  "The pre-branching import flow, operating on the instance's global sync branch."
+  [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
         has-dirty?             (remote-sync.object/dirty?)
@@ -1538,6 +1588,18 @@
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
                     {:status-code 400})))
+  (if-let [user-branch branching/*branch*]
+    (let [source   (source/source-from-settings user-branch)
+          snapshot (source.p/snapshot source)]
+      (run-async! "export" (settings/remote-sync-branch)
+                  (fn [task-id]
+                    (branch-export! user-branch snapshot task-id (or message "Pushed from Metabase")))
+                  :on-success on-success))
+    (async-global-export! branch force? message :on-success on-success :merge? merge?)))
+
+(defn- async-global-export!
+  "The pre-branching export flow, operating on the instance's global sync branch."
+  [branch force? message & {:keys [on-success merge?]}]
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
         last-task-version      (remote-sync.task/last-version)

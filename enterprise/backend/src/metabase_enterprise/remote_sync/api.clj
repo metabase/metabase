@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.remote-sync.branching :as branching]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -11,6 +12,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -40,6 +42,47 @@
                        :current_branch  current})))
     requested-branch))
 
+;;; ------------------------------------------ Content branching ------------------------------------------
+
+(api.macros/defendpoint :post "/checkout" :- [:map [:branch [:maybe :string]]]
+  "Check out a git branch for the current user (`branch` nil = back to the main
+   sync branch). Entity queries, pulls, and pushes then run within that branch.
+   Checking out a branch with no local rows materializes it as a serdes
+   round-trip from the branch the user is currently on."
+  [_route-params
+   _query-params
+   {:keys [branch]} :- [:map [:branch [:maybe ms/NonBlankString]]]]
+  (when (and branch (settings/remote-sync-enabled))
+    (when-let [source (source/source-from-settings)]
+      (api/check-400 (some #(= branch (if (coll? %) (first %) %)) (source.p/branches source))
+                     (format "Branch '%s' does not exist on the remote" branch))))
+  (when (and branch (not (branching/branch-materialized? branch)))
+    (branching/materialize-branch! (spec/exportable-entities) (branching/current-branch) branch))
+  (t2/update! :model/User :id api/*current-user-id* {:branch branch})
+  {:branch branch})
+
+(api.macros/defendpoint :get "/checkout" :- [:map [:branch [:maybe :string]]]
+  "The git branch the current user has checked out, or nil for main."
+  []
+  {:branch (t2/select-one-fn :branch :model/User :id api/*current-user-id*)})
+
+(defn- user-branch-operation?
+  "True when `branch` targets the current user's checked-out branch rather than
+  the instance's global sync branch — a per-user pull/push."
+  [branch]
+  (boolean (and branch
+                (= branch (t2/select-one-fn :branch :model/User :id api/*current-user-id*))
+                (not= branch (settings/remote-sync-branch)))))
+
+(defn- with-op-branch-context
+  "Run `thunk` with [[branching/*branch*]] bound for per-user branch operations,
+  putting the sync pipeline in branch mode. Global operations run unbound and
+  behave as before. Bindings convey into the task's virtual thread via `bound-fn`."
+  [branch thunk]
+  (if (user-branch-operation? branch)
+    (branching/with-branch branch (thunk))
+    (thunk)))
+
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Import Metabase content from configured Remote Sync source.
 
@@ -60,18 +103,23 @@
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
        ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
-       [:expected_branch ms/NonBlankString]]]
+       ;; Optional for per-user branch pulls, which don't touch the global setting.
+       [:expected_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (check-branch-matches-setting! expected_branch)
+  (when-not (user-branch-operation? branch)
+    (api/check-400 expected_branch "expected_branch is required for a global sync-branch import")
+    (check-branch-matches-setting! expected_branch))
   (let [branch-name (or branch (settings/remote-sync-branch))
         user-id     api/*current-user-id*
         {task-id :id}
-        (impl/async-import!
-         branch-name force {}
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
+        (with-op-branch-context branch-name
+          (fn []
+            (impl/async-import!
+             branch-name force {}
+             :merge?     (or merge false)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))))]
     {:status :success
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
@@ -135,16 +183,20 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
-  (let [branch-name (check-branch-matches-setting! branch)
+  (let [branch-name (if (user-branch-operation? branch)
+                      branch
+                      (check-branch-matches-setting! branch))
         user-id     api/*current-user-id*
         {task-id :id}
-        (impl/async-export!
-         branch-name
-         (or force false)
-         (or message "Exported from Metabase")
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
+        (with-op-branch-context branch-name
+          (fn []
+            (impl/async-export!
+             branch-name
+             (or force false)
+             (or message "Exported from Metabase")
+             :merge?     (or merge false)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))))]
     {:message "Export task started"
      :task_id task-id}))
 

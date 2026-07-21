@@ -1405,7 +1405,9 @@
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
-   :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
+   :skip [;; content-branching: which git branch materializes this row; never serialized
+          :branch
+          ;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
           ;; serialized representation is versioned by :card_schema instead
           :metabase_version
           ;; cache invalidation is instance-specific

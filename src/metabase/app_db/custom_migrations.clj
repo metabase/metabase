@@ -2237,3 +2237,35 @@
                              :where  [:and
                                       [:= :provider "totp"]
                                       [:= :confirmed_at nil]]})))
+
+(define-migration DropContentEntityIdUniqueConstraints
+  ;; Content branching: the same entity (identified by entity_id) can be materialized as one row per
+  ;; git branch, so the single-column entity_id unique constraints must go. The constraints were
+  ;; created as anonymous column-level uniques, so the names are DB-generated and must be discovered
+  ;; via information_schema per engine. Cross-branch uniqueness of (entity_id, branch) is maintained
+  ;; by the branching code (serdes load / branch materialization), not by a DB constraint, because
+  ;; NULL branch values (non-synced content) make a portable composite constraint impractical.
+  (let [db-type (mdb.connection/db-type)
+        tables  ["report_card" "report_dashboard" "document" "measure" "segment"]]
+    (doseq [table tables]
+      (case db-type
+        :mysql
+        (doseq [{:keys [index_name]}
+                (t2/query ["SELECT DISTINCT index_name AS index_name
+                            FROM information_schema.statistics
+                            WHERE table_schema = database()
+                              AND lower(table_name) = ?
+                              AND lower(column_name) = 'entity_id'
+                              AND non_unique = 0" table])]
+          (t2/query [(format "ALTER TABLE %s DROP INDEX %s" table index_name)]))
+
+        (:postgres :h2)
+        (doseq [{:keys [constraint_name]}
+                (t2/query ["SELECT tc.constraint_name AS constraint_name
+                            FROM information_schema.table_constraints tc
+                            JOIN information_schema.constraint_column_usage ccu
+                              ON tc.constraint_name = ccu.constraint_name
+                            WHERE lower(tc.table_name) = ?
+                              AND tc.constraint_type = 'UNIQUE'
+                              AND lower(ccu.column_name) = 'entity_id'" table])]
+          (t2/query [(format "ALTER TABLE %s DROP CONSTRAINT %s" table constraint_name)]))))))
