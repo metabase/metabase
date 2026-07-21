@@ -18,14 +18,11 @@
 (def ^:private TypedSchemaQueryParams
   [:map
    [:database {:optional true} [:maybe ms/NonBlankString]]
-   [:library {:optional true} [:maybe ms/NonBlankString]]
    [:library-collections {:optional true} [:maybe ms/NonBlankString]]
-   [:collections {:optional true} [:maybe ms/NonBlankString]]
    [:question-collections {:optional true} [:maybe ms/NonBlankString]]
    [:include-data-library {:optional true} [:maybe :boolean]]
    [:include-metric-library {:optional true} [:maybe :boolean]]
-   [:include-models {:optional true} [:maybe :boolean]]
-   [:questions {:optional true} [:maybe :boolean]]])
+   [:include-models {:optional true} [:maybe :boolean]]])
 
 (api.macros/defendpoint :get "/v1/typescript" :- :any
   "Generate a TypeScript semantic schema module."

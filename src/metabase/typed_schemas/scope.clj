@@ -44,20 +44,10 @@
       [:= column -1])))
 
 (defn- library-collection-for-ref
-  [library-ref]
-  (when library-ref
-    (let [{:keys [id name entity-id]} library-ref]
-      (->> (cond
-             id        (t2/select :model/Collection :id id)
-             name      (t2/select :model/Collection :name name)
-             entity-id (t2/select :model/Collection :entity_id entity-id))
-           (filter #(contains? collection/library-collection-types (:type %)))
-           (filter mi/can-read?)
-           first))))
-
-(defn- library-collection-for-entity-id
-  [entity-id]
-  (->> (t2/select :model/Collection :entity_id entity-id)
+  [{:keys [id entity-id]}]
+  (->> (if id
+         (t2/select :model/Collection :id id)
+         (t2/select :model/Collection :entity_id entity-id))
        (filter #(contains? collection/library-collection-types (:type %)))
        (filter mi/can-read?)
        first))
@@ -103,14 +93,6 @@
      :data-collection-ids   (ids-for-type collection/library-data-collection-type)
      :metric-collection-ids (ids-for-type collection/library-metrics-collection-type)}))
 
-(defn library-collection-scope
-  "Returns the library scope for one typed library collection reference."
-  [library-ref]
-  (when library-ref
-    (let [library (or (library-collection-for-ref library-ref)
-                      (not-found!))]
-      (library-collection-scope* [library]))))
-
 (defn library-collections-scope
   "Returns the library scope for requested library collection refs."
   [collection-refs]
@@ -124,20 +106,16 @@
   [{:keys [include-data-library? include-metric-library?]}]
   (keep (fn [[include? entity-id]]
           (when include?
-            (or (library-collection-for-entity-id entity-id)
+            (or (library-collection-for-ref {:entity-id entity-id})
                 (not-found!))))
         [[include-data-library? library-data-entity-id]
          [include-metric-library? library-metrics-entity-id]]))
 
 (defn library-scope
   "Returns the requested library scope for semantic schema options."
-  [{:keys [library library-collection-refs] :as options}]
+  [{:keys [library-collection-refs] :as options}]
   (let [included-roots            (included-library-root-collections options)
-        collection-scope          (cond
-                                    library
-                                    (library-collection-scope library)
-
-                                    (seq library-collection-refs)
+        collection-scope          (when (seq library-collection-refs)
                                     (library-collections-scope library-collection-refs))]
     (cond
       (and collection-scope (seq included-roots))

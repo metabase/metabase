@@ -35,11 +35,10 @@
                         :crowberto
                         :get
                         200
-                        "typed-schemas/v1/typescript?include-models=true&questions=false&library-collections=1,2")
+                        "typed-schemas/v1/typescript?include-models=true&library-collections=1,2")
                        :body
                        read-string)]
       (is (true? (:include-models? response)))
-      (is (false? (:questions-only? response)))
       (is (= [{:id 1} {:id 2}] (:library-collection-refs response))))))
 
 (deftest database-filter-test
@@ -51,16 +50,6 @@
                     "typed-schemas/v1/typescript?database=__missing_database__")]
       (is (str/includes? (:body response) "schemaVersion: 2"))
       (is (str/includes? (:body response) "const questions = { }"))
-      (is (str/includes? (:body response) "const tables = { }"))
-      (is (str/includes? (:body response) "const metrics = { }"))))
-  (testing "questions=true returns only questions for a numeric database id"
-    (let [response (mt/user-http-request-full-response
-                    :crowberto
-                    :get
-                    200
-                    (format "typed-schemas/v1/typescript?database=%s&questions=true" (mt/id)))]
-      (is (str/includes? (:body response) "schemaVersion: 2"))
-      (is (str/includes? (:body response) "const questions = {"))
       (is (str/includes? (:body response) "const tables = { }"))
       (is (str/includes? (:body response) "const metrics = { }")))))
 
@@ -81,91 +70,14 @@
                                                              ([_database-ids _table-ids] []))
                   typed-schemas.schema.table/table-schemas (constantly [])]
       (typed-schemas/build-semantic-schema {:database {:name "Boba"}})
-      (typed-schemas/build-semantic-schema {:database {:name "Boba"} :questions-only? true})
-      (is (= [#{42} #{42}] @model-database-ids)))))
+      (is (= [#{42}] @model-database-ids)))))
 
-(deftest library-and-database-are-mutually-exclusive-test
+(deftest collection-and-database-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/typescript?library=1&database=1")
-  (mt/user-http-request-full-response
-   :crowberto
-   :get
-   400
-   "typed-schemas/v1/typescript?library=1&questions=true")
-  (mt/user-http-request-full-response
-   :crowberto
-   :get
-   400
-   "typed-schemas/v1/typescript?questions=true"))
-
-(deftest collection-query-params-are-mutually-exclusive-test
-  (mt/user-http-request-full-response
-   :crowberto
-   :get
-   400
-   "typed-schemas/v1/typescript?library-collections=1,2&database=1")
-  (mt/user-http-request-full-response
-   :crowberto
-   :get
-   400
-   "typed-schemas/v1/typescript?question-collections=1,2&questions=true")
-  (mt/user-http-request-full-response
-   :crowberto
-   :get
-   400
-   "typed-schemas/v1/typescript?library=1&library-collections=2"))
-
-(deftest semantic-schema-options-are-validated-before-resolution-test
-  (doseq [options [{:library {:id 1}
-                    :database {:id 1}}
-                   {:question-collection-refs [{:id 1}]
-                    :questions-only? true}
-                   {:questions-only? true}]]
-    (let [exception (try
-                      (typed-schemas/build-semantic-schema options)
-                      nil
-                      (catch clojure.lang.ExceptionInfo exception
-                        exception))]
-      (is (= 400 (:status-code (ex-data exception)))))))
-
-(deftest library-schema-includes-metric-mapped-tables-test
-  (let [selected-table-ids (atom nil)]
-    (with-redefs [typed-schemas.scope/library-collection-scope
-                  (constantly {:metric-collection-ids #{20}
-                               :data-collection-ids   #{10}})
-                  typed-schemas.schema.model/model-schemas
-                  (fn
-                    ([_database-ids]
-                     (is false "library-only schemas should not load models"))
-                    ([_database-ids _collection-ids]
-                     (is false "library-only schemas should not load models")))
-                  typed-schemas.schema.metric/metric-schemas
-                  (fn [_database-ids collection-ids]
-                    (is (= #{20} collection-ids))
-                    [{:type           "metric"
-                      :key            "revenue"
-                      :id             1
-                      :name           "Revenue"
-                      :columns        [{:name "Revenue", :displayName "Revenue", :jsType "number"}]
-                      :mappedTableIds [42]}])
-                  typed-schemas.schema.table/select-library-tables
-                  (constantly [{:id 10}])
-                  typed-schemas.schema.table/select-tables
-                  (fn [_database-ids table-ids]
-                    (reset! selected-table-ids table-ids)
-                    [{:id 10} {:id 42}])
-                  typed-schemas.schema.table/table-schemas
-                  (constantly [{:type "table", :key "publishedTable", :id 10}
-                               {:type "table", :key "mappedTable", :id 42}])]
-      (let [schema (typed-schemas/build-semantic-schema {:library {:id 123}})]
-        (is (= #{10 42} @selected-table-ids))
-        (is (= {} (:questions schema)))
-        (is (= {} (:models schema)))
-        (is (= #{10 42} (->> (:tables schema) vals (map :id) set)))
-        (is (= #{1} (->> (:metrics schema) vals (map :id) set)))))))
+   "typed-schemas/v1/typescript?library-collections=1,2&database=1"))
 
 (deftest collections-schema-includes-selected-data-and-metric-collections-test
   (let [selected-table-ids (atom nil)]
