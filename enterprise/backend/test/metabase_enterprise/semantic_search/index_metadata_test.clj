@@ -5,6 +5,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import
@@ -116,6 +117,22 @@
                    :metadata-row (first (semantic.tu/get-metadata-rows pgvector index-metadata))}
                   (sut pgvector index-metadata))))))))
 
+(deftest revisioned-active-index-state-round-trip-test
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
+        index-metadata  (semantic.tu/unique-index-metadata)
+        embedding-model (semantic.tu/resolved-mock-embedding-model :model-revision "revision-1")
+        index           (-> (semantic.index/default-index embedding-model)
+                            (semantic.index-metadata/qualify-index index-metadata))]
+    (with-open [_ (open-tables! pgvector index-metadata)]
+      (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
+      (let [index-id (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)]
+        (semantic.index-metadata/activate-index! pgvector index-metadata index-id)
+        (let [{:keys [index metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+              reloaded-model (:embedding-model index)]
+          (is (= embedding-model reloaded-model))
+          (is (= "revision-1" (:model_revision metadata-row)))
+          (is (= 4 (count (embeddings.provider/embed-text reloaded-model "round-trip")))))))))
+
 (defn- default-index [embedding-model index-metadata]
   (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
     (-> (semantic.index/default-index embedding-model)
@@ -137,8 +154,7 @@
 (deftest find-compatible-index!-test
   (let [pgvector         (semantic.env/get-pgvector-datasource!)
         embedding-model1 semantic.tu/mock-embedding-model
-        embedding-model2 (assoc semantic.tu/mock-embedding-model
-                                :model-name "mock2")
+        embedding-model2 (semantic.tu/resolved-mock-embedding-model :model-name "mock2")
         sut              semantic.index-metadata/find-compatible-index!
         ;; warning: the setup-scenario can currently only set up a happy path
         ;; other variables include:
@@ -190,6 +206,16 @@
                 (testing "no metadata"
                   (is (nil? (sut' model))))))))))))
 
+(deftest embedding-space-id-is-part-of-index-compatibility-test
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.tu/unique-index-metadata)
+        model           semantic.tu/mock-embedding-model]
+    (with-open [_ (open-tables! pgvector index-metadata)]
+      (setup-scenario! pgvector index-metadata {:active model})
+      (is (some? (semantic.index-metadata/find-compatible-index! pgvector index-metadata model)))
+      (is (nil? (semantic.index-metadata/find-compatible-index!
+                 pgvector index-metadata (assoc model :embedding-space-id "replacement-space")))))))
+
 (deftest create-new-index-spec-test
   (let [pgvector         (semantic.env/get-pgvector-datasource!)
         index-metadata   (semantic.tu/unique-index-metadata)
@@ -217,7 +243,9 @@
           (is (=? [{:id                index-id
                     :provider          (:provider embedding-model)
                     :model_name        (:model-name embedding-model)
+                    :model_revision    nil
                     :vector_dimensions (:vector-dimensions embedding-model)
+                    :embedding_space_id (:embedding-space-id embedding-model)
                     :table_name        (:table-name index)
                     :index_version     (:version index)}]
                   (semantic.tu/get-metadata-rows pgvector index-metadata)))))

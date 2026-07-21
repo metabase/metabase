@@ -39,17 +39,17 @@
   "library_entity_index_meta")
 
 (def schema-version
-  "Canonical version of the index's *document format* — both the vectors table schema and the
+  "Canonical version of the persisted index contract — the metadata and vectors table schemas plus the
   doc-derivation contract (doc_id scheme, doc_type set, doc_text source, dedup/key rules).
   It's part of the meta row's [[model-identity]], so bumping it makes [[ensure-tables!]] drop and rebuild
   the vectors table; the post-upgrade startup reconcile then repopulates from the appdb under the new
-  format. Bump on ANY format-affecting change in [[metabase-enterprise.entity-retrieval.reconcile]] or
-  the table schema: a vectors-table column/type change, a new or renamed doc_type, a changed doc_text
+  format. Bump on ANY compatibility-affecting change in [[metabase-enterprise.entity-retrieval.reconcile]]
+  or either table schema: a column/type change, a new or renamed doc_type, a changed doc_text
   source, or a changed doc_id / dedup / key scheme — anything that makes old rows incomparable to newly
   derived desired docs. A bump forces a full re-embed of the library on every instance at upgrade, so do
   it only when the format truly moved, never as a refresh convenience."
-  ;; v1 — initial schema.
-  1)
+  ;; v1 — initial schema; v2 — immutable embedding-space identity.
+  2)
 
 ;; Advisory lock serializing concurrent ensure-tables! calls (e.g. several cluster nodes starting at
 ;; once). Arbitrary app-wide-unique constant; semantic-search's migration lock uses 19991.
@@ -75,6 +75,7 @@
          [:provider :text :not-null]
          [:model_name :text :not-null]
          [:vector_dimensions :int :not-null]
+         [:embedding_space_id :text :not-null]
          [:schema_version :int :not-null]
          [:updated_at :timestamp-with-time-zone :not-null]])
       sql-format-quoted))
@@ -96,27 +97,30 @@
   {:provider          (:provider embedding-model)
    :model_name        (:model-name embedding-model)
    :vector_dimensions (:vector-dimensions embedding-model)
+   :embedding_space_id (:embedding-space-id embedding-model)
    :schema_version    schema-version})
 
 (defn- read-meta [tx]
   (jdbc/execute-one! tx
-                     [(format "SELECT provider, model_name, vector_dimensions, schema_version FROM \"%s\" WHERE id = 1"
+                     [(format "SELECT provider, model_name, vector_dimensions, embedding_space_id, schema_version FROM \"%s\" WHERE id = 1"
                               *meta-table*)]
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- write-meta! [tx embedding-model]
-  (let [{:keys [provider model_name vector_dimensions schema_version]} (model-identity embedding-model)]
+  (let [{:keys [provider model_name vector_dimensions embedding_space_id schema_version]}
+        (model-identity embedding-model)]
     (jdbc/execute! tx
                    (-> (sql.helpers/insert-into (keyword *meta-table*))
                        (sql.helpers/values [{:id                1
                                              :provider          provider
                                              :model_name        model_name
                                              :vector_dimensions vector_dimensions
+                                             :embedding_space_id embedding_space_id
                                              :schema_version    schema_version
                                              :updated_at        (Instant/now)}])
                        (sql.helpers/on-conflict :id)
                        (sql.helpers/do-update-set :provider :model_name :vector_dimensions
-                                                  :schema_version :updated_at)
+                                                  :embedding_space_id :schema_version :updated_at)
                        sql-format-quoted))))
 
 (defn- create-tables! [tx dims]
@@ -125,6 +129,30 @@
 (defn- vectors-table-exists? [tx]
   (some? (:exists (jdbc/execute-one! tx [(format "SELECT to_regclass('%s') AS exists" *vectors-table*)]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+
+(defn- embedding-space-column-state
+  [tx]
+  (let [column (jdbc/execute-one!
+                tx
+                [(str "SELECT is_nullable FROM information_schema.columns "
+                      "WHERE table_schema = current_schema() AND table_name = ? "
+                      "AND column_name = 'embedding_space_id'")
+                 *meta-table*]
+                {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (cond
+      (nil? column)                   :missing
+      (= "NO" (:is_nullable column)) :not-null
+      :else                           :nullable)))
+
+(defn- ensure-embedding-space-column!
+  [tx]
+  (let [column-state (embedding-space-column-state tx)]
+    ;; Existing v1 tables need an additive upgrade before their metadata can be read. Keep the new
+    ;; column nullable until the old vectors have been rebuilt under the resolved space below.
+    (when (= :missing column-state)
+      (jdbc/execute! tx [(format "ALTER TABLE \"%s\" ADD COLUMN embedding_space_id TEXT"
+                                 *meta-table*)]))
+    column-state))
 
 (defn index-compatible?
   "Whether the meta row matches `embedding-model` and the current [[schema-version]] — i.e. the vectors
@@ -152,25 +180,32 @@
     (jdbc/execute! tx [(format "SELECT pg_advisory_xact_lock(%d)" ensure-lock-id)])
     (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
     (jdbc/execute! tx (create-meta-table-sql))
-    (let [stored  (read-meta tx)
-          current (model-identity embedding-model)
-          dims    (:vector_dimensions current)]
-      (cond
-        (nil? stored)
-        (do (create-tables! tx dims)
-            (write-meta! tx embedding-model)
-            :created)
+    (let [column-state (ensure-embedding-space-column! tx)
+          stored       (read-meta tx)
+          current      (model-identity embedding-model)
+          dims         (:vector_dimensions current)
+          status       (cond
+                         (nil? stored)
+                         (do (create-tables! tx dims)
+                             (write-meta! tx embedding-model)
+                             :created)
 
-        (not= stored current)
-        (do (jdbc/execute! tx [(format "DROP TABLE IF EXISTS \"%s\"" *vectors-table*)])
-            (create-tables! tx dims)
-            (write-meta! tx embedding-model)
-            :rebuilt)
+                         (not= stored current)
+                         (do (jdbc/execute! tx [(format "DROP TABLE IF EXISTS \"%s\"" *vectors-table*)])
+                             (create-tables! tx dims)
+                             (write-meta! tx embedding-model)
+                             :rebuilt)
 
-        :else
-        ;; Meta matches. Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals itself,
-        ;; and report :created when it had actually gone missing — the recreated table is empty, so a
-        ;; targeted reconcile must repopulate the whole library rather than fill it with one entity.
-        (let [existed? (vectors-table-exists? tx)]
-          (create-tables! tx dims)
-          (if existed? :ok :created))))))
+                         :else
+                         ;; Meta matches. Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals itself,
+                         ;; and report :created when it had actually gone missing — the recreated table is empty, so a
+                         ;; targeted reconcile must repopulate the whole library rather than fill it with one entity.
+                         (let [existed? (vectors-table-exists? tx)]
+                           (create-tables! tx dims)
+                           (if existed? :ok :created)))]
+      ;; SET NOT NULL takes an ACCESS EXCLUSIVE lock, so issue it only for an additive v1 upgrade or when
+      ;; healing a column that was manually made nullable—not on every steady-state reconcile.
+      (when (not= :not-null column-state)
+        (jdbc/execute! tx [(format "ALTER TABLE \"%s\" ALTER COLUMN embedding_space_id SET NOT NULL"
+                                   *meta-table*)]))
+      status)))

@@ -36,6 +36,22 @@
       (is (> (:total_score (score {:distance 0.1 :doc_type "name"}))
              (:total_score (score {:distance 0.5 :doc_type "name"})))))))
 
+(deftest search-degrades-when-configured-model-cannot-be-resolved-test
+  (mt/with-premium-features #{:library-retrieval}
+    (with-redefs [entity-retrieval.core/available?                        (constantly true)
+                  semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
+                  semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
+                  semantic.embedding/resolve-model                       (fn [_]
+                                                                           (throw (ex-info "model changed"
+                                                                                           {:type ::model-changed})))
+                  index-table/index-compatible?                           (fn [& _]
+                                                                            (throw (ex-info "must not inspect index" {})))
+                  semantic.embedding/get-embedding                        (fn [& _]
+                                                                            (throw (ex-info "must not embed" {})))
+                  jdbc/execute!                                           (fn [& _]
+                                                                            (throw (ex-info "must not query" {})))]
+      (is (= [] (entity-retrieval.core/search "the query" 10))))))
+
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
     ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
