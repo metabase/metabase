@@ -2,11 +2,11 @@ import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
@@ -259,7 +259,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   );
 
   return (
-    <MetabotAdminLayout fullWidth>
+    <MonitorMain>
       <SettingsPageWrapper
         mt="sm"
         title={hasDataComplexityFeature ? t`Usage stats` : undefined}
@@ -376,7 +376,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
         <DataComplexitySection />
       </SettingsPageWrapper>
-    </MetabotAdminLayout>
+    </MonitorMain>
   );
 }
 

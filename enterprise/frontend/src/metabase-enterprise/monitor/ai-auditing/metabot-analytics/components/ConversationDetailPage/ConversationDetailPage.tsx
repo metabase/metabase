@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -17,6 +16,7 @@ import type {
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
@@ -78,9 +78,9 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 
   if (isLoading || error) {
     return (
-      <MetabotAdminLayout>
+      <MonitorMain>
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </MetabotAdminLayout>
+      </MonitorMain>
     );
   }
 
@@ -98,7 +98,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   } = conversation;
 
   return (
-    <MetabotAdminLayout>
+    <MonitorMain>
       <Stack gap="2.5rem">
         <ConversationHeader conversation={conversation} />
 
@@ -161,7 +161,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           </Stack>
         )}
       </Stack>
-    </MetabotAdminLayout>
+    </MonitorMain>
   );
 }
 

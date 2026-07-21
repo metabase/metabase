@@ -2,10 +2,10 @@ import { useEffect } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -98,7 +98,7 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   }
 
   return (
-    <MetabotAdminLayout fullWidth>
+    <MonitorMain>
       <SettingsPageWrapper mt="sm">
         <Flex align="center" justify="space-between">
           <Title order={2}>{t`MCP analytics`}</Title>
@@ -224,6 +224,6 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
             </Tabs>
           ))}
       </SettingsPageWrapper>
-    </MetabotAdminLayout>
+    </MonitorMain>
   );
 }
