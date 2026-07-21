@@ -133,10 +133,16 @@
    :archived :query_summary :template_tags :parameters])
 
 (def question-detailed-keys
-  "Keys of the `:question` detailed projection — also the columns a row must carry to project."
+  "Keys of the `:question` detailed projection. All are Card columns except
+   [[question-enrichment-keys]], which `get_content` computes at read time."
   (into question-concise-keys
         [:entity_id :dashboard_id :query_type :collection_position :creator_id :cache_ttl
          :created_at :updated_at]))
+
+(def question-enrichment-keys
+  "Projection keys `get_content` computes at read time — not Card columns. Column-select paths
+   (`list_models`, browse rows) can't fetch them, so they drop these before selecting."
+  #{:query_summary :template_tags})
 
 (register-projection!
  :question

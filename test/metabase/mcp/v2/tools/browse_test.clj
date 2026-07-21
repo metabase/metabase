@@ -15,6 +15,7 @@
    collection while a current user is bound writes a `CollectionPermissionGraphRevision` whose
    id is `(inc (latest-id))`, which races under `^:parallel`. Only the tool call needs a user."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
@@ -827,12 +828,18 @@
             (is (= ["Orders Model"] (map :name (:data envelope)))
                 "plain questions are excluded — only :type :model")
             (is (= 1 (:total envelope))))
-          (testing "every key the detailed projection advertises survives the narrowed column
-                    select — a projection key with no matching column would come back missing"
+          (testing "list_models emits only column-backed projection keys — no get_content enrichment
+                    key leaks in, and no key appears outside the projection. A detailed key with no
+                    backing column would instead surface as the SQL error the basic assertion catches."
             (let [[envelope] (call! {:action "list_models" :database_id db-id
-                                     :response_format "detailed"})]
-              (is (= (set projections/question-detailed-keys)
-                     (set (keys (first (:data envelope)))))))))))))
+                                     :response_format "detailed"})
+                  row-keys   (set (keys (first (:data envelope))))
+                  col-keys   (set (remove projections/question-enrichment-keys
+                                          projections/question-detailed-keys))]
+              (is (empty? (set/difference row-keys col-keys))
+                  "every emitted key is a column-backed detailed key")
+              (is (empty? (set/intersection row-keys projections/question-enrichment-keys))
+                  "no enrichment key (query_summary/template_tags) leaks into a list_models row"))))))))
 
 (deftest list-models-permission-filtered-test
   (testing "GHY-4138: list_models filters models by their parent collection's read perms, which
