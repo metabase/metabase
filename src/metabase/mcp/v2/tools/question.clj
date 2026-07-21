@@ -186,8 +186,14 @@
   [dataset-query card column_metadata]
   (let [computed-columns (queries/infer-metadata-with-model-overrides dataset-query card)]
     (when (empty? computed-columns)
-      (common/throw-teaching-error
-       "column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created."))
+      ;; infer-metadata swallows preprocess errors and returns nothing, so distinguish the two ways
+      ;; to get here: a native query (columns genuinely can't be inferred) vs. an MBQL query that
+      ;; failed to analyze (a real problem the caller should hear about, not a "native" red herring).
+      (if (lib/native-only-query? dataset-query)
+        (common/throw-teaching-error
+         "column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created.")
+        (common/throw-teaching-error
+         "Couldn't determine the query's result columns, so column_metadata can't be applied — check that the query is valid and returns columns.")))
     (merge-column-metadata computed-columns column_metadata)))
 
 (defn- check-dashboard-collection-exclusive!
