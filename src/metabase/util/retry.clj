@@ -23,7 +23,6 @@
 
 ;;; these kondo warnings are ignored for now because I'm planning on moving this namespace out of `util` to eliminate
 ;;; the dependency of `util` of `settings` -- will fix them after this namespace gets moved. -- Cam
-
 #_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-max-retries
   (deferred-tru "The maximum number of retries for an event.")
