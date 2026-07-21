@@ -17,6 +17,7 @@ import { getLocation } from "metabase/selectors/routing";
 import { Divider, Stack } from "metabase/ui";
 
 export function PeopleNav() {
+  // Unjustified type cast. FIXME
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
   const isUsingTenants = useSetting("use-tenants");
   const showTenantsUpsell = useSelector(shouldShowTenantsUpsell);

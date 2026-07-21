@@ -31,8 +31,11 @@ interface PermissionSelectProps extends PermissionSectionConfig {
 // we shouldn't ever show this, but rather than throw an error, let the user pick an option to recover
 const defaultOption = {
   label: "Missing",
+  // Unjustified type cast. FIXME
   value: "missing" as DataPermissionValue,
+  // Unjustified type cast. FIXME
   icon: "empty" as IconName,
+  // Unjustified type cast. FIXME
   iconColor: "text-disabled" as ColorName,
 };
 

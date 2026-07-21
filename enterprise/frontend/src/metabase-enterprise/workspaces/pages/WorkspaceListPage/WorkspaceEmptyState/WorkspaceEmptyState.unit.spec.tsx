@@ -8,7 +8,7 @@ import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 function setup() {
   setupApplyAdvancedConfigEndpoint();
   renderWithProviders(
-    <Route path="*" component={() => <WorkspaceEmptyState databases={[]} />} />,
+    <Route path="*" element={<WorkspaceEmptyState databases={[]} />} />,
     {
       withRouter: true,
       storeInitialState: {

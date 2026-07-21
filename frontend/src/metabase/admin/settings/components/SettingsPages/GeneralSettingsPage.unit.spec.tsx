@@ -77,6 +77,7 @@ const setup = async ({
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );
@@ -90,12 +91,12 @@ const setup = async ({
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <>
           <GeneralSettingsPage />
           <UndoListing />
         </>
-      )}
+      }
     />,
     { withRouter: true, initialRoute: "/admin/settings/general" },
   );

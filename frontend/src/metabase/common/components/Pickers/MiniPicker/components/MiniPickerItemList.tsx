@@ -499,6 +499,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
   ): SearchRequest => {
     const params: SearchRequest = {
       q: query,
+      // Unjustified type cast. FIXME
       models: models as SearchModel[],
       limit: 50,
       context: "data-picker",

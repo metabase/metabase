@@ -19,13 +19,13 @@ import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import { createDataSource } from "metabase/visualizer/utils/data-source";
+import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
+import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
 import {
-  createDataSource,
-  getVisualizationColumns,
-  mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
-} from "metabase/visualizer/utils";
+} from "metabase/visualizer/utils/split-series";
 import type {
   Card,
   DashCardVisualizationSettings,
@@ -89,6 +89,7 @@ function getVisualizerRawSeries(
 ): RawSeries {
   const { columnValuesMapping, display, settings } = visualization;
 
+  // Unjustified type cast. FIXME
   const datasets = Object.fromEntries(
     rawSeries
       .filter((series) => series.card.id)
@@ -99,10 +100,12 @@ function getVisualizerRawSeries(
 
   return [
     {
+      // Unjustified type cast. FIXME
       card: {
         display,
         visualization_settings: settings,
       } as Card,
+      // Unjustified type cast. FIXME
       data: mergeVisualizerData({
         columns,
         columnValuesMapping,
@@ -121,6 +124,7 @@ function RenderChart(
 ) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set(
+    // Unjustified type cast. FIXME
     "application-colors" as SettingKey,
     options.applicationColors,
   );
@@ -178,8 +182,11 @@ function RenderChart(
   // because the "map" visualization isn't registered in the static-viz bundle (it depends on Leaflet).
   // The backend resolves the built-in GeoJSON and embeds it in dashcardSettings.
   if (rawSeriesWithRemappings[0].card.display === "map") {
+    // Unjustified type cast. FIXME
     const extraSettings = dashcardSettings as Record<string, unknown>;
+    // Unjustified type cast. FIXME
     const geoJson = extraSettings["map._geojson"] as GeoJSONData | undefined;
+    // Unjustified type cast. FIXME
     const geoJsonDetails = extraSettings["map._geojson_details"] as
       | { region_key: string; region_name: string }
       | undefined;

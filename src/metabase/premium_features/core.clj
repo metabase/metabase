@@ -59,6 +59,7 @@
   enable-custom-viz?
   enable-data-complexity-score?
   enable-dashboard-subscription-filters?
+  enable-data-apps?
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
@@ -71,6 +72,7 @@
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
+  enable-multi-factor-auth?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?

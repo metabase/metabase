@@ -139,6 +139,28 @@
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
 
+(derive ::card-query-model-view :metabase/event)
+(derive :event/card-query ::card-query-model-view)
+
+(m/defmethod events/publish-event! ::card-query-model-view
+  "Log a view for models, which are opened as ad-hoc `card__id` queries that fire :event/card-query but never
+  :event/card-read. The :ad-hoc + model guards keep regular cards (logged via card-read) and downloads out."
+  [topic {:keys [card-id user-id context]}]
+  (span/with-span!
+    {:name    "view-log-model-query"
+     :topic   topic
+     :user-id user-id}
+    (try
+      (when (and (= context :ad-hoc)
+                 (= :model (t2/select-one-fn :type :model/Card :id card-id)))
+        (increment-view-counts! :model/Card card-id)
+        (record-views! (generate-view :model :model/Card
+                                      :object-id card-id
+                                      :user-id   user-id
+                                      :context   :question)))
+      (catch Throwable e
+        (log/warnf e "Failed to process card query view event. %s" topic)))))
+
 (derive ::dashboard-queried :metabase/event)
 (derive :event/dashboard-queried ::dashboard-queried)
 

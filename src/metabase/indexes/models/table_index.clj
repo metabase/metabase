@@ -36,8 +36,16 @@
    :status     (mi/transform-validator mi/transform-keyword (partial mi/assert-enum schema/statuses))})
 
 (def pending-statuses
-  "Statuses that require a full incremental rebuild before an index request's physical state can be trusted."
+  "In-flight lifecycle statuses whose physical index state hasn't settled yet.
+  Writing one of these clears any stale `:error_message` (see [[pending-status-for-changes]])."
   #{:create-pending :update-pending :delete-pending :running})
+
+(def ^:private rebuild-forcing-statuses
+  "Statuses whose physical index state can't be trusted, so the transform's next run must be a full rebuild.
+  Includes `:failed`: a failed index DDL runs before the watermark is saved, so the table was already
+  materialized; only a full rebuild re-attempts the index instead of appending duplicate rows from the stale
+  checkpoint (and leaving the index stuck `:failed`)."
+  (conj pending-statuses :failed))
 
 (def ^:private runnable-statuses
   #{:create-pending :update-pending :running :failed})
@@ -112,7 +120,7 @@
   [transform-id]
   (boolean
    (when transform-id
-     (t2/exists? :model/TableIndex :transform_id transform-id :status [:in pending-statuses]))))
+     (t2/exists? :model/TableIndex :transform_id transform-id :status [:in rebuild-forcing-statuses]))))
 
 (defn mark-runnable-indexes-running!
   "Mark hydrated index requests that this run will apply as running.

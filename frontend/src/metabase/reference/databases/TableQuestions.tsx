@@ -117,4 +117,5 @@ class TableQuestions extends Component<TableQuestionsProps> {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(TableQuestions as unknown as React.ComponentType);

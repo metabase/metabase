@@ -25,6 +25,7 @@ export function SiteUrlWidget() {
       setErrorMessage("");
       if (response?.error) {
         const message =
+          // Unjustified type cast. FIXME
           (response.error as { data: GenericErrorResponse })?.data?.message ||
           t`Error saving Site URL`;
         setErrorMessage(message);

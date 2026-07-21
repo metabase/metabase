@@ -19,7 +19,8 @@ export const QuestionSources = () => {
 
   const sourcesWithIcons: QuestionSource[] = useMemo(() => {
     const sources = underlyingQuestion
-      ? (getDataSourceParts({
+      ? // Unjustified type cast. FIXME
+        (getDataSourceParts({
           question: underlyingQuestion,
           subHead: false,
           isObjectDetail: true,

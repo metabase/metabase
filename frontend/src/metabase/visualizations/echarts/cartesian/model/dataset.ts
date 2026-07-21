@@ -730,7 +730,8 @@ export function scaleDataset(
       const key = seriesModel.dataKey;
       if (key in datum) {
         const scaledValue = Number.isFinite(datum[key])
-          ? (datum[key] as number) * scale
+          ? // Unjustified type cast. FIXME
+            (datum[key] as number) * scale
           : null;
         transformedRecord[key] = scaledValue;
       }
@@ -994,6 +995,7 @@ export const replaceValues = (
     return getObjectKeys(datum).reduce((updatedRow, dataKey) => {
       updatedRow[dataKey] = replacer(dataKey, datum[dataKey]);
       return updatedRow;
+      // Unjustified type cast. FIXME
     }, {} as Datum);
   });
 };
@@ -1015,6 +1017,7 @@ export const getDatasetExtents = (
       acc[key] = extent;
     }
     return acc;
+    // Unjustified type cast. FIXME
   }, {} as SeriesExtents);
 };
 
@@ -1064,6 +1067,7 @@ export const getCardColumnByDataKeyMap = (
       }
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, DatasetColumn>,
   );
 };
@@ -1082,6 +1086,7 @@ export const getCardsColumnByDataKeyMap = (
 
       return { ...acc, ...cardColumnByDataKeyMap };
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, DatasetColumn>,
   );
 };

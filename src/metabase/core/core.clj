@@ -104,6 +104,7 @@
   []
   (log/info "Metabase Shutting Down ...")
   (queue/stop-listeners!)
+  (startup/run-shutdown-logic!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (tracing/shutdown!)

@@ -20,6 +20,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { Outlet } from "metabase/router";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
@@ -178,13 +179,13 @@ export function ModelCacheRefreshJobs() {
   );
 }
 
-export function ModelCachePage({ children }: { children?: React.ReactNode }) {
+export function ModelCachePage() {
   return (
     <SettingsPageWrapper title={t`Model cache log`}>
       <SettingsSection>
         <ModelCacheRefreshJobs />
       </SettingsSection>
-      {children /* refresh modal */}
+      <Outlet /> {/* refresh modal */}
     </SettingsPageWrapper>
   );
 }

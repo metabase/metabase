@@ -206,6 +206,7 @@ export function UploadSettingsFormView({
               schemaLength: !!schemas?.length,
             })
               .with({ schemasError: true }, () =>
+                // Unjustified type cast. FIXME
                 getErrorMessage((schemasError as any)?.data),
               )
               .with(

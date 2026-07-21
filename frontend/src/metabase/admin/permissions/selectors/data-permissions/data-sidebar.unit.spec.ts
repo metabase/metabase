@@ -6,6 +6,7 @@ import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 
 import { getDataFocusSidebar } from ".";
 
+// Unjustified type cast. FIXME
 const state = mockState as unknown as State;
 
 const getRouteProps = ({

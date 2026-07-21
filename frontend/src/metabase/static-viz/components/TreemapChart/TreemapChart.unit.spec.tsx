@@ -15,6 +15,7 @@ function getRenderingContext() {
   return createStaticRenderingContext();
 }
 
+// Unjustified type cast. FIXME
 const settings = {
   "treemap.grouping": "Category",
   "treemap.sub_grouping": "SubCategory",

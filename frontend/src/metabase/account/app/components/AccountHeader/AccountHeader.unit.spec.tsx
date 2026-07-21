@@ -1,5 +1,8 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { mockSettings } from "__support__/settings";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
+import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { AccountHeader } from "./AccountHeader";
@@ -12,6 +15,28 @@ const getUser = () =>
     email: "john@metabase.test",
     sso_source: "google",
   });
+
+type SetupOpts = {
+  user?: User;
+  isMfaEnabled?: boolean;
+};
+
+function setup({ user = getUser(), isMfaEnabled = false }: SetupOpts = {}) {
+  const onChangeLocation = jest.fn();
+
+  renderWithProviders(
+    <AccountHeader user={user} onChangeLocation={onChangeLocation} />,
+    {
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "mfa-enforcement": isMfaEnabled ? "optional" : "off",
+        }),
+      }),
+    },
+  );
+
+  return { onChangeLocation };
+}
 
 describe("AccountHeader", () => {
   const ORIGINAL_PLUGIN_IS_PASSWORD_USER = [...PLUGIN_IS_PASSWORD_USER];
@@ -29,9 +54,7 @@ describe("AccountHeader", () => {
   });
 
   it("should show all tabs for a regular user", () => {
-    const user = getUser();
-
-    render(<AccountHeader user={user} />);
+    setup();
 
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.getByText("Password")).toBeInTheDocument();
@@ -40,28 +63,37 @@ describe("AccountHeader", () => {
   });
 
   it("should show the password tab if it is enabled by a plugin", () => {
-    const user = getUser();
     PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source === "google");
 
-    render(<AccountHeader user={user} />);
+    setup();
 
     expect(screen.getByText("Password")).toBeInTheDocument();
   });
 
   it("should hide the password tab if it is disabled by a plugin", () => {
-    const user = getUser();
     PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "google");
 
-    render(<AccountHeader user={user} />);
+    setup();
 
     expect(screen.queryByText("Password")).not.toBeInTheDocument();
   });
 
-  it("should change location when a tab is selected", () => {
-    const user = getUser();
-    const onChangeLocation = jest.fn();
+  describe("security tab", () => {
+    it("should show the tab when two-factor authentication is enabled for the instance", () => {
+      setup({ isMfaEnabled: true });
 
-    render(<AccountHeader user={user} onChangeLocation={onChangeLocation} />);
+      expect(screen.getByText("Security")).toBeInTheDocument();
+    });
+
+    it("should hide the tab when two-factor authentication is disabled for the instance", () => {
+      setup({ isMfaEnabled: false });
+
+      expect(screen.queryByText("Security")).not.toBeInTheDocument();
+    });
+  });
+
+  it("should change location when a tab is selected", () => {
+    const { onChangeLocation } = setup();
 
     fireEvent.click(screen.getByText("Profile"));
     expect(onChangeLocation).toHaveBeenCalledWith("/account/profile");

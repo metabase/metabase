@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
-import { UserForm } from "metabase/admin/people/forms/UserForm";
 import { useCreateUserMutation } from "metabase/api";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import {
@@ -10,6 +9,7 @@ import {
 } from "metabase/common/analytics";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
+import { UserForm } from "metabase/common/components/UserForm";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
