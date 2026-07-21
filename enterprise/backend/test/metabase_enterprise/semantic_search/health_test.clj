@@ -1,6 +1,8 @@
 (ns metabase-enterprise.semantic-search.health-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.health :as semantic.health]
@@ -8,7 +10,8 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [next.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
 
@@ -157,6 +160,39 @@
     (is (=? {:health 0}   (semantic.health/garbage-result 100 5 100)))
     ;; warn 4, crit 100, count 52 -> (100-52)/(100-4) = 0.5
     (is (=? {:health 50}  (semantic.health/garbage-result 52 4 100)))))
+
+(deftest semantic-staleness-composite-watermark-test
+  ;; Hermetic: an ad-hoc gate table stands in, exercising the composite (gated_at, id) watermark SQL.
+  (when semantic.db.datasource/db-url
+    (let [pgvector  (semantic.db.datasource/ensure-initialized-data-source!)
+          gate-t    (str "staleness_gate_" (System/nanoTime))
+          wm-ts     (t/offset-date-time "2026-01-01T12:00:00Z")
+          staleness (fn [metadata-row]
+                      (mt/with-dynamic-fn-redefs
+                        [semantic.health/active-index    (constantly {:pgvector pgvector
+                                                                      :state    {:metadata-row metadata-row}})
+                         semantic.env/get-index-metadata (constantly {:gate-table-name gate-t})]
+                        (#'semantic.health/semantic-staleness)))
+          backlog   (fn [result] (or (some->> (:message result) (re-find #"(\d+) change\(s\)") second parse-long) 0))]
+      (try
+        (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id text, gated_at timestamptz)" gate-t)])
+        (jdbc/execute! pgvector [(format (str "INSERT INTO \"%s\" VALUES "
+                                              "('a', timestamptz '2026-01-01 11:00:00+00'), "
+                                              "('b', timestamptz '2026-01-01 12:00:00+00'), "
+                                              "('c', timestamptz '2026-01-01 12:00:00+00')")
+                                         gate-t)])
+        (testing "rows at the watermark timestamp with a later id are pending -- a timestamp-only bound
+                 would hide them and read a stalled indexer as current"
+          (is (= 1 (backlog (staleness {:indexer_last_seen wm-ts :indexer_last_seen_id "b"})))))
+        (testing "a nil watermark (indexer never ran) reads everything as pending"
+          (is (= 3 (backlog (staleness {:indexer_last_seen nil :indexer_last_seen_id nil})))))
+        (testing "a timestamp-only watermark (no id) treats same-timestamp rows as pending"
+          (is (= 2 (backlog (staleness {:indexer_last_seen wm-ts :indexer_last_seen_id nil})))))
+        (testing "a watermark past every row reads current"
+          (is (=? {:value 0, :health 100, :message #"Index current\."}
+                  (staleness {:indexer_last_seen (t/plus wm-ts (t/hours 1)) :indexer_last_seen_id ""}))))
+        (finally
+          (jdbc/execute! pgvector [(format "DROP TABLE IF EXISTS \"%s\"" gate-t)]))))))
 
 (deftest staleness-result-test
   (testing "at/under warn = healthy and reported current"

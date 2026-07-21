@@ -321,19 +321,24 @@
 
 (defn- semantic-staleness []
   (when-let [{:keys [pgvector state]} (active-index)]
-    (let [gate      (semantic.util/quote-table (:gate-table-name (semantic.env/get-index-metadata)))
-          watermark (-> state :metadata-row :indexer_last_seen)
+    (let [gate    (semantic.util/quote-table (:gate-table-name (semantic.env/get-index-metadata)))
+          {:keys [indexer_last_seen indexer_last_seen_id]} (:metadata-row state)
           ;; Oldest gate change past the indexer watermark. Content-hash-based: the gate suppresses no-op
           ;; updated_at bumps, so this is real pending work, not spurious timestamp drift. Age is computed on
           ;; the pgvector clock to match gated_at (set via clock_timestamp).
-          row       (scalar-row pgvector
-                                [(format "SELECT count(*) AS pending,
-                                                 EXTRACT(EPOCH FROM (now() - min(gated_at))) AS age
-                                          FROM %s
-                                          WHERE gated_at > COALESCE(?, '-infinity'::timestamptz)" gate)
-                                 watermark])
-          pending   (or (:pending row) 0)
-          detail    (when (pos? pending) (format "%d change(s) in the indexer backlog." pending))]
+          ;; Composite (gated_at, id) comparison, matching the gate poll's consumption order -- a
+          ;; timestamp-only bound would hide pending rows that share the watermark timestamp. A nil watermark
+          ;; (indexer never ran) reads everything as pending; a nil id treats same-timestamp rows as pending
+          ;; ('' sorts before every real gate id).
+          row     (scalar-row pgvector
+                              [(format "SELECT count(*) AS pending,
+                                               EXTRACT(EPOCH FROM (now() - min(gated_at))) AS age
+                                        FROM %s
+                                        WHERE (gated_at, id) > (COALESCE(?, '-infinity'::timestamptz), COALESCE(?, ''))"
+                                       gate)
+                               indexer_last_seen indexer_last_seen_id])
+          pending (or (:pending row) 0)
+          detail  (when (pos? pending) (format "%d change(s) in the indexer backlog." pending))]
       (staleness-result (:age row) staleness-warn-seconds staleness-critical-seconds detail))))
 
 (defonce ^:private last-repair-orphans
