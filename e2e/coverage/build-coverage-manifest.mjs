@@ -164,7 +164,9 @@ function main() {
       continue;
     }
     const entry = readEntry(path.join(PER_SPEC_DIR, file));
-    if (entry) {
+    // The raw dir also holds fnmap-*.json function-metadata files (for
+    // offline analysis, not the manifests); only spec entries belong here.
+    if (entry?.spec) {
       entries[entry.spec] = entry;
     }
   }

@@ -51,6 +51,19 @@ const COVERAGE_MANIFEST_RAW_DIR = path.resolve(
 );
 const NYC_OUTPUT_FILE = path.resolve(__dirname, ".nyc_output/out.json");
 
+// Function metadata (name + line per Istanbul function index), accumulated
+// across the specs this process runs and shipped with the raw shard artifact.
+// The f-counter indices in the per-spec/per-test entries are only meaningful
+// against the exact instrumented bundle that produced them; this file makes
+// the artifact self-describing for offline analysis (test-overlap heat maps)
+// without rebuilding that bundle. Named uniquely per process so shard
+// artifacts can merge into one directory without clobbering each other —
+// consumers shallow-merge all fnmap-*.json (same file => identical entries).
+const FNMAP_FILE = path.join(
+  COVERAGE_MANIFEST_RAW_DIR,
+  `fnmap-${require("node:crypto").randomUUID()}.json`,
+);
+
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = !!process.env.CI;
 
@@ -76,6 +89,36 @@ const perTestCaptureTasks = {
   },
 };
 
+// Records name + line for every instrumented function in files this process
+// hasn't seen yet. The metadata is identical for a given file across specs
+// (same bundle), so first sighting wins.
+function appendFnMap(coverage) {
+  let fnMap = {};
+  try {
+    fnMap = JSON.parse(fs.readFileSync(FNMAP_FILE, "utf8"));
+  } catch {
+    // First spec of the run.
+  }
+  let changed = false;
+  for (const [file, fileCov] of Object.entries(coverage)) {
+    if (fnMap[file] || !fileCov.fnMap) {
+      continue;
+    }
+    const entry = {};
+    for (const [idx, fn] of Object.entries(fileCov.fnMap)) {
+      entry[idx] = {
+        name: fn.name,
+        line: fn.decl?.start?.line ?? fn.loc?.start?.line ?? null,
+      };
+    }
+    fnMap[file] = entry;
+    changed = true;
+  }
+  if (changed) {
+    fs.writeFileSync(FNMAP_FILE, JSON.stringify(fnMap));
+  }
+}
+
 // Persists raw __coverage__ counters per spec, plus the per-test breakdown
 // (function deltas and API routes). The manifest builder reads these later,
 // applies baseline subtraction, and maps surviving files to modules. We
@@ -92,6 +135,9 @@ function writeSpecCoverageEntry(spec) {
   }
 
   const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
+
+  fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
+  appendFnMap(coverage);
 
   // The manifest builder only needs per-file function counters to compute the
   // baseline greater-delta. Drop statement/branch maps and counters, and drop
