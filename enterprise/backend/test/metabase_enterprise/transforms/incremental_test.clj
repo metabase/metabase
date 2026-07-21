@@ -189,9 +189,11 @@
         spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
         table-sql (sql.u/quote-name driver/*driver* :table schema source-table-name)
         field-sql #(sql.u/quote-name driver/*driver* :field %)]
-    (if (= driver/*driver* :clickhouse)
+    (if (#{:clickhouse :snowflake} driver/*driver*)
       ;; ClickHouse has no auto-increment: a plain INSERT leaves `id` at the column default (0), which
-      ;; falls below any existing integer checkpoint. Assign explicit ids continuing from the current max.
+      ;; falls below any existing integer checkpoint. Snowflake has AUTOINCREMENT, but the sequence does
+      ;; not advance when rows are inserted with explicit ids (as the dataset loader does), so a plain
+      ;; INSERT gets `id` 1, again below the checkpoint. Assign explicit ids continuing from the current max.
       (driver/execute-raw-queries!
        driver/*driver* spec
        (vec (for [{:keys [name category price created-at]} products]

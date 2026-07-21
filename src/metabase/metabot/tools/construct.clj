@@ -146,16 +146,19 @@
         (let [hint (case entity-type
                      "metric"
                      (str "Metrics are aggregations, not sources. To use metric " entity-id
-                          ", put its `base_table_portable_fk` (from `entity_details` on the metric) "
-                          "into `source-table:` and reference the metric as "
-                          "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
+                          ", put its base table into `source-table:` — combine the `database_name` "
+                          "and `base_table_fully_qualified_name` attributes from its search result "
+                          "or `read_resource metabase://metric/" entity-id "` — and reference the "
+                          "metric as `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
                      ("question" "model" "card")
                      (str "To reference saved " entity-type " " entity-id
-                          " as a query source, put its `portable_entity_id` (a 21-char "
-                          "string from `entity_details`) into `source-card:` — not a URI.")
+                          " as a query source, put its `portable_entity_id` (the 21-char "
+                          "string from its search result or `read_resource`) into "
+                          "`source-card:` — not a URI.")
                      "table"
-                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` from "
-                          "`entity_details` in `source-table:` — not a URI.")
+                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` in "
+                          "`source-table:` — not a URI. `read_resource metabase://table/" entity-id
+                          "` reports the exact names.")
                      (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
                           "or, via `source-card:`, a saved-card `portable_entity_id`."))]
           (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`. {1}"
@@ -220,7 +223,7 @@
           ids     (t2/select-pks-vec :model/Database :name db-name)]
       (case (count ids)
         0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
-                                    "reported by `entity_details` / metadata tools (it appears "
+                                    "reported by search / `read_resource` (it appears "
                                     "as the first element of every portable FK, e.g. "
                                     "`source-table: [<db-name>, <schema>, <table>]`).")
                                db-name)
@@ -242,9 +245,10 @@
       (if-let [card (tools.u/get-card-by-entity-id eid)]
         (:database_id card)
         (throw (ex-info (tru (str "No saved question or model found with entity_id {0}. Do not invent "
-                                  "or guess entity_ids: call `entity_details` with `entity-type: question` "
-                                  "or `entity-type: model` and the card''s numeric id first, then copy the "
-                                  "exact `portable_entity_id` from the response into `source-card:`.")
+                                  "or guess entity_ids: call `read_resource` with "
+                                  "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` "
+                                  "first, then copy the exact `portable_entity_id` from the response "
+                                  "into `source-card:`.")
                              (pr-str eid))
                         {:agent-error? true
                          :status-code  400

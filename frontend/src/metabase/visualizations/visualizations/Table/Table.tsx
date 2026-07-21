@@ -1,7 +1,7 @@
 import cx from "classnames";
-import { Component } from "react";
+import { useCallback, useMemo } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
@@ -24,191 +24,161 @@ interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
 }
 
-interface TableState {
-  data: Pick<
-    DatasetData,
-    "cols" | "rows" | "results_timezone" | "rows_truncated"
-  > | null;
-  question: Question | null;
-}
+type TableData = Pick<
+  DatasetData,
+  "cols" | "rows" | "results_timezone" | "rows_truncated"
+>;
 
-class TableComponent extends Component<TableProps, TableState> {
-  state: TableState = {
-    data: null,
-    question: null,
-  };
-
-  UNSAFE_componentWillMount() {
-    this._updateData(this.props);
-  }
-
-  UNSAFE_componentWillReceiveProps(newProps: TableProps) {
-    if (
-      newProps.series !== this.props.series ||
-      !_.isEqual(newProps.settings, this.props.settings) ||
-      newProps.isShowingDetailsOnlyColumns !==
-        this.props.isShowingDetailsOnlyColumns
-    ) {
-      this._updateData(newProps);
-    }
-  }
-
-  _updateData({
+function TableComponent(props: TableProps) {
+  const {
     series,
     settings,
     metadata,
     isShowingDetailsOnlyColumns,
-  }: TableProps) {
-    const [{ card, data }] = series;
-    // construct a Question that is in-sync with query results
-    const question = new Question(card, metadata);
+    isDashboard,
+  } = props;
+
+  const question = useSyncedQuestion(series, metadata);
+
+  const data = useMemo<TableData>(() => {
+    const [{ data }] = series;
 
     if (_isPivoted(series, settings)) {
-      const pivotIndex = _.findIndex(
-        data.cols,
+      const pivotIndex = data.cols.findIndex(
         (col) => col.name === settings["table.pivot_column"],
       );
-      const cellIndex = _.findIndex(
-        data.cols,
+      const cellIndex = data.cols.findIndex(
         (col) => col.name === settings["table.cell_column"],
       );
-      const normalIndex = _.findIndex(
-        data.cols,
+      const normalIndex = data.cols.findIndex(
         (col, index) => index !== pivotIndex && index !== cellIndex,
       );
-      this.setState({
-        data: DataGrid.pivot(
-          data,
-          normalIndex,
-          pivotIndex,
-          cellIndex,
-          settings,
-        ),
-        question,
-      });
-    } else {
-      const { cols, rows, results_timezone, rows_truncated } = data;
-      const columnSettings = settings["table.columns"] ?? [];
-      const columnIndexes = findColumnIndexesForColumnSettings(
-        cols,
-        columnSettings,
-      ).filter(
-        (columnIndex, settingIndex) =>
-          columnIndex >= 0 &&
-          (isShowingDetailsOnlyColumns ||
-            (cols[columnIndex].visibility_type !== "details-only" &&
-              columnSettings[settingIndex].enabled)),
-      );
-
-      this.setState({
-        data: {
-          cols: columnIndexes.map((i) => cols[i]),
-          rows: rows.map((row) => columnIndexes.map((i) => row[i])),
-          results_timezone,
-          rows_truncated,
-        },
-        question,
-      });
-    }
-  }
-
-  // shared helpers for table implementations
-
-  getColumnTitle = (columnIndex: number) => {
-    const cols = this.state.data && this.state.data.cols;
-    if (!cols) {
-      return null;
-    }
-    const { series, settings } = this.props;
-    return getTitleForColumn(cols[columnIndex], series, settings);
-  };
-
-  getColumnSortDirection = (columnIndex: number) => {
-    const { question, data } = this.state;
-    if (!question || !data) {
-      return;
+      return DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex, settings);
     }
 
-    const query = question.query();
-    const stageIndex = -1;
-    const column = Lib.findMatchingColumn(
-      query,
-      stageIndex,
-      Lib.fromLegacyColumn(query, stageIndex, data.cols[columnIndex]),
-      Lib.orderableColumns(query, stageIndex),
+    const { cols, rows, results_timezone, rows_truncated } = data;
+    const columnSettings = settings["table.columns"] ?? [];
+    const columnIndexes = findColumnIndexesForColumnSettings(
+      cols,
+      columnSettings,
+    ).filter(
+      (columnIndex, settingIndex) =>
+        columnIndex >= 0 &&
+        (isShowingDetailsOnlyColumns ||
+          (cols[columnIndex].visibility_type !== "details-only" &&
+            columnSettings[settingIndex].enabled)),
     );
 
-    if (column != null) {
-      const columnInfo = Lib.displayInfo(query, stageIndex, column);
-      if (columnInfo.orderByPosition != null) {
-        const orderBys = Lib.orderBys(query, stageIndex);
-        const orderBy = orderBys[columnInfo.orderByPosition];
-        const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
-        return orderByInfo.direction;
+    return {
+      cols: columnIndexes.map((i) => cols[i]),
+      rows: rows.map((row) => columnIndexes.map((i) => row[i])),
+      results_timezone,
+      rows_truncated,
+    };
+  }, [series, settings, isShowingDetailsOnlyColumns]);
+
+  const getColumnTitle = useCallback(
+    (columnIndex: number) =>
+      getTitleForColumn(data.cols[columnIndex], series, settings),
+    [data, series, settings],
+  );
+
+  const getColumnSortDirection = useCallback(
+    (columnIndex: number) => {
+      const query = question.query();
+      const stageIndex = -1;
+      const column = Lib.findMatchingColumn(
+        query,
+        stageIndex,
+        Lib.fromLegacyColumn(query, stageIndex, data.cols[columnIndex]),
+        Lib.orderableColumns(query, stageIndex),
+      );
+
+      if (column != null) {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+        if (columnInfo.orderByPosition != null) {
+          const orderBys = Lib.orderBys(query, stageIndex);
+          const orderBy = orderBys[columnInfo.orderByPosition];
+          const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
+          return orderByInfo.direction;
+        }
       }
-    }
-  };
+    },
+    [question, data],
+  );
 
-  render() {
-    const { series, isDashboard, settings } = this.props;
-    const { data } = this.state;
+  const isPivoted = _isPivoted(series, settings);
+  const areAllColumnsHidden = data.cols.length === 0;
 
-    const isPivoted = _isPivoted(series, settings);
-    const areAllColumnsHidden = data?.cols.length === 0;
-
-    if (!data) {
-      return null;
-    }
-
-    if (areAllColumnsHidden) {
-      const allFieldsHiddenImageUrl = getSubpathSafeUrl(
-        "app/assets/img/hidden-field.png",
-      );
-      const allFieldsHiddenImage2xUrl = getSubpathSafeUrl(
-        "app/assets/img/hidden-field@2x.png",
-      );
-
-      return (
-        <div
-          className={cx(
-            CS.flexFull,
-            CS.px1,
-            CS.pb1,
-            CS.textCentered,
-            CS.flex,
-            CS.flexColumn,
-            CS.layoutCentered,
-            { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
-          )}
-        >
-          <img
-            data-testid="Table-all-fields-hidden-image"
-            width={99}
-            src={allFieldsHiddenImageUrl}
-            srcSet={`
-              ${allFieldsHiddenImageUrl}   1x,
-              ${allFieldsHiddenImage2xUrl} 2x
-            `}
-            className={CS.mb2}
-          />
-          <span
-            className={cx(CS.h4, CS.textBold)}
-          >{t`Every field is hidden right now`}</span>
-        </div>
-      );
-    }
-
-    return (
-      <TableInteractive
-        {...this.props}
-        question={this.state.question}
-        data={data}
-        isPivoted={isPivoted}
-        getColumnTitle={this.getColumnTitle}
-        getColumnSortDirection={this.getColumnSortDirection}
-      />
-    );
+  if (areAllColumnsHidden) {
+    return <AllFieldsHiddenMessage isDashboard={isDashboard} />;
   }
+
+  return (
+    <TableInteractive
+      {...props}
+      question={question}
+      data={data}
+      isPivoted={isPivoted}
+      getColumnTitle={getColumnTitle}
+      getColumnSortDirection={getColumnSortDirection}
+    />
+  );
+}
+
+/*
+ * Constructs a Question that is in-sync with query results.
+ * Reads metadata through a ref so async metadata updates don't recreate the
+ * question (and rebuild every column) mid-interaction; series changes on every
+ * query run, which is when fresh metadata actually needs to be picked up.
+ */
+function useSyncedQuestion(
+  series: VisualizationProps["series"],
+  metadata: VisualizationProps["metadata"],
+) {
+  const metadataRef = useLatest(metadata);
+  return useMemo(() => {
+    const [{ card }] = series;
+    return new Question(card, metadataRef.current);
+  }, [series, metadataRef]);
+}
+
+function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
+  const allFieldsHiddenImageUrl = getSubpathSafeUrl(
+    "app/assets/img/hidden-field.png",
+  );
+  const allFieldsHiddenImage2xUrl = getSubpathSafeUrl(
+    "app/assets/img/hidden-field@2x.png",
+  );
+
+  return (
+    <div
+      className={cx(
+        CS.flexFull,
+        CS.px1,
+        CS.pb1,
+        CS.textCentered,
+        CS.flex,
+        CS.flexColumn,
+        CS.layoutCentered,
+        { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
+      )}
+    >
+      <img
+        data-testid="Table-all-fields-hidden-image"
+        width={99}
+        src={allFieldsHiddenImageUrl}
+        srcSet={`
+          ${allFieldsHiddenImageUrl}   1x,
+          ${allFieldsHiddenImage2xUrl} 2x
+        `}
+        className={CS.mb2}
+      />
+      <span
+        className={cx(CS.h4, CS.textBold)}
+      >{t`Every field is hidden right now`}</span>
+    </div>
+  );
 }
 
 export const Table = Object.assign(TableComponent, TABLE_DEFINITION);

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { createMockEngines } from "metabase-types/api/mocks";
 
 import { DatabasePage } from "./DatabasePage";
@@ -14,8 +14,10 @@ jest.mock(
   () => "Postgres MD Content",
 );
 
+const RoutedDatabasePage = withRouteProps(DatabasePage);
+
 const setup = () => {
-  renderWithProviders(<Route path="/" component={DatabasePage} />, {
+  renderWithProviders(<Route path="/" element={<RoutedDatabasePage />} />, {
     withRouter: true,
     storeInitialState: createMockState({
       settings: mockSettings({

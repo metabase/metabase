@@ -13,23 +13,23 @@ describe("LegendLabel", () => {
     const onMouseEnter = jest.fn();
 
     const history = createMemoryHistory();
-    const component = () => {
-      return (
-        <LegendLabel
-          href="#hello"
-          onClick={onClick}
-          onFocus={onFocus}
-          onMouseEnter={onMouseEnter}
-          {...props}
-        >
-          Test
-        </LegendLabel>
-      );
-    };
 
     render(
       <Router history={history}>
-        <Route path="/" component={component} />
+        <Route
+          path="/"
+          element={
+            <LegendLabel
+              href="#hello"
+              onClick={onClick}
+              onFocus={onFocus}
+              onMouseEnter={onMouseEnter}
+              {...props}
+            >
+              Test
+            </LegendLabel>
+          }
+        />
       </Router>,
     );
 

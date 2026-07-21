@@ -63,9 +63,9 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
+        element={
           <PublishedTableSegmentBreadcrumbs table={table} segment={segment} />
-        )}
+        }
       />,
       { withRouter: true },
     );
@@ -186,9 +186,9 @@ describe("DataModelSegmentBreadcrumbs", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
+        element={
           <DataModelSegmentBreadcrumbs table={table} segment={segment} />
-        )}
+        }
       />,
       { withRouter: true },
     );

@@ -113,16 +113,19 @@
 
 (defn- parse-retry-after-header
   "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.
-  Returns nil if not present or not a reasonable value."
+  Returns nil if not present or not a reasonable value. Handle repeated headers defensively so a
+  malformed header never turns a retryable error into an uncaught cast/parse error."
   [^Exception e]
   (when-let [headers (:headers (ex-data e))]
-    (when-let [retry-after (or (get headers "retry-after")
-                               (get headers "Retry-After"))]
-      (try
-        (let [seconds (Long/parseLong retry-after)]
-          (when (<= 0 seconds 60)
-            (* seconds 1000)))
-        (catch NumberFormatException _ nil)))))
+    (when-let [raw (or (get headers "retry-after")
+                       (get headers "Retry-After"))]
+      (let [retry-after (if (sequential? raw) (first raw) raw)]
+        (when (string? retry-after)
+          (try
+            (let [seconds (Long/parseLong retry-after)]
+              (when (<= 0 seconds 60)
+                (* seconds 1000)))
+            (catch NumberFormatException _ nil)))))))
 
 (defn- retry-delay-ms
   "Calculate retry delay in milliseconds using exponential backoff with jitter.
@@ -236,34 +239,41 @@
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
-  Records prometheus metrics with `:model` and `:tag` from `tracking-opts` as labels."
-  [tracking-opts thunk]
-  (let [labels {:model (:model tracking-opts) :source (:tag tracking-opts)}]
-    (loop [attempt 1]
-      (analytics/inc! :metabase-metabot/llm-requests labels)
-      (let [timer  (u/start-timer)
-            result (try
-                     {:ok (thunk)}
-                     (catch Exception e
-                       (if (and (< attempt max-llm-retries)
-                                (retryable-error? e))
-                         (let [delay (retry-delay-ms attempt e)]
-                           (log/warn e "LLM call failed with retryable error, retrying"
-                                     {:attempt attempt
-                                      :max     max-llm-retries
-                                      :delay   delay
-                                      :status  (:status (ex-data e))})
-                           (analytics/inc! :metabase-metabot/llm-retries labels)
-                           {:retry delay})
-                         (do (analytics/inc! :metabase-metabot/llm-errors
-                                             (assoc labels :error-type (.getSimpleName (class e))))
-                             (throw e))))
-                     (finally
-                       (analytics/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))))]
-        (if-let [delay (:retry result)]
-          (do (Thread/sleep ^long delay)
-              (recur (inc attempt)))
-          (:ok result))))))
+  Records prometheus metrics with `:model` and `:tag` from `tracking-opts` as labels.
+
+  `retry?` is an optional predicate on the caught exception, ANDed with
+  [[retryable-error?]]; returning false surfaces the error without retrying. The
+  streaming path passes one to avoid replaying a partially-consumed response."
+  ([tracking-opts thunk]
+   (with-retries tracking-opts thunk (constantly true)))
+  ([tracking-opts thunk retry?]
+   (let [labels {:model (:model tracking-opts) :source (:tag tracking-opts)}]
+     (loop [attempt 1]
+       (analytics/inc! :metabase-metabot/llm-requests labels)
+       (let [timer  (u/start-timer)
+             result (try
+                      {:ok (thunk)}
+                      (catch Exception e
+                        (if (and (< attempt max-llm-retries)
+                                 (retry? e)
+                                 (retryable-error? e))
+                          (let [delay (retry-delay-ms attempt e)]
+                            (log/warn e "LLM call failed with retryable error, retrying"
+                                      {:attempt attempt
+                                       :max     max-llm-retries
+                                       :delay   delay
+                                       :status  (:status (ex-data e))})
+                            (analytics/inc! :metabase-metabot/llm-retries labels)
+                            {:retry delay})
+                          (do (analytics/inc! :metabase-metabot/llm-errors
+                                              (assoc labels :error-type (.getSimpleName (class e))))
+                              (throw e))))
+                      (finally
+                        (analytics/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))))]
+         (if-let [delay (:retry result)]
+           (do (Thread/sleep ^long delay)
+               (recur (inc attempt)))
+           (:ok result)))))))
 
 (defn call-llm
   "Call an LLM and stream processed parts.
@@ -316,9 +326,18 @@
                                :model      model
                                :part-count (count parts)
                                :tool-count (count tools)}
-               (with-retries
-                 tracking-opts
-                 #(reduce rf init (make-source)))))))))))
+               ;; `with-retries` re-runs its thunk on a retryable error, which re-opens the
+               ;; stream. That is safe only *before* any part has reached `rf`; once the consumer
+               ;; has seen output, replaying would duplicate it and re-execute tools. Gate retries
+               ;; on "nothing emitted yet" so a mid-stream failure surfaces instead of replaying.
+               (let [emitted? (volatile! false)
+                     rf*      (fn
+                                ([acc]   (rf acc))
+                                ([acc x] (vreset! emitted? true) (rf acc x)))]
+                 (with-retries
+                   tracking-opts
+                   #(reduce rf* init (make-source))
+                   (fn [_e] (not @emitted?))))))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.
@@ -364,7 +383,31 @@
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)
                                  arguments))
+                             parts)
+                error  (some (fn [{:keys [type error]}]
+                               (when (= type :error)
+                                 error))
                              parts)]
-            (or result
-                (throw (ex-info "LLM returned no tool call in structured response"
-                                {:parts parts})))))))))
+            (cond
+              ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
+              ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
+              ;; bogus map back to the caller as if it were a valid structured result.
+              (and (map? result) (contains? result :_raw_arguments))
+              (throw (ex-info "LLM returned malformed JSON in its structured tool call"
+                              {:parts         parts
+                               :error-code    "structured-output-invalid"
+                               :raw-arguments (:_raw_arguments result)}))
+
+              result
+              result
+
+              ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
+              ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
+              ;; see the real cause rather than a misleading "no tool call".
+              error
+              (throw (ex-info (or (:message error) "LLM stream returned an error")
+                              {:parts parts :error error :error-code "llm-stream-error"}))
+
+              :else
+              (throw (ex-info "LLM returned no tool call in structured response"
+                              {:parts parts})))))))))

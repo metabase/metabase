@@ -19,10 +19,10 @@ describe("RedirectIfSetup", () => {
   const setup = (hasUserSetup: boolean) =>
     renderWithProviders(
       <>
-        <Route component={RedirectIfSetup}>
-          <Route path="setup" component={() => <div>setup page</div>} />
+        <Route element={<RedirectIfSetup />}>
+          <Route path="setup" element={<div>setup page</div>} />
         </Route>
-        <Route path="/" component={() => <div>home page</div>} />
+        <Route path="/" element={<div>home page</div>} />
       </>,
       {
         storeInitialState: createMockState({

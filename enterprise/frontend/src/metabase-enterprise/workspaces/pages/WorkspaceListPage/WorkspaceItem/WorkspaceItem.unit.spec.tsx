@@ -47,7 +47,7 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText(/^Created /)).toBeInTheDocument();
   });
 
-  it("renders only hydrated databases", () => {
+  it("renders databases, falling back to the id when not hydrated", () => {
     setup({
       workspace: createMockWorkspace({
         id: 1,
@@ -66,6 +66,48 @@ describe("WorkspaceItem", () => {
     });
 
     expect(screen.getByText("Postgres")).toBeInTheDocument();
+    expect(screen.getByText("Database 20")).toBeInTheDocument();
+  });
+
+  it("warns when a database is not provisioned", () => {
+    setup({
+      workspace: createMockWorkspace({
+        id: 1,
+        name: "My workspace",
+        databases: [
+          createMockWorkspaceDatabase({
+            database_id: 10,
+            status: "unprovisioned",
+            database: createMockDatabase({ id: 10, name: "Postgres" }),
+          }),
+        ],
+      }),
+    });
+
+    expect(
+      screen.getByText("Failed to provision the workspace."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Postgres")).toBeInTheDocument();
+  });
+
+  it("does not warn when all databases are provisioned", () => {
+    setup({
+      workspace: createMockWorkspace({
+        id: 1,
+        name: "My workspace",
+        databases: [
+          createMockWorkspaceDatabase({
+            database_id: 10,
+            status: "provisioned",
+            database: createMockDatabase({ id: 10, name: "Postgres" }),
+          }),
+        ],
+      }),
+    });
+
+    expect(
+      screen.queryByText("Failed to provision the workspace."),
+    ).not.toBeInTheDocument();
   });
 
   it("offers a config download link in the menu", async () => {

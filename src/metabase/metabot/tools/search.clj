@@ -117,7 +117,7 @@
   "Fetch and merge database engine + name info for search results that have database IDs.
   `:database_name` is the human-readable name the LLM needs as the first slot of every
   portable FK in `construct_notebook_query`; surfacing it on every table/model search
-  result means the LLM doesn't need a separate `entity_details` round-trip just to learn
+  result means the LLM doesn't need a separate `read_resource` round-trip just to learn
   the DB name."
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
@@ -134,7 +134,7 @@
   "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question, model,
   and metric search results so the LLM can use it verbatim as `source-card:` (for
   questions/models) or inside a `[metric, {}, <entity_id>]` aggregation clause (for
-  metrics) without a follow-up `entity_details` / `read_resource` round-trip."
+  metrics) without a follow-up `read_resource` round-trip."
   [results]
   (let [carded-types #{"question" "model" "metric"}
         card-ids (->> results
@@ -158,7 +158,7 @@
   table's portable FK as the `source-table:` when it wants to use the metric. Without this
   enrichment the LLM sees the metric's `portable_entity_id` in search but has to either
   hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
-  extra `entity_details` round-trip. We read the two columns directly from
+  extra `read_resource` round-trip. We read the two columns directly from
   `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
   query per search call, regardless of number of metrics in the result set.
 
