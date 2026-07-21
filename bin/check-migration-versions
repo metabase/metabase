@@ -75,8 +75,18 @@ else
     exit 0
 fi
 
+# Per-feature migration directories (resources/migrations/NNN/) start at v60. Older versions keep a
+# single shared file (resources/migrations/0NN_update_migrations.yaml), and pre-60 release branches
+# only load those shared files (endsWithFilter: "_update_migrations.yaml"), so a per-feature file
+# targeting a pre-60 version would be silently ignored there.
+DIR_LAYOUT_FLOOR=60
+
 expected_dir=$(printf "%03d" "$version")
-echo "Expected directory: ${constraint} ${expected_dir}"
+if [[ "$version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+    echo "Expected location: resources/migrations/${expected_dir}_update_migrations.yaml (per-feature directories start at v${DIR_LAYOUT_FLOOR})"
+else
+    echo "Expected directory: ${constraint} ${expected_dir}"
+fi
 echo ""
 
 # Check that new migration files are in the correct directory
@@ -98,7 +108,10 @@ while IFS= read -r file; do
     dir_version=$((10#$dir))
     dir=$(printf "%03d" "$dir_version")
 
-    if [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
+    if [[ "$dir_version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+        echo "ERROR: ${file} targets v${dir_version}, but per-feature directories start at v${DIR_LAYOUT_FLOOR} — a pre-${DIR_LAYOUT_FLOOR} changeset goes in resources/migrations/${dir}_update_migrations.yaml" >&2
+        errors=$((errors + 1))
+    elif [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
         [[ "$constraint" == "<=" && "$dir_version" -gt "$version" ]]; then
         echo "ERROR: ${file} is in ${dir} but expected ${constraint} ${expected_dir}" >&2
         errors=$((errors + 1))
@@ -112,15 +125,18 @@ if [[ "$errors" -gt 0 ]]; then
     echo "Why: Migration files must be in the directory matching the target release version." >&2
     echo "A misplaced migration misrepresents when it was introduced and will break downgrades spanning more than one version." >&2
     echo "" >&2
-    if [[ "$constraint" == "<=" ]]; then
-        echo "To fix: move the file(s) to resources/migrations/${expected_dir}/ or any earlier version directory." >&2
+    if [[ "$version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+        echo "To fix: append the changeset(s) to resources/migrations/${expected_dir}_update_migrations.yaml." >&2
+        echo "Pre-${DIR_LAYOUT_FLOOR} releases only load the shared per-version files, not NNN/ directories." >&2
+    elif [[ "$constraint" == "<=" ]]; then
+        echo "To fix: move the file(s) to resources/migrations/${expected_dir}/ or any earlier version directory (>= 0${DIR_LAYOUT_FLOOR})." >&2
     else
         echo "To fix: move the file(s) to resources/migrations/${expected_dir}/." >&2
     fi
     echo "" >&2
     echo "If this PR will be backported, ensure the correct backport label is applied" >&2
     echo "and re-run CI, even if you plan to create the backport PRs manually:" >&2
-    echo "  - backport: all supported release lines (migrations go in the oldest one's directory)" >&2
+    echo "  - backport: all supported release lines (the check targets the oldest one)" >&2
     echo "  - single-backport: the current release only" >&2
     echo "  - double-backport / triple-backport: 1 or 2 releases before the current one" >&2
     echo "Base the label on the oldest release you're targeting, and simply close any unwanted PRs." >&2
