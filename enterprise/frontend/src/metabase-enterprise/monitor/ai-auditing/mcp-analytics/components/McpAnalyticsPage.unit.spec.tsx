@@ -184,11 +184,11 @@ function setup({ dataset }: { dataset?: Dataset } = {}) {
 
   return renderWithProviders(
     <Route
-      path="/admin/metabot/usage-auditing/mcp"
+      path="/monitor/ai-auditing/mcp"
       element={<RoutedMcpAnalyticsPage />}
     />,
     {
-      initialRoute: "/admin/metabot/usage-auditing/mcp",
+      initialRoute: "/monitor/ai-auditing/mcp",
       withRouter: true,
       storeInitialState: createMockState({
         settings: mockSettings({
