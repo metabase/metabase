@@ -72,6 +72,42 @@ const elements = [
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
+  //
+  // The embed.js script tag runtime (EAJS): an entrypoint artifact, app tier
+  // like the other embedding entrypoints. Boundaries don't restrict what app
+  // modules import, so the script's real constraint (it runs on customer
+  // pages and must not pull in app code) is guarded by its *transitive*
+  // runtime closure check instead: `bun run lint-embed-js-purity`.
+  // Contract shared between the embed.js script and the iframe content:
+  // postMessage protocol types (SdkIframeEmbedMessage & co.) and constants.
+  // The files still physically live under script/ — they are assigned to this
+  // module by exact path until the physical move into shared/ happens.
+  ...[
+    "frontend/src/metabase/embedding/embedding-iframe-sdk/script/types/embed.ts",
+    "frontend/src/metabase/embedding/embedding-iframe-sdk/script/constants.ts",
+    // postMessage helper used by both the iframe route and the sdk bundle
+    // (guest-embed auth); lives under iframe/ until the physical move.
+    "frontend/src/metabase/embedding/embedding-iframe-sdk/iframe/utils/request-session-token.ts",
+  ].map((pattern) =>
+    createElement({
+      type: "app",
+      name: "embedding-iframe-sdk-shared",
+      pattern,
+      mode: "full",
+    }),
+  ),
+  createElement({
+    type: "app",
+    name: "embedding-iframe-sdk-shared",
+    pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk/shared/**",
+  }),
+  createElement({
+    type: "app",
+    name: "embedding-iframe-sdk-script",
+    pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk/script/**",
+  }),
+  // The route rendered inside the embed iframe (iframe/ plus the storybook
+  // demo at the folder root): app tier, it composes the sdk bundle.
   createElement({
     type: "app",
     name: "embedding-iframe-sdk",
@@ -184,15 +220,6 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // The theme editor preview renders the live embed via the app-tier EAJS
-  // runtime; the edge is whitelisted via the allow rules below.
-  createElement({
-    type: "feature",
-    name: "admin-theme-preview",
-    pattern:
-      "frontend/src/metabase/admin/embedding/components/ThemeEditor/ResourcePreview.tsx",
-    mode: "full",
-  }),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
@@ -216,15 +243,27 @@ const elements = [
     }),
   ),
   ...[
-    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/auth-manager/AuthManager.ts",
     "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/handle-link.ts",
-    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/sdk-iframe-embedding-script-ee-plugins.ts",
     "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-plugins.ts",
-    "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-script-plugins.ts",
   ].map((pattern) =>
     createElement({
       type: "app",
       name: "embedding-iframe-sdk-ee",
+      pattern,
+      mode: "full",
+    }),
+  ),
+  // EE side of the embed.js script (SSO auth manager). Compiled into the
+  // same embed.js artifact as the script module above, so it shares its
+  // lean-closure constraint (`bun run lint-embed-js-purity`).
+  ...[
+    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/auth-manager/AuthManager.ts",
+    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/sdk-iframe-embedding-script-ee-plugins.ts",
+    "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-script-plugins.ts",
+  ].map((pattern) =>
+    createElement({
+      type: "app",
+      name: "embedding-iframe-sdk-script-ee",
       pattern,
       mode: "full",
     }),
@@ -387,15 +426,16 @@ const rules = [
     allow: ["app/embedding-sdk-bundle"],
     importKind: "type",
   },
-  // Admin theme preview drives the live embed through the EAJS runtime.
-  // Remove once the preview is lifted out of admin.
-  {
-    from: ["feature/admin-theme-preview"],
-    allow: ["feature/admin", "app/embedding-iframe-sdk"],
-  },
+  // The admin theme editor drives the live embed through the embed.js script.
+  // In the real import graph the script sits below admin (admin reaches it,
+  // never the reverse), so the edge is allowed directly instead of carving a
+  // single-file module around it.
   {
     from: ["feature/admin"],
-    allow: ["feature/admin-theme-preview"],
+    allow: [
+      "app/embedding-iframe-sdk-script",
+      "app/embedding-iframe-sdk-shared",
+    ],
   },
 ];
 
