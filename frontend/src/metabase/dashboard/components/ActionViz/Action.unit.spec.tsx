@@ -5,6 +5,7 @@ import {
   setupActionEndpoints,
   setupCardsEndpoints,
   setupDatabasesEndpoints,
+  setupPrefetchDashcardValuesEndpoint,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -42,7 +43,6 @@ const DASHBOARD_ID = 123;
 const DASHCARD_ID = 456;
 const ACTION_MODEL_ID = 777;
 const ACTION_EXEC_MOCK_PATH = `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`;
-const ACTION_PREFETCH_MOCK_PATH = `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute/values`;
 
 const DATABASE_ID = 1;
 
@@ -133,7 +133,7 @@ async function setup({
   const card = checkNotNull(dashcard.card);
 
   if (getActionIsEnabledInDatabase(dashcard)) {
-    fetchMock.post(ACTION_PREFETCH_MOCK_PATH, {});
+    setupPrefetchDashcardValuesEndpoint(DASHBOARD_ID, DASHCARD_ID, {});
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": 1 });
 
     // for ActionCreator modal (action edit modal)

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
+import { setupPrefetchDashcardValuesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockActionDashboardCard,
@@ -54,16 +54,6 @@ const dashcard = createMockActionDashboardCard();
 
 const dashboard = createMockDashboard();
 
-function setupPrefetch() {
-  fetchMock.post(
-    `path:/api/dashboard/${dashboard.id}/dashcard/${dashcard.id}/execute/values`,
-    {
-      parameter_1: "uno",
-      parameter_2: "dos",
-    },
-  );
-}
-
 const defaultProps: ActionFormProps = {
   action: mockAction,
   dashcard,
@@ -82,7 +72,10 @@ const defaultProps: ActionFormProps = {
 };
 
 function setup(options?: Partial<ActionFormProps>) {
-  setupPrefetch();
+  setupPrefetchDashcardValuesEndpoint(dashboard.id, dashcard.id, {
+    parameter_1: "uno",
+    parameter_2: "dos",
+  });
 
   renderWithProviders(<ActionVizForm {...defaultProps} {...options} />);
 }

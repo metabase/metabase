@@ -1,7 +1,9 @@
-import fetchMock from "fetch-mock";
 import { useCallback } from "react";
 
-import { setupActionsEndpoints } from "__support__/server-mocks";
+import {
+  setupActionsEndpoints,
+  setupPrefetchActionValuesEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -37,13 +39,6 @@ const implicitUpdateAction = createMockImplicitQueryAction({
   parameters: [parameter1, parameter2],
 });
 
-function setupPrefetch() {
-  fetchMock.post(`path:/api/action/${implicitUpdateAction.id}/execute/values`, {
-    parameter_1: "uno",
-    parameter_2: "dos",
-  });
-}
-
 function TestActionExecuteModal(props?: Partial<ActionExecuteModalProps>) {
   const dispatch = useDispatch();
   const fetchInitialValues = useCallback(
@@ -69,7 +64,10 @@ function TestActionExecuteModal(props?: Partial<ActionExecuteModalProps>) {
 
 function setup(props?: Partial<ActionExecuteModalProps>) {
   setupActionsEndpoints([implicitUpdateAction]);
-  setupPrefetch();
+  setupPrefetchActionValuesEndpoint(implicitUpdateAction.id, {
+    parameter_1: "uno",
+    parameter_2: "dos",
+  });
 
   renderWithProviders(<TestActionExecuteModal {...props} />);
 }

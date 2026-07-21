@@ -8,6 +8,7 @@ import type {
   Dataset,
   Document,
   ParametersForActionExecution,
+  PrefetchPublicDashcardValuesRequest,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -39,12 +40,6 @@ export type ExecutePublicDashcardActionRequest = {
   dashboardId: DashboardId;
   dashcardId: DashCardId;
   modelId: CardId | null;
-  parameters: ParametersForActionExecution;
-};
-
-export type PrefetchPublicDashcardValuesRequest = {
-  dashboardId: DashboardId;
-  dashcardId: DashCardId;
   parameters: ParametersForActionExecution;
 };
 

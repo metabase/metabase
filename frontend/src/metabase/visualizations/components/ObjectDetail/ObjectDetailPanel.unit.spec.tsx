@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupActionsEndpoints,
   setupCardDataset,
   setupDatabasesEndpoints,
+  setupPrefetchActionValuesEndpoint,
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -233,13 +233,6 @@ const actionsFromDatabaseWithDisabledActions = actions.map((action) => ({
   ...action,
   database_id: databaseWithActionsDisabled.id,
 }));
-
-function setupPrefetch() {
-  fetchMock.post(
-    `path:/api/action/${implicitUpdateAction.id}/execute/values`,
-    {},
-  );
-}
 
 function setup(
   options: Partial<ObjectDetailProps> &
@@ -479,7 +472,7 @@ describe("ObjectDetailPanel", () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
-    setupPrefetch();
+    setupPrefetchActionValuesEndpoint(implicitUpdateAction.id, {});
 
     expect(
       screen.queryByTestId("action-execute-modal"),
