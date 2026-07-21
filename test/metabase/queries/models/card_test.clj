@@ -1177,6 +1177,58 @@
         (is (= "Orders, Count"
                (:query_description (t2/select-one :model/Card :id id))))))))
 
+(deftest ^:parallel query-description-skipped-for-metadata-provider-fetches-test
+  (testing "metadata-provider fetches of metric cards do not compute a query description (#74954)"
+    ;; Pins `metadata-provider-fetch?`'s coupling to the `:metadata/*` model namespace: if those models stopped
+    ;; being recognized, the after-select would compute the description during a provider fetch (re-entering the
+    ;; metric recursion), and the skip assertions below would fail.
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp
+        [:model/Card
+         {id :id}
+         {:name "My metric"
+          :type :metric
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             lib.convert/->legacy-MBQL)}]
+        (testing "provider fetches skip it"
+          (is (not (contains? (t2/select-one :metadata/metric :id id) :query-description)))
+          (is (not (contains? (t2/select-one :metadata/card :id id) :query-description))))
+        (testing "a real :model/Card fetch still computes it"
+          (is (= "Orders, Count"
+                 (:query_description (t2/select-one :model/Card :id id)))))))))
+
+(defn- do-with-metric-cycle
+  "Build two metric cards whose `:metric` refs form a cycle A → B → A and call `f` with their ids."
+  [f]
+  (letfn [(metric-query [metric-id]
+            {:database (mt/id)
+             :type     :query
+             :query    {:source-table (mt/id :orders)
+                        :aggregation  [["metric" metric-id]]}})]
+    (let [count-query (let [mp (mt/metadata-provider)]
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            (lib/aggregate (lib/count))
+                            lib.convert/->legacy-MBQL))]
+      ;; the cyclic cards must stay out of the shared search queue that concurrent tests drain
+      (binding [search.ingestion/*disable-updates* true]
+        (mt/with-temp
+          [:model/Card {a-id :id} {:name "Metric A", :type :metric, :dataset_query count-query}
+           :model/Card {b-id :id} {:name "Metric B", :type :metric, :dataset_query (metric-query a-id)}]
+          ;; close the cycle with a raw update -- the card API rejects cyclic saves, so this is the non-API path
+          ;; (serdes, remote sync, pre-check data) by which a cycle actually reaches the DB
+          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
+          (f a-id b-id))))))
+
+(deftest query-description-metric-reference-cycle-test
+  (testing "selecting a metric card whose :metric references form a cycle completes with a :query_description (#74954)"
+    (do-with-metric-cycle
+     (fn [a-id b-id]
+       (is (= "Orders, Metric B"
+              (:query_description (t2/select-one :model/Card :id a-id))))
+       (is (= "Orders, Metric A"
+              (:query_description (t2/select-one :model/Card :id b-id))))))))
+
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"
     (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
@@ -1249,6 +1301,36 @@
         (is (not (t2/exists? :model/Card model-id))))
       (testing "converted question should survive"
         (is (t2/exists? :model/Card question-id))))))
+
+(deftest table-id-cleared-on-conversion-to-native-test
+  (testing "table_id should be set to nil when a question is converted to native SQL"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id card-id)))
+      (t2/update! :model/Card card-id
+                  {:dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
+      (is (nil? (t2/select-one-fn :table_id :model/Card :id card-id)))))
+  (testing "table_id should be set to nil when the source becomes a native model with no table"
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (t2/update! :model/Card card-id
+                  {:dataset_query {:database (mt/id)
+                                   :type     :query
+                                   :query    {:source-table (str "card__" model-id)}}})
+      (let [card (t2/select-one :model/Card :id card-id)]
+        (is (= model-id (:source_card_id card)))
+        (is (nil? (:table_id card))))))
+  (testing "table_id should be preserved on updates that don't touch the query, even when it can no longer be derived"
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (mt/mbql-query venues)}
+                   :model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (str "card__" model-id)}}}]
+      (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id card-id)))
+      ;; hard-delete the source card so the table can no longer be derived from the query
+      (t2/delete! :model/Card :id model-id)
+      (t2/update! :model/Card card-id {:name "Renamed, query untouched"})
+      (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id card-id))))))
 
 (deftest assert-no-source-card-id-for-native-query-test
   (testing "assertion fires if native query has source_card_id set"

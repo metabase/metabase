@@ -145,6 +145,7 @@ function GoogleSheetsConnectModal({
         value={linkType}
         onChange={setLinkType}
         data={
+          // Unjustified type cast. FIXME
           [
             { value: "folder", label: t`Entire folder` },
             { value: "file", label: t`Single Sheet` },

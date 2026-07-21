@@ -54,10 +54,6 @@ const baseMetabaseRestrictedConfig = {
       message: "Please import routing from `metabase/router` instead.",
     },
     {
-      name: "react-router-redux",
-      message: "Please import routing from `metabase/router` instead.",
-    },
-    {
       name: "@mantine/core",
       message: "Please import from `metabase/ui` instead.",
     },
@@ -91,6 +87,10 @@ const configs = [
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "**/custom-viz/fixtures/example_custom_viz_plugin/**",
+      // The data-app dev entry is served verbatim to the consumer's Vite (it
+      // imports `@metabase/embedding-sdk-react/*` + a virtual config module), so
+      // it can't be resolved/linted in this repo.
+      "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -379,6 +379,7 @@ const configs = [
       parser: tseslint.parser,
     },
     rules: {
+      "metabase/no-unjustified-type-casts": "error",
       "prefer-rest-params": "off",
       "react/prop-types": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
@@ -652,10 +653,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             {
-              name: "react-router-redux",
-              message: "Please import routing from `metabase/router` instead.",
-            },
-            {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
             },
@@ -693,10 +690,6 @@ const configs = [
             },
             {
               name: "react-router",
-              message: "Please import routing from `metabase/router` instead.",
-            },
-            {
-              name: "react-router-redux",
               message: "Please import routing from `metabase/router` instead.",
             },
             {
@@ -878,10 +871,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             {
-              name: "react-router-redux",
-              message: "Please import routing from `metabase/router` instead.",
-            },
-            {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
             },
@@ -956,10 +945,6 @@ const configs = [
           paths: [
             {
               name: "react-router",
-              message: "Please import routing from `metabase/router` instead.",
-            },
-            {
-              name: "react-router-redux",
               message: "Please import routing from `metabase/router` instead.",
             },
             {

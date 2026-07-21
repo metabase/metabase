@@ -169,6 +169,7 @@ export const BaseSMTPConnectionForm = ({
         .map((formKey) => getFullFormKey(formKey))
         .every(
           (field) =>
+            // Unjustified type cast. FIXME
             settingsDetails[field as keyof typeof settingsDetails]
               ?.is_env_setting,
         )

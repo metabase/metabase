@@ -648,18 +648,24 @@ const SdkDashboardInner = ({
                 />
               </MaybeStyledWrapper>
             ) : (
-              <DashboardQueryBuilder
-                onCreate={(question) => {
-                  setNewDashboardQuestionId(question.id);
-                  sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
-                  dashboardContextProviderRef.current?.refetchDashboard();
-                }}
-                onNavigateBack={() => {
-                  sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
-                }}
-                dataPickerProps={dataPickerProps}
-                onVisualizationChange={onVisualizationChange}
-              />
+              <MaybeStyledWrapper
+                skip={skipStyledWrapper}
+                className={className}
+                style={style}
+              >
+                <DashboardQueryBuilder
+                  onCreate={(question) => {
+                    setNewDashboardQuestionId(question.id);
+                    sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
+                    dashboardContextProviderRef.current?.refetchDashboard();
+                  }}
+                  onNavigateBack={() => {
+                    sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
+                  }}
+                  dataPickerProps={dataPickerProps}
+                  onVisualizationChange={onVisualizationChange}
+                />
+              </MaybeStyledWrapper>
             ),
           )
           .exhaustive()}
@@ -669,6 +675,7 @@ const SdkDashboardInner = ({
   );
 };
 
+// Unjustified type cast. FIXME
 export const SdkDashboard = withPublicComponentWrapper(SdkDashboardInner, {
   supportsGuestEmbed: true,
 }) as typeof SdkDashboardInner &
@@ -747,8 +754,9 @@ function DashboardQueryBuilder({
       }}
       entityTypes={dataPickerProps?.entityTypes}
       withChartTypeSelector
-      // The default value is 600px and it cuts off the "Visualize" button.
-      height="700px"
+      // Fill the available space so the query builder matches the dashboard's
+      // sizing instead of a fixed height that leaves whitespace / scrolls.
+      height="100%"
       onVisualizationChange={onVisualizationChange}
     />
   );

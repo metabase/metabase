@@ -13,6 +13,7 @@
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [ring.adapter.jetty :as jetty]
    [ring.middleware.params :refer [wrap-params]]
    [toucan2.core :as t2])
@@ -318,6 +319,23 @@
                        :query-params {:token "123"
                                       :page 1}})
                (first @requests)))))))
+
+(deftest send!-humanized-invalid-url-test
+  (mu/disable-enforcement
+    (testing "a missing webhook URL throws a human-readable error rather than an NPE (#76802)"
+      (doseq [channel [{:type :channel/http}
+                       {:type :channel/http :details {}}
+                       {:type :channel/http :details {:url "" :auth-method "none"}}]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No URL is configured for this webhook"
+                              (channel/send! channel nil)))))
+    (testing "an unparseable webhook URL throws a human-readable error (#76802)"
+      (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid webhook URL"
+                              (channel/send! {:type    :channel/http
+                                              :details {:url "not-a-url" :auth-method "none"}}
+                                             nil)))))))
 
 (deftest alert-http-channel-e2e-test
   (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
+import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
@@ -21,7 +22,6 @@ import {
   enterChatMessage,
   hideMetabot,
   input,
-  lastChatMessage,
   mockAgentEndpoint,
   resetChatButton,
   setup,
@@ -120,10 +120,12 @@ describe("metabot > ui", () => {
 
       await assertVisible();
       act(() => {
+        // Unjustified type cast. FIXME
         store.dispatch(logout(undefined) as any);
       });
       await assertNotVisible();
     } finally {
+      // Unjustified type cast. FIXME
       (domModule.reload as any).mockRestore();
     }
   });
@@ -232,71 +234,46 @@ describe("metabot > ui", () => {
     expect(secondParagraph).toBeInTheDocument();
   });
 
-  it("should present the user an option to retry a response", async () => {
-    setup();
-    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+  it("should warn the chat is getting long w/ ability to clear it", async () => {
+    const { store } = setup();
+    const longMsg = "x".repeat(LONG_CONVO_MSG_LENGTH_THRESHOLD / 2);
 
-    await enterChatMessage("Who is your favorite?");
-    const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(/You, but don't tell anyone./);
+    act(() => {
+      store.dispatch(
+        metabotActions.addUserMessage({
+          id: "1",
+          type: "text",
+          message: longMsg,
+          agentId: "omnibot",
+        }),
+      );
+    });
+    expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
     expect(
-      await within(lastMessage!).findByTestId("metabot-chat-message-retry"),
-    ).toBeInTheDocument();
-  });
+      screen.queryByText(/This chat is getting long/),
+    ).not.toBeInTheDocument();
 
-  it("should successfully rewind a response", async () => {
-    setup();
-    mockAgentEndpoint({
-      events: [
-        { type: "text-start", id: "t0" },
-        { type: "text-delta", id: "t0", delta: "Let me think..." },
-        { type: "text-end", id: "t0" },
-        ...whoIsYourFavoriteResponse,
-      ],
+    act(() => {
+      store.dispatch(
+        metabotActions.addUserMessage({
+          id: "2",
+          type: "text",
+          message: longMsg,
+          agentId: "omnibot",
+        }),
+      );
     });
-    await enterChatMessage("Who is your favorite?");
-
-    const beforeMessages = await screen.findByTestId("metabot-chat-messages");
-    expect(beforeMessages).toHaveTextContent(/Let me think.../);
-    expect(beforeMessages).toHaveTextContent(/You, but don't tell anyone./);
-
-    mockAgentEndpoint({
-      events: [
-        { type: "text-start", id: "t1" },
-        { type: "text-delta", id: "t1", delta: "The answer is always you." },
-        { type: "text-end", id: "t1" },
-        { type: "data-state", data: { queries: {} } },
-        { type: "finish", finishReason: "stop" },
-      ],
-    });
-    await userEvent.click(
-      await screen.findByTestId("metabot-chat-message-retry"),
-    );
-
-    const afterMessages = await screen.findByTestId("metabot-chat-messages");
-
-    expect(afterMessages).not.toHaveTextContent(/Let me think.../);
-    expect(afterMessages).not.toHaveTextContent(/You, but don't tell anyone./);
-
-    expect(afterMessages).toHaveTextContent(/The answer is always you./);
-  });
-
-  it("should show retry option for error messages", async () => {
-    setup();
-
-    mockAgentEndpoint({
-      events: [
-        { type: "error", errorText: "Anthropic API key expired or invalid" },
-      ],
-    });
-
-    await enterChatMessage("Who is your favorite?");
-
-    const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(/Something went wrong/);
     expect(
-      within(lastMessage!).getByTestId("metabot-chat-message-retry"),
+      await screen.findByText(/This chat is getting long/),
     ).toBeInTheDocument();
+    await userEvent.click(await screen.findByTestId("metabot-reset-long-chat"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/This chat is getting long/),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText(/xxxxxxx/)).not.toBeInTheDocument();
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {

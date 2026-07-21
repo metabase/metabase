@@ -14,6 +14,7 @@
                   :postgres "postgres"
                   :mysql "mysql"
                   :sqlserver "tsql"
+                  :clickhouse "clickhouse"
                   nil)
         replacements' (-> replacements
                           (update :tables #(when % (vec %)))
@@ -118,3 +119,19 @@
            (replace-names :postgres
                           "SELECT * FROM orders"
                           {:tables {{:table "orders"} {:schema "public" :table "orders"}}})))))
+
+(deftest ^:parallel clickhouse-positional-placeholders-preserved-test
+  (testing "ClickHouse: positional `?` placeholders survive the rewrite"
+    ;; sqlglot renders ClickHouse placeholders in named-parameter syntax, which turns a
+    ;; positional `?` into the invalid `{?: }` — this broke workspace-isolated incremental
+    ;; transforms, whose compiled checkpoint filters carry prepared-statement params
+    ;; (GDGT-2847). Patched in sql_tools.py.
+    (is (= "SELECT * FROM \"zz\".\"iso__src\" WHERE (\"ts\" > \"parseDateTimeBestEffort\"(?)) AND (\"ts\" <= \"parseDateTimeBestEffort\"(?))"
+           (replace-names :clickhouse
+                          "SELECT * FROM `zz`.`src` WHERE (`ts` > `parseDateTimeBestEffort`(?)) AND (`ts` <= `parseDateTimeBestEffort`(?))"
+                          {:tables {{:schema "zz" :table "src"} "iso__src"}}))))
+  (testing "ClickHouse: named query parameters still render as {name: Type}"
+    (is (= "SELECT * FROM \"zz\".\"iso__src\" WHERE \"id\" = {uid: UInt32}"
+           (replace-names :clickhouse
+                          "SELECT * FROM `zz`.`src` WHERE `id` = {uid: UInt32}"
+                          {:tables {{:schema "zz" :table "src"} "iso__src"}})))))

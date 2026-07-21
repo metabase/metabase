@@ -31,6 +31,7 @@ function createProps(
   updateAttributes?: NodeViewProps["updateAttributes"],
 ) {
   const node = { attrs: { entityId: entity.id, model, label } };
+  // Unjustified type cast. FIXME
   return {
     node,
     updateAttributes: updateAttributes ?? jest.fn(),
@@ -211,7 +212,7 @@ describe("SmartLink", () => {
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
         <Router history={historyWithBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
+          <Route path="*" element={<SmartLinkComponent {...props} />} />
         </Router>,
       );
 
@@ -241,7 +242,7 @@ describe("SmartLink", () => {
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
         <Router history={historyNoBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
+          <Route path="*" element={<SmartLinkComponent {...props} />} />
         </Router>,
       );
 

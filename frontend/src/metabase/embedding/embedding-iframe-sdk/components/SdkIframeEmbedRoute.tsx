@@ -117,6 +117,7 @@ export const SdkIframeEmbedRoute = () => {
     return <SdkIframeExistingUserSessionInProductionError />;
   }
 
+  // Unjustified type cast. FIXME
   const authConfig = {
     isGuest: embedSettings.isGuest,
     metabaseInstanceUrl: embedSettings.instanceUrl,

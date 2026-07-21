@@ -104,5 +104,6 @@ export default withRouteProps(
   connect(
     mapStateToProps,
     mapDispatchToProps,
+    // Unjustified type cast. FIXME
   )(FieldDetailContainer as unknown as React.ComponentType<InjectedRouteProps>),
 );

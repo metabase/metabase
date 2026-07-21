@@ -58,6 +58,7 @@ export const refreshGuestSession = createAsyncThunk(
 export const getOrRefreshGuestSession = createAsyncThunk(
   "sdk/guest-embed/GET_OR_REFRESH_TOKEN",
   async (authConfig: MetabaseAuthConfig, { dispatch, getState }) => {
+    // Unjustified type cast. FIXME
     const state = getState() as SdkStoreState;
     const tokenState = getSessionTokenState(state);
     const currentToken = tokenState.rawToken;

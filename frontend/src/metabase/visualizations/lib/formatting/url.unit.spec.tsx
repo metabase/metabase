@@ -7,6 +7,7 @@ import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,
@@ -15,6 +16,8 @@ import {
 
 import { formatUrl, slugify } from "./url";
 import { formatValue } from "./value";
+
+registerJsxFormatting();
 
 const SITE_URL = "http://localhost:3000";
 
@@ -42,6 +45,7 @@ describe("formatUrl", () => {
       pluginsConfig: { handleLink },
     });
 
+    // Unjustified type cast. FIXME
     const node = formatUrl(url, {
       jsx: true,
       rich: true,
@@ -69,6 +73,7 @@ describe("formatUrl", () => {
       pluginsConfig: { handleLink },
     });
 
+    // Unjustified type cast. FIXME
     const node = formatUrl(url, {
       jsx: true,
       rich: true,
@@ -93,6 +98,7 @@ describe("formatUrl", () => {
   it("should return a component for http:, https:, and mailto: links in jsx mode", () => {
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatUrl("http://metabase.com/", {
           jsx: true,
           rich: true,
@@ -102,6 +108,7 @@ describe("formatUrl", () => {
     ).toEqual(true);
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatUrl("https://metabase.com/", {
           jsx: true,
           rich: true,
@@ -111,6 +118,7 @@ describe("formatUrl", () => {
     ).toEqual(true);
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatUrl("mailto:tom@metabase.test", {
           jsx: true,
           rich: true,
@@ -123,6 +131,7 @@ describe("formatUrl", () => {
   it("should return a component for custom protocols if the column type is URL", () => {
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatUrl("myproto:some-custom-thing", {
           jsx: true,
           rich: true,
@@ -135,6 +144,7 @@ describe("formatUrl", () => {
 
   it("should not return a component for bad urls if the column type is URL", () => {
     expect(
+      // Unjustified type cast. FIXME
       formatUrl("invalid-blah-blah-blah", {
         jsx: true,
         rich: true,
@@ -145,6 +155,7 @@ describe("formatUrl", () => {
 
   it("should not return a component for custom protocols if the column type isn't URL", () => {
     expect(
+      // Unjustified type cast. FIXME
       formatUrl("myproto:some-custom-thing", {
         jsx: true,
         rich: true,
@@ -155,6 +166,7 @@ describe("formatUrl", () => {
   it("should not return a link component for unrecognized links in jsx mode", () => {
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatUrl("metabase.com", { jsx: true, rich: true }) as ReactElement,
         ExternalLink,
       ),
@@ -163,12 +175,14 @@ describe("formatUrl", () => {
 
   it("should return a string for javascript:, data:, and other links in jsx mode", () => {
     expect(
+      // Unjustified type cast. FIXME
       formatUrl("javascript:alert('pwnd')", {
         jsx: true,
         rich: true,
       }) as ReactElement,
     ).toEqual("javascript:alert('pwnd')");
     expect(
+      // Unjustified type cast. FIXME
       formatUrl("data:text/plain;charset=utf-8,hello%20world", {
         jsx: true,
         rich: true,
@@ -178,6 +192,7 @@ describe("formatUrl", () => {
 
   describe("when view_as = link", () => {
     it("should return link component for type/URL and  view_as = link", () => {
+      // Unjustified type cast. FIXME
       const formatted = formatUrl("http://whatever", {
         jsx: true,
         rich: true,
@@ -188,6 +203,7 @@ describe("formatUrl", () => {
     });
 
     it("should return link component using link_url and link_text when specified", () => {
+      // Unjustified type cast. FIXME
       const formatted = formatUrl("http://not.metabase.com", {
         jsx: true,
         rich: true,
@@ -203,6 +219,7 @@ describe("formatUrl", () => {
     });
 
     it("should return link component using link_text and the value as url when link_url is empty", () => {
+      // Unjustified type cast. FIXME
       const formatted = formatUrl("http://metabase.com", {
         jsx: true,
         rich: true,
@@ -218,6 +235,7 @@ describe("formatUrl", () => {
     });
 
     it("should return link component using link_url and the value as text when link_text is empty", () => {
+      // Unjustified type cast. FIXME
       const formatted = formatUrl("metabase link", {
         jsx: true,
         rich: true,
@@ -238,6 +256,7 @@ describe("formatUrl", () => {
         base_type: TYPE.Integer,
       });
       const value = 35660212261;
+      // Unjustified type cast. FIXME
       const formatted = formatValue(value, {
         jsx: true,
         rich: true,
@@ -274,6 +293,7 @@ describe("formatUrl", () => {
         base_type: TYPE.Float,
       });
       const value = 1234567.89;
+      // Unjustified type cast. FIXME
       const formatted = formatValue(value, {
         jsx: true,
         rich: true,
@@ -314,6 +334,7 @@ describe("formatUrl", () => {
       });
       const linkValue = "Widget";
       const amountValue = 1234567.89;
+      // Unjustified type cast. FIXME
       const formatted = formatValue(linkValue, {
         jsx: true,
         rich: true,
@@ -345,6 +366,7 @@ describe("formatUrl", () => {
     });
 
     it("should not return an ExternalLink in jsx + rich mode if there's click behavior", () => {
+      // Unjustified type cast. FIXME
       const formatted = formatValue("http://metabase.com/", {
         jsx: true,
         rich: true,

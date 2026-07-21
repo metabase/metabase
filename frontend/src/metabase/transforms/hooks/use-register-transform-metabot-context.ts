@@ -47,6 +47,7 @@ export const registerTransformMetabotContextFn = ({
 
   return {
     user_is_viewing: [
+      // Unjustified type cast. FIXME
       {
         ...transform,
         type: "transform",

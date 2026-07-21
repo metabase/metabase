@@ -269,6 +269,7 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
       isItemCollection(item) &&
       (isRootPersonalCollection(item) || isDedicatedTenantCollectionRoot(item))
     ) &&
+    // Unjustified type cast. FIXME
     !isLibraryCollection(item as Pick<Collection, "type">) &&
     item.model !== "table" &&
     !item.archived

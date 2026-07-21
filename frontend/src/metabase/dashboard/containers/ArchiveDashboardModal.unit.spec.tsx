@@ -3,7 +3,7 @@ import {
   setupDashboardNotFoundEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { WithRouterProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { ArchiveDashboardModalConnectedInner } from "./ArchiveDashboardModal";
@@ -17,12 +17,16 @@ const setup = ({
   slug?: string;
   onClose?: () => void;
 } = {}) => {
-  const props = {
-    onClose,
-    params: { slug },
-  } as unknown as WithRouterProps & { onClose: () => void };
-
-  renderWithProviders(<ArchiveDashboardModalConnectedInner {...props} />);
+  renderWithProviders(
+    <Route
+      path="/dashboard(/:slug)"
+      element={<ArchiveDashboardModalConnectedInner onClose={onClose} />}
+    />,
+    {
+      withRouter: true,
+      initialRoute: slug ? `/dashboard/${slug}` : "/dashboard",
+    },
+  );
 
   return { onClose };
 };

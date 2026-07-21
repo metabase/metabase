@@ -55,12 +55,14 @@ export const setupConfigWatcher = () => {
         return Reflect.get(target, prop, receiver);
       },
       set(metabaseConfig, prop, newValue) {
+        // Unjustified type cast. FIXME
         metabaseConfig[prop as string] = newValue;
         updateAllEmbeds({ [prop]: newValue });
         return true;
       },
     });
 
+  // Unjustified type cast. FIXME
   let currentConfig = (window as any).metabaseConfig || {};
   let proxyConfig: Record<string, unknown> = createProxy(currentConfig);
 
@@ -116,6 +118,7 @@ const raiseError = (message: string) => {
 function assertFieldCanBeUpdated(
   newValues: Partial<SdkIframeEmbedElementSettings>,
 ) {
+  // Unjustified type cast. FIXME
   const currentConfig = (window as any).metabaseConfig || {};
   for (const field of DISABLE_UPDATE_FOR_KEYS) {
     if (
@@ -137,6 +140,7 @@ function assertValidMetabaseConfigField(
   for (const field in newValues) {
     if (
       !ALLOWED_EMBED_SETTING_KEYS_MAP.base.includes(
+        // Unjustified type cast. FIXME
         field as AllowedMetabaseConfigKey,
       )
     ) {
@@ -170,6 +174,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   get globalSettings() {
+    // Unjustified type cast. FIXME
     return (window as any).metabaseConfig || {};
   }
 
@@ -184,9 +189,11 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         }
         return acc;
       },
+      // Unjustified type cast. FIXME
       {} as Record<string, unknown>,
     );
 
+    // Unjustified type cast. FIXME
     return {
       ...this.globalSettings,
       ...attributesConverted,
@@ -203,6 +210,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   ): void {
     if (type === "ready") {
       const eventType = type;
+      // Unjustified type cast. FIXME
       const handler = listener as SdkIframeEmbedEventHandler;
       if (!this._eventHandlers.has(eventType)) {
         this._eventHandlers.set(eventType, new Set());
@@ -229,6 +237,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   ): void {
     if (type === "ready") {
       const eventType = type;
+      // Unjustified type cast. FIXME
       const handler = listener as SdkIframeEmbedEventHandler;
       const handlers = this._eventHandlers.get(eventType);
 
@@ -249,6 +258,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
    * Send a message with the new settings
    */
   _updateSettings(settings: Partial<SdkIframeEmbedElementSettings>) {
+    // Unjustified type cast. FIXME
     const newValues = {
       ...this.properties,
       ...settings,
@@ -316,9 +326,11 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return;
     }
 
+    // Unjustified type cast. FIXME
     const key = attributeToSettingKey(
       attrName,
     ) as keyof SdkIframeEmbedElementSettings;
+    // Unjustified type cast. FIXME
     if ((DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key)) {
       console.error(`${key} cannot be updated after the embed is created`);
       return;
@@ -501,10 +513,12 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
             return acc;
           }
 
+          // Unjustified type cast. FIXME
           acc[key as keyof typeof acc] = value;
 
           return acc;
         },
+        // Unjustified type cast. FIXME
         {} as Message["data"],
       );
 
@@ -681,6 +695,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return undefined;
     }
 
+    // Unjustified type cast. FIXME
     return parsed as T;
   }
 
@@ -750,6 +765,7 @@ function createCustomElement<
   attributeNames: U,
   decorate?: (Base: ConcreteEmbedElementConstructor<U>) => C,
 ): C {
+  // Unjustified type cast. FIXME
   const Base = class extends MetabaseEmbedElement<U> {
     protected _componentName: string = componentName;
     protected _attributeNames: U = attributeNames;
@@ -759,6 +775,7 @@ function createCustomElement<
     }
   } as unknown as ConcreteEmbedElementConstructor<U>;
 
+  // Unjustified type cast. FIXME
   const CustomEmbedElement = (decorate ? decorate(Base) : Base) as C;
 
   if (typeof window !== "undefined" && !customElements.get(componentName)) {
@@ -847,7 +864,9 @@ const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
 
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
+  // Unjustified type cast. FIXME
   (window as any)["metabase.embed"] = {
+    // Unjustified type cast. FIXME
     ...(window as any)["metabase.embed"],
   };
 }

@@ -51,6 +51,7 @@ export async function connectToInstanceAuthSso(
     }
     throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
       instanceUrl: url,
+      // Unjustified type cast. FIXME
       status: (e as any)?.status,
     });
   }

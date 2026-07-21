@@ -1,4 +1,5 @@
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
+import { withRouteProps } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { SecurityCenterBanner } from "./components/SecurityCenterBanner/SecurityCenterBanner";
@@ -10,7 +11,8 @@ import { SecurityCenterPromoCard } from "./components/SecurityCenterPromoCard/Se
 export function initializePlugin() {
   if (hasPremiumFeature("admin_security_center")) {
     PLUGIN_SECURITY_CENTER.isEnabled = true;
-    PLUGIN_SECURITY_CENTER.SecurityCenterPage = SecurityCenterPage;
+    PLUGIN_SECURITY_CENTER.SecurityCenterPage =
+      withRouteProps(SecurityCenterPage);
     PLUGIN_SECURITY_CENTER.SecurityCenterBanner = SecurityCenterBanner;
     PLUGIN_SECURITY_CENTER.SecurityCenterPromoCard = SecurityCenterPromoCard;
     PLUGIN_SECURITY_CENTER.SecurityCenterNavItem = SecurityCenterNavItem;

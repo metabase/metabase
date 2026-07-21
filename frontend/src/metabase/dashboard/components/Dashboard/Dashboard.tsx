@@ -145,6 +145,7 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   RefreshPeriod: typeof RefreshWidget;
 };
 
+// Unjustified type cast. FIXME
 const DashboardComponent = DashboardDefaultView as DashboardComponentType;
 DashboardComponent.Header = DashboardHeader;
 DashboardComponent.Grid = Grid;

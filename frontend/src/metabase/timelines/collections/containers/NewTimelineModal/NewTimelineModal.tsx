@@ -31,6 +31,7 @@ function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
 
   const onSubmit = async (values: Partial<Timeline>) => {
     const timeline = await createTimeline(
+      // Unjustified type cast. FIXME
       values as CreateTimelineRequest,
     ).unwrap();
     dispatch(push(Urls.timelineInCollection(timeline)));

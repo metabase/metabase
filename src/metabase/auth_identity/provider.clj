@@ -284,6 +284,13 @@
              :success? true
              :redirect-url redirect-url))))
 
+(defenterprise apply-mfa-gate
+  "Decide whether a successful first-factor login must complete a second factor before a session is
+  created. OSS has no native MFA, so the login result passes through unchanged."
+  metabase-enterprise.mfa.core
+  [_provider login-result]
+  login-result)
+
 (methodical/defmethod login! :around ::provider
   [provider request]
   (as-> (merge request (authenticate provider request)) $
@@ -296,9 +303,11 @@
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
     (next-method provider $)
+    (apply-mfa-gate provider $)
     (cond-> $
-      (:user $) (create-session! provider))
-    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key])))
+      (and (:user $) (not (:mfa/pending? $))) (create-session! provider))
+    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key
+                    :mfa/pending? :mfa/methods :mfa/first-factor])))
 
 (defenterprise sso-user-fields
   "Return the list of User model fields that should be populated from SSO user data.

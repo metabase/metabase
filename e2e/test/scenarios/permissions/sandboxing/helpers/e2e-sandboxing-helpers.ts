@@ -43,6 +43,7 @@ type SandboxPolicy = {
 
 const customColumnTypeToFormula: Record<CustomColumnType, string> =
   customColumnTypeToFormulaUntyped;
+// Unjustified type cast. FIXME
 const customColumnTypes = Object.keys(
   customColumnTypeToFormula,
 ) as CustomColumnType[];
@@ -422,6 +423,7 @@ const getQuestionDescription = (
 ) => {
   // Extract the card ID from the response URL
   const cardId = Number(response?.url?.match(/\/card\/(\d+)/)?.[1]);
+  // Unjustified type cast. FIXME
   const questionName = (questions.find((q) => q.id === cardId) as any)?.name as
     | string
     | undefined;
@@ -538,6 +540,7 @@ export const getDashcardResponses = (
     .wait(new Array(questions.length).fill("@dashcardQuery"))
     .then((interceptions) => {
       const responses = interceptions.map(
+        // Unjustified type cast. FIXME
         (i) => i.response as unknown as DashcardQueryResponse,
       );
       return { questions, responses };
@@ -546,6 +549,7 @@ export const getDashcardResponses = (
 
 export const getCardResponses = (questions: SimpleCollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
+  // Unjustified type cast. FIXME
   return H.cypressWaitAll(
     questions.map((question) =>
       cy.request<DatasetResponse>({
@@ -595,6 +599,7 @@ export const assertNoResultsOrValuesAreSandboxed = (
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainGizmosAndWidgets({
       responses: [response],
+      // Unjustified type cast. FIXME
       questions: [adhocQuestionData as unknown as SimpleCollectionItem],
     }),
   );
@@ -624,6 +629,7 @@ export const assertAllResultsAndValuesAreSandboxed = (
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainOnlyOneCategory({
       responses: [response],
+      // Unjustified type cast. FIXME
       questions: [adhocQuestionData as unknown as SimpleCollectionItem],
       productCategory,
     }),

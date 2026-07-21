@@ -9,8 +9,8 @@ import {
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { Button } from "metabase/ui";
 import { parseNumberParam } from "metabase/urls";
 

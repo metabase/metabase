@@ -47,6 +47,7 @@ export function MetabotChatInput() {
         autosize
         minRows={1}
         maxRows={4}
+        // Unjustified type cast. FIXME
         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}

@@ -25,7 +25,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,
@@ -42,6 +42,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import { MainNavbar } from "../MainNavbar";
+
+const RoutedMainNavbar = withRouteProps(MainNavbar);
 
 export type SetupOpts = {
   pathname?: string;
@@ -225,9 +227,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      component={(props) => (
-        <MainNavbar {...props} isOpen dashboard={storeDashboard} />
-      )}
+      element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
     />,
     {
       storeInitialState,

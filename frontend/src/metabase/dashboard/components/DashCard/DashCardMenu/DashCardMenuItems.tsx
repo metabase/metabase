@@ -42,6 +42,7 @@ export const DashCardMenuItems = ({
       mode: "query" | "view" | "notebook" = "notebook",
     ) => dispatch(editQuestion(question, mode)),
   } = useDashboardContext();
+  // Unjustified type cast. FIXME
   const dashcardMenuItems = dashcardMenu as
     | DashboardCardCustomMenuItem
     | undefined;
