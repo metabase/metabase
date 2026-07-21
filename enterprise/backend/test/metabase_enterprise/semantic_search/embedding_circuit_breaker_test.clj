@@ -91,10 +91,39 @@
       (mt/with-dynamic-fn-redefs
         [health-inspector/run-and-save-check! (fn [check-name] (swap! persisted conj check-name))]
         (#'semantic.embedding/on-embedder-circuit-state-change! :open)
-        ;; the listener runs the hooks on a fire-and-forget future; give it a moment to drain
+        ;; the listener runs the hooks async on the serializing agent; give it a moment to drain
         (is (loop [tries 50]
               (cond
                 (= #{:semantic-search-index :nlq-retrieval} (set @persisted)) true
                 (pos? tries) (do (Thread/sleep 20) (recur (dec tries)))
                 :else false))
             (str "expected both checks persisted, got " @persisted))))))
+
+(deftest ^:sequential state-changes-run-serially-in-arrival-order-test
+  (testing "transitions queue through one agent: a later transition's hooks can't overtake an earlier
+           transition whose hook is still blocked (e.g. on a probe against a down service), so a slow
+           pre-recovery check can't persist its stale result after the recovery one"
+    (let [events (atom [])
+          gate   (promise)
+          hook   (fn [state]
+                   (when (= :half-open state)
+                     (deref gate 5000 :timed-out))
+                   (swap! events conj state))]
+      (mt/with-dynamic-fn-redefs
+        [health-inspector/run-and-save-check! (constantly nil)]
+        (try
+          (swap! semantic.embedding/embedder-circuit-state-change-hooks conj hook)
+          (#'semantic.embedding/on-embedder-circuit-state-change! :half-open)
+          (#'semantic.embedding/on-embedder-circuit-state-change! :closed)
+          (Thread/sleep 100)
+          (is (= [] @events) ":closed stays queued behind the blocked :half-open run")
+          (deliver gate :go)
+          (is (loop [tries 50]
+                (cond
+                  (= [:half-open :closed] @events) true
+                  (pos? tries) (do (Thread/sleep 20) (recur (dec tries)))
+                  :else false))
+              (str "expected transitions to run in arrival order once unblocked, got " @events))
+          (finally
+            (deliver gate :go)
+            (swap! semantic.embedding/embedder-circuit-state-change-hooks disj hook)))))))

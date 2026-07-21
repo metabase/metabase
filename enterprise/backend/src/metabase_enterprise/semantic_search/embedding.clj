@@ -190,9 +190,19 @@
   embedder-circuit-state-change-hooks
   (atom (ordered-set)))
 
+(defonce ^:private embedder-circuit-hook-runner
+  ;; One agent, so transitions run strictly in arrival order: concurrent futures would let a slow earlier
+  ;; transition (e.g. its check blocked on a probe against a down service) persist a stale result AFTER a
+  ;; later recovery transition's healthy one, leaving a pre-recovery "unreachable" row standing.
+  ;; :continue so an unexpected action error can't wedge the agent for the process lifetime.
+  (agent nil
+         :error-mode :continue
+         :error-handler (fn [_agent e] (log/error e "Embedder circuit hook runner errored"))))
+
 (defn- on-embedder-circuit-state-change!
-  "Run the registered [[embedder-circuit-state-change-hooks]] off the failsafe callback thread, in
-  registration order, each isolated so one failing hook doesn't starve the rest."
+  "Run the registered [[embedder-circuit-state-change-hooks]] off the failsafe callback thread -- one
+  transition at a time in arrival order, hooks in registration order, each isolated so one failing hook
+  doesn't starve the rest."
   [state]
   ;; Log level tracks the resulting state's severity:
   ;;   :open      -> WARN  (degradation)
@@ -202,12 +212,14 @@
   (if (= :open state)
     (log/warn "Embedding service circuit breaker opened" {:state state})
     (log/info "Embedding service circuit breaker changed state" {:state state}))
-  (future
-    (doseq [hook @embedder-circuit-state-change-hooks]
-      (try
-        (hook state)
-        (catch Throwable e
-          (log/error e "Embedder circuit state-change hook failed"))))))
+  (send-off
+   embedder-circuit-hook-runner
+   (fn [_]
+     (doseq [hook @embedder-circuit-state-change-hooks]
+       (try
+         (hook state)
+         (catch Throwable e
+           (log/error e "Embedder circuit state-change hook failed")))))))
 
 (defonce ^:private embedder-circuit-breaker
   ;; No failure condition, so every embedding-call failure counts toward opening the breaker. That suits an
