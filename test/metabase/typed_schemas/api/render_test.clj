@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.typed-schemas.api.render :as typed-schemas.api.render]))
+   [metabase.typed-schemas :as typed-schemas]))
 
 (def ^:private orders-question
   {:type        "card"
@@ -71,7 +71,7 @@
                                                              :jsType   "Date"}}}}})
 
 (deftest typescript-renderer-emits-comments-and-runtime-metadata-test
-  (let [body (typed-schemas.api.render/render-typescript compacting-schema)]
+  (let [body (typed-schemas/render-typescript compacting-schema)]
     ;; Emit comments to provide context for agents
     (is (str/includes? body "// Description: Saved orders"))
     (is (str/includes? body "// Description: Total order revenue"))
@@ -87,7 +87,7 @@
     (is (not (str/includes? body "displayName: \"Payment Method\"")))))
 
 (deftest typescript-renderer-compacts-metric-dimensions-test
-  (let [body (typed-schemas.api.render/render-typescript compacting-schema)]
+  (let [body (typed-schemas/render-typescript compacting-schema)]
     ;; Metric dimensions should compact into pickFields(...) references.
     (is (str/includes? body "function pickFields"))
     (is (str/includes? body "const field = fields[key] as { tableId?: number };"))
@@ -101,7 +101,7 @@
     (is (not (str/includes? body "metricId: 5")))))
 
 (deftest typescript-renderer-omits-pick-fields-helper-for-raw-dimensions-test
-  (let [body (typed-schemas.api.render/render-typescript raw-dimensions-schema)]
+  (let [body (typed-schemas/render-typescript raw-dimensions-schema)]
     ;; Dimensions that cannot be resolved to table fields stay as raw fields, so
     ;; the rendered module should not include the pickFields helper.
     (is (not (str/includes? body "function pickFields")))
