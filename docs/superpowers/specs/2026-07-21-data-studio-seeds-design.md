@@ -39,9 +39,10 @@ timestamps.
 ## Target location
 
 All seeds on an instance materialize into one instance-level target. POC shortcut:
-the configured uploads database, schema `seeds` (created on demand). A proper
-Data Studio setting for db/schema comes later; the repo format never encodes the
-database, so the same repo can materialize on dev and prod.
+the configured uploads database and uploads schema (avoids schema-creation and
+permission plumbing). A dedicated `seeds` schema and a proper Data Studio setting
+for db/schema come later; the repo format never encodes the database, so the same
+repo can materialize on dev and prod.
 
 ## Lifecycle
 
