@@ -225,6 +225,62 @@ describe("MonitorLayout", () => {
     },
   );
 
+  // These sub-paths overlap: Urls.monitorAiAuditing() is a string prefix of
+  // both Urls.monitorAiAuditingConversations() and Urls.monitorAiAuditingMcp().
+  // getActiveSection() in MonitorLayout.tsx must check the more specific
+  // MCP/Conversations routes before the bare Usage stats route, or the
+  // ts-pattern P.string.startsWith(...) match would resolve the wrong section
+  // for every route in this group.
+  const AI_AUDITING_SECTION_CASES = [
+    {
+      label: "Usage stats",
+      route: Urls.monitorAiAuditing(),
+      section: "ai-auditing-usage-stats",
+    },
+    {
+      label: "Conversations",
+      route: Urls.monitorAiAuditingConversations(),
+      section: "ai-auditing-conversations",
+    },
+    {
+      label: "MCP analytics",
+      route: Urls.monitorAiAuditingMcp(),
+      section: "ai-auditing-mcp",
+    },
+  ] as const;
+
+  it.each(AI_AUDITING_SECTION_CASES)(
+    "marks $label as the current page for its route",
+    async ({ label, route }) => {
+      setup({
+        initialRoute: route,
+        tokenFeatures: { audit_app: true, ai_controls: true },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      const activeLink = screen.getByRole("link", { name: label });
+      expect(activeLink).toHaveAttribute("aria-current", "page");
+      expect(screen.getAllByRole("link", { current: "page" })).toEqual([
+        activeLink,
+      ]);
+    },
+  );
+
+  it.each(AI_AUDITING_SECTION_CASES)(
+    "tracks opening the $label section",
+    async ({ label, section }) => {
+      trackMonitorSectionClicked.mockClear();
+      setup({ tokenFeatures: { audit_app: true, ai_controls: true } });
+
+      await userEvent.click(await screen.findByRole("link", { name: label }));
+
+      expect(trackMonitorSectionClicked).toHaveBeenCalledWith(section);
+    },
+  );
+
   it("hides the migrated Tools tabs for an analyst without the monitoring permission", async () => {
     setup({
       user: createMockUser({
