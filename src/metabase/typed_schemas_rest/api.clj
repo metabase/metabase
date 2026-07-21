@@ -17,12 +17,27 @@
 
 (def ^:private TypedSchemaQueryParams
   [:map
-   [:database {:optional true} [:maybe ms/NonBlankString]]
-   [:library-collections {:optional true} [:maybe ms/NonBlankString]]
-   [:question-collections {:optional true} [:maybe ms/NonBlankString]]
-   [:include-data-library {:optional true} [:maybe :boolean]]
-   [:include-metric-library {:optional true} [:maybe :boolean]]
-   [:include-models {:optional true} [:maybe :boolean]]])
+   [:database {:optional true}
+    [:maybe {:description "Scopes the schema to a database by numeric id or name."}
+     ms/NonBlankString]]
+   [:library-collections {:optional true}
+    [:maybe {:description (str "Comma-separated library collection ids or entity ids. "
+                               "Limits tables and metrics to those library collections.")}
+     ms/NonBlankString]]
+   [:question-collections {:optional true}
+    [:maybe {:description (str "Comma-separated collection ids or entity ids. "
+                               "Includes saved questions from those collections.")}
+     ms/NonBlankString]]
+   [:include-data-library {:optional true}
+    [:maybe {:description "Whether to include the entire data library."}
+     :boolean]]
+   [:include-metric-library {:optional true}
+    [:maybe {:description "Whether to include the entire metric library."}
+     :boolean]]
+   [:include-models {:optional true}
+    [:maybe {:description (str "Whether to include all readable models with executable actions. "
+                               "Database scope applies when provided.")}
+     :boolean]]])
 
 (api.macros/defendpoint :get "/v1/typescript" :- :any
   "Generate a TypeScript semantic schema module."

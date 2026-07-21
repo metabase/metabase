@@ -16,7 +16,7 @@
            :question-collections " question-entity-id-1 "
            :include-models       true}))))
 
-(deftest ^:parallel query-params->options-defaults-test
+(deftest ^:parallel query-params->options-coerces-values-and-applies-defaults-test
   (is (= {:database                 {:id 1}
           :library-collection-refs  [{:id 3}]
           :question-collection-refs []
