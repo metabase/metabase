@@ -8,7 +8,8 @@
    [toucan2.core :as t2]))
 
 (def ^:private default-task-history
-  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success" :logs nil :run_id false})
+  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil
+   :status "success" :logs nil :run_id false})
 
 (defn- generate-tasks
   "Creates `n` task history maps with guaranteed increasing `:ended_at` times. This means that when stored and queried
@@ -522,8 +523,8 @@
 (deftest ^:synchronized sort-tasks-by-db-test
   (t2/delete! :model/TaskHistory)
   (let [now (t/zoned-date-time)]
-    (mt/with-temp [:model/Database db-a {:name "AAA DB"}
-                   :model/Database db-b {:name "ZZZ DB"}
+    (mt/with-temp [:model/Database db-a {:name "Albatross DB"}
+                   :model/Database db-b {:name "Wren DB"}
                    :model/TaskHistory _ {:task "t-a"   :status :success :db_id (:id db-a) :started_at now :ended_at now}
                    :model/TaskHistory _ {:task "t-b"   :status :success :db_id (:id db-b) :started_at now :ended_at now}
                    :model/TaskHistory _ {:task "t-nil" :status :success :started_at now :ended_at now}]
@@ -538,7 +539,8 @@
                 desc (tracked :sort_column :db_name :sort_direction :desc)]
             (is (= #{"t-a" "t-b" "t-nil"} (set asc)))
             (is (= 3 (count asc)))
-            ;; AAA DB before ZZZ DB, and reversed for desc (nil position is DB-dependent, so only assert the two named)
+            ;; Albatross DB before Wren DB, and reversed for desc (nil position is DB-dependent, so only
+            ;; assert the two named)
             (is (< (u/index-of #{"t-a"} asc) (u/index-of #{"t-b"} asc)))
             (is (< (u/index-of #{"t-b"} desc) (u/index-of #{"t-a"} desc)))))
         (testing "sort by db_engine (aaa-engine < zzz-engine)"
@@ -553,7 +555,8 @@
               (is (< (u/index-of #{"t-a"} asc) (u/index-of #{"t-b"} asc)))
               (is (< (u/index-of #{"t-b"} desc) (u/index-of #{"t-a"} desc))))
             (finally
-              (t2/query {:update :metabase_database :set {:engine "h2"} :where [:in :id [(:id db-a) (:id db-b)]]}))))))))
+              (t2/query {:update :metabase_database :set {:engine "h2"}
+                         :where  [:in :id [(:id db-a) (:id db-b)]]}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Task Runs API tests                                               |
@@ -874,8 +877,8 @@
   (t2/delete! :model/TaskRun)
   (t2/delete! :model/TaskHistory)
   (let [now (t/zoned-date-time)]
-    (mt/with-temp [:model/Database db {:name "ZZZ DB"}
-                   :model/Card card {:name "AAA Card"}
+    (mt/with-temp [:model/Database db {:name "Wren DB"}
+                   :model/Card card {:name "Albatross Card"}
                    :model/TaskRun run-db {:run_type    :sync
                                           :entity_type :database
                                           :entity_id   (:id db)
@@ -889,9 +892,12 @@
                                             :started_at  (t/minus now (t/hours 1))
                                             :ended_at    now}
                    ;; run-db has 2 child tasks, run-card has 1
-                   :model/TaskHistory _ {:task "a" :status :success :run_id (:id run-db)   :started_at now :ended_at now}
-                   :model/TaskHistory _ {:task "b" :status :success :run_id (:id run-db)   :started_at now :ended_at now}
-                   :model/TaskHistory _ {:task "c" :status :success :run_id (:id run-card) :started_at now :ended_at now}]
+                   :model/TaskHistory _ {:task "a" :status :success :run_id (:id run-db)
+                                         :started_at now :ended_at now}
+                   :model/TaskHistory _ {:task "b" :status :success :run_id (:id run-db)
+                                         :started_at now :ended_at now}
+                   :model/TaskHistory _ {:task "c" :status :success :run_id (:id run-card)
+                                         :started_at now :ended_at now}]
       (let [my-ids #{(:id run-db) (:id run-card)}
             ids    (fn [& args] (->> (apply mt/user-http-request :crowberto :get 200 "task/runs" args)
                                      :data
@@ -909,7 +915,7 @@
         (testing "sort by run_type (fingerprint < sync)"
           (is (= [(:id run-card) (:id run-db)] (ids :sort-column :run_type :sort-direction :asc)))
           (is (= [(:id run-db) (:id run-card)] (ids :sort-column :run_type :sort-direction :desc))))
-        (testing "sort by entity_name across entity types (AAA Card < ZZZ DB)"
+        (testing "sort by entity_name across entity types (Albatross Card < Wren DB)"
           (is (= [(:id run-card) (:id run-db)] (ids :sort-column :entity_name :sort-direction :asc)))
           (is (= [(:id run-db) (:id run-card)] (ids :sort-column :entity_name :sort-direction :desc))))
         (testing "sort by task_count (run-card=1 < run-db=2)"

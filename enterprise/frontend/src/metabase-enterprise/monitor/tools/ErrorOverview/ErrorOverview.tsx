@@ -78,8 +78,25 @@ export const ErrorOverview = () => {
 
   const handleSortingChange = (newSorting: ErroringQuestionsSorting) => {
     setSorting(newSorting);
+    setRowSelection({});
     patchUrlState({ page: 0 });
   };
+
+  const handlePageChange = (nextPage: number) => {
+    setRowSelection({});
+    patchUrlState({ page: nextPage });
+  };
+
+  // A stale/shrunk `?page=N` can point past the result set: the backend returns
+  // no rows and a total of 0, which hides the pagination controls and strands
+  // the user on an empty page. Once the query settles, recover to the first page.
+  const isStrandedPage =
+    !isFetching && pageError == null && cards.length === 0 && page > 0;
+  useEffect(() => {
+    if (isStrandedPage) {
+      patchUrlState({ page: 0 });
+    }
+  }, [isStrandedPage, patchUrlState]);
 
   // Refresh the list once the last queued rerun settles: questions that now
   // succeed drop off, ones that still error stay.
@@ -119,6 +136,11 @@ export const ErrorOverview = () => {
         <MonitorMain>
           <MonitorHeaderTitle mb="sm">{t`Erroring questions`}</MonitorHeaderTitle>
 
+          <ErroringQuestionsSearch
+            hasLoader={isFetching && !isLoading}
+            onFiltersChange={handleFiltersChange}
+          />
+
           {pageError != null ? (
             <Center flex={1}>
               <DelayedLoadingAndErrorWrapper
@@ -128,11 +150,6 @@ export const ErrorOverview = () => {
             </Center>
           ) : (
             <>
-              <ErroringQuestionsSearch
-                hasLoader={isFetching && !isLoading}
-                onFiltersChange={handleFiltersChange}
-              />
-
               <ErroringQuestionsTable
                 cards={cards}
                 isFetching={isFetching}
@@ -145,7 +162,7 @@ export const ErrorOverview = () => {
                 onRowSelectionChange={setRowSelection}
               />
 
-              {!isLoading && total != null && (
+              {!isLoading && (
                 <Flex justify="end">
                   <PaginationControls
                     page={page}
@@ -153,8 +170,8 @@ export const ErrorOverview = () => {
                     itemsLength={cards.length}
                     total={total}
                     showTotal
-                    onPreviousPage={() => patchUrlState({ page: page - 1 })}
-                    onNextPage={() => patchUrlState({ page: page + 1 })}
+                    onPreviousPage={() => handlePageChange(page - 1)}
+                    onNextPage={() => handlePageChange(page + 1)}
                   />
                 </Flex>
               )}

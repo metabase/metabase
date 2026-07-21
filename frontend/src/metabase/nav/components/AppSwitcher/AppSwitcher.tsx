@@ -7,6 +7,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
+import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -123,6 +124,8 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
           key="monitor-app-link"
           component={ForwardRefLink}
           to={Urls.monitor()}
+          onAuxClick={trackMonitorOpened}
+          onClickCapture={trackMonitorOpened}
           leftSection={
             <Icon
               name="pulse"

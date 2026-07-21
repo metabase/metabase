@@ -69,7 +69,6 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           label={t`Back to Tasks`}
         />
 
-        {/* <Box flex="1 1 auto" mih={0}> */}
         <MonitorPageContent className={S.content}>
           <Stack gap="sm">
             <MonitorHeaderTitle>{t`Task details`}</MonitorHeaderTitle>
@@ -190,7 +189,6 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
             )}
           </Stack>
         </MonitorPageContent>
-        {/* </Box> */}
       </MonitorMain>
     </Flex>
   );

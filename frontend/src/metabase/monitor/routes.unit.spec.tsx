@@ -276,20 +276,6 @@ describe("monitor routes", () => {
     });
   });
 
-  describe("getMonitorRedirects (legacy Data Studio URLs)", () => {
-    it("redirects the old base URL into the Monitor area", async () => {
-      setup({ initialRoute: "/data-studio/dependency-diagnostics" });
-
-      expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
-    });
-
-    it("redirects old child URLs (e.g. /broken) to the Monitor equivalent", async () => {
-      setup({ initialRoute: "/data-studio/dependency-diagnostics/broken" });
-
-      expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
-    });
-  });
-
   describe("Tools sections (migrated from /admin/tools)", () => {
     it("renders the Logs section at /monitor/logs", async () => {
       setup({ initialRoute: "/monitor/logs" });

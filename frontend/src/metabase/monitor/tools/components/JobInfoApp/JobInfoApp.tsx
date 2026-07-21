@@ -17,7 +17,7 @@ type RouteParams = {
 };
 
 export const JobInfoApp = ({ params }: WithRouterProps<RouteParams>) => {
-  const { data, error, isFetching } = useGetTasksInfoQuery();
+  const { data, error, isLoading, isFetching } = useGetTasksInfoQuery();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const { jobKey } = params;
 
@@ -36,7 +36,7 @@ export const JobInfoApp = ({ params }: WithRouterProps<RouteParams>) => {
                 {data.scheduler.join("\n")}
               </Code>
             )}
-            <JobsTable jobs={data?.jobs ?? []} isLoading={isFetching} />
+            <JobsTable jobs={data?.jobs ?? []} isLoading={isLoading} />
           </>
         )}
       </MonitorMain>

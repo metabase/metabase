@@ -1,3 +1,4 @@
+import { skipToken } from "@reduxjs/toolkit/query";
 import { useCallback, useEffect, useRef } from "react";
 import _ from "underscore";
 
@@ -32,6 +33,8 @@ type UseAbortableQueryOptions = {
  * Each hook instance gets its own RTK cache entry, so aborting is safe.
  * The trade-off is that instances don't share cached responses and
  * identical concurrent requests aren't deduplicated.
+ *
+ * Skipping: pass `skipToken` as the arg, or set `{ skip: true }`.
  */
 export function useAbortableQuery<
   Arg extends object,
@@ -42,9 +45,9 @@ export function useAbortableQuery<
     TResult,
     ...unknown[],
   ],
-  arg: Arg,
+  arg: Arg | typeof skipToken,
   {
-    skip = false,
+    skip: skipOption = false,
     refetchOnMountOrArgChange = false,
   }: UseAbortableQueryOptions = {},
 ): TResult & { refetch: () => void } {
@@ -52,14 +55,19 @@ export function useAbortableQuery<
   const requestRef = useRef<LazyQueryRequest | null>(null);
   const instanceKey = useUniqueId("abortable-query");
 
+  const skip = skipOption || arg === skipToken;
+
   const argRef = useRef(arg);
-  if (!_.isEqual(argRef.current, arg)) {
+  if (arg !== skipToken && !_.isEqual(argRef.current, arg)) {
     argRef.current = arg;
   }
   const stableArg = argRef.current;
 
   const run = useCallback(
     (preferCache: boolean) => {
+      if (stableArg === skipToken) {
+        return null;
+      }
       requestRef.current?.abort();
       const request = trigger(
         { ...stableArg, [RTK_CACHE_KEY_PARAM]: instanceKey },
@@ -71,7 +79,11 @@ export function useAbortableQuery<
     [trigger, stableArg, instanceKey],
   );
 
-  const refetch = useCallback(() => run(false), [run]);
+  const refetch = useCallback(() => {
+    if (!skip) {
+      run(false);
+    }
+  }, [run, skip]);
 
   useEffect(() => {
     if (skip) {

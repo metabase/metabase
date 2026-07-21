@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  act,
   fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -9,6 +10,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { Route } from "metabase/router";
 import type { RowValue } from "metabase-types/api";
 import {
@@ -67,6 +69,7 @@ type SetupOpts = {
   total?: number;
   error?: boolean;
   initialRoute?: string;
+  deferResponse?: boolean;
 };
 
 async function setup({
@@ -74,14 +77,25 @@ async function setup({
   total,
   error,
   initialRoute = "/",
+  deferResponse = false,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
+  let resolveResponse:
+    | ((response: ReturnType<typeof createDatasetResponse>) => void)
+    | undefined;
   if (error) {
     fetchMock.post("path:/api/dataset", {
       status: 500,
       body: { message: "Audit query failed" },
     });
+  } else if (deferResponse) {
+    const response = new Promise<ReturnType<typeof createDatasetResponse>>(
+      (resolve) => {
+        resolveResponse = resolve;
+      },
+    );
+    fetchMock.post("path:/api/dataset", () => response);
   } else {
     fetchMock.post("path:/api/dataset", createDatasetResponse(cards, total));
   }
@@ -97,7 +111,11 @@ async function setup({
     });
   }
 
-  return utils;
+  return {
+    ...utils,
+    resolveResponse: () =>
+      resolveResponse?.(createDatasetResponse(cards, total)),
+  };
 }
 
 describe("ErrorOverview", () => {
@@ -141,13 +159,39 @@ describe("ErrorOverview", () => {
     expect(await screen.findByText("No results")).toBeInTheDocument();
   });
 
-  it("shows the error message when the audit query fails", async () => {
+  it("shows the error message when the audit query fails, keeping the search mounted", async () => {
     await setup({ error: true });
 
     expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(SEARCH_PLACEHOLDER)).toBeInTheDocument();
     expect(
-      screen.queryByPlaceholderText(SEARCH_PLACEHOLDER),
+      screen.queryByTestId("erroring-questions-table"),
     ).not.toBeInTheDocument();
+  });
+
+  it("recovers from an error when the search changes and the retry succeeds", async () => {
+    mockGetBoundingClientRect({ width: 100, height: 100 });
+
+    let shouldFail = true;
+    fetchMock.post("path:/api/dataset", () =>
+      shouldFail
+        ? { status: 500, body: { message: "Audit query failed" } }
+        : createDatasetResponse([{ id: 1, card_name: "Recovered question" }]),
+    );
+
+    renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
+      withRouter: true,
+    });
+
+    expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
+    const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER);
+
+    // changing the query is the only way to clear RTK's error and refire
+    shouldFail = false;
+    await userEvent.type(search, "recovered");
+
+    expect(await screen.findByText("Recovered question")).toBeInTheDocument();
+    expect(screen.queryByText("Audit query failed")).not.toBeInTheDocument();
   });
 
   it("surfaces an internal-query error returned in the dataset body", async () => {
@@ -169,9 +213,8 @@ describe("ErrorOverview", () => {
     expect(
       await screen.findByText("Internal audit query blew up"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByPlaceholderText(SEARCH_PLACEHOLDER),
-    ).not.toBeInTheDocument();
+    // the search stays mounted so the user has a recovery path
+    expect(screen.getByPlaceholderText(SEARCH_PLACEHOLDER)).toBeInTheDocument();
     expect(
       screen.queryByTestId("erroring-questions-table"),
     ).not.toBeInTheDocument();
@@ -216,11 +259,18 @@ describe("ErrorOverview", () => {
 
   it("sorts by column with asc/desc toggle, reverting to the default sort on the 3rd click", async () => {
     await setup();
-    await screen.findByTestId("erroring-question");
+    const row = await screen.findByTestId("erroring-question");
+
+    // a selection must not survive a sort change
+    await userEvent.click(within(row).getByLabelText("Select row"));
+    expect(await screen.findByText("1 question selected")).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("columnheader", { name: /Question/ }),
     );
+    await waitFor(() => {
+      expect(screen.queryByText("1 question selected")).not.toBeInTheDocument();
+    });
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
       expect(query.args.slice(1)).toEqual(["card_name", "asc"]);
@@ -464,11 +514,18 @@ describe("ErrorOverview", () => {
     expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
       "120",
     );
-    await screen.findAllByTestId("erroring-question");
+    const rows = await screen.findAllByTestId("erroring-question");
+
+    // a selection must not survive a page change
+    await userEvent.click(within(rows[0]).getByLabelText("Select row"));
+    expect(await screen.findByText("1 question selected")).toBeInTheDocument();
 
     const nextButton = await screen.findByLabelText("Next page");
     await userEvent.click(nextButton);
 
+    await waitFor(() => {
+      expect(screen.queryByText("1 question selected")).not.toBeInTheDocument();
+    });
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
       expect(query.offset).toBe(PAGE_SIZE);
@@ -491,6 +548,38 @@ describe("ErrorOverview", () => {
       const query = await getLastDatasetQuery();
       expect(query.offset).toBe(PAGE_SIZE * 2);
     });
+  });
+
+  it("waits for the empty response before recovering from a stranded page", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    try {
+      const { history, resolveResponse } = await setup({
+        cards: [],
+        total: 0,
+        initialRoute: "/?page=2",
+        deferResponse: true,
+      });
+
+      expect((await getLastDatasetQuery()).offset).toBe(2 * PAGE_SIZE);
+      act(() => {
+        jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY + 50);
+      });
+      expect(history?.getCurrentLocation().search).toBe("?page=2");
+
+      act(() => {
+        resolveResponse();
+      });
+
+      await waitFor(async () => {
+        const query = await getLastDatasetQuery();
+        expect(query.offset).toBe(0);
+      });
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().search).toBe("");
+      });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("links each row to the question and navigates there on click", async () => {

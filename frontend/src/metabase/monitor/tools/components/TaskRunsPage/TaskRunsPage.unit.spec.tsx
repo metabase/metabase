@@ -371,6 +371,50 @@ describe("TaskRunsPage", () => {
       ).toBeInTheDocument();
       expect(getLastRunsParams().get("started-at")).toBe("past1weeks~");
     });
+
+    it("does not append the ~ suffix for a this* range", async () => {
+      setup({
+        initialRoute: `${PATHNAME}?started-at=thisday&include-today=true`,
+      });
+      await waitForLoaderToBeRemoved();
+
+      expect(getLastRunsParams().get("started-at")).toBe("thisday");
+    });
+  });
+
+  describe("entity filter", () => {
+    it("ignores a lone entity-id without a matching entity-type", async () => {
+      setup({
+        initialRoute: `${PATHNAME}?entity-id=5`,
+      });
+      await waitForLoaderToBeRemoved();
+
+      const params = getLastRunsParams();
+      expect(params.get("entity-id")).toBeNull();
+      expect(params.get("entity-type")).toBeNull();
+    });
+
+    it("ignores a lone entity-type without a matching entity-id", async () => {
+      setup({
+        initialRoute: `${PATHNAME}?entity-type=card`,
+      });
+      await waitForLoaderToBeRemoved();
+
+      const params = getLastRunsParams();
+      expect(params.get("entity-id")).toBeNull();
+      expect(params.get("entity-type")).toBeNull();
+    });
+
+    it("forwards the entity pair when both are present", async () => {
+      setup({
+        initialRoute: `${PATHNAME}?entity-type=card&entity-id=5`,
+      });
+      await waitForLoaderToBeRemoved();
+
+      const params = getLastRunsParams();
+      expect(params.get("entity-type")).toBe("card");
+      expect(params.get("entity-id")).toBe("5");
+    });
   });
 });
 

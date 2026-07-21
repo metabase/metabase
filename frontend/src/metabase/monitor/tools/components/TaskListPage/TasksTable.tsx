@@ -5,13 +5,13 @@ import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,
-  Stack,
   Text,
   TreeTable,
   type TreeTableColumnDef,
@@ -99,11 +99,7 @@ export const TasksTable = ({
           instance={treeTableInstance}
           hierarchical={false}
           ariaLabel={t`Tasks`}
-          emptyState={
-            <Stack p="xl" align="center">
-              <Text c="text-disabled">{t`No results`}</Text>
-            </Stack>
-          }
+          emptyState={<MonitorEmptyState label={t`No results`} />}
           getRowProps={() => ({ "data-testid": "task" })}
           onRowClick={handleRowActivate}
         />

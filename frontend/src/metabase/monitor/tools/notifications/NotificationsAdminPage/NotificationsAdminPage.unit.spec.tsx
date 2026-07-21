@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import {
   setupAdminNotificationDetailEndpoint,
+  setupAdminNotificationDetailErrorEndpoint,
   setupBulkNotificationActionEndpoint,
 } from "__support__/server-mocks/notification";
 import {
@@ -24,7 +25,11 @@ import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route, withRouteProps } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type { AdminNotification, UserListResult } from "metabase-types/api";
+import type {
+  AdminNotification,
+  NotificationId,
+  UserListResult,
+} from "metabase-types/api";
 import {
   createMockAdminNotification,
   createMockCard,
@@ -133,6 +138,8 @@ type SetupOpts = {
   initialRoute?: string;
   cardDelay?: number;
   detailDelay?: number;
+  detailErrorId?: NotificationId;
+  failingCountError?: boolean;
 };
 
 const setup = ({
@@ -144,6 +151,8 @@ const setup = ({
   initialRoute = PATHNAME,
   cardDelay,
   detailDelay,
+  detailErrorId,
+  failingCountError = false,
 }: SetupOpts = {}) => {
   fetchMock.get("path:/api/notification/admin", (call) => {
     const params = new URL(call.url).searchParams;
@@ -151,7 +160,9 @@ const setup = ({
       params.get("limit") === "1" &&
       params.get("last_check_status") === "failing"
     ) {
-      return { data: [], total: failingCount, limit: 1, offset: 0 };
+      return failingCountError
+        ? { status: 500, body: { message: "Count failed" } }
+        : { data: [], total: failingCount, limit: 1, offset: 0 };
     }
     if (params.get("limit") === "1" && params.get("creatorless") === "true") {
       return { data: [], total: ownerlessCount, limit: 1, offset: 0 };
@@ -178,6 +189,9 @@ const setup = ({
         )
       : setupAdminNotificationDetailEndpoint(notification),
   );
+  if (detailErrorId !== undefined) {
+    setupAdminNotificationDetailErrorEndpoint(detailErrorId);
+  }
 
   return renderWithProviders(
     <Route
@@ -199,6 +213,15 @@ const getListCalls = () =>
       (call) =>
         new URL(call.url).searchParams.get("limit") === String(PAGE_SIZE),
     );
+
+const getFailingCountCalls = () =>
+  fetchMock.callHistory.calls("path:/api/notification/admin").filter((call) => {
+    const params = new URL(call.url).searchParams;
+    return (
+      params.get("limit") === "1" &&
+      params.get("last_check_status") === "failing"
+    );
+  });
 
 const getBulkPosts = async () =>
   (await findRequests("POST")).filter((request) =>
@@ -327,6 +350,20 @@ describe("NotificationsAdminPage", () => {
       await waitFor(() => {
         expect(history?.getCurrentLocation().search).not.toContain("failing");
       });
+    });
+
+    it("counts inactive failing alerts when the status filter includes them", async () => {
+      setup({ initialRoute: `${PATHNAME}?active=all` });
+      await waitForLoaderToBeRemoved();
+
+      const [countCall] = getFailingCountCalls();
+      expect(new URL(countCall.url).searchParams.get("active")).toBeNull();
+    });
+
+    it("shows count query errors", async () => {
+      setup({ failingCountError: true });
+
+      expect(await screen.findByText("Count failed")).toBeInTheDocument();
     });
   });
 
@@ -743,6 +780,16 @@ describe("NotificationsAdminPage", () => {
         ).toHaveLength(2);
       });
       expect(screen.queryAllByTestId("run-summary-loader")).toHaveLength(0);
+    });
+
+    it("shows an error when a deep-linked alert cannot be loaded", async () => {
+      setup({
+        notifications: [],
+        initialRoute: `${PATHNAME}/999`,
+        detailErrorId: 999,
+      });
+
+      expect(await screen.findByText("An error occurred")).toBeInTheDocument();
     });
   });
 

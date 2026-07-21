@@ -27,10 +27,13 @@ export function ErroringQuestionsSearch({
     handleChangeDebounced(event.target.value);
   };
 
+  const searchLabel = t`Search by question, error, database, or collection`;
+
   return (
     <TextInput
       value={value}
-      placeholder={t`Search by question, error, database, or collection`}
+      aria-label={searchLabel}
+      placeholder={searchLabel}
       w="100%"
       leftSection={<FixedSizeIcon name="search" />}
       rightSection={hasLoader ? <Loader size="sm" /> : undefined}

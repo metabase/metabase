@@ -157,8 +157,10 @@
     (let [run-ids      (map :id runs)
           counts       (t2/query {:select   [:run_id
                                              [[:count :id] :task_count]
-                                             [[:raw "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"] :success_count]
-                                             [[:raw "SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)"] :failed_count]]
+                                             [[:raw "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"]
+                                              :success_count]
+                                             [[:raw "SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)"]
+                                              :failed_count]]
                                   :from     :task_history
                                   :where    [:in :run_id run-ids]
                                   :group-by [:run_id]})
@@ -205,17 +207,21 @@
       {})))
 
 (defn- runs-order-by
-  "Build the honeysql fragment used to order the task runs list. Direct columns order in place; `:entity_name` LEFT JOINs
-  the three entity tables and orders by the coalesced name; `:task_count` LEFT JOINs a grouped `task_history` subquery.
-  Derived-column variants keep the selected shape to `task_run.*` and add a deterministic `[:id :desc]` secondary key."
+  "Build the honeysql fragment used to order the task runs list. Direct columns order in place; `:entity_name`
+  LEFT JOINs the three entity tables and orders by the coalesced name; `:task_count` LEFT JOINs a grouped
+  `task_history` subquery. Derived-column variants keep the selected shape to `task_run.*` and add a
+  deterministic `[:id :desc]` secondary key."
   [{col :sort-column dir :sort-direction}]
   (let [secondary [:task_run.id :desc]]
     (case col
       :entity_name
       {:select    [:task_run.*]
-       :left-join [[:metabase_database :sort_db]  [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
-                   [:report_card :sort_card]       [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
-                   [:report_dashboard :sort_dash]  [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]]
+       :left-join [[:metabase_database :sort_db]
+                   [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
+                   [:report_card :sort_card]
+                   [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
+                   [:report_dashboard :sort_dash]
+                   [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]]
        :order-by  [[[:coalesce :sort_db.name :sort_card.name :sort_dash.name] dir] secondary]}
 
       :task_count

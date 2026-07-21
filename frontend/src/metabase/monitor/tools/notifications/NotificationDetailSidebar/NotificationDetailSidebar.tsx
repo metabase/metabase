@@ -29,8 +29,11 @@ export const NotificationDetailSidebar = ({
   onClose,
   onDelete,
 }: SidebarProps) => {
-  const { currentData: detail, isFetching: isDetailFetching } =
-    useAdminNotificationDetailQuery(notificationId);
+  const {
+    currentData: detail,
+    error: detailError,
+    isFetching: isDetailFetching,
+  } = useAdminNotificationDetailQuery(notificationId);
   const notification = detail ?? notificationSummary;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -86,14 +89,16 @@ export const NotificationDetailSidebar = ({
               setIsEditModalOpen(true);
             }}
           />
-          {notification ? (
+          {detailError ? (
+            <LoadingAndErrorWrapper error={detailError} />
+          ) : notification ? (
             <SidebarBody
               notification={notification}
               detail={detail}
               isDetailFetching={isDetailFetching}
             />
           ) : (
-            <LoadingAndErrorWrapper loading />
+            <LoadingAndErrorWrapper loading={isDetailFetching} />
           )}
         </Stack>
       </Flex>

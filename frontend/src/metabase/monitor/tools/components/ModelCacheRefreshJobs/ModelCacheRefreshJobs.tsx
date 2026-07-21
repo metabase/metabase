@@ -46,7 +46,7 @@ export function ModelCacheRefreshJobs() {
   const [refreshModelCache] = useRefreshModelCacheMutation();
   const { page, handleNextPage, handlePreviousPage } = usePagination();
 
-  const { data, error, isFetching } = useAbortableQuery(
+  const { data, error, isLoading, isFetching } = useAbortableQuery(
     useLazyListPersistedInfoQuery,
     {
       limit: PAGE_SIZE,
@@ -99,7 +99,7 @@ export function ModelCacheRefreshJobs() {
         withBorder
         data-testid="model-cache-logs"
       >
-        {isFetching ? (
+        {isLoading ? (
           <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
         ) : (
           <TreeTable
@@ -113,7 +113,7 @@ export function ModelCacheRefreshJobs() {
         )}
       </Card>
 
-      {!isFetching && hasPagination && (
+      {!isLoading && hasPagination && (
         <Flex justify="end">
           <PaginationControls
             showTotal
@@ -163,7 +163,7 @@ function getColumns(
       maxAutoWidth: 240,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (job) => job.collection_name ?? t`Our analytics`,
+      accessorFn: (job) => job.collection_name || t`Our analytics`,
       cell: ({ row }) => {
         const { collection_id, collection_name } = row.original;
         return (
@@ -212,7 +212,7 @@ function getColumns(
       maxAutoWidth: 200,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (job) => job.creator?.common_name ?? t`Automatic`,
+      accessorFn: (job) => job.creator?.common_name || t`Automatic`,
       cell: ({ row }) => row.original.creator?.common_name || t`Automatic`,
     },
     {

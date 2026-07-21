@@ -53,24 +53,33 @@ type UrlState = {
 };
 
 export const urlStateConfig: UrlStateConfig<UrlState> = {
-  parse: (query) => ({
-    page: parsePage(query.page),
-    sort_column: parseSortColumn(
-      query.sort_column,
-      TASK_RUN_SORT_COLUMNS,
-      DEFAULT_SORT_COLUMN,
-    ),
-    sort_direction: parseSortDirection(
-      query.sort_direction,
-      DEFAULT_SORT_DIRECTION,
-    ),
-    "run-type": parseTaskRunRunType(query["run-type"]),
-    "entity-type": parseTaskRunEntityType(query["entity-type"]),
-    "entity-id": parseTaskRunEntityId(query["entity-id"]),
-    status: parseTaskRunStatus(query.status),
-    "started-at": parseTaskRunStartedAt(query["started-at"]),
-    "include-today": parseIncludeToday(query["include-today"]),
-  }),
+  parse: (query) => {
+    // entity-type and entity-id only filter meaningfully as a pair (the picker
+    // shows a value only when both are set, and the backend needs the type to
+    // interpret the id), so drop both when either is missing.
+    const entityType = parseTaskRunEntityType(query["entity-type"]);
+    const entityId = parseTaskRunEntityId(query["entity-id"]);
+    const hasEntityPair = entityType !== null && entityId !== null;
+
+    return {
+      page: parsePage(query.page),
+      sort_column: parseSortColumn(
+        query.sort_column,
+        TASK_RUN_SORT_COLUMNS,
+        DEFAULT_SORT_COLUMN,
+      ),
+      sort_direction: parseSortDirection(
+        query.sort_direction,
+        DEFAULT_SORT_DIRECTION,
+      ),
+      "run-type": parseTaskRunRunType(query["run-type"]),
+      "entity-type": hasEntityPair ? entityType : null,
+      "entity-id": hasEntityPair ? entityId : null,
+      status: parseTaskRunStatus(query.status),
+      "started-at": parseTaskRunStartedAt(query["started-at"]),
+      "include-today": parseIncludeToday(query["include-today"]),
+    };
+  },
   serialize: ({
     page,
     sort_column,
