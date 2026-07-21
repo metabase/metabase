@@ -45,7 +45,7 @@
    (reduce
     (fn [[prev-hsql prev-stage] stage]
       (let [stage-hsql (stage->honeysql driver stage)]
-        (if prev-hsql
+        (if (and prev-hsql (not (:persisted-info/native stage)))
           (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
                 columns-metadata (get-in prev-stage [:lib/stage-metadata :columns])
                 desired-aliases (mapv :lib/desired-column-alias columns-metadata)
