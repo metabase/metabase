@@ -38,6 +38,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
     useDatabaseConnection({ databaseId: params.databaseId, engines });
   const [showSidePanel, { open: openSidePanel, close: closeSidePanel }] =
     useDisclosure(false);
+  // Unjustified type cast. FIXME
   const [selectedEngineKey, setSelectedEngineKey] = useState<EngineKey>(
     database?.engine as EngineKey,
   );
@@ -45,6 +46,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
     !!selectedEngineKey && !!ENGINE_DOC_MAP[selectedEngineKey];
 
   const onEngineChange = (engineKey?: string) => {
+    // Unjustified type cast. FIXME
     setSelectedEngineKey(engineKey as EngineKey);
   };
 

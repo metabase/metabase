@@ -126,6 +126,68 @@
               (is (= :completed (:status result)))
               (is (pos? (count (mt/rows result)))))))))))
 
+(deftest migrate-sample-database-engine-in-place-disables-actions-test
+  (testing "Migrating the sample DB to an engine that doesn't support actions disables the actions settings
+           instead of failing the update (GHY-4133: actions enabled on the H2 sample DB blocked the v62->v63
+           upgrade because SQLite doesn't support actions)."
+    (mt/with-model-cleanup [:model/Database]
+      (let [h2-db (t2/insert-returning-instance! :model/Database
+                                                 {:name "Sample Database" :engine :h2 :is_sample true
+                                                  :settings {:database-enable-actions       true
+                                                             :database-enable-table-editing true}
+                                                  :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+        (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id (:id h2-db)))
+        (let [db (t2/select-one :model/Database :id (:id h2-db))]
+          (testing "the migration succeeds"
+            (is (= :sqlite (:engine db))))
+          (testing "the unsupported feature settings are disabled"
+            (is (false? (get-in db [:settings :database-enable-actions])))
+            (is (false? (get-in db [:settings :database-enable-table-editing])))))))))
+
+(deftest migrate-sample-database-engine-in-place-preserves-granular-permissions-test
+  (testing "Table-level (granular) permissions on the sample DB survive the engine migration. The migration
+           changes every table's schema (H2 PUBLIC -> SQLite nil) while data_permissions rows carry a
+           denormalized schema_name, so schema-scoped permission checks must still line up."
+    (mt/with-model-cleanup [:model/Database]
+      (mt/with-temp [:model/PermissionsGroup           group {}
+                     :model/User                       user  {}
+                     :model/PermissionsGroupMembership _     {:user_id (:id user) :group_id (:id group)}]
+        (let [h2-db (t2/insert-returning-instance! :model/Database
+                                                   {:name "Sample Database" :engine :h2 :is_sample true
+                                                    :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+          (sync/sync-database! h2-db)
+          (let [db-id     (:id h2-db)
+                orders-id (t2/select-one-pk :model/Table :db_id db-id :name "ORDERS")
+                people-id (t2/select-one-pk :model/Table :db_id db-id :name "PEOPLE")]
+            ;; Granular state: All Users sees nothing; the custom group can query everything except ORDERS.
+            ;; Blocking a single table splits the group's db-level rows into per-table rows, each carrying the
+            ;; table's schema_name ("PUBLIC" pre-migration).
+            (perms/set-database-permission! (perms/all-users-group) db-id :perms/view-data :blocked)
+            (perms/set-database-permission! (perms/all-users-group) db-id :perms/create-queries :no)
+            (perms/set-database-permission! group db-id :perms/view-data :unrestricted)
+            (perms/set-database-permission! group db-id :perms/create-queries :query-builder-and-native)
+            (perms/set-table-permission! group orders-id :perms/view-data :blocked)
+            (perms/set-table-permission! group orders-id :perms/create-queries :no)
+            (let [effective (fn [schema]
+                              {:orders-view   (perms/table-permission-for-user (:id user) :perms/view-data db-id orders-id)
+                               :people-view   (perms/table-permission-for-user (:id user) :perms/view-data db-id people-id)
+                               ;; what GET /api/database/:id/schemas visibility keys on
+                               :schema-create (perms/schema-permission-for-user (:id user) :perms/create-queries db-id schema)})
+                  before    (effective "PUBLIC")]
+              (is (= {:orders-view   :blocked
+                      :people-view   :unrestricted
+                      ;; splitting a DB's create-queries perms per-table caps the value at :query-builder,
+                      ;; since native access is all-or-nothing per database
+                      :schema-create :query-builder}
+                     before)
+                  "precondition: granular perms are in effect on the H2 sample DB")
+              ;; ---- the migration under test ----
+              (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id db-id))
+              (testing "permission checks give the same answers under the new (nil) schema"
+                (is (= before (effective nil))))
+              (testing "no data_permissions rows are left pointing at the departed PUBLIC schema"
+                (is (not (t2/exists? :model/DataPermissions :db_id db-id :schema_name "PUBLIC")))))))))))
+
 (def ^:private extracted-db-path-regex #".*plugins/sample-database\.sqlite$")
 
 (deftest extract-sample-database-test

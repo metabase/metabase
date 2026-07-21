@@ -45,6 +45,7 @@ export function QueryBuilderBackButton({
     return null;
   }
 
+  // Unjustified type cast. FIXME
   const url = Urls.modelToUrl(parent as Urls.UrlableModel);
   if (!url) {
     return null;

@@ -2,11 +2,13 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { Login } from "../Login";
+
+const RoutedLogin = withRouteProps(Login);
 
 interface SetupOpts {
   initialRoute?: string;
@@ -37,8 +39,8 @@ export const setup = ({
 
   renderWithProviders(
     <>
-      <Route path="/auth/login" component={Login} />
-      <Route path="/auth/login/:provider" component={Login} />
+      <Route path="/auth/login" element={<RoutedLogin />} />
+      <Route path="/auth/login/:provider" element={<RoutedLogin />} />
     </>,
     { storeInitialState: state, withRouter: true, initialRoute },
   );

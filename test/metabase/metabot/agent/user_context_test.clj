@@ -277,13 +277,11 @@
             result (user-context/enrich-context-for-template context)]
         (is (contains? result :current_time))
         (is (contains? result :first_day_of_week))
-        (is (contains? result :sql_dialect))
         (is (contains? result :current_user_info))
         (is (contains? result :viewing_context))
         (is (contains? result :recent_views))
         (is (string? (:current_time result)))
         (is (= "Monday" (:first_day_of_week result)))
-        (is (= "postgresql" (:sql_dialect result)))
         (is (= "<user>Jane Doe</user>" (:current_user_info result)))
         (is (string? (:viewing_context result)))
         (is (string? (:recent_views result))))))
@@ -297,7 +295,6 @@
                                            :id 123
                                            :name "users"}]}
           result (user-context/enrich-context-for-template context)]
-      (is (= "postgresql" (:sql_dialect result)))
       (is (re-find #"SQL editor" (:viewing_context result)))
       (is (re-find #"SELECT \* FROM users" (:viewing_context result)))))
   (testing "uses default first_day_of_week when not provided"
@@ -309,7 +306,6 @@
           result (user-context/enrich-context-for-template context)]
       (is (some? (:current_time result)))
       (is (= "Sunday" (:first_day_of_week result)))
-      (is (nil? (:sql_dialect result)))
       (is (= "" (:viewing_context result)))
       (is (= "" (:recent_views result))))))
 

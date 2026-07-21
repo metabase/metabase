@@ -494,7 +494,9 @@ function getLibraryRootCollections(): Cypress.Chainable<LibraryRootCollections> 
       expect(metricCollection, "Metrics collection").to.exist;
 
       return {
+        // Unjustified type cast. FIXME
         dataCollection: dataCollection as Collection,
+        // Unjustified type cast. FIXME
         metricCollection: metricCollection as Collection,
       };
     });

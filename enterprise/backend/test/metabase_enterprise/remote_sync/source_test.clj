@@ -42,6 +42,10 @@
             (finish-commit! [_ message]
               (reset! written {:message message :files @staged})
               "merged-version")
+            (finish-commit! [_ message report-progress]
+              (reset! written {:message message :files @staged})
+              (when report-progress (report-progress 0.8))
+              "merged-version")
             (abort-commit! [_] nil))))
       (version [_] "remote-tip"))))
 

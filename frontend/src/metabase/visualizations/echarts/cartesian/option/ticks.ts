@@ -37,6 +37,7 @@ export const getTicksOptions = (
   let minInterval: number | undefined;
   let maxInterval: number | undefined;
 
+  // Unjustified type cast. FIXME
   const xDomain = range.map((day) => {
     const adjustedDate = dayjs(toEChartsAxisValue(day.toISOString()));
     if (!adjustedDate) {

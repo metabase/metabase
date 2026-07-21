@@ -134,6 +134,44 @@
       (is (schema-valid? q)))))
 
 ;;; ============================================================
+;;; :absolute-datetime literal validation (fail-fast for the agent)
+;;; ============================================================
+
+(defn- resolve-absolute-datetime
+  "Resolve a query whose only filter is `[= CREATED_AT [absolute-datetime <literal> <unit>]]` and
+  return the (still-string) literal at position 2 of the resolved `:absolute-datetime` clause."
+  [literal unit]
+  (let [parsed {"lib/type" "mbql/query"
+                "database" "Sample"
+                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "filters"      [["=" {}
+                                              ["field" {"temporal-unit" "month"}
+                                               ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                              ["absolute-datetime" {} literal unit]]]}]}
+        q      (repr.resolve/resolve-query mp parsed)]
+    (nth (get-in q [:stages 0 :filters 0 3]) 2)))
+
+(deftest validate-absolute-datetime-literals-accepts-all-formats-test
+  (testing "every valid :absolute-datetime string shape passes validation and is left as a string"
+    (doseq [[literal unit] [["2024-01-15"                "day"]
+                            ["2024-01-15T10:30:00"       "default"]
+                            ["2024-01-15T10:30:00+02:00" "default"]
+                            ["2024"                      "year"]
+                            ["2024-03"                   "month"]]]
+      (testing (str literal " / " unit)
+        ;; validation does not coerce — the string survives for the QP to parse at execution time
+        (is (= literal (resolve-absolute-datetime literal unit)))))))
+
+(deftest validate-absolute-datetime-literals-rejects-invalid-test
+  (testing "a structurally-ISO but out-of-range literal fails fast with an agent-facing error"
+    (let [ex (try (resolve-absolute-datetime "2024-13-45" "day") nil
+                  (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? ex))
+      (is (re-find #"Invalid temporal literal" (ex-message ex)))
+      (is (true? (:agent-error? (ex-data ex)))))))
+
+;;; ============================================================
 ;;; fields (projection)
 ;;; ============================================================
 

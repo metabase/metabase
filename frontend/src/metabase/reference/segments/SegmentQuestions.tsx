@@ -71,6 +71,7 @@ const SegmentQuestionsInner = ({
     isLoading,
     error,
   } = useQuestionListQuery({
+    // Unjustified type cast. FIXME
     query: { f: "using_segment" as any, model_id: segment.id },
   });
 
@@ -119,4 +120,5 @@ const SegmentQuestionsInner = ({
 export const SegmentQuestions = connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(SegmentQuestionsInner as unknown as React.ComponentType);

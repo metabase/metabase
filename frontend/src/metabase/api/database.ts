@@ -45,6 +45,14 @@ import {
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
+/**
+ * schema names containing slashes, backslashes, or percent signs are rejected
+ * at the HTTP layer when percent-encoded in a URL path, so they must be passed
+ * as a query parameter instead (#77353)
+ */
+export const shouldSchemaBePassedAsQueryParam = (schema: SchemaName) =>
+  /[/\\%]/.test(schema);
+
 const toNormalizedSchemas = (dbId: DatabaseId, schemaNames: SchemaName[]) =>
   schemaNames.map((schemaName) => ({
     id: generateSchemaId(dbId, schemaName),
@@ -168,11 +176,17 @@ export const databaseApi = Api.injectEndpoints({
       Table[],
       ListDatabaseSchemaTablesRequest
     >({
-      query: ({ id, schema, ...params }) => ({
-        method: "GET",
-        url: `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
-        params,
-      }),
+      query: ({ id, schema, ...params }) => {
+        const isQueryParam = shouldSchemaBePassedAsQueryParam(schema);
+
+        return {
+          method: "GET",
+          url: isQueryParam
+            ? `/api/database/${id}/schema/`
+            : `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
+          params: isQueryParam ? { ...params, schema } : params,
+        };
+      },
       providesTags: (tables = []) => [
         listTag("table"),
         ...tables.map((table) => idTag("table", table.id)),

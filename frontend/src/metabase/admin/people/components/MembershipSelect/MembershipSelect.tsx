@@ -7,7 +7,7 @@ import {
   isAdminGroup,
   isDataAnalystGroup,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
+} from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";

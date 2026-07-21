@@ -60,6 +60,7 @@ export function PieRowsPicker({
   const onSortEnd = (newPieRows: SortableChartSettingOrderedItem[]) =>
     onChangeSettings({
       "pie.sort_rows": false,
+      // Unjustified type cast. FIXME
       "pie.rows": newPieRows as PieRow[],
     });
 
@@ -69,6 +70,7 @@ export function PieRowsPicker({
       series={rawSeries}
       onChangeSeriesColor={onChangeSeriesColor}
       onSortEnd={onSortEnd}
+      // Unjustified type cast. FIXME
       onChange={(rows) => onChangeSettings({ "pie.rows": rows as PieRow[] })}
       onShowWidget={onShowWidget}
       hasEditSettings

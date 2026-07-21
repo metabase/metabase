@@ -134,6 +134,7 @@ class DebouncedFrameInner extends Component<
             if (typeof forwardedRef === "function") {
               forwardedRef(r);
             } else {
+              // Unjustified type cast. FIXME
               (
                 forwardedRef as React.MutableRefObject<HTMLDivElement | null>
               ).current = r;
@@ -171,4 +172,5 @@ const DebouncedFrameForwardRef = forwardRef<
 export const DebouncedFrame = ExplicitSize<DebouncedFrameInnerProps>({
   // Disable ExplicitSize's debounce/throttle since DebouncedFrame has a built-in debounce
   refreshMode: "none",
+  // Unjustified type cast. FIXME
 })(DebouncedFrameForwardRef as any);

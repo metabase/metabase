@@ -878,6 +878,7 @@
                   ;; the display names can differ a little between drivers, we don't actually care about any
                   ;; differences, this is just a sanity check for a few known drivers. So it's okay to hardcode driver
                   ;; names here.
+                  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
                   (when (#{:postgres :h2} driver/*driver*)
                     (is (= ["Category" "Count" "Q2 → Category" "Q2 → Sum of Price" "Q3 → Category" "Q3 → Average of Rating"]
@@ -911,6 +912,7 @@
               ;; the display names can differ a little between drivers, we don't actually care about
               ;; any differences, this is just a sanity check for a few known drivers. So it's okay to hardcode
               ;; driver names here.
+              ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
               #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
               (when (#{:h2 :postgres} driver/*driver*)
                 (is (= ["ID"

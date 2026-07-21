@@ -62,6 +62,7 @@ export const InteractiveDashboardContent = (
       getEmbeddingMode({
         question,
         queryMode: createEmbeddingSdkMode({ pushNavigation }),
+        // Unjustified type cast. FIXME
         plugins: plugins as InternalMetabasePluginsConfig,
       }),
     [plugins, pushNavigation],

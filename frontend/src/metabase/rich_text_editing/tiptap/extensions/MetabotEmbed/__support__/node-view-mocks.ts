@@ -5,6 +5,7 @@ import type { Extension, NodeViewProps } from "@tiptap/react";
 import { createMockEditor } from "./editor-mocks";
 
 export const createMockProseMirrorNode = (overrides = {}): ProseMirrorNode =>
+  // Unjustified type cast. FIXME
   ({
     textContent: "",
     content: { content: [] },
@@ -17,6 +18,7 @@ export const createMockProseMirrorNode = (overrides = {}): ProseMirrorNode =>
   }) as unknown as ProseMirrorNode;
 
 export const createMockExtension = (overrides = {}): Extension =>
+  // Unjustified type cast. FIXME
   ({
     name: "my-extension",
     options: {},
@@ -24,6 +26,7 @@ export const createMockExtension = (overrides = {}): Extension =>
   }) as unknown as Extension;
 
 export const createMockNodeViewProps = (overrides = {}): NodeViewProps =>
+  // Unjustified type cast. FIXME
   ({
     editor: createMockEditor(),
     node: createMockProseMirrorNode(),
@@ -32,7 +35,9 @@ export const createMockNodeViewProps = (overrides = {}): NodeViewProps =>
     updateAttributes: jest.fn(),
     decorations: [],
     selected: false,
+    // Unjustified type cast. FIXME
     view: {} as unknown as EditorView,
+    // Unjustified type cast. FIXME
     innerDecorations: {} as unknown as DecorationSource,
     HTMLAttributes: {},
     extension: createMockExtension(),

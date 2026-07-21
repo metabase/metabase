@@ -1,9 +1,11 @@
 import type { CustomVizPluginId } from "metabase-types/api";
 
-// DOM scoping: every Node crossing the membrane is filtered. Nodes inside
-// the plugin's mount subtree (marked with data-plugin-sandbox=<id>) pass
-// through real; nodes outside are replaced with a detached decoy of the
-// same kind so the plugin can't read or mutate host UI.
+// DOM scoping is custom-viz-specific: each custom-viz plugin renders inside
+// its own `<div data-plugin-sandbox="<id>">…</div>` container, and every Node
+// crossing the membrane is filtered against that selector. Nodes inside the
+// plugin's container pass through real; nodes outside (sibling cards, the
+// dashboard's chrome, anywhere in the host DOM) are replaced with detached
+// decoys of the same kind so the plugin can't read or mutate host UI.
 //
 // Why this filters on Node, not just Element:
 //
@@ -12,13 +14,9 @@ import type { CustomVizPluginId } from "metabase-types/api";
 // `MutationObserver.observe(document, …)`, and `Range.setStart(document, 0)`.
 // An Element-only filter would leave those APIs walking the entire host
 // DOM and surfacing real host Text/Comment nodes.
-//
-// Filtering on Node also catches:
-//   - `getSelection().anchorNode` / `focusNode` if the user has selected
-//     host text.
-//   - `Range.startContainer` / `endContainer` returning Text nodes.
 
 const PLUGIN_SANDBOX_ATTR = "data-plugin-sandbox";
+
 export const ACTIVE_ELEMENT_GETTER = Object.getOwnPropertyDescriptor(
   Document.prototype,
   "activeElement",
@@ -48,6 +46,7 @@ export function getSafeSandboxDomNode(
 
 function getOwnerElement(node: Node): Element | null {
   if (node.nodeType === Node.ELEMENT_NODE) {
+    // Unjustified type cast. FIXME
     return node as Element;
   }
 
@@ -59,13 +58,15 @@ function getOwnerElement(node: Node): Element | null {
   return null;
 }
 
-// document.activeElement crosses the membrane and would otherwise be replaced
-// with a decoy when focus is on host UI — noisy and confusing for libraries
-// (notably React) that probe activeElement during rendering. Return null when
-// the focused element is outside the plugin's subtree, so the plugin sees
-// "nothing focused inside my React tree" rather than a fake element.
+// `document.activeElement` crosses the membrane and would otherwise be
+// replaced with a decoy when focus is on host UI — noisy and confusing for
+// libraries (notably React) that probe activeElement during rendering.
+// Return null when the focused element is outside the plugin's subtree, so
+// the plugin sees "nothing focused inside my React tree" rather than a fake
+// element.
 export function activeElementDistortion(pluginId: CustomVizPluginId) {
   return function activeElement(this: Document): Element | null {
+    // Unjustified type cast. FIXME
     const el = ACTIVE_ELEMENT_GETTER!.call(this) as Element | null;
     if (!el) {
       return null;

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
-import { IndexRoute, Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
@@ -9,6 +9,16 @@ import { DestinationDatabaseConnectionModal } from "./DestinationDatabaseConnect
 import { DestinationDatabasesModal } from "./DestinationDatabasesModal";
 import { RemoveDestinationDatabaseModal } from "./RemoveDestinationDatabaseModal";
 import { useRedirectDestinationDatabase } from "./hooks";
+
+const RoutedDestinationDatabasesModal = withRouteProps(
+  DestinationDatabasesModal,
+);
+const RoutedDestinationDatabaseConnectionModal = withRouteProps(
+  DestinationDatabaseConnectionModal,
+);
+const RoutedRemoveDestinationDatabaseModal = withRouteProps(
+  RemoveDestinationDatabaseModal,
+);
 
 /**
  * Initialize database_routing plugin features that depend on hasPremiumFeature.
@@ -38,14 +48,20 @@ export function initializePlugin() {
 
     PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes = (IsAdmin: any) => (
       <Route path="destination-databases">
-        <IndexRoute component={DestinationDatabasesModal} />
-        <Route component={IsAdmin}>
-          <Route path="create" component={DestinationDatabaseConnectionModal} />
+        <Route index element={<RoutedDestinationDatabasesModal />} />
+        <Route element={<IsAdmin />}>
+          <Route
+            path="create"
+            element={<RoutedDestinationDatabaseConnectionModal />}
+          />
         </Route>
         <Route path=":destinationDatabaseId">
-          <IndexRoute component={DestinationDatabaseConnectionModal} />
-          <Route component={IsAdmin}>
-            <Route path="remove" component={RemoveDestinationDatabaseModal} />
+          <Route index element={<RoutedDestinationDatabaseConnectionModal />} />
+          <Route element={<IsAdmin />}>
+            <Route
+              path="remove"
+              element={<RoutedRemoveDestinationDatabaseModal />}
+            />
           </Route>
         </Route>
       </Route>

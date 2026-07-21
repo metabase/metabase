@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { Route } from "./react-router";
+import { Route } from "./route";
 import { useNavigate } from "./use-navigate";
 
 function NavigateProbe() {
@@ -27,8 +28,21 @@ function NavigateProbe() {
   );
 }
 
+function IdentityProbe() {
+  const navigate = useNavigate();
+  const [identities] = useState(() => new Set<unknown>());
+  identities.add(navigate);
+
+  return (
+    <div>
+      <span data-testid="identities">{identities.size}</span>
+      <button onClick={() => navigate("/same")}>push-same</button>
+    </div>
+  );
+}
+
 function setup(initialRoute = "/") {
-  return renderWithProviders(<Route path="*" component={NavigateProbe} />, {
+  return renderWithProviders(<Route path="*" element={<NavigateProbe />} />, {
     withRouter: true,
     initialRoute,
   });
@@ -83,5 +97,20 @@ describe("router/useNavigate", () => {
     await click("push"); // /foo
     await click("back"); // navigate(-1)
     expect(history?.getCurrentLocation().pathname).toBe("/start");
+  });
+
+  it("keeps `navigate` stable when pushing the pathname already showing", async () => {
+    // v3 rebuilds the matched `routes` on every transition, so anything derived
+    // from them must not leak into `navigate`'s identity: a mounted <Navigate>
+    // re-runs its effect on a new identity and would push its target forever.
+    renderWithProviders(<Route path="*" element={<IdentityProbe />} />, {
+      withRouter: true,
+      initialRoute: "/same",
+    });
+
+    await click("push-same");
+    await click("push-same");
+
+    expect(screen.getByTestId("identities")).toHaveTextContent("1");
   });
 });

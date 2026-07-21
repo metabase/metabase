@@ -294,6 +294,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         <Tabs
           variant="pills"
           value={metric}
+          // Unjustified type cast. FIXME
           onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
         >
           <Tabs.List className={S.metricTabs}>

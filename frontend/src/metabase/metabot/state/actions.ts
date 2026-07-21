@@ -17,12 +17,14 @@ import { createAsyncThunk } from "metabase/redux/utils";
 import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import { uuid } from "metabase/utils/uuid";
 import type {
   JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
   MetabotCodeEditorBufferContext,
+  MetabotStateContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
 
@@ -33,7 +35,6 @@ import {
   getAgentRequestMetadata,
   getDebugMode,
   getDeveloperMessage,
-  getHistory,
   getIsProcessing,
   getMessageIdToRewind,
   getMetabotConversation,
@@ -55,8 +56,8 @@ export const {
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
+  setMessageExternalIds,
   setNavigateToPath,
-  setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
   toolCallArgs,
@@ -116,6 +117,10 @@ const handleResponseError = (
         display: { type: "message" as const, message },
       }),
     )
+    .with({ status: 409 }, () => ({
+      error: { type: "conversation_out_of_sync" },
+      display: { type: "message" as const, message: METABOT_ERR_MSG.outOfSync },
+    }))
     .with(
       { status: P.number, data: { message: P.string } },
       ({ data: { message } }) => ({
@@ -169,6 +174,7 @@ export const executeSlashCommand = createAsyncThunk<
           dispatch(
             setProfileOverride({
               agentId,
+              // Unjustified type cast. FIXME
               profile: args[0] as MetabotProfileId | undefined,
             }),
           );
@@ -238,12 +244,19 @@ export const submitInput = createAsyncThunk<
     agentId: MetabotAgentId;
     metabot_id?: string;
     profile?: MetabotProfileId;
+    retryMessageId?: string;
   }
 >(
   "metabase/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
     const state = getState();
-    const { agentId, message: rawPrompt, profile, ...data } = payload;
+    const {
+      agentId,
+      message: rawPrompt,
+      profile,
+      retryMessageId,
+      ...data
+    } = payload;
     const convo = getMetabotConversation(state, agentId);
 
     const prompt = rawPrompt.trim();
@@ -283,8 +296,14 @@ export const submitInput = createAsyncThunk<
 
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
-      const agentMetadata = getAgentRequestMetadata(getState(), agentId);
+      const agentMetadata = getAgentRequestMetadata(
+        getState(),
+        agentId,
+        retryMessageId,
+      );
       const messageId = createMessageId();
+      const userMessageId = retryMessageId ?? uuid();
+      const assistantMessageId = uuid();
       const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
       dispatch(
         addUserMessage({
@@ -302,6 +321,8 @@ export const submitInput = createAsyncThunk<
           agentId,
           conversation_id: convo.conversationId,
           ...agentMetadata,
+          user_message_id: userMessageId,
+          assistant_message_id: assistantMessageId,
           ...(profile ? { profile_id: profile } : {}),
         }),
       );
@@ -380,7 +401,7 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const { agentId, ...request } = payload;
 
-    let state = {};
+    let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
     try {
       // store error object streamed across the wire
@@ -430,6 +451,7 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(setNavigateToPath(part.data));
 
                 if (!isEmbeddingSdk()) {
+                  // Unjustified type cast. FIXME
                   dispatch(push(part.data) as UnknownAction);
                 }
                 pushDataPart({ type: "data_part", part });
@@ -466,14 +488,13 @@ export const sendAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onStart: function handleStart(event) {
-            if (event.messageId) {
-              dispatch(
-                setPendingMessageExternalId({
-                  agentId,
-                  externalId: event.messageId,
-                }),
-              );
-            }
+            dispatch(
+              setMessageExternalIds({
+                agentId,
+                agentMessageId: event.messageId,
+                userMessageId: event.messageMetadata?.userMessageId,
+              }),
+            );
           },
           onTextPart: function handleTextPart(delta) {
             dispatch(addAgentTextDelta({ agentId, text: delta }));
@@ -553,7 +574,6 @@ export const sendAgentRequest = createAsyncThunk<
 
       return fulfillWithValue({
         conversation_id: request.conversation_id,
-        history: [...getHistory(getState(), agentId), ...response.history],
         state,
         processedResponse: response,
       });
@@ -564,12 +584,7 @@ export const sendAgentRequest = createAsyncThunk<
           conversation_id: request.conversation_id,
           unresolved_tool_calls:
             response?.toolCalls.filter((tc) => tc.state === "call") ?? [],
-          history: [
-            ...getHistory(getState(), agentId),
-            ...(response?.history ?? []),
-          ],
-          // reuse new state if we recieved it
-          state: Object.keys(state).length === 0 ? request.state : state,
+          state,
           shouldRetry: false,
         });
       }
@@ -670,6 +685,7 @@ export const retryPrompt = createAsyncThunk<
         message: prompt.message,
         context,
         metabot_id,
+        retryMessageId: prompt.externalId,
       }),
     ).unwrap();
   },

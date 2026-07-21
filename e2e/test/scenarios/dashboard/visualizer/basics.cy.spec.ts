@@ -143,6 +143,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       (ordersCountByCreatedAtQuestionId) => {
         H.addQuestionToDashboard({
           dashboardId: ORDERS_DASHBOARD_ID,
+          // Unjustified type cast. FIXME
           cardId: ordersCountByCreatedAtQuestionId as any,
         });
         H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -390,6 +391,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@questionId").then((questionId) => {
         H.addQuestionToDashboard({
           dashboardId,
+          // Unjustified type cast. FIXME
           cardId: questionId as any,
         });
         H.visitDashboard(dashboardId);
@@ -430,6 +432,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@questionWithDescriptionId").then((questionId) => {
         H.addQuestionToDashboard({
           dashboardId,
+          // Unjustified type cast. FIXME
           cardId: questionId as any,
         });
         H.visitDashboard(dashboardId);

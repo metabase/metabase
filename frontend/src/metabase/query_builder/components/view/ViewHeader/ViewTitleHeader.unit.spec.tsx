@@ -192,10 +192,7 @@ function setup({
   };
 
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <ViewTitleHeader {...viewTitleHeaderProps} />}
-    />,
+    <Route path="/" element={<ViewTitleHeader {...viewTitleHeaderProps} />} />,
     {
       withRouter: true,
       storeInitialState,
