@@ -9,13 +9,39 @@ on:
 
 jobs:
 
+  files-changed:
+    name: Check which files changed
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 3
+    outputs:
+      embedder: ${{ steps.changes.outputs.embedder }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  # Builds the plugin before running the tests on purpose: that populates the model bundles, so the
+  # tests exercise real inference instead of self-skipping.
   test-embedder:
+    needs: files-changed
+    if: needs.files-changed.outputs.embedder == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v6
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+    # The pinned model files are ~50 MB from HuggingFace. Cache them on the pinned revisions so only a
+    # deliberate model bump re-downloads, rather than every run depending on HuggingFace being up.
+    - name: Cache embedder model downloads
+      uses: actions/cache@v5
+      with:
+        path: modules/embedder/target/model-download
+        key: embedder-models-${{ hashFiles('bin/build/src/build/embedder_model.clj') }}
     - name: Build embedder plugin
       run: ./bin/build-embedder-plugin.sh
     - name: Verify embedder plugin artifact

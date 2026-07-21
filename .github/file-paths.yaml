@@ -239,6 +239,13 @@ cljs:
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
 
+embedder:
+  - ".github/workflows/build-scripts.yml"
+  - "bin/build-embedder-plugin.sh"
+  - "bin/build/src/build/embedder_model.clj"
+  - "bin/build/src/build_embedder_plugin.clj"
+  - "modules/embedder/**"
+
 serialization_baseline:
   - ".github/workflows/serialization.yml"
   - "test_resources/serialization_baseline/**"

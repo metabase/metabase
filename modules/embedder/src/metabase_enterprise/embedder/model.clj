@@ -150,21 +150,34 @@
                               (pr-str model-name))
                       {:model-name model-name :requested-name requested-name :resource resource-path})))))
 
+(defn- sanitized-url
+  "Scheme, host and path — dropping the userinfo, query and fragment components, which are where a model
+  URL can carry credentials (an `s3://key:secret@…` or a presigned `?token=…`).
+  The path is kept deliberately: it's what identifies *which* model loaded, and for the two commonest
+  sources — the bundled `jar:///metabase-embedder/…` resource and a `djl://` zoo URL — it holds no secret."
+  [url]
+  (try
+    (let [^URI uri (URI. ^String url)
+          path     (.getPath uri)]
+      (cond
+        (.getHost uri) (str (.getScheme uri) "://" (.getHost uri)
+                            (when (not= -1 (.getPort uri)) (str ":" (.getPort uri)))
+                            path)
+        ;; Hostless hierarchical URLs (`jar:///…`): "://" + an absolute path reproduces the original.
+        path           (str (.getScheme uri) "://" path)
+        ;; Opaque or unparseable — nothing we can safely pick apart.
+        :else          "<redacted>"))
+    (catch Exception _
+      "<redacted>")))
+
 (defn- source-log-summary
-  "Non-sensitive source details suitable for application logs."
-  [{:keys [type url]}]
+  "Source details for the load log: enough to say where a model came from, minus the URL components that
+  can carry credentials. A local `:path` is kept — it's operator-configured and names the load directory,
+  which is the whole diagnostic value of the line when an override isn't taking effect."
+  [{:keys [type url path]}]
   (cond-> {:type type}
-    (= type :url)
-    (assoc :url (try
-                  (let [^URI uri  (URI. ^String url)
-                        scheme    (.getScheme uri)
-                        host      (.getHost uri)
-                        port      (.getPort uri)]
-                    (if (and scheme host)
-                      (str scheme "://" host (when (not= port -1) (str ":" port)))
-                      "<redacted>"))
-                  (catch Exception _
-                    "<redacted>")))))
+    (= type :path) (assoc :path path)
+    (= type :url)  (assoc :url (sanitized-url url))))
 
 (defn- build-model ^ZooModel [model-name]
   (let [source   (model-source model-name)
