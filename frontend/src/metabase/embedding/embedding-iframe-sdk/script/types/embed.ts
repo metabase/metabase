@@ -7,13 +7,15 @@ import type {
 } from "embedding-sdk-bundle/types";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
-import type { MetabaseError } from "embedding-sdk-shared/errors";
-import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type {
-  MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
-} from "metabase/embedding-sdk/types/refresh-token";
+  SdkIframeEmbedReportAuthenticationError,
+  SdkIframeEmbedSubmitRefreshedGuestTokenMessage,
+  SdkIframeEmbedSubmitSessionTokenMessage,
+  SdkIframeEmbedTagRequestGuestTokenRefreshMessage,
+  SdkIframeEmbedTagRequestSessionTokenMessage,
+} from "metabase/embedding/embedding-iframe-sdk/bundle-protocol/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
@@ -34,18 +36,9 @@ export type SdkIframeEmbedTagTransportMessage =
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
 };
-export type SdkIframeEmbedTagRequestSessionTokenMessage = {
-  type: "metabase.embed.requestSessionToken";
-};
 export type SdkIframeEmbedTagHandleLinkMessage = {
   type: "metabase.embed.handleLink";
   data: { url: string; requestId: string };
-};
-export type SdkIframeEmbedTagRequestGuestTokenRefreshMessage = {
-  type: "metabase.embed.requestGuestTokenRefresh";
-  data: {
-    expiredToken: string;
-  };
 };
 
 export type SdkIframeEmbedMessage =
@@ -60,19 +53,6 @@ export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
   data: SdkIframeEmbedSettings;
 };
-export type SdkIframeEmbedSubmitSessionTokenMessage = {
-  type: "metabase.embed.submitSessionToken";
-  data: {
-    authMethod: MetabaseAuthMethod;
-    sessionToken: MetabaseEmbeddingSessionToken;
-  };
-};
-export type SdkIframeEmbedReportAuthenticationError = {
-  type: "metabase.embed.reportAuthenticationError";
-  data: {
-    error: MetabaseError<MetabaseErrorCode, unknown>;
-  };
-};
 export type SdkIframeEmbedReportAnalytics = {
   type: "metabase.embed.reportAnalytics";
   data: {
@@ -84,12 +64,17 @@ export type SdkIframeEmbedHandleLinkResponse = {
   type: "metabase.embed.handleLinkResponse";
   data: { requestId: string; handled: boolean };
 };
-export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
-  type: "metabase.embed.submitRefreshedGuestToken";
-  data: {
-    guestToken: string;
-  };
-};
+
+// The auth-token sub-protocol is owned by bundle-protocol (the bundle takes
+// part in it at runtime, so it must sit below the bundle); re-exported here to
+// keep this file the full picture of the embed.js protocol.
+export type {
+  SdkIframeEmbedReportAuthenticationError,
+  SdkIframeEmbedSubmitRefreshedGuestTokenMessage,
+  SdkIframeEmbedSubmitSessionTokenMessage,
+  SdkIframeEmbedTagRequestGuestTokenRefreshMessage,
+  SdkIframeEmbedTagRequestSessionTokenMessage,
+} from "metabase/embedding/embedding-iframe-sdk/bundle-protocol/types";
 
 export type SdkIframeEmbedComponentTagMessage =
   | {

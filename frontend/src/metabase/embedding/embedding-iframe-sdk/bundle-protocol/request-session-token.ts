@@ -3,11 +3,12 @@ import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage"
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { isWithinIframe } from "metabase/utils/iframe";
 
-import { WAIT_FOR_SESSION_TOKEN_TIMEOUT } from "../../script/constants";
+import { WAIT_FOR_SESSION_TOKEN_TIMEOUT } from "./constants";
 import type {
-  SdkIframeEmbedMessage,
-  SdkIframeEmbedTagMessage,
-} from "../../script/types/embed";
+  SdkIframeEmbedAuthResponseMessage,
+  SdkIframeEmbedTagRequestGuestTokenRefreshMessage,
+  SdkIframeEmbedTagRequestSessionTokenMessage,
+} from "./types";
 
 /**
  * Requests a refresh token from the embed.js script which lives in the parent window.
@@ -27,7 +28,9 @@ export function requestSessionTokenFromEmbedJs(options?: {
         reject(AUTH_TIMEOUT());
       }, WAIT_FOR_SESSION_TOKEN_TIMEOUT);
 
-      const handler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
+      const handler = (
+        event: MessageEvent<SdkIframeEmbedAuthResponseMessage>,
+      ) => {
         if (!isWithinIframe() || !event.data) {
           return;
         }
@@ -73,16 +76,18 @@ export function requestSessionTokenFromEmbedJs(options?: {
       // Send appropriate request message based on flow
       if (options?.expiredToken) {
         // is guest embed token refresh flow
-        const guestEmbedSessionRefreshMessage: SdkIframeEmbedTagMessage = {
-          type: "metabase.embed.requestGuestTokenRefresh",
-          data: { expiredToken: options.expiredToken },
-        };
+        const guestEmbedSessionRefreshMessage: SdkIframeEmbedTagRequestGuestTokenRefreshMessage =
+          {
+            type: "metabase.embed.requestGuestTokenRefresh",
+            data: { expiredToken: options.expiredToken },
+          };
         window.parent.postMessage(guestEmbedSessionRefreshMessage, "*");
       } else {
         // SSO flow
-        const requestTokenMessage: SdkIframeEmbedTagMessage = {
-          type: "metabase.embed.requestSessionToken",
-        };
+        const requestTokenMessage: SdkIframeEmbedTagRequestSessionTokenMessage =
+          {
+            type: "metabase.embed.requestSessionToken",
+          };
         window.parent.postMessage(requestTokenMessage, "*");
       }
     },

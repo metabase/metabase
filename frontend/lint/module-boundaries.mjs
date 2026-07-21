@@ -85,9 +85,6 @@ const elements = [
   ...[
     "frontend/src/metabase/embedding/embedding-iframe-sdk/script/types/embed.ts",
     "frontend/src/metabase/embedding/embedding-iframe-sdk/script/constants.ts",
-    // postMessage helper used by both the iframe route and the sdk bundle
-    // (guest-embed auth); lives under iframe/ until the physical move.
-    "frontend/src/metabase/embedding/embedding-iframe-sdk/iframe/utils/request-session-token.ts",
   ].map((pattern) =>
     createElement({
       type: "app",
@@ -100,6 +97,15 @@ const elements = [
     type: "app",
     name: "embedding-iframe-sdk-shared",
     pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk/shared/**",
+  }),
+  // Auth-token sub-protocol between embed.js and the sdk bundle: the only
+  // postMessage slice the bundle takes part in at runtime, so it sits below
+  // the bundle. The rest of the protocol lives in embedding-iframe-sdk-shared.
+  createElement({
+    type: "shared",
+    name: "eajs-bundle-protocol",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk/bundle-protocol/**",
   }),
   createElement({
     type: "app",
