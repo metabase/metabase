@@ -533,6 +533,7 @@
     "lint-eslint": "bun run build:cljs && bun run lint-eslint-pure",
     "lint-eslint-pure": "eslint --cache --cache-strategy content --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e",
     "module-boundaries": "eslint --config eslint.config.module-boundaries.mjs 'frontend/src/**/*.{js,jsx,ts,tsx}' 'enterprise/frontend/src/**/*.{js,jsx,ts,tsx}'",
+    "lint-embed-js-purity": "node frontend/lint/embed-js-purity.mjs",
     "lint-format": "bun install && bun lint-format-pure",
     "lint-format-pure": "oxfmt --check '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
