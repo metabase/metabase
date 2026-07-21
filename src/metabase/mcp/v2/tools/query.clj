@@ -221,7 +221,11 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
    :args        execute-query-args-schema}
   [{:keys [validate_only row_limit] :as args} {:keys [session-id]}]
   (let [input (query-input args)
-        {serialized-query :query prompt :prompt} (resolve-input input args session-id)]
+        {resolved :query prompt :prompt} (resolve-input input args session-id)
+        ;; The total order goes on before the query runs, not when the cursor is minted: a page
+        ;; is continuable only if it was served in the order the keyset seeks past. Handles are
+        ;; minted from this query, so what a later call re-runs is what ran here.
+        serialized-query (v2.query/with-total-order resolved)]
     (if (true? validate_only)
       (validate-only-response! session-id serialized-query prompt)
       (execute-response! session-id serialized-query prompt (or row_limit default-row-limit)))))
