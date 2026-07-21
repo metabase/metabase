@@ -16,11 +16,8 @@
   (:require
    [build-drivers.create-uberjar :as create-uberjar]
    [build.embedder-model :as embedder-model]
-   [clojure.java.io :as io]
    [clojure.tools.build.api :as b]
    [clojure.tools.build.tasks.uber] ;; workaround for (#50940), same as build-drivers.create-uberjar
-   [clojure.tools.deps.alpha :as deps]
-   [clojure.tools.deps.alpha.util.dir :as deps.dir]
    [metabuild-common.core :as u]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]]))
 
@@ -32,21 +29,11 @@
 (def ^:private jar-destination-path
   (u/filename embedder-project-dir "target" "metabase-embedder-plugin.jar"))
 
-(defn- embedder-basis []
-  (let [edn (deps/merge-edns
-             ((juxt :root-edn :project-edn)
-              (deps/find-edn-maps (u/filename embedder-project-dir "deps.edn"))))]
-    (binding [deps.dir/*the-dir* (io/file embedder-project-dir)]
-      (deps/calc-basis edn))))
-
 (defn- remove-core-provided-libs
   "Drop libs (and their classpath entries) that the core uberjar already provides.
   Same pruning as the driver builds, without the parent-driver layer."
   [basis]
-  (-> (create-uberjar/prune-provided-libs basis
-                                          (into {}
-                                                (map (fn [lib] [lib 'metabase-core]))
-                                                create-uberjar/metabase-core-provided-libs))
+  (-> (create-uberjar/prune-provided-libs basis create-uberjar/metabase-core-provided-libs)
       ;; remove unneeded keys so the uber task doesn't try to re-resolve anything
       (dissoc :deps :aliases :mvn/repos)))
 
@@ -69,7 +56,7 @@
         (b/uber
          {:class-dir         class-dir
           :uber-file         jar-destination-path
-          :basis             (remove-core-provided-libs (embedder-basis))
+          :basis             (remove-core-provided-libs (create-uberjar/project-basis embedder-project-dir))
           ;; merge Log4j2Plugins.dat files. (#50721)
           :conflict-handlers log4j2-conflict-handler
           ;; on MacOS META-INF/LICENSE conflicts with license directories inside dep jars, see:

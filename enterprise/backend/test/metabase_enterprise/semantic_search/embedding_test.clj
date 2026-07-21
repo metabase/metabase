@@ -110,6 +110,13 @@
                 :model-name        "Snowflake/snowflake-arctic-embed-l-v2.0"
                 :vector-dimensions 1024}
                (embedding/get-configured-model)))))
+    (testing "in-process reports as a supported embedding backend"
+      ;; Without an `embedding-supported?` method the multimethod's `:default false` applies, and every
+      ;; consumer that gates on it (semantic search, the library entity index) treats a fully-configured
+      ;; in-process embedder as "no embedder configured" and silently stays off.
+      (is (true? (embedding/embedding-supported? {:provider          "in-process"
+                                                  :model-name        "all-MiniLM-L6-v2"
+                                                  :vector-dimensions 384}))))
     (testing "unknown providers are still rejected by the setter"
       (mt/with-temporary-setting-values [ee-embedding-provider "ai-service"]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo

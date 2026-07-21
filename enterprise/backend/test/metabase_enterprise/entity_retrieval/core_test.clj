@@ -237,6 +237,35 @@
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly {:provider "no-embedder"})]
             (is (false? (entity-retrieval.core/available?)))))))))
 
+(deftest available?-honors-library-embedding-overrides-test
+  (testing "available? gates on the library index's own model, not the global one"
+    ;; The whole point of the ee-library-embedding-* overrides is that this index can run a different
+    ;; provider than semantic search. Gating on the global model made a working override read as
+    ;; unavailable, and let a healthy global provider mask a broken override.
+    (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
+      (mt/with-premium-features #{:library :library-retrieval}
+        (testing "a supported override rescues an unsupported global provider"
+          (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly {:provider "no-embedder"})]
+            (is (false? (entity-retrieval.core/available?))
+                "precondition: the global provider alone is unsupported")
+            (mt/with-temporary-setting-values [ee-library-embedding-provider         "ollama"
+                                               ee-library-embedding-model            "mxbai-embed-large"
+                                               ee-library-embedding-model-dimensions 1024]
+              (is (true? (entity-retrieval.core/available?))))))
+        (testing "an unsupported override is not masked by a supported global provider"
+          ;; openai without an API key: a valid provider name (the setter rejects unknown ones) that
+          ;; embedding-supported? reports false for.
+          (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly semantic.tu/mock-embedding-model)]
+            (mt/with-temporary-setting-values [llm-openai-api-key                    nil
+                                               ee-library-embedding-provider         "openai"
+                                               ee-library-embedding-model            "text-embedding-3-small"
+                                               ee-library-embedding-model-dimensions 1536]
+              (is (false? (entity-retrieval.core/available?))))))
+        (testing "a half-applied override reads as unavailable rather than throwing out of the gate"
+          (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly semantic.tu/mock-embedding-model)]
+            (mt/with-temporary-setting-values [ee-library-embedding-model "orphaned-without-dimensions"]
+              (is (false? (entity-retrieval.core/available?))))))))))
+
 (deftest ^:sequential entity-retrieval-available?-requires-a-populated-index-test
   (testing "the curated tool is offered only once the index has documents (else the nlq profile falls back)"
     (when semantic.db.datasource/db-url

@@ -18,19 +18,24 @@
     (binding [deps.dir/*the-dir* (io/file (c/driver-project-dir driver))]
       (deps/calc-basis edn))))
 
-(defonce ^:private metabase-core-edn
-  (deps/merge-edns
-   ((juxt :root-edn :project-edn)
-    (deps/find-edn-maps (u/filename u/project-root-directory "deps.edn")))))
+(defn project-basis
+  "Basis for the `deps.edn` project rooted at `dir`, resolved relative to that dir.
+  Used for the core project here and for the embedder module in `build-embedder-plugin`."
+  [dir]
+  (let [edn (deps/merge-edns
+             ((juxt :root-edn :project-edn)
+              (deps/find-edn-maps (u/filename dir "deps.edn"))))]
+    (binding [deps.dir/*the-dir* (io/file dir)]
+      (deps/calc-basis edn))))
 
 (defonce ^:private metabase-core-basis
-  (binding [deps.dir/*the-dir* (io/file u/project-root-directory)]
-    (deps/calc-basis metabase-core-edn)))
+  (project-basis u/project-root-directory))
 
-(defonce ^{:doc "Libs (`group/artifact` symbols) the core Metabase uberjar already provides.
-  Runtime-loaded jar builds (drivers, the embedder plugin) subtract these to avoid shipping classes twice."}
+(defonce ^{:doc "Map of lib (`group/artifact` symbol) → `metabase-core`, for every lib the core Metabase
+  uberjar already provides. Runtime-loaded jar builds (drivers, the embedder plugin) subtract these — via
+  [[prune-provided-libs]] — to avoid shipping classes twice."}
   metabase-core-provided-libs
-  (set (keys (:libs metabase-core-basis))))
+  (into {} (map (fn [lib] [lib 'metabase-core])) (keys (:libs metabase-core-basis))))
 
 (defn- driver-parents [driver edition]
   (when-let [parents (not-empty (:metabase.driver/parents (c/driver-edn driver edition)))]
@@ -46,10 +51,7 @@
   "Return a map of lib -> provider, where lib is a symbol like `com.h2database/h2` and provider is either
   `metabase-core` or the parent driver that provided that lib."
   [driver edition]
-  (into (parent-provided-libs driver edition)
-        (map (fn [lib]
-               [lib 'metabase-core]))
-        metabase-core-provided-libs))
+  (into (parent-provided-libs driver edition) metabase-core-provided-libs))
 
 (defn prune-provided-libs
   "Remove `lib->provider`'s libs (and their classpath entries) from `basis`, announcing each INCLUDE/SKIP.

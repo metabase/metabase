@@ -258,6 +258,9 @@
   "Embed `texts` (a seq of strings) with `model-name` → vector of float-array embeddings, in input order.
   The first call for a given model loads it and keeps it resident."
   [model-name texts]
+  ;; TODO `texts` arrives unchunked — `.batchPredict` pads the whole batch to its longest sequence, so a
+  ;; large caller batch is one correspondingly large tensor. Callers currently size the batch (see the TODO
+  ;; on the `in-process` `get-embeddings-batch` method); a cap here would be the belt-and-braces version.
   ;; Predictor is not thread-safe in DJL; creating one per call is cheap relative to the forward pass.
   (with-open [predictor ^Predictor (.newPredictor (model model-name))]
     (vec (.batchPredict predictor (ArrayList. ^java.util.Collection texts)))))

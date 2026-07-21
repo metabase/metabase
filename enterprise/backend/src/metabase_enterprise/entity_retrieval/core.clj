@@ -42,25 +42,6 @@
   []
   (semantic.db.datasource/dedicated-url-configured?))
 
-(defn available?
-  "Whether the entity-retrieval mirror can run right now. All four must hold:
-    - a pgvector store is configured (somewhere to hold the index),
-    - the license includes `:library-retrieval` (the tool is entitled),
-    - the license includes `:library`: retrieval operates over library entities, so the tool is meaningless
-      without it (the index would have nothing to hold) — enforced here so a token granting
-      `:library-retrieval` alone degrades to \"unavailable\" explicitly, not silently via an empty index,
-    - an embedding backend is configured (see [[embedding/embedding-supported?]]): without one, both
-      reconcile and query embedding would throw, so we gate rather than fail mid-run.
-  The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
-  re-evaluate per use."
-  []
-  ;; entitlement first: short-circuit on the license flags for instances that can't use the answer, before
-  ;; the config check (here a cheap dedicated-URL string check, not the app-db pgvector probe)
-  (and (premium-features/has-feature? :library)
-       (premium-features/has-feature? :library-retrieval)
-       (pgvector-configured?)
-       (embedding/embedding-supported? (embedding/get-configured-model))))
-
 (defn- configured-model
   "The embedding model for the library entity index: the global embedding settings, with any
   ee-library-embedding-* overrides applied so this index can run a different provider/model than
@@ -92,6 +73,33 @@
            (u/remove-nils {:provider          provider
                            :model-name        model
                            :vector-dimensions dimensions}))))
+
+(defn available?
+  "Whether the entity-retrieval mirror can run right now. All four must hold:
+    - a pgvector store is configured (somewhere to hold the index),
+    - the license includes `:library-retrieval` (the tool is entitled),
+    - the license includes `:library`: retrieval operates over library entities, so the tool is meaningless
+      without it (the index would have nothing to hold) — enforced here so a token granting
+      `:library-retrieval` alone degrades to \"unavailable\" explicitly, not silently via an empty index,
+    - an embedding backend is configured (see [[embedding/embedding-supported?]]): without one, both
+      reconcile and query embedding would throw, so we gate rather than fail mid-run.
+  The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
+  re-evaluate per use."
+  []
+  ;; entitlement first: short-circuit on the license flags for instances that can't use the answer, before
+  ;; the config check (here a cheap dedicated-URL string check, not the app-db pgvector probe)
+  (and (premium-features/has-feature? :library)
+       (premium-features/has-feature? :library-retrieval)
+       (pgvector-configured?)
+       ;; [[configured-model]], not the global one: this index may run a different provider than semantic
+       ;; search, and gating on the global model would both hide a broken override behind a healthy global
+       ;; provider and refuse to run a working override behind a broken one.
+       ;; A `:config-error` reads as unavailable rather than propagating — this is a gate, and every caller
+       ;; that goes on to *use* the model ([[index-ready?]], both reconciles) resolves it again and logs
+       ;; there, so the misconfiguration is still reported without this per-offer path logging it.
+       (boolean (try
+                  (embedding/embedding-supported? (configured-model))
+                  (catch Throwable _ false)))))
 
 (defn- index-ready?
   "Whether the library entity index can serve a query right now: its meta row matches the configured
@@ -210,8 +218,11 @@
   loop) means a write arriving mid-run re-dirties and is picked up by the next run. A per-entity reconcile
   failure re-dirties that entity, so a later run (or the periodic backstop) retries it instead of losing
   the write to the slow backstop.
-  Settings misconfigurations (`:config-error`) are not re-queued: they fail every retry identically, and
-  the periodic backstop re-covers the entity once the settings are fixed."
+  Settings misconfigurations (`:config-error`) re-queue like any other failure. They do fail every retry
+  identically, but the periodic backstop can't be the safety net for them: it resolves the same settings and
+  fails the same way, so dropping the entry would lose the write for the whole misconfigured window and
+  leave the index serving pre-edit rows as current. Re-queuing costs one set entry per edited entity and
+  drains as soon as the settings are fixed."
   [_scheduled]
   (let [ds    (semantic.db.datasource/ensure-initialized-data-source!)
         dirty (locking run-lock (let [d @dirty-entities] (reset! dirty-entities #{}) d))]
@@ -221,13 +232,11 @@
               diff    (reconcile/reconcile-entity! ds configured-model entity-type entity-local-id)]
           (record-run! "targeted" diff (elapsed-ms started)))
         (catch Throwable e
-          (if (:config-error (ex-data e))
-            (log/error e "library entity index misconfigured; dropping targeted reconcile"
-                       entity-type entity-local-id)
-            (do
-              (log/error e "library entity index: targeted reconcile failed; re-queuing"
-                         entity-type entity-local-id)
-              (locking run-lock (swap! dirty-entities conj entity-key)))))))))
+          (log/error e (if (:config-error (ex-data e))
+                         "library entity index misconfigured; re-queuing targeted reconcile"
+                         "library entity index: targeted reconcile failed; re-queuing")
+                     entity-type entity-local-id)
+          (locking run-lock (swap! dirty-entities conj entity-key)))))))
 
 (defn reconcile-full-coalesced!
   "Run a full reconcile through the full-reconcile schedule, blocking until a run covering this call

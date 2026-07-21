@@ -432,6 +432,11 @@
                          :configured-dimensions vector-dimensions})))))
   embeddings)
 
+;; TODO chunk `texts` here (or teach `process-embeddings-streaming` a per-provider batch budget the way it
+;; already has one for openai). Every other provider is an HTTP call, so an unchunked batch costs one large
+;; request; in-process is the first where it costs *local* memory — DJL pads the whole batch to its longest
+;; sequence, so a 1000-document indexer poll becomes one ~1000×512 tensor plus activations on top of the
+;; ~430 MB native footprint. Pre-existing shape, new consequence.
 (defmethod get-embeddings-batch "in-process"
   [{:keys [model-name] :as embedding-model} texts & {:keys [record-tokens? type]}]
   (when (str/blank? model-name)
@@ -517,6 +522,13 @@
 ;; ollama's endpoint is hardcoded (localhost:11434) with no setting to check, so config-presence is always
 ;; true — consistent with ai-service/openai, which likewise check for a configured URL, not a live server.
 (defmethod embedding-supported? "ollama" [_] true)
+
+;; Same rule: selecting the provider *is* the configuration, so there is no further setting to check. A
+;; missing plugin jar is the in-process analogue of an unreachable ai-service URL — not-installed rather
+;; than not-configured — and `resolve-in-process-fn` reports it at first use with install guidance. Without
+;; this method the `:default false` above would make a fully-configured in-process embedder read as
+;; unconfigured, silently disabling semantic search and the library entity index.
+(defmethod embedding-supported? "in-process" [_] true)
 
 (defn- calc-token-metrics
   [texts]
