@@ -22,7 +22,6 @@
   the additional-search-engines setting value."
   [{:keys [supported configured additional]} & body]
   ;; with-redefs is required: supported-engine? is a multimethod, which with-dynamic-fn-redefs cannot proxy.
-  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
   `(with-redefs [search.engine/supported-engine?            ~supported
                  search.engine/known-engine?                all-engines
                  search.settings/configured-search-engine   (constantly ~configured)

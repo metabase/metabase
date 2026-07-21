@@ -1,11 +1,7 @@
 (ns metabase-enterprise.data-apps.api
-  "Data-app endpoints, mounted at `/api/apps`.
-
-   Data apps come from the repository connected via the remote-sync feature. The
-   repo's `data_apps/<dir>/data_app.yaml` files are discovered on sync and each is
-   materialized as one `data_app` row, caching the app's bundle. Users navigate to
-   `/apps/:slug`, which fetches `/api/apps/:slug/bundle` and evaluates the
-   bytes inside a Near Membrane sandbox.
+  "Data-app endpoints, mounted at `/api/apps`. Serves the bundles materialized by
+   [[metabase-enterprise.data-apps.sync]]; see `README.md` in this directory for
+   where apps come from and how the pieces fit together.
 
    Note: we can't use `/app/...` for the frontend or `/api/app/...` for the API
    because Metabase's server reserves `/app/*` for serving static assets (see
@@ -126,9 +122,10 @@
     (data-app/select-one-non-blob :id (:id app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Remove a single data app (its row and cached bundle). Intended for clearing
-   out apps once their repository is no longer connected — a sync never deletes,
-   and while a repo is connected it would just re-materialize the app."
+  "Remove a single data app (its row and cached bundle). Intended for clearing out
+   apps left behind by a repository that is no longer connected: while a repo is
+   connected, an app still in it is re-materialized by the next sync, and one no
+   longer in it is pruned by that sync anyway."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
   ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.

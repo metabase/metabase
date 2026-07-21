@@ -1,17 +1,14 @@
 (ns metabase-enterprise.data-apps.sync
-  "Materialize data apps from a synced repository snapshot.
+  "Materialize data apps from a synced repository snapshot — discovery, upsert, and
+   pruning. [[sync-from-snapshot!]] is the entry point remote-sync calls on every
+   import.
 
-   Data apps ride the remote-sync import pipeline: whenever remote-sync pulls the
-   connected repository (manual \"Pull changes\", auto-import poll, or startup),
-   it calls [[sync-from-snapshot!]] with the just-imported snapshot. We discover
-   every `data_apps/<dir>/data_app.yaml` and materialize one `data_app` row per app
-   (caching the built bundle). A sync only upserts — it never deletes, so an app
-   whose directory is gone from the repo is kept until an admin removes it.
+   See `README.md` in this directory for the pipeline, the source-of-truth rules
+   (what a sync deletes, and what unlinking or switching repos does), and the
+   failure-isolation guarantees this namespace implements.
 
    This namespace does no Git access of its own — the snapshot's `read-file` /
-   `list-files` come from remote-sync. The cached `bundle` blob is what serving
-   reads, so a failed sync never takes a working app offline, and the admin
-   `enabled` toggle is preserved across syncs."
+   `list-files` come from remote-sync."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
@@ -57,23 +54,26 @@
   "Given the snapshot's `list-files` and `read-file` fns (where `read-file`
    returns file text or nil), iterate the folders under `data_apps/` and return one
    entry per folder that is an app — it holds a `data_app.yaml`; a folder without
-   one is skipped. Each entry is a parsed app
-   `{:slug :display_name :bundle :allowed_hosts}` (with `:bundle` the repo-root
-   relative bundle path) or `{:config-error <message>}`. Parse/read failures are
-   isolated per app so one bad config can't abort the sync."
+   one is skipped. Each entry carries `:slug` (the directory name) plus either the
+   parsed app `{:display_name :bundle :allowed_hosts}` (with `:bundle` the
+   repo-root relative bundle path) or `{:config-error <message>}`. Parse/read
+   failures are isolated per app so one bad config can't abort the sync — and the
+   `:slug` is present either way, so pruning can tell a directory that still exists
+   (transiently broken config) from one that was removed."
   [list-files read-file]
   (let [files    (set (list-files))
         app-dirs (distinct (keep #(second (re-matches app-dir-regex %)) files))]
     (for [dir  app-dirs
           :let [config-path (files (str dir "/data_app.yaml"))]
           :when config-path]
-      (try
-        (if-let [content (read-file config-path)]
-          (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
-            {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
-          {:config-error (tru "Could not read {0}." config-path)})
-        (catch Throwable e
-          {:config-error (ex-message e)})))))
+      (let [slug (data-app.config/dir-slug dir)]
+        (try
+          (if-let [content (read-file config-path)]
+            (let [{:keys [display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
+              {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
+            {:slug slug, :config-error (tru "Could not read {0}." config-path)})
+          (catch Throwable e
+            {:slug slug, :config-error (ex-message e)}))))))
 
 ;;; ----------------------------------------------------- Materialize -----------------------------------------------------
 
@@ -98,6 +98,17 @@
       (not= (:bundle_hash existing) bundle_hash)
       (not= (vec (or (:allowed_hosts existing) []))
             (vec (or allowed_hosts [])))))
+
+(defn- mark-config-error!
+  "Record a `data_app.yaml` parse failure on an app that already has a row, keeping the
+   row and its cached bundle and setting `sync_error`. An app with no row yet isn't
+   materialized at all — there's nothing to serve. Returns true when this changed the
+   app's recorded state, so callers can count it like any other change."
+  [existing slug message]
+  (boolean
+   (when (and existing (not= (:sync_error existing) message))
+     (t2/update! :model/DataApp :name slug {:sync_error message})
+     true)))
 
 (defn- sync-app!
   "Materialize one app. On bundle failure, the row's metadata is still upserted
@@ -142,45 +153,50 @@
       :list-files (fn [] -> [<path-string> ...])
       :sha        <commit-sha-string>}
 
-   Discovers every `data_apps/<dir>/data_app.yaml` and upserts a row per app in a
-   single transaction. Apps not present in the snapshot are left untouched (a
-   sync never deletes — removal is an explicit admin action). Returns
-   `{:synced <n>, :changed <n>, :sha <sha>, :config-errors [<message> ...]}`,
-   where `:changed` is how many apps this sync actually created/updated
-   (a `last_synced_sha` bump on an unchanged app does not count). A malformed
-   `data_app.yaml` is isolated (collected into `:config-errors`, that app skipped)
-   rather than aborting the others; per-app bundle failures are recorded on the
-   row.
+   Discovers every `data_apps/<dir>/data_app.yaml`, upserts a row per app, and prunes
+   rows whose directory is gone from the snapshot — all in one transaction. Returns
+   `{:synced <n>, :changed <n>, :removed <n>, :sha <sha>, :config-errors [<msg> ...]}`,
+   where `:changed` counts apps actually created/updated (a `last_synced_sha` bump on
+   unchanged content does not count) and `:removed` counts apps dropped for no longer
+   being in the repo.
 
-   Two apps can't collide on a slug here: a slug *is* an app's directory name (see
-   the config namespace), a repo can't hold two `data_apps/<slug>` directories, and
-   discovery takes one config per directory (see [[discover-app-configs]])."
+   See `README.md` in this directory for the source-of-truth rules this implements,
+   and for why a broken config marks its app failed instead of pruning it."
   [{:keys [read-file list-files sha]}]
   ;; realize discovery once (it calls read-file/parse per config); `results` is
   ;; then walked several times below
-  (let [results  (vec (discover-app-configs list-files read-file))
-        good     (filter :slug results)
-        errors   (vec (keep :config-error results))
+  (let [results      (vec (discover-app-configs list-files read-file))
+        good         (remove :config-error results)
+        errors       (vec (keep :config-error results))
+        ;; every app directory present in the repo (parsed or not) — the set of
+        ;; slugs that should survive this sync
+        present-slugs (into #{} (map :slug) results)
         ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump
-        existing (into {} (map (juxt :name identity))
-                       (t2/select [:model/DataApp :name :display_name :allowed_hosts
-                                   :bundle_path :bundle_hash :sync_error]))
-        changed
-        ;; Upsert-only: a sync never deletes. Apps materialized from a previous
-        ;; repo are kept (they survive unlinking, and switching repos), and an
-        ;; app whose directory name matches an existing app's is overridden in
-        ;; place by `upsert-by-name!`. Rows are removed only by an explicit admin
-        ;; action (see the API's DELETE).
+        existing     (into {} (map (juxt :name identity))
+                           (t2/select [:model/DataApp :name :display_name :allowed_hosts
+                                       :bundle_path :bundle_hash :sync_error]))
+        {:keys [changed removed]}
         (t2/with-transaction [_conn]
-          (reduce (fn [n cfg]
-                    (cond-> n
-                      (sync-app! (get existing (:slug cfg))
-                                 (assoc cfg :sha sha :read-file read-file))
-                      inc))
-                  0 good))]
-    (log/infof "[data-app] synced sha=%s apps=%d changed=%d errors=%d"
-               sha (count good) changed (count errors))
-    {:synced (count good), :changed changed, :sha sha, :config-errors errors}))
+          (let [changed (reduce (fn [n {:keys [slug config-error] :as cfg}]
+                                  (cond-> n
+                                    ;; A parse failure on an app that still exists marks
+                                    ;; that row failed rather than syncing it; everything
+                                    ;; else is materialized normally.
+                                    (if config-error
+                                      (mark-config-error! (get existing slug) slug config-error)
+                                      (sync-app! (get existing slug)
+                                                 (assoc cfg :sha sha :read-file read-file)))
+                                    inc))
+                                0 results)
+                ;; `enabled` is deliberately not consulted — see the README's
+                ;; source-of-truth table. (`[:not-in #{}]` is invalid SQL, so delete-all.)
+                removed (if (seq present-slugs)
+                          (t2/delete! :model/DataApp :name [:not-in present-slugs])
+                          (t2/delete! :model/DataApp))]
+            {:changed changed, :removed removed}))]
+    (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"
+               sha (count good) changed removed (count errors))
+    {:synced (count good), :changed changed, :removed removed, :sha sha, :config-errors errors}))
 
 (defn sync-from-snapshot!
   "Entry point for the remote-sync import pipeline. Materializes data apps from

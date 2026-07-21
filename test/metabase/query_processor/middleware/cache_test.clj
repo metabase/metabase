@@ -96,6 +96,12 @@
         (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
         (a/>!! purge-chan ::purge))
 
+      (delete-entry! [this query-hash]
+        (let [hex-hash (codecs/bytes->hex query-hash)]
+          (swap! store dissoc hex-hash)
+          (swap! leases dissoc hex-hash)
+          (log/tracef "Delete entry for %s --> store: %s" hex-hash (pretty/pretty this))))
+
       (try-acquire-refresh-lease! [_this query-hash lease-ms]
         (let [hex-hash (codecs/bytes->hex query-hash)
               now      (t/instant)
@@ -264,6 +270,64 @@
           (testing "updated_at was left alone -- results have not actually been rewritten yet"
             (is (= (t/instant original-updated-at) (t/instant updated_at)))))))))
 
+(deftest delete-entry-test
+  (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
+                                                               :results    (byte-array [0])
+                                                               :updated_at (t/offset-date-time)}]
+      (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
+      (backend.db/delete-entry! query-hash)
+      (is (nil? (t2/select-one :model/QueryCache :query_hash query-hash))))))
+
+(deftest failed-refresh-deletes-outdated-entry-test
+  (testing "a refresh that fails to save (e.g. results exceed query-caching-max-kb) deletes the outdated entry
+            instead of leaving it to be served to later requests"
+    (with-mock-cache! [save-chan]
+      (run-query)
+      (mt/wait-for-result save-chan)
+      (is (= :cached
+             (run-query)))
+      (mt/with-temporary-setting-values [query-caching-max-kb 0]
+        (run-query :middleware {:ignore-cached-results? true})
+        (mt/wait-for-result save-chan))
+      (testing "the still-fresh-but-outdated entry is gone, so a normal load recomputes"
+        (is (= :not-cached
+               (run-query)))))))
+
+(deftest failed-refresh-releases-refresh-lease-test
+  (testing "when the lease winner's refresh fails to save, the expired entry is deleted so other processes recompute
+            instead of serving it stale for the rest of the lease window"
+    (with-mock-cache! [save-chan]
+      (let [strategy (assoc (ttl-strategy) :multiplier 0.1)]
+        (run-query :cache-strategy strategy)
+        (mt/wait-for-result save-chan)
+        (Thread/sleep 200)
+        (mt/with-temporary-setting-values [query-caching-max-kb 0]
+          (testing "this run wins the refresh lease, recomputes, and fails to save"
+            (is (= :not-cached
+                   (run-query :cache-strategy strategy))))
+          (mt/wait-for-result save-chan)
+          (testing "the next request recomputes rather than being served the stale entry"
+            (is (= :not-cached
+                   (run-query :cache-strategy strategy)))))))))
+
+(deftest not-eligible-refresh-deletes-outdated-entry-test
+  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min-duration-ms), the expired entry
+            is deleted so other processes recompute instead of serving it stale for the rest of the lease window"
+    (with-mock-cache! [save-chan]
+      (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
+      (mt/wait-for-result save-chan)
+      (Thread/sleep 200)
+      (binding [*query-caching-min-ttl* 1000]
+        (let [strategy (assoc (ttl-strategy) :multiplier 0.1)]
+          (testing "this run wins the refresh lease, recomputes, and doesn't save (query is now too fast)"
+            (is (= :not-cached
+                   (run-query :cache-strategy strategy))))
+          (testing "the next request recomputes rather than being served the stale entry"
+            (is (= :not-cached
+                   (run-query :cache-strategy strategy)))))))))
+
 (deftest stale-while-revalidate-test
   (testing "an expired entry whose refresh lease is already held by another process is served stale instead of
             recomputed, so concurrent requests don't stampede the data warehouse"
@@ -379,8 +443,9 @@
                   result)))))))
 
 (deftest array-query-can-be-cached-test
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/arrays)
+                         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                         #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
                          :sqlite) ;; Disabling until issue #57301 is resolved
     (with-mock-cache! [save-chan]
       (mt/with-temporary-setting-values [enable-query-caching true]
@@ -409,6 +474,7 @@
                    (dissoc cached-result :cache/details)))))))))
 
 (deftest postgres-domain-can-be-cached-test
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-driver :postgres
     (mt/dataset (mt/dataset-definition
@@ -489,6 +555,7 @@
           save-query-update-avg-time-original (mt/original-fn #'query/save-queries-and-update-average-execution-times!)]
       ;; save-execution-metadata!* and save-queries-and-update-average-execution-times! are invoked from
       ;; the QP pipeline on worker threads that don't inherit *local-redefs* — use with-redefs.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [process-userland-query/save-execution-metadata!*          (fn [& args]
                                                                                 (swap! save-execution-metadata-count inc)
@@ -767,20 +834,29 @@
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
 
+(def stub-no-op-cache-backend
+  (reify i/CacheBackend
+    (cached-results [_ _ respond] (respond nil nil))
+    (save-results! [_ _ _])
+    (purge-old-entries! [_ _])
+    (delete-entry! [_ _])
+    (try-acquire-refresh-lease! [_ _ _] true)))
+
 (deftest ^:parallel caching-big-resultsets
-  (testing "Make sure we can save large result sets without tripping over internal async buffers"
-    (is (= 10000 (count (transduce identity
-                                   (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                   (repeat 10000 [1]))))))
-  (testing "Make sure we don't block somewhere if we decide not to save results"
-    (is (= 10000 (count (transduce identity
-                                   (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
-                                   (repeat 10000 [1]))))))
-  (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
-    (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
-      (is (= max-bytes (count (transduce identity
-                                         (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                         (repeat max-bytes [1]))))))))
+  (binding [cache/*backend* stub-no-op-cache-backend]
+    (testing "Make sure we can save large result sets without tripping over internal async buffers"
+      (is (= 10000 (count (transduce identity
+                                     (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
+                                     (repeat 10000 [1]))))))
+    (testing "Make sure we don't block somewhere if we decide not to save results"
+      (is (= 10000 (count (transduce identity
+                                     (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
+                                     (repeat 10000 [1]))))))
+    (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
+      (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
+        (is (= max-bytes (count (transduce identity
+                                           (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
+                                           (repeat max-bytes [1])))))))))
 
 (deftest perms-checks-should-still-apply-test
   (testing "Double-check that perms checks still happen even for cached results"

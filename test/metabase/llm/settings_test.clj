@@ -267,20 +267,20 @@
       (is (= 8192 (llm.settings/llm-max-tokens))))))
 
 (deftest llm-request-timeout-ms-test
-  (testing "default value is 60000 (60 seconds)"
+  (testing "default value is 120000 (120 seconds)"
     (mt/with-temporary-setting-values [llm-request-timeout-ms nil]
-      (is (= 60000 (llm.settings/llm-request-timeout-ms)))))
+      (is (= 120000 (llm.settings/llm-request-timeout-ms)))))
   (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-request-timeout-ms 120000]
-      (is (= 120000 (llm.settings/llm-request-timeout-ms))))))
+    (mt/with-temporary-setting-values [llm-request-timeout-ms 30000]
+      (is (= 30000 (llm.settings/llm-request-timeout-ms))))))
 
 (deftest llm-connection-timeout-ms-test
-  (testing "default value is 5000 (5 seconds)"
+  (testing "default value is 10000 (10 seconds)"
     (mt/with-temporary-setting-values [llm-connection-timeout-ms nil]
-      (is (= 5000 (llm.settings/llm-connection-timeout-ms)))))
+      (is (= 10000 (llm.settings/llm-connection-timeout-ms)))))
   (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-connection-timeout-ms 10000]
-      (is (= 10000 (llm.settings/llm-connection-timeout-ms))))))
+    (mt/with-temporary-setting-values [llm-connection-timeout-ms 3000]
+      (is (= 3000 (llm.settings/llm-connection-timeout-ms))))))
 
 (deftest llm-rate-limit-per-user-test
   (testing "default value is 20 requests per minute"
