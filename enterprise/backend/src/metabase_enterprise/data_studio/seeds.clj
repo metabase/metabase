@@ -47,9 +47,9 @@
   (codecs/bytes->hex (buddy-hash/sha256 csv)))
 
 (defn list-seeds
-  "All seeds, CSV payload excluded."
+  "All seeds, CSV payload excluded, ordered by name."
   []
-  (apply t2/select :model/Seed (concat seed.model/non-csv-columns [{:order-by [:name]}])))
+  (t2/select (into [:model/Seed] seed.model/non-csv-columns) {:order-by [[:name :asc]]}))
 
 (defn create-seed!
   "Materialize `file` as a stably-named plain table and record the seed row that owns the CSV."
@@ -66,12 +66,17 @@
                                          :table-name  seed-name
                                          :data-source :seed})
         published (publish-seed-table! table)]
-    (t2/insert-returning-instance! :model/Seed
-                                   {:name          seed-name
-                                    :csv           csv
-                                    :csv_hash      (csv-hash csv)
-                                    :table_id      (:id table)
-                                    :collection_id (:collection_id published)})))
+    (try
+      (let [seed-id (t2/insert-returning-pk! :model/Seed
+                                             {:name          seed-name
+                                              :csv           csv
+                                              :csv_hash      (csv-hash csv)
+                                              :table_id      (:id table)
+                                              :collection_id (:collection_id published)})]
+        (t2/select-one (into [:model/Seed] seed.model/non-csv-columns) :id seed-id))
+      (catch Exception e
+        (upload/delete-upload! table :archive-cards? false)
+        (throw e)))))
 
 (defn- seed-by-id [seed-id]
   (api/check-404 (t2/select-one :model/Seed :id seed-id)))
