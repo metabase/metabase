@@ -1,11 +1,10 @@
 (ns metabase-enterprise.content-diagnostics.imbalanced-test
-  "The imbalanced family - three independent checkers flagging empty/sparse/crowded content across
-  collection (with a recursive emptiness cascade), card (empty via the last-run signal), dashboard,
-  document, and transform, stamping the measured magnitude in the top-level `content_count` column and
-  freezing `{threshold, unit}` (+ `as_of` on evidence-dated empties) in `details` at scan time. There
-  is no cross-type precedence: one entity can carry several finding types at once. The `/imbalanced`
-  umbrella endpoint serves all three finding types with `finding-types` narrowing,
-  `min-`/`max-content-count` bounds, and the shared filter/sort/pagination envelope."
+  "Integration + serve-layer tests for the imbalanced family. The three finding types
+  (`empty`/`sparse`/`crowded`) are produced by independent checkers, unit-tested in
+  `checkers/imbalanced/{empty,sparse,crowded}_test`. This suite covers what spans them: cross-type
+  co-occurrence on a single entity (there is no precedence, so one entity can carry several types at
+  once), the `/imbalanced` umbrella endpoint (finding-types + count-bound filters, sort, pagination,
+  permissions, breadcrumb/owner hydration), and per-type scan supersession."
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -33,210 +32,41 @@
                                       :finding_type [:in [:empty :sparse :crowded]]))
                  (fn [findings] (into {} (map (juxt :finding_type identity)) findings)))))
 
-;;; --------------------------------------------- checker: collections -------------------------------------
+;;; --------------------------------------- cross-type co-occurrence ----------------------------------------
+;;; The point of independent checkers: no precedence, so one entity can be flagged by several at once.
+;;; The single-checker rules themselves are covered in the per-checker test namespaces.
 
-(deftest imbalanced-collection-rules-test
-  (testing "collection sparse/crowded verdicts sit on the direct item count (crowded strictly >, sparse strictly < flooring at 1); archived members never count; empty and crowded can coexist"
+(deftest imbalanced-collection-cooccurrence-test
+  (testing "a collection can carry several imbalanced findings at once - the checkers share no precedence"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-crowded-collection-threshold-items 3
                                          content-diagnostics-sparse-collection-threshold-items  3]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp
-            [:model/Collection {empty-coll :id} {}
-             :model/Collection {sparse-coll :id} {}
-             :model/Card _ {:collection_id sparse-coll}
-             :model/Card _ {:collection_id sparse-coll}
-             ;; exactly at both bounds (3 is neither >3 nor <3) - no finding
-             :model/Collection {at-coll :id} {}
-             :model/Card      _ {:collection_id at-coll}
-             :model/Dashboard {at-dash :id} {:collection_id at-coll}
-             :model/DashboardCard _ {:dashboard_id at-dash}
-             :model/Collection _ {:location (collection/location-path at-coll)}
-             ;; over the crowded bound - a child collection counts as a direct item
-             :model/Collection {crowded-coll :id} {}
-             :model/Card _ {:collection_id crowded-coll}
-             :model/Card _ {:collection_id crowded-coll}
-             :model/Card _ {:collection_id crowded-coll}
-             :model/Collection {crowded-child :id} {:location (collection/location-path crowded-coll)}
-             :model/Card _ {:collection_id crowded-child}
-             ;; only an archived card - archived members don't count, so it IS empty
-             :model/Collection {arch-coll :id} {}
-             :model/Card _ {:collection_id arch-coll :archived true}
-             ;; 4 empty dashboards: raw count 4 > 3 → crowded, while the cascade sees no non-empty
-             ;; leaf → ALSO empty (independent checkers, no cross-type precedence)
-             :model/Collection {crowded-empty-coll :id} {}
-             :model/Dashboard _ {:collection_id crowded-empty-coll}
-             :model/Dashboard _ {:collection_id crowded-empty-coll}
-             :model/Dashboard _ {:collection_id crowded-empty-coll}
-             :model/Dashboard _ {:collection_id crowded-empty-coll}]
+            [;; 4 empty dashboards: raw count 4 > 3 → crowded (and 4 is not < 3, so not sparse), while
+             ;; the cascade sees no non-empty leaf → ALSO empty
+             :model/Collection {crowded-empty :id} {}
+             :model/Dashboard _ {:collection_id crowded-empty}
+             :model/Dashboard _ {:collection_id crowded-empty}
+             :model/Dashboard _ {:collection_id crowded-empty}
+             :model/Dashboard _ {:collection_id crowded-empty}
+             ;; an empty collection holding 1 item: empty via the cascade (its only leaf is empty) AND
+             ;; sparse on the raw count of 1 (< 3)
+             :model/Collection {parent :id} {}
+             :model/Dashboard  _ {:collection_id parent}]
             (let [by-entity (imbalanced-findings-by-entity!)]
-              (testing "0 items → empty only (sparse floors at 1), content_count 0, implicit threshold 0 frozen with the unit"
-                (let [fs (by-entity [:collection empty-coll])]
-                  (is (= #{:empty} (set (keys fs))))
-                  (is (= 0 (:content_count (:empty fs))))
-                  (is (= {:threshold 0 :unit "items"} (:details (:empty fs))))))
-              (testing "2 items < 3 → sparse, raw count in content_count, bound + unit frozen"
-                (let [fs (by-entity [:collection sparse-coll])]
-                  (is (= #{:sparse} (set (keys fs))))
-                  (is (= 2 (:content_count (:sparse fs))))
-                  (is (= {:threshold 3 :unit "items"} (:details (:sparse fs))))))
-              (testing "exactly at the bounds (3 items) → no finding (crowded is strictly >, sparse strictly <)"
-                (is (nil? (by-entity [:collection at-coll]))))
-              (testing "4 direct items (3 cards + a child collection) > 3 → crowded"
-                (let [fs (by-entity [:collection crowded-coll])]
-                  (is (= #{:crowded} (set (keys fs))))
-                  (is (= 4 (:content_count (:crowded fs))))
-                  (is (= {:threshold 3 :unit "items"} (:details (:crowded fs))))))
-              (testing "a collection holding only an archived card is empty (raw count 0 → never sparse)"
-                (is (= #{:empty} (set (keys (by-entity [:collection arch-coll]))))))
               (testing "4 empty dashboards → crowded on the raw count AND empty via the cascade"
-                (let [fs (by-entity [:collection crowded-empty-coll])]
+                (let [fs (by-entity [:collection crowded-empty])]
                   (is (= #{:empty :crowded} (set (keys fs))))
                   (is (= 4 (:content_count (:crowded fs))))
-                  (is (= 0 (:content_count (:empty fs)))))))))))))
+                  (is (= 0 (:content_count (:empty fs))))))
+              (testing "an all-empty collection with 1 item is both empty (cascade) and sparse (raw count 1)"
+                (let [fs (by-entity [:collection parent])]
+                  (is (= #{:empty :sparse} (set (keys fs))))
+                  (is (= 1 (:content_count (:sparse fs)))))))))))))
 
-(deftest imbalanced-collection-cascade-test
-  (testing "collection emptiness is recursive over the same pass's verdicts; sparse independently sits on the raw direct count, so an empty chain link holding 1 item is both"
-    (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-temporary-setting-values [content-diagnostics-sparse-collection-threshold-items 5]
-        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-          (mt/with-temp
-            [;; a chain whose only leaf is an empty dashboard - every ancestor is empty
-             :model/Collection {gp :id} {}
-             :model/Collection {p :id}  {:location (collection/location-path gp)}
-             :model/Collection {c :id}  {:location (collection/location-path gp p)}
-             :model/Dashboard  {empty-dash :id} {:collection_id c}
-             ;; the same chain shape with one deep non-empty leaf - no ancestor is empty
-             :model/Collection {gp2 :id} {}
-             :model/Collection {p2 :id}  {:location (collection/location-path gp2)}
-             :model/Collection {c2 :id}  {:location (collection/location-path gp2 p2)}
-             :model/Card _ {:collection_id c2}
-             ;; 3 empty dashboards + 1 never-run card = non-empty with 4 raw direct items → sparse (<5)
-             :model/Collection {mixed :id} {}
-             :model/Dashboard _ {:collection_id mixed}
-             :model/Dashboard _ {:collection_id mixed}
-             :model/Dashboard _ {:collection_id mixed}
-             :model/Card _ {:collection_id mixed}]
-            (let [by-entity (imbalanced-findings-by-entity!)]
-              (testing "the empty-dashboard leaf makes the whole chain empty - and each link holds 1 raw item, so it is independently sparse too"
-                (is (= #{:empty} (set (keys (by-entity [:dashboard empty-dash])))))
-                (doseq [coll-id [gp p c]]
-                  (let [fs (by-entity [:collection coll-id])]
-                    (is (= #{:empty :sparse} (set (keys fs))) (str "collection " coll-id))
-                    (is (= 1 (:content_count (:sparse fs))) (str "collection " coll-id)))))
-              (testing "one deep non-empty leaf keeps the whole chain non-empty (each level then has 1 item → sparse only)"
-                (doseq [coll-id [gp2 p2 c2]]
-                  (is (= #{:sparse} (set (keys (by-entity [:collection coll-id]))))
-                      (str "collection " coll-id))))
-              (testing "empty items still count toward the raw sparse count: 3 empty dashboards + 1 card = 4 items"
-                (let [fs (by-entity [:collection mixed])]
-                  (is (= #{:sparse} (set (keys fs))))
-                  (is (= 4 (:content_count (:sparse fs)))))))))))))
-
-(deftest imbalanced-excluded-collection-subjects-test
-  (testing "trash, snippet-namespace, archived, and instance-analytics collections are never subjects"
-    (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (mt/with-temp [:model/Collection {snippet-coll :id}  {:namespace "snippets"}
-                       :model/Collection {archived-coll :id} {:archived true}
-                       :model/Collection {ia-coll :id}       {:type "instance-analytics"}]
-          (let [by-entity (imbalanced-findings-by-entity!)]
-            (doseq [[label coll-id] {"snippet-namespace"  snippet-coll
-                                     "archived"           archived-coll
-                                     "instance-analytics" ia-coll
-                                     "trash"              (collection/trash-collection-id)}]
-              (testing (str label " collection produces no finding")
-                (is (nil? (by-entity [:collection coll-id])))))))))))
-
-;;; ------------------------------------------------ checker: cards ----------------------------------------
-
-(deftest imbalanced-card-empty-test
-  (testing "card-empty rides the latest clean (unparameterized, unsandboxed, non-cache-hit, error-free) execution; other runs neither flag nor clear"
-    (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (let [now (t/offset-date-time)
-              ago #(t/minus now (t/minutes %))]
-          (mt/with-temp
-            [:model/Collection {coll :id} {}
-             ;; flagged: deciding run (10m ago) returned 0 rows; the newer parameterized, cache-hit,
-             ;; and errored runs are outside the evidence set - they don't clear it (and the errored
-             ;; run's own result_rows 0 must not steal as_of)
-             :model/Card {flagged :id} {:collection_id coll}
-             :model/QueryExecution _ {:card_id flagged :started_at (ago 10)
-                                      :parameterized false :cache_hit false :result_rows 0}
-             :model/QueryExecution _ {:card_id flagged :started_at (ago 5)
-                                      :parameterized true :cache_hit false :result_rows 5}
-             :model/QueryExecution _ {:card_id flagged :started_at (ago 2)
-                                      :parameterized false :cache_hit false :result_rows 0
-                                      :error "Table not found"}
-             :model/QueryExecution _ {:card_id flagged :started_at (ago 1)
-                                      :parameterized false :cache_hit true :result_rows 5}
-             ;; healthy: the latest unparameterized run has rows; the older 0-row run is superseded
-             :model/Card {healthy :id} {:collection_id coll}
-             :model/QueryExecution _ {:card_id healthy :started_at (ago 10)
-                                      :parameterized false :cache_hit false :result_rows 0}
-             :model/QueryExecution _ {:card_id healthy :started_at (ago 5)
-                                      :parameterized false :cache_hit false :result_rows 7}
-             ;; a newer PARAMETERIZED 0-row run must not flag (a filter yielding 0 rows on a healthy card)
-             :model/Card {param-zero :id} {:collection_id coll}
-             :model/QueryExecution _ {:card_id param-zero :started_at (ago 10)
-                                      :parameterized false :cache_hit false :result_rows 9}
-             :model/QueryExecution _ {:card_id param-zero :started_at (ago 5)
-                                      :parameterized true :cache_hit false :result_rows 0}
-             ;; skipped: never ran unparameterized (unknown ≠ empty)
-             :model/Card {never :id} {:collection_id coll}
-             :model/Card {only-param :id} {:collection_id coll}
-             :model/QueryExecution _ {:card_id only-param :started_at (ago 5)
-                                      :parameterized true :cache_hit false :result_rows 0}
-             ;; skipped: a crashed run stamps result_rows 0 but means "broken", not "empty"
-             :model/Card {only-errored :id} {:collection_id coll}
-             :model/QueryExecution _ {:card_id only-errored :started_at (ago 5)
-                                      :parameterized false :cache_hit false :result_rows 0
-                                      :error "Table not found"}
-             ;; skipped: a sandboxed run's 0 rows is per-user filtering, not instance-wide emptiness
-             :model/Card {only-sandboxed :id} {:collection_id coll}
-             :model/QueryExecution _ {:card_id only-sandboxed :started_at (ago 5)
-                                      :parameterized false :cache_hit false :result_rows 0
-                                      :is_sandboxed true}
-             ;; excluded: archived card with a 0-row latest run
-             :model/Card {archived-card :id} {:collection_id coll :archived true}
-             :model/QueryExecution _ {:card_id archived-card :started_at (ago 5)
-                                      :parameterized false :cache_hit false :result_rows 0}
-             ;; the cascade: a collection holding only a flagged-empty card is itself empty
-             :model/Collection {only-empty-card-coll :id} {}
-             :model/Card {c0 :id} {:collection_id only-empty-card-coll}
-             :model/QueryExecution _ {:card_id c0 :started_at (ago 5)
-                                      :parameterized false :cache_hit false :result_rows 0}]
-            (let [by-entity (imbalanced-findings-by-entity!)]
-              (testing "flagged on the deciding run, as_of frozen to that run's start"
-                (let [f (get (by-entity [:card flagged]) :empty)]
-                  (is (some? f))
-                  (is (= 0 (:content_count f)))
-                  (is (= 0 (get-in f [:details :threshold])))
-                  (is (= "rows" (get-in f [:details :unit])))
-                  (is (= (-> (ago 10) t/instant (t/truncate-to :millis))
-                         (-> (get-in f [:details :as_of]) t/offset-date-time t/instant (t/truncate-to :millis))))))
-              (testing "a newer unparameterized run with rows clears the older 0-row verdict"
-                (is (nil? (by-entity [:card healthy]))))
-              (testing "a newer parameterized 0-row run does not flag"
-                (is (nil? (by-entity [:card param-zero]))))
-              (testing "never run unparameterized → skipped (unknown, not empty)"
-                (is (nil? (by-entity [:card never])))
-                (is (nil? (by-entity [:card only-param]))))
-              (testing "an errored run's result_rows 0 does not flag - errored runs are outside the evidence set"
-                (is (nil? (by-entity [:card only-errored]))))
-              (testing "a sandboxed run's result_rows 0 does not flag - sandboxed runs are outside the evidence set"
-                (is (nil? (by-entity [:card only-sandboxed]))))
-              (testing "archived card excluded even with a 0-row latest run"
-                (is (nil? (by-entity [:card archived-card]))))
-              (testing "a collection holding only a flagged-empty card is empty - and independently sparse on its raw count of 1"
-                (is (= #{:empty :sparse}
-                       (set (keys (by-entity [:collection only-empty-card-coll])))))))))))))
-
-;;; --------------------------------------------- checker: dashboards --------------------------------------
-
-(deftest imbalanced-dashboard-crowded-test
-  (testing "dashboard crowding checks dashcards-per-tab first, then tabs (one crowded finding max); empty/sparse verdicts land independently; a tabless dashboard is one implicit tab"
+(deftest imbalanced-dashboard-cooccurrence-test
+  (testing "a dashboard can be crowded on tabs while independently empty or sparse on dashcards"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab 2
                                          content-diagnostics-crowded-dashboard-threshold-tabs              2
@@ -244,65 +74,18 @@
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp
             [:model/Collection {coll :id} {}
-             :model/Dashboard {empty-dash :id} {:collection_id coll}
-             ;; 3 dashcards on the single implicit tab (>2) → crowded by dashcards
-             :model/Dashboard {slot-crowded :id} {:collection_id coll}
-             :model/DashboardCard _ {:dashboard_id slot-crowded}
-             :model/DashboardCard _ {:dashboard_id slot-crowded}
-             :model/DashboardCard _ {:dashboard_id slot-crowded}
-             ;; 3 tabs (>2), no tab over the dashcard bound → crowded by tabs
-             :model/Dashboard    {tab-crowded :id} {:collection_id coll}
-             :model/DashboardTab {tc-t1 :id} {:dashboard_id tab-crowded}
-             :model/DashboardTab {tc-t2 :id} {:dashboard_id tab-crowded}
-             :model/DashboardTab {tc-t3 :id} {:dashboard_id tab-crowded}
-             :model/DashboardCard _ {:dashboard_id tab-crowded :dashboard_tab_id tc-t1}
-             :model/DashboardCard _ {:dashboard_id tab-crowded :dashboard_tab_id tc-t2}
-             :model/DashboardCard _ {:dashboard_id tab-crowded :dashboard_tab_id tc-t3}
-             ;; both violations - the dashcards-per-tab check wins (within-type precedence)
-             :model/Dashboard    {both :id} {:collection_id coll}
-             :model/DashboardTab {b-t1 :id} {:dashboard_id both}
-             :model/DashboardTab _ {:dashboard_id both}
-             :model/DashboardTab _ {:dashboard_id both}
-             :model/DashboardCard _ {:dashboard_id both :dashboard_tab_id b-t1}
-             :model/DashboardCard _ {:dashboard_id both :dashboard_tab_id b-t1}
-             :model/DashboardCard _ {:dashboard_id both :dashboard_tab_id b-t1}
-             ;; tabless with 2 dashcards: one implicit tab (not 0 tabs), at every bound → no finding
-             :model/Dashboard {ok-tabless :id} {:collection_id coll}
-             :model/DashboardCard _ {:dashboard_id ok-tabless}
-             :model/DashboardCard _ {:dashboard_id ok-tabless}
-             ;; 3 tabs (>2) holding 1 dashcard total (<2) → crowded AND sparse at once
+             ;; 3 tabs (>2) holding 1 dashcard total (<2) → crowded (tabs) AND sparse
              :model/Dashboard    {tabs-sparse :id} {:collection_id coll}
              :model/DashboardTab {ts-t1 :id} {:dashboard_id tabs-sparse}
              :model/DashboardTab _ {:dashboard_id tabs-sparse}
              :model/DashboardTab _ {:dashboard_id tabs-sparse}
              :model/DashboardCard _ {:dashboard_id tabs-sparse :dashboard_tab_id ts-t1}
-             ;; 3 empty tabs (>2), 0 dashcards → crowded AND empty at once
+             ;; 3 empty tabs (>2), 0 dashcards → crowded (tabs) AND empty
              :model/Dashboard    {tabs-empty :id} {:collection_id coll}
              :model/DashboardTab _ {:dashboard_id tabs-empty}
              :model/DashboardTab _ {:dashboard_id tabs-empty}
              :model/DashboardTab _ {:dashboard_id tabs-empty}]
             (let [by-entity (imbalanced-findings-by-entity!)]
-              (testing "0 dashcards on the implicit tab → empty only"
-                (let [fs (by-entity [:dashboard empty-dash])]
-                  (is (= #{:empty} (set (keys fs))))
-                  (is (= 0 (:content_count (:empty fs))))
-                  (is (= {:threshold 0 :unit "dashcards"} (:details (:empty fs))))))
-              (testing "3 dashcards on one (implicit) tab > 2 → crowded, unit dashcards"
-                (let [fs (by-entity [:dashboard slot-crowded])]
-                  (is (= #{:crowded} (set (keys fs))))
-                  (is (= 3 (:content_count (:crowded fs))))
-                  (is (= {:threshold 2 :unit "dashcards"} (:details (:crowded fs))))))
-              (testing "3 tabs > 2 (no tab over the dashcard bound) → crowded, unit tabs"
-                (let [fs (by-entity [:dashboard tab-crowded])]
-                  (is (= #{:crowded} (set (keys fs))))
-                  (is (= 3 (:content_count (:crowded fs))))
-                  (is (= {:threshold 2 :unit "tabs"} (:details (:crowded fs))))))
-              (testing "both crowding violations → ONE crowded finding, the dashcards-per-tab one"
-                (let [fs (by-entity [:dashboard both])]
-                  (is (= #{:crowded} (set (keys fs))))
-                  (is (= "dashcards" (get-in fs [:crowded :details :unit])))))
-              (testing "a tabless dashboard exactly at the bounds → no finding (implicit tab is 1, not 0)"
-                (is (nil? (by-entity [:dashboard ok-tabless]))))
               (testing "3 tabs with 1 dashcard total → crowded (tabs) AND sparse, independently"
                 (let [fs (by-entity [:dashboard tabs-sparse])]
                   (is (= #{:crowded :sparse} (set (keys fs))))
@@ -313,158 +96,6 @@
                 (let [fs (by-entity [:dashboard tabs-empty])]
                   (is (= #{:crowded :empty} (set (keys fs))))
                   (is (= "tabs" (get-in fs [:crowded :details :unit]))))))))))))
-
-(deftest imbalanced-dashboard-sparse-counts-across-tabs-test
-  (testing "dashboard sparse counts dashcards across ALL tabs (per-tab counting is crowded-only) and floors at 1 - zero dashcards is the empty checker's domain"
-    (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-temporary-setting-values [content-diagnostics-sparse-dashboard-threshold-dashcards 4]
-        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-          (mt/with-temp
-            [:model/Collection {coll :id} {}
-             ;; 3 dashcards on each of 2 tabs = 6 total → NOT sparse (bound is <4 total)
-             :model/Dashboard    {two-tabs :id} {:collection_id coll}
-             :model/DashboardTab {tt-t1 :id} {:dashboard_id two-tabs}
-             :model/DashboardTab {tt-t2 :id} {:dashboard_id two-tabs}
-             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
-             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
-             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
-             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
-             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
-             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
-             ;; 3 dashcards total < 4 → sparse
-             :model/Dashboard {sparse-dash :id} {:collection_id coll}
-             :model/DashboardCard _ {:dashboard_id sparse-dash}
-             :model/DashboardCard _ {:dashboard_id sparse-dash}
-             :model/DashboardCard _ {:dashboard_id sparse-dash}
-             ;; exactly at the bound (4) → no finding
-             :model/Dashboard {at-dash :id} {:collection_id coll}
-             :model/DashboardCard _ {:dashboard_id at-dash}
-             :model/DashboardCard _ {:dashboard_id at-dash}
-             :model/DashboardCard _ {:dashboard_id at-dash}
-             :model/DashboardCard _ {:dashboard_id at-dash}
-             ;; truly empty → empty, never sparse
-             :model/Dashboard {empty-dash :id} {:collection_id coll}]
-            (let [by-entity (imbalanced-findings-by-entity!)]
-              (testing "6 dashcards across 2 tabs is not sparse - the count spans tabs"
-                (is (nil? (by-entity [:dashboard two-tabs]))))
-              (testing "3 dashcards < 4 → sparse with the total as content_count"
-                (let [fs (by-entity [:dashboard sparse-dash])]
-                  (is (= #{:sparse} (set (keys fs))))
-                  (is (= 3 (:content_count (:sparse fs))))
-                  (is (= {:threshold 4 :unit "dashcards"} (:details (:sparse fs))))))
-              (testing "exactly 4 dashcards → no finding (sparse is strictly <)"
-                (is (nil? (by-entity [:dashboard at-dash]))))
-              (testing "an empty dashboard is empty, never sparse (the sparse rule floors at 1)"
-                (is (= #{:empty} (set (keys (by-entity [:dashboard empty-dash])))))))))))))
-
-;;; --------------------------------------------- checker: documents ---------------------------------------
-
-(defn- doc-ast
-  "A prose-mirror document AST wrapping `nodes`."
-  [& nodes]
-  {:type "doc" :content (vec nodes)})
-
-(deftest imbalanced-document-rules-test
-  (testing "document empty = no content of ANY kind (fail closed on unknown nodes); crowded = embedded card count"
-    (mt/with-premium-features #{:content-diagnostics}
-      ;; the sparse-collection bound backs the image-doc collection assertion below
-      (mt/with-temporary-setting-values [content-diagnostics-crowded-document-threshold-cards  2
-                                         content-diagnostics-sparse-collection-threshold-items 5]
-        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-          (mt/with-temp
-            [:model/Collection {coll :id} {}
-             :model/Document {empty-doc :id}      {:collection_id coll
-                                                   :document (doc-ast {:type "paragraph"})}
-             :model/Document {whitespace-doc :id} {:collection_id coll
-                                                   :document (doc-ast {:type "paragraph"
-                                                                       :content [{:type "text" :text "   \n  "}]})}
-             ;; an unknown node type (no image node exists today) must read as content, not silently as empty
-             :model/Collection {image-coll :id} {}
-             :model/Document {image-doc :id} {:collection_id image-coll
-                                              :document (doc-ast {:type "image" :attrs {:src "x.png"}})}
-             ;; a reference node's label is content even with no text nodes
-             :model/Document {link-doc :id} {:collection_id coll
-                                             :document (doc-ast {:type "paragraph"
-                                                                 :content [{:type "smartLink"
-                                                                            :attrs {:label "Quarterly Report"}}]})}
-             ;; 3 card embeds > 2 → crowded; 2 → at the bound, no finding
-             :model/Document {crowded-doc :id} {:collection_id coll
-                                                :document (apply doc-ast
-                                                                 (for [i [101 102 103]]
-                                                                   {:type "cardEmbed" :attrs {:id i}}))}
-             :model/Document {at-doc :id} {:collection_id coll
-                                           :document (apply doc-ast
-                                                            (for [i [104 105]]
-                                                              {:type "cardEmbed" :attrs {:id i}}))}]
-            (let [by-entity (imbalanced-findings-by-entity!)]
-              (testing "a document with only structural nodes is empty"
-                (let [fs (by-entity [:document empty-doc])]
-                  (is (= #{:empty} (set (keys fs))))
-                  (is (= 0 (:content_count (:empty fs))))
-                  (is (= {:threshold 0 :unit "cards"} (:details (:empty fs))))))
-              (testing "whitespace-only text is not content"
-                (is (= #{:empty} (set (keys (by-entity [:document whitespace-doc]))))))
-              (testing "an image-only document is NOT empty (fail closed), and its collection is non-empty → sparse"
-                (is (nil? (by-entity [:document image-doc])))
-                (is (= #{:sparse} (set (keys (by-entity [:collection image-coll]))))))
-              (testing "a reference label is content"
-                (is (nil? (by-entity [:document link-doc]))))
-              (testing "3 embedded cards > 2 → crowded with the count"
-                (let [fs (by-entity [:document crowded-doc])]
-                  (is (= #{:crowded} (set (keys fs))))
-                  (is (= 3 (:content_count (:crowded fs))))
-                  (is (= {:threshold 2 :unit "cards"} (:details (:crowded fs))))))
-              (testing "exactly at the bound → no finding"
-                (is (nil? (by-entity [:document at-doc])))))))))))
-
-;;; --------------------------------------------- checker: transforms --------------------------------------
-
-(deftest imbalanced-transform-empty-test
-  (testing "transform empty rides the target table's synced estimate: 0 flags, nil (unknown) and missing/inactive targets skip"
-    (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (mt/with-temp
-          [:model/Table {zero-table :id} {:estimated_row_count 0}
-           :model/Transform {flagged :id} {:target_table_id zero-table}
-           :model/Table {nil-table :id} {}
-           :model/Transform {unknown :id} {:target_table_id nil-table}
-           :model/Table {inactive-table :id} {:estimated_row_count 0 :active false}
-           :model/Transform {dropped :id} {:target_table_id inactive-table}
-           :model/Transform {never :id} {}]
-          (let [by-entity (imbalanced-findings-by-entity!)]
-            (testing "estimate literally 0 on an active target → empty, as_of = the table's sync freshness"
-              (let [f (get (by-entity [:transform flagged]) :empty)]
-                (is (some? f))
-                (is (= 0 (:content_count f)))
-                (is (= 0 (get-in f [:details :threshold])))
-                (is (= "rows" (get-in f [:details :unit])))
-                (is (some? (get-in f [:details :as_of])))))
-            (testing "nil estimate is unknown, not empty"
-              (is (nil? (by-entity [:transform unknown]))))
-            (testing "an inactive (dropped) target table is skipped"
-              (is (nil? (by-entity [:transform dropped]))))
-            (testing "no target table (never run/synced) is skipped"
-              (is (nil? (by-entity [:transform never]))))))))))
-
-;;; ------------------------------------------- checker: frozen thresholds ---------------------------------
-
-(deftest imbalanced-threshold-frozen-at-scan-time-test
-  (testing "the bound is read from the setting at scan time and frozen in details; a later change rewrites nothing"
-    (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (mt/with-temp [:model/Collection {coll :id} {}
-                       :model/Card _ {:collection_id coll}
-                       :model/Card _ {:collection_id coll}
-                       :model/Card _ {:collection_id coll}]
-          (mt/with-temporary-setting-values [content-diagnostics-crowded-collection-threshold-items 2]
-            (scan/scan!))
-          (testing "flagged against the non-default bound (2, not 100) - the setting is read, not hard-coded"
-            (mt/with-temporary-setting-values [content-diagnostics-crowded-collection-threshold-items 50]
-              (let [f (t2/select-one :model/ContentDiagnosticsFinding
-                                     :entity_type :collection :entity_id coll :finding_type :crowded)]
-                (is (some? f))
-                (is (= 3 (:content_count f)))
-                (is (= 2 (get-in f [:details :threshold])))))))))))
 
 ;;; -------------------------------------------------- API -------------------------------------------------
 
@@ -770,6 +401,8 @@
                 (is (nil? (get-in (row-for :rasta) [:details :collection]))))
               (testing "an admin still gets the parent breadcrumb"
                 (is (= hidden-parent (get-in (row-for :crowberto) [:details :collection :id])))))))))))
+
+;;; --------------------------------------------- scan supersession ----------------------------------------
 
 (deftest imbalanced-scan-shares-batch-and-supersedes-per-type-test
   (testing "one scan writes stale + imbalanced in a single scan_id batch; a rescan supersedes a resolved sparse finding while the still-stale entity stays active"
