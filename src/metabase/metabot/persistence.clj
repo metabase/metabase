@@ -728,7 +728,14 @@
        flat-messages))))
 
 (defn conversation-detail
-  "Conversation-with-chat-messages snapshot. Nil if not found."
+  "Conversation-with-chat-messages snapshot. Nil if not found.
+
+  `:saved_entities` lists the live (non-archived) cards saved out of this
+  conversation (origin columns on `report_card`), keyed by the generated chart id
+  so a reloaded conversation can mark its inline charts as saved. Deliberately ids
+  only — including display fields like the card name would leak content that other
+  conversation participants may not be able to read; readers resolve names through
+  the permission-checked card API."
   [conversation-id]
   (when-let [conv (t2/select-one :model/MetabotConversation :id conversation-id)]
     (let [messages (live-messages conversation-id)]
@@ -737,4 +744,11 @@
        :summary         (:summary conv)
        :user_id         (:user_id conv)
        :state           (conversation-state messages)
+       :saved_entities  (mapv (fn [{:keys [id metabot_chart_id]}]
+                                {:card_id  id
+                                 :chart_id metabot_chart_id})
+                              (t2/select [:model/Card :id :metabot_chart_id]
+                                         :metabot_conversation_id conversation-id
+                                         :archived false
+                                         {:order-by [[:id :asc]]}))
        :chat_messages   (messages->chat-messages messages)})))
