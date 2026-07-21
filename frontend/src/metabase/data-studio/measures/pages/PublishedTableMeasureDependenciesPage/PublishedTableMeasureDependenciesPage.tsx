@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Outlet } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
@@ -14,12 +13,10 @@ type PublishedTableMeasureDependenciesPageParams = {
 
 type PublishedTableMeasureDependenciesPageProps = {
   params: PublishedTableMeasureDependenciesPageParams;
-  children?: ReactNode;
 };
 
 export function PublishedTableMeasureDependenciesPage({
   params,
-  children,
 }: PublishedTableMeasureDependenciesPageProps) {
   const { isLoading, error, measure, table, tabUrls, onRemove } =
     usePublishedTableMeasurePage(params);
@@ -41,7 +38,7 @@ export function PublishedTableMeasureDependenciesPage({
       }
       onRemove={onRemove}
     >
-      {children}
+      <Outlet />
     </MeasureDependenciesPage>
   );
 }

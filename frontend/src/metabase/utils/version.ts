@@ -43,6 +43,14 @@ export function getMajorVersion(version: string): number | null {
 }
 
 /**
+ * Local-dev (`vLOCAL_DEV`) and `-SNAPSHOT` builds are not published releases, so
+ * they have no corresponding `release-x.NN.x` branch — callers fall back to
+ * `master` for these.
+ */
+export const isLocalOrSnapshotVersion = (version: string) =>
+  version === "vLOCAL_DEV" || version.endsWith("-SNAPSHOT");
+
+/**
  * this should correctly compare all version formats Metabase uses, e.g.
  * 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
  * 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0

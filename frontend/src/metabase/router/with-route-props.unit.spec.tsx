@@ -25,7 +25,7 @@ describe("router/withRouteProps", () => {
     renderWithProviders(
       <Route
         path="reference/segments/:segmentId"
-        component={WrappedComponent}
+        element={<WrappedComponent />}
       />,
       {
         withRouter: true,

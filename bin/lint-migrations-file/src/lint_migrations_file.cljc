@@ -368,17 +368,14 @@
           (println)
           #_:clj-kondo/ignore
           (printf "Error in %s:\t%s\n" (:file (ex-data e)) (.getMessage e))
-          #_:clj-kondo/ignore
           (printf "Details:\n\n %s" (with-out-str (pprint/pprint (dissoc (ex-data e) ::validation-error))))
           (println))
         (do
           (pprint/pprint (Throwable->map e))
           (println (.getMessage e))))
-      #_:clj-kondo/ignore
       (System/exit 1))
     (catch #_:clj-kondo/ignore
      Throwable e
            (pprint/pprint (Throwable->map e))
            (println (.getMessage e))
-           #_:clj-kondo/ignore
            (System/exit 1))))

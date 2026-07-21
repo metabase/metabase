@@ -76,13 +76,13 @@ function setup({ databaseId, schema }: SetupOpts) {
   const { history } = renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <SchemaPickerInput
           databaseId={databaseId}
           schema={schema}
           onSchemaChange={onSchemaChange}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );
