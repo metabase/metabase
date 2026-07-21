@@ -16,6 +16,8 @@ import { createMockSettings } from "metabase-types/api/mocks";
 
 import { ImageUploadWidget } from "./ImageUploadWidget";
 
+const DEFAULT_LOGO_URL = "app/assets/img/logo.png";
+
 async function setup({
   name,
   title,
@@ -28,7 +30,7 @@ async function setup({
   settings?: Partial<EnterpriseSettings>;
 }) {
   const settingValues = {
-    "application-logo-url": "app/assets/img/logo.png",
+    "application-logo-url": DEFAULT_LOGO_URL,
     ...settingOverrides,
   };
   const settings = createMockSettings(settingValues);
@@ -36,7 +38,7 @@ async function setup({
   setupSettingsEndpoints([
     {
       key: "application-logo-url",
-      default: "app/assets/img/logo.png",
+      default: DEFAULT_LOGO_URL,
       is_env_setting: false,
       description: "The logo of the application",
       env_name: "METABASE_APPLICATION_LOGO_URL",
@@ -50,6 +52,12 @@ async function setup({
   );
 
   await screen.findByText(title);
+
+  const isDefaultLogo =
+    settingValues["application-logo-url"] === DEFAULT_LOGO_URL;
+  await screen.findByText(
+    isDefaultLogo ? "No file chosen" : "Remove uploaded image",
+  );
 }
 
 describe("ImageUploadWidget", () => {
@@ -59,9 +67,7 @@ describe("ImageUploadWidget", () => {
       title: "Application logo",
     });
 
-    // `isDefaultImage` compares the value to the settings-details default,
-    // which load from separate requests, so wait for the steady state.
-    expect(await screen.findByText("No file chosen")).toBeInTheDocument();
+    expect(screen.getByText("No file chosen")).toBeInTheDocument();
   });
 
   it("shows that a file has been uploaded", async () => {

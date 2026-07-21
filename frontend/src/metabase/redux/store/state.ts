@@ -38,9 +38,6 @@ export interface State {
   pulse: PulseState;
   qb: QueryBuilderState;
   routing: RouterState;
-  // NOTE: there is deliberately no `settings` key — settings are not redux
-  // state. They live in the `getSessionProperties` RTK Query cache; read them
-  // via `getSettings`/`getSetting`. Tests seed them through `StoreSeedState`.
   setup: SetupState;
   upload: FileUploadState;
   modal: ModalState;
