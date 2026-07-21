@@ -98,11 +98,28 @@ export class MetabaseApi {
         `Missing env var for the "${tokenName}" token — set ${tokenEnvName(tokenName)} (or CYPRESS_${tokenEnvName(tokenName)})`,
       );
     }
-    await this.put(
+    // 🔴 This used to pass `failOnStatusCode: false` and ignore the response.
+    // A rejected token (expired, wrong CI secret, malformed) then left the
+    // instance at ZERO features and the spec carried on — so every
+    // feature-gated assertion downstream failed 30s later on an unrelated
+    // locator, with nothing pointing at the token. That is the same
+    // "undefined reads as not-entitled" trap as FINDINGS #181/#200, and it is
+    // how a token problem masquerades as a product or port bug.
+    const response = await this.put(
       "/api/setting/premium-embedding-token",
       { value: token },
       { failOnStatusCode: false },
     );
+    if (!response.ok()) {
+      // Never include the token value — only its length, which is enough to
+      // tell "wrong secret" from "empty env var" without leaking anything.
+      throw new Error(
+        `activateToken("${tokenName}") failed: ${response.status()} ${response.statusText()}. ` +
+          `Token resolved from ${tokenEnvName(tokenName)} with length ${token.length}. ` +
+          `The instance is still on zero premium features, so any feature-gated ` +
+          `assertion after this point would fail for the wrong reason.`,
+      );
+    }
   }
 
   async createQuestion(details: {

@@ -4069,3 +4069,38 @@ open item, not as evidence.
     the mechanism producing it**. The unit question *"what does this figure
     actually measure?"* would have caught all four. It is now the first question
     to ask of any timing claim in this project.
+
+### 🔴 `activateToken` swallowed its own failure — a token problem masquerading as product bugs
+
+215. **`MetabaseApi.activateToken` passed `failOnStatusCode: false` and then
+    ignored the response entirely.** A rejected token — expired, wrong CI
+    secret, malformed — left the instance on **zero premium features** while the
+    spec carried on, so every feature-gated assertion afterwards failed 30s
+    later on an unrelated locator with nothing pointing at the cause.
+
+    Found while triaging the `alert` cluster: 4 CI failures presenting as
+    `locator.click: Timeout 30000ms` on a token-field textbox, and a missing
+    "You're only allowed to email subscriptions to addresses ending in
+    metabase.test" string. Both are downstream of `email-allow-list` being
+    absent. **All 4 pass locally**, so the difference is the token the
+    environment resolves — exactly what a swallowed activation failure hides.
+
+    **This is the fourth appearance of one trap: "no entitlement" and "the probe
+    failed" are indistinguishable unless you check.** #107 (retracted `.env`
+    comma), #181 (a probe PUT an *undefined* token and left the slot at zero
+    features), #200 (underscore vs hyphen returning `undefined`), and now the
+    activation path itself.
+
+    **Fixed:** `activateToken` now throws on a non-2xx, naming the token, the
+    status, and **the resolved value's LENGTH only** — enough to separate "wrong
+    secret" from "empty env var" without ever printing a token. Verified both
+    ways: with a deliberately bad token it fails immediately with
+    `400 Bad Request … length 8` and no value in the output; with the real token,
+    `alert` (8), `transforms-inspect` (9), `impersonated` (2) and
+    `workspace-instance` (2) all still pass.
+
+    **What this does NOT do is fix the CI failures** — it makes them legible. If
+    CI's `STAGING_MB_PRO_SELF_HOSTED_TOKEN` genuinely lacks `email-allow-list`,
+    the next run will say so in one line instead of four mystery timeouts, and
+    the honest response is then to gate those tests on the feature rather than
+    assume the token carries it.
