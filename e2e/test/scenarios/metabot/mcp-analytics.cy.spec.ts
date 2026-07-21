@@ -2,7 +2,7 @@ const { H } = cy;
 
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
-const MCP_ANALYTICS_PATH = "/admin/metabot/usage-auditing/mcp";
+const MCP_ANALYTICS_PATH = "/monitor/ai-auditing/mcp";
 const SEED_TOOL_NAME = "e2e_smoke_tool";
 const SEED_ERROR_TOOL = "e2e_error_tool";
 // error_code -32602 is JSON-RPC "Invalid params", which the view maps to error_type "Invalid params".
