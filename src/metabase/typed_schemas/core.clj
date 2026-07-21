@@ -18,6 +18,8 @@
   "References a database by id or name."
   [:or
    [:map [:id :int]]
+   ; remote sync representations use database names rather than numeric database ids,
+   ; and agents are typically only aware of names.
    [:map [:name ms/NonBlankString]]])
 
 (def ^:private CollectionRef
