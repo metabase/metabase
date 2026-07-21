@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from "react";
+import { useIntersection } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -27,23 +28,69 @@ import type {
   Card,
   CardDisplayType,
   Dataset,
+  MetricDimension,
   SingleSeries,
 } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import S from "./MetricDimensionGrid.module.css";
 import { useMetricDimensionCards } from "./use-metric-dimension-cards";
-import type { DefaultDimension } from "./utils";
+import type { OverviewDimension } from "./utils";
 
 type MetricDimensionGridProps = {
   metricId: MetricId;
+  dimensions: MetricDimension[];
 };
 
 const DEFAULT_SKELETON_COUNT = 3;
 
-export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
-  const { cards, definition, isLoading, hasMore, showMore } =
-    useMetricDimensionCards(metricId);
+export function MetricDimensionGrid({
+  metricId,
+  dimensions,
+}: MetricDimensionGridProps) {
+  const {
+    cards,
+    definition,
+    isLoading,
+    autoLoad,
+    canAutoLoad,
+    hasMore,
+    showMore,
+  } = useMetricDimensionCards(metricId, dimensions);
+  const { ref: autoLoadRef, entry } = useIntersection({ threshold: 0.1 });
+  const [hasScrollIntent, setHasScrollIntent] = useState(false);
+
+  useEffect(() => {
+    setHasScrollIntent(false);
+  }, [metricId]);
+
+  useEffect(() => {
+    if (!canAutoLoad) {
+      return;
+    }
+
+    const handleScrollIntent = () => setHasScrollIntent(true);
+    const handleWheel = (event: WheelEvent) => {
+      if (event.deltaY > 0) {
+        handleScrollIntent();
+      }
+    };
+
+    window.addEventListener("scroll", handleScrollIntent, true);
+    window.addEventListener("touchmove", handleScrollIntent);
+    window.addEventListener("wheel", handleWheel);
+    return () => {
+      window.removeEventListener("scroll", handleScrollIntent, true);
+      window.removeEventListener("touchmove", handleScrollIntent);
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [canAutoLoad, metricId]);
+
+  useEffect(() => {
+    if (hasScrollIntent && entry?.isIntersecting && canAutoLoad) {
+      autoLoad();
+    }
+  }, [entry?.isIntersecting, autoLoad, canAutoLoad, hasScrollIntent]);
 
   if (isLoading || !definition) {
     return <DimensionGridSkeleton count={DEFAULT_SKELETON_COUNT} />;
@@ -66,7 +113,14 @@ export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
           />
         ))}
       </SimpleGrid>
-      {hasMore && (
+      {canAutoLoad && (
+        <div
+          ref={autoLoadRef}
+          className={S.autoLoadTrigger}
+          data-testid="metric-dimension-auto-load-trigger"
+        />
+      )}
+      {hasMore && !canAutoLoad && (
         <Button
           fullWidth
           leftSection={<Icon name="chevrondown" />}
@@ -85,7 +139,7 @@ export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
 interface MetricDimensionCardProps {
   metricId: MetricId;
   definition: MetricDefinition;
-  dimension: DefaultDimension;
+  dimension: OverviewDimension;
   displayType: DefaultDimensionDisplayType;
 }
 

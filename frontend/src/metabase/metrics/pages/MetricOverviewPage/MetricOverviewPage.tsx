@@ -55,8 +55,8 @@ function MetricOverviewPageBody({
   const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
     card.id,
   );
-  const hasDimensions =
-    metric?.dimensions != null && metric.dimensions.length > 0;
+  const dimensions = metric?.dimensions ?? [];
+  const hasDimensions = dimensions.length > 0;
 
   useEffect(() => {
     if (!isMetricLoading && !hasDimensions) {
@@ -85,7 +85,7 @@ function MetricOverviewPageBody({
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
       />
-      <MetricDimensionGrid metricId={card.id} />
+      <MetricDimensionGrid metricId={card.id} dimensions={dimensions} />
     </PageContainer>
   );
 }

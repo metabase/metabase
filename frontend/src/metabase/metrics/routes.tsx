@@ -5,11 +5,13 @@ import { MetricAboutPage } from "./pages/MetricAboutPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
 import { MetricDimensionsPage } from "./pages/MetricDimensionsPage";
 import { MetricHistoryPage } from "./pages/MetricHistoryPage";
+import { MetricOverviewPage } from "./pages/MetricOverviewPage";
 import { MetricQueryPage } from "./pages/MetricQueryPage";
 import { NewMetricPage } from "./pages/NewMetricPage";
 
 const RoutedNewMetricPage = withRouteProps(NewMetricPage);
 const RoutedMetricAboutPage = withRouteProps(MetricAboutPage);
+const RoutedMetricOverviewPage = withRouteProps(MetricOverviewPage);
 const RoutedMetricQueryPage = withRouteProps(MetricQueryPage);
 const RoutedMetricDimensionsPage = withRouteProps(MetricDimensionsPage);
 const RoutedMetricDependenciesPage = withRouteProps(MetricDependenciesPage);
@@ -20,6 +22,7 @@ export function getMetricRoutes() {
     <Route path="metric">
       <Route path="new" element={<RoutedNewMetricPage />} />
       <Route path=":cardId" element={<RoutedMetricAboutPage />} />
+      <Route path=":cardId/overview" element={<RoutedMetricOverviewPage />} />
       <Route path=":cardId/query" element={<RoutedMetricQueryPage />} />
       <Route
         path=":cardId/dimensions"

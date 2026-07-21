@@ -93,6 +93,7 @@ describe("MetricTabs", () => {
     await waitFor(() => {
       expect(getTabLabels()).toEqual([
         "About",
+        "Overview",
         "Definition",
         "Dimensions",
         "History",
@@ -105,6 +106,7 @@ describe("MetricTabs", () => {
     await waitFor(() => {
       expect(getTabLabels()).toEqual([
         "About",
+        "Overview",
         "Definition",
         "Dimensions",
         "History",
@@ -112,7 +114,7 @@ describe("MetricTabs", () => {
     });
   });
 
-  it("shows the standard tabs when the metric has no dimensions", async () => {
+  it("hides the overview tab when the metric has no dimensions", async () => {
     setup({ hasDimensions: false });
     await waitFor(() => {
       expect(getTabLabels()).toEqual([

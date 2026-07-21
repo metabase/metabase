@@ -5,12 +5,16 @@ import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
 import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
 import { DataStudioMetricDimensionsPage } from "./pages/DataStudioMetricDimensionsPage";
 import { DataStudioMetricHistoryPage } from "./pages/DataStudioMetricHistoryPage";
+import { DataStudioMetricOverviewPage } from "./pages/DataStudioMetricOverviewPage";
 import { DataStudioMetricQueryPage } from "./pages/DataStudioMetricQueryPage";
 import { DataStudioNewMetricPage } from "./pages/NewMetricPage";
 
 const RoutedDataStudioNewMetricPage = withRouteProps(DataStudioNewMetricPage);
 const RoutedDataStudioMetricAboutPage = withRouteProps(
   DataStudioMetricAboutPage,
+);
+const RoutedDataStudioMetricOverviewPage = withRouteProps(
+  DataStudioMetricOverviewPage,
 );
 const RoutedDataStudioMetricQueryPage = withRouteProps(
   DataStudioMetricQueryPage,
@@ -30,6 +34,10 @@ export function getDataStudioMetricRoutes() {
     <Route path="metrics">
       <Route path="new" element={<RoutedDataStudioNewMetricPage />} />
       <Route path=":cardId" element={<RoutedDataStudioMetricAboutPage />} />
+      <Route
+        path=":cardId/overview"
+        element={<RoutedDataStudioMetricOverviewPage />}
+      />
       <Route
         path=":cardId/query"
         element={<RoutedDataStudioMetricQueryPage />}
