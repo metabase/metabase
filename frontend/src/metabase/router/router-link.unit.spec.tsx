@@ -1,16 +1,20 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { Link, Outlet, Route, useLocation } from "metabase/router";
+import { useDispatch } from "metabase/redux";
+import { Link, Outlet, Route, push, useLocation } from "metabase/router";
 
 import type { RouterEngine } from "./engine";
 
 function Home() {
   const { pathname } = useLocation();
+  const dispatch = useDispatch();
   return (
     <div>
       <span data-testid="location">{pathname}</span>
       <Link to="/other">go</Link>
+      {/* A `<Link>` used as a button: it navigates through its own onClick. */}
+      <Link onClick={() => dispatch(push("/other"))}>act</Link>
       <Outlet />
     </div>
   );
@@ -37,6 +41,21 @@ describe.each<RouterEngine>(["v3", "v7"])(
       });
 
       await userEvent.click(screen.getByRole("link", { name: "go" }));
+
+      expect(await screen.findByTestId("other")).toBeInTheDocument();
+      expect(screen.getByTestId("location")).toHaveTextContent("/other");
+    });
+
+    it("does not navigate on its own when used as a button (no `to`)", async () => {
+      renderWithProviders(tree, {
+        withRouter: true,
+        routerEngine,
+        initialRoute: "/",
+      });
+
+      // The click handler dispatches the navigation; the link itself must not
+      // navigate, or on v7 it would clobber the push and never reach /other.
+      await userEvent.click(screen.getByText("act"));
 
       expect(await screen.findByTestId("other")).toBeInTheDocument();
       expect(screen.getByTestId("location")).toHaveTextContent("/other");

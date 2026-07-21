@@ -58,6 +58,16 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
       // v3-only props v7's `<Link>` does not accept.
       const { activeClassName, activeStyle, onlyActiveOnIndex, ...rest } =
         props;
+
+      // A `<Link>` with no destination is used as a button: it navigates through
+      // its `onClick`. v7's `<Link>` would additionally navigate to the current
+      // route on click, clobbering any push the handler performs, so render a
+      // plain anchor instead. On v3 this matches `router.push(undefined)`, which
+      // is a no-op, so only the handler runs.
+      if (to == null) {
+        return <a {...rest} ref={linkRef} />;
+      }
+
       const { to: v7To, state } = toV7Target(to);
       return <V7Link {...rest} to={v7To} state={state} ref={linkRef} />;
     }
