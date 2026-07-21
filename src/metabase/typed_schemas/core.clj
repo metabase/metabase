@@ -2,7 +2,7 @@
   "Programmatic API for building and rendering typed schemas."
   (:require
    [clojure.set :as set]
-   [metabase.typed-schemas.render :as render]
+   [metabase.typed-schemas.render]
    [metabase.typed-schemas.schema :as schema]
    [metabase.typed-schemas.schema.metric :as schema.metric]
    [metabase.typed-schemas.schema.model :as schema.model]
@@ -10,9 +10,14 @@
    [metabase.typed-schemas.schema.table :as schema.table]
    [metabase.typed-schemas.scope :as scope]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+(p/import-vars
+ [metabase.typed-schemas.render
+  render-typescript])
 
 (def ^:private DatabaseRef
   "References a database by id or name."
@@ -54,7 +59,7 @@
   [{:keys [database library-collection-refs question-collection-refs
            include-data-library? include-metric-library?] :as options}]
   (when-not (mr/validate SemanticSchemaOptions options)
-    (invalid-options! "Invalid typed schema options."))
+    (invalid-options! "Invalid semantic schema options."))
   (let [include-library-root? (or include-data-library? include-metric-library?)
         collection-scoped?    (or (seq library-collection-refs)
                                   (seq question-collection-refs)
@@ -73,7 +78,7 @@
     (schema/base-schema [] models tables metrics)))
 
 (defn build-semantic-schema
-  "Builds a semantic schema map from typed [[SemanticSchemaOptions]]."
+  "Builds a semantic schema map from [[SemanticSchemaOptions]]."
   [options]
   (let [{:keys [database library-collection-refs question-collection-refs
                 include-data-library? include-metric-library? include-models?]
@@ -116,8 +121,3 @@
               metrics   (schema.metric/metric-schemas database-ids)
               tables    (schema.table/table-schemas (schema.table/select-tables database-ids))]
           (schema/base-schema questions models tables metrics))))))
-
-(defn render-typescript
-  "Renders a semantic schema map as a TypeScript module."
-  [semantic-schema]
-  (render/render-typescript semantic-schema))
