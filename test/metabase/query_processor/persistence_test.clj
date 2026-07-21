@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -222,54 +223,66 @@
                 (testing "Query against the persisted table succeeds and returns the expected row count"
                   (is (= [[18760]] (mt/rows results))))))))))))
 
+(defn- run-query-on-persisted-model
+  "Run a query that uses the model as its source, returning the results. Asserts that the persisted cache table was
+  substituted into the generated native query."
+  [model-id]
+  (let [card-mp          (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        query            (-> (lib/query card-mp (lib.metadata/card card-mp model-id))
+                             (lib/limit 3))
+        results          (qp/process-query query)
+        persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+    (testing "Was persisted"
+      (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
+    results))
+
 (deftest persisted-models-multi-stage-test
   (testing "Persisted multi-stage models can be used as a source (#78240)"
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (mt/dataset test-data
         (mt/with-persistence-enabled! [persist-models!]
-          (mt/with-temp [:model/Card model {:type          :model
-                                            :database_id   (mt/id)
-                                            :query_type    :query
-                                            ;; two stages: summarize count by product-id, then filter in a new stage
-                                            :dataset_query (mt/mbql-query orders
-                                                             {:source-query {:source-table $$orders
-                                                                             :aggregation  [[:count]]
-                                                                             :breakout     [$product_id]}
-                                                              :filter       [:> *count/Integer 5]})}]
-            (persist-models!)
-            (let [query            (mt/mbql-query nil
-                                     {:source-table (str "card__" (:id model))
-                                      :limit        3})
-                  results          (qp/process-query query)
-                  persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
-              (testing "Was persisted"
-                (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
+          (let [mp          (mt/metadata-provider)
+                orders      (lib.metadata/table mp (mt/id :orders))
+                product-id  (lib.metadata/field mp (mt/id :orders :product_id))
+                ;; two stages: summarize count by product-id, then filter in a new stage
+                base-query  (-> (lib/query mp orders)
+                                (lib/aggregate (lib/count))
+                                (lib/breakout product-id)
+                                lib/append-stage)
+                count-col   (m/find-first #(= (:name %) "count")
+                                          (lib/filterable-columns base-query))
+                model-query (lib/filter base-query (lib/> count-col 5))]
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :database_id   (mt/id)
+                                              :query_type    :query
+                                              :dataset_query model-query}]
+              (persist-models!)
               (testing "Query returns rows"
-                (is (= 3 (count (mt/rows results))))))))))))
+                (is (= 3 (count (mt/rows (run-query-on-persisted-model (:id model))))))))))))))
 
 (deftest persisted-models-expressions-test
   (testing "Persisted models with custom columns can be used as a source (#78240)"
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (mt/dataset test-data
         (mt/with-persistence-enabled! [persist-models!]
-          (mt/with-temp [:model/Card model {:type          :model
-                                            :database_id   (mt/id)
-                                            :query_type    :query
-                                            ;; single stage, but nest-expressions splits it during SQL compilation
-                                            :dataset_query (mt/mbql-query orders
-                                                             {:expressions {"double_total" [:* $total 2]}
-                                                              :aggregation [[:count]]
-                                                              :breakout    [[:expression "double_total"]]})}]
-            (persist-models!)
-            (let [query            (mt/mbql-query nil
-                                     {:source-table (str "card__" (:id model))
-                                      :limit        3})
-                  results          (qp/process-query query)
-                  persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
-              (testing "Was persisted"
-                (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
+          (let [mp           (mt/metadata-provider)
+                orders       (lib.metadata/table mp (mt/id :orders))
+                total        (lib.metadata/field mp (mt/id :orders :total))
+                ;; single stage, but nest-expressions splits it during SQL compilation
+                base-query   (-> (lib/query mp orders)
+                                 (lib/expression "double_total" (lib/* total 2)))
+                double-total (m/find-first #(= (:name %) "double_total")
+                                           (lib/breakoutable-columns base-query))
+                model-query  (-> base-query
+                                 (lib/aggregate (lib/count))
+                                 (lib/breakout double-total))]
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :database_id   (mt/id)
+                                              :query_type    :query
+                                              :dataset_query model-query}]
+              (persist-models!)
               (testing "Query returns rows"
-                (is (= 3 (count (mt/rows results))))))))))))
+                (is (= 3 (count (mt/rows (run-query-on-persisted-model (:id model))))))))))))))
 
 (deftest sql-qp-independent-persisted-lookup-test
   (testing "SQL QP looks up the persisted cache rather than using an inline :persisted-info/native from the query map"
