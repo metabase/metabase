@@ -10,7 +10,14 @@ import {
 } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
-import { useCallback, useMemo, useState } from "react";
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
@@ -30,6 +37,7 @@ import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
   ReactRouterRoute,
+  Route,
   type RouterEngine,
   RouterProvider,
   routerMiddleware,
@@ -61,7 +69,7 @@ export interface RenderWithProvidersOptions {
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
-  /** Which router engine hosts the tree when `withRouter` is set. Defaults to v3. */
+  /** Which router engine hosts the tree when `withRouter` is set. Defaults to v7. */
   routerEngine?: RouterEngine;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
@@ -83,7 +91,7 @@ export function renderWithProviders(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
-    routerEngine = "v3",
+    routerEngine = "v7",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -124,7 +132,7 @@ export function renderHookWithProviders<TProps, TResult>(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
-    routerEngine = "v3",
+    routerEngine = "v7",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -173,7 +181,7 @@ export function getTestStoreAndWrapper({
   initialRoute,
   storeInitialState,
   withRouter,
-  routerEngine = "v3",
+  routerEngine = "v7",
   withKBar,
   withDND,
   withUndos,
@@ -293,7 +301,7 @@ export function TestWrapper({
   store,
   history,
   withRouter,
-  routerEngine = "v3",
+  routerEngine = "v7",
   initialRoute = "/",
   withKBar,
   withDND,
@@ -359,6 +367,23 @@ export function TestWrapper({
   );
 }
 
+function childrenAreRouteTree(children: React.ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement(child)) {
+      return false;
+    }
+    if (child.type === Route) {
+      return true;
+    }
+    // Routes are often grouped in a fragment (`<><Route/><Route/></>`); descend
+    // so the tree is still recognized, matching how `mapToV7` unwraps fragments.
+    if (child.type === Fragment) {
+      return childrenAreRouteTree(child.props.children);
+    }
+    return false;
+  });
+}
+
 function MaybeRouter({
   children,
   hasRouter,
@@ -376,9 +401,17 @@ function MaybeRouter({
     return children;
   }
   if (routerEngine === "v7") {
+    // Tests pass either a `<Route>` tree (rendered as-is) or a bare component.
+    // v7's `<Routes>` only renders `<Route>` children, so wrap a bare component in
+    // a catch-all route, matching how the v3 harness rendered it directly.
+    const content = childrenAreRouteTree(children) ? (
+      children
+    ) : (
+      <Route path="*" element={children} />
+    );
     return (
       <RouterProviderV7Memory initialRoute={initialRoute}>
-        {children}
+        {content}
       </RouterProviderV7Memory>
     );
   }
