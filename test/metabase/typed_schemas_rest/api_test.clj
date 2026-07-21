@@ -49,8 +49,8 @@
     (testing "a database id and name select the same generated schema"
       (is (= schema-by-id schema-by-name)))
     (testing "a matching database includes its real tables"
-      (is (str/includes? schema-by-id "const tables = {"))
-      (is (not (str/includes? schema-by-id "const tables = { }"))))
+      (is (str/includes? schema-by-id "  venues: {"))
+      (is (str/includes? schema-by-id "name: \"Venues\"")))
     (testing "a non-matching database name returns an empty semantic schema"
       (is (str/includes? missing-schema "schemaVersion: 2"))
       (is (str/includes? missing-schema "const questions = { }"))
