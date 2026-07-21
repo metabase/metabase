@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.walk :as lib.walk]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
@@ -31,7 +32,12 @@
                                                           query path &match)]
                                        (cond-> (lib/ref resolved)
                                          (:lib/expression-name opts)
-                                         (lib/update-options assoc :lib/expression-name (:lib/expression-name opts))))))
+                                         (lib/update-options assoc :lib/expression-name (:lib/expression-name opts))
+
+                                         (::qp.add-remaps/original-field-dimension-id opts)
+                                         (lib/update-options assoc
+                                                             ::qp.add-remaps/original-field-dimension-id
+                                                             (::qp.add-remaps/original-field-dimension-id opts))))))
                                  &match)))
         stage' (update-fields stage)]
     (when-not (= stage' stage)
