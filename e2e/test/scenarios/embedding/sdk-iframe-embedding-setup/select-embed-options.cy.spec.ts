@@ -658,13 +658,21 @@ describe(suiteTitle, () => {
 
     cy.log("assert that unchecking alerts will close the alert modal");
     const newAlertModalTitle = "New alert";
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByRole("button", { name: "Alerts" }).should("be.visible").click();
-
-      cy.findByRole("heading", { name: newAlertModalTitle }).should(
-        "be.visible",
-      );
-    });
+    // Re-query the iframe body for the click instead of caching it via
+    // within(): toggling the sidebar options above re-renders the embedded
+    // question, so a cached body (and the element found inside it) goes stale
+    // and the "Alerts" ActionIcon detaches mid-click. Asserting visibility and
+    // clicking as separate re-queried chains lets Cypress re-run the full query
+    // for the action and land on a freshly-attached, stable button.
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .click();
+    H.getSimpleEmbedIframeContent()
+      .findByRole("heading", { name: newAlertModalTitle })
+      .should("be.visible");
 
     getEmbedSidebar()
       .findByLabelText("Allow alerts")
