@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.typed-schemas.core :as typed-schemas]))
+   [metabase.typed-schemas.core :as typed-schemas]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -37,16 +38,24 @@
       (is (= [{:id 1} {:id 2}] (:library-collection-refs response))))))
 
 (deftest database-filter-test
-  (testing "a non-matching database name returns an empty semantic schema"
-    (let [response (mt/user-http-request-full-response
-                    :crowberto
-                    :get
-                    200
-                    "typed-schemas/v1/typescript?database=__missing_database__")]
-      (is (str/includes? (:body response) "schemaVersion: 2"))
-      (is (str/includes? (:body response) "const questions = { }"))
-      (is (str/includes? (:body response) "const tables = { }"))
-      (is (str/includes? (:body response) "const metrics = { }")))))
+  (let [database-id      (mt/id)
+        database-name    (t2/select-one-fn :name :model/Database :id database-id)
+        schema-by-id     (:body (mt/user-http-request-full-response
+                                 :crowberto :get 200 "typed-schemas/v1/typescript" :database database-id))
+        schema-by-name   (:body (mt/user-http-request-full-response
+                                 :crowberto :get 200 "typed-schemas/v1/typescript" :database database-name))
+        missing-schema   (:body (mt/user-http-request-full-response
+                                 :crowberto :get 200 "typed-schemas/v1/typescript" :database "__missing_database__"))]
+    (testing "a database id and name select the same generated schema"
+      (is (= schema-by-id schema-by-name)))
+    (testing "a matching database includes its real tables"
+      (is (str/includes? schema-by-id "const tables = {"))
+      (is (not (str/includes? schema-by-id "const tables = { }"))))
+    (testing "a non-matching database name returns an empty semantic schema"
+      (is (str/includes? missing-schema "schemaVersion: 2"))
+      (is (str/includes? missing-schema "const questions = { }"))
+      (is (str/includes? missing-schema "const tables = { }"))
+      (is (str/includes? missing-schema "const metrics = { }")))))
 
 (deftest collection-and-database-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response
