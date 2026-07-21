@@ -53,6 +53,17 @@ export function RouterBridge({
   // context that also drives `<Outlet>` (available in declarative mode). Each
   // route keeps its v3 path on `handle`, which the facade hooks match against.
   const { matches } = useContext(UNSAFE_RouteContext);
+  // react-router hands back a fresh `matches` array on every render, so memoizing
+  // on it would republish a new `routes`/`route` each time. v3's were stable, and
+  // consumers key effects on `route`: the leave-confirm modal resets itself when
+  // `route` changes, which closed it mid-interaction. Key on the matched branch.
+  const matchesKey = matches
+    .map((match) => {
+      // `handle` is typed `unknown`; we only ever put `{ v3Path }` on it.
+      const handle = match.route.handle as { v3Path?: string } | undefined;
+      return `${match.pathname}|${handle?.v3Path ?? ""}`;
+    })
+    .join(">");
   const routes = useMemo<RouteStub[]>(
     () =>
       matches.map((match) => {
@@ -62,7 +73,9 @@ export function RouterBridge({
         // pathname, which `setRouteLeaveHook` uses to scope its hook to this route.
         return { path: handle?.v3Path, pathnameBase: match.pathname };
       }),
-    [matches],
+    // Keyed on the matched branch, not the array identity, which changes each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [matchesKey],
   );
 
   const location = useMemo<HistoryLocation>(
