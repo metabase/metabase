@@ -41,7 +41,7 @@
 }
 
 .stepDescription {
-  padding: 0.625rem 0 1.25rem 0;
+  padding: 0.625rem 0.25rem 1.25rem 0;
 }
 
 .stepCard {
@@ -74,15 +74,6 @@
   border: 1px solid var(--mb-color-core-metabase_brand) !important;
 }
 
-.infoAlertWrapper {
-  align-items: flex-start;
-}
-
-.infoAlertIcon {
-  margin-right: var(--mantine-spacing-xs);
-}
-
 .infoAlertMessage {
   white-space: pre;
-  color: var(--mb-color-text-primary);
 }

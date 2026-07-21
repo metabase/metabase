@@ -128,13 +128,11 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
           <Alert
             className={S.flexStart}
             color="warning"
-            p="0.75rem"
             title={
               snippet?.archived
                 ? t`This snippet is archived and cannot be edited. Unarchive it to edit.`
                 : t`This snippet is not editable because Remote Sync is in read-only mode.`
             }
-            variant="outline"
             w="auto"
           />
         )}

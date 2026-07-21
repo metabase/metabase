@@ -1,8 +1,76 @@
+.root {
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
+    var(--mantine-spacing-lg) var(--mantine-spacing-lg);
+  border: 0.5px solid var(--alert-border-color, var(--mb-color-border));
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 var(--mb-color-shadow-default);
+  overflow: hidden;
+}
+
 .wrapper {
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.icon {
+  width: auto;
+  height: 24px;
+  margin: 0;
   align-items: center;
+  color: var(--alert-color);
+}
+
+.body {
+  gap: var(--mantine-spacing-sm);
+  margin-inline-end: var(
+    --mantine-spacing-xs
+  ); /* 12px wrapper gap + 4px = 16px to closeButton */
 }
 
 .title {
+  padding: 1px 0; /* with lh 22px keeps the 24px title height */
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--alert-title-color, var(--mb-color-text-primary));
+}
+
+.message {
+  font-size: var(--mantine-font-size-md);
+  line-height: 20px;
+  color: var(--mb-color-text-secondary);
+}
+
+.closeButton {
+  --cb-icon-size: 12px !important; /* Alert hardcodes inline iconSize=16; only !important overrides it */
+
+  width: 24px;
+  height: 24px;
+  border-radius: var(--mantine-radius-xs);
   color: var(--mb-color-text-primary);
-  line-height: 1rem;
+}
+
+.root[data-size="compact"] {
+  padding: var(--mantine-spacing-md) 12px var(--mantine-spacing-md)
+    var(--mantine-spacing-md);
+
+  & .body {
+    gap: var(--mantine-spacing-xs);
+  }
+
+  & .title {
+    padding: 3px 0; /* with lh 18px keeps the 24px title height */
+    font-size: var(--mantine-font-size-md);
+    line-height: 18px;
+  }
+
+  & .message {
+    font-size: var(--mantine-font-size-sm);
+    line-height: 16px;
+  }
+}
+
+.root[data-variant="light"] {
+  border: none;
+  box-shadow: none;
 }

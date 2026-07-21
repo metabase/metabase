@@ -69,12 +69,7 @@ export function WritableConnectionInfoSection({
       {isDbRoutingEnabled && (
         <>
           <DatabaseInfoSectionDivider />
-          <Alert
-            variant="light"
-            color="info"
-            icon={<Icon name="info" />}
-            mb="md"
-          >
+          <Alert variant="light" icon={<Icon name="info" />} mb="md">
             {t`Writable connection can't be enabled when Database Routing is enabled.`}
           </Alert>
         </>

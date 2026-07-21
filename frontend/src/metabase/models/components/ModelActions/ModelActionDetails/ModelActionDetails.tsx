@@ -12,7 +12,7 @@ import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { ActionIcon, Button, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Alert, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -30,12 +30,7 @@ import {
   EmptyStateTitle,
 } from "../EmptyState.styled";
 
-import {
-  ActionAlert,
-  ActionList,
-  ActionsHeader,
-  Root,
-} from "./ModelActionDetails.styled";
+import { ActionList, ActionsHeader, Root } from "./ModelActionDetails.styled";
 import ModelActionListItem from "./ModelActionListItem";
 import { useEnableImplicitActionsForModel } from "./useEnableImplicitActionsForModel";
 
@@ -153,9 +148,9 @@ function ModelActionDetails({ model }: Props) {
         </ActionsHeader>
       )}
       {database && !hasActionsEnabled && (
-        <ActionAlert icon="warning" variant="error">
+        <Alert w="70%" icon={<Icon name="warning" />} color="error">
           {t`Running Actions is not enabled for database ${database.displayName()}`}
-        </ActionAlert>
+        </Alert>
       )}
       {actions.length > 0 ? (
         <ActionList aria-label={t`Action list`}>

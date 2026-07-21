@@ -285,11 +285,11 @@ export function UploadSettingsFormView({
 }
 
 const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
-  <Stack my="md" maw={620}>
-    <Alert icon={<Icon name="warning" />} color="warning">
-      <Text>
+  <Alert my="md" maw={620} icon={<Icon name="warning" />} color="warning">
+    <Stack gap="sm">
+      <span>
         {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift or Clickhouse database.`}
-      </Text>
+      </span>
       {isHosted && (
         <Tooltip
           label={
@@ -313,8 +313,8 @@ const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
           >{t`Additional terms apply.`}</Text>
         </Tooltip>
       )}
-    </Alert>
-  </Stack>
+    </Stack>
+  </Alert>
 );
 
 const NoValidDatabasesMessage = () => (

@@ -91,12 +91,7 @@ export function ModelCachingControl({ database, disabled }: Props) {
       </Box>
       {disabled && (
         <Box>
-          <Alert
-            variant="light"
-            color="info"
-            icon={<Icon name="info" />}
-            mb="md"
-          >
+          <Alert variant="light" icon={<Icon name="info" />} mb="md">
             {t`Model persistence can't be enabled when database routing is enabled.`}
           </Alert>
         </Box>
