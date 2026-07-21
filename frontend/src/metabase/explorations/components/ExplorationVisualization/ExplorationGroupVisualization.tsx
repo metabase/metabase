@@ -437,6 +437,13 @@ function ExplorationCartesianChart({
   mode,
   highlighted,
 }: ExplorationCartesianChartProps) {
+  const handleBrush = useCallback<OnBrush>(
+    ({ clickObject, openClickActions }) => {
+      openClickActions(clickObject);
+    },
+    [],
+  );
+
   return (
     <ExplorationVisualization
       rawSeries={series}
@@ -444,9 +451,7 @@ function ExplorationCartesianChart({
       className={S.chart}
       mode={mode}
       highlighted={highlighted}
-      onBrush={({ clickObject, openClickActions }) => {
-        openClickActions(clickObject);
-      }}
+      onBrush={handleBrush}
     />
   );
 }
