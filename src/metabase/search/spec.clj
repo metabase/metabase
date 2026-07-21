@@ -424,14 +424,20 @@
        (derive (:model spec#) :hook/search-index)
        (defmethod spec* ~search-model [~'_] spec#))))
 
-;; TODO we should memoize this for production (based on spec values)
+(def ^{:arglists '([spec-methods]), :private true} model-hooks*
+  ;; Keyed on the registered spec* methods: defining or redefining a spec (REPL, tests) yields a new
+  ;; methods map and thus a fresh computation, while steady-state calls hit the cache.
+  (memoize
+   (fn [_spec-methods]
+     (->> (specifications)
+          vals
+          (map search-model-hooks)
+          merge-hooks))))
+
 (defn model-hooks
   "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
   []
-  (->> (specifications)
-       vals
-       (map search-model-hooks)
-       merge-hooks))
+  (model-hooks* (methods spec*)))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
