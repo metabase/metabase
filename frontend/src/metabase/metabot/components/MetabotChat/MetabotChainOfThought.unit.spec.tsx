@@ -108,7 +108,7 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("Thought for 5 seconds")).toBeInTheDocument();
   });
 
-  it("prefers a streamed plain-text title over the constants label", () => {
+  it("prefers a streamed plain-text title over the constants label", async () => {
     setup(
       chain({
         steps: [
@@ -125,6 +125,7 @@ describe("MetabotChainOfThought", () => {
       }),
       false,
     );
+    await userEvent.click(screen.getByRole("button"));
     expect(screen.getByText("Searching sales data")).toBeInTheDocument();
     expect(screen.queryByText("Searching")).not.toBeInTheDocument();
   });
@@ -146,8 +147,11 @@ describe("MetabotChainOfThought", () => {
       }),
       false,
     );
+    await userEvent.click(screen.getByRole("button"));
     expect(await screen.findByText("Orders")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("img", { name: /dashboard icon/ }),
+    ).toBeInTheDocument();
   });
 
   it("shows read_resource entity links in the streaming header preview", async () => {
@@ -170,7 +174,7 @@ describe("MetabotChainOfThought", () => {
     expect(screen.queryByText("Inspecting Orders")).not.toBeInTheDocument();
   });
 
-  it("renders search results as linked rows with a right-aligned total count", () => {
+  it("renders search results as linked rows with a right-aligned total count", async () => {
     setup(
       chain({
         steps: [
@@ -207,6 +211,7 @@ describe("MetabotChainOfThought", () => {
       }),
       false,
     );
+    await userEvent.click(screen.getByRole("button"));
     expect(screen.getByText("12 results")).toBeInTheDocument();
     expect(screen.getByText("Revenue Dashboard")).toBeInTheDocument();
     // collection context for a saved item
@@ -218,7 +223,7 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("PUBLIC", { exact: false })).toBeInTheDocument();
   });
 
-  it("shows No results when a search returns nothing", () => {
+  it("shows No results when a search returns nothing", async () => {
     setup(
       chain({
         steps: [
@@ -236,11 +241,12 @@ describe("MetabotChainOfThought", () => {
       }),
       false,
     );
+    await userEvent.click(screen.getByRole("button"));
     expect(screen.getByText("No results")).toBeInTheDocument();
     expect(screen.queryByText("0 results")).not.toBeInTheDocument();
   });
 
-  it("gives read_resource / load_skill real labels instead of Working", () => {
+  it("gives read_resource / load_skill real labels instead of Working", async () => {
     setup(
       chain({
         steps: [
@@ -252,8 +258,31 @@ describe("MetabotChainOfThought", () => {
       }),
       false,
     );
+    await userEvent.click(screen.getByRole("button"));
     expect(screen.getByText("Reading resource")).toBeInTheDocument();
     expect(screen.getByText("Loading skill")).toBeInTheDocument();
+    expect(screen.queryByText("Working")).not.toBeInTheDocument();
+  });
+
+  it("hides deliberately unlabeled tools instead of showing Working", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "list_available_fields",
+            status: "ended",
+          },
+          { kind: "tool", id: "t2", name: "search", status: "ended" },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(screen.getByText("Searching")).toBeInTheDocument();
     expect(screen.queryByText("Working")).not.toBeInTheDocument();
   });
 });

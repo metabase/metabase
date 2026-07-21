@@ -157,8 +157,7 @@ export const metabot = createSlice({
         if (canAppend) {
           lastMessage.message = lastMessage.message + action.payload.text;
         } else {
-          // the answer is starting — settle the chain of thought so later
-          // reasoning/tools begin a fresh timeline after this text
+          // the answer is starting — settle the chain of thought
           closeChain(convo, action.payload.nowMs);
           const externalId = convo.pendingMessageExternalId;
           convo.messages.push({
@@ -417,6 +416,10 @@ export const metabot = createSlice({
         convo.loadId = nanoid();
         convo.title = title;
         convo.isProcessing = hasInProgressMessage(messages ?? []);
+        if (convo.isProcessing) {
+          // resuming a mid-response conversation — show the "Thinking…" shell
+          openChain(convo);
+        }
         convo.stateBeforeTurn = undefined;
         convo.pendingMessageExternalId = undefined;
 
@@ -435,7 +438,6 @@ export const metabot = createSlice({
           convo.isProcessing = true;
           convo.stateBeforeTurn = convo.state;
           convo.activeChainId = undefined;
-          // open an empty chain now so "Thinking…" shows immediately
           openChain(convo);
           convo.pendingMessageExternalId = action.meta.arg.assistant_message_id;
         }

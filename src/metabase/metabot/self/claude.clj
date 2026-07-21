@@ -86,7 +86,6 @@
           ;; usage in the completion arity so we don't lose data entirely.
           last-usage   (volatile! nil)
           close!       (fn [result]
-                         ;; only emit an end marker for block types we translate.
                          (u/prog1 (if-let [end-type (case @current-type
                                                       :text              :text-end
                                                       :tool_use          :tool-input-available
@@ -156,9 +155,8 @@
                                        :toolCallId     (:toolCallId @payload)
                                        :inputTextDelta (:partial_json delta)}))
 
-             ;; signature_delta carries the thinking block's signature — accumulate
-             ;; it onto the payload for the reasoning-end (needed to replay the block
-             ;; back within the turn) but emit nothing to the client.
+             ;; the signature rides the reasoning-end via @payload (needed to replay
+             ;; the block within the turn); nothing is emitted to the client
              (and (= t "content_block_delta") (= "signature_delta" (:type delta)))
              (u/prog1
                (vswap! payload update-in [:providerMetadata :anthropic :signature] (fnil str "") (:signature delta)))
@@ -199,12 +197,11 @@
         messages))
 
 (defn- coalesce-reasoning
-  "Join consecutive same-id `:reasoning` parts (streamed as many small parts plus
-  a metadata carrier) back into one block, keeping its provider metadata. Other
-  parts pass through untouched."
+  "Join consecutive same-id `:reasoning` parts (streamed as small parts plus a
+  metadata carrier) into one block, keeping its provider metadata."
   [parts]
   (->> parts
-       (partition-by (fn [p] (when (= :reasoning (:type p)) (:id p))))
+       (partition-by (fn [p] (if (= :reasoning (:type p)) [:reasoning (:id p)] :other)))
        (mapcat (fn [group]
                  (if (= :reasoning (:type (first group)))
                    [{:type              :reasoning
@@ -223,11 +220,9 @@
     {:type :tool-input, :id ..., :function ..., :arguments ...}
     {:type :tool-output, :id ..., :result ...}
 
-  Reasoning becomes `thinking`/`redacted_thinking` blocks — Claude requires them
-  echoed back verbatim (with signature) in the assistant turn that also carries
-  tool_use, or it 400s. Unsigned reasoning (foreign parts, interrupted blocks) is
-  dropped. Output has tool_use/tool_result blocks and consecutive assistant
-  messages merged, keeping thinking blocks ahead of the tool_use they preceded."
+  Reasoning becomes `thinking`/`redacted_thinking` blocks — Claude 400s unless they
+  are echoed back verbatim (signed) ahead of the tool_use they preceded. Unsigned
+  reasoning (foreign parts, interrupted blocks) is dropped."
   [parts]
   (->> parts
        coalesce-reasoning
@@ -407,14 +402,10 @@
   (not (model-current-gen? model)))
 
 (defn- model-thinking-config
-  "Thinking config that streams reasoning for `model`, or nil where we don't
-  enable it (older budget-token models — off in v1).
-
-  `display: \"summarized\"` is set explicitly on every branch rather than left
-  to Anthropic's per-model default: current-gen models default to `omitted`
-  (empty thinking) unless told otherwise, and Opus 4.6/Sonnet 4.6 default to
-  `summarized` today but Anthropic's docs note that default already changed
-  silently once across a model bump, so it isn't something to rely on."
+  "Thinking config that streams reasoning for `model`, or nil where we don't enable
+  it (older budget-token models — off in v1). `display: \"summarized\"` is explicit
+  on every branch: per-model defaults range from `omitted` to `summarized` and have
+  already changed silently once across a model bump."
   [model]
   (let [[_ major minor] (claude-model-version model)]
     (cond

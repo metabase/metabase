@@ -24,9 +24,9 @@
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
 
 (def ^:private ephemeral-data-types
-  "Data types not written to MetabotMessage.data. `state` is diffed separately into
+  "Data types not written to MetabotMessage.data: `state` is diffed separately into
   the row's state column; `search_results` renders under the client-only chain of
-  thought, which is never rehydrated, so persisting it would only crash the loader."
+  thought, which is never rehydrated."
   #{state-type search-results-type})
 
 (defn persistable-data-part?
@@ -149,9 +149,8 @@
    :data value})
 
 (defn search-results-part
-  "Create a SEARCH_RESULTS data part carrying a search tool's hit list, rendered
-  under the search step in the chain of thought. `value` is a map with
-  `:total_count` and `:results` (each `{:id :type :name ...}`)."
+  "Data part carrying a search tool's hit list (`:total_count` + `:results`),
+  rendered under the search step in the chain of thought."
   [value]
   {:type :data
    :data-type search-results-type
@@ -183,10 +182,9 @@
 ;;; Stream Processing Transducers
 
 (def expand-data-parts-xf
-  "Stateless transducer that expands :data-parts from tool-output results.
-  Passes through all parts unchanged, then appends any data parts after tool-output
-  parts. Search-results parts are stamped with their originating tool-call id so the
-  client can render them under the matching search step."
+  "Stateless transducer that appends a tool-output's :data-parts after it, passing
+  everything else through. Search-results parts get stamped with their originating
+  tool-call id so the client can render them under the matching search step."
   (mapcat (fn [part]
             (if (= (:type part) :tool-output)
               (cons part (for [dp (get-in part [:result :data-parts])]

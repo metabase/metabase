@@ -309,6 +309,19 @@
             (openai/parts->openai-input
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
 
+(deftest ^:parallel openai-reasoning-summary-part-separator-test
+  (testing "a 2nd+ summary part opens a new paragraph within the same reasoning item"
+    (is (= ["Part one" "\n\n" "Part two"]
+           (->> [{:type "response.output_item.added" :item {:type "reasoning" :id "rs_1"}}
+                 {:type "response.reasoning_summary_part.added" :item_id "rs_1" :summary_index 0}
+                 {:type "response.reasoning_summary_text.delta" :item_id "rs_1" :delta "Part one"}
+                 {:type "response.reasoning_summary_part.added" :item_id "rs_1" :summary_index 1}
+                 {:type "response.reasoning_summary_text.delta" :item_id "rs_1" :delta "Part two"}
+                 {:type "response.output_item.done" :item {:type "reasoning" :id "rs_1"}}]
+                (into [] (openai/openai->aisdk-chunks-xf))
+                (filter #(= :reasoning-delta (:type %)))
+                (mapv :delta))))))
+
 (deftest ^:parallel parts->openai-input-drops-reasoning-test
   (testing "reasoning parts are not replayed to the Responses API"
     (is (=? [{:type "message" :role "assistant" :content [{:type "output_text" :text "hi"}]}]

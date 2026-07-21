@@ -109,12 +109,9 @@ export type MetabotAgentChainOfThoughtMessage = {
   role: "agent";
   type: "chain_of_thought";
   steps: MetabotChainStep[];
-  // wall-clock span of the reasoning/tool phase, for the "Thought for Ns" label.
-  // endedAtMs advances with each step (and settles at the answer), so the span is
-  // always recomputable from redux — it survives leaving and returning to the page.
+  // wall-clock span for "Thought for Ns"; kept in redux so it survives remounts
   startedAtMs?: number;
   endedAtMs?: number;
-  externalId?: string;
 };
 
 export type MetabotAgentChatMessage =
@@ -142,8 +139,6 @@ export type MetabotToolCall = {
   status: "started" | "ended";
 };
 
-// A step in the turn's chain of thought: streamed provider reasoning or a tool
-// invocation. Rendered as one interleaved, collapsible timeline.
 export type MetabotChainStep =
   | { kind: "reasoning"; text: string }
   | {
@@ -173,8 +168,7 @@ export interface MetabotConverstationState {
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
-  // id of the current turn's chain_of_thought message while it's still
-  // accumulating steps; undefined between turns
+  // the chain_of_thought message still accumulating steps; undefined between turns
   activeChainId: string | undefined;
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;

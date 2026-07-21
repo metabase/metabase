@@ -4,6 +4,7 @@ import {
   appendChainReasoning,
   closeChain,
   createConversation,
+  finalizeChain,
   openChain,
   startChainReasoning,
 } from "./reducer-utils";
@@ -38,5 +39,14 @@ describe("chain of thought duration timing", () => {
       closeChain(d); // e.g. a data-part answer arrives with no nowMs
     });
     expect(chainOf(convo)?.endedAtMs).toBe(3000);
+  });
+
+  it("drops a shell that never gathered a step at turn teardown", () => {
+    const convo = produce(createConversation("omnibot"), (d) => {
+      openChain(d);
+      finalizeChain(d);
+    });
+    expect(chainOf(convo)).toBeUndefined();
+    expect(convo.activeChainId).toBeUndefined();
   });
 });

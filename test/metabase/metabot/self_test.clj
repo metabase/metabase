@@ -201,7 +201,7 @@
                   {:type :reasoning-delta :id "r1" :delta "hm"}
                   {:type :reasoning-end :id "r1"}])))))
 
-(deftest aisdk-xf-reasoning-grouping-test
+(deftest ^:parallel aisdk-xf-reasoning-grouping-test
   (testing "non-streaming mode joins reasoning deltas into one part with metadata"
     (is (= [{:type :reasoning :id "r1" :text "abc" :provider-metadata {:anthropic {:signature "sig"}}}]
            (into [] (self.core/aisdk-xf)

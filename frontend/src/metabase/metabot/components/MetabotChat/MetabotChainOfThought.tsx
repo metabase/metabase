@@ -34,8 +34,7 @@ import type { IconName } from "metabase-types/api";
 
 import S from "./MetabotChainOfThought.module.css";
 
-// Search results carry Metabot entity-type names; modelToUrl/icons speak the
-// search "model" vocabulary (mirror of metabase.metabot.search-models).
+// Metabot entity-type names -> the search "model" vocabulary modelToUrl speaks
 const RESULT_MODEL: Record<string, string> = {
   question: "card",
   model: "dataset",
@@ -51,7 +50,6 @@ const RESULT_ICON: Record<string, IconName> = {
   transform: "transform",
 };
 
-// where the hit lives: its collection, or the database › schema for a table
 const resultContextParts = (result: SearchResultItem): string[] => {
   if (result.collection?.name) {
     return [result.collection.name];
@@ -80,8 +78,6 @@ const ResultContext = ({ result }: { result: SearchResultItem }) => {
   );
 };
 
-// while streaming, rows fade in top-first, one at a time, via a small per-row
-// delay (capped); no animation when the settled chain is expanded/collapsed
 const SearchResultRow = ({
   result,
   index,
@@ -148,6 +144,10 @@ const SearchResultsCard = ({
 
 const toolLabel = (name: string) => TOOL_CALL_MESSAGES[name] ?? t`Working`;
 
+// tools mapped to an explicit undefined label are hidden by design
+const isHiddenTool = (name: string) =>
+  name in TOOL_CALL_MESSAGES && TOOL_CALL_MESSAGES[name] === undefined;
+
 type TitleSegment =
   | { type: "text"; text: string }
   | {
@@ -203,8 +203,7 @@ const ToolStepLabel = ({
   </Text>
 );
 
-// live headline: the current reasoning block's first line, else the active
-// tool step (rendered with its links), else nothing
+// live headline: the latest reasoning line, else the active tool step
 type HeaderSummary =
   | { kind: "text"; text: string }
   | { kind: "tool"; step: MetabotChainStep & { kind: "tool" } };
@@ -221,7 +220,7 @@ const summarize = (steps: MetabotChainStep[]): HeaderSummary | undefined => {
         return { kind: "text", text: firstLine };
       }
     }
-    if (step.kind === "tool") {
+    if (step.kind === "tool" && (step.title || !isHiddenTool(step.name))) {
       return { kind: "tool", step };
     }
   }
@@ -251,14 +250,10 @@ export const MetabotChainOfThought = ({
 }) => {
   const [open, setOpen] = useState(false);
 
-  // while the turn is live the shell shows "Thinking…" even before the first
-  // step; a settled chain with no steps is never rendered (it gets dropped)
   if (message.steps.length === 0 && !isStreaming) {
     return null;
   }
 
-  // both stamps live in redux (endedAtMs advances with each step), so the
-  // duration recomputes on remount — leaving and returning keeps it
   const seconds =
     message.startedAtMs != null && message.endedAtMs != null
       ? Math.max(
@@ -267,8 +262,8 @@ export const MetabotChainOfThought = ({
         )
       : undefined;
 
-  // while expanded the reasoning already streams in the timeline, so the header
-  // collapses to "Thinking…" instead of echoing the same text
+  // while expanded the timeline shows the reasoning itself, so the header
+  // falls back to "Thinking…" instead of echoing it
   const summary = isStreaming && !open ? summarize(message.steps) : undefined;
   const headerContent = isStreaming ? (
     summary ? (
@@ -292,17 +287,13 @@ export const MetabotChainOfThought = ({
 
   const lastIndex = message.steps.length - 1;
 
-  // reasoning has no marker icon to anchor the line's top; when it leads, start
-  // the line near the text top instead of at a would-be icon's center
   const isRenderable = (s: MetabotChainStep) =>
-    s.kind === "tool" || (s.kind === "reasoning" && !!s.text);
+    s.kind === "tool"
+      ? !!s.title || !!s.searchResults || !isHiddenTool(s.name)
+      : !!s.text;
   const firstRenderable = message.steps.find(isRenderable);
   const firstIsReasoning = firstRenderable?.kind === "reasoning";
-  // nothing to reveal until a reasoning/tool step lands, so the header neither
-  // toggles nor shows its chevron in the bare "Thinking…" shell
   const canToggle = firstRenderable != null;
-  // the last item's content can extend below its marker (reasoning text, a
-  // search-results card); run the line flush to the bottom in those cases
   const lastRenderable = message.steps.findLast(isRenderable);
   const lastExtendsLine =
     lastRenderable?.kind === "reasoning" ||
@@ -314,6 +305,7 @@ export const MetabotChainOfThought = ({
       <UnstyledButton
         className={cx(S.trigger, !canToggle && S.triggerStatic)}
         component={canToggle ? "button" : "div"}
+        aria-expanded={canToggle ? open : undefined}
         onClick={canToggle ? () => setOpen((prev) => !prev) : undefined}
       >
         {isStreaming && (
@@ -335,7 +327,7 @@ export const MetabotChainOfThought = ({
           />
         )}
       </UnstyledButton>
-      <Collapse in={open} keepMounted>
+      <Collapse in={open}>
         <div
           className={cx(
             S.timeline,
@@ -344,7 +336,7 @@ export const MetabotChainOfThought = ({
           )}
         >
           {message.steps.map((step, index) => {
-            if (step.kind === "reasoning" && !step.text) {
+            if (!isRenderable(step)) {
               return null;
             }
             const key = step.kind === "tool" ? step.id : `reasoning-${index}`;
@@ -379,7 +371,7 @@ export const MetabotChainOfThought = ({
                           </Text>
                         )}
                       </div>
-                      {step.name === "search" && (
+                      {step.searchResults && (
                         <SearchResultsCard step={step} animate={isStreaming} />
                       )}
                     </>

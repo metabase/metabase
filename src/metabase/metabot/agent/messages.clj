@@ -131,13 +131,9 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn- step->parts
-  "Extract AISDK parts from a step, filtering out non-message types.
-
-  `:reasoning` is kept for same-turn iterations only (this step list is
-  per-turn); prior-turn history comes from `input-message->parts`, which never
-  carries reasoning, so it is never replayed across turns. Providers that require
-  thinking blocks echoed back within a turn (Claude) consume it in their message
-  builder; others drop it."
+  "Extract AISDK parts from a step, filtering out non-message types. `:reasoning`
+  is kept for same-turn replay only (Claude requires thinking blocks echoed back);
+  prior-turn history comes from `input-message->parts`, which never carries it."
   [step]
   (->> (:parts step)
        (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))

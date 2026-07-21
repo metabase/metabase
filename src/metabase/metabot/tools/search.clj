@@ -525,8 +525,7 @@
        "Use a larger value (20–50) for broad or generic queries; keep the default for narrow, specific ones."))
 
 (defn- search-result->item
-  "Trim a search result to the fields the chain-of-thought results card renders:
-   entity type/name plus its location (collection, or database + schema for tables)."
+  "Trim a search result to the fields the chain-of-thought results card renders."
   [r]
   (-> (select-keys r [:id :type :name :display_name :database_id :database_schema :database_name])
       (m/assoc-some :collection (some-> (:collection r) (select-keys [:id :name])))))

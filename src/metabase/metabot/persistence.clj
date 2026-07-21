@@ -100,10 +100,9 @@
                              nil))))))))
 
 (defn parts->storable-content
-  "Drop transient/lifecycle parts and convert what remains to the v2 at-rest
-  format. Stream metadata (`:usage`/`:finish`/`:error`), `:reasoning` (live-only,
-  never persisted or replayed across turns) and `state` data parts (the turn's
-  state is persisted separately into the row's `state` column) carry no history
+  "Drop transient/lifecycle parts and convert what remains to the v2 at-rest format.
+  Stream metadata (`:usage`/`:finish`/`:error`), live-only `:reasoning`, and `state`
+  data parts (persisted separately into the row's `state` column) carry no history
   value."
   [parts]
   (->> parts

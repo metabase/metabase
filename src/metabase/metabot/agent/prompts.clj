@@ -28,11 +28,9 @@
   #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
 
 (def ^:private loader-only-templates
-  "Prompt templates whose client shows a plain loader instead of the chain-of-thought
-  timeline — today the embedding SDK, which strips agent messages down to text and
-  navigation (see `isPublicMessage` in embedding-sdk-ee). These surfaces get
-  progress-narration guidance; everywhere else the reasoning/tool timeline is visible,
-  so the model is told to skip the play-by-play (`shows_reasoning`)."
+  "Templates whose client shows a plain loader, not the chain-of-thought timeline —
+  today the embedding SDK. These keep progress-narration guidance; everywhere else
+  `shows_reasoning` tells the model to skip the play-by-play."
   #{"embedding-next.selmer"})
 
 ;;; Template Loading

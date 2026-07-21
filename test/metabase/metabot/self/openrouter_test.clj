@@ -194,6 +194,16 @@
                  {:type :text :text "Hi"}
                  {:type :usage}]
                 (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (self.core/aisdk-xf)) raw))))))
+  (testing "details-only deltas (redacted thinking) carry their details without streaming text"
+    (is (=? [{:type :start}
+             {:type :reasoning-start}
+             {:type :reasoning-end :providerMetadata {:openrouter {:reasoningDetails [{:type "reasoning.encrypted"}]}}}
+             {:type :text-start} {:type :text-delta} {:type :text-end}]
+            (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type))
+                  [{:id "g" :model "anthropic/claude-sonnet-5"
+                    :choices [{:delta {:reasoning_details [{:type "reasoning.encrypted" :data "ENC"}]}}]}
+                   {:choices [{:delta {:content "Hi"}}]}
+                   {:choices [{:delta {} :finish_reason "stop"}]}]))))
   (testing "reasoning_content is accepted as an alias"
     (is (=? [{:type :start} {:type :reasoning-start} {:type :reasoning-delta :delta "hmm"} {:type :reasoning-end}]
             (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type))
@@ -225,7 +235,19 @@
       (testing "older / non-reasoning models are excluded"
         (is (nil? (reasoning "anthropic/claude-haiku-4.5")))
         (is (nil? (reasoning "anthropic/claude-sonnet-4.5")))
-        (is (nil? (reasoning "openai/gpt-4.1")))))))
+        (is (nil? (reasoning "openai/gpt-4.1"))))
+      (testing "forced tool choice is incompatible with thinking, so it is suppressed"
+        (is (nil? (:reasoning (openrouter/openrouter-request-body
+                               {:model  "anthropic/claude-sonnet-5" :input []
+                                :schema {:type "object" :properties {:answer {:type "string"}}}}))))
+        (is (nil? (:reasoning (openrouter/openrouter-request-body
+                               {:model       "anthropic/claude-sonnet-5" :input []
+                                :tool_choice "required"})))))
+      (testing "reasoning raises the max_tokens floor to leave room for the answer"
+        (is (= 16384 (:max_tokens (openrouter/openrouter-request-body
+                                   {:model "anthropic/claude-sonnet-5" :input [] :max-tokens 4096}))))
+        (is (= 4096 (:max_tokens (openrouter/openrouter-request-body
+                                  {:model "openai/gpt-4.1" :input [] :max-tokens 4096}))))))))
 
 (deftest ^:parallel openrouter-parallel-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-parallel-tool-calls"

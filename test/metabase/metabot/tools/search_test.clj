@@ -25,6 +25,21 @@
   (testing "no queries -> nil"
     (is (nil? (#'search/search-display {})))))
 
+(deftest ^:parallel search-result->item-test
+  (testing "trims a result to the fields the results card renders, nesting collection id+name"
+    (is (= {:id 1 :type "table" :name "orders" :display_name "Orders"
+            :database_id 2 :database_schema "PUBLIC" :database_name "Sample"
+            :collection {:id 3 :name "Finance"}}
+           (#'search/search-result->item
+            {:id 1 :type "table" :name "orders" :display_name "Orders"
+             :database_id 2 :database_schema "PUBLIC" :database_name "Sample"
+             :collection {:id 3 :name "Finance" :authority_level nil}
+             :score 0.99 :description "wide table"}))))
+  (testing "no collection -> no collection key"
+    (is (= {:id 5 :type "dashboard" :name "Revenue"}
+           (#'search/search-result->item
+            {:id 5 :type "dashboard" :name "Revenue" :collection nil})))))
+
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
     (let [single-list [[{:id 1 :model "card" :name "Card 1"}

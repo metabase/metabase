@@ -112,8 +112,7 @@ describe("processChatResponse", () => {
 
     const result = await processChatResponse(mockStream, config);
     expect(config.onReasoningStart).toHaveBeenCalledTimes(1);
-    // smoothing word-paces reasoning: the two partial deltas coalesce into the
-    // complete word "Thinking", flushed at reasoning-end
+    // word-pacing coalesces the partial deltas, flushed at reasoning-end
     expect(config.onReasoningDelta).toHaveBeenCalledTimes(1);
     expect(config.onReasoningDelta).toHaveBeenCalledWith(
       expect.objectContaining({ delta: "Thinking" }),

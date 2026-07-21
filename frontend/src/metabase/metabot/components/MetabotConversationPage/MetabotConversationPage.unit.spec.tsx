@@ -215,9 +215,7 @@ describe("MetabotConversationPage", () => {
     });
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
-    expect(
-      await screen.findByTestId("metabot-response-loader"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Thinking…")).toBeInTheDocument();
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),
@@ -237,18 +235,14 @@ describe("MetabotConversationPage", () => {
       metabotInitialState: createAskState(),
     });
 
-    expect(
-      await screen.findByTestId("metabot-response-loader"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Thinking…")).toBeInTheDocument();
 
     act(() => {
       jest.advanceTimersByTime(IN_PROGRESS_POLL_MS + 100);
     });
 
     expect(await screen.findByText("Here is the answer")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("metabot-response-loader"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
     expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
   });
 });

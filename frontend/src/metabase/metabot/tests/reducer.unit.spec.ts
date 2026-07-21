@@ -518,7 +518,57 @@ describe("metabot reducer", () => {
       expect(chains).toHaveLength(2);
     });
 
-    it("keeps the chain in history but releases the id after a snapshot load", () => {
+    it("attaches search results to their tool step, even after the chain closed", () => {
+      const store = createTestStore();
+      store.dispatch(
+        metabotActions.toolCallStart({
+          agentId,
+          toolCallId: "t1",
+          toolName: "search",
+        }),
+      );
+      store.dispatch(metabotActions.addAgentTextDelta({ agentId, text: "hi" }));
+      store.dispatch(
+        metabotActions.toolCallSearchResults({
+          agentId,
+          toolCallId: "t1",
+          totalCount: 1,
+          results: [{ id: 1, type: "table", name: "orders" }],
+        }),
+      );
+
+      const chain = getChain(store);
+      expect(
+        chain?.type === "chain_of_thought" && chain.steps[0],
+      ).toMatchObject({ kind: "tool", searchResults: { totalCount: 1 } });
+    });
+
+    it("backfills a title arriving on tool-input-available", () => {
+      const store = createTestStore();
+      store.dispatch(
+        metabotActions.toolCallStart({
+          agentId,
+          toolCallId: "t1",
+          toolName: "search",
+        }),
+      );
+      store.dispatch(
+        metabotActions.toolCallArgs({
+          agentId,
+          toolCallId: "t1",
+          toolName: "search",
+          title: "Searching revenue",
+          args: "{}",
+        }),
+      );
+
+      const chain = getChain(store);
+      expect(chain?.type === "chain_of_thought" && chain.steps).toEqual([
+        expect.objectContaining({ kind: "tool", title: "Searching revenue" }),
+      ]);
+    });
+
+    it("releases the active chain id when a snapshot replaces the conversation", () => {
       const store = createTestStore();
       store.dispatch(metabotActions.reasoningStart({ agentId }));
       store.dispatch(

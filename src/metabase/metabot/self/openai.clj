@@ -131,6 +131,12 @@
                                                                         :reasoning     {:type :reasoning-start}
                                                                         nil)
                                                                       @payload)))
+             ;; a 2nd+ summary part is a new paragraph within the same reasoning item
+             (and (= t "response.reasoning_summary_part.added")
+                  (= @current-type :reasoning)
+                  (pos? (:summary_index chunk 0)))
+             (rf {:type :reasoning-delta :id @current-id :delta "\n\n"})
+
              ;; just a middle of a chunk — ignore deltas for types we don't translate
              (and delta
                   (translated-chunk-type? @current-type)) (rf (case @current-type

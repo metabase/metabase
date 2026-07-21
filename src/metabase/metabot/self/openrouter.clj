@@ -79,9 +79,8 @@
   (->> parts
        (keep (fn [part]
                (case (:type part)
-                 ;; anthropic-via-openrouter must replay reasoning_details on the
-                 ;; assistant turn (like Claude's thinking blocks); reasoning without
-                 ;; them is display-only and dropped
+                 ;; anthropic-via-openrouter requires reasoning_details replayed on
+                 ;; the assistant turn; reasoning without them is display-only
                  :reasoning   (when-let [details (get-in part [:provider-metadata :openrouter :reasoningDetails])]
                                 {:role "assistant" :content nil :reasoning_details details})
                  :text        {:role "assistant" :content (:text part)}
@@ -263,18 +262,21 @@
                ;; providers expose the reasoning summary under different keys
                reasoning-text (or (not-empty (:reasoning delta))
                                   (not-empty (:reasoning_content delta)))
+               ;; details can arrive without summary text (e.g. Anthropic redacted
+               ;; thinking comes as reasoning.encrypted with a null reasoning field)
+               has-details?  (seq (:reasoning_details delta))
                ;; Determine what kind of content this chunk carries.
                ;; Empty-string content (common between tool calls) is ignored
                ;; to avoid spurious text blocks that would close open tools.
                chunk-type    (cond
-                               (not-empty (:content delta)) :text
-                               reasoning-text               :reasoning
-                               (some? tool-call)            :function_call
-                               :else                        nil)
+                               (not-empty (:content delta))     :text
+                               (or reasoning-text has-details?) :reasoning
+                               (some? tool-call)                :function_call
+                               :else                            nil)
                ;; For new tool calls, the id comes from the chunk; for deltas
                ;; on the same tool, we keep current-id.
                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
-           (when (and (= chunk-type :reasoning) (seq (:reasoning_details delta)))
+           (when has-details?
              (vswap! reasoning-details into (:reasoning_details delta)))
            (cond-> result
              ;; Emit :start on first chunk
@@ -310,8 +312,8 @@
                                                                       (vreset! current-id rid)
                                                                       (vreset! payload {:id rid})))
                                                                   (rf (merge {:type :reasoning-start} @payload)))
-             ;; reasoning delta
-             (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
+             ;; reasoning delta (details-only chunks carry no text to stream)
+             (and (= chunk-type :reasoning) reasoning-text)   (rf {:type  :reasoning-delta
                                                                    :id    @current-id
                                                                    :delta reasoning-text})
              ;; Start a new tool call block
@@ -394,7 +396,12 @@
                           :function {:name        "structured_output"
                                      :description "Output structured data"
                                      :parameters  schema}}])
-                      (seq (mapv tool->openai-chat tools)))]
+                      (seq (mapv tool->openai-chat tools)))
+        ;; forced tool choice (structured output, or "required") is incompatible
+        ;; with Anthropic thinking — suppress reasoning there, like claude.clj
+        reasoning? (and (model-supports-reasoning? model)
+                        (not schema)
+                        (not= "required" (some-> tool_choice name)))]
     (cond-> {:model             model
              :stream            true
              :stream_options    {:include_usage true}
@@ -405,11 +412,11 @@
                                         tool_choice tool_choice
                                         :else       "auto"))
       temperature (assoc :temperature temperature)
-      max-tokens  (assoc :max_tokens max-tokens)
+      ;; reasoning tokens count against max_tokens; a small cap would truncate answers
+      max-tokens  (assoc :max_tokens (cond-> max-tokens reasoning? (max 16384)))
 
       ;; OpenRouter normalizes this to each upstream's reasoning/thinking option
-      (model-supports-reasoning? model)
-      (assoc :reasoning {:enabled true}))))
+      reasoning?  (assoc :reasoning {:enabled true}))))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.

@@ -76,8 +76,12 @@ export const conversationTitle = () =>
   screen.findByTestId("metabot-conversation-title");
 export const queryConversationTitle = () =>
   screen.queryByTestId("metabot-conversation-title");
-export const chatMessages = () =>
-  screen.findAllByTestId("metabot-chat-message");
+// chain-of-thought rows are UI furniture, not conversation content — exclude
+// them so message-count assertions stay about the actual exchange
+export const chatMessages = async () =>
+  (await screen.findAllByTestId("metabot-chat-message")).filter(
+    (el) => !within(el).queryByTestId("metabot-chain-of-thought"),
+  );
 export const lastChatMessage = async () => (await chatMessages()).at(-1);
 export const input = async () => {
   const chatInput = await screen.findByTestId("metabot-chat-input");

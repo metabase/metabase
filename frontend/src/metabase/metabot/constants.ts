@@ -168,26 +168,26 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   },
 };
 
-// Icon that reflects what each tool is doing, shown in the chain-of-thought
-// timeline. Falls back to DEFAULT_TOOL_CALL_ICON for anything unmapped.
+// Per-tool icon for the chain-of-thought timeline; unmapped tools get
+// DEFAULT_TOOL_CALL_ICON.
 export const TOOL_CALL_ICONS: Record<string, IconName> = {
-  construct_notebook_query: "notebook",
-  analyze_data: "insight",
   analyze_chart: "bar",
+  analyze_data: "insight",
+  construct_notebook_query: "notebook",
+  get_field_values: "list",
+  get_transform_details: "info",
   list_available_fields: "list",
-  search_data_sources: "database",
+  load_skill: "book_open",
+  read_resource: "document",
   search: "search",
+  search_data_sources: "database",
   search_metabase_documentation: "reference",
+  search_tables: "database",
+  search_transforms: "search",
+  todo_read: "ordered_list",
+  todo_write: "ordered_list",
   write_transform_python: "function",
   write_transform_sql: "database",
-  todo_write: "ordered_list",
-  todo_read: "ordered_list",
-  search_transforms: "search",
-  get_transform_details: "info",
-  get_field_values: "list",
-  search_tables: "database",
-  read_resource: "document",
-  load_skill: "book_open",
 };
 
 export const DEFAULT_TOOL_CALL_ICON: IconName = "bolt";

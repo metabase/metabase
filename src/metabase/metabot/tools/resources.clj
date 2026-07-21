@@ -958,7 +958,7 @@
      :output formatted}))
 
 (def ^:private link-models
-  "URI leading segment -> toucan model for entities the FE can render as a `metabase://` link."
+  "URI leading segment -> model for entities the FE renders as `metabase://` links."
   {"dashboard"  :model/Dashboard
    "database"   :model/Database
    "collection" :model/Collection
@@ -968,15 +968,15 @@
    "transform"  :model/Transform})
 
 (def ^:private plain-models
-  "URI leading segment -> toucan model for named entities the FE can't link — surfaced as
-   plain text so the label still names them instead of falling back to \"Reading resource\"."
+  "URI leading segment -> model for entities the FE can't link; their name still
+   shows as plain text instead of the \"Reading resource\" fallback."
   {"metric"  :model/Card
    "measure" :model/Measure
    "segment" :model/Segment})
 
 (defn- entity-title
-  "The URI entity's readable name — `[Name](metabase://…)` when FE-linkable, else plain `Name`.
-   nil when the segment names no entity, or it is missing/unreadable (name withheld)."
+  "The URI entity's name — `[Name](metabase://…)` when FE-linkable, else plain text.
+   nil when the segment names no entity or it is missing/unreadable (name withheld)."
   [segment id-str]
   (when-let [model (or (link-models segment) (plain-models segment))]
     (when-let [id (parse-long id-str)]
@@ -990,8 +990,8 @@
               entity-name)))))))
 
 (defn- nav-noun
-  "A localized noun for a top-level navigation URI that has no entity to name, so browsing
-   lists reads as e.g. \"Reading databases\" rather than the bare fallback."
+  "Localized noun for a top-level navigation URI, so browsing reads as e.g.
+   \"Reading databases\" rather than the bare fallback."
   [segments]
   (case segments
     ["databases"]           (tru "databases")
@@ -1000,9 +1000,8 @@
     nil))
 
 (defn- aspect-noun
-  "A localized noun for the sub-resource an `entity/{id}/…` URI drills into, so
-   `.../fields` reads differently from the entity itself. Words match existing site
-   copy (dependency graph, transform target). nil for the bare entity."
+  "Localized noun for the sub-resource an `entity/{id}/…` URI drills into; words
+   match existing site copy. nil for the bare entity."
   [segment aspect]
   (if (and (= segment "dashboard") (= aspect "items"))
     (tru "cards")
@@ -1020,9 +1019,8 @@
       nil)))
 
 (defn- uri-label
-  "A label for one URI: its entity (linked or plain) plus any drilled-into aspect
-   (e.g. `[Orders](…) columns`), or a navigation noun (`databases`). nil only when an
-   entity is present but unreadable, so its name is never leaked."
+  "Label for one URI: its entity plus any drilled-into aspect (`[Orders](…) columns`),
+   or a navigation noun (`databases`). nil when the entity is missing or unreadable."
   [uri]
   (let [{segments :segments} (parse-uri uri)
         [segment id-str & rst] segments]

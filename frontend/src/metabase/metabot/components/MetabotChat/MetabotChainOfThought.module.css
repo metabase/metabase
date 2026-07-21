@@ -26,8 +26,6 @@
   font-size: 0.875rem;
 }
 
-/* always visible once toggling is possible (the icon only mounts when it is);
-   the shared `.fadeIn` handles the appearance fade — see the JSX className */
 .chevron {
   flex-shrink: 0;
   margin-left: 0.125rem;
@@ -57,14 +55,13 @@
   background: var(--mb-color-border-neutral-subtle);
 }
 
-/* a leading reasoning step has no icon at the top to anchor the line, so begin
-   it at the text top rather than a would-be marker center */
+/* a leading reasoning step has no icon to anchor the line, so begin at text top */
 .timelineReasoningFirst::before {
   top: 0.15rem;
 }
 
 /* when the last item's content runs below its marker (reasoning, results card),
-   extend the line flush to the bottom instead of stopping short */
+   run the line flush to the bottom */
 .timelineFlushBottom::before {
   bottom: 0;
 }
@@ -75,9 +72,8 @@
   gap: 0.5rem;
 }
 
-/* fade in tool/search line items on mount; reasoning is left out so its own
-   word-by-word text stream is the only animation, not a doubled container fade.
-   stable keys mean only newly-appended steps animate */
+/* reasoning is left out so its word-by-word stream is the only animation;
+   stable keys mean only newly-appended steps fade in */
 .stepIn {
   animation: chain-step-in 140ms ease both;
 }
@@ -169,7 +165,7 @@
   text-decoration: none;
 }
 
-/* only applied while streaming, so opening a settled chain doesn't re-fade */
+/* streaming only, so opening a settled chain doesn't re-fade */
 .resultRowIn {
   animation: result-row-in 140ms ease-in both;
 }

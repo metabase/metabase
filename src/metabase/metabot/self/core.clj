@@ -154,12 +154,12 @@
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
                                        (str/join ""))}
-    :reasoning-start       (cond-> {:type :reasoning
-                                    :id   (:id chunk)
-                                    :text (->> (map :delta chunks)
-                                               (str/join ""))}
-                             (some :providerMetadata chunks)
-                             (assoc :provider-metadata (some :providerMetadata chunks)))
+    :reasoning-start       (let [pm (some :providerMetadata chunks)]
+                             (cond-> {:type :reasoning
+                                      :id   (:id chunk)
+                                      :text (->> (map :delta chunks)
+                                                 (str/join ""))}
+                               pm (assoc :provider-metadata pm)))
     :tool-input-start      {:type      :tool-input
                             :id        (:toolCallId chunk)
                             :function  (:toolName chunk)
@@ -367,8 +367,8 @@
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
-           ;; providers' native reasoning ids are long; emit short sequential ones,
-           ;; keeping the provider id only to detect block boundaries
+           ;; providers' native reasoning ids are long; emit short sequential wire
+           ;; ids, keeping the provider id only to detect block boundaries
            current-reasoning-id (volatile! nil)
            reasoning-n          (volatile! 0)
            reasoning-wire-id    (volatile! nil)
@@ -438,9 +438,8 @@
                         (rf (format-sse-event {:type "text-start" :id id}))
                         (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
 
-              ;; Lazy open: empty parts (metadata carriers, redacted/signature-only
-              ;; ends) emit nothing, so no "Thinking..." flash appears for reasoning
-              ;; the provider never actually surfaces as text.
+              ;; lazy open: empty parts (metadata carriers, redacted blocks) emit
+              ;; nothing, so no "Thinking..." flash for reasoning with no text
               :reasoning
               (if (str/blank? (:text part))
                 result

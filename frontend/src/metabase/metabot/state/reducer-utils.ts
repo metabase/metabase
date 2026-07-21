@@ -66,12 +66,11 @@ const ensureChain = (
     ? convo.messages.find((m) => m.id === convo.activeChainId)
     : undefined;
   if (existing?.type === "chain_of_thought") {
-    // the shell is created at turn start; the first real step stamps the clock
+    // the shell opens unstamped; the first real step starts the clock, and every
+    // step advances the end so the "Thought for Ns" span lives entirely in redux
     if (existing.startedAtMs == null && nowMs != null) {
       existing.startedAtMs = nowMs;
     }
-    // every step advances the end time, so the "Thought for Ns" duration lives
-    // entirely in redux and survives navigating away and back (no local clock)
     if (nowMs != null) {
       existing.endedAtMs = nowMs;
     }
@@ -93,8 +92,7 @@ const ensureChain = (
   return chain;
 };
 
-// Open an empty chain at turn start so the "Thinking…" indicator shows
-// immediately instead of a separate loader; the first step stamps the clock.
+// Open an empty chain so "Thinking…" shows before the first step arrives.
 export const openChain = (convo: WritableDraft<MetabotConverstationState>) => {
   ensureChain(convo);
 };
@@ -148,20 +146,33 @@ export const addChainTool = (
   }
 };
 
+// all chains, not just the active one — a tool's results/end can arrive after
+// answer text has already closed its chain
+const findChainToolStep = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+) => {
+  for (const message of convo.messages) {
+    if (message.type === "chain_of_thought") {
+      const step = message.steps.find(
+        (s) => s.kind === "tool" && s.id === toolCallId,
+      );
+      if (step?.kind === "tool") {
+        return step;
+      }
+    }
+  }
+  return undefined;
+};
+
 export const setChainToolSearchResults = (
   convo: WritableDraft<MetabotConverstationState>,
   toolCallId: string,
   searchResults: MetabotSearchResults,
 ) => {
-  for (const message of convo.messages) {
-    if (message.type === "chain_of_thought") {
-      for (const step of message.steps) {
-        if (step.kind === "tool" && step.id === toolCallId) {
-          step.searchResults = searchResults;
-          return;
-        }
-      }
-    }
+  const step = findChainToolStep(convo, toolCallId);
+  if (step) {
+    step.searchResults = searchResults;
   }
 };
 
@@ -169,22 +180,15 @@ export const endChainTool = (
   convo: WritableDraft<MetabotConverstationState>,
   id: string,
 ) => {
-  const chain = convo.activeChainId
-    ? convo.messages.find((m) => m.id === convo.activeChainId)
-    : undefined;
-  if (chain?.type === "chain_of_thought") {
-    for (const step of chain.steps) {
-      if (step.kind === "tool" && step.id === id) {
-        step.status = "ended";
-      }
-    }
+  const step = findChainToolStep(convo, id);
+  if (step) {
+    step.status = "ended";
   }
 };
 
 // End the current chain so later reasoning/tools start a fresh one after the
-// answer text (keeps chains chronological with interleaved answer segments). A
-// chain that never gathered a step (e.g. a plain text answer) is dropped rather
-// than persisted as an empty "Thinking…" row.
+// answer text, keeping the timeline chronological. A chain that never gathered
+// a step is dropped rather than persisted as an empty "Thinking…" row.
 export const closeChain = (
   convo: WritableDraft<MetabotConverstationState>,
   nowMs?: number,
@@ -196,16 +200,13 @@ export const closeChain = (
     if (chain.steps.length === 0) {
       dropChain(convo, chain.id);
     } else if (nowMs != null) {
-      // refine to the moment the answer begins; falls back to the last step's
-      // stamp (from ensureChain) when the answer arrives without a clock
       chain.endedAtMs = nowMs;
     }
   }
   convo.activeChainId = undefined;
 };
 
-// Turn teardown: drop an empty chain left open (e.g. an aborted turn that never
-// produced reasoning), and release the active id.
+// Turn teardown: drop an empty chain left open and release the active id.
 export const finalizeChain = (
   convo: WritableDraft<MetabotConverstationState>,
 ) => {
