@@ -829,7 +829,10 @@
           (update-with-change-log liquibase {:exec-listener exec-listener})
           (finally
             (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
-              (.setFailOnError change-set fail-on-error?))))))))
+              (.setFailOnError change-set fail-on-error?))))
+        ;; same old-binary downgrade signal a normal upgrade leaves -- see [[migrate-up-if-needed!]]
+        (let [database (.getDatabase liquibase)]
+          (record-legacy-version-tracking! database (current-recorded-major) (last-deployment-id database)))))))
 
 (def ^:private legacy-migrations-file "migrations/000_legacy_migrations.yaml")
 (def ^:private update001-migrations-file "migrations/001_update_migrations.yaml")
@@ -931,9 +934,11 @@
                         (filter #(when-let [major (version->major (:ran-version %))]
                                    (and (> major latest-available) (<= major latest-applied))))
                         (mapv :deployment_id))
+        ;; RERAN rows are older changesets that merely re-executed under the later deployment (edited runOnChange
+        ;; changesets); they are not "from" the later version and would only confuse the listing
         clauses    (concat (map #(format "id LIKE 'v%d.%%'" %) versions)
                            (when (seq later-deps)
-                             [(format "deployment_id IN (%s)"
+                             [(format "(deployment_id IN (%s) AND exectype <> 'RERAN')"
                                       (str/join ", " (repeat (count later-deps) "?")))]))
         query      (format "SELECT id FROM %s WHERE %s ORDER BY dateexecuted ASC, orderexecuted ASC"
                            table (str/join " OR " clauses))]
@@ -1054,36 +1059,49 @@
 
 (defn- rollback-plan
   "Compute what a rollback to the resolved `target-major` should drop. Returns
-  `{:changesets-to-drop <set of [filename author id] keys>, :deployments-to-drop <set of deployment_ids whose entire
-  history is rolled back>}`.
+  `{:changesets-to-drop <set of [filename author id] keys>, :changesets-to-retain <set of keys of re-run rows that
+  must NOT be reversed>, :boundary-deployment <deployment_id the retained rows are reassigned to>,
+  :deployments-to-drop <set of deployment_ids whose entire history is rolled back>}`.
 
   The deployments we roll back *to* are those with any version of `target-major` recorded (a major can span several
   deployment_ids: point releases, the same build recording across restarts, no-op boot stamps); every changeset that
   ran after the latest of them is dropped, leaving the schema in the state that major last left it. Ordering is the
   `[dateexecuted orderexecuted]` pair -- `orderexecuted` is not a globally increasing counter, so it cannot be
-  compared on its own."
+  compared on its own.
+
+  Rows with exectype `RERAN` in that window are *retained*, not dropped: a RERAN row is an older changeset that
+  merely re-executed under the newer deployment (a `runOnChange` changeset whose checksum changed, or a
+  `migrate force` re-run) -- Liquibase moves the row to the run's deployment with a fresh execution position, but the
+  changeset itself predates the boundary, and reversing it would strip schema state the rollback target still needs.
+  Retained rows are reassigned to `:boundary-deployment` (the latest deployment of the target major) so every
+  surviving row stays attached to a deployment with a recorded version. Limitation: a changeset first introduced
+  *after* the target that later re-ran is indistinguishable from this and is also retained -- the rolled-back schema
+  keeps its object as a harmless orphan, and a later re-upgrade adopts it again."
   [^Connection conn changelog-table target-major]
   (let [all-rows      (jdbc/query {:connection conn}
-                                  [(format "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted FROM %s" changelog-table)])
+                                  [(format "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted, exectype FROM %s" changelog-table)])
         version-rows  (jdbc/query {:connection conn}
                                   [(format "SELECT deployment_id, metabase_version FROM %s" databasechangelog-versions-table)])
         boundary-deps (set (for [{:keys [deployment_id metabase_version]} version-rows
                                  :when (= target-major (version->major metabase_version))]
                              deployment_id))
-        boundary-pos  (->> all-rows
+        boundary-row  (->> all-rows
                            (filter #(boundary-deps (:deployment_id %)))
-                           (map exec-pos)
-                           sort
+                           (sort-by exec-pos)
                            last)
-        drop-rows     (if boundary-pos
+        boundary-pos  (some-> boundary-row exec-pos)
+        window-rows   (if boundary-pos
                         (filter #(pos? (compare (exec-pos %) boundary-pos)) all-rows)
                         [])
+        reran?        (fn [{:keys [exectype]}] (= "RERAN" (some-> exectype u/upper-case-en)))
         rows-by-dep   (group-by :deployment_id all-rows)]
-    {:changesets-to-drop  (set (map changeset-row-key drop-rows))
-     ;; only clear a deployment's history/version rows when the entire deployment is being rolled back
-     :deployments-to-drop (set (for [[dep drops] (group-by :deployment_id drop-rows)
-                                     :when (and dep (= (count drops) (count (get rows-by-dep dep))))]
-                                 dep))}))
+    {:changesets-to-drop   (set (map changeset-row-key (remove reran? window-rows)))
+     :changesets-to-retain (set (map changeset-row-key (filter reran? window-rows)))
+     :boundary-deployment  (:deployment_id boundary-row)
+     ;; only clear a deployment's history/version rows when its entire history leaves it (dropped or reassigned)
+     :deployments-to-drop  (set (for [[dep in-window] (group-by :deployment_id window-rows)
+                                      :when (and dep (= (count in-window) (count (get rows-by-dep dep))))]
+                                  dep))}))
 
 (defn- run-liquibase-rollback!
   "Reverse the changesets in `changesets-to-drop` (a set of `[filename author id]` keys) that still exist in the
@@ -1123,6 +1141,26 @@
                                             changelog
                                             change-listener)
     @error-ids))
+
+(defn- reassign-changeset-rows!
+  "Move the retained (re-run) `changeset-keys` onto `deployment-id` -- the deployment being rolled back to -- so they
+  survive [[delete-deployment-rows!]] and stay attached to a deployment with a recorded version."
+  [^Connection conn changelog-table changeset-keys deployment-id]
+  (doseq [[filename author id] changeset-keys]
+    (jdbc/execute! {:connection conn}
+                   [(format "UPDATE %s SET deployment_id = ? WHERE filename = ? AND author = ? AND id = ?" changelog-table)
+                    deployment-id filename author id])))
+
+(defn- rollback-failure-message
+  "Error message for a rollback that could not reverse some changesets. Only claims the database was left unchanged
+  where that is true: Postgres rolls the transaction's DDL back; H2 and MySQL auto-commit DDL, so rollback steps
+  executed before the failure may have persisted."
+  [db-type target error-ids]
+  (str (trs "Rollback to {0} failed: could not roll back changeset(s) {1}." target (str/join ", " error-ids))
+       " "
+       (if (= db-type :postgres)
+         (trs "The database has been left unchanged.")
+         (trs "Rollback steps executed before the failure may already have been committed ({0} cannot roll back DDL transactionally). Verify the schema, or restore from a backup, before retrying." (name db-type)))))
 
 (defn- delete-deployment-rows!
   "Delete every `databasechangelog` and `databasechangelog_version` row for the fully-rolled-back `deployment-ids`. This
@@ -1189,18 +1227,24 @@
            (throw (IllegalArgumentException.
                    (format "%s is not a valid rollback target. Target must be the major version of a recorded deployment (see the %s table)."
                            (pr-str target) databasechangelog-versions-table))))
-         (let [{:keys [changesets-to-drop deployments-to-drop]} (rollback-plan conn changelog-table target-major)]
+         (let [{:keys [changesets-to-drop changesets-to-retain boundary-deployment deployments-to-drop]}
+               (rollback-plan conn changelog-table target-major)]
            (log/infof "Rolling back app database schema to %s" target)
-           (if (empty? changesets-to-drop)
+           (if (and (empty? changesets-to-drop) (empty? changesets-to-retain))
              (log/info "No changesets to roll back")
-             (let [error-ids (run-liquibase-rollback! liquibase lb-db changesets-to-drop)]
+             (let [error-ids (when (seq changesets-to-drop)
+                               (run-liquibase-rollback! liquibase lb-db changesets-to-drop))]
                ;; If any changeset failed to reverse, do NOT clear the deployments' history. Doing so would leave the
                ;; changelog claiming a rollback that only partly happened, and would drop the `legacy-version-tracking`
                ;; row with it -- so an older binary would read a *lower* major than the schema actually has and happily
                ;; start against it. Fail loudly instead: the caller ([[metabase.app-db.setup/migrate!]]) rolls the
-               ;; transaction back, so the database is left as it was and the operator can fix the changeset and retry.
+               ;; transaction back -- which restores everything on Postgres, but on H2/MySQL DDL auto-commits, so
+               ;; already-executed rollback steps may persist (the message says so; see [[rollback-failure-message]]).
                (when (seq error-ids)
-                 (throw (ex-info (trs "Rollback to {0} failed: could not roll back changeset(s) {1}. The database has been left unchanged."
-                                      target (str/join ", " error-ids))
+                 (throw (ex-info (rollback-failure-message (mdb.connection/db-type) target error-ids)
                                  {:target target, :failed-changesets (vec error-ids)})))
+               (when (seq changesets-to-retain)
+                 (log/infof "Not reversing %d re-run (runOnChange/force) changeset(s) that predate the rollback target: %s"
+                            (count changesets-to-retain) (str/join ", " (sort (map peek changesets-to-retain))))
+                 (reassign-changeset-rows! conn changelog-table changesets-to-retain boundary-deployment))
                (delete-deployment-rows! conn changelog-table deployments-to-drop)))))))))
