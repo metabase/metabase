@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
 import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
+import { formatValue } from "../../../src/index";
 import type { Settings } from "./types";
 
 export const Visualization = (
@@ -51,6 +52,9 @@ export const Visualization = (
       <h1>Custom viz rendered successfully</h1>
       <div>Threshold: {threshold}</div>
       <div>Value: {value}</div>
+      <div data-testid="demo-viz-formatted-value">
+        Formatted: {formatValue(value, settings.column?.(cols[0]))}
+      </div>
       <div data-testid="demo-viz-locale">Locale: {locale}</div>
       <button
         type="button"

@@ -603,6 +603,25 @@ describe("admin > custom visualizations", () => {
       H.main().findByText("Threshold: 42").should("be.visible");
     });
 
+    it("opens the column formatting popover from a field setting (metabase#78039)", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByTestId("settings-count")
+        .click();
+
+      cy.findByTestId("chart-settings-widget-popover-content").within(() => {
+        cy.findByText("Add a prefix").should("be.visible");
+        cy.findByPlaceholderText("$").type("foo").blur();
+      });
+
+      H.main()
+        .findByTestId("demo-viz-formatted-value")
+        .should("contain", "foo");
+    });
+
     describe("errors", () => {
       it("renders errors thrown by the plugin component", () => {
         // Multi-column question — checkRenderable throws
@@ -2254,7 +2273,7 @@ describe("sandbox", () => {
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin treewalker(document) saw non-empty nodes:",
-      13,
+      15,
     );
   });
 
