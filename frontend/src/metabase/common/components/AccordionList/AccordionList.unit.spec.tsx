@@ -5,12 +5,13 @@ import { fireEvent, render, screen } from "__support__/ui";
 import { HoverCard } from "metabase/ui";
 
 import { AccordionList } from "./AccordionList";
+import type { Section } from "./types";
 
 type Item = {
   name: string;
 };
 
-const SECTIONS = [
+const SECTIONS: Section<Item>[] = [
   {
     name: "Widgets",
     items: [{ name: "Foo" }, { name: "Bar" }],
@@ -171,8 +172,8 @@ describe("AccordionList", () => {
     });
 
     it("keeps the search box and shows an empty state for a typed section", () => {
-      const sections = [
-        { name: "Back", type: "back" as const, items: [{ name: "Foo" }] },
+      const sections: Section<Item>[] = [
+        { name: "Back", type: "back", items: [{ name: "Foo" }] },
       ];
       render(<AccordionList sections={sections} searchable />);
 
