@@ -28,6 +28,7 @@ import type {
   TimelineId,
 } from "metabase-types/api";
 import {
+  getExplorationPages,
   isSettledExplorationQueryStatus,
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
@@ -256,8 +257,12 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
       : (node: ITreeNodeItem<ExplorationTreeNode>) =>
           tabFilter(node) && !isHiddenTreeItem(node);
 
+    const hasHiddenPages = getExplorationPages(exploration).some(
+      (page) => page.hidden,
+    );
+
     return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder, {
-      keepEmptyInitialThread: selectedSidebarTab === "all",
+      keepEmptyInitialThread: selectedSidebarTab === "all" && hasHiddenPages,
     });
   }, [
     exploration,

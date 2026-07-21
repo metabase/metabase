@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
@@ -278,6 +279,14 @@ function expectCartesianRawSeries(queryCount: number) {
   return rawSeries;
 }
 
+function captureSeeAllEvents(): (events: TimelineEvent[]) => void {
+  // The Visualization mock stores props as an untyped record; narrow the
+  // captured handler back to its known signature so tests can invoke it.
+  return lastVisualizationProps?.onSeeAllEvents as (
+    events: TimelineEvent[],
+  ) => void;
+}
+
 describe("ExplorationGroupVisualization", () => {
   beforeEach(() => {
     mockComments = [createMockComment({ id: 1, context: { timeline_id: 42 } })];
@@ -477,6 +486,44 @@ describe("ExplorationGroupVisualization", () => {
     });
 
     expect(lastVisualizationProps?.timelineEvents).toEqual([releasesEvent]);
+  });
+
+  it("opens a sidebar listing every event when the chart requests to see a whole cluster", async () => {
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      selectedTimelineId: 42,
+    });
+
+    // The hover popover caps at 3, so the band hands the full cluster to
+    // `onSeeAllEvents` when the user clicks "See all".
+    const clusterEvents = Array.from({ length: 5 }, (_, index) =>
+      createMockTimelineEvent({ id: index + 1, name: `Event ${index + 1}` }),
+    );
+    act(() => captureSeeAllEvents()(clusterEvents));
+
+    const sidebar = await screen.findByTestId(
+      "exploration-timeline-events-sidebar",
+    );
+    expect(within(sidebar).getByText("5 events")).toBeInTheDocument();
+    for (const event of clusterEvents) {
+      expect(within(sidebar).getByText(event.name)).toBeInTheDocument();
+    }
+
+    // The chart is told which events are open so it can render the cluster as
+    // selected.
+    expect(lastVisualizationProps?.selectedTimelineEventIds).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
+
+    await userEvent.click(
+      within(sidebar).getByRole("button", { name: "Close" }),
+    );
+    expect(
+      screen.queryByTestId("exploration-timeline-events-sidebar"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not show the timeline dropdown for non-timeseries charts", () => {

@@ -80,3 +80,30 @@
   (collect-ast document #(when (and (= card-embed-type (:type %))
                                     (pos-int? (-> % :attrs :id)))
                            (-> % :attrs :id))))
+
+(defn insert-card-embed
+  "Insert an embed for the card with `card-id` into the document's prose-mirror ast.
+
+  The embed is a `resizeNode`-wrapped `cardEmbed` node, the same shape the document editor
+  produces. `index` is a 0-based position among the ast's top-level blocks (0 inserts at the
+  very top); a `nil` index appends the embed at the end and out-of-range indexes are clamped.
+
+  Args:
+  - doc - a :model/Document, this will check that the content-type is valid for prose mirror
+  - card-id - the id of an existing card to embed
+  - index - 0-based top-level block position, or nil to append
+
+  Returns:
+  - the document with its :document ast updated"
+  [{:keys [document] :as doc} card-id index]
+  (assert-prose-mirror doc)
+  (let [blocks (vec (:content document))
+        at     (if (int? index)
+                 (-> index (max 0) (min (count blocks)))
+                 (count blocks))
+        embed  {:type    "resizeNode"
+                :content [{:type  card-embed-type
+                           :attrs {:id card-id}}]}]
+    (assoc doc :document
+           (assoc (or document {:type "doc"})
+                  :content (into (conj (subvec blocks 0 at) embed) (subvec blocks at))))))
