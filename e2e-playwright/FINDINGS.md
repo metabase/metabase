@@ -4710,3 +4710,17 @@ deletion to match upstream; keep it as a known-failing marker pending the
 security conversation; or hold. NOT decided unilaterally — it trades a red CI
 signal against erasing the only automated evidence that a security boundary was
 given up.
+
+**#224 TRIAGE (2026-07-22): not urgent.** Fraser has reviewed and does not
+consider this urgent. Rationale for the record: the removal was a deliberate
+product decision (GDGT-2872), not an unnoticed regression, and custom viz
+plugins are installed deliberately rather than reachable by an anonymous
+attacker. A message to the custom-viz owners is drafted, asking whether the
+clickjacking/UI-spoofing consequence was explicitly weighed or fell out as a
+side effect of the popover fix.
+
+**Pending until they answer**, the ported test is deliberately left asserting
+containment and therefore failing in CI. If they confirm the trade was
+intentional and weighed, delete our test to match upstream's deletion and close
+this. Do not silently delete it before then — it is the only automated evidence
+that the boundary was given up.

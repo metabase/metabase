@@ -231,7 +231,7 @@ wrote down.**
 | **#220** `PinMap` mutates `series[0].data.rows` during `render()`; "No results" only appears if a *later* render observes it | Confirmed; upstream Cypress passes on the same code because its pacing wins the race |
 | **#223** `/backfill-status` reports `complete: true` while entities sit in retry backoff; backfill throws for native cards referencing `{{snippet:Name}}` | Reproduced 8/8, confirmed over nREPL against the live app DB |
 | **#222** cold GraalPy/sqlglot pool vs Playwright's identical 30s timeout | HYPOTHESIS. Mechanism confirmed (5940ms cold vs 37ms warm), magnitude NOT — explicitly not claimed |
-| **#224** custom-viz confinement: "unrendered" and "sandbox escape" share a signature | OPEN, security-relevant. Recurred after the retry fix, which is the tripwire condition |
+| **#224** custom-viz containment removed on master (GDGT-2872); untrusted plugin can cover the whole viewport | CONFIRMED via CI trace. Deliberate product trade, not a regression — **triaged not urgent**; question raised with custom-viz owners. Our ported test left failing until they answer |
 
 ### E. Honest caveats on this ledger
 
