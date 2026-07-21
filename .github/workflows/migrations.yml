@@ -51,6 +51,10 @@ jobs:
             const targets = await getSupportedMajors();
             console.log('supported backport targets', targets);
 
+            if (!targets.length || !targets.every(Number.isInteger)) {
+              throw new Error(`getSupportedMajors() returned no usable majors: ${JSON.stringify(targets)}`);
+            }
+
             return Math.min(...targets);
       - name: Check migration versions
         env:
