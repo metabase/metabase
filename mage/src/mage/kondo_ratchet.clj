@@ -366,7 +366,7 @@
                                        (remove-ignores-at (slurp file) (map :row file-candidates))]
                                    (spit file text)
                                    (doseq [row skipped]
-                                     (println (format "WARNING: %s:%d skipped -- the ignore form's braces don't balance within the match; remove it by hand"
+                                     (println (format "WARNING: %s:%d skipped -- can't be excised cleanly (unbalanced braces); remove it by hand"
                                                       file row)))
                                    ;; whether the removed site carried a marker decides where its marker
                                    ;; goes on restore ([[site-restore-plan]]) -- record it, don't infer it
