@@ -240,10 +240,18 @@ cljs:
   - "shadow-cljs.edn"
 
 embedder:
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
   - ".github/workflows/build-scripts.yml"
   - "bin/build-embedder-plugin.sh"
+  - "bin/check-clojure-cli.sh"
+  - "bin/clear-outdated-cpcaches.sh"
   - "bin/build/src/build/embedder_model.clj"
   - "bin/build/src/build_embedder_plugin.clj"
+  - "bin/build/src/build_drivers/create_uberjar.clj"
+  - "bin/build/src/metabuild_common/**"
+  - "bin/test-agent"
+  - "deps.edn"
   - "modules/embedder/**"
 
 serialization_baseline:

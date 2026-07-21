@@ -147,25 +147,26 @@
 
 (deftest source-log-summary-test
   (testing "credential-bearing URL components (userinfo, query, fragment) are dropped"
-    (is (= {:type :url :url "https://models.example.com:8443/private/model.onnx"}
+    (is (= {:type :url :origin :override :url "https://models.example.com:8443"}
            (#'embedder.model/source-log-summary
             {:type :url
              :url  "https://user:password@models.example.com:8443/private/model.onnx?token=secret#fragment"})))
-    (is (= {:type :url :url "s3://bucket/model.zip"}
+    (is (= {:type :url :origin :override :url "s3://bucket"}
            (#'embedder.model/source-log-summary {:type :url :url "s3://key:secret@bucket/model.zip"}))))
   (testing "the sources that identify which model loaded stay legible"
     ;; The bundled resource is the production default, and the arch suffix is the diagnostic — redacting
     ;; it would leave the load log unable to answer \"which bundle did this instance actually load?\".
-    (is (= {:type :url :url "jar:///metabase-embedder/all-MiniLM-L6-v2-arm64.zip"}
+    (is (= {:type :url :origin :built-in :url "jar:///metabase-embedder/all-MiniLM-L6-v2-arm64.zip"}
            (#'embedder.model/source-log-summary
             {:type :url :url "jar:///metabase-embedder/all-MiniLM-L6-v2-arm64.zip"})))
-    (is (= {:type :url :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"}
+    (is (= {:type :url :origin :built-in
+            :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"}
            (#'embedder.model/source-log-summary
             {:type :url :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"})))
-    (is (= {:type :path :path "/models/tuned"}
+    (is (= {:type :path :origin :override :path "/models/tuned"}
            (#'embedder.model/source-log-summary {:type :path :path "/models/tuned"}))))
   (testing "an unparseable URL is redacted rather than logged raw"
-    (is (= {:type :url :url "<redacted>"}
+    (is (= {:type :url :origin :override :url "<redacted>"}
            (#'embedder.model/source-log-summary {:type :url :url "not a URL"})))))
 
 (deftest model-registry-test

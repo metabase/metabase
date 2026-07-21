@@ -35,13 +35,15 @@ jobs:
     - uses: actions/checkout@v6
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-    # The pinned model files are ~50 MB from HuggingFace. Cache them on the pinned revisions so only a
-    # deliberate model bump re-downloads, rather than every run depending on HuggingFace being up.
+    # The pinned model files are ~50 MB from HuggingFace. Restore older entries too: the build verifies
+    # every cached file's SHA-256, so a model bump downloads only files whose expected hash changed.
     - name: Cache embedder model downloads
       uses: actions/cache@v5
       with:
         path: modules/embedder/target/model-download
-        key: embedder-models-${{ hashFiles('bin/build/src/build/embedder_model.clj') }}
+        key: embedder-models-${{ runner.os }}-${{ hashFiles('bin/build/src/build/embedder_model.clj') }}
+        restore-keys: |
+          embedder-models-${{ runner.os }}-
     - name: Build embedder plugin
       run: ./bin/build-embedder-plugin.sh
     - name: Verify embedder plugin artifact
