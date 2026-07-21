@@ -58,6 +58,15 @@
   {:arglists '([entity dimensions dimension-mappings])}
   (fn [entity _dimensions _dimension-mappings] (:lib/type entity)))
 
+(defmulti dimensions-initialized?
+  "Whether an entity's dimensions have been initialized in durable storage."
+  {:arglists '([entity])}
+  :lib/type)
+
+(defmethod dimensions-initialized? :default
+  [entity]
+  (some? (lib-metric/get-persisted-dimensions entity)))
+
 ;;; ------------------------------------------------- Hydration -------------------------------------------------
 
 (defn- save-dimensions-if-changed!
@@ -147,9 +156,13 @@
           (sync-measure-dimensions! entity computed-pairs persisted-dims persisted-mappings)
 
           :metadata/metric
-          (if (nil? persisted-dims)
-            (seed-metric-dimensions! entity computed-pairs)
-            (refresh-metric-dimensions! entity computed-pairs persisted-dims persisted-mappings)))))))
+          (if (dimensions-initialized? entity)
+            (refresh-metric-dimensions! entity computed-pairs persisted-dims persisted-mappings)
+            (if (nil? persisted-dims)
+              (seed-metric-dimensions! entity computed-pairs)
+              (save-dimensions! entity
+                                (lib-metric/extract-persisted-dimensions persisted-dims)
+                                persisted-mappings))))))))
 
 ;;; ------------------------------------------------- Dimension CRUD -------------------------------------------------
 ;;; Orchestration behind the dimension-editor endpoints. Each function loads the dimensionable entity

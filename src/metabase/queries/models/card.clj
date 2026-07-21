@@ -110,6 +110,12 @@
                 {:dimensions         dimensions
                  :dimension_mappings dimension-mappings})))
 
+(defmethod metrics/dimensions-initialized? :metadata/metric
+  [metric]
+  (some? (:dimensions (t2/query-one {:select [:dimensions]
+                                     :from   [:report_card]
+                                     :where  [:= :id (:id metric)]}))))
+
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
    :display                mi/transform-keyword
