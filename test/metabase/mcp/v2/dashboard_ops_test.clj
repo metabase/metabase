@@ -4,7 +4,8 @@
    against plain maps."
   (:require
    [clojure.test :refer :all]
-   [metabase.mcp.v2.dashboard-ops :as dashboard-ops]))
+   [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
+   [metabase.parameters.mapping-targets]))
 
 (set! *warn-on-reflection* true)
 
@@ -330,3 +331,139 @@
   (testing "GHY-4147: referencing a tab that does not exist names the op index"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*99"
                           (dashboard-ops/compile-ops empty-dash [{:op "rename_tab" :tab_id 99 :name "x"}])))))
+
+(def ^:private a-card
+  "Minimal stand-in for a hydrated card; mapping-targets is stubbed in these tests, so only the
+   id matters here."
+  {:id 9 :name "Revenue" :type "question"})
+
+(deftest add-parameter-test
+  (testing "GHY-4147: add_parameter appends a parameter carrying the caller's id, REST names intact"
+    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+                                empty-dash
+                                [{:op "add_parameter" :parameter_id "p_date" :name "Date"
+                                  :type "date/all-options" :isMultiSelect false}]
+                                {})]
+      (is (= [{:id "p_date" :name "Date" :type "date/all-options" :isMultiSelect false}]
+             parameters)))))
+
+(deftest add-parameter-rejects-duplicate-id-test
+  (testing "GHY-4147: reusing an existing parameter id is a teaching error pointing at update_parameter"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0.*update_parameter"
+         (dashboard-ops/compile-ops
+          (assoc empty-dash :parameters [{:id "p1" :name "X" :type "string/="}])
+          [{:op "add_parameter" :parameter_id "p1" :name "Y" :type "string/="}]
+          {})))))
+
+(deftest update-parameter-merges-test
+  (testing "GHY-4147: update_parameter merges into the existing parameter"
+    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+                                (assoc empty-dash :parameters [{:id "p1" :name "X" :type "string/="}])
+                                [{:op "update_parameter" :parameter_id "p1" :name "Y"}]
+                                {})]
+      (is (= [{:id "p1" :name "Y" :type "string/="}] parameters)))))
+
+(deftest remove-parameter-strips-mappings-test
+  (testing "GHY-4147: remove_parameter drops the parameter, its dashcard mappings, its inline
+            placements, and any linked-filter reference to it"
+    (let [current {:id 1 :tabs []
+                   :parameters [{:id "p1" :name "X" :type "string/="}
+                                {:id "p2" :name "Y" :type "string/=" :filteringParameters ["p1"]}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :inline_parameters ["p1" "p2"]
+                                :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
+                                                     {:parameter_id "p2" :card_id 9 :target [:dimension [:field 2 nil]]}]}]}
+          {:keys [parameters dashcards]} (dashboard-ops/compile-ops
+                                          current [{:op "remove_parameter" :parameter_id "p1"}] {})
+          dc (first dashcards)]
+      (is (= ["p2"] (mapv :id parameters)))
+      (is (= [] (:filteringParameters (first parameters))))
+      (is (= ["p2"] (:inline_parameters dc)))
+      (is (= ["p2"] (mapv :parameter_id (:parameter_mappings dc)))))))
+
+(deftest move-parameter-reorders-header-test
+  (testing "GHY-4147: move_parameter with an index reorders the header"
+    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+                                (assoc empty-dash :parameters [{:id "a"} {:id "b"} {:id "c"}])
+                                [{:op "move_parameter" :parameter_id "c" :index 0}]
+                                {})]
+      (is (= ["c" "a" "b"] (mapv :id parameters))))))
+
+(deftest move-parameter-onto-a-card-test
+  (testing "GHY-4147: move_parameter with a dashcard_id makes it an inline filter on that card"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1"}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}]}
+          {:keys [dashcards]} (dashboard-ops/compile-ops
+                               current [{:op "move_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
+      (is (= ["p1"] (:inline_parameters (first dashcards)))))))
+
+(deftest wire-parameter-by-field-test
+  (testing "GHY-4147: wire_parameter writes a parameter mapping using the card's target for the field"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :parameter_mappings []}]}
+          {:keys [dashcards]} (with-redefs [metabase.parameters.mapping-targets/target-for-field
+                                            (fn [_card _param field-id]
+                                              [:dimension [:field field-id nil]])]
+                                (dashboard-ops/compile-ops
+                                 current
+                                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
+                                 {9 a-card}))]
+      (is (= [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 55 nil]]}]
+             (:parameter_mappings (first dashcards)))))))
+
+(deftest wire-parameter-rejects-an-unavailable-field-test
+  (testing "GHY-4147: a field the card does not expose is a teaching error naming the op"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"op 0.*wire_parameter"
+           (with-redefs [metabase.parameters.mapping-targets/target-for-field (constantly nil)]
+             (dashboard-ops/compile-ops
+              current
+              [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
+              {9 a-card})))))))
+
+(deftest wire-parameter-unknown-parameter-test
+  (testing "GHY-4147: wiring a parameter that does not exist names the op index"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0.*nope"
+         (dashboard-ops/compile-ops
+          {:id 1 :tabs [] :parameters []
+           :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}
+          [{:op "wire_parameter" :parameter_id "nope" :dashcard_id 7 :target_field 55}]
+          {9 a-card})))))
+
+(deftest autowire-maps-every-compatible-card-test
+  (testing "GHY-4147: autowire wires every card that exposes a compatible target, skipping those that don't"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}
+                               {:id 8 :card_id 10 :row 4 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}
+          {:keys [dashcards]} (with-redefs [metabase.parameters.mapping-targets/target-for-field
+                                            (fn [card _param field-id]
+                                              (when (= 9 (:id card)) [:dimension [:field field-id nil]]))]
+                                (dashboard-ops/compile-ops
+                                 current
+                                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
+                                   :target_field 55 :autowire true}]
+                                 {9 {:id 9} 10 {:id 10}}))]
+      (is (= 1 (count (:parameter_mappings (first dashcards)))))
+      (is (= [] (:parameter_mappings (second dashcards)))))))
+
+(deftest unwire-parameter-test
+  (testing "GHY-4147: unwire_parameter clears one card's mapping, or every card's when dashcard_id is omitted"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1"}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}]}
+                               {:id 8 :card_id 10 :row 4 :col 0 :size_x 4 :size_y 4
+                                :parameter_mappings [{:parameter_id "p1" :card_id 10 :target [:dimension [:field 2 nil]]}]}]}]
+      (testing "one card"
+        (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+                                   current [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
+          (is (= [] (:parameter_mappings (first dashcards))))
+          (is (= 1 (count (:parameter_mappings (second dashcards)))))))
+      (testing "all cards"
+        (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+                                   current [{:op "unwire_parameter" :parameter_id "p1"}] {})]
+          (is (every? (comp empty? :parameter_mappings) dashcards)))))))

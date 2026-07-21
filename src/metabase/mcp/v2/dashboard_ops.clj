@@ -13,7 +13,8 @@
   (:require
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.mcp.v2.common :as common]))
+   [metabase.mcp.v2.common :as common]
+   [metabase.parameters.mapping-targets :as mapping-targets]))
 
 (set! *warn-on-reflection* true)
 
@@ -321,6 +322,157 @@
                     "Pass `tab` on the add op, or use `move` with `tab` for cards already placed.")
                (pr-str (mapv :id orphans))))))
   state)
+
+;;; --------------------------------------------- Parameter ops -----------------------------------------------------
+
+(defn- resolve-parameter!
+  [state idx id]
+  (or (first (filter #(= id (:id %)) (:parameters state)))
+      (op-error! idx (format "parameter_id): no parameter with id %s on this dashboard." (pr-str id)))))
+
+(defn- card-for-dashcard
+  [state dashcard]
+  (get (::cards state) (:card_id dashcard)))
+
+(defmethod apply-op "add_parameter"
+  [state idx {:keys [parameter_id] :as op}]
+  (when (some #(= parameter_id (:id %)) (:parameters state))
+    (op-error! idx (format "add_parameter): parameter %s already exists — use `update_parameter`."
+                           (pr-str parameter_id))))
+  (update state :parameters conj
+          (-> (dissoc op :op :parameter_id)
+              (assoc :id parameter_id))))
+
+(defmethod apply-op "update_parameter"
+  [state idx {:keys [parameter_id] :as op}]
+  (resolve-parameter! state idx parameter_id)
+  (update state :parameters
+          (partial mapv #(if (= parameter_id (:id %))
+                           (merge % (dissoc op :op :parameter_id))
+                           %))))
+
+(defmethod apply-op "remove_parameter"
+  [state idx {:keys [parameter_id]}]
+  (resolve-parameter! state idx parameter_id)
+  (-> state
+      (update :parameters
+              (fn [params]
+                (->> params
+                     (filterv #(not= parameter_id (:id %)))
+                     (mapv (fn [p]
+                             (cond-> p
+                               (contains? p :filteringParameters)
+                               (update :filteringParameters
+                                       (partial filterv #(not= parameter_id %)))))))))
+      (update :dashcards
+              (partial mapv
+                       (fn [dc]
+                         (cond-> dc
+                           (contains? dc :inline_parameters)
+                           (update :inline_parameters (partial filterv #(not= parameter_id %)))
+
+                           (contains? dc :parameter_mappings)
+                           (update :parameter_mappings
+                                   (partial filterv #(not= parameter_id (:parameter_id %))))))))))
+
+(defmethod apply-op "move_parameter"
+  [state idx {:keys [parameter_id index dashcard_id] :as op}]
+  (let [param (resolve-parameter! state idx parameter_id)]
+    (cond
+      (contains? op :dashcard_id)
+      (do (resolve-dashcard! state idx dashcard_id)
+          (update state :dashcards
+                  (partial mapv
+                           (fn [dc]
+                             (if (= dashcard_id (:id dc))
+                               (update dc :inline_parameters
+                                       (fn [ps] (vec (distinct (conj (vec ps) parameter_id)))))
+                               (update dc :inline_parameters
+                                       (fn [ps] (when ps (filterv #(not= parameter_id %) ps)))))))))
+
+      (contains? op :index)
+      (let [rest* (filterv #(not= parameter_id (:id %)) (:parameters state))]
+        (when-not (<= 0 index (count rest*))
+          (op-error! idx (format "move_parameter): index %d is out of range — this dashboard has %d parameters."
+                                 index (count (:parameters state)))))
+        (assoc state :parameters
+               (vec (concat (subvec rest* 0 index) [param] (subvec rest* index)))))
+
+      :else
+      (op-error! idx "move_parameter): pass `index` to reorder the header, or `dashcard_id` to place it on a card."))))
+
+(defn- wire-one
+  "Add or replace `parameter`'s mapping on `dashcard`. Returns the dashcard unchanged when its card
+   exposes no target for `field-id`."
+  [state idx parameter dashcard field-id explicit?]
+  (let [card   (card-for-dashcard state dashcard)
+        target (when card (mapping-targets/target-for-field card parameter field-id))]
+    (cond
+      target
+      (update dashcard :parameter_mappings
+              (fn [ms]
+                (conj (filterv #(not= (:id parameter) (:parameter_id %)) (vec ms))
+                      {:parameter_id (:id parameter)
+                       :card_id      (:card_id dashcard)
+                       :target       target})))
+
+      explicit?
+      (op-error! idx (format (str "wire_parameter): dashcard %s does not expose field %s for parameter %s. "
+                                  "Read the dashboard with get_content to see each card's columns.")
+                             (:id dashcard) field-id (pr-str (:id parameter))))
+
+      :else dashcard)))
+
+(defmethod apply-op "wire_parameter"
+  [state idx {:keys [parameter_id dashcard_id target_field target_tag target autowire]}]
+  (let [parameter (resolve-parameter! state idx parameter_id)]
+    (resolve-dashcard! state idx dashcard_id)
+    (cond
+      target
+      (update-dashcard state dashcard_id
+                       (fn [dc]
+                         (update dc :parameter_mappings
+                                 (fn [ms]
+                                   (conj (filterv #(not= parameter_id (:parameter_id %)) (vec ms))
+                                         {:parameter_id parameter_id :card_id (:card_id dc) :target target})))))
+
+      target_tag
+      (update-dashcard state dashcard_id
+                       (fn [dc]
+                         (update dc :parameter_mappings
+                                 (fn [ms]
+                                   (conj (filterv #(not= parameter_id (:parameter_id %)) (vec ms))
+                                         {:parameter_id parameter_id
+                                          :card_id      (:card_id dc)
+                                          :target       [:variable [:template-tag target_tag]]})))))
+
+      target_field
+      (let [state (update state :dashcards
+                          (partial mapv #(if (= dashcard_id (:id %))
+                                           (wire-one state idx parameter % target_field true)
+                                           %)))]
+        (if autowire
+          (update state :dashcards
+                  (partial mapv #(if (= dashcard_id (:id %))
+                                   %
+                                   (wire-one state idx parameter % target_field false))))
+          state))
+
+      :else
+      (op-error! idx "wire_parameter): pass one of `target_field`, `target_tag`, or `target`."))))
+
+(defmethod apply-op "unwire_parameter"
+  [state idx {:keys [parameter_id dashcard_id] :as op}]
+  (resolve-parameter! state idx parameter_id)
+  (when (contains? op :dashcard_id)
+    (resolve-dashcard! state idx dashcard_id))
+  (update state :dashcards
+          (partial mapv
+                   (fn [dc]
+                     (if (or (not (contains? op :dashcard_id)) (= dashcard_id (:id dc)))
+                       (update dc :parameter_mappings
+                               (fn [ms] (filterv #(not= parameter_id (:parameter_id %)) (vec ms))))
+                       dc)))))
 
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 

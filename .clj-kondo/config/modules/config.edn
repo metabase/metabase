@@ -1600,6 +1600,7 @@
            metabase.parameters.field
            metabase.parameters.field-values
            metabase.parameters.init
+           metabase.parameters.mapping-targets
            metabase.parameters.params
            metabase.parameters.schema
            metabase.parameters.shared}
