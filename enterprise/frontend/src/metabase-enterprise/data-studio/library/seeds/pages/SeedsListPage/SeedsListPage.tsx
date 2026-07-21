@@ -183,7 +183,10 @@ function SeedRow({
             <Menu.Dropdown>
               <Menu.Item
                 leftSection={<Icon name="refresh" />}
-                onClick={onReplace}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReplace();
+                }}
               >
                 {t`Replace CSV…`}
               </Menu.Item>
@@ -191,6 +194,7 @@ function SeedRow({
                 leftSection={<Icon name="download" />}
                 component="a"
                 href={`/api/ee/data-studio/seed/${seed.id}/csv`}
+                onClick={(e) => e.stopPropagation()}
               >
                 {t`Download CSV`}
               </Menu.Item>
@@ -198,7 +202,10 @@ function SeedRow({
               <Menu.Item
                 c="error"
                 leftSection={<Icon name="trash" />}
-                onClick={onDelete}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
               >
                 {t`Delete…`}
               </Menu.Item>
