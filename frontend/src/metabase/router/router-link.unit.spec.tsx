@@ -15,6 +15,12 @@ function Home() {
       <Link to="/other">go</Link>
       {/* A `<Link>` used as a button: it navigates through its own onClick. */}
       <Link onClick={() => dispatch(push("/other"))}>act</Link>
+      <Link to="/" activeClassName="is-active" onlyActiveOnIndex>
+        home
+      </Link>
+      <Link to="/other" activeClassName="is-active">
+        section
+      </Link>
       <Outlet />
     </div>
   );
@@ -44,6 +50,20 @@ describe.each<RouterEngine>(["v3", "v7"])(
 
       expect(await screen.findByTestId("other")).toBeInTheDocument();
       expect(screen.getByTestId("location")).toHaveTextContent("/other");
+    });
+
+    it("applies activeClassName to the link that matches the route", async () => {
+      renderWithProviders(tree, {
+        withRouter: true,
+        routerEngine,
+        initialRoute: "/other",
+      });
+
+      await screen.findByTestId("other");
+
+      // The exact-match home link is not active on /other; the section link is.
+      expect(screen.getByText("home")).not.toHaveClass("is-active");
+      expect(screen.getByText("section")).toHaveClass("is-active");
     });
 
     it("does not navigate on its own when used as a button (no `to`)", async () => {

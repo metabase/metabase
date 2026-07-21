@@ -2,6 +2,7 @@ import { type Ref, forwardRef } from "react";
 import {
   Link as V7Link,
   type LinkProps as V7LinkProps,
+  NavLink as V7NavLink,
   useInRouterContext,
 } from "react-router-v7";
 
@@ -72,6 +73,32 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
       }
 
       const { to: v7To, state } = toV7Target(to);
+
+      // v3's `<Link>` highlights itself when its route is active via
+      // `activeClassName`/`activeStyle` (and `onlyActiveOnIndex` for an exact
+      // match). v7 moved that to `<NavLink>`, so route it there when a call site
+      // asks for active styling; a plain `<Link>` would silently drop it.
+      if (activeClassName != null || activeStyle != null) {
+        const { className, style, ...navRest } = rest;
+        return (
+          <V7NavLink
+            {...navRest}
+            to={v7To}
+            state={state}
+            ref={linkRef}
+            end={onlyActiveOnIndex}
+            className={({ isActive }) =>
+              [className, isActive ? activeClassName : null]
+                .filter(Boolean)
+                .join(" ")
+            }
+            style={({ isActive }) =>
+              isActive ? { ...style, ...activeStyle } : style
+            }
+          />
+        );
+      }
+
       return <V7Link {...rest} to={v7To} state={state} ref={linkRef} />;
     }
 
