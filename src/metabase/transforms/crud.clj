@@ -78,6 +78,27 @@
                                    (:name field)
                                    (pr-str (:base_type field)))))))
 
+(defn validate-lookback!
+  "Validates a configured lookback window: temporal checkpoint columns need a unit (date-only
+  columns a day-or-coarser one), and numeric ones must not have one."
+  [{:keys [source] :as transform}]
+  (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform)
+                                 (get-in source [:source-incremental-strategy :lookback]))]
+    (when-let [field (t2/select-one :model/Field (get-in source [:source-incremental-strategy :checkpoint-filter-field-id]))]
+      (let [base-type (:base_type field)]
+        (cond
+          (isa? base-type :type/Temporal)
+          (do
+            (api/check-400 (some? unit)
+                           (deferred-tru "A lookback window on a temporal checkpoint column requires a unit."))
+            (when-not (isa? base-type :type/DateTime)
+              (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
+                             (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit."))))
+
+          (isa? base-type :type/Number)
+          (api/check-400 (nil? unit)
+                         (deferred-tru "A lookback window on a numeric checkpoint column must not specify a unit.")))))))
+
 (defn validate-incremental-table-tag!
   "Reject a table-incremental native-query transform whose source query has no table template tag for
   the incremental range filter to target.
@@ -142,6 +163,7 @@
      (validate-transform-query! body))
    (validate-target-schema! body)
    (validate-incremental-table-tag! body)
+   (validate-lookback! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -180,7 +202,8 @@
                       (when (contains? body :source)
                         (validate-incremental-column-type! new))
                       (when (or (contains? body :source) (contains? body :target))
-                        (validate-incremental-table-tag! new))
+                        (validate-incremental-table-tag! new)
+                        (validate-lookback! new))
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
