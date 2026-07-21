@@ -9,6 +9,10 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
+(defn- without-generated-at
+  [typescript]
+  (str/replace typescript #"generatedAt: \"[^\"]+\"" "generatedAt: \"<generated-at>\""))
+
 (deftest typescript-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/typescript")]
     (is (= "text/typescript; charset=utf-8" (get-in response [:headers "Content-Type"])))
@@ -47,7 +51,8 @@
         missing-schema   (:body (mt/user-http-request-full-response
                                  :crowberto :get 200 "typed-schemas/v1/typescript" :database "__missing_database__"))]
     (testing "a database id and name select the same generated schema"
-      (is (= schema-by-id schema-by-name)))
+      (is (= (without-generated-at schema-by-id)
+             (without-generated-at schema-by-name))))
     (testing "a matching database includes its real tables"
       (is (str/includes? schema-by-id "  venues: {"))
       (is (str/includes? schema-by-id "name: \"Venues\"")))
