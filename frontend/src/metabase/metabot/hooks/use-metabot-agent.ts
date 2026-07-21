@@ -16,6 +16,7 @@ import {
   getIsLongMetabotConversation,
   getIsProcessing,
   getMessages,
+  getMetabotConversation,
   getMetabotId,
   getMetabotReactionsState,
   getMetabotRequestId,
@@ -156,6 +157,9 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     retryMessage,
     cancelRequest,
     metabotId: useSelector(getMetabotId),
+    conversationId: useSelector(
+      (state) => getMetabotConversation(state, agentId).conversationId,
+    ),
     messages: useSelector((state) => getMessages(state, agentId)),
     isDoingScience: useSelector((state) => getIsProcessing(state, agentId)),
     isLongConversation: useSelector((state) =>

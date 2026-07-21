@@ -43,6 +43,12 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
+export const getSavedChartCardId = createSelector(
+  [getMetabotState, (_state: State, entityId: string) => entityId],
+  (metabotState, entityId): number | undefined =>
+    metabotState.savedChartCardIds[entityId],
+);
+
 export const getMetabotReactionsState = createSelector(
   getMetabotState,
   (state) => state.reactions,
@@ -197,6 +203,16 @@ export const getIsProcessing = createSelector(
 export const getMetabotRequestState = createSelector(
   getMetabotConversation,
   (convo) => convo.state,
+);
+
+export const getConversationChart = createSelector(
+  [getMetabotState, (_state: State, chartId: string) => chartId],
+  (metabotState, chartId): Urls.ConversationChart | undefined => {
+    const charts = Object.values(metabotState.conversations)
+      .map((convo) => convo?.state?.charts?.[chartId])
+      .filter((chart) => chart != null);
+    return charts.find(Urls.hasLinkableChartQuery) ?? charts[0];
+  },
 );
 
 export const getIsLongMetabotConversation = createSelector(

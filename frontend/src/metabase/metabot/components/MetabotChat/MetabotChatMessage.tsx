@@ -47,6 +47,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-navigate_to" }, () => true)
     .with({ type: "data-code_edit" }, () => true)
     .with({ type: "data-generated_entity" }, () => true)
+    .with({ type: "data-entity_saved" }, () => true)
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
     .exhaustive();
@@ -175,6 +176,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotAgentChatMessage;
   debug: boolean;
   readonly: boolean;
+  conversationId: string;
   onRetry?: (messageId: string) => void;
   getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
@@ -188,6 +190,7 @@ export const AgentMessage = ({
   className,
   debug,
   readonly,
+  conversationId,
   getCopyText,
   onRetry,
   setFeedbackMessage,
@@ -215,7 +218,12 @@ export const AgentMessage = ({
           </AIMarkdown>
         ))
         .with({ type: "data_part" }, (m) => (
-          <AgentDataPartMessage message={m} debug={debug} readonly={readonly} />
+          <AgentDataPartMessage
+            message={m}
+            debug={debug}
+            readonly={readonly}
+            conversationId={conversationId}
+          />
         ))
         .with({ type: "tool_call" }, (m) => (
           <AgentToolCallMessage message={m} />
@@ -432,6 +440,7 @@ export const Messages = ({
   isDoingScience,
   debug,
   readonly = false,
+  conversationId,
   onInternalLinkClick,
   getExtraActions,
 }: {
@@ -440,6 +449,7 @@ export const Messages = ({
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
+  conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
 }) => {
@@ -507,6 +517,7 @@ export const Messages = ({
             message={message}
             debug={debug}
             readonly={readonly}
+            conversationId={conversationId}
             onRetry={isLastUserMessage ? onRetryMessage : undefined}
             getCopyText={() => getAgentReplyCopyText(message.id)}
             setFeedbackMessage={(data) =>

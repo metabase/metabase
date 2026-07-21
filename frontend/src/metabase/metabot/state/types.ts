@@ -148,6 +148,7 @@ export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
+  savedChartCardIds: Record<string, number>;
 }
 
 export interface SlashCommand {

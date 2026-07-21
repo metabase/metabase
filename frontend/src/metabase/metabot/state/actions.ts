@@ -72,6 +72,7 @@ export const {
   destroyAgent,
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
+  markChartSaved,
 } = metabot.actions;
 
 type HandledResponseError = {
@@ -476,6 +477,15 @@ export const sendAgentRequest = createAsyncThunk<
                   part,
                   metadata: { editorTransform, suggestionId },
                 });
+              })
+              .with({ type: "data-entity_saved" }, (part) => {
+                dispatch(
+                  markChartSaved({
+                    entityId: part.data.chart_id,
+                    cardId: part.data.card_id,
+                  }),
+                );
+                pushDataPart({ type: "data_part", part });
               })
               .with(
                 { type: "data-generated_entity" },
