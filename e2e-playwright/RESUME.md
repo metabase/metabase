@@ -14,6 +14,17 @@ Verification at handoff:
 
 ---
 
+## 📈 The business case: `DIVIDENDS.md`
+
+Defects found in the **existing Cypress suite** by porting it — assertions that
+cannot fail, tests with no assertion, tests covering deleted behaviour, silent
+skips, and races upstream survives by luck. ~30 entries, each with a finding
+number and a measurement, and each with an honest "does it bite?" column.
+
+That last column matters: a latent hole that convention covers is not the same
+as missing coverage, and conflating them would discredit the list. See #218 for
+the worked example of me getting that wrong and correcting it.
+
 ## Read this before trusting anything below
 
 `FINDINGS.md` is 207 entries. **Twelve of my own claims were corrected on
