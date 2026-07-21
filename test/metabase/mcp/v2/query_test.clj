@@ -107,6 +107,35 @@
       (testing "GHY-4142: a fan-out page refuses the cursor — sound fan-out paging would need the total order imposed on the first page's own execution, which the cursor mint can't do retroactively"
         (is (true? refused?))))))
 
+(deftest next-page-cursor-sourced-card-fan-out-test
+  ;; The join that fans the result out need not be in the payload: a query sourcing a saved
+  ;; question inherits that question's joins, and the payload shows only `:source-card`. The
+  ;; refusal has to follow the source through, or the hole reopens one indirection away.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [joined  (-> (lib/query (mp) (lib.metadata/table (mp) (mt/id :products)))
+                      (lib/join (lib/join-clause (lib.metadata/table (mp) (mt/id :orders))
+                                                 [(lib/= (lib.metadata/field (mp) (mt/id :products :id))
+                                                         (lib.metadata/field (mp) (mt/id :orders :product_id)))])))
+          plain   (lib/query (mp) (lib.metadata/table (mp) (mt/id :products)))]
+      (mt/with-temp [:model/Card {joined-id :id} {:dataset_query (lib/->legacy-MBQL joined)}
+                     :model/Card {plain-id :id}  {:dataset_query (lib/->legacy-MBQL plain)}]
+        (let [sourcing  (fn [card-id]
+                          (-> (lib/query (mp) (lib.metadata/card (mp) card-id))
+                              (lib/limit 5)
+                              lib/prepare-for-serialization))
+              page-of   (fn [serialized] (run-rows+cols (lib/query (mp) serialized)))]
+          (testing "GHY-4142: sourcing a saved question that joins refuses the cursor, same as an inline join"
+            (let [serialized  (sourcing joined-id)
+                  [rows cols] (page-of serialized)]
+              (is (true? (#'q/fan-out-join? (mp) serialized)))
+              (is (nil? (#'q/next-page-query serialized cols (last rows))))))
+          ;; asserted on the guard rather than end-to-end: a card-sourced query has no projected
+          ;; source-table PK, so it falls to the full-tuple tiebreaker and bails for its own
+          ;; reasons (PRODUCTS.CREATED_AT doesn't round-trip). What matters here is that the
+          ;; fan-out refusal follows the source through instead of blanket-refusing every card.
+          (testing "GHY-4142: sourcing a join-free saved question is not a fan-out"
+            (is (false? (#'q/fan-out-join? (mp) (sourcing plain-id))))))))))
+
 (deftest next-page-cursor-pages-without-gaps-or-dups-test
   ;; Proves the keyset seek is correct across page boundaries: for a unique-key (PK) source, paging
   ;; returns strictly increasing, distinct PKs — no row skipped, none repeated. (The non-unique-key

@@ -7,6 +7,7 @@
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.common :as v2.common]
    [metabase.util.log :as log]))
 
@@ -38,13 +39,50 @@
                 i))
             (map-indexed vector ret-cols)))))
 
+(defn- explicit-join?
+  "True when `query-map` carries a non-empty `:joins` anywhere in its tree — a stage's own joins,
+   a join's sub-stages, and legacy `:source-query` nesting alike. A whole-tree scan because a
+   join at any depth can fan the result out, and the map may be MBQL 5 or a card's still-legacy
+   stored query."
+  [query-map]
+  (boolean (some (fn [node] (and (map? node) (seq (:joins node))))
+                 (tree-seq coll? seq query-map))))
+
+(defn- source-card-ids
+  "Card ids `query-map` sources at any depth: MBQL 5 `:source-card`, plus the legacy
+   `:source-table \"card__<id>\"` spelling a card's own stored query may still use."
+  [query-map]
+  (let [legacy-id (fn [source-table]
+                    (when (string? source-table)
+                      (some-> (re-matches #"card__(\d+)" source-table) second parse-long)))]
+    (into #{}
+          (comp (filter map?)
+                (mapcat (juxt :source-card (comp legacy-id :source-table)))
+                (filter int?))
+          (tree-seq coll? seq query-map))))
+
 (defn- fan-out-join?
-  "True when any stage carries an explicit join. Join cardinality isn't knowable from metadata,
-   so every join is assumed able to fan the source table out 1:many. Implicit joins
-   (`:source-field` field refs) resolve many:1 against the target table's PK and cannot fan
-   out, so they don't count."
-  [resolved-query]
-  (boolean (some (comp seq :joins) (:stages resolved-query))))
+  "True when the query — or any saved question it sources, transitively — carries an explicit
+   join. Join cardinality isn't knowable from metadata, so every join is assumed able to fan the
+   source table out 1:many. Implicit joins (`:source-field` field refs) resolve many:1 against
+   the target table's PK and cannot fan out, so they don't count. A sourced card whose stored
+   query can't be read counts as a fan-out: an unreadable source can't be shown join-free, and
+   the contract here is to refuse rather than page over an unproven shape."
+  [metadata-providerable resolved-query]
+  (loop [pending (list resolved-query), seen #{}]
+    (if-let [query-map (first pending)]
+      (or (explicit-join? query-map)
+          (let [ids     (vec (remove seen (source-card-ids query-map)))
+                sourced (reduce (fn [acc id]
+                                  (if-let [stored (:dataset-query (lib.metadata/card metadata-providerable id))]
+                                    (conj acc stored)
+                                    (reduced nil)))
+                                []
+                                ids)]
+            (if sourced
+              (recur (into (rest pending) sourced) (into seen ids))
+              true)))
+      false)))
 
 (defn- tiebreaker-specs
   "Deterministic tiebreakers appended after the existing order-bys to make the order total:
@@ -130,52 +168,52 @@
    pre-aggregation); if that stage also carries its own limit the base set is cut before the
    total order can pin it down, so no cursor.
 
-   A query with an explicit join gets no cursor at all. A 1:many join repeats the source-table
-   PK across result rows, so the PK-only tiebreaker would drop the boundary row's remaining
-   fan-out rows; and the full-tuple fallback is no better, because the already-served first
-   page broke ties in whatever order the engine produced, while the cursor's appended
-   tiebreakers impose their own — the two orders disagree within tie groups straddling the
-   boundary, yielding both dropped and repeated rows. No tiebreaker derivable at mint time can
-   agree with an order the first page never ran under, so a joined query refuses the cursor
-   (an explicit dead end) rather than paging with silent gaps."
+   A query that joins — directly, or through a saved question it sources — gets no cursor at
+   all. A 1:many join repeats the source-table PK across result rows, so the PK-only tiebreaker
+   would drop the boundary row's remaining fan-out rows; and the full-tuple fallback is no
+   better, because the already-served first page broke ties in whatever order the engine
+   produced, while the cursor's appended tiebreakers impose their own — the two orders disagree
+   within tie groups straddling the boundary, yielding both dropped and repeated rows. No
+   tiebreaker derivable at mint time can agree with an order the first page never ran under, so
+   a joined query refuses the cursor (an explicit dead end) rather than paging with silent gaps."
   [resolved-query result-cols last-row]
-  (when-not (fan-out-join? resolved-query)
-    (let [mp          (lib-be/application-database-metadata-provider (:database resolved-query))
-          query       (lib/query mp resolved-query)
-          aggregated? (boolean (or (seq (lib/aggregations query))
-                                   (seq (lib/breakouts query))))]
-      (when-not (and aggregated? (lib/current-limit query))
-        (let [ret-cols  (vec (lib/returned-columns query))
-              positions (when (and (seq ret-cols) (sequential? last-row))
-                          (row-positions ret-cols result-cols last-row))]
-          (when positions
-            (when-let [ordered (order-by-specs query ret-cols)]
-              (let [tiebreakers (tiebreaker-specs resolved-query ret-cols (into #{} (map :idx) ordered))
-                    specs       (into ordered tiebreakers)
-                    values      (mapv #(nth last-row (nth positions (:idx %))) specs)
-                    ;; a remapped column can't be a cursor key (the remap middleware rewrites an
-                    ;; order-by on it to sort by the display value, so the executed order and the
-                    ;; keyset predicate — which compares raw values — would disagree: a gap), and
-                    ;; neither can a column whose boundary value doesn't round-trip exactly.
-                    unsafe-key?   (some (fn [{:keys [idx]}]
-                                          (let [col (nth ret-cols idx)]
-                                            (or (:lib/external-remap col)
-                                                (:lib/internal-remap col)
-                                                (lossy-boundary-col? col))))
-                                        specs)]
-                (when (and (seq specs) (not unsafe-key?) (every? some? values))
-                  (let [base        (if aggregated? (lib/append-stage query) query)
-                        target-cols (if aggregated? (vec (lib/returned-columns base)) ret-cols)
-                        ;; the unaggregated stage already carries its own order-bys; the appended
-                        ;; stage starts bare, so the whole total order is re-imposed there.
-                        to-order    (if aggregated? specs tiebreakers)
-                        with-order  (reduce (fn [q {:keys [idx dir]}]
-                                              (lib/order-by q (nth target-cols idx) dir))
-                                            base
-                                            to-order)]
-                    (-> with-order
-                        (lib/filter (keyset-filter-clause target-cols specs values))
-                        lib/prepare-for-serialization)))))))))))
+  (let [mp (lib-be/application-database-metadata-provider (:database resolved-query))]
+    (when-not (fan-out-join? mp resolved-query)
+      (let [query       (lib/query mp resolved-query)
+            aggregated? (boolean (or (seq (lib/aggregations query))
+                                     (seq (lib/breakouts query))))]
+        (when-not (and aggregated? (lib/current-limit query))
+          (let [ret-cols  (vec (lib/returned-columns query))
+                positions (when (and (seq ret-cols) (sequential? last-row))
+                            (row-positions ret-cols result-cols last-row))]
+            (when positions
+              (when-let [ordered (order-by-specs query ret-cols)]
+                (let [tiebreakers (tiebreaker-specs resolved-query ret-cols (into #{} (map :idx) ordered))
+                      specs       (into ordered tiebreakers)
+                      values      (mapv #(nth last-row (nth positions (:idx %))) specs)
+                      ;; a remapped column can't be a cursor key (the remap middleware rewrites an
+                      ;; order-by on it to sort by the display value, so the executed order and the
+                      ;; keyset predicate — which compares raw values — would disagree: a gap), and
+                      ;; neither can a column whose boundary value doesn't round-trip exactly.
+                      unsafe-key?   (some (fn [{:keys [idx]}]
+                                            (let [col (nth ret-cols idx)]
+                                              (or (:lib/external-remap col)
+                                                  (:lib/internal-remap col)
+                                                  (lossy-boundary-col? col))))
+                                          specs)]
+                  (when (and (seq specs) (not unsafe-key?) (every? some? values))
+                    (let [base        (if aggregated? (lib/append-stage query) query)
+                          target-cols (if aggregated? (vec (lib/returned-columns base)) ret-cols)
+                          ;; the unaggregated stage already carries its own order-bys; the appended
+                          ;; stage starts bare, so the whole total order is re-imposed there.
+                          to-order    (if aggregated? specs tiebreakers)
+                          with-order  (reduce (fn [q {:keys [idx dir]}]
+                                                (lib/order-by q (nth target-cols idx) dir))
+                                              base
+                                              to-order)]
+                      (-> with-order
+                          (lib/filter (keyset-filter-clause target-cols specs values))
+                          lib/prepare-for-serialization))))))))))))
 
 (defn next-page-cursor!
   "For a truncated MBQL page, build the next-page query (the same resolved query with a
@@ -192,7 +230,8 @@
      visualization feedback flow.
 
    Returns nil whenever a gap-free cursor cannot be guaranteed: native SQL anywhere in the
-   tree, an explicit join anywhere (a fan-out defeats every mint-time tiebreaker — see
+   tree, an explicit join anywhere — directly or inside a sourced saved question, or a sourced
+   question whose stored query can't be read (a fan-out defeats every mint-time tiebreaker — see
    [[next-page-query]]), an order-by outside the projection, a row that can't be aligned with
    the projection, a nil boundary value, a key column that is remapped or whose values don't
    round-trip exactly (raw datetimes), an aggregated stage carrying its own limit, or any
