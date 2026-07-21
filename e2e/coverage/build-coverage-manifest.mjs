@@ -3,9 +3,15 @@
  * e2e/support/config.js into the manifests used for selective e2e runs:
  *
  *  - spec-file-manifest.json: { builtAt, specs: {spec: [files]},
- *    routes: {spec: [normalized API routes]} }
+ *    routes: {spec: [normalized API routes]},
+ *    pages: {spec: [normalized FE page paths]} }
  *  - spec-test-manifest.json: { builtAt, specs: {spec: {testTitle:
- *    {files, routes}}} } — the per-test breakdown of the same data.
+ *    {files, routes, pages}}} } — the per-test breakdown of the same data.
+ *
+ * Capture is unfiltered (all requests, origins kept for third-party ones);
+ * the `routes` dimension keeps only internal /api traffic, and `pages` keeps
+ * document navigations. Everything captured stays in the raw per-spec
+ * artifacts, so widening policy here needs no capture change.
  *
  * For files, includes only those whose function counters strictly exceeded
  * the baseline spec's (per test: the baseline spec's single test).
@@ -46,16 +52,25 @@ import {
   discriminatingFiles,
   discriminatingFilesForTest,
 } from "./baseline.mjs";
-import { loadRouteTable, matchRoute, normalizeRoutes } from "./routes.mjs";
+import {
+  apiRoutes,
+  loadRouteTable,
+  matchRoute,
+  normalizePages,
+  normalizeRoute,
+  normalizeRoutes,
+} from "./routes.mjs";
 
 const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
 
-// Authoritative route shapes, generated from the backend's defendpoint
-// definitions. Missing (e.g. a checkout without a generated spec) just means
-// regex-fallback normalization for every route.
+// Authoritative endpoint shapes, generated from the backend's defendpoint
+// definitions. Used only to LOG captured routes that match no endpoint (a
+// drift/capture-bug signal) — stored shapes stay table-independent so
+// consumers can match them against their own checkout's spec version.
+// Missing file just means no drift log.
 const OPENAPI_FILE = path.join(REPO_ROOT, "resources/openapi/openapi.json");
 
 const PER_SPEC_DIR = path.join(REPO_ROOT, "e2e/coverage-manifest-raw");
@@ -114,7 +129,12 @@ function loadPrevManifests() {
     tests = {};
   }
 
-  return { specs: main.specs, routes: main.routes ?? {}, tests };
+  return {
+    specs: main.specs,
+    routes: main.routes ?? {},
+    pages: main.pages ?? {},
+    tests,
+  };
 }
 
 // The commit this manifest describes. CI passes the instrumented build's SHA;
@@ -161,14 +181,15 @@ function main() {
 
   const routeTable = loadRouteTable(OPENAPI_FILE);
   if (!routeTable) {
-    console.warn(
-      `No OpenAPI spec at ${OPENAPI_FILE}; using regex route normalization.`,
-    );
+    console.warn(`No OpenAPI spec at ${OPENAPI_FILE}; skipping drift check.`);
   }
 
   const specs = {};
   const specRoutes = {};
+  const specPages = {};
   const specTests = {};
+  // Concrete (pre-normalization) API routes captured today, for the drift log.
+  const concreteApiRoutes = new Set();
   let totalFiles = 0;
   let totalTests = 0;
   for (const [spec, entry] of Object.entries(entries)) {
@@ -183,14 +204,16 @@ function main() {
     specs[spec] = files;
     totalFiles += files.length;
 
-    // Per-test breakdown. Retried attempts share a title; their files and
-    // routes union together.
+    // Per-test breakdown. Retried attempts share a title; their files,
+    // routes, and pages union together.
     const tests = {};
     const routes = new Set();
+    const pages = new Set();
     for (const attempt of entry.tests ?? []) {
       const test = (tests[attempt.title] ??= {
         files: new Set(),
         routes: new Set(),
+        pages: new Set(),
       });
       for (const file of discriminatingFilesForTest(
         attempt.f,
@@ -199,16 +222,29 @@ function main() {
       )) {
         test.files.add(file);
       }
-      for (const route of normalizeRoutes(attempt.routes, routeTable)) {
+      const attemptApiRoutes = apiRoutes(attempt.routes);
+      for (const route of attemptApiRoutes) {
+        concreteApiRoutes.add(route);
+      }
+      for (const route of normalizeRoutes(attemptApiRoutes)) {
         test.routes.add(route);
         routes.add(route);
       }
+      for (const page of normalizePages(attempt.pages)) {
+        test.pages.add(page);
+        pages.add(page);
+      }
     }
     specRoutes[spec] = [...routes].sort();
+    specPages[spec] = [...pages].sort();
     specTests[spec] = Object.fromEntries(
       Object.entries(tests).map(([title, test]) => [
         title,
-        { files: [...test.files].sort(), routes: [...test.routes].sort() },
+        {
+          files: [...test.files].sort(),
+          routes: [...test.routes].sort(),
+          pages: [...test.pages].sort(),
+        },
       ]),
     );
     totalTests += Object.keys(tests).length;
@@ -224,6 +260,7 @@ function main() {
       if (!(spec in specs) && current.has(spec)) {
         specs[spec] = files;
         specRoutes[spec] = prev.routes[spec] ?? [];
+        specPages[spec] = prev.pages[spec] ?? [];
         specTests[spec] = prev.tests[spec] ?? {};
         totalFiles += files.length;
         totalTests += Object.keys(specTests[spec]).length;
@@ -235,11 +272,17 @@ function main() {
   const builtAt = builtAtSha();
   fs.writeFileSync(
     OUTPUT_FILE,
-    JSON.stringify({ builtAt, specs, routes: specRoutes }, null, 2) + "\n",
+    JSON.stringify(
+      { builtAt, specs, routes: specRoutes, pages: specPages },
+      null,
+      2,
+    ) + "\n",
   );
+  // Compact on purpose — with per-test file lists populated this is ~200 MB
+  // pretty-printed; nobody reads it by eye.
   fs.writeFileSync(
     OUTPUT_TEST_FILE,
-    JSON.stringify({ builtAt, specs: specTests }, null, 2) + "\n",
+    JSON.stringify({ builtAt, specs: specTests }) + "\n",
   );
 
   const specCount = Object.keys(specs).length;
@@ -255,29 +298,31 @@ function main() {
       `${(testBytes / 1e6).toFixed(1)} MB).`,
   );
 
-  // Routes that didn't resolve to an OpenAPI-defined shape are worth eyes:
-  // either an endpoint defined outside defendpoint or a capture bug.
+  // Drift log: captured API routes that resolve to no endpoint definition —
+  // either an endpoint defined outside defendpoint or a capture bug. Checked
+  // against today's concrete captures (backfilled entries were checked the
+  // day they ran) and reported in normalized form for readability.
   if (routeTable) {
-    const allRoutes = new Set(Object.values(specRoutes).flat());
-    const unmatched = [...allRoutes]
-      .filter((route) => {
-        const separator = route.indexOf(" ");
-        const method = route.slice(0, separator);
-        const pathname = route.slice(separator + 1);
-        return matchRoute(routeTable, method, pathname) !== pathname;
-      })
-      .sort();
+    const unmatched = new Set();
+    for (const route of concreteApiRoutes) {
+      const separator = route.indexOf(" ");
+      const method = route.slice(0, separator);
+      const pathname = route.slice(separator + 1);
+      if (!matchRoute(routeTable, method, pathname)) {
+        unmatched.add(normalizeRoute(route));
+      }
+    }
+    const sorted = [...unmatched].sort();
     console.log(
-      `${allRoutes.size} distinct routes, ${unmatched.length} not in the ` +
-        "OpenAPI table.",
+      `${concreteApiRoutes.size} distinct captured API routes; ` +
+        `${sorted.length} shapes match no endpoint definition.`,
     );
-    // Backfilled specs can carry old-style routes for a day; cap the noise.
     const MAX_UNMATCHED_LISTED = 100;
-    for (const route of unmatched.slice(0, MAX_UNMATCHED_LISTED)) {
+    for (const route of sorted.slice(0, MAX_UNMATCHED_LISTED)) {
       console.log(`  unmatched: ${route}`);
     }
-    if (unmatched.length > MAX_UNMATCHED_LISTED) {
-      console.log(`  ... and ${unmatched.length - MAX_UNMATCHED_LISTED} more`);
+    if (sorted.length > MAX_UNMATCHED_LISTED) {
+      console.log(`  ... and ${sorted.length - MAX_UNMATCHED_LISTED} more`);
     }
   }
 }

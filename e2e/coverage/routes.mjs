@@ -1,31 +1,41 @@
 /**
- * Route normalization for the coverage manifests.
+ * Route and page normalization for the coverage manifests.
  *
- * Capture (e2e/support/per-test-capture.js) records concrete request paths
- * ("GET /api/card/173/query"); the manifests want route shapes so entries
- * dedupe across runs and can be matched against backend endpoint definitions.
+ * Capture (e2e/support/per-test-capture.js) records every concrete request
+ * ("GET /api/card/173/query", "GET /app/assets/vendor-abc.js", third-party
+ * URLs with origin kept) and every document navigation ("/dashboard/1-orders").
+ * The manifests want shapes so entries dedupe across runs and can be matched
+ * against backend endpoint definitions — filtering and normalization policy
+ * lives here, offline, so it can change without re-running a nightly.
  *
- * The authoritative shapes come from resources/openapi/openapi.json, which is
- * generated from the backend's defendpoint definitions (bun run
- * generate-openapi). Matching a captured path against that table yields the
- * backend's own spelling ("GET /api/card/{id}/query"), so selection later is
- * exact string comparison. Paths the table doesn't know (endpoints defined
- * outside defendpoint, or capture noise) fall back to regex normalization
- * (":id"/":uuid"/":entity-id") — those can't match a backend definition
- * anyway, so the fallback only needs to keep them deduplicating stably. The
- * two param spellings ("{id}" vs ":id") intentionally differ so table-matched
- * and fallback routes are distinguishable in the manifest.
+ * Stored shapes are regex-normalized (":id"/":uuid"/":entity-id"/":token")
+ * and deliberately independent of the OpenAPI route table. Matching against
+ * endpoint definitions happens at consumption time: the manifest is built
+ * from last night's SHA while a consumer compares against its own checkout's
+ * endpoints, so baking one table's spelling in would break on any route
+ * whose shape changed in between. A consumer matches structurally with
+ * matchRoute() below against whichever spec version fits its checkout
+ * (resources/openapi/openapi.json, generated from the backend's defendpoint
+ * definitions by `bun run generate-openapi`; the nightly also ships its
+ * freshly generated copy alongside the manifests).
+ *
+ * The nightly build still loads the table for one thing: logging captured
+ * API routes that correspond to no endpoint definition — an endpoint defined
+ * outside defendpoint, or a capture bug.
  */
 
 import fs from "node:fs";
 
-const NUMERIC_SEGMENT = /^\d+$/;
+// Numeric ids, with or without a slug tail: "173", "1-orders-dashboard".
+const NUMERIC_SEGMENT = /^\d+(-[^/]*)?$/;
 const UUID_SEGMENT =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // NanoID entity ids: 21 chars of [A-Za-z0-9_-]. Real API path segments are
 // lowercase words, so requiring a digit or uppercase letter avoids swallowing
 // a literal segment that happens to be 21 chars long.
 const ENTITY_ID_SEGMENT = /^(?=.*[A-Z0-9])[A-Za-z0-9_-]{21}$/;
+// Signed embedding tokens in /embed/* page paths: header.payload.signature.
+const JWT_SEGMENT = /^[\w-]+\.[\w-]+\.[\w-]+$/;
 
 const HTTP_METHODS = new Set([
   "get",
@@ -85,11 +95,13 @@ export function loadRouteTable(openapiFile) {
   }
 }
 
-// Matches a concrete pathname against the table the way a router would:
-// literal segments must match exactly, "{param}" segments match anything, and
-// the candidate with the most literal matches wins ("/api/card/pivot" beats
+// Matches a pathname against the table the way a router would: literal
+// segments must match exactly, "{param}" segments match anything, and the
+// candidate with the most literal matches wins ("/api/card/pivot" beats
 // "/api/card/{id}" for POST /api/card/pivot). Ties break lexicographically
-// for determinism. Returns the matched shape or null.
+// for determinism. Returns the matched shape or null. Works for concrete
+// paths ("/api/card/173") and for stored manifest shapes ("/api/card/:id") —
+// a ":param" segment simply matches the table's "{param}" wildcard.
 export function matchRoute(table, method, pathname) {
   const segments = splitPath(pathname);
   const candidates =
@@ -130,31 +142,47 @@ function normalizeSegment(segment) {
   if (ENTITY_ID_SEGMENT.test(segment)) {
     return ":entity-id";
   }
+  if (JWT_SEGMENT.test(segment)) {
+    return ":token";
+  }
   return segment;
 }
 
-// "GET /api/card/173/query" -> "GET /api/card/{id}/query" when the route
-// table knows the path, "GET /api/card/:id/query" otherwise. Unparseable
-// values pass through untouched rather than dropping data.
-export function normalizeRoute(route, table) {
+// "GET /api/card/173/query" -> "GET /api/card/:id/query". Unparseable values
+// pass through untouched rather than dropping data.
+export function normalizeRoute(route) {
   const separator = route.indexOf(" ");
   if (separator === -1) {
     return route;
   }
   const method = route.slice(0, separator);
   const pathname = route.slice(separator + 1);
-  if (table) {
-    const shape = matchRoute(table, method, pathname);
-    if (shape) {
-      return `${method} ${shape}`;
-    }
-  }
   return `${method} ${pathname.split("/").map(normalizeSegment).join("/")}`;
 }
 
 // Normalized, deduped, sorted.
-export function normalizeRoutes(routes, table) {
+export function normalizeRoutes(routes) {
+  return [...new Set((routes || []).map(normalizeRoute))].sort();
+}
+
+// Capture records everything; the manifests' `routes` dimension is only
+// internal backend API traffic. Internal requests are bare paths (third-party
+// ones keep their origin), so "starts with /api/" selects exactly those.
+export function apiRoutes(routes) {
+  return (routes || []).filter((route) => {
+    const separator = route.indexOf(" ");
+    return separator !== -1 && route.slice(separator + 1).startsWith("/api/");
+  });
+}
+
+// Document navigation paths -> deduped FE route shapes
+// ("/dashboard/1-orders" -> "/dashboard/:id").
+export function normalizePages(pages) {
   return [
-    ...new Set((routes || []).map((route) => normalizeRoute(route, table))),
+    ...new Set(
+      (pages || []).map((page) =>
+        page.split("/").map(normalizeSegment).join("/"),
+      ),
+    ),
   ].sort();
 }

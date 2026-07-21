@@ -2,11 +2,18 @@
  * Per-test usage capture for the nightly instrumented e2e runs.
  *
  * For every test (attempt) this records:
- *  - the API routes it touched: app traffic (fetch/XHR) via a pass-through
- *    middleware intercept plus fetch/XHR wrappers installed on every app
- *    window, and setup traffic issued through cy.request (helpers like
- *    H.createQuestion never hit cy.intercept because they go through the
- *    Cypress server, not the browser).
+ *  - every HTTP request it made: app traffic (fetch/XHR/assets/documents)
+ *    via a pass-through middleware intercept plus fetch/XHR wrappers
+ *    installed on every app window, and setup traffic issued through
+ *    cy.request (helpers like H.createQuestion never hit cy.intercept
+ *    because they go through the Cypress server, not the browser). Capture
+ *    is deliberately unfiltered — same-origin requests record as paths,
+ *    third-party ones keep their origin — so filtering policy (e.g. "only
+ *    backend API endpoints") lives in the offline manifest builder, where
+ *    it can change without re-running a nightly.
+ *  - the pages it navigated to: document loads of the app window
+ *    (window:before:load, which fires regardless of which hook triggered
+ *    the visit) and framed documents (via the intercept's resourceType).
  *  - which instrumented functions fired, read browser-side from each app
  *    window's Istanbul counters (window.__coverage__). The counters are
  *    zeroed after every flush, so each test reports only its own fires —
@@ -50,10 +57,11 @@ const HTTP_METHODS = new Set([
 
 // Relative URLs resolve against this sentinel so they are distinguishable
 // from absolute URLs pointing at third-party hosts (webhook testers, snowplow
-// micro, ...), which we drop.
+// micro, ...), which record with their origin kept.
 const RELATIVE_ORIGIN = "http://relative.invalid";
 
 let routeBuffer = [];
+let pageBuffer = [];
 
 // References to the __coverage__ objects of app windows that may still gain
 // counts. Istanbul registers every instrumented chunk into one object per
@@ -122,13 +130,28 @@ function recordRoute(method, url) {
   } catch {
     return;
   }
-  if (
-    !isInternalOrigin(parsed.origin) ||
-    !parsed.pathname.startsWith("/api/")
-  ) {
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return;
   }
-  routeBuffer.push(`${String(method).toUpperCase()} ${parsed.pathname}`);
+  // Internal requests record as bare paths; third-party ones keep the origin
+  // so the offline builder can tell them apart.
+  const target = isInternalOrigin(parsed.origin)
+    ? parsed.pathname
+    : `${parsed.origin}${parsed.pathname}`;
+  routeBuffer.push(`${String(method).toUpperCase()} ${target}`);
+}
+
+// Document navigations of the app's own pages (query/hash stripped).
+function recordPage(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return; // about:blank and friends
+  }
+  if (isInternalOrigin(parsed.origin)) {
+    pageBuffer.push(parsed.pathname);
+  }
 }
 
 // Mirrors how Cypress itself disambiguates cy.request(url), cy.request(url,
@@ -161,6 +184,7 @@ if (isInstrumented) {
   // Fires once per attempt, before any of the attempt's hooks.
   Cypress.on("test:before:run", () => {
     routeBuffer = [];
+    pageBuffer = [];
   });
 
   // Every app page load, including ones triggered inside suite-level
@@ -169,6 +193,8 @@ if (isInstrumented) {
   Cypress.on("window:load", trackCoverage);
 
   Cypress.on("window:before:load", (win) => {
+    recordPage(win.location.href);
+
     const originalFetch = win.fetch;
     win.fetch = function (input, init) {
       try {
@@ -193,8 +219,13 @@ if (isInstrumented) {
   beforeEach(() => {
     // middleware: true observes and passes through, so this coexists with the
     // specs' own cy.intercept stubs/waits without changing any behavior.
-    cy.intercept({ pathname: "/api/**", middleware: true }, (req) => {
+    cy.intercept({ pathname: "/**", middleware: true }, (req) => {
       recordRoute(req.method, req.url);
+      // Framed documents (embedding specs) never hit window:before:load,
+      // which only fires for the top app window.
+      if (req.resourceType === "document") {
+        recordPage(req.url);
+      }
     });
   });
 
@@ -206,10 +237,16 @@ if (isInstrumented) {
   afterEach(function () {
     const title = this.currentTest.fullTitle();
     const routes = [...new Set(routeBuffer)].sort();
+    const pages = [...new Set(pageBuffer)].sort();
     routeBuffer = [];
+    pageBuffer = [];
     cy.window({ log: false }).then((win) => {
       const f = collectAndZeroFunctionCounts(win);
-      return cy.task("recordTestCapture", { title, f, routes }, { log: false });
+      return cy.task(
+        "recordTestCapture",
+        { title, f, routes, pages },
+        { log: false },
+      );
     });
   });
 }

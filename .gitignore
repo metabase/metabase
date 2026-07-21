@@ -63,6 +63,7 @@ cypress.env.json
 /e2e/coverage/analysis
 /e2e/coverage/spec-file-manifest.json
 /e2e/coverage/spec-test-manifest.json
+/e2e/coverage/openapi.json
 /e2e/support/.nyc_output
 /e2e/support/coverage
 /e2e/support/e2e

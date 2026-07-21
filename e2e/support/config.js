@@ -58,14 +58,15 @@ const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
 // Per-test capture state, fed by the recordTestCapture task that the
 // support-file afterEach calls (e2e/support/per-test-capture.js). Each entry
-// is one test attempt: { title, f: {file: {fnIdx: firedCount}}, routes }.
-// The function counts arrive already per-test — the support file reads them
-// from the app windows' Istanbul counters and zeroes those after each flush.
+// is one test attempt: { title, f: {file: {fnIdx: firedCount}}, routes,
+// pages }. The function counts arrive already per-test — the support file
+// reads them from the app windows' Istanbul counters and zeroes those after
+// each flush.
 let perTestEntries = [];
 
 const perTestCaptureTasks = {
-  recordTestCapture({ title, f, routes }) {
-    perTestEntries.push({ title, f, routes });
+  recordTestCapture({ title, f, routes, pages }) {
+    perTestEntries.push({ title, f, routes, pages });
     return null;
   },
 

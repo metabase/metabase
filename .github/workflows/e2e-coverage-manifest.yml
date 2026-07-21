@@ -158,7 +158,17 @@ jobs:
         env:
           PREV_MANIFEST: ${{ steps.prev.outputs.found == 'true' && 'prev-manifest/spec-file-manifest.json' || '' }}
         run: node e2e/coverage/build-coverage-manifest.mjs
-      # Both files share one artifact so the per-test manifest always travels
+      # Manifest routes are stored table-independent; consumers match them
+      # against an endpoint spec at selection time. Ship this run's generated
+      # spec alongside so they can choose it over their checkout's copy.
+      # Copied into e2e/coverage so the artifact stays flat — the backfill
+      # step expects the manifests at the archive root.
+      - name: Include OpenAPI spec in artifact
+        run: |
+          if [ -f resources/openapi/openapi.json ]; then
+            cp resources/openapi/openapi.json e2e/coverage/openapi.json
+          fi
+      # All files share one artifact so the per-test manifest always travels
       # with the spec manifest it was built from (backfill and PR-side
       # resolution read them as siblings).
       - name: Upload manifests
@@ -168,4 +178,5 @@ jobs:
           path: |
             e2e/coverage/spec-file-manifest.json
             e2e/coverage/spec-test-manifest.json
+            e2e/coverage/openapi.json
           retention-days: 30
