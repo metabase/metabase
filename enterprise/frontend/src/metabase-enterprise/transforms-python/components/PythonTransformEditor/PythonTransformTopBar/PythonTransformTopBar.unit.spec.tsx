@@ -49,14 +49,14 @@ function setup({
 
   renderWithProviders(
     <Route
-      component={() => (
+      element={
         <PythonTransformTopBar
           databaseId={databaseId}
           isEditMode={isEditMode}
           transform={transform}
           onDatabaseChange={onDatabaseChange}
         />
-      )}
+      }
       path="/"
     />,
     {

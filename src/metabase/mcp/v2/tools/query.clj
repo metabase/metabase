@@ -113,22 +113,34 @@
 
 (defn- page-cap
   "The number of rows this call could return at most — the binding cap between `row-limit` and
-   the query's own last-stage limit. A page that fills to this cap is reported `truncated`."
+   the query's own last-stage limit."
   [serialized-query row-limit]
   (if-let [limit (:limit (last-stage serialized-query))]
     (min limit row-limit)
     row-limit))
 
+(defn- remaining-rows
+  "Rows still owed by the query's own last-stage limit once `returned` of them have been served,
+   or nil when the query carries no limit of its own. That limit bounds the whole result set, so
+   paging has to spend it down across pages rather than reapply it to each one."
+  [serialized-query returned]
+  (when-let [limit (:limit (last-stage serialized-query))]
+    (- limit returned)))
+
 (defn- cursor-query
-  "The query the next-page cursor stores: the page's own query with the served page size
-   embedded as the last-stage limit, so continuing with `cursor` alone serves another page of
-   the same size. An aggregated last stage is passed through unchanged — an embedded limit
-   there would cut the base set before the keyset order can pin it down, and
+  "The query the next-page cursor stores: the page's own query carrying `remaining` — the rows
+   still owed by the query's own limit — as its last-stage limit, so a `limit 500` query pages
+   to row 500 and stops there. A query that set no limit of its own stores none either: a limit
+   at this position reads as the caller's whole-result budget, so embedding the page size there
+   would make the next page look complete the moment it filled, and the chain would stop one
+   page in. Page size is `row_limit`'s job, and a cursor call takes it like any other. An
+   aggregated last stage is passed through unchanged — an embedded limit there would cut the
+   base set before the keyset order can pin it down, and
    [[metabase.mcp.v2.query/next-page-cursor!]] would rightly refuse to mint."
-  [serialized-query page-size]
-  (if (aggregated-last-stage? serialized-query)
+  [serialized-query remaining]
+  (if (or (nil? remaining) (aggregated-last-stage? serialized-query))
     serialized-query
-    (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit] page-size)))
+    (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit] remaining)))
 
 ;;; ------------------------------------------------- Response -----------------------------------------------------
 
@@ -156,7 +168,7 @@
                              (common/encode-serialized-query serialized-query)
                              prompt))
 
-(defn- validate-only-response
+(defn- validate-only-response!
   [session-id serialized-query prompt]
   (let [counts {:query_handle (mint-handle! session-id serialized-query prompt)
                 :returned     0
@@ -165,19 +177,24 @@
      (str (json/encode counts)
           "\nQuery validated, not executed — execute or save it later by passing this query_handle."))))
 
-(defn- execute-response
+(defn- execute-response!
   [session-id serialized-query prompt row-limit]
   (let [result      (execute! serialized-query row-limit)
         cols        (get-in result [:data :cols])
         rows        (get-in result [:data :rows])
         returned    (count rows)
         cap         (page-cap serialized-query row-limit)
-        truncated?  (and (pos? returned) (= returned cap))
+        remaining   (remaining-rows serialized-query returned)
+        ;; a full page has more behind it only when `row-limit` is what capped it: a `limit 3`
+        ;; query that returned 3 rows is complete, and paging it would serve rows it excluded.
+        truncated?  (and (pos? returned)
+                         (= returned cap)
+                         (or (nil? remaining) (pos? remaining)))
         handle      (mint-handle! session-id serialized-query prompt)
         next-cursor (when truncated?
                       (v2.query/next-page-cursor! session-id
                                                   api/*current-user-id*
-                                                  (cursor-query serialized-query cap)
+                                                  (cursor-query serialized-query remaining)
                                                   (last rows)
                                                   {:result-cols cols :prompt prompt}))
         counts      (cond-> {:query_handle handle
@@ -209,7 +226,7 @@
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-query
-  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks the query against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; when a response carries next_cursor, fetch the next page by calling again with cursor alone, otherwise narrow the query (filter/aggregate) or export for the full set.
+  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks the query against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; when a response carries next_cursor, fetch the next page by calling again with cursor (pass row_limit alongside it to keep the same page size), otherwise narrow the query (filter/aggregate) or export for the full set.
 
 Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAMES first (search, browse_data) — never invent identifiers, never use numeric ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}. Each stage has \"lib/type\": \"mbql.stage/mbql\" plus either source-table: [\"<db>\", \"<schema-or-null>\", \"<table>\"] or source-card: \"<entity_id>\" on the FIRST stage only; later stages implicitly read the previous stage's output. Every clause is [\"op\", {}, ...args] with a MANDATORY options map at position 1. Field refs are [\"field\", {}, [\"<db>\", \"<schema-or-null>\", \"<table>\", \"<column>\"]] — a 4-segment portable name array — or a bare column-name string for a previous stage's output ([\"field\", {}, \"count\"]). Per-stage clause keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Minimal example (order count by month): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}. The full grammar (operators, joins, expressions, multi-stage queries) is available as an MCP resource. Native SQL is rejected at any depth — use execute_sql for raw SQL."
   {:name        "execute_query"
@@ -220,8 +237,8 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
   (let [input (query-input args)
         {serialized-query :query prompt :prompt} (resolve-input input args session-id)]
     (if (true? validate_only)
-      (validate-only-response session-id serialized-query prompt)
-      (execute-response session-id serialized-query prompt (or row_limit default-row-limit)))))
+      (validate-only-response! session-id serialized-query prompt)
+      (execute-response! session-id serialized-query prompt (or row_limit default-row-limit)))))
 
 ;;; ------------------------------------------------ execute_sql ---------------------------------------------------
 
@@ -303,7 +320,7 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
   (format "returned %d rows — narrow the SQL (add filters/aggregation) or export for the full set"
           returned))
 
-(defn- validate-sql-response
+(defn- validate-sql-response!
   [session-id serialized-query]
   (let [counts {:query_handle (mint-handle! session-id serialized-query nil)
                 :returned     0
@@ -312,7 +329,7 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
      (str (json/encode counts)
           "\nSQL accepted, not executed — template tags and permissions were checked; the SQL text itself was not validated. Execute, save, or visualize it later by passing this query_handle."))))
 
-(defn- execute-sql-response
+(defn- execute-sql-response!
   [session-id serialized-query row-limit]
   (let [result     (execute! serialized-query row-limit)
         cols       (get-in result [:data :cols])
@@ -364,5 +381,5 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
         serialized (cond-> (lib/prepare-for-serialization query)
                      (seq parameters) (assoc :parameters parameters))]
     (if (true? validate_only)
-      (validate-sql-response session-id serialized)
-      (execute-sql-response session-id serialized (or row_limit default-row-limit)))))
+      (validate-sql-response! session-id serialized)
+      (execute-sql-response! session-id serialized (or row_limit default-row-limit)))))

@@ -7,7 +7,7 @@
   snippets, transforms, …), permission-filtered and sorted server-side; paging rides
   [[metabase.request.core/limit]]/[[metabase.request.core/offset]] (bind them with
   [[metabase.request.core/with-limit-and-offset]] outside a REST request). [[select-collections]]
-  and [[shallow-tree]] serve the collection-tree views."
+  and [[shallow-tree-from-collection-id]] serve the collection-tree views."
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
@@ -150,21 +150,6 @@
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
-(defn shallow-tree
-  "One level of the collection tree: the visible, non-archived child collections of
-  `collection-id` (nil = the root) in `namespaces` (a set of namespace strings, nil standing
-  for the default namespace), each carrying a boolean `:children` expandability flag. Archived
-  collections and the trash never appear. Non-REST entry point for callers composing the tree
-  level by level."
-  [collection-id namespaces]
-  (shallow-tree-from-collection-id
-   (select-collections {:archived                       false
-                        :exclude-other-user-collections false
-                        :namespaces                     namespaces
-                        :shallow                        true
-                        :collection-id                  collection-id
-                        :include-library?               false})))
-
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by the collection-items endpoints.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
@@ -217,6 +202,9 @@
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
+   ;; when set, restrict results to items created by this user id; models without a creator
+   ;; column (see [[creator-filterable-models]]) return nothing.
+   [:created-by-id {:optional true} [:maybe pos-int?]]
    [:sort-info    {:optional true} [:maybe [:map
                                             [:sort-column (into [:enum {:error/message "sort-columns"}]
                                                                 (map normalize-sort-choice)
@@ -225,6 +213,11 @@
                                                                    (map normalize-sort-choice)
                                                                    valid-sort-directions)]
                                             [:official-collections-first? {:optional true} :boolean]]]]])
+
+(def ^:private creator-filterable-models
+  "Child models carrying a `creator_id` a `:created-by-id` option can restrict on. When that
+  option is set, models absent here return nothing."
+  #{:card :dataset :metric :dashboard :document})
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -295,7 +288,7 @@
               :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))
 
 (defmethod collection-children-query :document
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived? pinned-state created-by-id]}]
   (-> {:select [:document.id
                 :document.name
                 :document.collection_id
@@ -321,6 +314,8 @@
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
+               (when created-by-id
+                 [:= :document.creator_id created-by-id])
                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
@@ -402,7 +397,7 @@
                 :dataset_query :table_id :query_type :is_upload :namespace)
         (assoc :collection_namespace "snippets"))))
 
-(defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions?]}]
+(defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions? created-by-id]}]
   (-> {:select    (cond->
                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                     :dashboard_id
@@ -444,6 +439,8 @@
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
+                   (when created-by-id
+                     [:= :c.creator_id created-by-id])
                    [:= :c.archived (boolean archived?)]
                    (case card-type
                      :model
@@ -520,7 +517,7 @@
   [_ options _ rows]
   (post-process-card-like (assoc options :hydrate-based-on-upload true) rows))
 
-(defn- dashboard-query [collection {:keys [archived? pinned-state]}]
+(defn- dashboard-query [collection {:keys [archived? pinned-state created-by-id]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
                    [:last_viewed_at :last_used_at]
                    :d.collection_id
@@ -550,6 +547,8 @@
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
+                   (when created-by-id
+                     [:= :d.creator_id created-by-id])
                    [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
@@ -1011,12 +1010,14 @@
 (mu/defn collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models], :as options}                     :- CollectionChildrenOptions]
+   {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
                                       ;; Tables in collections are an EE feature (library)
                                       (premium-features/has-feature? :library) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
+                           ;; a creator filter drops models that don't index a creator
+                           :when    (or (nil? created-by-id) (contains? creator-filterable-models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
                                      allowed-namespaces (collection/allowed-namespaces toucan-model)]
                            :when    (or (= model-kw :collection)

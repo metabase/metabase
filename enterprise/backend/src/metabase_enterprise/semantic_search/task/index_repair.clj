@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.semantic-search.core :as semantic-search.core]
    [metabase-enterprise.semantic-search.util :as semantic.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -24,7 +25,10 @@
     (log/with-context {:quartz-job-type 'SemanticIndexRepair}
       (try
         (log/info "Starting semantic search index repair")
-        (semantic-search.core/repair-index! (search.ingestion/searchable-documents))
+        ;; The document eduction is realized inside repair-index!, so the metadata-provider cache must be
+        ;; bound around the whole call for spec :fn attrs that touch metadata to benefit from it.
+        (lib-be/with-metadata-provider-cache
+          (semantic-search.core/repair-index! (search.ingestion/searchable-documents)))
         (log/info "Completed semantic search index repair")
         (catch Exception e
           (log/error e "Failed to complete semantic search index repair"))))))

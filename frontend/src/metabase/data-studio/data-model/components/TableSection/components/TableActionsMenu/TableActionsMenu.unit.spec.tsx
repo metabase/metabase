@@ -36,7 +36,7 @@ function setup({ table, isAdmin = false }: SetupOpts) {
   setupEnterprisePlugins();
 
   renderWithProviders(
-    <Route path="/" component={() => <TableActionsMenu table={table} />} />,
+    <Route path="/" element={<TableActionsMenu table={table} />} />,
     { storeInitialState: state, withRouter: true },
   );
 }

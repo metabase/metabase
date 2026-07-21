@@ -188,7 +188,7 @@ function setup({
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <SelectionProvider>
           <UncontrolledTablePicker
             initialValue={path}
@@ -197,7 +197,7 @@ function setup({
             setOnUpdateCallback={setOnUpdateCallback}
           />
         </SelectionProvider>
-      )}
+      }
     />,
     { withRouter: true, storeInitialState: state },
   );

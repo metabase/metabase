@@ -427,7 +427,7 @@
                     (assoc channel :recipients
                            (filter (fn [recipient]
                                      (or (not (:id recipient))
-                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
+                                         (= (:tenant_id recipient) (:tenant_id @api/*current-user*))))
                                    (:recipients channel)))))))))
 
 (defn maybe-filter-pulse-recipients

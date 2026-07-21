@@ -137,6 +137,27 @@
                                                 schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
+(defn browsable-databases-honeysql-filter
+  "The `:where` predicate selecting the databases a user may browse: excludes stubs (placeholder
+   rows for in-progress database creation) and — unless `:include-analytics?` — the audit
+   database, and restricts to non-router databases unless `:router-database-id` scopes to one
+   router's destinations. The per-user read permission filter is applied separately by the caller.
+
+   Excluding destination databases (`router_database_id` non-null — the same definition as
+   `metabase-enterprise.database-routing.common/is-disallowed-destination-db-access?`) is a
+   security boundary, not a nicety: a destination reached directly bypasses the router that would
+   reroute a user to their own tenant, so a caller with a raw destination id could otherwise read
+   another tenant's data. Keep this in sync with that definition."
+  ([] (browsable-databases-honeysql-filter nil))
+  ([{:keys [include-analytics? router-database-id]}]
+   [:and
+    [:= :is_stub false]
+    (when-not include-analytics?
+      [:= :is_audit false])
+    (if router-database-id
+      [:= :router_database_id router-database-id]
+      [:= :router_database_id nil])]))
+
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
   [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]

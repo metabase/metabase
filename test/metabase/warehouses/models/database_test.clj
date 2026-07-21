@@ -529,7 +529,6 @@
                                        :name "Secret Test"
                                        :details base-details}]
       (mt/with-current-user (mt/user->id :crowberto)
-        #_{:clj-kondo/ignore [:redundant-nested-call]}
         (are [expected extra-details] (= (merge
                                           base-details
                                           expected)
@@ -1052,3 +1051,16 @@
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
         (is (false? (mi/can-query? :model/Database db-id)))))))
+
+(deftest router-database-id-is-immutable-test
+  (testing "updating a database's router_database_id throws"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {normal-id :id} {}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"router_database_id"
+           (t2/update! :model/Database normal-id {:router_database_id router-id})))))
+  (testing "a no-op update that does not touch router_database_id is allowed (destination can still be edited)"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {dest-id :id} {:router_database_id router-id}]
+      (is (t2/update! :model/Database dest-id {:name "renamed-destination"})))))

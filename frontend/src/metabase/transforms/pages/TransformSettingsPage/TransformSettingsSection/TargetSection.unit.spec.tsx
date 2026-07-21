@@ -89,7 +89,7 @@ function setup({
   renderWithProviders(
     <Route
       path={Urls.transform(transform.id)}
-      component={() => <TransformSettingsSection transform={transform} />}
+      element={<TransformSettingsSection transform={transform} />}
     />,
     {
       withRouter: true,

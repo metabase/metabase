@@ -64,6 +64,20 @@
         (is (:isError result))
         (is (= "Use `fields` OR `response_format`, not both." (-> result :content first :text)))))))
 
+(deftest ^:parallel call-tool-redacts-internal-errors-test
+  (testing "GHY-4137: a handler's unexpected failure — a raw exception whose message may embed
+            SQL, schema, or connection detail — is redacted to a generic internal error, never
+            returned to the (possibly scope-limited) client"
+    (doseq [[label thrown] [["raw runtime exception" (RuntimeException. "jdbc://user:hunter2@db.internal failed")]
+                            ["JDBC SQLException"      (java.sql.SQLException. "relation \"secret_accounts\" does not exist")]
+                            ["ex-info with no status" (ex-info "SELECT ssn FROM secret_accounts" {:query {}})]]]
+      (testing label
+        (mt/with-dynamic-fn-redefs [v2.api/ping-v2 (fn [_ _] (throw thrown))]
+          (let [result (registry/call-tool #{"agent:search"} nil "ping_v2" {})]
+            (is (:isError result))
+            (is (= "Internal error" (-> result :content first :text))
+                "the raw exception message must not reach the client")))))))
+
 (deftest disabled-tools-test
   (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["ping_v2"]]
     (testing "a disabled tool is hidden from tools/list"
@@ -74,8 +88,15 @@
         (is (= "Unknown tool: ping_v2" (-> result :content first :text)))))))
 
 (deftest ^:parallel registered-scopes-test
-  (testing "every registered tool's scope flows through registered-scopes into the OAuth surface"
-    (is (set/subset? #{"agent:search"} (set (registry/registered-scopes))))))
+  (testing "every registered tool's :scope flows through registered-scopes into the default DCR grant"
+    (is (set/subset? #{"agent:search"} (set (registry/registered-scopes)))))
+  (testing "GHY-4137: :extra-scopes are opt-in — a handler gates a mode on them, so they must be
+            advertised for a token to request them, but they must NOT be in the default grant, or
+            the gate is dead (every dynamically-registered client would hold them already)"
+    (testing "the opt-in scope is kept out of the default grant"
+      (is (not (contains? (set (registry/registered-scopes)) "agent:snippets:read"))))
+    (testing "the opt-in scope is advertised via registered-opt-in-scopes"
+      (is (set/subset? #{"agent:snippets:read"} (set (registry/registered-opt-in-scopes)))))))
 
 (deftest ^:parallel tools-hash-test
   (testing "tools-hash is a stable 8-char hex string that reflects scope-visible tools"

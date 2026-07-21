@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
@@ -8,7 +7,7 @@ import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import { useDispatch, useSelector } from "metabase/redux";
-import { replace, withRouter } from "metabase/router";
+import { replace, useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -16,8 +15,6 @@ import { getDashboardComplete } from "../selectors";
 
 type DashboardCopyModalProps = {
   onClose: () => void;
-  params: { slug?: string };
-  location: Location;
 };
 
 const getTitle = (
@@ -33,11 +30,8 @@ const getTitle = (
     : t`Duplicate "${dashboard.name}" and its questions`;
 };
 
-const DashboardCopyModal = ({
-  onClose,
-  params,
-  location,
-}: DashboardCopyModalProps) => {
+const DashboardCopyModal = ({ onClose }: DashboardCopyModalProps) => {
+  const { location, params } = useRouter();
   const dispatch = useDispatch();
   const [copyDashboard] = useCopyDashboardMutation();
   const dashboard = useSelector(getDashboardComplete);
@@ -86,4 +80,4 @@ const DashboardCopyModal = ({
   );
 };
 
-export const DashboardCopyModalConnected = withRouter(DashboardCopyModal);
+export const DashboardCopyModalConnected = DashboardCopyModal;
