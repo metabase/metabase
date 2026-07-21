@@ -83,6 +83,7 @@
     (schema/base-schema [] models tables metrics)))
 
 (defn- models-for-scope
+  "Returns model schemas scoped to `database-ids`, or all readable models when requested without a database scope."
   [database-ids include-models?]
   (cond
     database-ids    (schema.model/model-schemas database-ids)
