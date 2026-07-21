@@ -143,9 +143,7 @@ function handleResults({
 export function createEntityIdRedirect(config: {
   parametersToTranslate: ParamConfig[];
 }) {
-  const Component = () => (
+  return (
     <EntityIdRedirect parametersToTranslate={config.parametersToTranslate} />
   );
-
-  return Component;
 }

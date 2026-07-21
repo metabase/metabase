@@ -29,12 +29,15 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
-  Route,
+  ReactRouterRoute,
+  type RouterEngine,
   RouterProvider,
   routerMiddleware,
   routing as routingReducer,
   useRouterHistory,
 } from "metabase/router";
+import { RouterProviderV7Memory } from "metabase/router/v7/RouterProviderV7";
+import { createV7Navigator } from "metabase/router/v7/navigator";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -58,6 +61,8 @@ export interface RenderWithProvidersOptions {
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
+  /** Which router engine hosts the tree when `withRouter` is set. Defaults to v3. */
+  routerEngine?: RouterEngine;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
   withDND?: boolean;
@@ -78,6 +83,7 @@ export function renderWithProviders(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
+    routerEngine = "v3",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -91,6 +97,7 @@ export function renderWithProviders(
     initialRoute,
     storeInitialState,
     withRouter,
+    routerEngine,
     withKBar,
     withDND,
     withUndos,
@@ -117,6 +124,7 @@ export function renderHookWithProviders<TProps, TResult>(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
+    routerEngine = "v3",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -134,6 +142,7 @@ export function renderHookWithProviders<TProps, TResult>(
     initialRoute,
     storeInitialState,
     withRouter,
+    routerEngine,
     withKBar,
     withDND,
     withUndos,
@@ -144,7 +153,7 @@ export function renderHookWithProviders<TProps, TResult>(
   const WrapperWithRoute = ({ children, ...props }: any) => {
     return (
       <Wrapper {...props}>
-        <Route path="/" component={() => <>{children}</>} />
+        <ReactRouterRoute path="/" component={() => <>{children}</>} />
       </Wrapper>
     );
   };
@@ -164,12 +173,14 @@ export function getTestStoreAndWrapper({
   initialRoute,
   storeInitialState,
   withRouter,
+  routerEngine = "v3",
   withKBar,
   withDND,
   withUndos,
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
+  const isV7Router = withRouter && routerEngine === "v7";
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
@@ -184,7 +195,8 @@ export function getTestStoreAndWrapper({
   const browserHistory = useRouterHistory(createMemoryHistory)({
     entries: [initialRoute],
   });
-  const history = withRouter ? browserHistory : undefined;
+  // v7 owns its own in-memory history; only the v3 engine uses this one.
+  const history = withRouter && !isV7Router ? browserHistory : undefined;
 
   let reducers;
 
@@ -202,9 +214,15 @@ export function getTestStoreAndWrapper({
     reducers = { ...reducers, ...customReducers };
   }
 
+  // Drive navigation through v3 history or the v7 navigator, matching the engine.
+  const routerNavigator = isV7Router
+    ? createV7Navigator()
+    : history
+      ? history
+      : undefined;
   const storeMiddleware = _.compact([
     Api.middleware,
-    history && routerMiddleware(history),
+    routerNavigator && routerMiddleware(routerNavigator),
   ]);
 
   // Unjustified type cast. FIXME
@@ -222,6 +240,8 @@ export function getTestStoreAndWrapper({
         store={store}
         history={history}
         withRouter={withRouter}
+        routerEngine={routerEngine}
+        initialRoute={initialRoute}
         withDND={withDND}
         withUndos={withUndos}
         theme={theme}
@@ -273,6 +293,8 @@ export function TestWrapper({
   store,
   history,
   withRouter,
+  routerEngine = "v3",
+  initialRoute = "/",
   withKBar,
   withDND,
   withUndos,
@@ -284,6 +306,8 @@ export function TestWrapper({
   store: any;
   history?: History;
   withRouter: boolean;
+  routerEngine?: RouterEngine;
+  initialRoute?: string;
   withKBar: boolean;
   withDND: boolean;
   withUndos?: boolean;
@@ -316,7 +340,12 @@ export function TestWrapper({
                 {createPortal(<PortalContainer />, document.body)}
 
                 <MaybeKBar hasKBar={withKBar}>
-                  <MaybeRouter hasRouter={withRouter} history={history}>
+                  <MaybeRouter
+                    hasRouter={withRouter}
+                    routerEngine={routerEngine}
+                    history={history}
+                    initialRoute={initialRoute}
+                  >
                     {children}
                   </MaybeRouter>
                 </MaybeKBar>
@@ -333,13 +362,27 @@ export function TestWrapper({
 function MaybeRouter({
   children,
   hasRouter,
+  routerEngine,
   history,
+  initialRoute,
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
+  routerEngine: RouterEngine;
   history?: History;
+  initialRoute: string;
 }): JSX.Element {
-  if (!hasRouter || !history) {
+  if (!hasRouter) {
+    return children;
+  }
+  if (routerEngine === "v7") {
+    return (
+      <RouterProviderV7Memory initialRoute={initialRoute}>
+        {children}
+      </RouterProviderV7Memory>
+    );
+  }
+  if (!history) {
     return children;
   }
   return (

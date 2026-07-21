@@ -82,7 +82,7 @@ You can use [Markdown](https://commonmark.org/help/) to format the text in your 
 
 ![Result](images/result.png)
 
-To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown).
+To learn more, see [Format text with Markdown](./markdown.md).
 
 ### Including variables in text cards
 
