@@ -63,12 +63,13 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
       const { activeClassName, activeStyle, onlyActiveOnIndex, ...rest } =
         props;
 
-      // A `<Link>` with no destination is used as a button: it navigates through
-      // its `onClick`. v7's `<Link>` would additionally navigate to the current
-      // route on click, clobbering any push the handler performs, so render a
-      // plain anchor instead. On v3 this matches `router.push(undefined)`, which
-      // is a no-op, so only the handler runs.
-      if (to == null) {
+      // A `<Link>` with no destination (`to` null or `""`) is used as a button: it
+      // navigates through its `onClick`. v7's `<Link>` would additionally navigate
+      // on click (an empty `to` resolves to the current route, or `/` from a
+      // top-level portal like a toast), clobbering any push the handler performs,
+      // so render a plain anchor instead. On v3 this matches `router.push("")` /
+      // `router.push(undefined)`, which are no-ops, so only the handler runs.
+      if (to == null || to === "") {
         return <a {...rest} ref={linkRef} />;
       }
 

@@ -15,6 +15,10 @@ function Home() {
       <Link to="/other">go</Link>
       {/* A `<Link>` used as a button: it navigates through its own onClick. */}
       <Link onClick={() => dispatch(push("/other"))}>act</Link>
+      {/* A button-like `<Link to="">` (e.g. the undo toast) must not navigate. */}
+      <Link to="" onClick={() => undefined}>
+        noop
+      </Link>
       <Link to="/" activeClassName="is-active" onlyActiveOnIndex>
         home
       </Link>
@@ -78,6 +82,23 @@ describe.each<RouterEngine>(["v3", "v7"])(
       await userEvent.click(screen.getByText("act"));
 
       expect(await screen.findByTestId("other")).toBeInTheDocument();
+      expect(screen.getByTestId("location")).toHaveTextContent("/other");
+    });
+
+    it("does not navigate when a button-like `to=''` link is clicked", async () => {
+      renderWithProviders(tree, {
+        withRouter: true,
+        routerEngine,
+        initialRoute: "/other",
+      });
+
+      await screen.findByTestId("other");
+
+      // On v7 an empty `to` resolved to "/" and navigated home, unmounting the
+      // current view. It must stay put so only the onClick handler runs.
+      await userEvent.click(screen.getByText("noop"));
+
+      expect(screen.getByTestId("other")).toBeInTheDocument();
       expect(screen.getByTestId("location")).toHaveTextContent("/other");
     });
   },
