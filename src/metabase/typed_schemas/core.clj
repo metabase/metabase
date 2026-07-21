@@ -82,6 +82,13 @@
         tables            (schema.table/table-schemas (schema.table/select-tables nil table-ids))]
     (schema/base-schema [] models tables metrics)))
 
+(defn- models-for-scope
+  [database-ids include-models?]
+  (cond
+    database-ids    (schema.model/model-schemas database-ids)
+    include-models? (schema.model/model-schemas nil)
+    :else           []))
+
 (defn build-semantic-schema
   "Builds a semantic schema map from [[SemanticSchemaOptions]]."
   [options]
@@ -103,10 +110,7 @@
                                                         :include-metric-library? include-metric-library?})
           database-ids            (scope/database-ids-for-ref database)
           question-collection-ids (scope/collection-scope question-collection-refs)
-          models                  (cond
-                                    database-ids (schema.model/model-schemas database-ids)
-                                    include-models? (schema.model/model-schemas nil)
-                                    :else [])]
+          models                  (models-for-scope database-ids include-models?)]
       (cond
         (or (seq library-collection-refs)
             library-scope

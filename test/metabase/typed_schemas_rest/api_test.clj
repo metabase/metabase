@@ -53,23 +53,12 @@
       (is (str/includes? (:body response) "const tables = { }"))
       (is (str/includes? (:body response) "const metrics = { }")))))
 
-(deftest database-filter-scopes-models-test
+(deftest database-scope-limits-models-test
   (let [model-database-ids (atom [])]
-    (with-redefs [typed-schemas.scope/database-ids-for-ref (constantly #{42})
-                  typed-schemas.schema.model/model-schemas (fn [database-ids]
+    (with-redefs [typed-schemas.schema.model/model-schemas (fn [database-ids]
                                                              (swap! model-database-ids conj database-ids)
-                                                             [])
-                  typed-schemas.schema.question/question-schemas (fn
-                                                                   ([_database-ids] [])
-                                                                   ([_database-ids _collection-ids] []))
-                  typed-schemas.schema.metric/metric-schemas (fn
-                                                               ([_database-ids] [])
-                                                               ([_database-ids _collection-ids] []))
-                  typed-schemas.schema.table/select-tables (fn
-                                                             ([_database-ids] [])
-                                                             ([_database-ids _table-ids] []))
-                  typed-schemas.schema.table/table-schemas (constantly [])]
-      (typed-schemas/build-semantic-schema {:database {:name "Boba"}})
+                                                             [])]
+      (#'typed-schemas/models-for-scope #{42} false)
       (is (= [#{42}] @model-database-ids)))))
 
 (deftest collection-and-database-query-params-are-mutually-exclusive-test
