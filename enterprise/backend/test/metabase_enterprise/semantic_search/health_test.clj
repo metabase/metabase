@@ -222,15 +222,17 @@
         (is (= 1 (count @calls)))
         (is (= [:metabase-ai-index/coverage-ratio {:engine "semantic"}] (butlast (first @calls))))
         (is (Double/isNaN ^double (last (first @calls))) "the labelled series is cleared with NaN, not left stale"))
-      (testing "a throwing collector clears the gauge (rather than freezing its last value) and reads as N/A"
+      (testing "a throwing collector clears the gauge (rather than freezing its last value) and reads as a
+               degraded row -- not N/A, which would make an errored measure vanish like a disabled one"
         ;; make the series live first, then a failing collect must NaN-clear it rather than leave it stale-healthy
         (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
                                          :engine    :throwing-collector-test
                                          :collect   (constantly {:value 0.9 :health 90 :message "was fine"})})
         (reset! calls [])
-        (is (nil? (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
-                                                   :engine    :throwing-collector-test
-                                                   :collect   (fn [] (throw (ex-info "collector boom" {})))})))
+        (is (=? {:health 0, :message #"Metric collector errored: collector boom"}
+                (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
+                                                 :engine    :throwing-collector-test
+                                                 :collect   (fn [] (throw (ex-info "collector boom" {})))})))
         (is (= [:metabase-ai-index/coverage-ratio {:engine "throwing-collector-test"}] (butlast (first @calls))))
         (is (Double/isNaN ^double (last (first @calls))) "a throwing collector clears the gauge with NaN")))))
 

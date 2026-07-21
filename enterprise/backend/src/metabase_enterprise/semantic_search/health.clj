@@ -224,15 +224,16 @@
       (analytics/set-gauge! gauge-key {:engine (name engine)} ##NaN))))
 
 (defn- run-measure!
-  "Run a measure's collector, update its gauge, and return the health result. When the collector throws or
-  reads N/A (nil), the gauge is cleared instead."
+  "Run a measure's collector, update its gauge, and return the health result: nil when the collector reads
+  N/A (nil, so the check is omitted), a degraded row when it throws -- an errored measure must not vanish
+  from the report like a not-applicable one. The gauge is cleared in both of those cases."
   [{:keys [gauge-key engine collect check-name]}]
   (let [{:keys [value health message]}
         (try
           (collect)
           (catch Throwable e
             (log/error e "AI index metric collector errored" {:check check-name})
-            nil))]
+            {:health 0, :message (str "Metric collector errored: " (ex-message e))}))]
     (set-index-gauge! gauge-key engine value)
     (when health {:health health, :message message})))
 
