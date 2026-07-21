@@ -1666,14 +1666,17 @@
                                     {:deleted [] :overwritten []}))}))))
 
 (defn create-branch!
-  "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
-   to the new name. Does not publish events or return a response map; the caller
-   is responsible for those concerns."
-  [name base-branch]
+  "Creates a new remote branch from `base-branch`. When `switch?` (default true —
+   the admin flow), also switches the global `remote-sync-branch` to the new
+   name; per-user branch creation passes false so the instance's sync branch is
+   untouched. Does not publish events or return a response map; the caller is
+   responsible for those concerns."
+  [name base-branch & {:keys [switch?] :or {switch? true}}]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source name base-branch)
-    (settings/remote-sync-branch! name)))
+    (when switch?
+      (settings/remote-sync-branch! name))))
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an

@@ -17,6 +17,7 @@
    - NativeQuerySnippet, snippets-namespace Collections (when Library is remote-synced)"
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
@@ -182,7 +183,12 @@
   [model-spec topic {:keys [object]}]
   (let [model-type     (:model-type model-spec)
         model-id       (:id object)
-        eligible?      (spec/check-eligibility model-spec object)
+        ;; RemoteSyncObject tracks the global sync branch's dirty state; rows of
+        ;; personal branches sync via their branch's push and must not pollute it
+        row-branch     (:branch object)
+        eligible?      (and (or (nil? row-branch)
+                                (= row-branch (settings/remote-sync-branch)))
+                            (spec/check-eligibility model-spec object))
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond

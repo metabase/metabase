@@ -374,17 +374,30 @@
                           e)))))))
 
 (api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
-  "Create a new branch from the current remote-sync branch and switches the current remote-sync branch to it.
+  "Create a new branch. By default (the admin flow) it forks the current
+  remote-sync branch and switches the instance's sync branch to it; pass
+  `switch=false` (the per-user checkout flow) to fork `base` — or the last
+  synced commit — without touching the global setting.
   Requires superuser permissions."
   [_route
    _query
-   {:keys [name]} :- [:map [:name ms/NonBlankString]]]
+   {:keys [name base switch]} :- [:map
+                                  [:name ms/NonBlankString]
+                                  [:base {:optional true} [:maybe ms/NonBlankString]]
+                                  [:switch {:default true} :boolean]]]
   (api/check-superuser)
-  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
-    (api/check-400 (source/source-from-settings) "Source not configured")
+  (let [source      (source/source-from-settings)
+        _           (api/check-400 source "Source not configured")
+        ;; a requested base that doesn't exist on the remote (e.g. a never-pushed
+        ;; personal branch) falls back to the last synced commit / default branch
+        remote?     (fn [b] (some #(= b (if (coll? %) (first %) %)) (source.p/branches source)))
+        base-branch (or (when (and base (remote? base)) base)
+                        (remote-sync.task/last-version)
+                        (when (remote? (settings/remote-sync-branch)) (settings/remote-sync-branch))
+                        (source.p/default-branch source))]
     (api/check-400 base-branch "Base commit not found")
     (try
-      (impl/create-branch! name base-branch)
+      (impl/create-branch! name base-branch :switch? switch)
       (events/publish-event! :event/remote-sync-create-branch
                              {:details {:branch_name name
                                         :base_branch base-branch}

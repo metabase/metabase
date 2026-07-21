@@ -192,7 +192,10 @@ export type GetBranchesResponse = {
 
 export type CreateBranchRequest = {
   name: string;
-  baseBranch?: string;
+  /** Branch to fork from; defaults to the last synced commit / global sync branch. */
+  base?: string;
+  /** When false (per-user checkout flow), don't switch the global sync branch to the new one. */
+  switch?: boolean;
 };
 
 export type CreateBranchResponse = {

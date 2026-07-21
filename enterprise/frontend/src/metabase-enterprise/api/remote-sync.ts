@@ -143,11 +143,13 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       providesTags: () => [tag("remote-sync-branches")],
     }),
     createBranch: builder.mutation<void, CreateBranchRequest>({
-      query: ({ name }) => ({
+      query: ({ name, base, switch: switchBranch }) => ({
         method: "POST",
         url: `/api/ee/remote-sync/create-branch`,
         body: {
           name,
+          base,
+          switch: switchBranch,
         },
       }),
       invalidatesTags: () => [

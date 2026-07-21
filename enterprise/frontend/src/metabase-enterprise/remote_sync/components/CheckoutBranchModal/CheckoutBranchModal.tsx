@@ -103,6 +103,7 @@ export const CheckoutBranchModal = ({
             baseBranch={currentBranch ?? "main"}
             combobox={combobox}
             onChange={(branch) => setSelected(branch)}
+            switchOnCreate={false}
             value={selected ?? currentBranch ?? ""}
           />
         </Combobox>
