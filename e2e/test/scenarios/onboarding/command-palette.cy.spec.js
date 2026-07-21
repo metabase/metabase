@@ -536,7 +536,13 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
       0,
     );
 
-    cy.realPress("c").realPress("d");
+    // Fire the "c d" chord as a single command. Splitting it across two
+    // `cy.realPress` calls leaves a Cypress command-queue gap between the keys;
+    // right after the snowplow-polling assertion above that gap can, under CI
+    // load, exceed kbar's key-sequence buffer timeout, so the chord is dropped
+    // and no dashboard modal opens. `cy.realType` keeps both keys in one command
+    // with a fixed inter-key delay well inside the buffer window.
+    cy.realType("cd");
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
     H.expectUnstructuredSnowplowEvent(
