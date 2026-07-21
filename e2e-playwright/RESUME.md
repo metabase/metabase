@@ -14,12 +14,11 @@ Verification at handoff:
 
 ---
 
-## 📈 The business case: `DIVIDENDS.md`
+## 📈 The business case: `CASE.md`
 
-Defects found in the **existing Cypress suite** by porting it — assertions that
-cannot fail, tests with no assertion, tests covering deleted behaviour, silent
-skips, and races upstream survives by luck. ~30 entries, each with a finding
-number and a measurement, and each with an honest "does it bite?" column.
+The migration argument, kept current. Its "Defects found in the existing Cypress
+suite" section is the register of ~30 upstream problems this port surfaced, each
+with a finding number, a measurement, and an honest "does it bite?" column.
 
 That last column matters: a latent hole that convention covers is not the same
 as missing coverage, and conflating them would discredit the list. See #218 for

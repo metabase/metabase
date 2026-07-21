@@ -1,15 +1,16 @@
 # The case for migrating e2e from Cypress to Playwright
 
-A 5-minute read. Written from a spike that ported **68 specs (~915 tests)** and
-runs them green in sharded CI against the production uberjar. Full detail and
-evidence live in [FINDINGS.md](./FINDINGS.md); this is the argument.
+A 5-minute read. Written from a spike that has now ported **all 414 specs
+(~5,100 tests)** and runs them in 50-way sharded CI against the production
+uberjar. Full detail and evidence live in [FINDINGS.md](./FINDINGS.md); this is
+the argument.
 
 ## Bottom line
 
 It works, on the real thing. The ports run against the **exact same backend and
 state machinery** as Cypress — the same `/api/testing/snapshot|restore`
 endpoints, the same `e2e/snapshots/`, the same cached sessions. Nothing
-backend-side changed. The suite is green across a 4-way shard on standard
+backend-side changed. It runs across a 50-way shard on standard
 4vCPU/16GB CI runners, built from the same EE uberjar we ship.
 
 The honest headline is **not** a bug count (see "Credibility" below). It's four
@@ -26,12 +27,31 @@ machines. Playwright runs multiple **worker processes in parallel inside one
 job**, each with its **own isolated Metabase backend** (own port, app DB,
 sample-DB copy, site-url). We solved the hard parts — H2 file locking,
 plugin-extraction races, nREPL clashes, cold-boot query failures — and it holds
-up in CI. Measured on the standard runner: 2 workers ≈ 1.27× wall-clock / ~1.4×
-throughput **on the same machine Cypress uses at 1×**, with more headroom on
-bigger runners. Sharding then composes on top (`--shard` × `--workers`), so total
-parallelism is machines × workers, not machines alone. Honest cap: each worker
-needs its own JVM+DB, so in-job workers are RAM-bound — the win is real but
-bounded by runner size.
+up in CI. Sharding composes on top (`--shard` × `--workers`), so total parallelism is
+machines × workers, not machines alone. Honest cap: each worker needs its own
+JVM+DB, so in-job workers are RAM-bound — the win is real but bounded by runner
+size.
+
+**Measured at full scale (50 shards, whole suite, FINDINGS #214):** wall clock
+**19 min**, against **384 min** of sequential Cypress spec time for the same
+specs.
+
+**On execution time we are at parity, not faster — and the first number we
+published was wrong.** Summing Playwright's per-test durations gave "1.71×
+slower", but that duration is *wall time*: with 2 workers on one runner each test
+spends ~40% of it descheduled, so the sum double-counts overlapping periods while
+Cypress's per-spec figures are strictly sequential. A controlled A/B on the same
+commit, restricted to the 371 specs green in both runs:
+
+| | total | vs Cypress |
+| --- | --- | --- |
+| `workers=2` | 579.2 min | 1.51× |
+| **`workers=1`** | **412.1 min** | **1.07×** |
+| Cypress | 384.0 min | — |
+
+So: **comparable work per test, far better wall clock.** The claim is
+parallelism, not raw speed — and we corrected our own headline rather than ship
+the flattering version.
 
 ## 2. A class of bug Cypress cannot see
 
@@ -52,11 +72,52 @@ Cypress cannot.
   downloads and parse the xlsx/csv (real row-count assertions).
 - **Real iframes**: full-app embedding runs in an actual `<iframe>` like a
   customer site, instead of Cypress faking it by deleting `window.Cypress`.
-- **Strict mode + de-vacuoused assertions**: porting surfaced numerous upstream
-  assertions that could never fail — callbacks that never run, `.should()` on
-  multi-element sets that pass if *any* match, a resize test asserting the
-  opposite of the app's behaviour and passing by accident. The ports make these
-  real.
+- **Strict mode + de-vacuoused assertions**: see the register below.
+
+## 3b. Defects found in the EXISTING Cypress suite
+
+The systematic audit the suite has never had. Mutation-testing every port —
+break something the test claims to check, and it must go red — surfaced **~30
+defects in the current suite**. Each has a finding number and a measurement; no
+entry is here on suspicion.
+
+**Assertions that cannot fail** (largest class): all 8 absence assertions in
+`custom-elements-api` (#73); a vacuous 403 across an **18-invocation permission
+matrix** (#20); an invalid-file check whose query is `LIKE '%undefined_%'` and
+can never match (#132); `.Icon-gear` which **matches nothing anywhere**,
+including as admin (#206); `should("have.value","on")` on a checkbox, where
+`"on"` is the HTML default and doesn't track checkedness (#127); **~2/3 of
+`#15170`'s body** proven non-load-bearing (#165); a helper passing on an **empty
+result set**, since `[].every(...)` is `true` (#202); and a test **whose entire
+subject can be deleted** without turning it red (#76).
+
+**No assertion at all**: `data-studio-library` (#63); `#68378` ends on a Save
+click (#175); callback-scoped assertions that never enforce (#37).
+
+**Testing behaviour that no longer exists**: `dependency-checks` (#158) — the
+commit disabling that flow **deleted 145 lines from that very spec**, leaving
+only the negative half of a pair, plus the endpoints it called.
+
+**Silent skips — green runs that executed nothing**: maildev 3.x disabling
+**every** email test (#67); **~20 of ~50** `*-writable` specs carrying no
+`@external` tag, so "untagged" never meant "needs no container" (#123); and 18
+tests gated for a container they never touch (#149).
+
+**Races upstream survives by luck**: `waitForSyncToFinish` is very nearly a bare
+`cy.wait(500)`, because `initial_sync_status` is a *first-ever-sync* marker
+already true when the test body calls it (#196); upstream's comment *"all tests
+can run independently"* is false as written (#187); four persistence assertions
+that don't verify persistence, in a race **Cypress shares** (#168).
+
+**Wrong bytes**: upstream's CSV assertions inspect the wrong ones (#77).
+
+**Honest scoping, because this list is only useful if it survives scrutiny.**
+This is *not* "the Cypress suite is broken" — most entries are single assertions
+inside tests that also contain load-bearing ones, and roughly half would let a
+real regression through today. The worked example is #218: we first called a
+sandboxing helper "the primary evidence across the sandboxing specs", then
+measured and found **13 of its 14 call sites already carry an adjacent row-count
+guard**. One is genuinely exposed. The scoped version is what's recorded.
 
 ## 4. Less framework machinery
 
@@ -86,9 +147,13 @@ silently wrong found later. The recurring fixes are codified in
 
 ## What's left / honest caveats
 
-- **346 specs (~173K lines) remain** — this is a spike, not a finished
-  migration. The playbook and per-worker/sharding infra are built; it's now
-  mechanical.
+- **The port is complete: 414/414 specs, queue empty.** What remains is not
+  porting but hardening — a tail of CI-only failures (timing-sensitive, and they
+  do not reproduce on a developer machine ~5× faster than a runner).
+- **`resetWritableDb` was never ported until late**, so warehouse state
+  accumulated across runs (#157). Fixed; it cleared the largest failure cluster.
+- **The `@external` tagging convention has drifted** (#123) — the gate-off
+  control, not the tag, is the only trustworthy signal that a spec really ran.
 - A few **infra follow-ups**: a viewport-fidelity gap (720 vs Cypress's 800), a
   transient `bun install` flake, and a snapshot-as-artifact optimization to cut
   per-shard setup time.
