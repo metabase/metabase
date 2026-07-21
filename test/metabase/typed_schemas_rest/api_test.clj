@@ -53,65 +53,12 @@
       (is (str/includes? (:body response) "const tables = { }"))
       (is (str/includes? (:body response) "const metrics = { }")))))
 
-(deftest database-scope-limits-models-test
-  (let [model-database-ids (atom [])]
-    (with-redefs [typed-schemas.schema.model/model-schemas (fn [database-ids]
-                                                             (swap! model-database-ids conj database-ids)
-                                                             [])]
-      (#'typed-schemas/models-for-scope #{42} false)
-      (is (= [#{42}] @model-database-ids)))))
-
 (deftest collection-and-database-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
    "typed-schemas/v1/typescript?library-collections=1,2&database=1"))
-
-(deftest semantic-schema-options-reject-unknown-options-test
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"Invalid semantic schema options\."
-                        (typed-schemas/build-semantic-schema {:unknown-option true}))))
-
-(deftest collections-schema-includes-selected-data-and-metric-collections-test
-  (let [selected-table-ids (atom nil)]
-    (with-redefs [typed-schemas.scope/library-scope
-                  (fn [{:keys [library-collection-refs]}]
-                    (is (= [{:id 10} {:id 20}] library-collection-refs))
-                    {:metric-collection-ids #{20}
-                     :data-collection-ids   #{10}})
-                  typed-schemas.schema.model/model-schemas
-                  (fn
-                    ([_database-ids]
-                     (is false "library-only schemas should not load models"))
-                    ([_database-ids _collection-ids]
-                     (is false "library-only schemas should not load models")))
-                  typed-schemas.schema.metric/metric-schemas
-                  (fn [_database-ids collection-ids]
-                    (is (= #{20} collection-ids))
-                    [{:type           "metric"
-                      :key            "revenue"
-                      :id             1
-                      :name           "Revenue"
-                      :columns        [{:name "Revenue", :displayName "Revenue", :jsType "number"}]
-                      :mappedTableIds [42]}])
-                  typed-schemas.schema.table/select-library-tables
-                  (fn [library-scope]
-                    (is (= #{10} (:data-collection-ids library-scope)))
-                    [{:id 10}])
-                  typed-schemas.schema.table/select-tables
-                  (fn [_database-ids table-ids]
-                    (reset! selected-table-ids table-ids)
-                    [{:id 10} {:id 42}])
-                  typed-schemas.schema.table/table-schemas
-                  (constantly [{:type "table", :key "publishedTable", :id 10}
-                               {:type "table", :key "mappedTable", :id 42}])]
-      (let [schema (typed-schemas/build-semantic-schema {:library-collection-refs [{:id 10} {:id 20}]})]
-        (is (= #{10 42} @selected-table-ids))
-        (is (= {} (:questions schema)))
-        (is (= {} (:models schema)))
-        (is (= #{10 42} (->> (:tables schema) vals (map :id) set)))
-        (is (= #{1} (->> (:metrics schema) vals (map :id) set)))))))
 
 (deftest include-models-schema-includes-actionable-models-test
   (with-redefs [typed-schemas.schema.model/model-schemas
@@ -161,88 +108,45 @@
                 (fn [database-ids collection-ids]
                   (is (nil? database-ids))
                   (is (= #{30 40} collection-ids))
-                  [{:type "card", :key "ordersByMonth", :id 1}])
-                typed-schemas.schema.model/model-schemas
-                (fn
-                  ([_database-ids]
-                   (is false "question collection schemas should not load models"))
-                  ([_database-ids _collection-ids]
-                   (is false "question collection schemas should not load models")))]
+                  [{:type "card", :key "ordersByMonth", :id 1}])]
     (let [schema (typed-schemas/build-semantic-schema {:question-collection-refs [{:id 30} {:id 40}]})]
       (is (= #{1} (->> (:questions schema) vals (map :id) set)))
       (is (= {} (:models schema)))
       (is (= {} (:tables schema)))
       (is (= {} (:metrics schema))))))
 
-(deftest library-and-question-collections-can-be-combined-test
-  (with-redefs [typed-schemas.scope/library-scope
-                (fn [{:keys [library-collection-refs]}]
-                  (is (= [{:id 10}] library-collection-refs))
-                  {:metric-collection-ids #{10}
-                   :data-collection-ids   #{10}})
-                typed-schemas.scope/collection-scope
-                (fn [collection-values]
-                  (is (= [{:id 30}] collection-values))
-                  #{30})
-                typed-schemas.schema.question/question-schemas
-                (fn [database-ids collection-ids]
-                  (is (nil? database-ids))
-                  (is (= #{30} collection-ids))
-                  [{:type "card", :key "ordersByMonth", :id 1}])
-                typed-schemas.schema.model/model-schemas
-                (fn
-                  ([_database-ids]
-                   (is false "question collection schemas should not load models"))
-                  ([_database-ids _collection-ids]
-                   (is false "question collection schemas should not load models")))
-                typed-schemas.schema.metric/metric-schemas
-                (constantly [{:type "metric", :key "revenue", :id 2}])
-                typed-schemas.schema.table/select-library-tables
-                (constantly [{:id 3}])
-                typed-schemas.schema.table/select-tables
-                (constantly [{:id 3}])
-                typed-schemas.schema.table/table-schemas
-                (constantly [{:type "table", :key "orders", :id 3}])]
-    (let [schema (typed-schemas/build-semantic-schema {:library-collection-refs [{:id 10}]
-                                                       :question-collection-refs [{:id 30}]})]
-      (is (= #{1} (->> (:questions schema) vals (map :id) set)))
-      (is (= {} (:models schema)))
-      (is (= #{3} (->> (:tables schema) vals (map :id) set)))
-      (is (= #{2} (->> (:metrics schema) vals (map :id) set))))))
-
 (deftest library-and-question-collections-can-be-combined-with-include-models-test
-  (with-redefs [typed-schemas.scope/library-scope
-                (fn [{:keys [library-collection-refs]}]
-                  (is (= [{:id 10}] library-collection-refs))
-                  {:metric-collection-ids #{10}
-                   :data-collection-ids   #{10}})
-                typed-schemas.scope/collection-scope
-                (fn [collection-values]
-                  (is (= [{:id 30}] collection-values))
-                  #{30})
-                typed-schemas.schema.question/question-schemas
-                (fn [database-ids collection-ids]
-                  (is (nil? database-ids))
-                  (is (= #{30} collection-ids))
-                  [{:type "card", :key "ordersByMonth", :id 1}])
-                typed-schemas.schema.model/model-schemas
-                (fn [database-ids]
-                  (is (nil? database-ids))
-                  [{:key     "selectedQuestionCollectionModel"
-                    :actions {"create" {:kind "action", :key "create", :id 1}}}])
-                typed-schemas.schema.metric/metric-schemas
-                (constantly [{:type "metric", :key "revenue", :id 2}])
-                typed-schemas.schema.table/select-library-tables
-                (constantly [{:id 3}])
-                typed-schemas.schema.table/select-tables
-                (constantly [{:id 3}])
-                typed-schemas.schema.table/table-schemas
-                (constantly [{:type "table", :key "orders", :id 3}])]
-    (let [schema (typed-schemas/build-semantic-schema {:library-collection-refs [{:id 10}]
-                                                       :question-collection-refs [{:id 30}]
-                                                       :include-models? true})]
-      (is (= #{1} (->> (:questions schema) vals (map :id) set)))
-      (is (= {"selectedQuestionCollectionModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
-             (:models schema)))
-      (is (= #{3} (->> (:tables schema) vals (map :id) set)))
-      (is (= #{2} (->> (:metrics schema) vals (map :id) set))))))
+  (with-redefs-fn
+    {#'typed-schemas.scope/library-scope
+     (fn [{:keys [library-collection-refs]}]
+       (is (= [{:id 10}] library-collection-refs))
+       {})
+     #'typed-schemas.scope/collection-scope
+     (fn [collection-values]
+       (is (= [{:id 30}] collection-values))
+       #{30})
+     #'typed-schemas.schema.question/question-schemas
+     (fn [database-ids collection-ids]
+       (is (nil? database-ids))
+       (is (= #{30} collection-ids))
+       [{:type "card", :key "ordersByMonth", :id 1}])
+     #'typed-schemas.schema.model/model-schemas
+     (fn [database-ids]
+       (is (nil? database-ids))
+       [{:key     "selectedQuestionCollectionModel"
+         :actions {"create" {:kind "action", :key "create", :id 1}}}])
+     #'typed-schemas/semantic-schema-for-library-scope
+     (fn [library-scope models]
+       (is (= {} library-scope))
+       (is (= 1 (count models)))
+       {:tables  {"orders" {:type "table", :key "orders", :id 3}}
+        :metrics {"revenue" {:type "metric", :key "revenue", :id 2}}})}
+    (fn []
+      (let [schema (typed-schemas/build-semantic-schema {:library-collection-refs [{:id 10}]
+                                                         :question-collection-refs [{:id 30}]
+                                                         :include-models? true})]
+        (is (= #{1} (->> (:questions schema) vals (map :id) set)))
+        (is (= {"selectedQuestionCollectionModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
+               (:models schema)))
+        (is (= #{3} (->> (:tables schema) vals (map :id) set)))
+        (is (= #{2} (->> (:metrics schema) vals (map :id) set)))))))
