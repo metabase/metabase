@@ -287,12 +287,17 @@
   dominant per-context cost and explains slow first/regenerated renders."
   ^Context []
   (common/assert-tests-not-initializing!)
-  (let [start (System/nanoTime)
-        ctx   (doto (untrusted-plugin-context pool-max-cpu-time)
-                (load-resource common/custom-viz-bundle-resource-path))]
-    (log/infof "custom-viz: generated untrusted static-viz isolate context (cold-parsed slim bundle) in %.0fms"
-               (/ (- (System/nanoTime) start) 1e6))
-    ctx))
+  (let [start   (System/nanoTime)
+        context (untrusted-plugin-context pool-max-cpu-time)]
+    (try
+      ;; a bundle-load failure would otherwise leak the freshly-built isolate; close it and rethrow
+      (load-resource context common/custom-viz-bundle-resource-path)
+      (log/infof "custom-viz: generated untrusted static-viz isolate context (cold-parsed slim bundle) in %.0fms"
+                 (/ (- (System/nanoTime) start) 1e6))
+      context
+      (catch Throwable t
+        (try (.close context true) (catch Throwable _))
+        (throw t)))))
 
 (defn- destroy-untrusted-context!
   "Close an untrusted isolate context reaped or disposed by the pool. The shared untrusted engine is a
@@ -310,9 +315,10 @@
   "Acquire a pooled `SandboxPolicy/UNTRUSTED` isolate context"
   [f]
   (if config/is-dev?
-    (let [^Context context (doto (untrusted-plugin-context)
-                             (load-resource common/custom-viz-bundle-resource-path))]
+    (let [^Context context (untrusted-plugin-context)]
       (try
+        ;; parse inside the try so a bundle-load failure still hits the finally and closes the isolate
+        (load-resource context common/custom-viz-bundle-resource-path)
         (f context)
         (finally
           (try (.close context true) (catch Throwable _)))))
