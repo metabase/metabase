@@ -185,6 +185,30 @@
   animation: exploration-shimmer 1500ms ease infinite;
 }
 
+/* Same sweep as .shimmerText, for placeholder bars while the tree is empty. */
+.skeletonRow {
+  --shimmer-spread: 48px;
+
+  height: 2rem;
+  border-radius: var(--default-border-radius);
+  background-size:
+    250% 100%,
+    auto;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--shimmer-spread)),
+      var(--mb-color-background-primary),
+      transparent calc(50% + var(--shimmer-spread))
+    ),
+    linear-gradient(
+      var(--mb-color-background-tertiary),
+      var(--mb-color-background-tertiary)
+    );
+  background-position: 50%;
+  animation: exploration-shimmer 1500ms ease infinite;
+}
+
 @keyframes exploration-shimmer {
   0% {
     background-position: 120%;

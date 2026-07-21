@@ -14,6 +14,7 @@ import { createMockComment } from "metabase-types/api/mocks/comment";
 import type { ExplorationTreeNode, ExplorationTreePage } from "./utils";
 import {
   getCompactRelativeTime,
+  getExplorationSidebarModel,
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   isHiddenTreeItem,
@@ -731,18 +732,10 @@ describe("getExplorationSidebarTree inherits a heading status from its pages", (
   });
 
   it("uses the terminal server thread status instead of shimmering 'running' when the thread has no queries", () => {
-    const exploration = createExploration({
-      queries: [],
+    const tree = getAllTabExplorationSidebarTree({
+      queries: [createQuery({ id: 1, name: "Q1", status: "done" })],
       thread: { status: "failed", completed_at: "2026-04-30T00:01:00Z" },
     });
-    const tree = getExplorationSidebarTree(
-      exploration,
-      allTreeFilter,
-      undefined,
-      {
-        keepEmptyInitialThread: true,
-      },
-    );
     // A finished thread must never read as "running" (which shimmers), even with zero queries.
     expect(threadStatus(tree)).toBe("error");
   });
@@ -1032,8 +1025,8 @@ describe("hidden pages", () => {
   });
 });
 
-describe("group hideability + pageIds", () => {
-  it("marks the first thread not hideable and other groups hideable, with page ids", () => {
+describe("group pageIds", () => {
+  it("collects page ids onto thread and metric-group headings", () => {
     const q1 = createQuery({ id: 1, name: "Q1", status: "done" });
     const q2 = createQuery({ id: 2, name: "Q2", status: "done" });
 
@@ -1066,23 +1059,14 @@ describe("group hideability + pageIds", () => {
     };
     const tree = getExplorationSidebarTree(exploration, allTreeFilter);
 
-    // first thread ("Initial investigation") cannot be hidden
     expect(tree[0]?.data?.type).toBe("heading");
-    // Unjustified type cast. FIXME
-    expect((tree[0]?.data as { hideable?: boolean }).hideable).toBe(false);
     // Unjustified type cast. FIXME
     expect((tree[0]?.data as { pageIds?: number[] }).pageIds).toEqual([101]);
 
-    // subsequent threads can be hidden and expose all their page ids
-    // Unjustified type cast. FIXME
-    expect((tree[1]?.data as { hideable?: boolean }).hideable).toBe(true);
     // Unjustified type cast. FIXME
     expect((tree[1]?.data as { pageIds?: number[] }).pageIds).toEqual([202]);
 
-    // metric sub-groups (blocks) are always hideable
     const blockHeading = tree[1]?.children?.[0];
-    // Unjustified type cast. FIXME
-    expect((blockHeading?.data as { hideable?: boolean }).hideable).toBe(true);
     // Unjustified type cast. FIXME
     expect((blockHeading?.data as { pageIds?: number[] }).pageIds).toEqual([
       202,
@@ -1216,7 +1200,6 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
     ]);
     expect(followUpNode?.data).toMatchObject({
       headingKind: "sub-exploration",
-      hideable: true,
       pageIds: [200],
       allHidden: false,
     });
@@ -1290,5 +1273,127 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
     // No parent to derive a metric prefix from — and no folding trigger, so
     // the bare thread name and its metric group stay as-is.
     expect(tree[1]?.name).toBe("Old drill");
+  });
+});
+
+describe("getExplorationSidebarModel", () => {
+  function modelFor(
+    opts: Parameters<typeof createExploration>[0] = {},
+    {
+      tab = "all" as const,
+      showHidden = false,
+    }: { tab?: "all" | "stars" | "discussions"; showHidden?: boolean } = {},
+  ) {
+    const exploration = createExploration(opts);
+    return getExplorationSidebarModel({
+      exploration,
+      selectedSidebarTab: tab,
+      tabsInfo: getExplorationSidebarTabsInfo(exploration),
+      showHidden,
+    });
+  }
+
+  it("detects initial-thread loading on the All tab", () => {
+    expect(
+      modelFor({
+        queries: [],
+        thread: { status: "running", started_at: "2026-04-30T00:00:00Z" },
+      }).contentMode,
+    ).toBe("loading");
+  });
+
+  it("does not treat explore-further planning as a full-sidebar loading state", () => {
+    const existingQuery = createQuery({
+      id: 1,
+      name: "Existing chart",
+      status: "done",
+    });
+    const exploration = createExploration({
+      threads: [
+        createThread({
+          id: 1,
+          status: "completed",
+          completed_at: "2026-04-30T00:01:00Z",
+          queries: [existingQuery],
+          blocks: [
+            createBlock({
+              id: 1,
+              name: "Revenue",
+              pages: [
+                createPage({
+                  id: 1,
+                  name: "Existing chart",
+                  query_ids: [1],
+                }),
+              ],
+            }),
+          ],
+        }),
+        createThread({
+          id: 2,
+          status: "running",
+          started_at: "2026-04-30T00:00:00Z",
+          position: 1,
+          queries: [],
+          blocks: [],
+        }),
+      ],
+    });
+    const model = getExplorationSidebarModel({
+      exploration,
+      selectedSidebarTab: "all",
+      tabsInfo: getExplorationSidebarTabsInfo(exploration),
+      showHidden: false,
+    });
+
+    expect(model.contentMode).toBe("tree");
+    expect(model.tree.length).toBeGreaterThan(0);
+  });
+
+  it("detects permission denial from forbidden thread status", () => {
+    expect(
+      modelFor({
+        queries: [],
+        thread: {
+          status: "forbidden",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      }).contentMode,
+    ).toBe("forbidden");
+  });
+
+  it("detects all-hidden when the tab filter matches only hidden pages", () => {
+    const hiddenQuery = createQuery({
+      id: 9,
+      name: "Hidden chart",
+      status: "done",
+    });
+    const model = modelFor(
+      {
+        queries: [hiddenQuery],
+        blocks: [
+          createBlock({
+            id: 1,
+            name: "Revenue",
+            pages: [
+              createPage({
+                id: 900,
+                name: "Hidden chart",
+                query_ids: [9],
+                hidden: true,
+                starred: true,
+              }),
+            ],
+          }),
+        ],
+        thread: {
+          status: "completed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      },
+      { tab: "stars" },
+    );
+
+    expect(model.contentMode).toBe("all-hidden");
   });
 });

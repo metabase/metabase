@@ -68,8 +68,10 @@ import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 import { ExplorationErrorMarker } from "./ExplorationErrorMarker";
 import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationSidebar.module.css";
+import { ExplorationSidebarSkeleton } from "./ExplorationSidebarSkeleton";
 import {
   type ExplorationHeadingKind,
+  type ExplorationSidebarContentMode,
   type ExplorationSidebarTabsInfo,
   type ExplorationTreeHeading,
   type ExplorationTreeNode,
@@ -103,6 +105,7 @@ interface ExplorationSidebarProps {
   onToggleShowHidden: () => void;
   sortOrder: ExplorationSortOrder;
   onChangeSortOrder: (sortOrder: ExplorationSortOrder) => void;
+  contentMode: ExplorationSidebarContentMode;
 }
 
 export function ExplorationSidebar({
@@ -121,6 +124,7 @@ export function ExplorationSidebar({
   onToggleShowHidden,
   sortOrder,
   onChangeSortOrder,
+  contentMode,
 }: ExplorationSidebarProps) {
   const dispatch = useDispatch();
   const treeController = useTree({
@@ -246,9 +250,6 @@ export function ExplorationSidebar({
     ],
   );
 
-  const isEmptyDueToHidden =
-    !showHidden && tree.every((node) => !node.children?.length);
-
   if (!isOpen) {
     // we still want keyboard shortcuts to work, so the component should still be mounted
     return null;
@@ -256,6 +257,56 @@ export function ExplorationSidebar({
 
   const emptyTreeMessage =
     explorationSidebarTabsInfo[selectedSidebarTab].emptyTreeMessage;
+
+  let treeContent: React.ReactNode;
+  switch (contentMode) {
+    case "loading":
+      treeContent = <ExplorationSidebarSkeleton />;
+      break;
+    case "forbidden":
+      treeContent = (
+        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+          <Text fz="lg">
+            {t`You don't have permission to view these results.`}
+          </Text>
+        </Center>
+      );
+      break;
+    case "all-hidden":
+      treeContent = (
+        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+          <Text
+            c="text-secondary"
+            fs="italic"
+            data-testid="exploration-all-hidden"
+          >
+            {t`All items have been hidden.`}
+          </Text>
+        </Center>
+      );
+      break;
+    case "tree":
+      treeContent = (
+        <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
+          <ExplorationTreeContext.Provider value={treeContextValue}>
+            <Tree
+              role="tree"
+              tree={treeController}
+              TreeNode={ExplorationTreeNode}
+              wrapNodesInListItem
+            />
+          </ExplorationTreeContext.Provider>
+        </Box>
+      );
+      break;
+    case "empty":
+      treeContent = (
+        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+          <Text fz="lg">{emptyTreeMessage}</Text>
+        </Center>
+      );
+      break;
+  }
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
@@ -286,27 +337,7 @@ export function ExplorationSidebar({
           onChangeSortOrder={onChangeSortOrder}
         />
       </Group>
-      {tree.length > 0 ? (
-        <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
-          <ExplorationTreeContext.Provider value={treeContextValue}>
-            <Tree
-              role="tree"
-              tree={treeController}
-              TreeNode={ExplorationTreeNode}
-              wrapNodesInListItem
-            />
-          </ExplorationTreeContext.Provider>
-          {isEmptyDueToHidden && (
-            <Text c="text-secondary" fs="italic" px="0.5rem" pl="1.75rem">
-              {t`All items have been hidden.`}
-            </Text>
-          )}
-        </Box>
-      ) : (
-        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
-          <Text fz="lg">{emptyTreeMessage}</Text>
-        </Center>
-      )}
+      {treeContent}
     </Stack>
   );
 }
@@ -462,7 +493,6 @@ function isExplorationTreeHeadingProps(
 function ExplorationTreeHeading({
   item,
   isExpanded,
-  hasChildren,
   onToggleExpand,
   depth,
   explorationId,
@@ -470,16 +500,11 @@ function ExplorationTreeHeading({
   getSelectedPageUrl,
 }: ExplorationTreeHeadingProps) {
   const isLoading = isLoadingStatus(item.data?.status);
-  // Only the retained initial-investigation heading can be childless (pruning
-  // drops every other empty heading). The tree controller can't expand a node
-  // without children, so force the expanded look: the all-hidden note beneath
-  // then reads as the group's content rather than a collapsed group.
-  const displayExpanded = isExpanded || !hasChildren;
   return (
     <Box
       role="group"
       aria-label={item.name}
-      aria-expanded={displayExpanded}
+      aria-expanded={isExpanded}
       aria-busy={isLoading}
       className={cx(S.treeRow, S.treeRowHeading, {
         [S.treeRowNested]: depth > 0,
@@ -491,7 +516,7 @@ function ExplorationTreeHeading({
     >
       <Box className={S.treeChevron} aria-hidden>
         <Icon
-          name={displayExpanded ? "chevrondown" : "chevronright"}
+          name={isExpanded ? "chevrondown" : "chevronright"}
           size={12}
           c="text-tertiary"
         />
@@ -544,8 +569,7 @@ function ExplorationGroupMenu({
   const pageIds = useMemo(() => itemPageIds ?? [], [itemPageIds]);
   // when the whole group is already hidden, the action shows it again
   const allHidden = item.data?.allHidden === true;
-  const canHideGroup =
-    canWrite && item.data?.hideable === true && pageIds.length > 0;
+  const canHideGroup = canWrite && pageIds.length > 0;
 
   const handleToggleGroupHidden = useCallback(async () => {
     const nextHidden = !allHidden;
