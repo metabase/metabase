@@ -850,8 +850,13 @@
             (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.64.0")
                           ;; simulate Liquibase failing to reverse one of the changesets
                           liquibase/run-liquibase-rollback! (fn [& _] ["c64"])]
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"could not roll back changeset"
-                                    (liquibase/rollback-major-version! conn liquibase false "63"))))
+              (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"could not roll back changeset"
+                                            (liquibase/rollback-major-version! conn liquibase false "63")))]
+                (if (= driver/*driver* :postgres)
+                  (is (re-find #"left unchanged" (ex-message e))
+                      "transactional DDL: the transaction rollback really does leave the database unchanged")
+                  (is (re-find #"may (already )?have been committed" (ex-message e))
+                      "auto-committing DDL: the error must not claim the database is unchanged"))))
             (testing "the deployment's history is left alone, so the changelog does not claim a rollback that failed"
               (is (has? "c64"))
               (is (has? "v64.legacy-version-tracking"))
@@ -1010,3 +1015,115 @@
               "still falls back to the synthetic version so the instance can run")
           (is (some #(re-find #"synthetic" (:message %)) (messages))
               "and logs an error explaining the degraded version tracking"))))))
+
+(deftest rollback-does-not-reverse-reran-changesets-test
+  (testing "migrate down must not reverse changesets that merely re-ran (RERAN) in the newer deployment"
+    ;; Liquibase moves a re-executed changeset (runOnChange whose checksum changed, or anything re-run by `migrate
+    ;; force`) into the CURRENT run's deployment: new deployment_id, new dateexecuted, exectype RERAN. Those rows are
+    ;; positioned after the rollback boundary, but reversing them would strip schema objects that the rollback target
+    ;; still needs (regression vs the id-major-based rollback on master, which never touched them). They must instead
+    ;; be retained and reassigned to the boundary deployment, so the deployment bookkeeping stays consistent.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (let [ct       (liquibase/changelog-table-name conn)
+              row-of   (fn [id] (first (jdbc/query {:connection conn}
+                                                   [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
+              view-x   (fn [] (:x (first (jdbc/query {:connection conn} ["SELECT x FROM v_roc"]))))
+              versions (fn [] (mapv :metabase_version
+                                    (jdbc/query {:connection conn}
+                                                [(format "SELECT metabase_version FROM %s ORDER BY id"
+                                                         liquibase/databasechangelog-versions-table)])))]
+          (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")
+                        liquibase/changelog-file "versionless-roc-run1.yaml"]
+            (mdb/migrate! (mdb/data-source) :up))
+          (is (= 1 (view-x)))
+          (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.66.0")
+                        liquibase/changelog-file "versionless-roc-run2.yaml"]
+            (mdb/migrate! (mdb/data-source) :up)
+            (is (= 2 (view-x)))
+            (is (= "RERAN" (:exectype (row-of "roc_view")))
+                "sanity: the edited runOnChange changeset re-ran")
+            (is (= (:deployment_id (row-of "roc_new")) (:deployment_id (row-of "roc_view")))
+                "sanity: Liquibase moved the re-run changeset into the newer deployment")
+            (mdb/migrate! (mdb/data-source) :down)
+            (testing "the newer release's own changeset is reversed"
+              (is (nil? (row-of "roc_new")))
+              (is (thrown? Exception (jdbc/query {:connection conn} ["SELECT 1 FROM roc_new_table"]))))
+            (testing "the re-run changeset is NOT reversed"
+              (is (= 2 (view-x))
+                  "the view survives (the rollback-target binary's own runOnChange update will restore its content)")
+              (is (some? (row-of "roc_view")) "its changelog row is retained"))
+            (testing "bookkeeping is consistent after the rollback"
+              (is (= (:deployment_id (row-of "roc_base")) (:deployment_id (row-of "roc_view")))
+                  "the retained row was reassigned to the boundary deployment")
+              (is (= ["x.65.0"] (versions)) "the newer deployment's version row is gone")))
+          (testing "booting the rollback-target binary heals the view content via normal runOnChange semantics"
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")
+                          liquibase/changelog-file "versionless-roc-run1.yaml"]
+              (mdb/migrate! (mdb/data-source) :up))
+            (is (= 1 (view-x)))))))))
+
+(deftest rollback-of-reran-only-deployment-test
+  (testing "a deployment consisting ONLY of a re-run changeset can still be rolled back: the boundary steps back and
+            the deployment's version row is removed, even though there is nothing to reverse"
+    ;; The dev flow that produces this: edit just a runOnChange changeset (no new changesets) and re-run migrate up.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (let [ct       (liquibase/changelog-table-name conn)
+              row-of   (fn [id] (first (jdbc/query {:connection conn}
+                                                   [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
+              view-x   (fn [] (:x (first (jdbc/query {:connection conn} ["SELECT x FROM v_roc"]))))
+              versions (fn [] (mapv :metabase_version
+                                    (jdbc/query {:connection conn}
+                                                [(format "SELECT metabase_version FROM %s ORDER BY id"
+                                                         liquibase/databasechangelog-versions-table)])))]
+          (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+            (with-redefs [liquibase/changelog-file "versionless-roc-run1.yaml"]
+              (mdb/migrate! (mdb/data-source) :up))
+            (is (= ["x.1000.0.0"] (versions)))
+            (with-redefs [liquibase/changelog-file "versionless-roc-run3.yaml"]
+              (mdb/migrate! (mdb/data-source) :up)
+              (is (= ["x.1000.0.0" "x.1001.0.0"] (versions)))
+              (is (= "RERAN" (:exectype (row-of "roc_view")))
+                  "sanity: the second run consists of exactly the re-run changeset")
+              (mdb/migrate! (mdb/data-source) :down)
+              (is (= ["x.1000.0.0"] (versions))
+                  "the re-run-only deployment dissolves; the boundary steps back")
+              (is (= (:deployment_id (row-of "roc_base")) (:deployment_id (row-of "roc_view")))
+                  "the retained re-run row joins the boundary deployment")
+              (is (= 3 (view-x)) "the view is not reversed")
+              (mdb/migrate! (mdb/data-source) :down)
+              (is (= ["x.1000.0.0"] (versions))
+                  "a further down with no earlier boundary is a clean no-op"))))))))
+
+(deftest force-migrate-writes-legacy-marker-test
+  (testing "migrate force records the vNN.legacy-version-tracking marker just like a normal upgrade, so
+            pre-versionless binaries can still detect a downgrade after a force upgrade"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")
+                      liquibase/changelog-file "versionless-dev-run1.yaml"]
+          (mdb/migrate! (mdb/data-source) :force))
+        (let [ct     (liquibase/changelog-table-name conn)
+              row    (fn [id] (first (jdbc/query {:connection conn}
+                                                 [(format "SELECT deployment_id, orderexecuted FROM %s WHERE id = ?" ct) id])))
+              marker (row "v65.legacy-version-tracking")]
+          (is (some? marker) "force must leave the same old-binary downgrade signal as a normal upgrade")
+          (is (= (:deployment_id (row "dev_run_a")) (:deployment_id marker))
+              "as an ordinary in-range row of the deployment that ran the migrations")
+          (liquibase/with-liquibase [liquibase conn]
+            (is (= 65 (liquibase/latest-applied-major-version conn (.getDatabase liquibase)))
+                "a pre-versionless binary's id scan now reads the upgraded major")))))))
+
+(deftest rollback-failure-message-test
+  (testing "the rollback-failure message only claims 'left unchanged' where transactional DDL makes that true"
+    (let [msg (fn [db-type] (#'liquibase/rollback-failure-message db-type "64" ["c1" "c2"]))]
+      (testing "every variant names the failed changesets"
+        (doseq [db-type [:postgres :h2 :mysql]]
+          (is (re-find #"could not roll back changeset\(s\) c1, c2" (msg db-type)) db-type)))
+      (testing "Postgres rolls DDL back transactionally, so the database really is unchanged"
+        (is (re-find #"left unchanged" (msg :postgres))))
+      (testing "H2 and MySQL auto-commit DDL, so earlier steps may have persisted"
+        (doseq [db-type [:h2 :mysql]]
+          (is (not (re-find #"left unchanged" (msg db-type))) db-type)
+          (is (re-find #"may (already )?have been committed" (msg db-type)) db-type))))))

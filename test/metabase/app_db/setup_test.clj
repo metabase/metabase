@@ -296,14 +296,22 @@
                          [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
                                    VALUES ('zz_versionless_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99993, 'EXECUTED', 'fake', 'futuredep')"
                                   table)])
+          ;; ... plus an OLD changeset that merely re-ran (RERAN) under that later deployment (an edited runOnChange
+          ;; changeset): it is not "from" the later version and must not be listed
+          (jdbc/execute! db-conn
+                         [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
+                                   VALUES ('zz_reran_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99994, 'RERAN', 'fake', 'futuredep')"
+                                  table)])
           (liquibase/record-deployment-version! conn "futuredep" "x.999.1")
           (try
             (let [later (liquibase/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
               (testing "returns the versioned AND version-less changeset IDs in execution order"
-                (is (= (conj fake-ids "zz_versionless_cs") later))))
+                (is (= (conj fake-ids "zz_versionless_cs") later)))
+              (testing "re-run (RERAN) rows of the later deployment are not listed"
+                (is (not (some #{"zz_reran_cs"} later)))))
             (finally
               ;; Clean up fake rows
-              (doseq [id (conj fake-ids "zz_versionless_cs")]
+              (doseq [id (conj fake-ids "zz_versionless_cs" "zz_reran_cs")]
                 (jdbc/execute! db-conn
                                [(format "DELETE FROM %s WHERE id = ?" table) id]))
               (jdbc/execute! db-conn
