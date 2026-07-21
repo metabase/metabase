@@ -310,10 +310,32 @@
     :else (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
                           {:base-type base-type}))))
 
-(defn- tag-checkpoint-value
-  "Wrap a raw checkpoint value from the QP into a map `{:value parsed}`."
-  [base-type raw-value]
-  {:value (parse-checkpoint-value base-type raw-value)})
+(declare ->instant)
+
+(defn- apply-lookback
+  "Push a checkpoint lower bound back by the lookback window: `value` `unit`s for temporal
+  columns, `value` itself for numeric ones."
+  [checkpoint base-type {:keys [value unit] :as lookback}]
+  (cond
+    (isa? base-type :type/Temporal)
+    (if unit
+      (u.date/add checkpoint (keyword unit) (- value))
+      (let [msg (i18n/tru "A lookback window on a temporal checkpoint column requires a unit.")]
+        (throw (ex-info msg {:transform-message msg, :lookback lookback}))))
+
+    (isa? base-type :type/Number)
+    (if unit
+      (let [msg (i18n/tru "A lookback window on a numeric checkpoint column must not specify a unit.")]
+        (throw (ex-info msg {:transform-message msg, :lookback lookback})))
+      (- checkpoint value))))
+
+(defn- checkpoint-compare
+  "Compare two parsed checkpoint values. Temporal values compare as instants, since the stored
+  watermark and a fresh QP max can parse to incomparable temporal classes."
+  [base-type a b]
+  (if (isa? base-type :type/Temporal)
+    (compare (->instant a) (->instant b))
+    (compare a b)))
 
 (defn- inject-filters-into-table-tag
   "Inject `:source-filters` into the table template tag matching the checkpoint field's table.
@@ -383,7 +405,11 @@
                                      "Only numeric and temporal columns are supported for incremental filtering.")
                                 {:column column})))
             base-type         (:base-type column)
-            lo                (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
+            ;; `checkpoint-lo` is the stored watermark; `lo` is the scan bound, pushed back by any lookback.
+            checkpoint-lo     (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
+            lookback          (get-in source [:source-incremental-strategy :lookback])
+            lo                (cond-> checkpoint-lo
+                                (and checkpoint-lo lookback) (apply-lookback base-type lookback))
 
             ;; Combine max + count in one scan: avoids a second round-trip and pins both
             ;; numbers to the same point-in-time view of the source.
@@ -401,12 +427,23 @@
               ;; instead of NULL for `max()` over an empty relation when the column is non-nullable. Only
               ;; trust the max when the count from the same scan says there were rows, otherwise the
               ;; watermark would silently regress and the next run would reprocess already-seen rows.
-              [(when-not (and cv (zero? cv)) mv) cv])]
+              [(when-not (and cv (zero? cv)) mv) cv])
+
+            ;; The new watermark, clamped to the stored one: with a lookback the scan starts behind
+            ;; it, so an empty scan or a max() over only late rows must not regress `hi` — it would
+            ;; slide further back on every run.
+            hi
+            (cond
+              (some? max-value) (let [parsed-max (parse-checkpoint-value base-type max-value)]
+                                  (if (and checkpoint-lo
+                                           (neg? (checkpoint-compare base-type parsed-max checkpoint-lo)))
+                                    checkpoint-lo
+                                    parsed-max))
+              checkpoint-lo     checkpoint-lo)]
         (cond-> {:column                     column
                  :checkpoint-filter-field-id checkpoint-filter-field-id
                  :lo                         (when lo {:value lo})
-                 :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
-                                                   lo {:value lo})}
+                 :hi                         (when (some? hi) {:value hi})}
           (some? rows-available) (assoc :rows-available rows-available))))))
 
 (defn preprocess-incremental-query
