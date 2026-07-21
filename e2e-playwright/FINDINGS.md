@@ -4024,3 +4024,48 @@ open item, not as evidence.
     postgres heap-order accident (#103). **The pattern is now strong enough to
     state as a rule: when a local failure looks like missing data, check the
     fixture against what CI generates before touching the port.**
+
+### 🔴🔴 THE TIMING ANSWER, CORRECTED: 1.07x — parity. The 1.71x was a measurement artifact.
+
+214. **Playwright's per-test `duration` is WALL TIME, not CPU time.** With
+    `workers=2` sharing one runner, each test spends a large fraction of its
+    recorded duration **descheduled — waiting for CPU, not working**. Summing
+    those durations counts overlapping wall periods on our side while Cypress's
+    per-spec durations are strictly sequential. **Fraser spotted this; I had
+    reported 1.71x off the back of it.**
+
+    **Controlled A/B**, same commit, same 50-shard split, restricted to the
+    **371 specs whose tests were green in BOTH runs** — so the `resetWritableDb`
+    fix and retry noise cannot contaminate it:
+
+    | | total | vs Cypress |
+    | --- | --- | --- |
+    | Playwright `workers=2` | 579.2 min | **1.51x** |
+    | **Playwright `workers=1`** | **412.1 min** | **1.07x** |
+    | Cypress (`timings.json`) | 384.0 min | — |
+
+    **Contention inflation: 1.41x.** The corrected conclusion is **parity on real
+    execution time**, not a 1.7x regression.
+
+    **Two independent confirmations of the mechanism, not just the number:**
+    - **The overlap factor flipped as predicted.** `workers=2` summed/elapsed =
+      **1.60x** (intervals overlap); `workers=1` = **0.88x** (gaps between
+      tests, no overlap left to double-count). A pure speed difference would not
+      move this ratio at all.
+    - **The "non-linearity" I built a story on evaporates.** I had argued that
+      the slowest tests degrading 11.6x against the median's 5.4x was evidence
+      of wait/retry thresholds being crossed. It is simply descheduling: a test
+      that yields the CPU more often accumulates more idle wall time. No
+      wait-threshold mechanism was ever needed — I invented one to fit a number.
+
+    **What the spike should actually claim:** comparable execution time, and far
+    better wall clock — **23.4 min at 50 shards** for work that costs Cypress
+    384 min of sequential spec time.
+
+    **The methodological lesson, which is the fourth instance of the same
+    error.** After the stale "~13m setup floor", "setup multiplies with shard
+    count" (it is a parallel floor: `wall = setup + test/N`), and basename
+    spec-matching — every one was **reasoning from a derived number instead of
+    the mechanism producing it**. The unit question *"what does this figure
+    actually measure?"* would have caught all four. It is now the first question
+    to ask of any timing claim in this project.
