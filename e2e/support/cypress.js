@@ -10,8 +10,9 @@ import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
 // Must stay imported after "@cypress/code-coverage/support": its afterEach
-// computes per-test coverage deltas and has to run after the plugin's own
-// afterEach has drained window.__coverage__.
+// zeroes the window coverage counters after collecting each test's fires,
+// which must happen after the plugin's own afterEach has sent them to its
+// accumulator.
 import "./per-test-capture";
 
 const isCI = Cypress.expose("CI");
