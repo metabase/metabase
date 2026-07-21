@@ -144,27 +144,13 @@
       (is (= {} (:tables schema)))
       (is (= {} (:metrics schema))))))
 
-(deftest include-models-with-database-scopes-models-test
-  (let [model-database-ids (atom [])]
-    (with-redefs [typed-schemas.scope/database-ids-for-ref (constantly #{42})
-                  typed-schemas.schema.model/model-schemas (fn [database-ids]
-                                                             (swap! model-database-ids conj database-ids)
-                                                             [{:key     "databaseModel"
-                                                               :actions {"create" {:kind "action", :key "create", :id 1}}}])
-                  typed-schemas.schema.question/question-schemas (fn
-                                                                   ([_database-ids] [])
-                                                                   ([_database-ids _collection-ids] []))
-                  typed-schemas.schema.metric/metric-schemas (fn
-                                                               ([_database-ids] [])
-                                                               ([_database-ids _collection-ids] []))
-                  typed-schemas.schema.table/select-tables (fn
-                                                             ([_database-ids] [])
-                                                             ([_database-ids _table-ids] []))
-                  typed-schemas.schema.table/table-schemas (constantly [])]
-      (let [schema (typed-schemas/build-semantic-schema {:database {:name "Boba"} :include-models? true})]
-        (is (= [#{42}] @model-database-ids))
-        (is (= {"databaseModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
-               (:models schema)))))))
+(deftest database-scope-takes-precedence-over-include-models-test
+  (with-redefs [typed-schemas.schema.model/model-schemas
+                (fn [database-ids]
+                  (is (= #{42} database-ids))
+                  [{:key "databaseModel"}])]
+    (is (= [{:key "databaseModel"}]
+           (#'typed-schemas/models-for-scope #{42} true)))))
 
 (deftest question-collections-schema-includes-selected-question-collections-test
   (with-redefs [typed-schemas.scope/collection-scope
