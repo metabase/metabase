@@ -41,6 +41,13 @@
   :visibility :settings-manager
   :encryption :when-encryption-key-set)
 
+(defsetting test-api-setting-premium-feature
+  (deferred-tru "Setting gated behind a premium feature. This only shows up in dev.")
+  :visibility :admin
+  :type       :boolean
+  :default    false
+  :feature    :test-feature)
+
 (defsetting test-admin-write-authed-read-visibility
   (deferred-tru "Setting to test the `:admin-write-authed-read` visibility level. This only shows up in dev.")
   :visibility :admin-write-authed-read
@@ -214,6 +221,21 @@
             `test-api-v-2-setting`)"
     (mt/user-http-request :crowberto :put 204 "setting/test_api_v2_setting" {:value "ALSO NICE!"})
     (is (= "ALSO NICE!" (test-api-v2-setting)))))
+
+(deftest update-setting-without-premium-feature-test
+  (testing "PUT /api/setting/:key for a setting whose premium feature is unavailable returns a 402, not a 500"
+    (mt/with-premium-features #{}
+      (doseq [[endpoint body] [["setting/test-api-setting-premium-feature" {:value true}]
+                               ["setting"                                  {:test-api-setting-premium-feature true}]]]
+        (testing (str "PUT /api/" endpoint)
+          (let [response (mt/user-http-request :crowberto :put 402 endpoint body)]
+            (is (= "Setting test-api-setting-premium-feature is not enabled because feature :test-feature is not available"
+                   (:message response)))
+            (testing "the setting definition is not leaked into the response body"
+              (is (not-any? (set (keys response)) [:description :getter :setter :default])))))))
+    (testing "turning the setting off is rejected the same way, rather than 500ing"
+      (mt/with-premium-features #{}
+        (mt/user-http-request :crowberto :put 402 "setting/test-api-setting-premium-feature" {:value false})))))
 
 (deftest fetch-sensitive-setting-test
   (testing "Sensitive settings should always come back obfuscated"

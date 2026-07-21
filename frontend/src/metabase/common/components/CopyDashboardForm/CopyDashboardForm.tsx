@@ -20,7 +20,6 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { withRouter } from "metabase/router";
 import { Button, Group, Icon, Tooltip } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import * as Errors from "metabase/utils/errors";
@@ -162,4 +161,4 @@ function CopyDashboardForm({
   );
 }
 
-export const CopyDashboardFormConnected = withRouter(CopyDashboardForm);
+export const CopyDashboardFormConnected = CopyDashboardForm;

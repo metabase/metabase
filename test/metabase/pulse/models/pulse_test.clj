@@ -561,3 +561,24 @@
                                          {:cards         [(assoc card :include_xls true)]
                                           :dashboard_id  nil
                                           :collection_id nil}))))))))))
+
+(deftest maybe-filter-pulses-recipients-cross-tenant-test
+  (testing "GHY-4140: for a non-superuser, the recipient filter drops other-tenant users but
+            keeps same-tenant users. The comparison must deref *current-user* (an atom); reading
+            :tenant_id off the atom itself is always nil, which wrongly drops every tenant user."
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temp [:model/Tenant {tenant-id :id}       {:name "GHY4140 T1" :slug "ghy4140-t1"}
+                     :model/Tenant {other-tenant-id :id} {:name "GHY4140 T2" :slug "ghy4140-t2"}
+                     :model/User   {caller-id :id}       {:tenant_id tenant-id}]
+        (mt/with-current-user caller-id
+          (let [pulses   [{:channels [{:recipients [{:id 1 :tenant_id tenant-id}
+                                                     {:id 2 :tenant_id other-tenant-id}
+                                                     {:email "ext@example.com"}]}]}]
+                kept     (-> (models.pulse/maybe-filter-pulses-recipients pulses)
+                             first :channels first :recipients)]
+            (testing "same-tenant Metabase user survives"
+              (is (some #(= 1 (:id %)) kept)))
+            (testing "other-tenant Metabase user is redacted"
+              (is (not (some #(= 2 (:id %)) kept))))
+            (testing "raw email recipient is always preserved"
+              (is (some #(= "ext@example.com" (:email %)) kept)))))))))

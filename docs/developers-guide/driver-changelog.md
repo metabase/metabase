@@ -6,6 +6,17 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
+  multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
+  user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
+  `grant-workspace-read-access!`, and `destroy-workspace-isolation!` now receive those identifiers on the
+  `workspace` map instead of computing them internally. `:sql-jdbc` drivers inherit a default implementation
+  (deterministic schema/user names plus a random password); non-JDBC drivers that support workspaces must
+  implement it themselves.
+
+- `metabase.driver/check-isolation-permissions`, added in 0.59.0, has been removed. Permission problems now
+  surface as failures from `init-workspace-isolation!`/`grant-workspace-read-access!` themselves.
+
 - Added a `:native-pivot-tables` driver feature flag for drivers that can compile a pivot query as a single
   `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
   derive from `:sql-mbql5` (which provides the `:pivot` clause compiler). Defaults to `false`.
