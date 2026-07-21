@@ -19,9 +19,6 @@ const setup = (value = true) => {
   setupPropertiesEndpoints(createMockSettings(settings));
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([]);
-  // Seed the bootstrap so `show-metabot` is readable on the first render.
-  // Otherwise the click can fire before the settings fetch resolves, and the
-  // widget computes the toggled value from an undefined current value.
   renderWithProviders(<MetabotToggleWidget />, {
     storeInitialState: { settings: createMockSettingsState(settings) },
   });

@@ -44,9 +44,6 @@ async function setup({
   ]);
   setupUpdateSettingEndpoint();
 
-  // Seed the bootstrap so the logo-url value is readable on the first render;
-  // otherwise the value-derived UI (e.g. "Remove uploaded image") asserted with
-  // a synchronous `getByText` can race the settings fetch.
   renderWithProviders(
     <ImageUploadWidget name={name} title={title} description={description} />,
     { storeInitialState: { settings: createMockSettingsState(settingValues) } },
@@ -62,8 +59,8 @@ describe("ImageUploadWidget", () => {
       title: "Application logo",
     });
 
-    // `isDefaultImage` compares the value to the settings-details default, which
-    // load from separate requests, so wait for the steady state.
+    // `isDefaultImage` compares the value to the settings-details default,
+    // which load from separate requests, so wait for the steady state.
     expect(await screen.findByText("No file chosen")).toBeInTheDocument();
   });
 

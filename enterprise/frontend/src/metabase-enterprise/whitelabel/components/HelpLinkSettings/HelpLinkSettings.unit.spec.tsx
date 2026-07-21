@@ -29,9 +29,6 @@ const setup = async (
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
 
-  // Seed the bootstrap so `help-link` is readable on the first render; the
-  // custom-destination textbox renders conditionally on it, and some assertions
-  // read it synchronously.
   renderWithProviders(<HelpLinkSettings />, {
     storeInitialState: { settings: createMockSettingsState(settingValues) },
   });
