@@ -37,7 +37,7 @@ function visitMcpAnalyticsPage(): void {
   cy.wait("@auditMetadata");
 }
 
-describe("scenarios > metabot > mcp analytics", () => {
+describe("scenarios > monitor > ai auditing > mcp analytics", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -49,7 +49,7 @@ describe("scenarios > metabot > mcp analytics", () => {
 
     visitMcpAnalyticsPage();
 
-    cy.log("Nav item lives under the Auditing folder");
+    cy.log("Nav item lives in the AI Auditing group");
     cy.findByRole("link", { name: "MCP analytics" }).should("be.visible");
 
     cy.log("The page renders with the seeded data (not the empty state)");

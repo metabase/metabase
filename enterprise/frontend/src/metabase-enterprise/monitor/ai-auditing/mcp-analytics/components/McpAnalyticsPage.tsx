@@ -28,7 +28,7 @@ import { McpCallsTimelineChart } from "./McpCallsTimelineChart";
 import { McpEventsTable } from "./McpEventsTable";
 
 /**
- * Admin MCP analytics page. Renders live ad-hoc queries over the `v_mcp_tool_calls` audit view
+ * AI Auditing MCP analytics page. Renders live ad-hoc queries over the `v_mcp_tool_calls` audit view
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
@@ -54,7 +54,7 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   // columns when they're collected.
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   // The MCP server can be turned off while its historical analytics still exist; when it's off the
-  // page is inaccessible (the nav item greys out — this also blocks direct URL access).
+  // page redirects back to the AI Auditing index.
   const mcpEnabled = useSetting("mcp-enabled?");
 
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);

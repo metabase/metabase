@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
+import { PLUGIN_MONITOR, reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Outlet, Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -136,11 +136,13 @@ const setupWithGuards = ({
   CanAccessMonitorDiagnostics: Diagnostics = CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools: Tools = CanAccessMonitoringTools,
   CanAccessAlertsManagement: AlertsManagement = CanAccessAlertsManagement,
+  CanAccessAiAuditing: AiAuditing = CanAccessAiAuditing,
 }: {
   initialRoute: string;
   CanAccessMonitorDiagnostics?: () => ReactNode;
   CanAccessMonitoringTools?: () => ReactNode;
   CanAccessAlertsManagement?: () => ReactNode;
+  CanAccessAiAuditing?: () => ReactNode;
 }) => {
   return renderWithProviders(
     <Route path="/">
@@ -150,7 +152,7 @@ const setupWithGuards = ({
         Diagnostics,
         Tools,
         AlertsManagement,
-        CanAccessAiAuditing,
+        AiAuditing,
       )}
     </Route>,
     {
@@ -160,6 +162,16 @@ const setupWithGuards = ({
         currentUser: createMockUser({ is_superuser: true }),
       }),
     },
+  );
+};
+
+const enableAiAuditingRoutes = () => {
+  PLUGIN_MONITOR.isAiAuditingEnabled = true;
+  PLUGIN_MONITOR.getAiAuditingRoutes = () => (
+    <Route
+      index
+      element={<div data-testid="ai-auditing-page">AI Auditing</div>}
+    />
   );
 };
 
@@ -266,6 +278,38 @@ describe("monitor routes", () => {
         ).toBeInTheDocument();
         expect(
           screen.queryByTestId("notifications-page"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("blocks the AI Auditing route when its own guard denies", async () => {
+        enableAiAuditingRoutes();
+
+        setupWithGuards({
+          initialRoute: "/monitor/ai-auditing",
+          CanAccessAiAuditing: DenyingGuard,
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("ai-auditing-page"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("blocks legacy AI Auditing redirects when the AI Auditing guard denies", async () => {
+        enableAiAuditingRoutes();
+
+        setupWithGuards({
+          initialRoute: "/admin/metabot/usage-auditing",
+          CanAccessAiAuditing: DenyingGuard,
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("ai-auditing-page"),
         ).not.toBeInTheDocument();
       });
 
