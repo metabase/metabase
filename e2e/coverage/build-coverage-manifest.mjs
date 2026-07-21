@@ -46,12 +46,17 @@ import {
   discriminatingFiles,
   discriminatingFilesForTest,
 } from "./baseline.mjs";
-import { normalizeRoutes } from "./routes.mjs";
+import { loadRouteTable, matchRoute, normalizeRoutes } from "./routes.mjs";
 
 const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
+
+// Authoritative route shapes, generated from the backend's defendpoint
+// definitions. Missing (e.g. a checkout without a generated spec) just means
+// regex-fallback normalization for every route.
+const OPENAPI_FILE = path.join(REPO_ROOT, "resources/openapi/openapi.json");
 
 const PER_SPEC_DIR = path.join(REPO_ROOT, "e2e/coverage-manifest-raw");
 const OUTPUT_FILE = path.join(
@@ -154,6 +159,13 @@ function main() {
 
   const baselineTestDeltas = baselinePerTestDeltas(baseline);
 
+  const routeTable = loadRouteTable(OPENAPI_FILE);
+  if (!routeTable) {
+    console.warn(
+      `No OpenAPI spec at ${OPENAPI_FILE}; using regex route normalization.`,
+    );
+  }
+
   const specs = {};
   const specRoutes = {};
   const specTests = {};
@@ -187,7 +199,7 @@ function main() {
       )) {
         test.files.add(file);
       }
-      for (const route of normalizeRoutes(attempt.routes)) {
+      for (const route of normalizeRoutes(attempt.routes, routeTable)) {
         test.routes.add(route);
         routes.add(route);
       }
@@ -242,6 +254,32 @@ function main() {
     `Wrote ${OUTPUT_TEST_FILE} (${totalTests} tests, ` +
       `${(testBytes / 1e6).toFixed(1)} MB).`,
   );
+
+  // Routes that didn't resolve to an OpenAPI-defined shape are worth eyes:
+  // either an endpoint defined outside defendpoint or a capture bug.
+  if (routeTable) {
+    const allRoutes = new Set(Object.values(specRoutes).flat());
+    const unmatched = [...allRoutes]
+      .filter((route) => {
+        const separator = route.indexOf(" ");
+        const method = route.slice(0, separator);
+        const pathname = route.slice(separator + 1);
+        return matchRoute(routeTable, method, pathname) !== pathname;
+      })
+      .sort();
+    console.log(
+      `${allRoutes.size} distinct routes, ${unmatched.length} not in the ` +
+        "OpenAPI table.",
+    );
+    // Backfilled specs can carry old-style routes for a day; cap the noise.
+    const MAX_UNMATCHED_LISTED = 100;
+    for (const route of unmatched.slice(0, MAX_UNMATCHED_LISTED)) {
+      console.log(`  unmatched: ${route}`);
+    }
+    if (unmatched.length > MAX_UNMATCHED_LISTED) {
+      console.log(`  ... and ${unmatched.length - MAX_UNMATCHED_LISTED} more`);
+    }
+  }
 }
 
 main();
