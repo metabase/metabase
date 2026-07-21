@@ -13,7 +13,9 @@
    [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -92,6 +94,30 @@
              (jdbc/execute! ~ds-sym [(str "DROP TABLE IF EXISTS "
                                           index-table/*vectors-table* ", "
                                           index-table/*meta-table*)])))))))
+
+(deftest ^:sequential with-index-read-lock-contention-integration-test
+  (when semantic.db.datasource/db-url
+    (let [ds       (semantic.db.datasource/ensure-initialized-data-source!)
+          lock-id  (var-get #'reconcile/reconcile-lock-id)
+          calls    (atom 0)
+          callback (fn [_]
+                     (swap! calls inc)
+                     ::called)]
+      (with-open [^Connection writer (jdbc/get-connection ds)]
+        (let [acquired? (:acquired
+                         (jdbc/execute-one!
+                          writer
+                          [(format "SELECT pg_try_advisory_lock(%d) AS acquired" lock-id)]
+                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+          (is acquired? "the exclusive test lock was acquired without blocking")
+          (when acquired?
+            (try
+              (is (nil? (reconcile/with-index-read-lock ds callback)))
+              (is (zero? @calls) "the read callback is skipped while reconcile owns the lock")
+              (finally
+                (jdbc/execute! writer [(format "SELECT pg_advisory_unlock(%d)" lock-id)])))
+            (is (= ::called (reconcile/with-index-read-lock ds callback)))
+            (is (= 1 @calls) "the callback runs after the exclusive lock is released")))))))
 
 (defn- index-rows [ds]
   (jdbc/execute! ds

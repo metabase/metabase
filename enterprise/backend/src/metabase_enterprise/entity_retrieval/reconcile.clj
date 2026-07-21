@@ -50,6 +50,47 @@
 ;; semantic-search's migration lock (19991).
 (def ^:private reconcile-lock-id 20012)
 
+(defn- with-index-lock
+  [pgvector lock-function unlock-function f]
+  (with-open [^Connection conn (jdbc/get-connection pgvector)]
+    (let [autocommit (.getAutoCommit conn)]
+      (.setAutoCommit conn true)
+      (try
+        (jdbc/execute! conn [(format "SELECT %s(%d)" lock-function reconcile-lock-id)])
+        (try
+          (f conn)
+          (finally
+            (jdbc/execute! conn [(format "SELECT %s(%d)" unlock-function reconcile-lock-id)])))
+        (finally
+          (.setAutoCommit conn autocommit))))))
+
+(defn with-index-read-lock
+  "Run `(f connection)` under a shared cluster-wide library-index lock, returning nil immediately when a
+  reconcile holds the matching exclusive lock.
+
+  Concurrent searches share this lock. The non-blocking acquisition prevents waiting searches from exhausting
+  the pgvector connection pool during a long reconcile. A successful search's compatibility check and vector
+  query cannot straddle a rebuild into another embedding space."
+  [pgvector f]
+  (with-open [^Connection conn (jdbc/get-connection pgvector)]
+    (let [autocommit (.getAutoCommit conn)]
+      (.setAutoCommit conn true)
+      (try
+        (when (:acquired (jdbc/execute-one!
+                          conn
+                          [(format "SELECT pg_try_advisory_lock_shared(%d) AS acquired" reconcile-lock-id)]
+                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+          (try
+            (f conn)
+            (finally
+              (jdbc/execute! conn [(format "SELECT pg_advisory_unlock_shared(%d)" reconcile-lock-id)]))))
+        (finally
+          (.setAutoCommit conn autocommit))))))
+
+(defn- with-index-write-lock
+  [pgvector f]
+  (with-index-lock pgvector "pg_advisory_lock" "pg_advisory_unlock" f))
+
 (defn doc-id
   "Content-addressed primary key for an index document.
   `instructions` is intentionally not an input: editing it must not re-embed an entity's name/synonyms."
@@ -402,28 +443,19 @@
   `ensure-tables!` (which may drop+rebuild on a model/format change) runs under the lock too, so a rebuild
   can't pull the table out from under a concurrent node's in-flight run."
   [pgvector resolve-model f]
-  (with-open [^Connection conn (jdbc/get-connection pgvector)]
-    ;; Per-batch commits, not one big transaction: the run tolerates partial failure across runs, so each
-    ;; insert/delete must commit on its own. Some pools hand out autocommit-off connections (which would
-    ;; silently roll the whole run back on close), so force it on and restore the prior setting before the
-    ;; connection goes back to the pool. (ensure-tables! flips this to a transaction for its DDL.)
-    (let [autocommit (.getAutoCommit conn)]
-      (.setAutoCommit conn true)
-      (try
-        (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
-        (try
-          (let [embedding-model (resolve-model)
-                status          (index-table/ensure-tables! conn embedding-model)
-                ;; :created (first build / healed manual drop) and :rebuilt (model/format change) both leave
-                ;; an empty table, so a targeted caller must do a full repopulate rather than index one entity.
-                emptied?        (contains? #{:created :rebuilt} status)]
-            (when emptied?
-              (log/info "library entity index: vectors table is empty (" status "); repopulating"))
-            (assoc (f conn embedding-model emptied?) :rebuilt? (= :rebuilt status)))
-          (finally
-            (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)])))
-        (finally
-          (.setAutoCommit conn autocommit))))))
+  (with-index-write-lock
+    pgvector
+    (fn [conn]
+      ;; Per-batch commits, not one big transaction: the run tolerates partial failure across runs. The
+      ;; shared lock helper forces autocommit on; ensure-tables! temporarily wraps its DDL in a transaction.
+      (let [embedding-model (resolve-model)
+            status          (index-table/ensure-tables! conn embedding-model)
+            ;; :created (first build / healed manual drop) and :rebuilt (model/format change) both leave
+            ;; an empty table, so a targeted caller must do a full repopulate rather than index one entity.
+            emptied?        (contains? #{:created :rebuilt} status)]
+        (when emptied?
+          (log/info "library entity index: vectors table is empty (" status "); repopulating"))
+        (assoc (f conn embedding-model emptied?) :rebuilt? (= :rebuilt status))))))
 
 (defn reconcile!
   "Full reconcile of the pgvector `library_entity_index` with the appdb, blocking until it completes;
