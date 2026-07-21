@@ -12,14 +12,17 @@ import { useMetabotName } from "metabase/metabot/hooks";
 import {
   type MetabotAgentChatMessage,
   type MetabotAgentDataPartMessage,
+  type MetabotAgentId,
   type MetabotAgentTextChatMessage,
   type MetabotAgentTurnError,
   type MetabotAgentTurnErroredMessage,
   type MetabotChatMessage,
   type MetabotDataPart,
   type MetabotUserChatMessage,
+  forkConversation,
   isChainOfThoughtMessage,
 } from "metabase/metabot/state";
+import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -195,6 +198,8 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   extraActions?: ReactNode;
   isStreaming?: boolean;
   supportsReasoning?: boolean;
+  onFork?: (messageId: string) => void;
+  isForking?: boolean;
 }
 
 export const AgentMessage = ({
@@ -213,12 +218,15 @@ export const AgentMessage = ({
   extraActions,
   isStreaming = false,
   supportsReasoning = true,
+  onFork,
+  isForking,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
   const isInProgress = message.type === "turn_in_progress";
   const canGiveFeedback =
     !readonly && !isInProgress && !!setFeedbackMessage && !!messageId;
+  const canFork = !readonly && !isInProgress && !!onFork && !!messageId;
   const clipboard = useClipboard({ timeout: 2000 });
 
   return (
@@ -321,6 +329,19 @@ export const AgentMessage = ({
             </Tooltip>
           )}
           {extraActions}
+          {canFork && (
+            <Tooltip label={t`Fork conversation`}>
+              <ActionIcon
+                h="sm"
+                data-testid="metabot-chat-message-fork"
+                loading={isForking}
+                disabled={isForking}
+                onClick={() => onFork(messageId)}
+              >
+                <Icon name="git_branch" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Flex>
       )}
     </MessageContainer>
@@ -486,6 +507,7 @@ export const Messages = ({
   supportsReasoning = true,
   debug,
   readonly = false,
+  agentId,
   conversationId,
   onInternalLinkClick,
   getExtraActions,
@@ -497,10 +519,12 @@ export const Messages = ({
   supportsReasoning?: boolean;
   debug: boolean;
   readonly?: boolean;
+  agentId?: MetabotAgentId;
   conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
 }) => {
+  const dispatch = useDispatch();
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
     [debug, messages],
@@ -510,6 +534,27 @@ export const Messages = ({
     [visibleMessages],
   );
   const [sendToast] = useToast();
+  const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
+
+  const handleFork = useCallback(
+    async (messageId: string) => {
+      if (!agentId) {
+        return;
+      }
+      setForkingMessageId(messageId);
+      try {
+        await dispatch(
+          forkConversation({ agentId, conversationId, messageId }),
+        ).unwrap();
+        sendToast({ icon: "check", message: t`Conversation forked` });
+      } catch {
+        sendToast({ icon: "warning", message: t`Failed to fork conversation` });
+      } finally {
+        setForkingMessageId(null);
+      }
+    },
+    [dispatch, agentId, conversationId, sendToast],
+  );
 
   const [feedbackState, setFeedbackState] = useState<{
     submitted: Record<string, "positive" | "negative" | undefined>;
@@ -586,6 +631,12 @@ export const Messages = ({
               (isDoingScience && !nextContent)
             }
             extraActions={getExtraActions?.(message.id)}
+            onFork={agentId && !readonly ? handleFork : undefined}
+            isForking={
+              "externalId" in message &&
+              !!message.externalId &&
+              forkingMessageId === message.externalId
+            }
             onInternalLinkClick={onInternalLinkClick}
             supportsReasoning={supportsReasoning}
             isStreaming={

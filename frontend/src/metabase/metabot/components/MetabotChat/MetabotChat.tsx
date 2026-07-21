@@ -180,6 +180,7 @@ export const MetabotChat = ({
                 isDoingScience={metabot.isDoingScience}
                 supportsReasoning={supportsReasoning}
                 debug={metabot.debugMode}
+                agentId={config.agentId}
                 conversationId={metabot.conversationId}
               />
               {/* filler - height gets set via ref mutation */}

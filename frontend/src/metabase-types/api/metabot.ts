@@ -374,6 +374,11 @@ export interface SaveMetabotEntityRequest {
   card: CreateCardRequest;
 }
 
+export interface ForkMetabotConversationRequest {
+  conversation_id: string;
+  message_id: string;
+}
+
 /* Metabot v3 - Data Part Types */
 
 export type MetabotTodoItem = {

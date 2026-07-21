@@ -454,6 +454,113 @@
           (t2/delete! :model/MetabotMessage :conversation_id convo-id)
           (t2/delete! :model/MetabotConversation :id convo-id))))))
 
+(deftest fork-conversation-copies-thread-up-to-target-test
+  (testing "POST /api/metabot/conversations/:id/fork clones the thread up to and including the target"
+    (let [user-id (mt/user->id :rasta)
+          u1      (str (random-uuid))
+          a1      (str (random-uuid))
+          u2      (str (random-uuid))
+          a2      (str (random-uuid))]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "Original chat"}
+                     :model/MetabotMessage _u1 {:conversation_id convo-id :user_id user-id :role "user"
+                                                :external_id u1 :data [{:type "text" :text "hi"}]
+                                                :created_at (seconds-ago 60)}
+                     :model/MetabotMessage _a1 {:conversation_id convo-id :user_id user-id :role "assistant"
+                                                :external_id a1 :finished true :total_tokens 100
+                                                :usage {"gpt" {:prompt 60 :completion 40}}
+                                                :data [{:type "text" :text "hello"}]
+                                                :created_at (seconds-ago 50)}
+                     :model/MetabotMessage _u2 {:conversation_id convo-id :user_id user-id :role "user"
+                                                :external_id u2 :data [{:type "text" :text "more"}]
+                                                :created_at (seconds-ago 40)}
+                     :model/MetabotMessage _a2 {:conversation_id convo-id :user_id user-id :role "assistant"
+                                                :external_id a2 :finished true :total_tokens 200
+                                                :data [{:type "text" :text "world"}]
+                                                :created_at (seconds-ago 30)}]
+        (let [response (mt/user-http-request :rasta :post 200
+                                             (str "metabot/conversations/" convo-id "/fork")
+                                             {:message_id a1})
+              new-id   (:conversation_id response)]
+          (try
+            (testing "a brand-new conversation is returned, owned by the current user"
+              (is (some? new-id))
+              (is (not= convo-id new-id))
+              (is (= "Original chat (forked)" (:title response)))
+              (is (= user-id (:user_id response))))
+            (testing "only the thread up to and including the target is copied"
+              (is (= ["hi" "hello"] (mapv :message (:messages response)))))
+            (let [rows        (metabot.persistence/live-messages new-id)
+                  orig-a1-at  (t2/select-one-fn :created_at :model/MetabotMessage :external_id a1)]
+              (testing "cloned rows are fresh copies"
+                (is (= 2 (count rows)))
+                (is (= [:user :assistant] (mapv :role rows)))
+                (is (every? #(= user-id (:user_id %)) rows))
+                (is (not-any? #{u1 a1} (map :external_id rows)))
+                (testing "with new, later timestamps"
+                  (is (every? #(t/after? (t/instant (:created_at %)) (t/instant orig-a1-at)) rows))))
+              (testing "token usage is zeroed so forks don't double-count in analytics"
+                (is (every? #(zero? (:total_tokens %)) rows))
+                (is (every? #(nil? (:usage %)) rows))))
+            (testing "the original conversation is untouched"
+              (is (= 4 (count (metabot.persistence/live-messages convo-id)))))
+            (finally
+              (t2/delete! :model/MetabotMessage :conversation_id new-id)
+              (t2/delete! :model/MetabotConversation :id new-id))))))))
+
+(deftest fork-conversation-validation-test
+  (testing "POST /api/metabot/conversations/:id/fork rejects invalid fork targets"
+    (let [user-id  (mt/user->id :rasta)
+          user-ext (str (random-uuid))
+          err-ext  (str (random-uuid))
+          live-ext (str (random-uuid))]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "c"}
+                     :model/MetabotMessage _u {:conversation_id convo-id :user_id user-id :role "user"
+                                               :external_id user-ext :created_at (seconds-ago 60)}
+                     :model/MetabotMessage _errored {:conversation_id convo-id :user_id user-id :role "assistant"
+                                                     :external_id err-ext :finished true
+                                                     :error "{\"message\":\"boom\"}" :created_at (seconds-ago 50)}
+                     :model/MetabotMessage _inflight {:conversation_id convo-id :user_id user-id :role "assistant"
+                                                      :external_id live-ext :finished nil :created_at (seconds-ago 40)}]
+        (let [convo-count #(t2/count :model/MetabotConversation)
+              before      (convo-count)
+              fork!       (fn [message-id]
+                            (mt/user-http-request :rasta :post 400
+                                                  (str "metabot/conversations/" convo-id "/fork")
+                                                  {:message_id message-id}))]
+          (testing "a user message cannot be a fork target"
+            (fork! user-ext))
+          (testing "an errored assistant message cannot be a fork target"
+            (fork! err-ext))
+          (testing "an in-flight placeholder cannot be a fork target"
+            (fork! live-ext))
+          (testing "an unknown message id cannot be a fork target"
+            (fork! (str (random-uuid))))
+          (testing "no new conversation was created for any rejected fork"
+            (is (= before (convo-count)))))))))
+
+(deftest fork-conversation-only-originator-test
+  (testing "POST /api/metabot/conversations/:id/fork is limited to the conversation originator"
+    (let [owner-id (mt/user->id :rasta)
+          other-id (mt/user->id :lucky)
+          a1       (str (random-uuid))]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id owner-id :title "c"}
+                     :model/MetabotMessage _u {:conversation_id convo-id :user_id owner-id :role "user"
+                                               :external_id (str (random-uuid))}
+                     ;; lucky participates but is not the originator
+                     :model/MetabotMessage _l {:conversation_id convo-id :user_id other-id :role "user"
+                                               :external_id (str (random-uuid))}
+                     :model/MetabotMessage _a {:conversation_id convo-id :user_id owner-id :role "assistant"
+                                               :external_id a1 :finished true}]
+        (testing "a non-originator participant cannot fork"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :lucky :post 403
+                                       (str "metabot/conversations/" convo-id "/fork")
+                                       {:message_id a1}))))
+        (testing "a nonexistent conversation 404s"
+          (mt/user-http-request :rasta :post 404
+                                (str "metabot/conversations/" (random-uuid) "/fork")
+                                {:message_id a1}))))))
+
 (deftest record-saved-entity-test
   (testing "POST /api/metabot/conversations/:id/saved-entity creates the card with its origin stamped"
     (let [user-id (mt/user->id :crowberto)]
