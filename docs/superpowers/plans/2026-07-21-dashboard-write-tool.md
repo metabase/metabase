@@ -680,7 +680,7 @@ Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`:
   (testing "GHY-4147: duplicate_card clones content but takes the new negative id and its own slot"
     (let [existing {:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :dashboard_tab_id nil
                     :visualization_settings {:card.title "Original"}
-                    :parameter_mappings [{:parameter_id "p1" :card_id 9 :target ["dimension" ["field" 1 nil]]}]}
+                    :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}]}
           {:keys [dashcards]} (dashboard-ops/compile-ops
                                (dash-with [existing])
                                [{:op "duplicate_card" :id -1 :dashcard_id 7}])
@@ -846,7 +846,7 @@ Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`:
 (def ^:private a-dashcard
   {:id 7 :card_id 9 :row 2 :col 3 :size_x 4 :size_y 4 :dashboard_tab_id nil
    :visualization_settings {:card.title "Old"}
-   :parameter_mappings [{:parameter_id "p1" :card_id 9 :target ["dimension" ["field" 1 nil]]}]
+   :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}]
    :series [{:id 11}]})
 
 (deftest replace-card-resets-content-test
@@ -1240,7 +1240,7 @@ It lives in `metabase.parameters` because it is a domain primitive, not an MCP c
 - Consumes: `params/filterable-columns-for-query`, `params/param-target->field-id`, `lib/all-template-tags-map` (already used at `params.clj:44`).
 - Produces:
   - `(mapping-targets/valid-targets card parameter) => [{:target target-clause :column-name string :display-name string} …]`
-    where `target-clause` is the MBQL target vector stored in a parameter mapping — `["dimension" ["field" id opts]]` for MBQL cards, `["variable" ["template-tag" tag-name]]` or `["dimension" ["template-tag" tag-name]]` for native ones.
+    where `target-clause` is the MBQL target vector stored in a parameter mapping — `[:dimension [:field id opts]]` for MBQL cards, `[:variable [:template-tag tag-name]]` or `[:dimension [:template-tag tag-name]]` for native ones.
   - `(mapping-targets/target-for-field card parameter field-id) => target-clause | nil` — the target on `card` that resolves to `field-id`, used by explicit `wire_parameter` and by `autowire`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1386,8 +1386,8 @@ Create `src/metabase/parameters/mapping_targets.clj`. The sketch below shows the
   (for [[tag-name tag] (get-in card [:dataset_query :native :template-tags])
         :when          (tag-compatible? (:type parameter) tag)]
     {:target       (if (= :dimension (keyword (:type tag)))
-                     ["dimension" ["template-tag" (name tag-name)]]
-                     ["variable" ["template-tag" (name tag-name)]])
+                     [:dimension [:template-tag (name tag-name)]]
+                     [:variable [:template-tag (name tag-name)]])
      :column-name  (name tag-name)
      :display-name (or (:display-name tag) (name tag-name))}))
 
@@ -1533,8 +1533,8 @@ Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`. Existing call sites nee
                                 {:id "p2" :name "Y" :type "string/=" :filteringParameters ["p1"]}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
                                 :inline_parameters ["p1" "p2"]
-                                :parameter_mappings [{:parameter_id "p1" :card_id 9 :target ["dimension" ["field" 1 nil]]}
-                                                     {:parameter_id "p2" :card_id 9 :target ["dimension" ["field" 2 nil]]}]}]}
+                                :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
+                                                     {:parameter_id "p2" :card_id 9 :target [:dimension [:field 2 nil]]}]}]}
           {:keys [parameters dashcards]} (dashboard-ops/compile-ops
                                           current [{:op "remove_parameter" :parameter_id "p1"}] {})
           dc (first dashcards)]
@@ -1566,12 +1566,12 @@ Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`. Existing call sites nee
                                 :parameter_mappings []}]}
           {:keys [dashcards]} (with-redefs [metabase.parameters.mapping-targets/target-for-field
                                             (fn [_card _param field-id]
-                                              ["dimension" ["field" field-id nil]])]
+                                              [:dimension [:field field-id nil]])]
                                 (dashboard-ops/compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
                                  {9 a-card}))]
-      (is (= [{:parameter_id "p1" :card_id 9 :target ["dimension" ["field" 55 nil]]}]
+      (is (= [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 55 nil]]}]
              (:parameter_mappings (first dashcards)))))))
 
 (deftest wire-parameter-rejects-an-unavailable-field-test
@@ -1603,7 +1603,7 @@ Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`. Existing call sites nee
                                {:id 8 :card_id 10 :row 4 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}
           {:keys [dashcards]} (with-redefs [metabase.parameters.mapping-targets/target-for-field
                                             (fn [card _param field-id]
-                                              (when (= 9 (:id card)) ["dimension" ["field" field-id nil]]))]
+                                              (when (= 9 (:id card)) [:dimension [:field field-id nil]]))]
                                 (dashboard-ops/compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
@@ -1616,9 +1616,9 @@ Append to `test/metabase/mcp/v2/dashboard_ops_test.clj`. Existing call sites nee
   (testing "GHY-4147: unwire_parameter clears one card's mapping, or every card's when dashcard_id is omitted"
     (let [current {:id 1 :tabs [] :parameters [{:id "p1"}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
-                                :parameter_mappings [{:parameter_id "p1" :card_id 9 :target ["dimension" ["field" 1 nil]]}]}
+                                :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}]}
                                {:id 8 :card_id 10 :row 4 :col 0 :size_x 4 :size_y 4
-                                :parameter_mappings [{:parameter_id "p1" :card_id 10 :target ["dimension" ["field" 2 nil]]}]}]}]
+                                :parameter_mappings [{:parameter_id "p1" :card_id 10 :target [:dimension [:field 2 nil]]}]}]}]
       (testing "one card"
         (let [{:keys [dashcards]} (dashboard-ops/compile-ops
                                    current [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
@@ -1759,7 +1759,7 @@ Add `[metabase.parameters.mapping-targets :as mapping-targets]` to the requires.
                                    (conj (filterv #(not= parameter_id (:parameter_id %)) (vec ms))
                                          {:parameter_id parameter_id
                                           :card_id      (:card_id dc)
-                                          :target       ["variable" ["template-tag" target_tag]]})))))
+                                          :target       [:variable [:template-tag target_tag]]})))))
 
       target_field
       (let [state (update state :dashcards
