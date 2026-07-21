@@ -213,6 +213,35 @@
             (is (apply < ids))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest exact-fill-is-not-truncated-test
+  ;; Companion to query-limit-bounds-the-cursor-chain-test, which pins the same property when the
+  ;; query's own :limit is what runs out. Here nothing but the result set itself is exhausted:
+  ;; PRODUCTS has exactly 4 categories, so a 4-row page at row_limit 4 is complete. The tool
+  ;; fetches one row past row_limit, so truncation is observed rather than inferred from a full
+  ;; page — inferring it would mint a cursor whose next page is always empty.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid   (str (random-uuid))
+            query {:lib/type "mbql/query"
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (table-name-ref :products)
+                               :aggregation  [["count" {}]]
+                               :breakout     [(field-name-ref :products :category)]}]}]
+        (testing "GHY-4142: a result set exactly filling row_limit is complete, not truncated"
+          (let [result (call! sid {:query query :row_limit 4})
+                body   (payload result)]
+            (is (= 4 (:returned body)))
+            (is (false? (:truncated body)))
+            (is (nil? (:next_cursor body))
+                "a cursor here would page onto an empty result")
+            (is (nil? (steering-line result)))))
+        (testing "GHY-4142: one row short of the same result set still pages"
+          (let [body (payload (call! sid {:query query :row_limit 3}))]
+            (is (= 3 (:returned body)))
+            (is (true? (:truncated body)))
+            (is (some? (:next_cursor body)))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest fan-out-join-refuses-cursor-test
   ;; Companion to the refusal contract in metabase.mcp.v2.query-test: at the tool surface a
   ;; truncated fan-out page must be an explicit dead end — truncated with no next_cursor,

@@ -116,6 +116,38 @@
           (is (false? (:truncated body)))
           (is (nil? (steering-line result))))))))
 
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest execute-sql-exact-fill-is-not-truncated-test
+  (testing "a result whose size exactly equals row_limit is complete, not truncated — the tool
+            fetches one row past the limit so truncation is observed rather than inferred from a
+            full page. Mis-reporting it would steer the agent to narrow SQL that was already
+            right, and execute_sql mints no cursor that could correct the mistake."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [sid    (str "execute-sql-exact-" (random-uuid))
+              result (call! sid {:database_id (mt/id)
+                                 :row_limit   5
+                                 :sql         "SELECT ID FROM ORDERS ORDER BY ID LIMIT 5"})
+              body   (payload result)]
+          (is (= 5 (:returned body)))
+          (is (= 5 (count (:rows body))))
+          (is (false? (:truncated body)))
+          (is (nil? (steering-line result))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest execute-sql-probe-row-not-served-test
+  (testing "the extra row fetched to detect truncation is dropped, never served: a truncated
+            page holds exactly row_limit rows and stops at the row_limit'th value"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [sid  (str "execute-sql-probe-" (random-uuid))
+              body (payload (call! sid {:database_id (mt/id)
+                                        :row_limit   3
+                                        :sql         "SELECT ID FROM ORDERS ORDER BY ID LIMIT 10"}))]
+          (is (= 3 (:returned body)))
+          (is (true? (:truncated body)))
+          (is (= [[1] [2] [3]] (:rows body))))))))
+
 ;;; --------------------------------------------- Template tag values ----------------------------------------------
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table

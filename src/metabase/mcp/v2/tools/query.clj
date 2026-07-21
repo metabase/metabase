@@ -101,6 +101,22 @@
       (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))
     result))
 
+(defn- execute-page!
+  "Run `serialized-query` for one page of at most `row-limit` rows. Fetches one row past the
+   limit so truncation is *observed* rather than inferred from a full page: a result that fills
+   the page exactly is complete, and is reported that way. Returns
+   `{:cols :rows :returned :truncated?}` with the probe row already dropped, so `rows` is the
+   page and `(last rows)` is a real page boundary."
+  [serialized-query row-limit]
+  (let [result     (execute! serialized-query (inc row-limit))
+        all-rows   (vec (get-in result [:data :rows]))
+        truncated? (> (count all-rows) row-limit)
+        rows       (cond-> all-rows truncated? (subvec 0 row-limit))]
+    {:cols       (get-in result [:data :cols])
+     :rows       rows
+     :returned   (count rows)
+     :truncated? truncated?}))
+
 (defn- last-stage
   [serialized-query]
   (peek (vec (:stages serialized-query))))
@@ -110,14 +126,6 @@
   (let [stage (last-stage serialized-query)]
     (boolean (or (seq (:aggregation stage))
                  (seq (:breakout stage))))))
-
-(defn- page-cap
-  "The number of rows this call could return at most — the binding cap between `row-limit` and
-   the query's own last-stage limit."
-  [serialized-query row-limit]
-  (if-let [limit (:limit (last-stage serialized-query))]
-    (min limit row-limit)
-    row-limit))
 
 (defn- remaining-rows
   "Rows still owed by the query's own last-stage limit once `returned` of them have been served,
@@ -179,17 +187,11 @@
 
 (defn- execute-response!
   [session-id serialized-query prompt row-limit]
-  (let [result      (execute! serialized-query row-limit)
-        cols        (get-in result [:data :cols])
-        rows        (get-in result [:data :rows])
-        returned    (count rows)
-        cap         (page-cap serialized-query row-limit)
+  (let [{:keys [cols rows returned truncated?]} (execute-page! serialized-query row-limit)
+        ;; `truncated?` is observed, so the query's own limit needs no separate accounting here:
+        ;; a `limit 3` query can never yield a 4th row to trip the probe. `remaining` is still
+        ;; needed to spend that limit down across cursor pages.
         remaining   (remaining-rows serialized-query returned)
-        ;; a full page has more behind it only when `row-limit` is what capped it: a `limit 3`
-        ;; query that returned 3 rows is complete, and paging it would serve rows it excluded.
-        truncated?  (and (pos? returned)
-                         (= returned cap)
-                         (or (nil? remaining) (pos? remaining)))
         handle      (mint-handle! session-id serialized-query prompt)
         next-cursor (when truncated?
                       (v2.query/next-page-cursor! session-id
@@ -331,14 +333,10 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
 
 (defn- execute-sql-response!
   [session-id serialized-query row-limit]
-  (let [result     (execute! serialized-query row-limit)
-        cols       (get-in result [:data :cols])
-        rows       (get-in result [:data :rows])
-        returned   (count rows)
-        ;; Native rows arrive already truncated by the `:max-results` constraint, so a page
-        ;; that fills `row-limit` is reported truncated — a result set exactly that size is
-        ;; the same false positive execute_query accepts.
-        truncated? (and (pos? returned) (= returned row-limit))
+  (let [;; The probe row matters more here than on the MBQL path: with no cursor to page, a
+        ;; complete result mis-reported as truncated would steer the agent to rewrite SQL that
+        ;; was already right, and nothing downstream could correct it.
+        {:keys [cols rows returned truncated?]} (execute-page! serialized-query row-limit)
         counts     {:query_handle (mint-handle! session-id serialized-query nil)
                     :returned     returned
                     :truncated    truncated?}
