@@ -77,6 +77,7 @@
    [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -956,8 +957,91 @@
     {:resources resources
      :output formatted}))
 
-(mu/defn ^{:tool-name "read_resource"
-           :scope     scope/agent-resource-read}
+(def ^:private link-models
+  "URI leading segment -> toucan model for entities the FE can render as a `metabase://` link."
+  {"dashboard"  :model/Dashboard
+   "database"   :model/Database
+   "collection" :model/Collection
+   "table"      :model/Table
+   "question"   :model/Card
+   "model"      :model/Card
+   "transform"  :model/Transform})
+
+(def ^:private plain-models
+  "URI leading segment -> toucan model for named entities the FE can't link — surfaced as
+   plain text so the label still names them instead of falling back to \"Reading resource\"."
+  {"metric"  :model/Card
+   "measure" :model/Measure
+   "segment" :model/Segment})
+
+(defn- entity-title
+  "The URI entity's readable name — `[Name](metabase://…)` when FE-linkable, else plain `Name`.
+   nil when the segment names no entity, or it is missing/unreadable (name withheld)."
+  [segment id-str]
+  (when-let [model (or (link-models segment) (plain-models segment))]
+    (when-let [id (parse-long id-str)]
+      (when-let [entity (t2/select-one model :id id)]
+        (when (mi/can-read? entity)
+          ;; tables carry a raw :name (ORDERS) and a friendly :display_name (Orders);
+          ;; prefer the latter so the label matches the search results
+          (let [entity-name (or (:display_name entity) (:name entity))]
+            (if (link-models segment)
+              (str "[" entity-name "](metabase://" segment "/" id ")")
+              entity-name)))))))
+
+(defn- nav-noun
+  "A localized noun for a top-level navigation URI that has no entity to name, so browsing
+   lists reads as e.g. \"Reading databases\" rather than the bare fallback."
+  [segments]
+  (case segments
+    ["databases"]           (tru "databases")
+    ["collections"]         (tru "collections")
+    ["user" "recent-items"] (tru "recent items")
+    nil))
+
+(defn- aspect-noun
+  "A localized noun for the sub-resource an `entity/{id}/…` URI drills into, so
+   `.../fields` reads differently from the entity itself. Words match existing site
+   copy (dependency graph, transform target). nil for the bare entity."
+  [segment aspect]
+  (if (and (= segment "dashboard") (= aspect "items"))
+    (tru "cards")
+    (case aspect
+      "fields"         (tru "columns")
+      "derived"        (tru "dependents")
+      "sources"        (tru "sources")
+      "dimensions"     (tru "dimensions")
+      "items"          (tru "items")
+      "tables"         (tru "tables")
+      "models"         (tru "models")
+      "schemas"        (tru "schemas")
+      "subcollections" (tru "subcollections")
+      "target"         (tru "target")
+      nil)))
+
+(defn- uri-label
+  "A label for one URI: its entity (linked or plain) plus any drilled-into aspect
+   (e.g. `[Orders](…) columns`), or a navigation noun (`databases`). nil only when an
+   entity is present but unreadable, so its name is never leaked."
+  [uri]
+  (let [{segments :segments} (parse-uri uri)
+        [segment id-str & rst] segments]
+    (if-let [title (entity-title segment id-str)]
+      ;; drop the trailing field/dimension id so `.../fields/10` still reads as "columns"
+      (if-let [noun (aspect-noun segment (last (remove parse-long rst)))]
+        (str title " " noun)
+        title)
+      (nav-noun segments))))
+
+(defn- read-resource-display
+  [{:keys [uris]}]
+  (let [labels (keep #(try (uri-label %) (catch Throwable _ nil)) uris)]
+    (when (seq labels)
+      (tru "Reading {0}" (str/join ", " labels)))))
+
+(mu/defn ^{:tool-name  "read_resource"
+           :scope      scope/agent-resource-read
+           :display-fn read-resource-display}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
   the instance and drill into specific entities. URIs returned by `search` can be fed directly

@@ -10,7 +10,7 @@ import {
   toolOutputAvailableSchema,
   toolOutputErrorSchema,
 } from "./schemas";
-import { smoothTextEvents } from "./smooth-stream";
+import { smoothStreamEvents } from "./smooth-stream";
 import { parseSSEStream } from "./sse-stream";
 import type {
   FinishReason,
@@ -91,7 +91,7 @@ export async function processChatResponse(
   };
 
   const events = parseSSEStream(stream);
-  const paced = isReducedMotionPreferred() ? events : smoothTextEvents(events);
+  const paced = isReducedMotionPreferred() ? events : smoothStreamEvents(events);
 
   try {
     for await (const event of paced) {

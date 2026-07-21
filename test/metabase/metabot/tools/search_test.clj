@@ -15,6 +15,16 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(deftest ^:parallel search-display-test
+  (testing "joins keyword and semantic queries into a Searching label"
+    (is (= "Searching revenue, orders"
+           (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["orders"]}))))
+  (testing "dedupes overlapping queries"
+    (is (= "Searching revenue"
+           (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["revenue"]}))))
+  (testing "no queries -> nil"
+    (is (nil? (#'search/search-display {})))))
+
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
     (let [single-list [[{:id 1 :model "card" :name "Card 1"}

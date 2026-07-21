@@ -112,7 +112,12 @@ describe("processChatResponse", () => {
 
     const result = await processChatResponse(mockStream, config);
     expect(config.onReasoningStart).toHaveBeenCalledTimes(1);
-    expect(config.onReasoningDelta).toHaveBeenCalledTimes(2);
+    // smoothing word-paces reasoning: the two partial deltas coalesce into the
+    // complete word "Thinking", flushed at reasoning-end
+    expect(config.onReasoningDelta).toHaveBeenCalledTimes(1);
+    expect(config.onReasoningDelta).toHaveBeenCalledWith(
+      expect.objectContaining({ delta: "Thinking" }),
+    );
     expect(config.onReasoningEnd).toHaveBeenCalledTimes(1);
     expect(config.onError).not.toHaveBeenCalled();
     // reasoning is live-only: nothing about it lands in the returned result
@@ -163,6 +168,27 @@ describe("processChatResponse", () => {
         error: "boom",
       },
     ]);
+  });
+
+  it("forwards a streamed title on tool-input-available", async () => {
+    const config = getMockedCallbacks();
+    await processChatResponse(
+      createMockSSEStream([
+        {
+          type: "tool-input-available",
+          toolCallId: "x",
+          toolName: "read_resource",
+          input: {},
+          title: "Inspecting [Orders](metabase://dashboard/5)",
+        },
+      ]),
+      config,
+    );
+    expect(config.onToolInputAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Inspecting [Orders](metabase://dashboard/5)",
+      }),
+    );
   });
 
   it("should call onToolInputStart for tool-input-start events", async () => {

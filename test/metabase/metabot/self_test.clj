@@ -537,7 +537,35 @@
            (first (sse-events [{:type :tool-output :id "call-2" :error {:message "Tool failed"}}])))))
   (testing ":tool-input-start maps to tool-input-start"
     (is (= {:type "tool-input-start" :toolCallId "call-3" :toolName "search"}
-           (first (sse-events [{:type :tool-input-start :id "call-3" :function "search"}]))))))
+           (first (sse-events [{:type :tool-input-start :id "call-3" :function "search"}])))))
+  (testing "a :title on a :tool-input part rides along on tool-input-available"
+    (is (= {:type "tool-input-available" :toolCallId "call-4" :toolName "read_resource"
+            :input {} :title "Inspecting [Orders](metabase://dashboard/5)"}
+           (first (sse-events [{:type :tool-input :id "call-4" :function "read_resource"
+                                :arguments {} :title "Inspecting [Orders](metabase://dashboard/5)"}]))))))
+
+(deftest ^:parallel stamp-tool-titles-xf-test
+  (let [tools {"greet" {:tool-name "greet" :display-fn (fn [{:keys [who]}] (str "Greeting " who))}
+               "boom"  {:tool-name "boom"  :display-fn (fn [_] (throw (ex-info "nope" {})))}
+               "num"   {:tool-name "num"   :display-fn (fn [_] 42)}
+               "plain" {:tool-name "plain"}}
+        stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
+    (testing "display-fn result becomes :title"
+      (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
+               :title "Greeting Sam"}]
+             (stamp {:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}}))))
+    (testing "a throwing display-fn leaves the part untitled"
+      (is (= [{:type :tool-input :id "c2" :function "boom" :arguments {}}]
+             (stamp {:type :tool-input :id "c2" :function "boom" :arguments {}}))))
+    (testing "a non-string result leaves the part untitled"
+      (is (= [{:type :tool-input :id "c3" :function "num" :arguments {}}]
+             (stamp {:type :tool-input :id "c3" :function "num" :arguments {}}))))
+    (testing "a tool without a display-fn is untouched"
+      (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
+             (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
+    (testing "non-tool-input parts pass through"
+      (is (= [{:type :text :id "t1" :text "hi"}]
+             (stamp {:type :text :id "t1" :text "hi"}))))))
 
 (deftest parts->aisdk-sse-xf-data-test
   (testing "data parts become typed data events with a generated id"

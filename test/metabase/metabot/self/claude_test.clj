@@ -419,9 +419,9 @@
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-5"})))
         (testing "bedrock vendor prefix is stripped"
           (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"})))))
-      (testing "4.6 models use bare adaptive (no display param)"
-        (is (= {:type "adaptive"} (thinking {:model "claude-opus-4-6"})))
-        (is (= {:type "adaptive"} (thinking {:model "claude-sonnet-4-6"}))))
+      (testing "4.6 models also get an explicit display param, not just the (currently matching) default"
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-6"})))
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-4-6"}))))
       (testing "older budget-token models get no thinking (off in v1)"
         (is (nil? (thinking {:model "claude-haiku-4-5"})))
         (is (nil? (thinking {:model "claude-sonnet-4-5"}))))

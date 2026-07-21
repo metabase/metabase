@@ -27,6 +27,14 @@
   `permission:write_sql_queries` capability."
   #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
 
+(def ^:private loader-only-templates
+  "Prompt templates whose client shows a plain loader instead of the chain-of-thought
+  timeline — today the embedding SDK, which strips agent messages down to text and
+  navigation (see `isPublicMessage` in embedding-sdk-ee). These surfaces get
+  progress-narration guidance; everywhere else the reasoning/tool timeline is visible,
+  so the model is told to skip the play-by-play (`shows_reasoning`)."
+  #{"embedding-next.selmer"})
+
 ;;; Template Loading
 
 (defn- load-resource
@@ -172,6 +180,7 @@
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
+                                  :shows_reasoning          (not (contains? loader-only-templates template-name))
                                   :custom_instructions      (not-empty
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search

@@ -1,8 +1,12 @@
 import cx from "classnames";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
+import { Link } from "metabase/common/components/Link";
+import Animation from "metabase/css/core/animation.module.css";
 import { AIMarkdown } from "metabase/metabot/components/AIMarkdown";
+import { MarkdownSmartLink } from "metabase/metabot/components/AIMarkdown/components/MarkdownSmartLink";
 import {
   DEFAULT_TOOL_CALL_ICON,
   TOOL_CALL_ICONS,
@@ -12,15 +16,200 @@ import type {
   MetabotAgentChainOfThoughtMessage,
   MetabotChainStep,
 } from "metabase/metabot/state";
-import { Collapse, Icon, Loader, Text, UnstyledButton } from "metabase/ui";
+import {
+  METABSE_PROTOCOL_MD_LINK,
+  type MetabaseProtocolEntityModel,
+  parseMetabaseProtocolMarkdownLink,
+} from "metabase/metabot/utils/links";
+import {
+  Collapse,
+  Icon,
+  Loader,
+  Paper,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
+import type { IconName } from "metabase-types/api";
 
 import S from "./MetabotChainOfThought.module.css";
 
+// Search results carry Metabot entity-type names; modelToUrl/icons speak the
+// search "model" vocabulary (mirror of metabase.metabot.search-models).
+const RESULT_MODEL: Record<string, string> = {
+  question: "card",
+  model: "dataset",
+};
+const toModel = (type: string) => RESULT_MODEL[type] ?? type;
+
+const RESULT_ICON: Record<string, IconName> = {
+  card: "table2",
+  dataset: "model",
+  metric: "metric",
+  dashboard: "dashboard",
+  table: "table",
+  transform: "transform",
+};
+
+// where the hit lives: its collection, or the database › schema for a table
+const resultContextParts = (result: SearchResultItem): string[] => {
+  if (result.collection?.name) {
+    return [result.collection.name];
+  }
+  return [result.database_name, result.database_schema].filter(
+    (part): part is string => Boolean(part),
+  );
+};
+
+const ResultContext = ({ result }: { result: SearchResultItem }) => {
+  const parts = resultContextParts(result);
+  if (parts.length === 0) {
+    return null;
+  }
+  return (
+    <Text component="span" className={S.resultContext} lh="inherit">
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {i > 0 && (
+            <Icon name="chevronright" size={8} className={S.contextSeparator} />
+          )}
+          {part}
+        </Fragment>
+      ))}
+    </Text>
+  );
+};
+
+// while streaming, rows fade in top-first, one at a time, via a small per-row
+// delay (capped); no animation when the settled chain is expanded/collapsed
+const SearchResultRow = ({
+  result,
+  index,
+  animate,
+}: {
+  result: SearchResultItem;
+  index: number;
+  animate: boolean;
+}) => {
+  const model = toModel(result.type);
+  return (
+    <Link
+      to={modelToUrl({
+        id: result.id,
+        model,
+        name: result.name,
+        database_id: result.database_id,
+      })}
+      className={cx(S.resultRow, animate && S.resultRowIn)}
+      style={
+        animate
+          ? { animationDelay: `${Math.min(index * 45, 360)}ms` }
+          : undefined
+      }
+    >
+      <Icon
+        name={RESULT_ICON[model] ?? "document"}
+        size={13}
+        className={S.resultIcon}
+      />
+      <Text component="span" className={S.resultName} c="inherit" lh="inherit">
+        {result.display_name ?? result.name}
+      </Text>
+      <ResultContext result={result} />
+    </Link>
+  );
+};
+
+const SearchResultsCard = ({
+  step,
+  animate,
+}: {
+  step: MetabotChainStep & { kind: "tool" };
+  animate: boolean;
+}) => {
+  if (!step.searchResults || step.searchResults.results.length === 0) {
+    return null;
+  }
+  return (
+    <Paper withBorder shadow="none" radius="md" className={S.resultsCard}>
+      <div className={S.resultsList}>
+        {step.searchResults.results.map((result, i) => (
+          <SearchResultRow
+            key={`${result.type}-${result.id}`}
+            result={result}
+            index={i}
+            animate={animate}
+          />
+        ))}
+      </div>
+    </Paper>
+  );
+};
+
 const toolLabel = (name: string) => TOOL_CALL_MESSAGES[name] ?? t`Working`;
 
+type TitleSegment =
+  | { type: "text"; text: string }
+  | {
+      type: "link";
+      id: number;
+      name: string;
+      model: MetabaseProtocolEntityModel;
+    };
+
+const splitTitle = (title: string): TitleSegment[] => {
+  const re = new RegExp(METABSE_PROTOCOL_MD_LINK.source, "g");
+  const segments: TitleSegment[] = [];
+  let lastIndex = 0;
+  for (const match of title.matchAll(re)) {
+    const start = match.index;
+    if (start > lastIndex) {
+      segments.push({ type: "text", text: title.slice(lastIndex, start) });
+    }
+    const parsed = parseMetabaseProtocolMarkdownLink(match[0]);
+    segments.push(
+      parsed
+        ? { type: "link", ...parsed }
+        : { type: "text", text: match.groups?.name ?? match[0] },
+    );
+    lastIndex = start + match[0].length;
+  }
+  if (lastIndex < title.length) {
+    segments.push({ type: "text", text: title.slice(lastIndex) });
+  }
+  return segments;
+};
+
+const ToolStepLabel = ({
+  step,
+}: {
+  step: MetabotChainStep & { kind: "tool" };
+}) => (
+  <Text component="span" c="inherit" lh="inherit">
+    {step.title
+      ? splitTitle(step.title).map((seg, i) =>
+          seg.type === "link" ? (
+            <MarkdownSmartLink
+              key={i}
+              id={seg.id}
+              name={seg.name}
+              model={seg.model}
+            />
+          ) : (
+            <Fragment key={i}>{seg.text}</Fragment>
+          ),
+        )
+      : toolLabel(step.name)}
+  </Text>
+);
+
 // live headline: the current reasoning block's first line, else the active
-// tool's status, else nothing
-const summarize = (steps: MetabotChainStep[]): string | undefined => {
+// tool step (rendered with its links), else nothing
+type HeaderSummary =
+  | { kind: "text"; text: string }
+  | { kind: "tool"; step: MetabotChainStep & { kind: "tool" } };
+
+const summarize = (steps: MetabotChainStep[]): HeaderSummary | undefined => {
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
     if (step.kind === "reasoning") {
@@ -29,31 +218,29 @@ const summarize = (steps: MetabotChainStep[]): string | undefined => {
         .replace(/[*_`]/g, "")
         .trim();
       if (firstLine) {
-        return firstLine;
+        return { kind: "text", text: firstLine };
       }
     }
     if (step.kind === "tool") {
-      return toolLabel(step.name);
+      return { kind: "tool", step };
     }
   }
   return undefined;
 };
 
-const StepMarker = ({ step }: { step: MetabotChainStep }) => {
-  if (step.kind === "reasoning") {
-    return <Icon name="metabot" size={13} c="currentColor" />;
-  }
-  if (step.status === "started") {
-    return <Loader size="xs" color="currentColor" />;
-  }
-  return (
+const ToolStepMarker = ({
+  step,
+}: {
+  step: MetabotChainStep & { kind: "tool" };
+}) => (
+  <div className={cx(S.marker, S.toolMarker)}>
     <Icon
       name={TOOL_CALL_ICONS[step.name] ?? DEFAULT_TOOL_CALL_ICON}
       size={13}
       c="currentColor"
     />
-  );
-};
+  </div>
+);
 
 export const MetabotChainOfThought = ({
   message,
@@ -63,16 +250,6 @@ export const MetabotChainOfThought = ({
   isStreaming: boolean;
 }) => {
   const [open, setOpen] = useState(false);
-  const [capturedEndMs, setCapturedEndMs] = useState<number>();
-  const wasStreaming = useRef(isStreaming);
-
-  // capture when the turn moves on, as a fallback for the redux-stamped time
-  useEffect(() => {
-    if (wasStreaming.current && !isStreaming) {
-      setCapturedEndMs(Date.now());
-    }
-    wasStreaming.current = isStreaming;
-  }, [isStreaming]);
 
   // while the turn is live the shell shows "Thinking…" even before the first
   // step; a settled chain with no steps is never rendered (it gets dropped)
@@ -80,29 +257,64 @@ export const MetabotChainOfThought = ({
     return null;
   }
 
-  const endedAtMs = message.endedAtMs ?? capturedEndMs;
+  // both stamps live in redux (endedAtMs advances with each step), so the
+  // duration recomputes on remount — leaving and returning keeps it
   const seconds =
-    message.startedAtMs != null && endedAtMs != null
-      ? Math.max(1, Math.round((endedAtMs - message.startedAtMs) / 1000))
+    message.startedAtMs != null && message.endedAtMs != null
+      ? Math.max(
+          1,
+          Math.round((message.endedAtMs - message.startedAtMs) / 1000),
+        )
       : undefined;
 
-  const headerLabel = isStreaming
-    ? (summarize(message.steps) ?? t`Thinking…`)
-    : seconds != null
-      ? ngettext(
-          msgid`Thought for ${seconds} second`,
-          `Thought for ${seconds} seconds`,
-          seconds,
-        )
-      : t`Thought about it`;
+  // while expanded the reasoning already streams in the timeline, so the header
+  // collapses to "Thinking…" instead of echoing the same text
+  const summary = isStreaming && !open ? summarize(message.steps) : undefined;
+  const headerContent = isStreaming ? (
+    summary ? (
+      summary.kind === "tool" ? (
+        <ToolStepLabel step={summary.step} />
+      ) : (
+        summary.text
+      )
+    ) : (
+      t`Thinking…`
+    )
+  ) : seconds != null ? (
+    ngettext(
+      msgid`Thought for ${seconds} second`,
+      `Thought for ${seconds} seconds`,
+      seconds,
+    )
+  ) : (
+    t`Thought about it`
+  );
 
   const lastIndex = message.steps.length - 1;
+
+  // reasoning has no marker icon to anchor the line's top; when it leads, start
+  // the line near the text top instead of at a would-be icon's center
+  const isRenderable = (s: MetabotChainStep) =>
+    s.kind === "tool" || (s.kind === "reasoning" && !!s.text);
+  const firstRenderable = message.steps.find(isRenderable);
+  const firstIsReasoning = firstRenderable?.kind === "reasoning";
+  // nothing to reveal until a reasoning/tool step lands, so the header neither
+  // toggles nor shows its chevron in the bare "Thinking…" shell
+  const canToggle = firstRenderable != null;
+  // the last item's content can extend below its marker (reasoning text, a
+  // search-results card); run the line flush to the bottom in those cases
+  const lastRenderable = message.steps.findLast(isRenderable);
+  const lastExtendsLine =
+    lastRenderable?.kind === "reasoning" ||
+    (lastRenderable?.kind === "tool" &&
+      !!lastRenderable.searchResults?.results.length);
 
   return (
     <div className={S.root} data-testid="metabot-chain-of-thought">
       <UnstyledButton
-        className={S.trigger}
-        onClick={() => setOpen((prev) => !prev)}
+        className={cx(S.trigger, !canToggle && S.triggerStatic)}
+        component={canToggle ? "button" : "div"}
+        onClick={canToggle ? () => setOpen((prev) => !prev) : undefined}
       >
         {isStreaming && (
           <Loader
@@ -113,34 +325,68 @@ export const MetabotChainOfThought = ({
           />
         )}
         <Text component="span" className={S.headerLabel} c="currentColor">
-          {headerLabel}
+          {headerContent}
         </Text>
-        <Icon
-          name="chevrondown"
-          size={12}
-          className={cx(S.chevron, open && S.chevronOpen)}
-        />
+        {canToggle && (
+          <Icon
+            name="chevronright"
+            size={10}
+            className={cx(S.chevron, Animation.fadeIn, open && S.chevronOpen)}
+          />
+        )}
       </UnstyledButton>
-      <Collapse in={open}>
-        <div className={S.timeline}>
+      <Collapse in={open} keepMounted>
+        <div
+          className={cx(
+            S.timeline,
+            firstIsReasoning && S.timelineReasoningFirst,
+            lastExtendsLine && S.timelineFlushBottom,
+          )}
+        >
           {message.steps.map((step, index) => {
             if (step.kind === "reasoning" && !step.text) {
               return null;
             }
             const key = step.kind === "tool" ? step.id : `reasoning-${index}`;
             return (
-              <div key={key} className={S.step}>
-                <div className={S.marker}>
-                  <StepMarker step={step} />
-                </div>
+              <div
+                key={key}
+                className={cx(S.step, step.kind === "tool" && S.stepIn)}
+              >
+                {step.kind === "tool" ? (
+                  <ToolStepMarker step={step} />
+                ) : (
+                  <div className={S.marker} />
+                )}
                 <div className={S.stepContent}>
                   {step.kind === "tool" ? (
-                    <Text component="span" c="inherit" lh="inherit">
-                      {toolLabel(step.name)}
-                    </Text>
+                    <>
+                      <div className={S.toolRow}>
+                        <ToolStepLabel step={step} />
+                        {step.searchResults && (
+                          <Text
+                            component="span"
+                            className={S.resultCount}
+                            c="inherit"
+                          >
+                            {step.searchResults.totalCount === 0
+                              ? t`No results`
+                              : ngettext(
+                                  msgid`${step.searchResults.totalCount} result`,
+                                  `${step.searchResults.totalCount} results`,
+                                  step.searchResults.totalCount,
+                                )}
+                          </Text>
+                        )}
+                      </div>
+                      {step.name === "search" && (
+                        <SearchResultsCard step={step} animate={isStreaming} />
+                      )}
+                    </>
                   ) : (
                     <AIMarkdown
                       isStreaming={isStreaming && index === lastIndex}
+                      animateFromStart
                     >
                       {step.text}
                     </AIMarkdown>

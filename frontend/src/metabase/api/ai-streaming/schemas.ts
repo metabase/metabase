@@ -12,6 +12,7 @@ export const toolInputAvailableSchema = Yup.object({
   toolCallId: Yup.string().required(),
   toolName: Yup.string().required(),
   input: Yup.mixed().defined(),
+  title: Yup.string(),
 });
 
 export const toolOutputAvailableSchema = Yup.object({
@@ -43,8 +44,26 @@ export const knownDataPartTypes = [
   "data-entity_saved",
   "data-adhoc_viz",
   "data-static_viz",
+  "data-search_results",
   "data-conversation-title",
 ] as const satisfies readonly KnownDataPart["type"][];
+
+export type SearchResultItem = {
+  id: number;
+  type: string;
+  name: string;
+  display_name?: string;
+  database_id?: number;
+  database_schema?: string;
+  database_name?: string;
+  collection?: { id?: number; name: string };
+};
+
+export type SearchResultsData = {
+  tool_call_id: string;
+  total_count: number;
+  results: SearchResultItem[];
+};
 
 export type AdhocVizValue = {
   query: unknown;
@@ -101,6 +120,7 @@ export type KnownDataPart =
   | { type: "data-entity_saved"; data: EntitySavedValue }
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue }
+  | { type: "data-search_results"; data: SearchResultsData }
   | { type: "data-conversation-title"; data: string };
 
 export const isKnownDataPart = (part: {

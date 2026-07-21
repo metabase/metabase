@@ -1,4 +1,7 @@
-import type { KnownDataPart } from "metabase/api/ai-streaming/schemas";
+import type {
+  KnownDataPart,
+  SearchResultItem,
+} from "metabase/api/ai-streaming/schemas";
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
@@ -10,8 +13,17 @@ import type {
 
 export type MetabotDataPart = Exclude<
   KnownDataPart,
-  { type: "data-state" } | { type: "data-conversation-title" }
+  | { type: "data-state" }
+  | { type: "data-conversation-title" }
+  | { type: "data-search_results" }
 >;
+
+// Search results are rendered under their search step in the chain of thought,
+// not as a standalone data-part message.
+export type MetabotSearchResults = {
+  totalCount: number;
+  results: SearchResultItem[];
+};
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
@@ -97,7 +109,9 @@ export type MetabotAgentChainOfThoughtMessage = {
   role: "agent";
   type: "chain_of_thought";
   steps: MetabotChainStep[];
-  // wall-clock span of the reasoning/tool phase, for the "Thought for Ns" label
+  // wall-clock span of the reasoning/tool phase, for the "Thought for Ns" label.
+  // endedAtMs advances with each step (and settles at the answer), so the span is
+  // always recomputable from redux — it survives leaving and returning to the page.
   startedAtMs?: number;
   endedAtMs?: number;
   externalId?: string;
@@ -132,7 +146,14 @@ export type MetabotToolCall = {
 // invocation. Rendered as one interleaved, collapsible timeline.
 export type MetabotChainStep =
   | { kind: "reasoning"; text: string }
-  | { kind: "tool"; id: string; name: string; status: "started" | "ended" };
+  | {
+      kind: "tool";
+      id: string;
+      name: string;
+      title?: string;
+      searchResults?: MetabotSearchResults;
+      status: "started" | "ended";
+    };
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;

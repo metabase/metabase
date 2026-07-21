@@ -408,12 +408,18 @@
 
 (defn- model-thinking-config
   "Thinking config that streams reasoning for `model`, or nil where we don't
-  enable it (older budget-token models — off in v1)."
+  enable it (older budget-token models — off in v1).
+
+  `display: \"summarized\"` is set explicitly on every branch rather than left
+  to Anthropic's per-model default: current-gen models default to `omitted`
+  (empty thinking) unless told otherwise, and Opus 4.6/Sonnet 4.6 default to
+  `summarized` today but Anthropic's docs note that default already changed
+  silently once across a model bump, so it isn't something to rely on."
   [model]
   (let [[_ major minor] (claude-model-version model)]
     (cond
-      (model-current-gen? model)        {:type "adaptive" :display "summarized"}
-      (and major (= major 4) (= minor 6)) {:type "adaptive"})))
+      (model-current-gen? model)          {:type "adaptive" :display "summarized"}
+      (and major (= major 4) (= minor 6)) {:type "adaptive" :display "summarized"})))
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."

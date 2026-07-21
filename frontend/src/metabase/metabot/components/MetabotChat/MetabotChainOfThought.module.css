@@ -1,6 +1,5 @@
 .root {
   width: 100%;
-  margin-bottom: 0.5rem;
 }
 
 .trigger {
@@ -8,7 +7,11 @@
   align-items: center;
   gap: 0.375rem;
   width: 100%;
-  color: var(--mb-color-text-secondary);
+  color: var(--mb-color-text-tertiary);
+}
+
+.triggerStatic {
+  cursor: default;
 }
 
 .headerLoader {
@@ -23,22 +26,16 @@
   font-size: 0.875rem;
 }
 
+/* always visible once toggling is possible (the icon only mounts when it is);
+   the shared `.fadeIn` handles the appearance fade — see the JSX className */
 .chevron {
   flex-shrink: 0;
-  margin-left: 0.25rem;
-  opacity: 0;
-  transition:
-    opacity 150ms ease,
-    transform 150ms ease;
-}
-
-/* the toggle only shows when the whole header line is hovered */
-.trigger:hover .chevron {
-  opacity: 1;
+  margin-left: 0.125rem;
+  transition: transform 150ms ease;
 }
 
 .chevronOpen {
-  transform: rotate(180deg);
+  transform: rotate(90deg);
 }
 
 .timeline {
@@ -49,7 +46,7 @@
   margin-top: 0.5rem;
 }
 
-/* single line threading down through every step's marker */
+/* single line threading down through every step's marker gutter */
 .timeline::before {
   content: "";
   position: absolute;
@@ -57,14 +54,31 @@
   top: 0.4rem;
   bottom: 0.4rem;
   width: 1px;
-  background: var(--mb-color-border-neutral);
+  background: var(--mb-color-border-neutral-subtle);
+}
+
+/* a leading reasoning step has no icon at the top to anchor the line, so begin
+   it at the text top rather than a would-be marker center */
+.timelineReasoningFirst::before {
+  top: 0.15rem;
+}
+
+/* when the last item's content runs below its marker (reasoning, results card),
+   extend the line flush to the bottom instead of stopping short */
+.timelineFlushBottom::before {
+  bottom: 0;
 }
 
 .step {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  /* stable keys mean only newly-appended steps animate */
+}
+
+/* fade in tool/search line items on mount; reasoning is left out so its own
+   word-by-word text stream is the only animation, not a doubled container fade.
+   stable keys mean only newly-appended steps animate */
+.stepIn {
   animation: chain-step-in 140ms ease both;
 }
 
@@ -89,9 +103,13 @@
   /* match the text's first-line box (0.875rem × 1.5) so the icon and the text
      share a vertical center instead of relying on a magic offset */
   height: calc(0.875rem * 1.5);
-  /* halo so the line reads as connecting the markers, not slicing through them */
+  color: var(--mb-color-text-tertiary);
+}
+
+/* halo (bg + a 2px ring of it) so the line keeps its distance from the icons */
+.toolMarker {
   background: var(--mb-color-background_page-primary);
-  color: var(--mb-color-text-secondary);
+  box-shadow: 0 0 0 2px var(--mb-color-background_page-primary);
 }
 
 .stepContent {
@@ -108,4 +126,95 @@
 .stepContent strong,
 .stepContent b {
   font-weight: inherit;
+}
+
+.toolRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1.57em;
+  color: var(--mb-color-text-tertiary);
+  cursor: default;
+}
+
+.resultCount {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+}
+
+.resultsCard {
+  margin-top: 0.5rem;
+  overflow: hidden;
+  border-color: var(--mb-color-text-tertiary);
+}
+
+/* ~5 rows tall, then scrolls */
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.725rem;
+  max-height: 8rem;
+  overflow-y: auto;
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  color: var(--mb-color-text-secondary);
+  text-decoration: none;
+}
+
+/* only applied while streaming, so opening a settled chain doesn't re-fade */
+.resultRowIn {
+  animation: result-row-in 140ms ease-in both;
+}
+
+@keyframes result-row-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.resultRow:hover {
+  color: var(--mb-color-brand);
+}
+
+.resultIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-brand);
+}
+
+.resultName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+
+.resultContext {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 0.75rem;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--mb-color-text-tertiary);
+}
+
+.contextSeparator {
+  margin: 0 0.25rem;
+  vertical-align: middle;
+  color: var(--mb-color-text-tertiary);
 }

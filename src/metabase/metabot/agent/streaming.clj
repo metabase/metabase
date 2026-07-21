@@ -21,6 +21,13 @@
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
+(def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
+
+(def ^:private ephemeral-data-types
+  "Data types not written to MetabotMessage.data. `state` is diffed separately into
+  the row's state column; `search_results` renders under the client-only chain of
+  thought, which is never rehydrated, so persisting it would only crash the loader."
+  #{state-type search-results-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -31,7 +38,7 @@
   (`:start`, `:usage`, `:finish`) separately."
   [part]
   (not (and (= :data (:type part))
-            (= state-type (:data-type part)))))
+            (contains? ephemeral-data-types (:data-type part)))))
 
 ;;; Query URL Encoding
 
@@ -141,6 +148,15 @@
    :data-type entity-saved-type
    :data value})
 
+(defn search-results-part
+  "Create a SEARCH_RESULTS data part carrying a search tool's hit list, rendered
+  under the search step in the chain of thought. `value` is a map with
+  `:total_count` and `:results` (each `{:id :type :name ...}`)."
+  [value]
+  {:type :data
+   :data-type search-results-type
+   :data value})
+
 (defn viz-part
   "Return the `generated_entity` card data part that surfaces a query/chart result
   to the frontend. Embeds the (legacy) `query` so the FE runs and renders the card
@@ -168,10 +184,15 @@
 
 (def expand-data-parts-xf
   "Stateless transducer that expands :data-parts from tool-output results.
-  Passes through all parts unchanged, then appends any data parts after tool-output parts."
+  Passes through all parts unchanged, then appends any data parts after tool-output
+  parts. Search-results parts are stamped with their originating tool-call id so the
+  client can render them under the matching search step."
   (mapcat (fn [part]
             (if (= (:type part) :tool-output)
-              (cons part (get-in part [:result :data-parts]))
+              (cons part (for [dp (get-in part [:result :data-parts])]
+                           (cond-> dp
+                             (= search-results-type (:data-type dp))
+                             (assoc-in [:data :tool_call_id] (:id part)))))
               [part]))))
 
 (defn post-process-xf

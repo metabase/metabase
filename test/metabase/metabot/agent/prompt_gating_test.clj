@@ -278,3 +278,13 @@
                                        metabot-chat-system-prompt ""]
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (not (re-find #"NLQ only instruction" rendered)))))))
+
+(deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
+  (testing "timeline surfaces are told the reasoning is visible and to skip narration"
+    (let [rendered (render-template "internal.selmer" all-yes-perms)]
+      (is (re-find #"already stream into the UI" rendered))
+      (is (not (re-find #"only a loading indicator" rendered)))))
+  (testing "the embedding SDK surface (loader only) keeps progress-narration guidance"
+    (let [rendered (render-template "embedding-next.selmer" all-yes-perms)]
+      (is (re-find #"only a loading indicator" rendered))
+      (is (not (re-find #"already stream into the UI" rendered))))))

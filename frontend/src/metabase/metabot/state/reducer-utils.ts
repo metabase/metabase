@@ -16,6 +16,7 @@ import type {
   MetabotAgentTurnError,
   MetabotConverstationState,
   MetabotDebugToolCallMessage,
+  MetabotSearchResults,
   MetabotState,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -69,6 +70,11 @@ const ensureChain = (
     if (existing.startedAtMs == null && nowMs != null) {
       existing.startedAtMs = nowMs;
     }
+    // every step advances the end time, so the "Thought for Ns" duration lives
+    // entirely in redux and survives navigating away and back (no local clock)
+    if (nowMs != null) {
+      existing.endedAtMs = nowMs;
+    }
     return existing;
   }
   convo.messages.push({
@@ -77,6 +83,7 @@ const ensureChain = (
     type: "chain_of_thought",
     steps: [],
     startedAtMs: nowMs,
+    endedAtMs: nowMs,
   });
   const chain = convo.messages[convo.messages.length - 1];
   if (chain.type !== "chain_of_thought") {
@@ -124,12 +131,37 @@ export const appendChainReasoning = (
 
 export const addChainTool = (
   convo: WritableDraft<MetabotConverstationState>,
-  { id, name, nowMs }: { id: string; name: string; nowMs?: number },
+  {
+    id,
+    name,
+    title,
+    nowMs,
+  }: { id: string; name: string; title?: string; nowMs?: number },
 ) => {
   const chain = ensureChain(convo, nowMs);
-  const exists = chain.steps.some((s) => s.kind === "tool" && s.id === id);
-  if (!exists) {
-    chain.steps.push({ kind: "tool", id, name, status: "started" });
+  const existing = chain.steps.find((s) => s.kind === "tool" && s.id === id);
+  if (!existing) {
+    chain.steps.push({ kind: "tool", id, name, title, status: "started" });
+  } else if (title && existing.kind === "tool") {
+    // tool-input-start may arrive without a title; tool-input-available fills it in
+    existing.title = title;
+  }
+};
+
+export const setChainToolSearchResults = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+  searchResults: MetabotSearchResults,
+) => {
+  for (const message of convo.messages) {
+    if (message.type === "chain_of_thought") {
+      for (const step of message.steps) {
+        if (step.kind === "tool" && step.id === toolCallId) {
+          step.searchResults = searchResults;
+          return;
+        }
+      }
+    }
   }
 };
 
@@ -163,7 +195,9 @@ export const closeChain = (
   if (chain?.type === "chain_of_thought") {
     if (chain.steps.length === 0) {
       dropChain(convo, chain.id);
-    } else if (chain.endedAtMs == null) {
+    } else if (nowMs != null) {
+      // refine to the moment the answer begins; falls back to the last step's
+      // stamp (from ensureChain) when the answer arrives without a clock
       chain.endedAtMs = nowMs;
     }
   }

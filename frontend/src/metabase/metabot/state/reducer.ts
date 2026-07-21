@@ -2,6 +2,7 @@ import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
+import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
@@ -31,6 +32,7 @@ import {
   openChain,
   pushNewToolCall,
   resetReactionState,
+  setChainToolSearchResults,
   startChainReasoning,
 } from "./reducer-utils";
 import type {
@@ -197,12 +199,13 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<{
           toolCallId: string;
           toolName: string;
+          title?: string;
           args?: string;
           nowMs?: number;
         }>,
       ) => {
-        const { toolCallId, toolName, args, nowMs } = action.payload;
-        addChainTool(convo, { id: toolCallId, name: toolName, nowMs });
+        const { toolCallId, toolName, title, args, nowMs } = action.payload;
+        addChainTool(convo, { id: toolCallId, name: toolName, title, nowMs });
         // idempotent: both tool-input-start and tool-input-available are
         // able to signal the start of a tool call
         if (convo.activeToolCalls.some((tc) => tc.id === toolCallId)) {
@@ -217,12 +220,13 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<{
           toolCallId: string;
           toolName: string;
+          title?: string;
           args: string;
           nowMs?: number;
         }>,
       ) => {
-        const { toolCallId, toolName, args, nowMs } = action.payload;
-        addChainTool(convo, { id: toolCallId, name: toolName, nowMs });
+        const { toolCallId, toolName, title, args, nowMs } = action.payload;
+        addChainTool(convo, { id: toolCallId, name: toolName, title, nowMs });
         const existingMsg = findLastToolCallMessage(convo, toolCallId);
         if (existingMsg) {
           // if toolCallStart was called (tool-input-start event is optional)
@@ -259,6 +263,19 @@ export const metabot = createSlice({
             message.is_error = true;
           }
         }
+      },
+    ),
+    toolCallSearchResults: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          totalCount: number;
+          results: SearchResultItem[];
+        }>,
+      ) => {
+        const { toolCallId, totalCount, results } = action.payload;
+        setChainToolSearchResults(convo, toolCallId, { totalCount, results });
       },
     ),
     // only the last turn is rewindable (retry), so a single pre-turn snapshot
