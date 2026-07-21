@@ -1,6 +1,7 @@
 (ns metabase.util.http-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.util.http :as http])
   (:import
    (clojure.lang ExceptionInfo)
@@ -121,6 +122,29 @@
     (doseq [ip non-public-ips]
       (is (false? (boolean (http/public-address? (InetAddress/getByName ip))))
           (str "should be rejected: " ip)))))
+
+;; NOT ^:parallel -- uses with-redefs on a global var.
+(deftest allow-private-networks-toggle-test
+  (testing "with MB_ALLOW_PRIVATE_NETWORK_FETCH set, RFC1918 + IPv6 ULA are allowed..."
+    (with-redefs [http/allow-private-networks? (constantly true)]
+      (doseq [ip ["10.1.2.3" "172.16.0.1" "192.168.0.1" "fc00::1" "fd12:3456::1"]]
+        (is (true? (boolean (http/public-address? (InetAddress/getByName ip))))
+            (str "should be allowed when opted in: " ip)))
+      (testing "...but loopback, link-local (IMDS), any-local, multicast, and CGNAT stay blocked"
+        (doseq [ip ["127.0.0.1" "169.254.169.254" "0.0.0.0" "224.0.0.1" "100.64.0.1" "::1" "fe80::1"]]
+          (is (false? (boolean (http/public-address? (InetAddress/getByName ip))))
+              (str "should stay blocked even when opted in: " ip)))))))
+
+;; NOT ^:parallel -- uses with-redefs on global vars.
+(deftest allow-private-networks-cloud-clamp-test
+  (testing "the opt-in is force-disabled on Metabase Cloud, even with the env var set"
+    (with-redefs [http/hosted?       (constantly true)
+                  config/config-bool (constantly true)]
+      (is (false? (http/public-address? (InetAddress/getByName "10.0.0.5"))))))
+  (testing "self-hosted with the opt-in set enables private destinations"
+    (with-redefs [http/hosted?       (constantly false)
+                  config/config-bool (constantly true)]
+      (is (true? (http/public-address? (InetAddress/getByName "10.0.0.5")))))))
 
 (deftest ^:parallel ssrf-safe-dns-resolver-test
   (testing "the validating resolver throws when a host resolves to a non-public address"

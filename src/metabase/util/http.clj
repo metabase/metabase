@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.util.json :as json])
   (:import
    (com.google.common.net InetAddresses)
@@ -56,17 +57,31 @@
 (def ^:private blocked-fetch-hosts #{"localhost" "metadata" "metadata.google.internal"})
 (def ^:private blocked-fetch-host-suffixes [".localhost" ".local" ".internal" ".lan" ".home.arpa"])
 
+(defn- hosted?
+  "Metabase Cloud? `requiring-resolve` avoids a static dep on `metabase.premium-features`."
+  []
+  (boolean ((requiring-resolve 'metabase.premium-features.core/is-hosted?))))
+
+(defn- allow-private-networks?
+  "Private destinations (RFC1918 + IPv6 ULA) are allowed only via the self-hosted
+  `MB_ALLOW_PRIVATE_NETWORK_FETCH` opt-in, and never on Cloud."
+  []
+  (and (not (hosted?))
+       (boolean (config/config-bool :mb-allow-private-network-fetch))))
+
 (defn public-address?
-  "True only for globally-routable unicast IP addresses (rejects loopback, link-local, site-local,
-  any-local, multicast, IPv6 unique-local fc00::/7, and IPv4 CGNAT 100.64.0.0/10)."
+  "Safe destination address? Always rejects loopback, link-local, any-local, multicast, and CGNAT;
+  also RFC1918 site-local and IPv6 ULA unless [[allow-private-networks?]]."
   [^InetAddress addr]
-  (let [b (.getAddress addr)]
+  (let [allow-private? (allow-private-networks?)
+        b              (.getAddress addr)]
     (not (or (.isLoopbackAddress addr)
              (.isLinkLocalAddress addr)
-             (.isSiteLocalAddress addr)
              (.isAnyLocalAddress addr)
              (.isMulticastAddress addr)
-             (and (instance? Inet6Address addr)              ; IPv6 unique-local fc00::/7
+             (and (not allow-private?) (.isSiteLocalAddress addr))
+             (and (not allow-private?)                       ; IPv6 unique-local fc00::/7
+                  (instance? Inet6Address addr)
                   (= 0xfc (bit-and (aget b 0) 0xfe)))
              (and (= 4 (alength b))                          ; IPv4 CGNAT 100.64.0.0/10
                   (= 100 (bit-and (aget b 0) 0xff))
