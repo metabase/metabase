@@ -41,7 +41,3 @@
                          query-params/query-params->options
                          typed-schemas/build-semantic-schema
                          typed-schemas/render-typescript)}))
-
-(def ^{:arglists '([request respond raise])} routes
-  "`/api/typed-schemas/` routes."
-  (api.macros/ns-handler *ns*))
