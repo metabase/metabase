@@ -270,9 +270,10 @@ const elements = [
     "frontend/src/metabase/new/components/NewModals/NewModals.tsx",
     // Its spec mounts NewModals to assert menu clicks open modals, so the test is app-tier too.
     "frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx",
-    // Entry point for the static-viz bundle (server-side chart rendering in
-    // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
+    // Entry points for the static-viz bundles
     "frontend/src/metabase/static-viz/index.tsx",
+    "frontend/src/metabase/static-viz/index-custom.tsx",
+    "frontend/src/metabase/static-viz/lib/entrypoint.ts",
     // Storybook config is a composition root: preview wires app-tier decorators.
     // Needs its own pattern because ** doesn't match dot-folders.
     "frontend/src/embedding-sdk-shared/.storybook/**",
