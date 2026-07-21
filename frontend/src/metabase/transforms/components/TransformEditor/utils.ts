@@ -42,6 +42,7 @@ export function getEditorOptions(
       return false;
     },
     shouldShowLibrary: false,
+    canUseSampleDatabase: false,
     readOnly,
   };
 }
