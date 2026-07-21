@@ -217,7 +217,6 @@ export const MetabotPromptInput = forwardRef<
     useEffect(() => {
       if (value !== serializedRef.current) {
         editor?.commands.setContent(parseMetabotMessageToTiptapDoc(value));
-        editor?.commands.setTextSelection(editor.state.doc.content.size);
       }
     }, [editor, value]);
 

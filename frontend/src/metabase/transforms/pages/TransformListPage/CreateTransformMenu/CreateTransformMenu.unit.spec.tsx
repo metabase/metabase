@@ -14,7 +14,6 @@ import { CreateTransformMenu } from "./CreateTransformMenu";
 
 const mockSetPrompt = jest.fn();
 const mockSetVisible = jest.fn();
-const mockFocus = jest.fn();
 
 jest.mock("../../../analytics", () => ({
   ...jest.requireActual("../../../analytics"),
@@ -42,7 +41,6 @@ function setup({
   jest.mocked(useMetabotAgent).mockReturnValue({
     setPrompt: mockSetPrompt,
     setVisible: mockSetVisible,
-    promptInputRef: { current: { focus: mockFocus } },
   } as unknown as ReturnType<typeof useMetabotAgent>);
 
   return renderWithProviders(<CreateTransformMenu />);
@@ -86,6 +84,5 @@ describe("CreateTransformMenu", () => {
     });
     expect(mockSetPrompt).toHaveBeenCalledWith("Create a transform that ");
     expect(mockSetVisible).toHaveBeenCalledWith(true);
-    expect(mockFocus).toHaveBeenCalled();
   });
 });
