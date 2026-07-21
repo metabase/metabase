@@ -260,6 +260,7 @@ function McpEventsTableInner({
         pageSize: EVENTS_PAGE_SIZE,
         total,
         onPageChange,
+        showTotal: true,
       }}
       loading={isFetching}
       emptyText={t`No tool calls found`}

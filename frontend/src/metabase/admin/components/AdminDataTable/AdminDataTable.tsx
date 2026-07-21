@@ -38,7 +38,7 @@ export type AdminDataTablePagination = {
   /** Total number of rows across all pages. */
   total: number;
   onPageChange: (page: number) => void;
-  /** Whether to render the "of N" total (defaults to true). */
+  /** Whether to render the "of N" total (defaults to false, matching `PaginationControls`). */
   showTotal?: boolean;
 };
 
@@ -111,23 +111,32 @@ export function AdminDataTable<Row, SortColumn extends string = string>({
         >
           <thead>
             <tr>
-              {columns.map((column) => (
-                <SortableColumnHeader
-                  key={column.key}
-                  name={column.sortKey}
-                  sortingOptions={sorting?.sortingOptions}
-                  onSortingOptionsChange={sorting?.onSortingOptionsChange}
-                  columnHeaderProps={{
-                    ...column.headerProps,
-                    style: {
-                      textAlign: column.align,
-                      ...column.headerProps?.style,
-                    },
-                  }}
-                >
-                  {column.title}
-                </SortableColumnHeader>
-              ))}
+              {columns.map((column) => {
+                const headerProps = {
+                  ...column.headerProps,
+                  style: {
+                    textAlign: column.align,
+                    ...column.headerProps?.style,
+                  },
+                };
+                // Only sortable columns get the interactive header; the rest render a plain `<th>`
+                // so screen readers don't announce a static header as a button.
+                return sorting != null && column.sortKey != null ? (
+                  <SortableColumnHeader
+                    key={column.key}
+                    name={column.sortKey}
+                    sortingOptions={sorting.sortingOptions}
+                    onSortingOptionsChange={sorting.onSortingOptionsChange}
+                    columnHeaderProps={headerProps}
+                  >
+                    {column.title}
+                  </SortableColumnHeader>
+                ) : (
+                  <th key={column.key} {...headerProps}>
+                    {column.title}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -183,7 +192,7 @@ export function AdminDataTable<Row, SortColumn extends string = string>({
             pageSize={pagination.pageSize}
             itemsLength={rows.length}
             total={pagination.total}
-            showTotal={pagination.showTotal ?? true}
+            showTotal={pagination.showTotal ?? false}
             onPreviousPage={() => pagination.onPageChange(pagination.page - 1)}
             onNextPage={() => pagination.onPageChange(pagination.page + 1)}
           />

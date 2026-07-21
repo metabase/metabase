@@ -94,6 +94,20 @@ describe("AdminDataTable", () => {
     expect(onSortingOptionsChange).not.toHaveBeenCalled();
   });
 
+  it("renders sortable headers as buttons and non-sortable ones as plain headers", () => {
+    setup();
+
+    // the two sortable columns each expose an interactive control...
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    // ...while the column without a sortKey stays a static header, not a button.
+    expect(
+      screen.getByRole("columnheader", { name: "ID" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /ID/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("fires onRowClick with the clicked row", async () => {
     const { onRowClick } = setup();
 
@@ -138,13 +152,35 @@ describe("AdminDataTable", () => {
     });
   });
 
+  it("hides the total by default and shows it when showTotal is set", () => {
+    const onPageChange = jest.fn();
+
+    const { rerender } = setup({
+      pagination: { page: 1, pageSize: 2, total: 10, onPageChange },
+    });
+    expect(screen.queryByTestId("pagination-total")).not.toBeInTheDocument();
+
+    rerender(
+      <AdminDataTable<Row, SortColumn>
+        columns={COLUMNS}
+        rows={ROWS}
+        pagination={{
+          page: 1,
+          pageSize: 2,
+          total: 10,
+          onPageChange,
+          showTotal: true,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("pagination-total")).toHaveTextContent("10");
+  });
+
   it("renders pagination controls and pages forward/back", async () => {
     const onPageChange = jest.fn();
     setup({
       pagination: { page: 1, pageSize: 2, total: 10, onPageChange },
     });
-
-    expect(screen.getByTestId("pagination-total")).toHaveTextContent("10");
 
     await userEvent.click(screen.getByTestId("next-page-btn"));
     expect(onPageChange).toHaveBeenCalledWith(2);
