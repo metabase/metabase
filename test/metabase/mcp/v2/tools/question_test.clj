@@ -1,6 +1,7 @@
 (ns metabase.mcp.v2.tools.question-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.question :as v2.question]
    [metabase.test :as mt]
@@ -78,3 +79,22 @@
                                      {:method "create" :query {:database (mt/id) :stages [{}]}})]
       (is (:isError result))
       (is (re-find #"`name` is required" (-> result :content first :text))))))
+
+(deftest create-question-collection-target-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [base-args {:method "create"
+                       :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}]
+        (testing "collection_id: \"root\" saves to the root collection"
+          (let [result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+                                           (assoc base-args :name "Agent Q root" :collection_id "root"))]
+            (is (not (:isError result)) (-> result :content first :text))
+            (is (nil? (t2/select-one-fn :collection_id :model/Card
+                                        :id (:id (:structuredContent result)))))))
+        (testing "omitted collection_id saves to the caller's personal collection"
+          (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+                                           (assoc base-args :name "Agent Q personal"))]
+            (is (not (:isError result)) (-> result :content first :text))
+            (is (= personal-id (t2/select-one-fn :collection_id :model/Card
+                                                 :id (:id (:structuredContent result)))))))))))

@@ -99,7 +99,11 @@
       (:query (common/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
 
       query
-      (lib-be/normalize-query nil (ensure-pmbql-type query) {:strict? true})
+      (try
+        (lib-be/normalize-query nil (ensure-pmbql-type query) {:strict? true})
+        (catch clojure.lang.ExceptionInfo e
+          (common/throw-teaching-error
+           (str "Invalid inline query — pass a well-formed MBQL 5 query. " (ex-message e)))))
 
       native
       (let [{:keys [database_id sql template_tags]} native
@@ -202,7 +206,7 @@
    [:archived {:optional true} [:maybe :boolean]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit for your personal collection, null/\"root\" for root), display, visualization_settings, cache_ttl. On update, pass id and any fields to change; archived: true trashes, false restores."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection), display, visualization_settings, cache_ttl. On update, pass id and any fields to change; archived: true trashes, false restores."
   {:name         "question_write"
    :scope        metabot.scope/agent-question-create
    :update-scope metabot.scope/agent-question-update
