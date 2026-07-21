@@ -14,6 +14,7 @@ import type { Page } from "@playwright/test";
 import type { MetabaseApi } from "./api";
 import { modal } from "./dashboard";
 import { expect } from "./fixtures";
+import { maildevSmtpPort } from "./maildev";
 
 // === port of e2e/support/helpers/api/seedSecurityAdvisories.ts ===
 
@@ -88,7 +89,7 @@ export async function mockSessionProperty(
 export async function configureSmtpSettings(api: MetabaseApi) {
   await api.put("/api/setting", {
     "email-smtp-host": "localhost",
-    "email-smtp-port": 1025,
+    "email-smtp-port": maildevSmtpPort(),
     "email-smtp-username": "admin",
     "email-smtp-password": "admin",
     "email-smtp-security": "none",

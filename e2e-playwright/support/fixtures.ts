@@ -6,6 +6,7 @@ import {
   writableDialectFor,
 } from "./reset-writable-db";
 import { BASE_URL } from "./env";
+import { ensureMaildev, maildevEndpoint } from "./maildev";
 import { LOGIN_CACHE, USERS, UserName } from "./sample-data";
 import {
   provisionWritableDb,
@@ -247,6 +248,18 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
           );
         }
       }
+      // Give this worker its own maildev, once, before any spec can send. Same
+      // reason as the writable databases above: a single shared mailbox is
+      // read as "the last email" / "exactly N emails" by every email helper,
+      // and `clearInbox` is a global DELETE (see support/maildev.ts).
+      // Best-effort, and it logs its own failure: no maildev means the email
+      // specs skip, which is their existing contract on a box without docker.
+      const maildevUp = await ensureMaildev();
+      console.log(
+        `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] maildev: ${maildevEndpoint()}${
+          maildevUp ? "" : " (UNREACHABLE — email specs will skip)"
+        }`,
+      );
       console.log(
         `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] backend on :${backend.port} ${
           backend.startupMs === 0

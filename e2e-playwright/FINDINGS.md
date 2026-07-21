@@ -4414,3 +4414,195 @@ it made an existing product race observable. Same family as #218, where a dead
 assertion hid a product bug; here it is slow pacing rather than a dead
 assertion, but the conclusion is identical: the old suite was green for reasons
 unrelated to correctness.
+
+---
+
+### #221 PORTING RULE: `cy.wait("@alias")` matches RETROACTIVELY;
+### `page.waitForResponse` does not
+
+**The asymmetry.** Cypress registers `cy.intercept(...).as("x")` and
+`cy.wait("@x")` then resolves against **any request since registration** —
+including one that has already completed. Playwright's `page.waitForResponse`
+only matches responses arriving **after the call is made**. A port that keeps
+upstream's ordering but registers the listener after the triggering action is
+therefore racing: it passes only when the response happens to land after
+registration.
+
+**Measured** (`actions-on-dashboards`, instrumented with `page.on("request")`):
+
+```
+step addFilter        44ms
+req  GET .../dashcard/88/execute?parameters=...   92ms   <- request fires
+step registerPrefetch 111ms                              <- listener registered
+```
+
+19ms late. When the race is lost, nothing ever matches and `waitForResponse`
+blocks its full 30s, reporting a **timeout that reads like a hang** rather than
+a missed match. That is why the same defect appeared as a deterministic failure
+in one test and a flake in another — same coin, two sides.
+
+**The trap in this specific case** was that the request is fired by *applying
+the filter*, not by the obvious "click the action button": `ActionVizForm`
+mounts with `canPrefetch === false` (empty `dashcardParamValues`, see
+`ActionVizForm.tsx:91`) and issues nothing; applying the filter changes
+`dashcardParamValues`, which re-runs the prefetch effect. Clicking the action
+button only calls `setShowFormModal(true)` and issues **no request at all**. So
+"register the wait just before the button click" looks right and is wrong.
+
+**The rule.** Create the promise BEFORE the action that triggers the request:
+
+```ts
+const prefetch = page.waitForResponse(isPrefetch);   // register first
+await filterWidget(page).click();                    // then trigger
+await prefetch;
+```
+
+**This is NOT reliably greppable, and a count should not be quoted.** The
+broken form is syntactically identical to the correct one — a stored promise —
+and differs only in position relative to the triggering action. Deciding
+whether a given site is safe requires knowing which interaction actually issues
+the request, which is exactly what was mis-identified here. A grep for
+`await page.waitForResponse` (the inline form) finds a different, smaller
+population and does NOT find this defect; treating that count as the exposure
+would understate it.
+
+Four sites in `actions-on-dashboards.spec.ts` had this shape — two were the
+reported failures, two were latent and fixed at the same time. Mutation-verified
+by requiring a `MUTANT_parameters` query param: all three affected tests went
+red at exactly the moved line, so the wait is load-bearing in its new position.
+
+---
+
+### #222 HYPOTHESIS (not confirmed): a cold GraalPy/sqlglot pool and Playwright's
+### default `waitForResponse` timeout are both exactly 30s
+
+Offered as a lead for the `impersonated` :: "caching should not circumvent
+impersonation permissions" flake and, potentially, any native-query spec that
+waits on `POST /api/dataset`. **Not established as the cause** — stated so
+nobody quotes it as one.
+
+**The verified facts** (`src/metabase/sql_parsing/graal.clj`):
+- `call-timeout-ms` is **30000** (line 198-200) — the backend's own per-call
+  Python timeout.
+- The context pool has **min 0**, "so when idle the pool shrinks to 0 and the
+  last `destroy` closes the engine", and "the first call after an idle gap
+  rebuilds" it (lines 8-10).
+- It runs GraalPy **interpreted** — no Graal compiler on a stock JDK.
+
+Playwright's default `waitForResponse` timeout is also 30s. So on the first
+native query after an idle gap, a *slow but successful* response and a genuine
+hang are indistinguishable: whichever 30s expires first decides what the failure
+looks like. That matches the observed shape — flaky, passes on retry (warm
+pool), and reports as a timeout rather than an error.
+
+**Deliberately NOT acted on.** Raising the Playwright timeout would make the
+symptom disappear without establishing the cause, and would mask a real
+regression if the pool ever genuinely hangs. The right next step is to measure
+the actual `POST /api/dataset` duration in a failing CI run.
+
+**Local caveat that blocked confirmation:** on this machine every native query
+500s with `ModuleNotFoundError: No module named 'sqlglot'`. Metabase lazily
+installs sqlglot in dev via `uv` or `pip`, and neither is on PATH here (only
+`pip3`), so `ensure-sqlglot-installed!` warns and continues. Any agent running a
+native-query spec locally will hit this and should not mistake it for a port
+defect.
+
+---
+
+### #223 PRODUCT BUG (app code, NOT ours to fix): `/backfill-status` reports
+### `complete: true` while entities are stale, and snippet-referencing native
+### cards fail dependency analysis
+
+**Status: reproduced 8/8, and corroborated from source and from the live app DB.
+No app code changed, and the spec was deliberately NOT changed.** Reported for
+whoever owns dependencies. This is why `dependency-graph` :: "should display
+dependencies for a snippet and navigate to them" is flaky in CI.
+
+**Two distinct defects.**
+
+**(a) Dependency backfill throws for native cards/transforms referencing
+`{{snippet:Name}}`.** After creating a snippet plus a snippet-based
+question/model/transform, the graph API returns `dependents_count {"snippet": 1}`
+— the question, model and transform are all missing — and it stays that way
+**stably for 124 seconds**. Not a race. Queried over the running backend's
+nREPL:
+
+```clj
+{:entity_type "card" :entity_id 99 :dependency_analysis_version 0 :stale true
+ :fail_count 1 :next_retry_at #t "2026-07-21T02:13:34" :terminal false}
+;; contrast, a normally-analysed card:
+{:entity_id 97 :dependency_analysis_version 6 :stale false :fail_count 0 :next_retry_at nil}
+```
+
+`dependency_analysis_version` stuck at 0 with `fail_count 1` and `next_retry_at`
+≈ +60 min (the `dependency-backfill-delay-minutes` default). The snippet→snippet
+edge DOES land, because `calculate-deps* :snippet` reads `template_tags`
+directly, whereas the card/transform path goes through `compile-query`, which
+can throw.
+
+**(b) `GET /api/ee/dependencies/backfill-status` lies when anything is in retry
+backoff.** `api.clj:1052` is `{:complete (not (has-stale-or-outdated?))}`, and
+`has-stale-or-outdated?`
+(`models/dependency_status.clj:100-108`) is defined in terms of
+`instances-for-dependency-calculation`, whose own docstring says it returns
+entities that are "not terminal, **retry delay elapsed**". So an entity that has
+failed and is waiting out its backoff is excluded from the check — and the
+endpoint reports the backfill **finished** while that entity is still stale and
+unprocessed. With the 60-minute default delay, it reports complete for an hour.
+
+Defect (b) is the more general problem: the endpoint cannot distinguish "no work
+left" from "work deferred", so no caller — the frontend included — can either.
+
+**Why this produces two different CI symptoms.** Poll before the entities are
+marked stale, or after they enter backoff, and the status returns immediately
+with dependents missing → the test fails later on a `locator.click` timeout.
+Poll inside the actionable window and it blocks the full 30s →
+`Dependency backfill timeout`. Both faces observed; same root cause.
+
+**Not fixable in the spec.** `waitForBackfillComplete` matches upstream's helper
+exactly (same 30s / 100ms), so the port is faithful; `support/dependency-graph.ts`
+is shared by 14 specs; and no spec edit can make an assertion correct when the
+API it waits on reports completion prematurely. A related data point, not
+diagnosed: "should display dependencies for a table and navigate to them" in the
+same file fails with the identical locator-timeout shape and is probably the
+same bug.
+
+**#222 UPDATE (measured): mechanism confirmed, magnitude NOT.** The spec was run
+with `--trace on` and the real `POST /api/dataset` durations pulled from
+`1-trace.network`:
+
+| Condition | first `POST /api/dataset` |
+|---|---|
+| Cold JVM + cold pool | **5940 ms** |
+| Warm JVM, cold pool | 2748 ms |
+| Warm (repeats) | 37 / 40 / 39 ms |
+
+The cost is entirely front-loaded — on the cold run the *next* native query
+(same SQL, via `POST /api/card/98/query`) took 161 ms, then 85, then 66. So the
+"first call after an idle gap rebuilds them" signature is real, and it lands on
+exactly the request CI timed out on.
+
+**But 5.9s is ~5x short of the 30s budget** on an idle dev machine with one
+backend. CI at `--workers=2` has two JVMs, a cold page cache and contended CPU,
+so a further 5x is plausible — but it has NOT been demonstrated and should not
+be claimed. The test also did not reproduce at all locally (6/6 pass), so
+nothing here was changed.
+
+**The collision is ordered, not merely coincidental.** `waitForDataset`
+registers its `waitForResponse` *before* the click (`support/models.ts:88`,
+deliberately, per #221). Playwright's 30s window therefore opens fractionally
+*earlier* than the request is sent — and since `call-timeout-ms` is also 30000,
+the backend's own Python timeout can **never** be observed by this test. If
+sqlglot genuinely hung, the backend would eventually answer with an error at
+~30s, but Playwright will always have given up first, by a hair. A slow cold
+start and a real GraalPy hang are therefore *guaranteed* to produce an identical
+`TimeoutError` with no response recorded. They cannot be told apart from a CI
+artifact alone.
+
+**Better lead than raising the timeout:** `metabase.sql-tools.metrics` already
+records per-operation sqlglot timings (`record-operation-completion! :sqlglot
+"validate-query"`, exercised in `test/metabase/sql_tools/metrics_test.clj`).
+Reading those on a failing CI run attributes the latency directly instead of
+inferring it from outside. Warming the pool inside the spec is NOT a fix — the
+warm-up would have to run a native query, which is the very thing being timed,
+so it would hide the cost rather than remove it.

@@ -1153,7 +1153,11 @@ test.describe("documents", () => {
             if (!settled) {
               throw new Error(`Suggestion list still changing: ${current}`);
             }
-          }).toPass({ intervals: [150] });
+            // Bounded so a dialog that never opens reports THAT, instead of
+            // spinning here until the 90s test timeout and pointing the blame
+            // at this helper (which is what the metabot-dialog race below did
+            // before it was anchored).
+          }).toPass({ intervals: [150], timeout: 15_000 });
         };
 
         /**
@@ -1179,6 +1183,52 @@ test.describe("documents", () => {
           await locator.hover();
         };
 
+        /**
+         * Anchor for the Command Dialog's INVISIBLE list.
+         *
+         * `waitForSuggestionsToSettle` above cannot cover this one, because
+         * there is nothing in the DOM to sample. With an EMPTY query the
+         * command dialog still fires `/api/activity/recents`
+         * (useEntitySearch: `shouldFetchRecents = query.length === 0`), and in
+         * command mode those recents are never rendered — the option list is
+         * the static command list, whose labels never change. But
+         * CommandSuggestion's reset effect lists `searchMenuItems.length`
+         * among its dependencies:
+         *
+         *   useEffect(() => setSelectedIndex(0),
+         *             [currentItems.length, viewMode, searchMenuItems.length]);
+         *
+         * so when the response lands the highlight snaps back to index 0 with
+         * no visible change at all. ArrowDowns pressed before that are
+         * silently undone, and the assertion then fails STEADILY — nothing
+         * re-drives the keyboard, so retrying for 10s does not help.
+         *
+         * MEASURED on slot 3 (repeat-each=2): holding the response until just
+         * after the two ArrowDowns and then releasing it left `aria-selected`
+         * on "Ask Metabot" instead of "Link" — 2/2, the exact CI signature —
+         * where the unmodified test failed 0/5 on the same box. Cypress never
+         * sees it for the usual reason: its command-queue overhead lets the
+         * response land long before the arrows.
+         *
+         * The response is the only signal, so it is registered before the
+         * dialog can open. RTK Query caches recents for 10s
+         * (`refetchOnMountOrArgChange: 10`), so a later open may legitimately
+         * issue no request — hence the bounded fallback rather than an
+         * unconditional wait. The two rAFs are not a sleep: they return once
+         * React has flushed the re-render the RTK dispatch schedules, which is
+         * the state change being waited for. Nothing here asserts anything the
+         * upstream test does not.
+         */
+        const waitForRecentsToSettle = async (registered: Promise<unknown>) => {
+          await registered;
+          await page.evaluate(
+            () =>
+              new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+              ),
+          );
+        };
+
         const assertOnlyOneOptionActive = async (
           name: string | RegExp,
           dialog: "command" | "mention" | "metabot" = "command",
@@ -1201,8 +1251,19 @@ test.describe("documents", () => {
         await mb.api.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
         await visitDocument(page, doc.id);
 
+        // Registered BEFORE the dialog can open — see waitForRecentsToSettle.
+        const recentsRequest = page
+          .waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname === "/api/activity/recents",
+            { timeout: 15_000 },
+          )
+          .catch(() => null);
+
         await documentContent(page).click();
         await addToDocument(page, "/", false);
+
+        await waitForRecentsToSettle(recentsRequest);
 
         await assertOnlyOneOptionActive(/Ask Metabot/);
 
@@ -1254,6 +1315,22 @@ test.describe("documents", () => {
         await addToDocument(page, "/", false);
 
         await commandSuggestionItem(page, /Ask Metabot/).click();
+        // Selecting "Ask Metabot" runs
+        // `insertContent({ type: "metabot" })` (CommandExtension) and leaves
+        // the caret inside the new node, but the node's React NodeView — and
+        // with it the `NodeViewContent` the caret points at — mounts a render
+        // later. Typing "@" into that gap sends it to the outer paragraph
+        // instead, which opens the *Mention* Dialog; the Metabot dialog then
+        // never appears and `waitForSuggestionsToSettle("metabot")` spins
+        // until the test times out. MEASURED: 1/5 locally on slot 3
+        // (90s timeout at that settle, trace confirms the poll never sees an
+        // option). Waiting for the node view to exist is the precondition
+        // Cypress's command-queue overhead supplies for free.
+        await expect(
+          documentContent(page).getByText(
+            /use @ to select a specific Database/,
+          ),
+        ).toBeVisible();
         await addToDocument(page, "@", false);
         await waitForSuggestionsToSettle("metabot");
 

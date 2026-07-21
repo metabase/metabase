@@ -16,11 +16,10 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { expect } from "./fixtures";
+import { maildevWebUrl } from "./maildev";
 import { openSharingMenu } from "./sharing";
 import { modal, popover, visitQuestion } from "./ui";
 
-/** WEBMAIL_CONFIG.WEB_PORT from e2e/support/cypress_data.js. */
-export const MAILDEV_WEB_URL = "http://localhost:1080";
 
 /**
  * The href the "Made with Metabase" anchor carries in
@@ -158,7 +157,7 @@ export async function sendAlertAndVisitIt(page: Page) {
 
   const inbox = await waitForInbox();
   const latest = inbox[inbox.length - 1];
-  await page.goto(`${MAILDEV_WEB_URL}/email/${latest.id}/html`);
+  await page.goto(`${maildevWebUrl()}/email/${latest.id}/html`);
 }
 
 type MaildevEmail = { id: string; subject: string };
@@ -169,7 +168,7 @@ export async function waitForInbox(
 ): Promise<MaildevEmail[]> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const response = await fetch(`${MAILDEV_WEB_URL}/email`);
+    const response = await fetch(`${maildevWebUrl()}/email`);
     const inbox = (await response.json()) as MaildevEmail[];
     if (inbox.length > 0) {
       return inbox;

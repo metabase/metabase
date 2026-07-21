@@ -129,6 +129,12 @@ jobs:
       # native-database-source). Without these it silently SKIPS — 831 tests on
       # the 2026-07-20 run. snowplow-micro is deliberately omitted: the suite
       # uses its own per-slot collector (support/snowplow-collector.ts).
+      #
+      # `maildev: true` stays even though each worker now runs its OWN maildev
+      # (support/maildev.ts). Two reasons: it pulls the pinned image the
+      # per-slot containers are started from, and it is still the mailbox used
+      # when PW_PER_WORKER_BACKEND is off. `maildev-ssl` (:1081/:465) is
+      # untouched by the per-slot work and is what the custom-SMTP specs use.
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:

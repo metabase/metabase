@@ -23,6 +23,17 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 10_000 },
 
+  // CI-only backstop for a wedged shard. The per-test timeout above does not
+  // bound the RUN: a shard can hang in a worker fixture or between tests and
+  // then burn GitHub's 6h job limit, blocking the whole workflow. That happened
+  // on shard 38 of run 29799291313 — 54/55 jobs finished, one sat in "Run
+  // Playwright tests" for 44 min, and cancelling it cost that shard's ~97 test
+  // results. A shard is ~15-20 min at workers=2 and longer at workers=1, so 50
+  // min is generous headroom while still failing fast enough to be useful.
+  // Unset locally: a --repeat-each sweep or a debugging session can legitimately
+  // run long, and killing it would be worse than waiting.
+  globalTimeout: process.env.CI ? 50 * 60_000 : undefined,
+
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI
     ? [

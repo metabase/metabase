@@ -89,12 +89,18 @@ import {
   installSnowplowCapture,
 } from "../support/search-snowplow";
 import type { SnowplowCapture } from "../support/search-snowplow";
+import { maildevSmtpPort } from "../support/maildev";
 import { modal, popover, visitQuestion } from "../support/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-/** WEBMAIL_CONFIG.SMTP_PORT (e2e/support/cypress_data.js). */
-const SMTP_PORT = "1025";
+/**
+ * The SMTP port THIS worker's maildev listens on (support/maildev.ts): the
+ * shared WEBMAIL_CONFIG :1025 when per-worker isolation is off, this slot's
+ * own port when it is on. Not a literal — the UI save here live-validates the
+ * connection, so it has to be a port that really answers for this worker.
+ */
+const SMTP_PORT = String(maildevSmtpPort());
 
 /** `${WEBHOOK_TEST_HOST}/#/${WEBHOOK_TEST_SESSION_ID}` (e2e-notification-helpers). */
 const WEBHOOK_TEST_DASHBOARD = `${WEBHOOK_TEST_HOST}/#/${WEBHOOK_TEST_SESSION_ID}`;
@@ -698,7 +704,7 @@ test.describe("scenarios > admin > settings > email settings", () => {
     }) => {
       test.skip(
         !(await isMaildevRunning()),
-        "@external: needs the maildev container (SMTP :1025, web API :1080)",
+        `@external: needs a maildev instance (SMTP :${SMTP_PORT})`,
       );
 
       await setupSMTP(mb.api);

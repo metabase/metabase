@@ -24,13 +24,12 @@ import type { FrameLocator, Locator, Page } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
 import { editDashboard, setFilter, sidebar } from "./dashboard";
+import { maildevWebUrl } from "./maildev";
 import { openDashboardMenu } from "./organization";
 import { ORDERS_DASHBOARD_ID } from "./sample-data";
 import { popover } from "./ui";
 import { visitDashboard } from "./ui";
 
-/** WEBMAIL_CONFIG.WEB_PORT from e2e/support/cypress_data.js. */
-export const MAILDEV_WEB_URL = "http://localhost:1080";
 
 type Scope = Page | FrameLocator | Locator;
 
@@ -283,7 +282,7 @@ export async function sendEmailAndVisitIt(page: Page, scope: Scope = page) {
   await clickSend(page, scope);
   const inbox = await waitForInbox();
   const latest = inbox[inbox.length - 1];
-  await page.goto(`${MAILDEV_WEB_URL}/email/${latest.id}/html`);
+  await page.goto(`${maildevWebUrl()}/email/${latest.id}/html`);
 }
 
 /**
@@ -298,7 +297,7 @@ function emailSubjectRow(page: Page, emailSubject: string): Locator {
 
 /** Port of H.viewEmailPage: open the maildev UI and click the email by subject. */
 export async function viewEmailPage(page: Page, emailSubject: string) {
-  await page.goto(MAILDEV_WEB_URL);
+  await page.goto(maildevWebUrl());
   await emailSubjectRow(page, emailSubject).click();
 }
 
@@ -308,7 +307,7 @@ export async function viewEmailPage(page: Page, emailSubject: string) {
  * where the unsubscribe link lives).
  */
 export async function openEmailPage(page: Page, emailSubject: string) {
-  await page.goto(MAILDEV_WEB_URL);
+  await page.goto(maildevWebUrl());
   await emailSubjectRow(page, emailSubject).click();
 
   // cy.hash() — "#/email/<id>"; the helper strips the "#" and appends "/html".
@@ -318,7 +317,7 @@ export async function openEmailPage(page: Page, emailSubject: string) {
     expect(hash.startsWith("#/email/")).toBe(true);
   }).toPass();
 
-  await page.goto(`${MAILDEV_WEB_URL}${hash.slice(1)}/html`);
+  await page.goto(`${maildevWebUrl()}${hash.slice(1)}/html`);
   await expect(emailSubjectRow(page, emailSubject)).toBeVisible();
 }
 
@@ -425,7 +424,7 @@ export async function waitForInbox(
 ): Promise<SentEmail[]> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const response = await fetch(`${MAILDEV_WEB_URL}/email`);
+    const response = await fetch(`${maildevWebUrl()}/email`);
     const inbox = (await response.json()) as SentEmail[];
     if (inbox.length > 0) {
       return inbox;

@@ -1570,6 +1570,14 @@
 - `triggerMousemove` — Port of Cypress's `.trigger("mousemove")` on a chart element: dispatch a
 - `brushChart` — Port of the spec's `cy.findByTestId("query-visualization-root").trigger(
 
+## maildev.ts
+- `maildevSlot` — This process's slot, or `null` when per-worker isolation is off.
+- `maildevWebUrl` — The maildev web API/UI origin THIS worker owns. */
+- `maildevSmtpPort` — The SMTP port THIS worker's backend must be configured to deliver to. */
+- `maildevEndpoint` — Human-readable endpoint pair, for the per-worker log line. */
+- `ensureMaildev` — Bring up this worker's maildev if it isn't already up, then report whether a
+- `removeSlotMaildevContainers` — Remove every per-slot maildev container. Called from global teardown, and
+
 ## maps.ts
 - `toggleFieldSelectElement` — Port of the spec-local toggleFieldSelectElement: open a chart-setting select
 - `zoomIn` — Port of the spec-local zoomIn: click the leaflet zoom-in control `times`

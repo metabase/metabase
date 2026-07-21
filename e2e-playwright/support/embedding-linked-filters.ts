@@ -242,9 +242,70 @@ export async function searchFieldValuesFilter(page: Page) {
   await fieldValuesTextbox(dropdown).pressSequentially("An");
 
   const widget = page.getByTestId("field-values-widget");
+  await waitForListFilterToApply(widget);
   await expect(widget.getByText("Kiana", { exact: true })).toBeVisible();
   await expect(widget.getByText("Anacoco", { exact: true })).toHaveCount(0);
   await widget.getByText("Anchorage", { exact: true }).click();
+}
+
+/**
+ * Wait until the value list reflects the text just typed into "Search the
+ * list".
+ *
+ * This list is filtered ENTIRELY CLIENT-SIDE, so there is no request to wait
+ * on: the values are already in the page, and typing fires nothing (measured
+ * from the moment the dropdown opens — zero `/params/…/values` or
+ * `/params/…/search/…` requests). Instead `ListField` puts the filter behind
+ * a 100ms debounce:
+ *
+ *   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
+ *   // ListField.tsx:106, DEBOUNCE_FILTER_TIME = delay(100)
+ *
+ * So for ~100ms after typing "An" the DOM still holds the UNFILTERED list of
+ * every Alaskan city, and neither assertion below can notice: "Kiana" is
+ * present in the unfiltered list too, and "Anacoco" is a Louisiana city that
+ * the linked `state=AK` filter excludes from both. Both pass on the stale
+ * list, and `getByText("Anchorage").click()` then resolves a label that is
+ * about to move.
+ *
+ * MEASURED on slot 20: at click time the list was still the full unfiltered
+ * one (40 cities), where "Anchorage" is `filteredOptions` index 4. Applying
+ * the "An" filter drops Allakaket and Ambler ahead of it, leaving
+ * [Anaktuvuk Pass, Anchor Point, Anchorage, Denali National Park and
+ * Preserve, Fairbanks, …] — so index 4 becomes "Fairbanks".
+ *
+ * And the rows are `key={index}` (ListField.tsx:213), so React RECYCLES the
+ * row's DOM node instead of recreating it: the element Playwright resolved is
+ * still attached and still the hit target, its label just now reads
+ * "Fairbanks". The hit-target check therefore passes and the click commits
+ * the wrong city. That is exactly the CI failure (`Expected
+ * "?city=Anchorage&state=AK"`, `Received "?city=Fairbanks&state=AK"`), and it
+ * is rare because the debounce has to fire inside the narrow window between
+ * resolution and dispatch — far likelier on a loaded CI box than locally.
+ *
+ * THE ANCHOR. A "wait until two consecutive samples of the row labels agree"
+ * settle is NOT good enough here, and the first version of this helper used
+ * one: two identical samples only prove nothing changed between them, not
+ * that the debounce has fired. Under load the 100ms timer can be starved past
+ * the sampling interval, both samples land pre-debounce, and the helper
+ * settles on the stale list — which is exactly how the sibling "works when
+ * main filter is locked" test still produced `Received "?city=Fairbanks"`
+ * with that version in place (1/5 on slot 20).
+ *
+ * So anchor on a POSITIVE signal instead. ListField renders the bulk-toggle
+ * label as `{debouncedFilter ? t`Select these` : t`Select all`}`
+ * (ListField.tsx:203), so "Select these" appears if and only if
+ * `debouncedFilter` has caught up with the typed text — and `filteredOptions`
+ * is derived from `debouncedFilter` in the same render, so the rows are
+ * correct the moment that label is. Verified against the instrumented settle:
+ * samples went 41 rows/"Select all" → 9 rows/"Select these", i.e. the label
+ * flips precisely with the list.
+ *
+ * This asserts nothing the upstream helper does not; it only makes the two
+ * assertions and the click below run against the list they were written for.
+ */
+async function waitForListFilterToApply(widget: Locator) {
+  await expect(widget.getByText("Select these", { exact: true })).toBeVisible();
 }
 
 /** Port of the spec-local removeValueForFilter: click the filter widget's close icon. */

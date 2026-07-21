@@ -17,6 +17,7 @@ import type { Locator, Page } from "@playwright/test";
 import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data.json";
 
 import type { MetabaseApi } from "./api";
+import { ensureMaildev, maildevSmtpPort, maildevWebUrl } from "./maildev";
 import { modal } from "./models";
 import { popover } from "./ui";
 
@@ -178,16 +179,16 @@ export function getAlertChannel(scope: Page | Locator, name: string): Locator {
 
 // === port of H.setupSMTP (e2e-email-helpers.js) ===
 
-const WEBMAIL_CONFIG = { WEB_PORT: 1080, SMTP_PORT: 1025 };
-
 /**
- * Requires the maildev container:
- * `docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5`
+ * Requires a maildev instance. Endpoints resolve through support/maildev.ts:
+ * this worker's OWN maildev when per-worker isolation is on, the shared
+ * WEBMAIL_CONFIG pair (:1080 / :1025) when it is off.
  */
 export async function setupSMTP(api: MetabaseApi) {
+  await ensureMaildev();
   await api.put("/api/email", {
     "email-smtp-host": "localhost",
-    "email-smtp-port": WEBMAIL_CONFIG.SMTP_PORT,
+    "email-smtp-port": maildevSmtpPort(),
     "email-smtp-username": "admin",
     "email-smtp-password": "admin",
     "email-smtp-security": "none",
@@ -196,10 +197,7 @@ export async function setupSMTP(api: MetabaseApi) {
     "email-reply-to": ["reply-to@metabase.test"],
   });
   // Always clear webmail's inbox before each test.
-  await api.fetch(
-    "DELETE",
-    `http://localhost:${WEBMAIL_CONFIG.WEB_PORT}/email/all`,
-  );
+  await api.fetch("DELETE", `${maildevWebUrl()}/email/all`);
 }
 
 // === ports of e2e-sharing-helpers.ts (alert channel blocks) ===

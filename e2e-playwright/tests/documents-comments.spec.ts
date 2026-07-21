@@ -1822,7 +1822,7 @@ test.describe("document comments", () => {
     });
 
     test.beforeEach(async ({ mb }) => {
-      test.skip(!maildevUp, "maildev is not reachable on http://localhost:1080");
+      test.skip(!maildevUp, "this worker's maildev is not reachable");
 
       await setupSMTP(mb.api);
 

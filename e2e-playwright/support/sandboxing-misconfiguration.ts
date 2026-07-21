@@ -212,9 +212,29 @@ export async function configureSandboxPolicyOnColumn(
   // findByRole(role, { name: <string> }) is an EXACT match in testing-library.
   const tableItem = page.getByRole("menuitem", { name: tableName, exact: true });
   const schemaItem = page.getByRole("menuitem", { name: schema, exact: true });
-  // Positive anchor: wait for the sidebar to have rendered SOMETHING before
-  // branching on which shape it took, so a pre-fetch empty list can't decide.
-  await expect(page.getByRole("menuitem").first()).toBeVisible();
+  // Wait for the branch to be DECIDABLE, not merely for the sidebar to have
+  // painted something.
+  //
+  // The old anchor here was `getByRole("menuitem").first()`, which is
+  // satisfied by whatever the sidebar renders first. `count()` is a SINGLE,
+  // non-retrying sample, so it could be taken before the table list arrived,
+  // read 0, and send the flow down the schema branch — where it then waited
+  // the full 30s for a `public` menuitem, which is the CI failure
+  // (`locator.click: Timeout 30000ms exceeded | waiting for
+  // getByRole('menuitem', {name:'public', exact:true})`).
+  //
+  // And on this harness that branch is now unreachable by design: since
+  // 651bc2d5d25 each worker gets its OWN, freshly created writable database
+  // (support/writable-db.ts), so `public` is its only schema and the
+  // permissions sidebar goes straight to TABLES. `public` therefore never
+  // appears at all — which is why taking that branch cannot recover, and why
+  // an early `count()` is the only way to reach it. (The schema branch is
+  // kept, not deleted: it is still correct for a multi-schema database, e.g.
+  // the shared `writable_db` this helper was originally measured against.)
+  //
+  // Racing the two locators makes the sample happen only once the sidebar has
+  // committed to one shape or the other. It changes no assertion.
+  await expect(tableItem.or(schemaItem).first()).toBeVisible();
   if ((await tableItem.count()) === 0) {
     await schemaItem.click();
   }

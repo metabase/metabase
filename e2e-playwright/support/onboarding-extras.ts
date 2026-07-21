@@ -17,6 +17,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
+import { ensureMaildev, maildevSmtpPort, maildevWebUrl } from "./maildev";
 
 // === port of H.mockSessionProperty (multi-property variant) ===
 
@@ -50,23 +51,22 @@ export async function mockSessionProperties(
 
 // === ports of e2e/support/helpers/e2e-email-helpers.js (real maildev) ===
 
-/** WEBMAIL_CONFIG from e2e/support/cypress_data.js. */
-const MAILDEV_WEB_URL = "http://localhost:1080";
-const MAILDEV_SMTP_PORT = 1025;
+// Endpoints resolve through support/maildev.ts, which hands each Playwright
+// worker its OWN maildev when per-worker isolation is on and the shared
+// WEBMAIL_CONFIG pair (:1080 / :1025) when it is off. Never hardcode either
+// port here again — see that module's header for the cross-talk it removes.
 
 /**
  * Availability probe for gating the email describes: environments without
- * the maildev container (fetch fails or times out) should test.skip.
+ * a reachable maildev (fetch fails or times out) should test.skip.
+ *
+ * Also the point at which this worker's own maildev is brought up, so a
+ * describe-level probe that runs before any fixture still sees a mailbox.
+ * `ensureMaildev` memoises the container start but NOT the answer, so this
+ * stays the live probe it has always been.
  */
 export async function isMaildevRunning(): Promise<boolean> {
-  try {
-    const response = await fetch(`${MAILDEV_WEB_URL}/email`, {
-      signal: AbortSignal.timeout(2_000),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
+  return ensureMaildev();
 }
 
 /**
@@ -76,9 +76,10 @@ export async function isMaildevRunning(): Promise<boolean> {
  * Always clears the inbox, like the Cypress helper.
  */
 export async function setupSMTP(api: MetabaseApi) {
+  await ensureMaildev();
   await api.put("/api/email", {
     "email-smtp-host": "localhost",
-    "email-smtp-port": MAILDEV_SMTP_PORT,
+    "email-smtp-port": maildevSmtpPort(),
     "email-smtp-username": "admin",
     "email-smtp-password": "admin",
     "email-smtp-security": "none",
@@ -91,7 +92,7 @@ export async function setupSMTP(api: MetabaseApi) {
 
 /** Port of H.clearInbox. */
 export async function clearInbox() {
-  await fetch(`${MAILDEV_WEB_URL}/email/all`, { method: "DELETE" });
+  await fetch(`${maildevWebUrl()}/email/all`, { method: "DELETE" });
 }
 
 type MaildevAddressee = { address?: string } | string;
@@ -109,7 +110,7 @@ export type MaildevEmail = {
 
 /** One-shot inbox fetch (H.getInbox without the retry — see waitForEmail). */
 export async function getInbox(): Promise<MaildevEmail[]> {
-  const response = await fetch(`${MAILDEV_WEB_URL}/email`);
+  const response = await fetch(`${maildevWebUrl()}/email`);
   return (await response.json()) as MaildevEmail[];
 }
 

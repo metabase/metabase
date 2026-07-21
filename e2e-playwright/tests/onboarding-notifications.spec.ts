@@ -391,7 +391,7 @@ test.describe("scenarios > account > notifications", () => {
     test.beforeEach(async ({ mb }) => {
       test.skip(
         !maildevUp,
-        "maildev is not reachable on http://localhost:1080",
+        "this worker's maildev is not reachable",
       );
 
       await mb.restore();

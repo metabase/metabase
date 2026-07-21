@@ -316,7 +316,13 @@ test.describe("scenarios > visualizations > drillthroughs > chart drill", () => 
     await popover(page).getByText("See this CA Person").click();
 
     await expect(page.getByText("City is Beaver Dams")).toBeVisible();
-    await expect(page.getByText("Dominique Leffler")).toBeVisible();
+    // Scoped to the grid body: the data-grid appends an off-screen measurement
+    // clone of its cells to document.body while it sizes columns, so a
+    // page-wide getByText intermittently resolves to 2 nodes and toBeVisible()
+    // throws a strict-mode violation instead of retrying.
+    await expect(
+      page.getByTestId("table-body").getByText("Dominique Leffler"),
+    ).toBeVisible();
   });
 
   test("should drill through a with date filter (metabase#12496)", async ({

@@ -116,12 +116,15 @@ export async function inboxIds(): Promise<Set<string>> {
  *
  * Upstream reads `H.getInbox().then(({ body: [{ html }] }) => …)` — i.e. it
  * takes inbox entry 0 and trusts that `setupSMTP`'s DELETE left exactly one
- * message there. That is not true here: the maildev container on :1080 is
- * shared by every parallel slot, other slots deliver into it mid-run, and
- * their `setupSMTP` DELETEs *our* messages. Entry 0 can be a sibling's mail.
+ * message there. That was not true when every parallel slot shared the single
+ * maildev on :1080 — siblings delivered into it mid-run and their `setupSMTP`
+ * DELETEd our messages, so entry 0 could be someone else's mail. Each slot now
+ * has its own maildev (support/maildev.ts), which removes that class of
+ * failure, but the four conjuncts below stay: they are strictly stronger than
+ * `[0]`, and they are the only defence left when isolation is OFF and the
+ * shared container really is shared.
  *
- * So the port matches on four conjuncts instead, of which the third is the
- * decisive one:
+ * The port matches on four conjuncts, of which the third is the decisive one:
  *
  *  1. `id` not in the pre-send snapshot — excludes anything already sitting
  *     in the inbox when we clicked.

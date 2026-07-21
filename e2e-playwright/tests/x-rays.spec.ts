@@ -228,8 +228,18 @@ test.describe("scenarios > x-rays", () => {
       await page.getByText(action, { exact: true }).click();
       await xrayResponse;
 
+      // The x-ray response resolves before the generated dashboard mounts, so
+      // anchor on a dashcard actually being on screen. Without this the
+      // absence assertion below is satisfied by an unrendered page and never
+      // examines the card titles the test is about (metabase#15737).
+      await expect(page.getByTestId("dashcard-container").first()).toBeVisible();
+
       // cy.contains("null") is a case-sensitive substring on the whole page.
-      await expect(page.getByText("null", { exact: false })).toHaveCount(0);
+      // getByText with a STRING is case-insensitive, which matches the x-ray
+      // sidebar's legitimate "Null values" links; a regex preserves upstream's
+      // case sensitivity so this still only catches a literal lowercase "null"
+      // leaking into a generated card title.
+      await expect(page.getByText(/null/)).toHaveCount(0);
     });
   }
 

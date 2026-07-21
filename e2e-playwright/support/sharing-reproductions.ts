@@ -19,11 +19,10 @@ import type { Locator, Page } from "@playwright/test";
 
 import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data.json";
 import type { MetabaseApi } from "./api";
+import { maildevWebUrl } from "./maildev";
 import { getInbox } from "./onboarding-extras";
 import type { MaildevEmail } from "./onboarding-extras";
 
-/** WEBMAIL_CONFIG.WEB_PORT from e2e/support/cypress_data.js. */
-export const MAILDEV_WEB_URL = "http://localhost:1080";
 
 /** Port of ADMIN_USER_ID (cypress_sample_instance_data.js). */
 export const ADMIN_USER_ID: number = (() => {
@@ -103,7 +102,7 @@ export async function sendEmailAndGetFirst(page: Page): Promise<MaildevEmail> {
 export async function sendEmailAndVisitIt(page: Page) {
   await clickSend(page);
   const latest = await waitForInboxEntry(-1);
-  await page.goto(`${MAILDEV_WEB_URL}/email/${latest.id}/html`);
+  await page.goto(`${maildevWebUrl()}/email/${latest.id}/html`);
 }
 
 /** Poll the inbox until it is non-empty, then return the entry at `index`
@@ -131,7 +130,7 @@ export async function fetchEmailAttachment(
   generatedFileName: string,
 ): Promise<string> {
   const response = await fetch(
-    `${MAILDEV_WEB_URL}/email/${emailId}/attachment/${generatedFileName}`,
+    `${maildevWebUrl()}/email/${emailId}/attachment/${generatedFileName}`,
   );
   return await response.text();
 }

@@ -549,10 +549,20 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
           event: "new_action_card_created",
         });
 
+        // The prefetch GET is fired by APPLYING THE ID FILTER, not by clicking
+        // the action button. ActionVizForm is mounted with the dashcard and its
+        // prefetch effect re-runs as soon as `dashcardParamValues` becomes
+        // non-empty (ActionVizForm.tsx: `canPrefetch = Object.keys(...)>0`);
+        // clicking the button only does `setShowFormModal(true)` and issues no
+        // request at all. Upstream gets away with waiting after the click
+        // because `cy.intercept` is registered in beforeEach and `cy.wait`
+        // matches retroactively — `page.waitForResponse` only matches responses
+        // arriving after the call, so registering it after the filter loses a
+        // ~20ms race against the backend and then blocks the full timeout.
+        const prefetch = page.waitForResponse(isPrefetch);
         await filterWidget(page).first().click();
         await addWidgetStringFilter(page, "5");
 
-        const prefetch = page.waitForResponse(isPrefetch);
         await page.getByRole("button", { name: actionName }).click();
         await prefetch;
 
@@ -907,10 +917,13 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
 
         const getModel = page.waitForResponse(isGetModel);
         // (cy.wait("@getModel") — the dashcard's model fetch)
+        // Registered before the filter is applied: that is what fires the
+        // prefetch, not the button click. See the note in "adds an implicit
+        // update action to a dashboard and runs it".
+        const prefetch = page.waitForResponse(isPrefetch);
         await filterWidget(page).first().click();
         await addWidgetStringFilter(page, "1");
 
-        const prefetch = page.waitForResponse(isPrefetch);
         await page.getByRole("button", { name: "Update" }).click();
         await getModel.catch(() => undefined);
         await prefetch;
@@ -1104,10 +1117,12 @@ for (const dialect of ["mysql", "postgres"] as const satisfies readonly Writebac
         });
 
         const getModel = page.waitForResponse(isGetModel);
+        // Prefetch fires on filter apply, not on the button click — see the
+        // note in "adds an implicit update action to a dashboard and runs it".
+        const prefetch = page.waitForResponse(isPrefetch);
         await filterWidget(page).first().click();
         await addWidgetStringFilter(page, "1");
 
-        const prefetch = page.waitForResponse(isPrefetch);
         await page.getByRole("button", { name: "Update" }).click();
         await getModel.catch(() => undefined);
         await prefetch;
@@ -1385,9 +1400,11 @@ test.describe("action error handling", () => {
     });
 
     const getModel = page.waitForResponse(isGetModel);
+    // Prefetch fires on filter apply, not on the button click — see the note in
+    // "adds an implicit update action to a dashboard and runs it".
+    const prefetch = page.waitForResponse(isPrefetch);
     await filterWidget(page).first().click();
     await addWidgetStringFilter(page, "5");
-    const prefetch = page.waitForResponse(isPrefetch);
     await page.getByRole("button", { name: actionName }).click();
     await getModel.catch(() => undefined);
     await prefetch;
