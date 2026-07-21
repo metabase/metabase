@@ -17,7 +17,7 @@
 
 ;; Keep these in sync with the CASE branches in the LATEST version of:
 ;;   resources/migrations/instance_analytics_views/ai_usage_log/v4/{h2,mysql,postgres}-ai_usage_log.sql
-;;   resources/migrations/instance_analytics_views/metabot_conversations/v4/{h2,mysql,postgres}-metabot_conversations.sql
+;;   resources/migrations/instance_analytics_views/metabot_conversations/v6/{h2,mysql,postgres}-metabot_conversations.sql
 ;; When adding a value here, create a new view version (vN+1) with the extra CASE branches plus a migration
 ;; that reinstalls the views, so users see a nicer name in ai analytics. Parity is enforced by
 ;; `metabase-enterprise.metabot.usage-test/known-sources-and-profiles-have-view-case-branches-test`.
@@ -43,6 +43,13 @@
     "slackbot"
     "transforms_codegen"
     "document-generate-content"})
+
+(defenterprise valid-usage-profile-id
+  "Return `profile-id` when it can be persisted to `ai_usage_log`, otherwise nil."
+  :feature :none
+  [profile-id]
+  (when (contains? known-profile-ids (some-> profile-id name))
+    profile-id))
 
 (defenterprise log-ai-usage!
   "Record an LLM API call in the ai_usage_log table."

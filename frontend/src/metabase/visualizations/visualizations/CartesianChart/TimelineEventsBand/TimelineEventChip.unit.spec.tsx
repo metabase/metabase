@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import type { TimelineEventId } from "metabase-types/api";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventChip } from "./TimelineEventChip";
@@ -45,12 +45,14 @@ interface SetupOpts {
   eventsGroup?: PositionedTimelineEventGroup;
   selectedEventIds?: TimelineEventId[];
   withCallbacks?: boolean;
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 const setup = ({
   eventsGroup = singleGroup,
   selectedEventIds = [],
   withCallbacks = true,
+  onSeeAllEvents,
 }: SetupOpts = {}) => {
   const onOpenTimelines = jest.fn();
   const onSelectTimelineEvents = jest.fn();
@@ -68,6 +70,7 @@ const setup = ({
       onDeselectTimelineEvents={
         withCallbacks ? onDeselectTimelineEvents : undefined
       }
+      onSeeAllEvents={onSeeAllEvents}
     />,
   );
 
@@ -189,5 +192,42 @@ describe("TimelineEventChip", () => {
 
     expect(await screen.findByText("Many 1")).toBeInTheDocument();
     expect(screen.queryByText("See all")).not.toBeInTheDocument();
+  });
+
+  it("shows 'See all' handing the cluster to onSeeAllEvents without making the chip clickable", async () => {
+    const onSeeAllEvents = jest.fn();
+    // No select/open callbacks — the Explorations wiring, where only
+    // "See all" should act (a bare chip click must do nothing).
+    const { onSelectTimelineEvents } = setup({
+      eventsGroup: manyGroup,
+      withCallbacks: false,
+      onSeeAllEvents,
+    });
+
+    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+    expect(onSelectTimelineEvents).not.toHaveBeenCalled();
+    expect(onSeeAllEvents).not.toHaveBeenCalled();
+
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
+    await userEvent.click(await screen.findByText("See all"));
+
+    expect(onSeeAllEvents).toHaveBeenCalledWith(manyGroup.group.events);
+  });
+
+  it("dismisses the popover after 'See all' is clicked", async () => {
+    setup({ eventsGroup: manyGroup, onSeeAllEvents: jest.fn() });
+
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
+    expect(
+      await screen.findByTestId("timeline-event-popover"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("See all"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("timeline-event-popover"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

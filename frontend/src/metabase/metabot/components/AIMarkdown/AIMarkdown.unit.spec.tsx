@@ -1,16 +1,22 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockCard } from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { AIMarkdown } from "./AIMarkdown";
 
-const setup = (props: { children: string }) => {
+const setup = (
+  props: { children: string },
+  { conversationCharts }: { conversationCharts?: Record<string, unknown> } = {},
+) => {
   setupEnterprisePlugins();
   const settings = mockSettings({ "site-url": "http://localhost:3000" });
 
@@ -19,8 +25,14 @@ const setup = (props: { children: string }) => {
     createMockCard({ id: 123, name: "Test Question" }),
   );
 
+  const metabot = conversationCharts
+    ? assocIn(getMetabotInitialState(), ["conversations", "omnibot", "state"], {
+        charts: conversationCharts,
+      })
+    : getMetabotInitialState();
+
   return renderWithProviders(<AIMarkdown {...props} />, {
-    storeInitialState: createMockState({ settings }),
+    storeInitialState: createMockState({ settings, metabot }),
   });
 };
 
@@ -37,6 +49,30 @@ describe("AIMarkdown", () => {
     expect(link).toBeInTheDocument();
 
     // Verify it's rendered as a smart link by checking for the icon
+    expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+  });
+
+  it("should render a generated-chart mention as a smart link chip", async () => {
+    setup(
+      { children: "[Orders by month](metabase://chart/chart-1)" },
+      {
+        conversationCharts: {
+          "chart-1": {
+            queries: [createMockStructuredDatasetQuery()],
+            visualization_settings: { chart_type: "bar" },
+          },
+        },
+      },
+    );
+
+    expect(await screen.findByText("Orders by month")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+  });
+
+  it("should still render the chart mention chip when the chart is not in conversation state", async () => {
+    setup({ children: "[Orders by month](metabase://chart/chart-1)" });
+
+    expect(await screen.findByText("Orders by month")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
   });
 
