@@ -2,8 +2,8 @@
   "/api/typed-schemas endpoints."
   (:require
    [metabase.api.macros :as api.macros]
-   [metabase.typed-schemas :as typed-schemas]
    [metabase.typed-schemas-rest.api.query-params :as query-params]
+   [metabase.typed-schemas.core :as typed-schemas]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)

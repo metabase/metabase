@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.typed-schemas :as typed-schemas]))
+   [metabase.typed-schemas.core :as typed-schemas]))
 
 (def ^:private orders-question
   {:type        "card"
