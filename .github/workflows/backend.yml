@@ -121,7 +121,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java-version: [21]
+        java-version: [25]
         job:
           - name: Enterprise Tests
             edition: ee
@@ -259,7 +259,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        java-version: [21]
+        java-version: [25]
     name: "Check Java ${{ matrix.java-version }}"
     steps:
       - uses: actions/checkout@v4

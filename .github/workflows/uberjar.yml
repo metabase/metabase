@@ -140,7 +140,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 25 }}"
       - name: Build
         run: ./bin/build.sh
       - name: Prepare uberjar artifact
@@ -163,7 +163,7 @@ jobs:
     strategy:
       matrix:
         edition: ["ee", "oss"]
-        java-version: [21]
+        java-version: [25]
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
