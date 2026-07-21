@@ -19,6 +19,7 @@ describe("scenarios > admin > transforms incremental", () => {
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/transform").as("createTransform");
+    cy.intercept("GET", /\/api\/transform\/\d+$/).as("getTransform");
     cy.intercept("PUT", "/api/transform/*").as("updateTransform");
     cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
     cy.intercept("DELETE", "/api/transform/*/table").as("deleteTransformTable");
@@ -197,6 +198,10 @@ def transform(animals):
             }
           });
         });
+
+        cy.log("wait for the new transform's detail page to finish loading");
+        cy.wait("@getTransform");
+        H.DataStudio.Transforms.header().should("be.visible");
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
