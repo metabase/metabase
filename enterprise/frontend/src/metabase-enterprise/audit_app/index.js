@@ -8,17 +8,11 @@ import {
 } from "metabase/plugins";
 import { Menu } from "metabase/ui";
 import { isInternalUser } from "metabase/urls";
+import { handleMetabotSlashCommand } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/slash-commands";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { InsightsLink } from "./components/InsightsLink";
 import { InsightsMenuItem } from "./components/InsightsMenuItem";
-import { getMcpAnalyticsRoutes } from "./mcp-analytics/routes";
-import { getMetabotAnalyticsNavItems } from "./metabot-analytics/nav";
-import {
-  getAiAnalyticsRoutes,
-  getAiAnalyticsUpsellRoutes,
-} from "./metabot-analytics/routes";
-import { handleMetabotSlashCommand } from "./metabot-analytics/slash-commands";
 import { getUserMenuRotes } from "./routes";
 import { isAuditDb } from "./utils";
 
@@ -48,16 +42,6 @@ export function initializePlugin() {
     PLUGIN_AUDIT.isAuditDb = isAuditDb;
     PLUGIN_AUDIT.InsightsLink = InsightsLink;
     PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
-    PLUGIN_AUDIT.getMcpAnalyticsRoutes = getMcpAnalyticsRoutes;
-    // Nav is registered for audit_app and decides Metabot (ai_controls) vs MCP (audit_app)
-    // children internally; only the routes split on ai_controls.
-    PLUGIN_AUDIT.getMetabotAnalyticsNavItems = getMetabotAnalyticsNavItems;
-    if (hasPremiumFeature("ai_controls")) {
-      PLUGIN_AUDIT.getAiAnalyticsRoutes = getAiAnalyticsRoutes;
-    } else {
-      PLUGIN_AUDIT.getAiAnalyticsRoutes = getAiAnalyticsUpsellRoutes;
-    }
-
     PLUGIN_AUDIT.handleMetabotSlashCommand = handleMetabotSlashCommand;
   }
 }
