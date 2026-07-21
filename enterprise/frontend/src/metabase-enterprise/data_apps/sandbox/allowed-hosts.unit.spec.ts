@@ -38,7 +38,7 @@ describe("isHostAllowed", () => {
     expect(isHostAllowed(u("https://notexample.com/"), allow)).toBe(false);
   });
 
-  it("matches an explicit port exactly; an entry without a port matches any", () => {
+  it("matches an explicit port exactly", () => {
     expect(
       isHostAllowed(u("https://api.example.com:8443/"), [
         "https://api.example.com:8443",
@@ -49,11 +49,21 @@ describe("isHostAllowed", () => {
         "https://api.example.com:8443",
       ]),
     ).toBe(false);
-    // an entry without a port matches any port
+  });
+
+  it("does not treat a portless entry as any port, as CSP does not", () => {
+    // The browser evaluates the same `allowed_hosts` through `connect-src`,
+    // where a host-source without a port means the scheme's default port only.
+    // Allowing any port here would let the sandbox fire a request the browser
+    // then blocks — reported as a CSP violation, sending the author after the
+    // wrong fix.
     expect(
       isHostAllowed(u("https://api.example.com:8443/"), [
         "https://api.example.com",
       ]),
+    ).toBe(false);
+    expect(
+      isHostAllowed(u("https://api.example.com/"), ["https://api.example.com"]),
     ).toBe(true);
   });
 
@@ -120,11 +130,11 @@ describe("makeSandboxFetch", () => {
     )!;
 
     await expect(sandboxFetch(`${origin}/api/user/current`)).rejects.toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
     // A relative URL resolves to the Metabase origin too.
     await expect(sandboxFetch("/api/user/current")).rejects.toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
     expect(realFetch).not.toHaveBeenCalled();
   });
@@ -162,10 +172,10 @@ describe("makeSandboxXhr", () => {
     )!;
     const xhr = new SandboxXhr();
     expect(() => xhr.open("GET", `${mbOrigin}/api/user/current`)).toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
     expect(() => xhr.open("GET", "/api/user/current")).toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
   });
 });

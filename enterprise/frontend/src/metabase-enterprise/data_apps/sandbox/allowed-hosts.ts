@@ -31,7 +31,7 @@ interface AllowedOrigin {
   protocol: string; // "https:" | "http:"
   wildcard: boolean; // entry was "*.host"
   host: string; // "example.com" (without the leading "*." when wildcard)
-  port: string; // "" means "any port" (the entry omitted one)
+  port: string; // "" is the scheme's default port, as in CSP — not "any port"
 }
 
 /**
@@ -63,7 +63,9 @@ function parseAllowedOrigin(entry: string): AllowedOrigin | null {
   if (!isRawHttpOrigin(url)) {
     return null;
   }
+
   const wildcard = url.hostname.startsWith("*.");
+
   return {
     protocol: url.protocol,
     wildcard,
@@ -76,11 +78,13 @@ function originMatches(url: URL, origin: AllowedOrigin): boolean {
   if (url.protocol !== origin.protocol) {
     return false;
   }
-  // An entry without a port matches any port; with one, it must match exactly.
-  if (origin.port && url.port !== origin.port) {
+
+  if (url.port !== origin.port) {
     return false;
   }
+
   const host = url.hostname.toLowerCase();
+
   // `*.example.com` matches any subdomain but not the apex (same as CSP).
   return origin.wildcard
     ? host.endsWith(`.${origin.host}`)
@@ -90,6 +94,7 @@ function originMatches(url: URL, origin: AllowedOrigin): boolean {
 export function isHostAllowed(url: URL, allowedHosts: string[]): boolean {
   return allowedHosts.some((entry) => {
     const origin = parseAllowedOrigin(entry);
+
     return origin ? originMatches(url, origin) : false;
   });
 }
@@ -99,15 +104,18 @@ function toUrl(input: unknown, base: string): URL | null {
     if (typeof input === "string") {
       return new URL(input, base);
     }
+
     if (input instanceof URL) {
       return new URL(input.href, base);
     }
+
     if (typeof Request !== "undefined" && input instanceof Request) {
       return new URL(input.url, base);
     }
   } catch {
     // unparseable → treated as not-allowed by the callers below
   }
+
   return null;
 }
 
@@ -130,13 +138,15 @@ function blockedReason(
   if (!url) {
     return "an unparseable URL";
   }
+
   if (url.origin === metabaseOrigin) {
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- developer-facing sandbox diagnostic, not localized UI
-    return `${url.origin} (the Metabase origin is reachable only via the SDK)`;
+    return `${url.origin} (the instance origin is reachable only via the SDK)`;
   }
+
   if (!isHostAllowed(url, allowedHosts)) {
     return `${url.host} (not in allowed_hosts)`;
   }
+
   return null;
 }
 
@@ -153,16 +163,20 @@ export function makeSandboxFetch(
   if (allowedHosts.length === 0) {
     return null;
   }
+
   const realFetch = targetWindow.fetch.bind(targetWindow);
   const base = targetWindow.location.href;
   const metabaseOrigin = targetWindow.location.origin;
+
   return function dataAppFetch(input: RequestInfo | URL, init?: RequestInit) {
     const reason = blockedReason(input, base, allowedHosts, metabaseOrigin);
+
     if (reason) {
       return Promise.reject(
         new Error(`[data-app ${label}] blocked fetch to ${reason}`),
       );
     }
+
     return realFetch(input, init);
   };
 }
@@ -180,6 +194,7 @@ export function makeSandboxXhr(
   if (allowedHosts.length === 0) {
     return null;
   }
+
   const NativeXhr = targetWindow.XMLHttpRequest;
   const base = targetWindow.location.href;
   const metabaseOrigin = targetWindow.location.origin;
@@ -192,6 +207,7 @@ export function makeSandboxXhr(
       password?: string | null,
     ): void {
       const reason = blockedReason(url, base, allowedHosts, metabaseOrigin);
+
       if (reason) {
         throw new Error(
           `[data-app ${label}] blocked XMLHttpRequest to ${reason}`,
@@ -200,6 +216,7 @@ export function makeSandboxXhr(
       super.open(method, url, async, username, password);
     }
   };
+
   // The subclass inherits the static UNSENT/OPENED/… constants at runtime;
   // cast so the type matches the native constructor the membrane expects.
   return SandboxXhr as typeof XMLHttpRequest;
