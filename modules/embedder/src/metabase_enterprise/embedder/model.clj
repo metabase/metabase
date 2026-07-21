@@ -1,9 +1,7 @@
 (ns metabase-enterprise.embedder.model
   "DJL + ONNX Runtime plumbing for the in-process embedder.
-  Holds a registry of loaded models keyed by model name, so different consumers (semantic search, the
-  library entity index, the complexity-score synonym axis) can run different models in one JVM.
-  Each loaded model stays resident; the substantial DJL/ONNX Runtime native initialization cost is per-JVM,
-  not per-model — an additional model costs its weights.
+  Holds a registry of loaded models keyed by model name, so different consumers can run different models in
+  one JVM. Each loaded model stays resident.
   See [[metabase-enterprise.embedder.core]] for the public API and packaging story."
   (:require
    [clojure.edn :as edn]
@@ -57,13 +55,11 @@
   (io/resource resource-path))
 
 (def ^:private model-name-aliases
-  "Pinned HF repo paths → the bare names bundles (and the zoo default) are keyed by.
+  "Pinned HF repo paths (what consumer settings carry) → the bare names bundles are keyed by.
   The bare name is the canonical one: the model registry, the `MB_EMBEDDER_MODEL_SOURCES` lookup and the
   bundle path all key off it, so both spellings name one resident model and one override entry.
-  Consumer settings often carry the full repo paths (semantic search defaults to Arctic, while the
-  complexity-score synonym axis defaults to MiniLM). Only pinned aliases collapse: HF repo names are
-  namespace-scoped, so another org's identically named model needs its own `MB_EMBEDDER_MODEL_SOURCES`
-  entry."
+  Only pinned aliases collapse: HF repo names are namespace-scoped, so another org's identically named
+  model needs its own `MB_EMBEDDER_MODEL_SOURCES` entry."
   {"sentence-transformers/all-MiniLM-L6-v2" minilm-model-bundle-name
    default-model-name                       default-model-bundle-name})
 
@@ -86,17 +82,13 @@
   alias covers consumers configured with the other; keying both spellings is a config error rather than a
   silent last-one-wins."
   []
-  ;; TODO support an optional `:sha256` on `:url` entries. Bundled models are pinned to a HuggingFace
-  ;; revision and hash-verified at build time, but a remote override — the path operators actually use to
-  ;; run their own model — has no integrity check at all, so the flexible route is the unverified one.
-  ;; DJL currently owns the fetch (`.optModelUrls`), so we never hold the bytes; supporting a hash means
-  ;; downloading the archive ourselves, verifying, and handing DJL a local `file:` URL instead. That is
-  ;; what `build.embedder-model/fetch-file!` already does at build time, but it lives in the build tree
-  ;; rather than on the runtime classpath, so it would be a reimplementation (~40 lines) rather than a
-  ;; reuse. It would also give remote sources a verified cache across restarts, which they lack today.
-  ;; Keep it optional so existing `:url` entries keep working; log a warning when a remote source
-  ;; declares no hash. `:path` entries need none — a local directory is the operator's own filesystem,
-  ;; not a transport.
+  ;; TODO (Chris 2026-07-21) -- support an optional `:sha256` on `:url` entries. Bundled models are
+  ;; hash-verified at build time, but a remote override — the route operators actually use to run their own
+  ;; model — has no integrity check at all. DJL owns the fetch (`.optModelUrls`), so we never hold the
+  ;; bytes; a hash means downloading the archive ourselves, verifying, and handing DJL a local `file:` URL,
+  ;; which would also give remote sources a verified cache across restarts. Keep it optional so existing
+  ;; `:url` entries keep working, and warn when a remote source declares no hash. `:path` entries need
+  ;; none — a local directory is the operator's own filesystem, not a transport.
   (when-let [raw (not-empty (getenv "MB_EMBEDDER_MODEL_SOURCES"))]
     (let [parsed (try
                    (edn/read-string raw)
@@ -121,8 +113,8 @@
   A local directory (`:path`) or any DJL-supported model URL (`:url`: `file:`, `https:`, `s3:`, `djl://`
   zoo, `jar:///` classpath). `model-options` supplies the pinned model's translator defaults, which the
   entry may replace.
-  A present entry with neither key throws rather than falling through, which would either claim no entry
-  exists or silently load a different model than the entry meant to select."
+  An entry with neither key throws rather than falling through to the bundle, which would silently load a
+  different model than the entry meant to select."
   [model-name requested-name model-options]
   ;; `find`, not `get`: a present-but-nil entry must be treated as malformed, not as absent.
   (when-let [[_ override] (find (model-source-overrides) model-name)]
@@ -142,14 +134,11 @@
   "Where to load `model-name` from, in priority order: an `MB_EMBEDDER_MODEL_SOURCES` entry, then a per-arch
   INT8 bundle packed into this jar at build time (the production default), then — for MiniLM alone, and only
   under `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` — the DJL model zoo, so production can never silently reach
-  the network. Arctic is intentionally build-pinned rather than downloaded at runtime.
-  A pinned HF repo alias (see [[model-name-aliases]]) resolves to its bare bundled name; other qualified
-  names never collapse.
-  The returned map carries the translator options the model needs — Arctic uses CLS pooling and two graph
-  inputs, MiniLM mean pooling and three — which an override entry may replace."
+  the network.
+  The returned map carries the translator options the model needs, which an override entry may replace."
   [requested-name]
-  ;; Normalize before anything else: the override lookup, the bundle path and the zoo-download gate must all
-  ;; agree on one canonical name, or an alias would pick up some of them and miss the others.
+  ;; Normalize first: the override lookup, the bundle path and the zoo-download gate must all agree on one
+  ;; canonical name, or an alias would pick up some of them and miss the others.
   (let [model-name    (normalize-model-name requested-name)
         resource-path (str "metabase-embedder/" model-name "-" (bundled-model-arch) ".zip")
         model-options (merge {:include-token-types? true}
@@ -178,10 +167,10 @@
   "Reduce a model-source URL to a form safe to log, or `\"<redacted>\"` when no part of it can be kept.
   `include-path?` retains the path component; pass true only for URLs [[model-source]] builds itself."
   [url include-path?]
-  ;; Userinfo, query and fragment always go: that's where an `s3://key:secret@…` or a presigned
-  ;; `?token=…` lives. The path is the one component whose safety depends on who wrote the URL — in our
-  ;; own `jar:///…` and `djl://…` it is the model's identity and holds no secret, while an operator's
-  ;; override URL can just as easily carry its token in a path segment.
+  ;; Userinfo, query and fragment always go: that's where an `s3://key:secret@…` or a presigned `?token=…`
+  ;; lives. The path is the one component whose safety depends on who wrote the URL — in our own
+  ;; `jar:///…` and `djl://…` it is the model's identity, while an operator's override URL can just as
+  ;; easily carry its token in a path segment.
   (try
     (let [^URI uri (URI. ^String url)
           scheme   (.getScheme uri)
@@ -201,9 +190,8 @@
   "Loggable summary of a [[model-source]] map: says which model loaded and whether an override took
   effect, without logging anything that can carry a credential."
   [{:keys [type url path origin]}]
-  ;; A local path is kept but a URL's path is not, because they differ in kind rather than in who
-  ;; configured them: a path names a directory on the operator's own host — a location, not a transport
-  ;; credential — while a URL is a transport, so any of its components can hold a secret.
+  ;; A `:path` is kept in full even for an override: it names a directory on the operator's own host, not a
+  ;; transport that could carry a credential.
   ;; Anything but a recognized :built-in reads as an override, so a new source type redacts by default.
   (let [origin (if (= origin :built-in) :built-in :override)]
     (cond-> {:type type, :origin origin}
@@ -249,12 +237,10 @@
 
 (defn reset-models!
   "Close and discard all loaded models so the next embed reloads them.
-  REPL and test affordance — NOT safe to call while embeddings are in flight. `locking` here serializes
-  access to the registry, but [[embed-texts]] reads its model out of the registry and runs `.batchPredict`
-  outside any lock, so closing a `ZooModel` under a running predictor frees the ONNX Runtime session
-  beneath it: a native use-after-free that takes down the JVM rather than raising. Making this safe for
-  concurrent use would need reference counting (or a quiesce barrier) around every predictor, which a
-  dev-only reset doesn't justify — so call it only when you know nothing is embedding."
+  REPL and test affordance — NOT safe to call while embeddings are in flight. [[embed-texts]] reads its
+  model out of the registry and runs `.batchPredict` outside any lock, so closing a `ZooModel` under a
+  running predictor frees the ONNX Runtime session beneath it: a native use-after-free that takes down the
+  JVM rather than raising."
   []
   (locking models*
     ;; instance? check: tests stash stub sentinels in the registry, which have nothing to close.
@@ -267,9 +253,9 @@
   "Embed `texts` (a seq of strings) with `model-name` → vector of float-array embeddings, in input order.
   The first call for a given model loads it and keeps it resident."
   [model-name texts]
-  ;; TODO `texts` is embedded in one `.batchPredict`, which pads the batch to its longest sequence, so the
-  ;; tensor is sized by the caller's batch. Callers bound it today (see the TODO on the `in-process`
-  ;; `get-embeddings-batch` method); a cap here would not depend on their doing so.
+  ;; TODO (Chris 2026-07-21) -- `texts` is embedded in one `.batchPredict`, which pads the batch to its
+  ;; longest sequence, so the tensor is sized by the caller's batch. Callers bound it today (see the TODO
+  ;; on the `in-process` `get-embeddings-batch` method); a cap here would not depend on their doing so.
   ;; Predictor is not thread-safe in DJL; creating one per call is cheap relative to the forward pass.
   (with-open [predictor ^Predictor (.newPredictor (model model-name))]
     (vec (.batchPredict predictor (ArrayList. ^java.util.Collection texts)))))

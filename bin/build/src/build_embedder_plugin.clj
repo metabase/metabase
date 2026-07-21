@@ -3,8 +3,8 @@
   DJL/ONNX Runtime dependency stack — minus every lib the core Metabase uberjar already provides.
 
   The jar deliberately has no metabase-plugin.yaml manifest: manifest-less jars in the plugins directory
-  are classpath-added at boot without loading anything, which is what keeps the DJL/ONNX native init
-  deferred until the in-process embedding provider is actually used.
+  are classpath-added at boot without loading anything, which keeps the DJL/ONNX native init deferred
+  until the in-process embedding provider is used.
 
   Usage:
 

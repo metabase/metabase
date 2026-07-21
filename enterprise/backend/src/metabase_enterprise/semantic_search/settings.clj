@@ -14,14 +14,13 @@
   "The set of valid embedding provider names."
   ;; Values supplied via the env var bypass the :setter validation below; the use-time checks in
   ;; `metabase-enterprise.semantic-search.embedding` are the real guard. For the same reason the setter
-  ;; deliberately does not probe that the in-process plugin jar is loadable: env-var configs would skip
-  ;; the probe anyway, and the resolve error at first use already carries the install guidance.
+  ;; does not probe that the in-process plugin jar is loadable — the resolve error at first use already
+  ;; carries the install guidance.
   #{"ai-service" "openai" "ollama" "in-process"})
 
 (defn validate-embedding-provider!
-  "Throw on an unknown embedding provider name; nil passes (nil-able override settings inherit).
-  Setter validation for the provider settings here and in consumer modules (e.g. the library entity
-  index's override)."
+  "Throw on an unknown embedding provider name; nil passes, since override settings inherit when unset.
+  Consumer modules reach this through `embedding/validate-provider!`."
   [provider]
   (when (and provider (not (contains? valid-embedding-providers provider)))
     (throw (ex-info (str "Invalid embedding provider: " (pr-str provider)

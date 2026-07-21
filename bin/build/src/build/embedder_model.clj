@@ -7,9 +7,7 @@
   another model.
 
   Downloads are cached (and re-verified) under `modules/embedder/target/model-download/`, so repeated
-  builds are offline once the cache is warm.
-  `SKIP_EMBEDDER_MODEL=true` skips the fetch, but still clears the generated bundles first, so a skipped
-  build packages no model rather than whatever a previous build left behind."
+  builds are offline once the cache is warm."
   (:require
    [clojure.java.io :as io]
    [environ.core :as env]
@@ -29,8 +27,7 @@
   `:arch->onnx-file` maps a bundle arch label (matched by
   `metabase-enterprise.embedder.model/bundled-model-arch`) to that ISA's INT8 export. Two buckets today:
   qint8 for arm64 hosts, quint8 for every x86 host — including AVX512, whose qint8 exports are
-  byte-identical to the arm64 file, so revisit the bucketing only if avx512-specific INT8 wins a
-  benchmark."
+  byte-identical to the arm64 file."
   {"all-MiniLM-L6-v2"
    {:hf-repo         "sentence-transformers/all-MiniLM-L6-v2"
     :revision        "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
@@ -117,8 +114,7 @@
 (defn- clear-bundle-dir!
   "Empty the bundle dir before rebuilding it. Everything under it is generated (it's gitignored in full),
   and the plugin build copies the whole resources tree into the jar — so a bundle for a model or arch
-  `bundled-models` no longer names would otherwise linger across builds and ship inside the jar.
-  Free to do: every bundle is rewritten below anyway, from the separately-cached downloads."
+  `bundled-models` no longer names would otherwise linger across builds and ship inside the jar."
   []
   (let [root (.toPath (io/file bundle-dir))]
     ;; Do not follow links: the generated tree is disposable, but a link target may not be.

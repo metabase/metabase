@@ -12,8 +12,8 @@ both consumer defaults:
 
 This module is **not** part of the core uberjar. It ships as a separate plugin jar that the plugin
 loader adds to the classpath at boot; nothing is loaded (and none of the DJL/ONNX Runtime native
-initialization cost is paid) until the first embedding is requested. The init cost is per-JVM; each loaded
-model then adds its own weights.
+initialization cost is paid) until the first embedding is requested. That cost is per-JVM; each loaded
+model then adds only its own weights.
 
 ## Using it
 
@@ -88,10 +88,9 @@ The build fetches the pinned model files from HuggingFace (sha256-verified, cach
 `resources/metabase-embedder/`, and packs an uberjar containing the module source, the bundles, and
 only the deps the core uberjar doesn't already provide. `SKIP_EMBEDDER_MODEL=true` skips the fetch and
 builds a model-less jar — it clears `resources/metabase-embedder/` first, so a skipped build never packs
-bundles left behind by an earlier one. Bundling another
-model is one entry in `bin/build/src/build/embedder_model.clj`'s `bundled-models`. There is
-deliberately no `metabase-plugin.yaml`: manifest-less jars are classpath-added at boot without
-loading anything.
+bundles left behind by an earlier one. Bundling another model is one entry in
+`bin/build/src/build/embedder_model.clj`'s `bundled-models`. There is deliberately no
+`metabase-plugin.yaml`: manifest-less jars are classpath-added at boot without loading anything.
 
 ## Release
 
@@ -101,9 +100,9 @@ integration tests against the bundles it produced. What's missing is *publishing
 that ships the jar (S3 / GitHub release) for Cloud images and self-hosted download. The fetch step needs
 network access to huggingface.co or a warm `target/model-download/` cache.
 
-Follow-up hooks:
+Known gaps:
 
-- Excluding unused ONNX Runtime native platforms to reduce the plugin's dependency footprint via
-  `:exclude` patterns on `ai/onnxruntime/native/<platform>/**`.
+- The plugin's dependency footprint could shrink by excluding unused ONNX Runtime native platforms,
+  via `:exclude` patterns on `ai/onnxruntime/native/<platform>/**`.
 - `ai.djl.huggingface/tokenizers` ships no osx-x64 native, so the embedder can't run on Intel Macs;
   integration tests self-skip there.

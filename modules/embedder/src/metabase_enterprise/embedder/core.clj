@@ -1,17 +1,14 @@
 (ns metabase-enterprise.embedder.core
   "In-process text embedder running inside the Metabase JVM via DJL + ONNX Runtime.
-  Serves multiple models keyed by name, so consumers with their own embedding settings (semantic search,
-  the library entity index, the complexity-score synonym axis) can each pick a model. The plugin bundles
-  Snowflake/snowflake-arctic-embed-l-v2.0 (1024-dim, CLS-pooled) for semantic search and library retrieval,
-  plus sentence-transformers/all-MiniLM-L6-v2 (384-dim, mean-pooled) for the complexity-score synonym axis;
-  both outputs are L2-normalized.
+  Serves multiple models keyed by name, so consumers with their own embedding settings can each pick one.
+  Outputs are L2-normalized.
 
   This module is deliberately not part of the core uberjar: it ships as a separate plugin jar
   (metabase-embedder-plugin.jar) that the plugin loader adds to the classpath at boot, and
   `metabase-enterprise.semantic-search.embedding` resolves it dynamically when the `in-process` provider
-  is selected.
-  Nothing here is loaded — and none of the DJL/ONNX Runtime native initialization cost is paid — until
-  the first embedding is requested."
+  is selected. Nothing here is loaded — and none of the DJL/ONNX Runtime native initialization cost is
+  paid — until the first embedding is requested.
+  See `modules/embedder/README.md` for the bundled models and configuration."
   (:require
    [metabase-enterprise.embedder.model :as embedder.model]
    [metabase.util.log :as log]))
@@ -19,8 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (def default-model-descriptor
-  "Identity of the bundled default model — callers wiring this embedder into provider/model metadata
-  should read it from here rather than restating it.
+  "Identity of the bundled default model; wire provider/model metadata from here rather than restating it.
   `:model-dimensions` is maintained by hand; the integration test checks it against the loaded model's
   actual output width."
   {:provider         "in-process"
@@ -29,8 +25,8 @@
 
 (defn embed-texts
   "Embed `texts` (a seq of strings) with `model-name` → vector of float-array embeddings, in input order.
-  The first call for a given model loads it (paying the one-time DJL/ONNX Runtime native init on the very
-  first load) and keeps it resident."
+  The first call for a given model loads it and keeps it resident; the very first load also pays the
+  one-time DJL/ONNX Runtime native init."
   [model-name texts]
   (embedder.model/embed-texts model-name texts))
 

@@ -46,12 +46,8 @@
   "The embedding model for the library entity index: the global embedding settings, with any
   ee-library-embedding-* overrides applied so this index can run a different provider/model than
   semantic search.
-  Model and dimensions must be overridden together, and overriding the provider requires them too —
-  pairing an override with the global value for its counterpart would mismatch the model and its vector
-  width (or ask a provider for a model it doesn't serve), poisoning the index and failing every reconcile.
-  Overriding only model+dimensions is legal: the inherited provider may serve several models.
-  Throws with `:config-error true`; [[index-ready?]] and the targeted reconcile treat that as a
-  misconfiguration to surface, not a transient failure to swallow or retry."
+  Throws with `:config-error true` on an override combination that would poison the index — see
+  `metabase-enterprise.entity-retrieval.settings`. Callers distinguish that from a transient failure."
   []
   (let [provider   (retrieval.settings/ee-library-embedding-provider)
         model      (retrieval.settings/ee-library-embedding-model)
@@ -94,9 +90,8 @@
        ;; [[configured-model]], not the global one: this index may run a different provider than semantic
        ;; search, and gating on the global model would both hide a broken override behind a healthy global
        ;; provider and refuse to run a working override behind a broken one.
-       ;; A `:config-error` reads as unavailable rather than propagating — this is a gate, and every caller
-       ;; that goes on to *use* the model ([[index-ready?]], both reconciles) resolves it again and logs
-       ;; there, so the misconfiguration is still reported without this per-offer path logging it.
+       ;; A `:config-error` reads as unavailable rather than propagating: this is a gate, and every caller
+       ;; that goes on to *use* the model logs the misconfiguration itself.
        (boolean (try
                   (embedding/embedding-supported? (configured-model))
                   (catch Throwable _ false)))))
@@ -208,12 +203,10 @@
         diff      (reconcile/reconcile! ds configured-model)
         ran-ms    (elapsed-ms started)]
     ;; Deliberately does NOT consume `dirty-entities`, even though a full reconcile covers every entity.
-    ;; Clearing the entries it covered would cost at most one redundant targeted run, but two ways of
-    ;; losing a write pay for it: `dirty-entities` is a set, so an entity re-dirtied *during* the reconcile
+    ;; Two ways of losing a write: `dirty-entities` is a set, so an entity re-dirtied *during* the reconcile
     ;; is indistinguishable from its pre-run marker and would be cleared along with it; and
     ;; `reconcile/reconcile!` catches per-batch embedding failures and returns normally, so a "successful"
-    ;; run can have left some entities un-updated. Doing it safely needs per-entity generations plus a
-    ;; failed-entity report out of `reconcile!` — more machinery than the redundant run it saves.
+    ;; run can have left some entities un-updated. All it costs is one redundant targeted run.
     (record-run! "full" diff ran-ms)
     {:index     (select-keys diff [:inserted :deleted :unchanged])
      :execution {:waited_ms waited-ms :ran_ms ran-ms}}))
@@ -225,11 +218,10 @@
   loop) means a write arriving mid-run re-dirties and is picked up by the next run. A per-entity reconcile
   failure re-dirties that entity, so a later run (or the periodic backstop) retries it instead of losing
   the write to the slow backstop.
-  Settings misconfigurations (`:config-error`) re-queue like any other failure. They do fail every retry
-  identically, but the periodic backstop can't be the safety net for them: it resolves the same settings and
-  fails the same way, so dropping the entry would lose the write for the whole misconfigured window and
-  leave the index serving pre-edit rows as current. Re-queuing costs one set entry per edited entity and
-  drains as soon as the settings are fixed."
+  Settings misconfigurations (`:config-error`) re-queue like any other failure, even though every retry
+  fails identically: the periodic backstop resolves the same settings and fails the same way, so dropping
+  the entry would lose the write for the whole misconfigured window and leave the index serving pre-edit
+  rows as current. The queue drains as soon as the settings are fixed."
   [_scheduled]
   (let [ds    (semantic.db.datasource/ensure-initialized-data-source!)
         dirty (locking run-lock (let [d @dirty-entities] (reset! dirty-entities #{}) d))]
@@ -323,10 +315,8 @@
   [model user-search-prompt]
   ;; Compares `:model-name` only, deliberately — not `:provider`. A prefix is a property of the model:
   ;; `embedding/default-query-prefix` picks one by regex over the model name and never consults the
-  ;; provider, so gating inheritance on the provider would be inconsistent with how prefixes are chosen.
-  ;; Overriding the provider requires naming a model too (see [[configured-model]]), so an override that
-  ;; repeats the global model name is the operator saying it is that same model served elsewhere — for
-  ;; which their configured prefix still applies. Adding `:provider` here would silently drop it instead.
+  ;; provider. An override that repeats the global model name is the operator saying it is that same model
+  ;; served elsewhere, for which their configured prefix still applies.
   (embedding/get-embedding model
                            (embedding/prefix-search-query
                             model user-search-prompt
@@ -341,8 +331,8 @@
   dedupes the (many-per-entity) docs down to distinct entities.
   Returns [] when the pgvector store is unconfigured.
   A [[configured-model]] misconfiguration propagates rather than degrading to []: the tool is only offered
-  behind [[entity-retrieval-available?]], which reads that state as not-ready, so reaching here with bad
-  settings means they changed mid-request — an empty library would misreport that as \"nothing matches\"."
+  behind [[entity-retrieval-available?]], so reaching here with bad settings means they changed
+  mid-request, and [] would misreport that as \"nothing matches\"."
   :feature :library-retrieval
   [user-search-prompt limit]
   (if-not (available?)

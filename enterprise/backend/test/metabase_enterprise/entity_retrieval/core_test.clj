@@ -253,9 +253,8 @@
 
 (deftest available?-honors-library-embedding-overrides-test
   (testing "available? gates on the library index's own model, not the global one"
-    ;; The whole point of the ee-library-embedding-* overrides is that this index can run a different
-    ;; provider than semantic search. Gating on the global model made a working override read as
-    ;; unavailable, and let a healthy global provider mask a broken override.
+    ;; Gating on the global model would make a working override read as unavailable, and let a healthy
+    ;; global provider mask a broken one.
     (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
       (mt/with-premium-features #{:library :library-retrieval}
         (testing "a supported override rescues an unsupported global provider"

@@ -151,24 +151,21 @@
    :model-dimensions 384})
 
 (defn- embedder-override
-  "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta}` to splice over the
-  default synonym embedder.
-  `nil` when the flag wasn't passed.
-
-  `in-process` goes through [[embedders/provider-embedder]] and thus the registered `in-process` provider
-  — exactly the production code path, including the guidance error when the embedder plugin jar is absent.
-  The descriptor passed to the provider also carries `:vector-dimensions` so the provider's dimension
-  guard protects CLI runs; the recorded `:embedding-model-meta` keeps the facade's `:model-dimensions`
-  shape.
+  "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta :text-variant}` to splice over the
+  default synonym embedder, nil when the flag wasn't passed.
+  `in-process` goes through [[embedders/provider-embedder]] and thus the registered provider — exactly the
+  production code path, including the guidance error when the embedder plugin jar is absent. The
+  descriptor also carries `:vector-dimensions` so the provider's dimension guard protects CLI runs, while
+  the recorded `:embedding-model-meta` keeps the facade's `:model-dimensions` shape.
   `:text-variant` rides along so the persisted row's metadata matches the override fingerprint fragment
-  even when the configured synonym source (e.g. the search-index embedder) would carry a different one."
+  even when the configured synonym source would carry a different one."
   [embedder-name]
   (case embedder-name
     "in-process" (do
                    ;; The standalone `--mode complexity-score` JAR path bypasses metabase.core.core/init!,
                    ;; the usual (and only) caller of load-plugins!, so without this the embedder plugin jar
-                   ;; in the plugins directory would never reach the classpath. Memoized, so a no-op in
-                   ;; server/REPL contexts where plugins already loaded.
+                   ;; in the plugins directory would never reach the classpath. Memoized, so a no-op where
+                   ;; plugins already loaded.
                    (plugins/load-plugins!)
                    {:embedder             (embedders/provider-embedder
                                            (assoc in-process-minilm-descriptor

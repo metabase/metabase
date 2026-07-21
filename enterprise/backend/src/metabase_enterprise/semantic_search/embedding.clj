@@ -139,7 +139,7 @@
   "Throw on an unknown embedding provider name; nil passes.
   Setter validation for consumer modules' provider settings."
   [provider]
-  ;; Delegates rather than living in `settings`: this ns is the module's :api face, settings is internal.
+  ;; Re-exported here because this ns is the module's :api face; `settings` is internal to it.
   (semantic-settings/validate-embedding-provider! provider))
 
 (defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
@@ -388,10 +388,10 @@
     (classloader/require 'metabase-enterprise.embedder.core)
     (catch Exception e
       ;; classloader/require wraps the FileNotFoundException in an ExceptionInfo, so check the cause chain —
-      ;; but only a miss for the embedder namespace itself means the plugin is absent. A FileNotFoundException
-      ;; for anything else means the plugin loaded but one of its own requires doesn't resolve against this
-      ;; core (a plugin/server version mismatch), which install guidance would mask. Match the exact resource
-      ;; names RT/load emits so `core`-prefixed sibling namespaces can't false-positive.
+      ;; but only a miss for the embedder namespace itself means the plugin is absent. A miss for anything
+      ;; else means the plugin loaded and one of its own requires doesn't resolve against this core (a
+      ;; version mismatch), which install guidance would mask. Match the exact resource names RT/load emits
+      ;; so `core`-prefixed sibling namespaces can't false-positive.
       (if (some #(and (instance? java.io.FileNotFoundException %)
                       (let [msg (str (ex-message %))]
                         (or (str/includes? msg "metabase_enterprise/embedder/core__init.class")
@@ -432,13 +432,13 @@
                          :configured-dimensions vector-dimensions})))))
   embeddings)
 
-;; TODO bound the batch here instead of relying on callers to do it. Every caller today does: the
-;; semantic-search indexer partitions at `index/*batch-size*` (150) before reaching this, entity-retrieval's
-;; reconcile at 512, the complexity-score synonym axis at 256 — so no unbounded list reaches DJL in
-;; practice. But the bound lives entirely in callers: `process-embeddings-streaming` token-budgets only for
-;; openai and otherwise forwards whatever list it was given, so a consumer coming through the
-;; `embeddings.client` facade sets its own. Unlike the HTTP providers, an oversized batch here costs local
-;; memory rather than one large request, since `.batchPredict` pads the batch to its longest sequence.
+;; TODO (Chris 2026-07-21) -- bound the batch here instead of relying on callers to do it. Every caller
+;; today does — the semantic-search indexer partitions at `index/*batch-size*` (150), entity-retrieval's
+;; reconcile at 512, the complexity-score synonym axis at 256 — but the bound lives entirely in them:
+;; `process-embeddings-streaming` token-budgets only for openai and otherwise forwards whatever list it was
+;; given, so a consumer coming through the `embeddings.client` facade sets its own. Unlike the HTTP
+;; providers, an oversized batch here costs local memory rather than one large request, since
+;; `.batchPredict` pads the batch to its longest sequence.
 (defmethod get-embeddings-batch "in-process"
   [{:keys [model-name] :as embedding-model} texts & {:keys [record-tokens? type]}]
   (when (str/blank? model-name)
@@ -462,9 +462,8 @@
 
 (defmethod pull-model "in-process"
   [{:keys [model-name]}]
-  ;; The model ships inside the plugin jar, so there is nothing to download. Instead this acts as an
-  ;; explicit warm-up hook: the first embed pays the one-time DJL/ONNX Runtime native initialization cost,
-  ;; and calling this lets operators choose when that happens rather than paying it on the first index run.
+  ;; The model ships inside the plugin jar, so there is nothing to download. Instead this is a warm-up
+  ;; hook, letting operators choose when to pay the one-time native init rather than on the first index run.
   ((resolve-in-process-fn 'warm-up!) model-name))
 
 ;;;; Query prefixes for asymmetric retrieval models
@@ -492,9 +491,8 @@
 
   `:inherit-configured-prefix?` (default true) — pass false when `embedding-model` is *not* the globally
   configured one. The setting is written for the global model, so applying it verbatim to a consumer
-  running a different model (the library entity index's ee-library-embedding-* overrides) would prepend a
-  prefix that model was never trained on, silently degrading retrieval. The model-family default still
-  applies, since it is derived from the model actually in use."
+  running a different one would prepend a prefix that model was never trained on, silently degrading
+  retrieval. The model-family default still applies, being derived from the model actually in use."
   [embedding-model search-string & {:keys [inherit-configured-prefix?]
                                     :or   {inherit-configured-prefix? true}}]
   (str (or (when inherit-configured-prefix?
@@ -535,9 +533,7 @@
 
 ;; Same rule: selecting the provider *is* the configuration, so there is no further setting to check. A
 ;; missing plugin jar is the in-process analogue of an unreachable ai-service URL — not-installed rather
-;; than not-configured — and `resolve-in-process-fn` reports it at first use with install guidance. Without
-;; this method the `:default false` above would make a fully-configured in-process embedder read as
-;; unconfigured, silently disabling semantic search and the library entity index.
+;; than not-configured — and `resolve-in-process-fn` reports it at first use with install guidance.
 (defmethod embedding-supported? "in-process" [_] true)
 
 (defn- calc-token-metrics
