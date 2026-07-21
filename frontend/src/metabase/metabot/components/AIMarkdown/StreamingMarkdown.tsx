@@ -2,6 +2,7 @@ import { useMemo, useRef } from "react";
 import remend from "remend";
 
 import type { MarkdownProps } from "metabase/common/components/Markdown";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 import { MarkdownBlock } from "./MarkdownBlock";
 import { createRehypeStreamWords } from "./rehypeStreamWords";
@@ -32,7 +33,8 @@ export const StreamingMarkdown = ({
   blockClassName,
   components,
 }: StreamingMarkdownProps) => {
-  const coalesced = useCoalescedSource(source, isStreaming);
+  const animate = isStreaming && !isReducedMotionPreferred();
+  const coalesced = useCoalescedSource(source, animate);
   const blocks = useMemo(() => splitMarkdownBlocks(coalesced), [coalesced]);
 
   // reuse each block's plugin so its animation boundary stays consistent across renders
@@ -45,7 +47,7 @@ export const StreamingMarkdown = ({
     if (cached) {
       return cached;
     }
-    if (!isStreaming || !isLast) {
+    if (!animate || !isLast) {
       return undefined;
     }
     const created = [createRehypeStreamWords({ animateFromChar: null })];

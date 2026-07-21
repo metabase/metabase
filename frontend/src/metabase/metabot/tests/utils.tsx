@@ -53,6 +53,21 @@ import { getMetabotInitialState } from "../state/reducer-utils";
 
 export { createMockReadableStream, createMockSSEStream, createPauses };
 
+const mockReducedMotion = () => {
+  window.matchMedia = (query: string) =>
+    // jsdom has no matchMedia; this stub only needs the fields our code reads.
+    ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+};
+
 export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", params);
 
@@ -131,7 +146,10 @@ export const assertConversation = async (
         screen.queryByTestId("metabot-chat-message"),
       ).not.toBeInTheDocument();
     });
-  } else {
+    return;
+  }
+
+  await waitFor(async () => {
     const realMessages = await chatMessages();
     expect(realMessages.length).toBe(expectedMessages.length);
     expectedMessages.forEach(([expectedRole, expectedMessage], index) => {
@@ -139,7 +157,7 @@ export const assertConversation = async (
       expect(realMessage).toHaveAttribute("data-message-role", expectedRole);
       expect(realMessage).toHaveTextContent(expectedMessage);
     });
-  }
+  });
 };
 
 export const lastReqBody = async (
@@ -225,6 +243,8 @@ export function setup(
     initialRoute?: string;
   } | void,
 ) {
+  mockReducedMotion(); // induce reduced motion to avoid waiting for streaming to finish
+
   const settings = mockSettings({
     "llm-metabot-configured?": options?.isConfigured ?? true,
   });

@@ -1,5 +1,7 @@
 import { P, isMatching, match } from "ts-pattern";
 
+import { isReducedMotionPreferred } from "metabase/utils/dom";
+
 import {
   type KnownDataPart,
   dataEventSchema,
@@ -82,8 +84,11 @@ export async function processChatResponse(
     data: [],
   };
 
+  const events = parseSSEStream(stream);
+  const paced = isReducedMotionPreferred() ? events : smoothTextEvents(events);
+
   try {
-    for await (const event of smoothTextEvents(parseSSEStream(stream))) {
+    for await (const event of paced) {
       match(event)
         .with({ type: "start" }, (e) => config.onStart?.(e))
         .with({ type: "text-delta" }, (e) => config.onTextPart?.(e.delta))
