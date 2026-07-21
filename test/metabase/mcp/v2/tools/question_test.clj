@@ -5,6 +5,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.question :as v2.question]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -269,6 +271,50 @@
         (testing "a non-annotated column is still present with its real base_type, unmodified"
           (is (=? {:base_type :type/BigInteger}
                   (get by-name "ID"))))))))
+
+(deftest update-move-question-into-dashboard-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection dash-coll {}
+                     :model/Dashboard dash {:collection_id (:id dash-coll)}
+                     :model/Card card {:dataset_query (mt/mbql-query orders) :collection_id nil}]
+        (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                         {:method "update" :id (:id card) :dashboard_id (:id dash)})]
+          (is (not (:isError result)) (-> result :content first :text))
+          (is (= (:id dash) (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))
+          (testing "the card's collection follows the dashboard's, matching create"
+            (is (= (:id dash-coll) (t2/select-one-fn :collection_id :model/Card :id (:id card))))))))))
+
+(deftest update-dashboard-id-collection-exclusivity-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard dash {:collection_id nil}
+                   :model/Collection coll {}
+                   :model/Card card {:dataset_query (mt/mbql-query orders)}]
+      (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                       {:method "update" :id (:id card)
+                                        :dashboard_id (:id dash) :collection_id (:id coll)})]
+        (is (:isError result))
+        (is (re-find #"Pass either collection_id or dashboard_id, not both"
+                     (-> result :content first :text)))
+        (testing "the card is untouched"
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card)))))))))
+
+(deftest update-move-into-dashboard-requires-destination-write-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Collection coll-a {}
+                   :model/Collection coll-b {}
+                   :model/Dashboard dash-b {:collection_id (:id coll-b)}
+                   :model/Card card {:dataset_query (mt/mbql-query orders) :collection_id (:id coll-a)}]
+      ;; the default "All Users" group has write access to freshly created root collections in
+      ;; tests; revoke it on the destination only, to prove the collection-move check (and thus
+      ;; the write requirement on the dashboard's collection) still runs for a dashboard move.
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                         {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]
+          (is (:isError result))
+          (testing "the card is untouched"
+            (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))))))))
 
 (deftest question-write-scopes-registered-test
   (testing "both create and update scopes flow into the OAuth surface"

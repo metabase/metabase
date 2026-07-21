@@ -189,6 +189,14 @@
        "column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created."))
     (merge-column-metadata computed-columns column_metadata)))
 
+(defn- check-dashboard-collection-exclusive!
+  "`dashboard_id` and `collection_id` are mutually exclusive — a dashboard question's collection
+   is the dashboard's collection, not a caller-chosen one."
+  [dashboard_id args]
+  (when (and dashboard_id (contains? args :collection_id))
+    (common/throw-teaching-error
+     "Pass either collection_id or dashboard_id, not both — a dashboard question's collection is the dashboard's collection.")))
+
 (defn- create!
   "Mirror REST `POST /api/card/`'s pre-checks — run permissions on the resolved query, create
    permission on the target collection — then save a `question` (or `model`) card. Returns the
@@ -196,9 +204,7 @@
   [{:keys [name description display visualization_settings cache_ttl collection_position
            card_type column_metadata dashboard_id] :as args}
    session-id]
-  (when (and dashboard_id (contains? args :collection_id))
-    (common/throw-teaching-error
-     "Pass either collection_id or dashboard_id, not both — a dashboard question's collection is the dashboard's collection."))
+  (check-dashboard-collection-exclusive! dashboard_id args)
   (let [dataset-query (resolve-query-source args session-id)
         dashboard-id  (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))
         collection-id (cond
@@ -233,21 +239,29 @@
 
 (defn- update!
   "Mirror REST `PUT /api/card/:id`'s pre-checks — write-check the existing card, patch only the
-   caller-supplied fields (archiving/restoring via `archived`), re-check collection-move and
-   query-run/overwrite permissions when those fields change — then persist. Returns
-   [[update-card-response]]."
+   caller-supplied fields (archiving/restoring via `archived`; moving into a dashboard via
+   `dashboard_id`, which forces the card's collection to the dashboard's — the model layer
+   enforces the dashboard-question move rules), re-check collection-move and query-run/overwrite
+   permissions when those fields change — then persist. Returns [[update-card-response]].
+
+   Moving a card OUT of a dashboard isn't expressible here: a `nil` `dashboard_id` is
+   indistinguishable from an omitted one once JSON-RPC args are stripped of nulls."
   [id {:keys [name description display visualization_settings cache_ttl collection_position
-              card_type archived column_metadata] :as args}
+              card_type archived column_metadata dashboard_id] :as args}
    session-id]
+  (check-dashboard-collection-exclusive! dashboard_id args)
   (let [card-before  (common/resolve-and-read
                       :model/Card id
                       (fn [cid] (api/write-check :model/Card cid)))
+        dashboard-id (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))
         new-query    (when (or (:query_handle args) (:query args) (:native args))
                        (lib-be/normalize-query (resolve-query-source args session-id)))
         raw-updates  (cond-> {}
                        (contains? args :name)                   (assoc :name name)
                        (contains? args :description)            (assoc :description description)
                        (contains? args :collection_id)          (assoc :collection_id (common/resolve-collection-id (:collection_id args)))
+                       dashboard-id                             (assoc :dashboard_id dashboard-id
+                                                                       :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
                        (contains? args :collection_position)    (assoc :collection_position collection_position)
                        (contains? args :display)                (assoc :display (some-> display keyword))
                        (contains? args :visualization_settings) (assoc :visualization_settings visualization_settings)
@@ -305,7 +319,7 @@
               [:visibility_type {:optional true} [:maybe :string]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection) or dashboard_id (saves the question inside that dashboard; its collection is inferred from the dashboard — pass one or the other, not both), display, visualization_settings, cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection) or dashboard_id (saves the question inside that dashboard; its collection is inferred from the dashboard — pass one or the other, not both), display, visualization_settings, cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (its collection follows the dashboard's — pass with collection_id and you'll get an error; a question already saved in another dashboard can't be moved into a different one; moving a card OUT of a dashboard isn't supported yet)."
   {:name         "question_write"
    :scope        metabot.scope/agent-question-create
    :update-scope metabot.scope/agent-question-update
