@@ -432,11 +432,13 @@
                          :configured-dimensions vector-dimensions})))))
   embeddings)
 
-;; TODO chunk `texts` here (or teach `process-embeddings-streaming` a per-provider batch budget the way it
-;; already has one for openai). Every other provider is an HTTP call, so an unchunked batch costs one large
-;; request; in-process is the first where it costs *local* memory — DJL pads the whole batch to its longest
-;; sequence, so a 1000-document indexer poll becomes one ~1000×512 tensor plus activations on top of the
-;; resident model and native runtime. Pre-existing shape, new consequence.
+;; TODO bound the batch here instead of relying on callers to do it. Every caller today does: the
+;; semantic-search indexer partitions at `index/*batch-size*` (150) before reaching this, entity-retrieval's
+;; reconcile at 512, the complexity-score synonym axis at 256 — so no unbounded list reaches DJL in
+;; practice. But the bound lives entirely in callers: `process-embeddings-streaming` token-budgets only for
+;; openai and otherwise forwards whatever list it was given, so a consumer coming through the
+;; `embeddings.client` facade sets its own. Unlike the HTTP providers, an oversized batch here costs local
+;; memory rather than one large request, since `.batchPredict` pads the batch to its longest sequence.
 (defmethod get-embeddings-batch "in-process"
   [{:keys [model-name] :as embedding-model} texts & {:keys [record-tokens? type]}]
   (when (str/blank? model-name)
