@@ -294,7 +294,7 @@ const ErrorAlert = ({
 
   return (
     <Alert
-      icon={<Icon name="warning" />}
+      icon={<Icon name="warning" c="feedback-negative" />}
       title={t`Couldn't sync Google Sheets`}
       w="100%"
     >

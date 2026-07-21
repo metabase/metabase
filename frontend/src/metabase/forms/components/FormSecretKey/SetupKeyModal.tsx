@@ -92,7 +92,8 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
         </Flex>
         <Stack gap="sm">
           <Alert color="warning">
-            {t`Make sure you copy this key now and save it in a safe place.`}{" "}
+            {t`Make sure you copy this key now and save it in a safe place.`}
+            <br />
             <Text fw="bold" component="strong">
               {t`You won't be able to see it again.`}
             </Text>
