@@ -3144,6 +3144,7 @@
            models
            permissions
            premium-features
+           upload
            util}
    :model-imports #{:model/Collection
                     :model/Dimension
