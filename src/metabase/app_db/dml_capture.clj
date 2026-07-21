@@ -22,10 +22,11 @@
   `(merge pre-image (select-keys changes capture-fields))` whenever its changed value is a literal. Values
   are HoneySQL expressions when the caller passed expressions; they are delivered as-is.
 
-  For inserts nothing is re-selected: `:rows` are the row maps as passed to `insert!` (before any
-  `before-insert` method or type transform runs — column values a `before-insert` fills in are NOT visible)
-  and `:pks` are the database-generated primary keys. When the model has a single-column primary key and one
-  pk came back per row, each row also gets the pk assoc'd on.
+  For inserts `:rows` are the row maps as passed to `insert!` with the generated primary key assoc'd on, and
+  `:pks` are the generated primary keys. When some requested capture field is absent from the literals —
+  the column is filled in by the database or a `before-insert` method (e.g. `revision.most_recent`) — the
+  rows are replaced by one narrow select of the capture fields by pk, so a captured field is always present
+  and authoritative either way. Other literal values are delivered as passed, before type transforms.
 
   Delivery guarantees, and non-guarantees:
 
@@ -53,9 +54,10 @@
   ::captured)
 
 (defmulti capture-fields
-  "The columns to include in `:rows` snapshots when capturing `op` (`:insert`, `:update` or `:delete`)
+  "The columns guaranteed present in `:rows` when capturing `op` (`:insert`, `:update` or `:delete`)
   statements against `model`; return nil or empty to leave that op uncaptured.
-  For `:insert` the value only switches capture on — insert rows are delivered whole, never narrowed."
+  Update and delete snapshots are narrowed to exactly these columns; insert rows are the caller's literals,
+  back-filled by pk when a requested column is missing from them."
   {:arglists '([model op])}
   (fn [model _op] (keyword model)))
 
@@ -163,12 +165,23 @@
                            model parsed-args resolved-query))
             pks         (persistent! @pks)]
         (when (seq pks)
-          (let [row-literals (:rows parsed-args)
+          (let [fields       (capture-fields model :insert)
+                row-literals (:rows parsed-args)
                 pk-keys      (t2.model/primary-keys model)
-                rows         (if (and (= 1 (count pk-keys))
-                                      (= (count pks) (count row-literals)))
-                               (mapv #(assoc %1 (first pk-keys) %2) row-literals pks)
-                               (vec row-literals))]
+                single-pk    (when (= 1 (count pk-keys)) (first pk-keys))
+                rows         (if (and single-pk (= (count pks) (count row-literals)))
+                               (mapv #(assoc %1 single-pk %2) row-literals pks)
+                               (vec row-literals))
+                ;; The literals lack a requested capture field when the column is filled in by the database
+                ;; or a before-insert method (e.g. revision.most_recent); one narrow select by the returned
+                ;; pks recovers the authoritative values.
+                complete?    (fn [row] (every? #(contains? row %) fields))
+                rows         (if (or (every? complete? rows) (nil? single-pk))
+                               rows
+                               (pre-image-rows :toucan.query-type/select.instances model
+                                               (distinct (cons single-pk fields))
+                                               {:kv-args {:toucan/pk [:in pks]}}
+                                               {}))]
             (captured! model {:op :insert, :model model, :rows rows, :pks pks})))
         result))))
 

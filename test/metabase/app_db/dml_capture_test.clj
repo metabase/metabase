@@ -285,3 +285,24 @@
     (is (= 1 (count (events))))
     (is (=? {:op :delete, :model ::moody-bird} (first (events))))
     (is (= 2 (count (:rows (first (events))))))))
+
+(deftest insert-backfills-missing-capture-fields-test
+  (reset-capture!)
+  (testing "a capture field absent from the insert literals (db default / before-insert) is back-filled by pk"
+    (swap! bird-capture-fields assoc :insert [:id :group_id :n])
+    ;; :n is omitted so the database default (0) fills it; the seam must recover it with one extra select.
+    (t2/with-call-count [call-count]
+      (t2/insert! ::bird {:name "backfill" :group_id 240})
+      (is (= 2 (call-count))))
+    (is (= 1 (count (events))))
+    (let [{:keys [rows pks]} (first (events))]
+      (is (= 1 (count rows)))
+      (is (= #{:id :group_id :n} (set (keys (first rows)))))
+      (is (=? [{:group_id 240, :n 0, :id (first pks)}] rows))))
+  (testing "complete literals keep the zip path: no extra select"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :insert [:id :group_id :n])
+    (t2/with-call-count [call-count]
+      (t2/insert! ::bird {:name "no-backfill" :group_id 241 :n 7})
+      (is (= 1 (call-count))))
+    (is (=? [{:rows [{:group_id 241, :n 7}]}] (events)))))

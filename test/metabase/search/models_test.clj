@@ -1,7 +1,8 @@
 (ns metabase.search.models-test
-  "Pins the delete- and update-capture wiring in [[metabase.search.models]]: deletes and updates now enqueue
-  re-derivation messages via the [[metabase.app-db.dml-capture]] seam instead of firing no hooks (deletes) or
-  every hook unconditionally (updates, via the old per-row after-update)."
+  "Pins the DML-capture wiring in [[metabase.search.models]]: all three operations now enqueue re-derivation
+  messages via the [[metabase.app-db.dml-capture]] seam, statement-level, instead of firing no hooks
+  (deletes), every hook unconditionally (updates, via the old per-row after-update), or per-row with a
+  full-row re-select (inserts, via the old per-row after-insert)."
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.dml-capture :as dml-capture]
@@ -19,8 +20,8 @@
       (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
                                   (fn [updates] (swap! calls conj updates))]
         (mt/with-temp [:model/Card {id :id} {}]
-          ;; the temp card's own creation enqueues an unrelated message via the after-insert hook; only the
-          ;; delete's message is under test.
+          ;; the temp card's own creation enqueues an unrelated insert-capture message; only the delete's
+          ;; message is under test.
           (reset! calls [])
           (t2/delete! :model/Card id)
           (is (=? [#{["card" [:= id :this.id]]
@@ -34,11 +35,11 @@
   (testing "capture-fields is skipped entirely (no pre-select) when no search engine is active"
     (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
       (is (nil? (dml-capture/capture-fields :model/Card :delete)))
-      (is (nil? (dml-capture/capture-fields :model/Card :update)))))
-  (testing "delete and update are wired up (via hook-where-fields); insert capture-fields stays nil, since
-            inserts are captured whole rather than narrowed"
+      (is (nil? (dml-capture/capture-fields :model/Card :update)))
+      (is (nil? (dml-capture/capture-fields :model/Card :insert)))))
+  (testing "all three ops are wired up via hook-where-fields"
     (is (some? (seq (search.engine/active-engines))) "this test needs an active engine to be meaningful")
-    (is (nil? (dml-capture/capture-fields :model/Card :insert)))
+    (is (= #{:id} (dml-capture/capture-fields :model/Card :insert)))
     (is (= #{:id} (dml-capture/capture-fields :model/Card :delete)))
     (is (= #{:id} (dml-capture/capture-fields :model/Card :update)))))
 
@@ -172,3 +173,50 @@
                (-> (t2/select-one-fn :display_data (search.index/active-table) :model "card" :model_id (str id))
                    json/decode
                    (get "collection_name"))))))))
+
+(deftest insert-enqueues-one-bulk-update-test
+  (testing "a multi-row insert enqueues one re-derivation batch, one message per row per primary hook"
+    (let [calls (atom [])]
+      (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
+                                  (fn [updates] (swap! calls conj updates))]
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (reset! calls [])
+          (let [n (t2/insert! :model/Document
+                              (for [i (range 3)]
+                                {:name          (str "Ins Capture Doc " i)
+                                 :collection_id coll-id
+                                 :document      "{}"
+                                 :content_type  "application/json"
+                                 :creator_id    (mt/user->id :crowberto)
+                                 :created_at    :%now
+                                 :updated_at    :%now}))]
+            (is (= 3 n))
+            (is (= 1 (count @calls)))
+            (is (= 3 (count (set (first @calls)))))
+            (is (every? (fn [[search-model where]]
+                          (and (= "document" search-model)
+                               (= :this.id (last where))))
+                        (first @calls)))))))))
+
+(deftest insert-adds-no-statements-test
+  (testing "a captured single-row insert runs exactly one statement: the pk-returning INSERT, with no
+            follow-up full-row select (the old per-row after-insert forced INSERT + SELECT *)"
+    (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async! (fn [_updates] nil)]
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        ;; resolved outside the counted block: cold, the user lookup itself issues queries.
+        (let [creator-id (mt/user->id :crowberto)]
+          (t2/with-call-count [call-count]
+            (t2/insert! :model/Document {:name          "Ins Capture Solo"
+                                         :collection_id coll-id
+                                         :document      "{}"
+                                         :content_type  "application/json"
+                                         :creator_id    creator-id
+                                         :created_at    :%now
+                                         :updated_at    :%now})
+            (is (= 1 (call-count)))))))))
+
+(deftest ^:synchronized insert-indexes-new-rows-test
+  (testing "with-temp creation (insert-returning-instances!) still lands rows in the index (appdb engine)"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Insert Capture E2E Card"}]
+        (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str id))))))))
