@@ -67,7 +67,7 @@ const createMbqlCard = (query: StructuredQuery, database = 1) =>
     type: "query",
     database,
     query,
-  } as DatasetQuery);
+  });
 
 const createNativeCard = (
   sql = "SELECT * FROM ORDERS",
@@ -81,7 +81,7 @@ const createNativeCard = (
       query: sql,
       ...(templateTags ? { "template-tags": templateTags } : {}),
     },
-  } as DatasetQuery);
+  });
 
 const setupTableEndpoints = (...tables: (typeof ORDERS_TABLE)[]) => {
   tables.forEach((table) => {
