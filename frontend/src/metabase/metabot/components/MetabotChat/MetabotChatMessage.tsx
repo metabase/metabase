@@ -12,6 +12,7 @@ import { useMetabotName } from "metabase/metabot/hooks";
 import type {
   MetabotAgentChatMessage,
   MetabotAgentDataPartMessage,
+  MetabotAgentId,
   MetabotAgentTextChatMessage,
   MetabotAgentTurnError,
   MetabotAgentTurnErroredMessage,
@@ -19,6 +20,8 @@ import type {
   MetabotDataPart,
   MetabotUserChatMessage,
 } from "metabase/metabot/state";
+import { forkConversation } from "metabase/metabot/state";
+import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -185,6 +188,8 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   onInternalLinkClick?: (link: string) => void;
   extraActions?: ReactNode;
   isStreaming?: boolean;
+  onFork?: (messageId: string) => void;
+  isForking?: boolean;
 }
 
 export const AgentMessage = ({
@@ -202,12 +207,15 @@ export const AgentMessage = ({
   hideActions,
   extraActions,
   isStreaming = false,
+  onFork,
+  isForking,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
   const isInProgress = message.type === "turn_in_progress";
   const canGiveFeedback =
     !readonly && !isInProgress && !!setFeedbackMessage && !!messageId;
+  const canFork = !readonly && !isInProgress && !!onFork && !!messageId;
   const clipboard = useClipboard({ timeout: 2000 });
 
   return (
@@ -303,6 +311,19 @@ export const AgentMessage = ({
             </Tooltip>
           )}
           {extraActions}
+          {canFork && (
+            <Tooltip label={t`Fork conversation`}>
+              <ActionIcon
+                h="sm"
+                data-testid="metabot-chat-message-fork"
+                loading={isForking}
+                disabled={isForking}
+                onClick={() => onFork(messageId)}
+              >
+                <Icon name="git_branch" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Flex>
       )}
     </MessageContainer>
@@ -467,6 +488,7 @@ export const Messages = ({
   isDoingScience,
   debug,
   readonly = false,
+  agentId,
   conversationId,
   onInternalLinkClick,
   getExtraActions,
@@ -477,10 +499,12 @@ export const Messages = ({
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
+  agentId?: MetabotAgentId;
   conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
 }) => {
+  const dispatch = useDispatch();
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
     [debug, messages],
@@ -490,6 +514,27 @@ export const Messages = ({
     [visibleMessages],
   );
   const [sendToast] = useToast();
+  const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
+
+  const handleFork = useCallback(
+    async (messageId: string) => {
+      if (!agentId) {
+        return;
+      }
+      setForkingMessageId(messageId);
+      try {
+        await dispatch(
+          forkConversation({ agentId, conversationId, messageId }),
+        ).unwrap();
+        sendToast({ icon: "check", message: t`Conversation forked` });
+      } catch {
+        sendToast({ icon: "warning", message: t`Failed to fork conversation` });
+      } finally {
+        setForkingMessageId(null);
+      }
+    },
+    [dispatch, agentId, conversationId, sendToast],
+  );
 
   const [feedbackState, setFeedbackState] = useState<{
     submitted: Record<string, "positive" | "negative" | undefined>;
@@ -559,6 +604,12 @@ export const Messages = ({
             }
             hideActions={next?.role === "agent" || (isDoingScience && !next)}
             extraActions={getExtraActions?.(message.id)}
+            onFork={agentId && !readonly ? handleFork : undefined}
+            isForking={
+              "externalId" in message &&
+              !!message.externalId &&
+              forkingMessageId === message.externalId
+            }
             onInternalLinkClick={onInternalLinkClick}
             isStreaming={isDoingScience && !next}
           />

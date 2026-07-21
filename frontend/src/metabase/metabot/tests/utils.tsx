@@ -120,6 +120,23 @@ export const mockFeedbackEndpoint = () => {
   };
 };
 
+// Fork helpers
+export const forkButton = (message: HTMLElement) =>
+  within(message).findByTestId("metabot-chat-message-fork");
+export const mockForkEndpoint = (
+  response: Record<string, unknown> = {},
+  status = 200,
+) => {
+  fetchMock.post(
+    "express:/api/metabot/conversations/:id/fork",
+    status === 200 ? { status, body: response } : status,
+    { name: "metabot-fork" },
+  );
+  return {
+    calls: () => fetchMock.callHistory.calls("metabot-fork"),
+  };
+};
+
 export const assertVisible = async () =>
   expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
 export const assertNotVisible = async () =>
