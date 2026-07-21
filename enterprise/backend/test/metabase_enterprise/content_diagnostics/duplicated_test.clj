@@ -1,7 +1,7 @@
 (ns metabase-enterprise.content-diagnostics.duplicated-test
   "The `duplicated` checker (match mode `name`) flags clusters of ≥2 same-type non-archived entities
   whose normalized names collide, stamping the peer count in the top-level `duplicate_count` column and
-  freezing the `matches`/`normalized_name`/`duplicate_entity_ids` envelope in `details` at scan time. The
+  freezing the `normalized_name`/`duplicate_entity_ids` envelope in `details` at scan time. The
   `/duplicated` endpoint serves them with hydrated same-type peers and the shared filter/sort/pagination
   envelope."
   (:require
@@ -51,8 +51,7 @@
                 (let [f (by-entity [:card card-a])]
                   (is (some? f))
                   (is (= 1 (:duplicate_count f)))
-                  (is (= {:matches              [{:match_type "name" :entity_ids [card-b]}]
-                          :normalized_name      (u/lower-case-en (str prefix " Revenue"))
+                  (is (= {:normalized_name      (u/lower-case-en (str prefix " Revenue"))
                           :duplicate_entity_ids [card-b]}
                          (:details f)))
                   (testing "the other magnitude columns stay null on duplicated findings"
@@ -222,10 +221,7 @@
                 (let [f (by-entity [:transform member])]
                   (is (some? f))
                   (is (= 2 (:duplicate_count f)))
-                  (is (= peers (set (get-in f [:details :duplicate_entity_ids]))))
-                  (testing "duplicate_entity_ids equals the single name-mode match's entity_ids"
-                    (is (= (get-in f [:details :duplicate_entity_ids])
-                           (get-in f [:details :matches 0 :entity_ids])))))))))))))
+                  (is (= peers (set (get-in f [:details :duplicate_entity_ids])))))))))))))
 
 (deftest duplicated-checker-same-type-only-test
   (testing "a name shared across different entity types is not a duplicate"
@@ -298,9 +294,8 @@
                 (testing "the peer hydrates with its card sub-kind and live view_count"
                   (is (= [{:id card-b :name nm :entity_type "card" :card_type "model" :view_count 7}]
                          (get-in f [:details :duplicate_entities]))))
-                (testing "the raw stored peer envelope (ids + matches) is not served"
-                  (is (not (contains? (:details f) :duplicate_entity_ids)))
-                  (is (not (contains? (:details f) :matches))))
+                (testing "the raw stored peer ids are not served"
+                  (is (not (contains? (:details f) :duplicate_entity_ids))))
                 (testing "shared display hydration: collection breadcrumb + denormalized creator"
                   (is (= coll-id (get-in f [:details :collection :id])))
                   (is (= (mt/user->id :rasta) (get-in f [:details :creator :id]))))))))))))
@@ -437,8 +432,7 @@
                                  {:scan_id "perm" :entity_type :card :entity_id open-card
                                   :entity_name (str prefix "-card")
                                   :finding_type :duplicated :duplicate_count 1
-                                  :details {:matches              [{:match_type "name" :entity_ids [secret-card]}]
-                                            :normalized_name      "x"
+                                  :details {:normalized_name      "x"
                                             :duplicate_entity_ids [secret-card]}}))
                   finding (fn [user]
                             (some #(when (= fid (:id %)) %)
@@ -469,9 +463,7 @@
                                      {:scan_id "pc" :entity_type :card :entity_id flagged
                                       :entity_name (str prefix "-card")
                                       :finding_type :duplicated :duplicate_count 2
-                                      :details {:matches              [{:match_type  "name"
-                                                                        :entity_ids [reg-peer pers-peer]}]
-                                                :normalized_name      "x"
+                                      :details {:normalized_name      "x"
                                                 :duplicate_entity_ids [reg-peer pers-peer]}}))
                     peer-ids (fn [& kvs]
                                (let [finding (some #(when (= fid (:id %)) %)

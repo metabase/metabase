@@ -261,8 +261,8 @@
   stale, `:duration_ms` for slow); `:hydrate-culprits?` - replace `details.slow_entity_ids` with hydrated
   `details.slow_entities` objects (slow roll-ups); `:hydrate-duplicate-entities?` - replace
   `details.duplicate_entity_ids` with hydrated same-type `details.duplicate_entities` objects (duplicated
-  findings), also dropping the stored `details.matches` envelope (its raw per-mode ids are not
-  permission-filtered - the hydrated list is the served form); `:excluded-personal-collection-ids` - the
+  findings) - the raw stored ids are not permission-filtered, so the hydrated list is the served form;
+  `:excluded-personal-collection-ids` - the
   request's resolved exclusion set (see `excluded-personal-collection-ids`), threaded to the
   culprit/duplicate-entity hydration so its personal-collection exclusion matches the findings filter
   without re-querying."
@@ -298,7 +298,7 @@
                                  (assoc :slow_entities (into [] (keep culprits) (:slow_entity_ids details))))
 
                              (and hydrate-duplicate-entities? (contains? details :duplicate_entity_ids))
-                             (-> (dissoc :duplicate_entity_ids :matches)
+                             (-> (dissoc :duplicate_entity_ids)
                                  (assoc :duplicate_entities (into []
                                                                   (keep #(get entities [entity_type %]))
                                                                   (:duplicate_entity_ids details)))))]

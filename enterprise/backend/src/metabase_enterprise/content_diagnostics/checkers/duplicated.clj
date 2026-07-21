@@ -4,12 +4,11 @@
   a cluster of size k gets one `:duplicated` finding whose peers are the other k-1 members, with
   `:duplicate-count` = the peer count (→ the native `duplicate_count` column).
 
-  `details` carries the mode-aware envelope shared by all future match modes: `matches` =
-  `[{match_type, entity_ids}, …]` (single-element here), `normalized_name` (the normalized name the
-  cluster collided on), and `duplicate_entity_ids` (the flattened union of all matches' peers - what the
-  serve layer hydrates). Cards are grouped by their sub-kind (`type` - question/model/metric): a question and a
-  model sharing a name are not duplicates. One lightweight (id, name) load per entity type, grouped
-  in memory - no per-entity loop, app-db only."
+  `details` carries `normalized_name` (the normalized name the cluster collided on) and
+  `duplicate_entity_ids` (the flagged entity's peer ids - what the serve layer hydrates). Cards are grouped
+  by their sub-kind (`type` - question/model/metric): a question and a model sharing a name are not
+  duplicates. One lightweight (id, name) load per entity type, grouped in memory - no per-entity loop,
+  app-db only."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -57,8 +56,7 @@
        :entity-id       id
        :finding-type    :duplicated
        :duplicate-count (count peer-ids)
-       :details         {:matches              [{:match_type "name" :entity_ids peer-ids}]
-                         :normalized_name      normalized-name
+       :details         {:normalized_name      normalized-name
                          :duplicate_entity_ids peer-ids}})))
 
 (defn- findings-for-type
