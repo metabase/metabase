@@ -1,0 +1,20 @@
+{:catalog-version 1
+ :models
+ {"Snowflake/snowflake-arctic-embed-l-v2.0"
+  {:bundle-name       "snowflake-arctic-embed-l-v2.0-f0ff6dce29c14995095706b2c861b31f13643ceb"
+   :model-revision    "f0ff6dce29c14995095706b2c861b31f13643ceb"
+   :vector-dimensions 1024
+   :runtime           {:inference-contract-version 1
+                       :djl-version                "0.36.0"
+                       :engine                     "OnnxRuntime"
+                       :pooling                    "cls"
+                       :normalize?                 true
+                       :include-token-types?       false}
+   :architectures     {"arm64" {:source "onnx/model_int8.onnx"
+                                 :sha256 "4b164a8bd09dd9806e035bdf3c34a2d81848b3db9642ba2e342b8367c00872d8"}
+                       "avx2"  {:source "onnx/model_uint8.onnx"
+                                 :sha256 "8712ea862fbbf1ba08fecfcfef4f9d01929e7326567672fb033b6c3755751e1a"}}
+   :tokenizer-files   {"tokenizer.json"          "39feb9863a378165ab9c5c689047203d789422966c0c58721c5309fd039a8edc"
+                       "tokenizer_config.json"   "cb058b4c5c0c08738eb028c2ae82ed55cd84ce8999ece76b13472af80f0f77f1"
+                       "special_tokens_map.json" "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+                       "config.json"             "c31b06d272429c471dcf61f02191d3b861fd4185776e92e411ab6c82fc63e274"}}}}
