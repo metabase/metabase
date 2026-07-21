@@ -269,3 +269,9 @@
         (testing "a non-annotated column is still present with its real base_type, unmodified"
           (is (=? {:base_type :type/BigInteger}
                   (get by-name "ID"))))))))
+
+(deftest question-write-scopes-registered-test
+  (testing "both create and update scopes flow into the OAuth surface"
+    (let [scopes (set (registry/registered-scopes))]
+      (is (contains? scopes "agent:question:create"))
+      (is (contains? scopes "agent:question:update")))))
