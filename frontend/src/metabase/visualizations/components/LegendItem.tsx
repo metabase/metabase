@@ -7,9 +7,10 @@ import { Ellipsified, Tooltip } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
 import { LegendItemDot } from "./legend/LegendItemDot";
+import type { LegendTitle } from "./types";
 
 interface LegendItemProps {
-  title: string | string[];
+  title: LegendTitle;
   color: string;
   isMuted?: boolean;
   isVisible?: boolean;

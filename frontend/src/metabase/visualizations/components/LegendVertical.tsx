@@ -1,26 +1,14 @@
 import cx from "classnames";
-import { type MouseEvent, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Popover } from "metabase/ui";
-import type { HoveredObject } from "metabase/visualizations/types";
 
 import LegendS from "./Legend.module.css";
 import { LegendItem } from "./LegendItem";
-
-interface LegendVerticalProps {
-  className?: string;
-  titles: (string | string[])[];
-  colors: string[];
-  hiddenIndices?: number[];
-  hovered?: HoveredObject | null;
-  onHoverChange?: (
-    hover?: { index: number; element?: HTMLElement | null } | null,
-  ) => void;
-  onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
-}
+import type { LegendProps } from "./types";
 
 export function LegendVertical({
   className,
@@ -30,7 +18,7 @@ export function LegendVertical({
   hovered,
   onHoverChange,
   onToggleSeriesVisibility,
-}: LegendVerticalProps) {
+}: LegendProps) {
   const [overflowCount, setOverflowCount] = useState(0);
   const [size, setSize] = useState<DOMRect | null>(null);
   const listContainerRef = useRef<HTMLOListElement>(null);
@@ -80,12 +68,6 @@ export function LegendVertical({
 
   const hasOverflow = overflowCount > 0;
   const items = hasOverflow ? titles.slice(0, -overflowCount - 1) : titles;
-  const extraItems = hasOverflow ? titles.slice(-overflowCount - 1) : [];
-  const extraColors = hasOverflow
-    ? colors
-        .slice(-overflowCount - 1)
-        .concat(colors.slice(0, -overflowCount - 1))
-    : [];
 
   return (
     <ol
@@ -93,16 +75,14 @@ export function LegendVertical({
       ref={listContainerRef}
     >
       {items.map((title, index) => {
-        const isMuted = Boolean(
-          hovered && hovered.index != null && index !== hovered.index,
-        );
+        const isMuted = hovered?.index != null && index !== hovered.index;
         const legendItemTitle = Array.isArray(title) ? title[0] : title;
         const isVisible = !hiddenIndices.includes(index);
 
         const handleMouseEnter = () => {
           onHoverChange?.({
             index,
-            element: legendItemRefs.current[index],
+            element: legendItemRefs.current[index] ?? undefined,
           });
         };
 
@@ -176,8 +156,10 @@ export function LegendVertical({
           <Popover.Dropdown>
             <LegendVertical
               className={CS.p2}
-              titles={extraItems}
-              colors={extraColors}
+              titles={titles.slice(-overflowCount - 1)}
+              colors={colors
+                .slice(-overflowCount - 1)
+                .concat(colors.slice(0, -overflowCount - 1))}
               hiddenIndices={hiddenIndices
                 .filter((i) => i >= items.length - 1)
                 .map((i) => i - items.length)}

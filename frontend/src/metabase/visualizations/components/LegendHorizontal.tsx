@@ -1,22 +1,9 @@
 import cx from "classnames";
-import { type MouseEvent, useRef } from "react";
-
-import type { HoveredObject } from "metabase/visualizations/types";
+import { useRef } from "react";
 
 import LegendS from "./Legend.module.css";
 import { LegendItem } from "./LegendItem";
-
-interface LegendHorizontalProps {
-  className?: string;
-  titles: (string | string[])[];
-  colors: string[];
-  hiddenIndices?: number[];
-  hovered?: HoveredObject | null;
-  onHoverChange?: (
-    hover?: { index: number; element?: HTMLElement | null } | null,
-  ) => void;
-  onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
-}
+import type { LegendProps } from "./types";
 
 export function LegendHorizontal({
   className,
@@ -26,21 +13,19 @@ export function LegendHorizontal({
   hovered,
   onHoverChange,
   onToggleSeriesVisibility,
-}: LegendHorizontalProps) {
+}: LegendProps) {
   const legendItemRefs = useRef<Record<number, HTMLSpanElement | null>>({});
 
   return (
     <ol className={cx(className, LegendS.Legend, LegendS.horizontal)}>
       {titles.map((title, index) => {
-        const isMuted = Boolean(
-          hovered && hovered.index != null && index !== hovered.index,
-        );
+        const isMuted = hovered?.index != null && index !== hovered.index;
         const isVisible = !hiddenIndices.includes(index);
 
         const handleMouseEnter = () => {
           onHoverChange?.({
             index,
-            element: legendItemRefs.current[index],
+            element: legendItemRefs.current[index] ?? undefined,
           });
         };
 
