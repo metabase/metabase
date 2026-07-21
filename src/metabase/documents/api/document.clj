@@ -130,12 +130,18 @@
             {}
             to-clone)))
 
-(defn get-document
-  "Get document by id checking if the current user has permission to access and if the document exists."
+(defn- hydrate-document
+  "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or
+  publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
+  both semantically wrong and an extra, avoidable round-trip."
   [id]
-  (u/prog1 (api/check-404
-            (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
+  (t2/hydrate (t2/select-one :model/Document :id id)
+              :creator :can_write :can_delete :can_restore :is_remote_synced))
+
+(defn get-document
+  "Get document by id, checking that it exists and the current user can read it, and recording a view."
+  [id]
+  (u/prog1 (api/check-404 (api/read-check (hydrate-document id)))
     (events/publish-event! :event/document-read
                            {:object-id id
                             :user-id api/*current-user-id*})))
@@ -201,7 +207,8 @@
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
-  (api/read-check (get-document document-id)))
+  ;; `get-document` already does the 404 + read-check internally;
+  (get-document document-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -213,7 +220,10 @@
                              [:document-id ms/PositiveInt]]
    _query-params
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
-  (let [existing-document (api/check-404 (get-document document-id))]
+  ;; Use a lightweight fetch for the guard: we only need the raw row for the archived/permission/collection-move
+  ;; checks below. Calling `get-document` here would hydrate display fields we don't use and record a *view* of
+  ;; the document on every save.
+  (let [existing-document (api/check-404 (t2/select-one :model/Document :id document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/write-check existing-document)
@@ -238,7 +248,9 @@
                       name (assoc :name name)
                       (contains? body :collection_id) (assoc :collection_id collection_id)))
         (collections/check-for-remote-sync-update existing-document))
-      (let [updated-document (get-document document-id)]
+      ;; `hydrate-document` (not `get-document`): the write already passed `write-check`, and a save is not a view,
+      ;; so we neither re-check read perms nor publish a read event for the returned instance.
+      (let [updated-document (hydrate-document document-id)]
         ;; Publish appropriate events
         (if (:archived document-updates)
           (events/publish-event! :event/document-delete

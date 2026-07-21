@@ -119,6 +119,38 @@
         (mt/user-http-request :crowberto
                               :get 404 "document/99999")))))
 
+(defn- recent-view
+  "The RecentViews row, if any, for `user-id` viewing document `document-id`. Document reads record a recent
+  view (asynchronously via grouper, so these tests force synchronous batching), giving us a reliable signal
+  of whether a request counted as a view."
+  [user-id document-id]
+  (t2/select-one :model/RecentViews
+                 :user_id user-id
+                 :model "document"
+                 :model_id document-id))
+
+(deftest get-document-records-view-test
+  (testing "GET /api/document/:id records the read as a recent view"
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                        :document (documents.test-util/text->prose-mirror-ast "Doc 1")}]
+        (is (nil? (recent-view (mt/user->id :crowberto) document-id))
+            "no recent view should exist before reading")
+        (mt/user-http-request :crowberto :get 200 (format "document/%s" document-id))
+        (is (some? (recent-view (mt/user->id :crowberto) document-id))
+            "reading a document should record a recent view")))))
+
+(deftest put-document-does-not-record-view-test
+  (testing "PUT /api/document/:id should not record a view (saving is not a read)"
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
+                                                        :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
+        (mt/user-http-request :crowberto
+                              :put 200 (format "document/%s" document-id)
+                              {:name "Updated" :document (documents.test-util/text->prose-mirror-ast "Updated Doc")})
+        (is (nil? (recent-view (mt/user->id :crowberto) document-id))
+            "saving a document should not record a recent view")))))
+
 (deftest get-documents-test
   (testing "GET /api/document"
     (mt/with-temp [:model/Document _ {:name "Document 1"

@@ -1,4 +1,4 @@
-(ns metabase.activity-feed.models.recent-views-test
+(ns ^:synchronous metabase.activity-feed.models.recent-views-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -20,7 +20,8 @@
 (use-fixtures
   :each (fn [f]
           (clear-test-user-recent-views)
-          (f)))
+          (mt/with-temporary-setting-values [synchronous-batch-updates true]
+            (f))))
 
 (defn fixup [list-item]
   (-> list-item
