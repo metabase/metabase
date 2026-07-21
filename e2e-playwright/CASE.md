@@ -161,3 +161,80 @@ silently wrong found later. The recurring fixes are codified in
 - The single biggest lesson — *the local dev bundle and the CI artifact can
   behave differently* — cuts both ways: it's why verification must run against
   the uberjar, and it's baked into the harness now.
+
+---
+
+## 3c. Flake attribution ledger — who caused each one
+
+Every failure fixed or diagnosed in the 2026-07-21 stabilisation pass, attributed
+to its actual cause. **This includes the flakes we introduced ourselves**, which
+are the majority by test count and the honest cost of the migration. The suite
+went 66 -> 11 broken across the pass; the count matters less than which column
+each one lands in.
+
+Rule used: a failure is **ours** if the port or harness caused it, **pre-existing**
+if the Cypress suite has the same defect (whether or not it manifests there), and
+**app** if the product misbehaves and the test is correct to complain.
+
+### A. WE caused it — harness (the expensive category)
+
+Shared resources that Cypress never contended for, because each Cypress CI job is
+single-worker. We added intra-job parallelism and inherited every collision.
+
+| Defect | Blast radius | Evidence |
+|---|---|---|
+| `resetWritableDb` dropped tables in a **shared** warehouse container | **45 of 66** failures; flaky 44 -> 6 at `workers=1` | negative control: 9 failed with fix disabled, 1 with it on |
+| One **maildev** per shard; helpers read "last email", `clearInbox` is `DELETE /email/all` | 5 tests | 4 failed before / 0 after, concurrent, reproduced twice |
+| `global-teardown` swept ports 4100-4115 **unconditionally**, killing sibling invocations' backends | 4 agents lost time to phantom `SIGTERM` / "Target page closed" | `git diff`; scoped to `PW_SLOT_OFFSET + [0, workers)` |
+| `database-routing-usage` created **server-level** databases with fixed names | latent | injection control: 3/4 failed against the read database, 4 passed against shared |
+| Shared Playwright `outputDir`, cleared at run start | destroyed a failure trace mid-diagnosis | per-slot `outputDir` |
+| Viewport silently 1280x720 (project `use` overrode top-level) for the whole spike | unknown; 4 tests known broken at 720 | `devices["Desktop Chrome"]` carries its own viewport |
+
+**This is the headline cost of the migration and should not be buried.** None of
+these exist in Cypress. All are fixed, each with a negative control where the bug
+was reproducible.
+
+### B. WE caused it — port defects
+
+Ports that dropped something upstream relied on. The dominant theme: **Cypress's
+per-command overhead and auto-retry were load-bearing synchronisation that nobody
+wrote down.**
+
+| Cause | Tests | Note |
+|---|---|---|
+| Dropped Cypress's **retry** (`.should(cb)` retries; port sampled once) | `custom-viz`, `datamodel-data-studio-search` | one-shot `count()` read mid-render |
+| **`waitForResponse` registered after the trigger** (`cy.wait("@alias")` matches retroactively, Playwright does not) | `actions-on-dashboards` x4 | measured: listener up 19ms after the request was sent. FINDINGS #221 |
+| Waited on an **RTK-Query-cached** endpoint that issues no second request | `native-reproductions-js` | blocks the full 30s |
+| **Strict-mode violation** from the data-grid's off-screen measurement clone | `custom-column-1`, `custom-column-reproductions-1`, `sharing-reproductions`, `chart-drill` | `toBeVisible()` does NOT retry through strict mode — it throws, so it reads as deterministic |
+| Real-input asymmetries (one CDP pointer; `click()` physically moves it) | `documents` x2, `database-routing-admin` | Cypress dispatches synthetic events and leaves the pointer parked |
+| Async `PUT` racing an API call | `database-routing-admin` x2 | Cypress survives only via command-queue pacing |
+| Dropped upstream's `resetTestTable` behind a **false comment** | `dashboard-card-reproductions` | sweep found no other instance |
+| Mis-transcribed a literal (`Domestic` vs `Wild`) | `data-model-shared-1` | only surfaced because we made a dead assertion live |
+| Client-side debounce + `key={index}` node recycling | `embedding-linked-filters` | clicked index 4, committed a different row |
+
+### C. Pre-existing — the Cypress suite has it too
+
+| Defect | Where | Does it bite upstream? |
+|---|---|---|
+| **8 vacuous `.should(callback)` sites** — callback returns a boolean instead of throwing, so it asserts nothing, forever | `data-model-shared-1` (6), `datamodel` (1), `datamodel-data-studio` (1) | No — silently green. Hid product bug #218 |
+| Stale fixture premise: sample data re-dated **+9 years**, so `2016-10-03` (Monday) is now `2025-10-03` (Friday) | `filters-reproductions` 21979 | Passes only because `visualize()` resolves before React paints |
+| Absence assertion inside a mount-lag window | `metabot` | `should("not.exist")` passes on its first absent poll and never re-checks |
+| Cross-origin iframe assertion that **cannot pass** (`contentDocument` is null by same-origin policy) | `admin-settings` | Vacuous twice over upstream: empty jQuery set is still truthy |
+| Timezone assumption (`// metabase uses UTC timestamps`) | `actions-on-dashboards` | Passes on a UTC runner only |
+| Transient toast asserted with a **stale card** satisfying it | `collections-uploads` | `findAllByRole("status").last()` matched the previous step's toast |
+
+### D. The app is racy — the test is right to complain
+
+| Bug | Status |
+|---|---|
+| **#218** data studio drops the open table from the URL when another schema expands | Confirmed from source; contradicts upstream's own intent comment. Hidden behind a dead assertion for its whole life |
+| **#220** `PinMap` mutates `series[0].data.rows` during `render()`; "No results" only appears if a *later* render observes it | Confirmed; upstream Cypress passes on the same code because its pacing wins the race |
+| **#223** `/backfill-status` reports `complete: true` while entities sit in retry backoff; backfill throws for native cards referencing `{{snippet:Name}}` | Reproduced 8/8, confirmed over nREPL against the live app DB |
+| **#222** cold GraalPy/sqlglot pool vs Playwright's identical 30s timeout | HYPOTHESIS. Mechanism confirmed (5940ms cold vs 37ms warm), magnitude NOT — explicitly not claimed |
+| **#224** custom-viz confinement: "unrendered" and "sandbox escape" share a signature | OPEN, security-relevant. Recurred after the retry fix, which is the tripwire condition |
+
+### E. Honest caveats on this ledger
+
+- **Run-to-run comparisons are confounded when the spec count changes.** Playwright shards by test count, so porting one new spec (+8 tests) reshuffles which specs share a shard, changing execution order and neighbours. At least one cluster of failures is suspected to be latent defects newly exposed by new neighbours rather than regressions.
+- Several category-B entries were found only because a *different* fix moved the failure later in the test. Fixing one race routinely exposed the next.
+- Four assertions were found to be **vacuous** — passing while observing nothing. A green port is weak evidence without a mutation behind it, and one recorded mutation result had to be retracted because the mutant died by luck against a race (the observation window was open only intermittently). Mutations against transient state must be run twice.
