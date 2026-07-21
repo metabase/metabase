@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -8,7 +7,6 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
-import * as Urls from "metabase/urls";
 
 import {
   // The shared audit filter bar; aliased since it has nothing to do with MCP "conversations".
@@ -32,7 +30,7 @@ import { McpEventsTable } from "./McpEventsTable";
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
-export function McpAnalyticsPage({ location, router }: WithRouterProps) {
+export function McpAnalyticsPage({ location }: WithRouterProps) {
   const [
     { date, user, group, tenant, tab, page, sortColumn, sortDirection },
     { patchUrlState },
@@ -53,10 +51,6 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   // IP address and error message are PII (null unless retention is on), so only surface those
   // columns when they're collected.
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
-  // The MCP server can be turned off while its historical analytics still exist; when it's off the
-  // page redirects back to the AI Auditing index.
-  const mcpEnabled = useSetting("mcp-enabled?");
-
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
@@ -84,18 +78,6 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
     ...chartFilters,
     errorsOnly: true,
   });
-
-  // The MCP server can be off while its historical analytics still exist; when it's off the page
-  // is inaccessible — redirect away so it can't be reached by URL (the nav item also greys out).
-  useEffect(() => {
-    if (!mcpEnabled) {
-      router.replace(Urls.monitorAiAuditing());
-    }
-  }, [mcpEnabled, router]);
-
-  if (!mcpEnabled) {
-    return null;
-  }
 
   return (
     <MonitorMain>

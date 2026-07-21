@@ -1,5 +1,9 @@
 import { Route, withRouteProps } from "metabase/router";
 
+import {
+  McpAnalyticsAvailabilityLayout,
+  MetabotAnalyticsAvailabilityLayout,
+} from "./components/AiAuditingAvailabilityLayout";
 import { McpAnalyticsPage } from "./mcp-analytics/components/McpAnalyticsPage";
 import { ConversationDetailPage } from "./metabot-analytics/components/ConversationDetailPage";
 import { ConversationStatsPage } from "./metabot-analytics/components/ConversationStatsPage";
@@ -18,13 +22,17 @@ const RoutedMcpAnalyticsPage = withRouteProps(McpAnalyticsPage);
 export function getAiAuditingRoutes() {
   return (
     <>
-      <Route index element={<RoutedConversationStatsPage />} />
-      <Route path="conversations" element={<RoutedConversationsPage />} />
-      <Route
-        path="conversations/:convoId"
-        element={<RoutedConversationDetailPage />}
-      />
-      <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
+      <Route element={<MetabotAnalyticsAvailabilityLayout />}>
+        <Route index element={<RoutedConversationStatsPage />} />
+        <Route path="conversations" element={<RoutedConversationsPage />} />
+        <Route
+          path="conversations/:convoId"
+          element={<RoutedConversationDetailPage />}
+        />
+      </Route>
+      <Route element={<McpAnalyticsAvailabilityLayout />}>
+        <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
+      </Route>
     </>
   );
 }
@@ -33,7 +41,9 @@ export function getAiAuditingUpsellRoutes() {
   return (
     <>
       <Route index element={<MetabotAnalyticsUpsellPage />} />
-      <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
+      <Route element={<McpAnalyticsAvailabilityLayout />}>
+        <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
+      </Route>
     </>
   );
 }
