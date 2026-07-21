@@ -52,6 +52,8 @@ const SIZES = [
   { size: "compact", label: "Compact" },
 ] as const;
 
+const COLORS = ["info", "core-brand", "warning", "error", "success"] as const;
+
 const Overview: StoryFn<AlertProps> = () => (
   <StoryShowcase title="Alert">
     <Box
@@ -69,25 +71,28 @@ const Overview: StoryFn<AlertProps> = () => (
           key={`${variant}-${withCloseButton}`}
         >{`<Alert variant="${variant}"${withCloseButton ? " withCloseButton" : ""} />`}</StoryJsx>
       ))}
-      {SIZES.map(({ size, label }) => (
-        <Fragment key={size}>
-          <Text size="sm" c="text-secondary" mt="sm">
-            {label}
-          </Text>
-          {COLUMNS.map(({ variant, withCloseButton }) => (
-            <Alert
-              key={`${variant}-${withCloseButton}`}
-              variant={variant}
-              size={size}
-              withCloseButton={withCloseButton}
-              icon={<Icon name="info" />}
-              title={TITLE}
-            >
-              <Text>{MESSAGE}</Text>
-            </Alert>
-          ))}
-        </Fragment>
-      ))}
+      {SIZES.map(({ size, label }) =>
+        COLORS.map((color) => (
+          <Fragment key={`${size}-${color}`}>
+            <Text size="sm" c="text-secondary" mt="sm">
+              {label} / {color}
+            </Text>
+            {COLUMNS.map(({ variant, withCloseButton }) => (
+              <Alert
+                key={`${variant}-${withCloseButton}`}
+                variant={variant}
+                size={size}
+                color={color}
+                withCloseButton={withCloseButton}
+                icon={<Icon name="model" />}
+                title={TITLE}
+              >
+                {MESSAGE}
+              </Alert>
+            ))}
+          </Fragment>
+        )),
+      )}
     </Box>
   </StoryShowcase>
 );
