@@ -4,7 +4,12 @@ import {
   discriminatingFilesForTest,
   fileExceedsBaseline,
 } from "./baseline.mjs";
-import { normalizeRoute, normalizeRoutes } from "./routes.mjs";
+import {
+  buildRouteTable,
+  matchRoute,
+  normalizeRoute,
+  normalizeRoutes,
+} from "./routes.mjs";
 
 const REPO_ROOT = "/repo";
 
@@ -54,6 +59,60 @@ describe("normalizeRoutes", () => {
 
   it("tolerates missing input", () => {
     expect(normalizeRoutes(undefined)).toEqual([]);
+  });
+});
+
+describe("OpenAPI route table", () => {
+  const table = buildRouteTable({
+    paths: {
+      "/api/card/{id}": { get: {}, put: {} },
+      "/api/card/{id}/query": { post: {} },
+      "/api/card/pivot": { post: {} },
+      "/api/setting/{key}": { get: {}, parameters: [] },
+      "/api/dataset": { post: {} },
+    },
+  });
+
+  it("matches concrete paths to their shape", () => {
+    expect(matchRoute(table, "GET", "/api/card/173")).toBe("/api/card/{id}");
+    expect(matchRoute(table, "POST", "/api/card/173/query")).toBe(
+      "/api/card/{id}/query",
+    );
+  });
+
+  it("prefers literal segments over params, like a router", () => {
+    expect(matchRoute(table, "POST", "/api/card/pivot")).toBe(
+      "/api/card/pivot",
+    );
+  });
+
+  it("matches non-numeric params the regex fallback cannot", () => {
+    expect(matchRoute(table, "GET", "/api/setting/site-name")).toBe(
+      "/api/setting/{key}",
+    );
+  });
+
+  it("respects the method and returns null for unknown routes", () => {
+    expect(matchRoute(table, "DELETE", "/api/card/173")).toBeNull();
+    expect(matchRoute(table, "GET", "/api/unknown")).toBeNull();
+  });
+
+  it("ignores trailing slashes on captured paths", () => {
+    expect(matchRoute(table, "GET", "/api/card/173/")).toBe("/api/card/{id}");
+  });
+
+  it("normalizeRoute uses the table, falling back to regexes", () => {
+    expect(normalizeRoute("GET /api/setting/site-name", table)).toBe(
+      "GET /api/setting/{key}",
+    );
+    expect(normalizeRoute("GET /api/unknown/173", table)).toBe(
+      "GET /api/unknown/:id",
+    );
+  });
+
+  it("buildRouteTable returns null for unusable specs", () => {
+    expect(buildRouteTable(null)).toBeNull();
+    expect(buildRouteTable({ paths: {} })).toBeNull();
   });
 });
 
