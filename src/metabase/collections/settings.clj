@@ -1,4 +1,4 @@
-(ns metabase.collections-rest.settings
+(ns metabase.collections.settings
   (:require
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :as i18n]))
