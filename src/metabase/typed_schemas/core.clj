@@ -14,19 +14,41 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private IdOrNameRef
+  "References a resource by id or name."
+  [:or
+   [:map [:id :int]]
+   [:map [:name ms/NonBlankString]]])
+
+(def ^:private CollectionRef
+  "References a collection by numeric or entity id."
+  [:or
+   [:map [:id :int]]
+   [:map [:entity-id ms/NonBlankString]]])
+
 (def SemanticSchemaOptions
-  "Options accepted by [[build-semantic-schema]]."
+  "Schema generation options accepted by [[build-semantic-schema]]."
   [:map
-   [:database {:optional true} [:maybe [:or [:map [:id :int]] [:map [:name ms/NonBlankString]]]]]
-   [:library {:optional true} [:maybe [:or [:map [:id :int]] [:map [:name ms/NonBlankString]]]]]
+   [:database {:optional true}
+    [:maybe {:description "Scopes the schema to a database. Accepts `{:id <database-id>}` or `{:name <database-name>}`."}
+     IdOrNameRef]]
+   [:library {:optional true}
+    [:maybe {:description "Selects a library collection. Accepts `{:id <collection-id>}` or `{:name <collection-name>}`."}
+     IdOrNameRef]]
    [:library-collection-refs {:optional true}
-    [:sequential [:or [:map [:id :int]] [:map [:entity-id ms/NonBlankString]]]]]
+    [:sequential {:description "Limits tables and metrics to library collections. Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`."}
+     CollectionRef]]
    [:question-collection-refs {:optional true}
-    [:sequential [:or [:map [:id :int]] [:map [:entity-id ms/NonBlankString]]]]]
-   [:include-data-library? {:optional true} :boolean]
-   [:include-metric-library? {:optional true} :boolean]
-   [:include-models? {:optional true} :boolean]
-   [:questions-only? {:optional true} :boolean]])
+    [:sequential {:description "Includes questions and models from collections. Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`."}
+     CollectionRef]]
+   [:include-data-library? {:optional true}
+    [:boolean {:description "Whether to include the root data library."}]]
+   [:include-metric-library? {:optional true}
+    [:boolean {:description "Whether to include the root metrics library."}]]
+   [:include-models? {:optional true}
+    [:boolean {:description "Whether to include models in the selected scope."}]]
+   [:questions-only? {:optional true}
+    [:boolean {:description "Whether to include only questions from the selected database."}]]])
 
 (defn- invalid-options!
   [message]
