@@ -31,6 +31,10 @@
 
 (def ^:private test-entity-ids (atom 0))
 
+(defmethod semantic-search/get-embeddings-batch ::dimension-translation-test
+  [embedding-model _texts & _opts]
+  [embedding-model])
+
 (defn- entity
   "Build a fake entity map for scoring tests. Uses a monotonically-increasing counter for `:id`
   so every test entity is distinct (and so test failures print stable, readable ids)."
@@ -743,6 +747,13 @@
                                     (repeat (count texts) [1.0]))]
         (embedder [{:id 1 :name "orders" :kind :table}])
         (is (false? (:record-tokens? @captured)))))))
+
+(deftest ^:parallel embeddings-client-translates-neutral-dimension-key-test
+  (let [[translated]
+        (embeddings/get-embeddings-batch
+         {:provider ::dimension-translation-test, :model-name "fake", :model-dimensions 384}
+         ["orders"])]
+    (is (= 384 (:vector-dimensions translated)))))
 
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
