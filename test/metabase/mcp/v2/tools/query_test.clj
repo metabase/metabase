@@ -263,6 +263,51 @@
                 "the second page of groups starts strictly past the first page's boundary")))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest remapped-column-paging-test
+  ;; The remap middleware injects a display column into every row (PEOPLE.NAME beside
+  ;; ORDERS.USER_ID), so the row no longer matches the projection position for position.
+  ;; next-page-query has to drop the injected columns before reading the boundary; misalignment
+  ;; would read some other column's value and page from a boundary that was never served.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-column-remappings [orders.user_id people.name]
+        (let [sid       (str (random-uuid))
+              ordered-by (fn [field-kw]
+                           {:query     (orders-query {:order-by [["asc" {} (field-name-ref :orders field-kw)]]})
+                            :row_limit 5})]
+          (testing "GHY-4142: a remapped column in the projection doesn't defeat the boundary read — the cursor still pages"
+            (let [body (payload (call! sid (ordered-by :id)))]
+              (is (true? (:truncated body)))
+              (is (string? (:next_cursor body)))
+              (let [next-body (payload (call! sid {:cursor (:next_cursor body) :row_limit 5}))]
+                (is (empty? (set/intersection (set (row-ids body)) (set (row-ids next-body))))
+                    "an overlap would mean the boundary was read from the wrong row position")
+                (is (< (apply max (row-ids body)) (apply min (row-ids next-body)))))))
+          (testing "GHY-4142: ordering by the remapped column mints no cursor — the middleware sorts by display value while the keyset predicate compares raw ones"
+            (let [body (payload (call! sid (ordered-by :user_id)))]
+              (is (true? (:truncated body)))
+              (is (nil? (:next_cursor body))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest row-limit-caps-the-page-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid (str (random-uuid))]
+        (testing "GHY-4142: row_limit caps a query that would otherwise return the whole table"
+          (let [body (payload (call! sid {:query (orders-query) :row_limit 7}))]
+            (is (= 7 (:returned body)))
+            (is (= 7 (count (:rows body))))
+            (is (true? (:truncated body)))))
+        (testing "GHY-4142: the query's own limit binds when it is the smaller of the two"
+          (let [body (payload (call! sid {:query (orders-query {:limit 2}) :row_limit 7}))]
+            (is (= 2 (:returned body)))
+            (is (false? (:truncated body)))))
+        (testing "GHY-4142: an unbounded query with no row_limit is capped at the default, not run to completion"
+          (let [body (payload (call! sid {:query (orders-query)}))]
+            (is (= 100 (:returned body)))
+            (is (true? (:truncated body)))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest prompt-rides-the-cursor-chain-test
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-model-cleanup [:model/McpQueryHandle]
