@@ -94,6 +94,7 @@ const CanAccessMonitor = () => <Outlet />;
 const CanAccessMonitorDiagnostics = () => <Outlet />;
 const CanAccessMonitoringTools = () => <Outlet />;
 const CanAccessAlertsManagement = () => <Outlet />;
+const CanAccessAiAuditing = () => <Outlet />;
 
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
@@ -115,6 +116,7 @@ const setup = ({
         CanAccessMonitorDiagnostics,
         CanAccessMonitoringTools,
         CanAccessAlertsManagement,
+        CanAccessAiAuditing,
       )}
     </Route>,
     {
@@ -143,7 +145,13 @@ const setupWithGuards = ({
   return renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
-      {getMonitorRoutes(CanAccessMonitor, Diagnostics, Tools, AlertsManagement)}
+      {getMonitorRoutes(
+        CanAccessMonitor,
+        Diagnostics,
+        Tools,
+        AlertsManagement,
+        CanAccessAiAuditing,
+      )}
     </Route>,
     {
       withRouter: true,

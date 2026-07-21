@@ -44,6 +44,7 @@ export function getMonitorRoutes(
   CanAccessMonitorDiagnostics: RouteComponent,
   CanAccessMonitoringTools: RouteComponent,
   CanAccessAlertsManagement: RouteComponent,
+  CanAccessAiAuditing: RouteComponent,
 ) {
   return (
     <Route element={<CanAccessMonitor />}>
@@ -86,6 +87,14 @@ export function getMonitorRoutes(
 
         <Route element={<CanAccessAlertsManagement />}>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
+        </Route>
+
+        <Route element={<CanAccessAiAuditing />}>
+          {PLUGIN_MONITOR.isAiAuditingEnabled && (
+            <Route path="ai-auditing">
+              {PLUGIN_MONITOR.getAiAuditingRoutes()}
+            </Route>
+          )}
         </Route>
 
         <Route path="*" element={<NotFound />} />
