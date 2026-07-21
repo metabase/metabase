@@ -16,12 +16,12 @@ jobs:
     - uses: actions/checkout@v6
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-    - name: Run embedder tests
-      run: ./bin/test-agent --embedder :only '[metabase-enterprise.embedder.core-test]'
     - name: Build embedder plugin
       run: ./bin/build-embedder-plugin.sh
     - name: Verify embedder plugin artifact
       run: test -s modules/embedder/target/metabase-embedder-plugin.jar
+    - name: Run embedder tests
+      run: ./bin/test-agent --embedder :only '[metabase-enterprise.embedder.core-test]'
 
   test-build-scripts:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
