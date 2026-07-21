@@ -7,6 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.fix-bad-field-id-refs :as fix-bad-field-id-refs]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -315,6 +316,30 @@
               exprs (get-in mbql4 [:query :expressions])]
           (is (every? string? (keys exprs))
               (str "Assert failed: :expressions should always use string keys, got: " (pr-str exprs))))))))
+
+(deftest ^:parallel preserve-remap-marker-when-fixing-field-id-ref-test
+  (testing "rewriting an ID ref to a previous-stage name ref preserves its remap marker (#78187)"
+    (let [mp (lib.tu/mock-metadata-provider
+              {:database {:id 1, :engine :h2}
+               :tables   [{:id 10, :db-id 1, :name "MY_TABLE", :schema "PUBLIC"}]
+               :fields   [{:id 100, :table-id 10, :name "ID", :base-type :type/Integer}]})
+          query (-> (lib/query mp {:database 1
+                                   :type     :query
+                                   :query    {:source-query {:native "SELECT ID FROM MY_TABLE"}
+                                              :fields       [[:field 100 nil]]}})
+                    (assoc-in [:stages 0 :lib/stage-metadata]
+                              {:lib/type :metadata/results
+                               :columns  [{:lib/type  :metadata/column
+                                           :name      "ID"
+                                           :base-type :type/Integer
+                                           :id        100
+                                           :table-id  10}]})
+                    (update-in [:stages 1 :fields 0]
+                               lib/update-options assoc
+                               ::qp.add-remaps/original-field-dimension-id 123))]
+      (is (=? {:stages [{}
+                        {:fields [[:field {::qp.add-remaps/original-field-dimension-id 123} "ID"]]}]}
+              (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))
 
 (deftest ^:parallel resolve-join-conditions-test
   (testing "Resolve fields in join :conditions"

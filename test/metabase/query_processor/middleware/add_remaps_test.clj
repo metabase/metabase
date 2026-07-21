@@ -181,6 +181,24 @@
                                                  ::qp.add-remaps/new-field-dimension-id pos-int?}]]}})
               (lib/->legacy-MBQL query))))))
 
+(deftest ^:parallel add-fk-remaps-previous-stage-name-ref-to-id-field-test
+  (testing "remaps match a previous-stage name ref to the selected Field ID (#78187)"
+    (let [query        (-> (lib/query category-id-remap-metadata-provider
+                                      (meta/table-metadata :venues))
+                           lib/append-stage
+                           (lib/with-fields [(meta/field-metadata :venues :category-id)]))
+          dimension-id (get-in (lib.metadata/field category-id-remap-metadata-provider
+                                                   (meta/id :venues :category-id))
+                               [:lib/external-remap :id])]
+      ;; The appended stage selects the column by ID, but `returned-columns` describes it with a previous-stage name
+      ;; ref. This is the same mismatch introduced when sandboxing wraps a source table in an additional stage.
+      (is (=? {:stages [{}
+                        {:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
+                                   (meta/id :venues :category-id)]
+                                  [:field {::qp.add-remaps/new-field-dimension-id dimension-id}
+                                   (meta/id :categories :name)]]}]}
+              (qp.add-remaps/add-remapped-columns query))))))
+
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
