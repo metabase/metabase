@@ -14,8 +14,8 @@ import {
 } from "__support__/ui";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
-import type { RouterEngine } from "metabase/router/engine";
 import { Route, withRouteProps } from "metabase/router";
+import type { RouterEngine } from "metabase/router/engine";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -23,6 +23,7 @@ const RoutedDataPermissionsPage = withRouteProps(DataPermissionsPage);
 const RoutedGroupsPermissionsPage = withRouteProps(GroupsPermissionsPage);
 
 const TEST_DATABASE = createSampleDatabase();
+const TEST_TABLES = TEST_DATABASE.tables ?? [];
 
 const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
@@ -93,7 +94,7 @@ describe.each<RouterEngine>(["v3", "v7"])(
 
       // Table-level view: a row per table in the sample database.
       expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(tableRowCount()).toBe(TEST_DATABASE.tables.length + 1);
+      expect(tableRowCount()).toBe(TEST_TABLES.length + 1);
     });
   },
 );

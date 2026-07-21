@@ -41,7 +41,10 @@ function toV7Target(to: V3To): { to: V7LinkProps["to"]; state?: unknown } {
   };
 }
 
-interface Props extends RouterLinkProps {
+interface Props extends Omit<RouterLinkProps, "to"> {
+  // Optional: a link with no destination is used as a button, navigating through
+  // its own `onClick`.
+  to?: V3To;
   // v3's ref-forwarding prop; the facade's `ForwardRefLink` still passes it.
   innerRef?: Ref<HTMLAnchorElement>;
 }
