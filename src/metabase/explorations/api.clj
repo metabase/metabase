@@ -903,11 +903,11 @@
     (case (:status q)
       "done"
       (let [sr (api/check-404 (eqr/stored-results id))]
-        ;; The cached `result_data` was produced under the creator's lens, so a non-creator viewer
-        ;; might otherwise see rows the QP would have filtered out for them. Gate against the
-        ;; creator's stored data-access token (sandbox/impersonation/routing) + basic data perms.
-        (when-not (= api/*current-user-id* (:creator_id sr))
-          (queries/assert-can-view-cached-result! sr))
+        ;; The cached `result_data` was produced under the creator's lens, so any viewer might
+        ;; otherwise see rows the QP would have filtered out for them now. Gate every viewer — the
+        ;; creator included, whose own permissions may have narrowed since the snapshot — against the
+        ;; stored data-access token (sandbox/impersonation/routing) + basic data perms.
+        (queries/assert-can-view-cached-result! sr)
         (stream-stored-result format (:result_data sr)))
 
       ;; Pending / errored: no blob exists yet and the response is status-only (no rows, no

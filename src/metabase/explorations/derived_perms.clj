@@ -8,32 +8,24 @@
   The per-result rule is exactly the cached-read gate the results themselves are streamed
   through ([[metabase.queries.cached-result]]): the viewer must hold the data perms to run the
   underlying query AND a lens compatible with the one the snapshot was computed under (nil
-  token => creator+admin-only; token computation throwing => deny). This namespace only rolls
-  that per-`StoredResult` verdict up to thread granularity: a thread's derived data is visible
-  when every stored result backing it is, so a viewer never sees a tree whose labels embed
+  token => admin-only; token computation throwing => deny). The gate is applied to *every*
+  viewer, the snapshot's creator included — being the creator once is not a permanent pass, since
+  the creator's own permissions may have narrowed since the snapshot was taken. This namespace
+  only rolls that per-`StoredResult` verdict up to thread granularity: a thread's derived data is
+  visible when every stored result backing it is, so a viewer never sees a tree whose labels embed
   values from a result they couldn't stream."
   (:require
    [clojure.set :as set]
-   [metabase.api.common :as api]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [toucan2.core :as t2]))
 
-(defn- own-snapshot?
-  "Whether `stored-result` was computed by the current user, who therefore always may see values
-  derived from it."
-  [stored-result]
-  (= (:creator_id stored-result) api/*current-user-id*))
-
-(defn- stored-result-visible?
-  "Whether the current user may see values derived from `stored-result`."
-  [stored-result]
-  (or (own-snapshot? stored-result)
-      (queries/viewer-can-view-cached-result? stored-result)))
-
 (defn- visibility-key
-  "The inputs [[stored-result-visible?]] actually depends on, so a batch can evaluate the verdict
-  once per distinct key instead of once per snapshot.
+  "The inputs [[metabase.queries.cached-result/viewer-can-view-cached-result?]] actually depends on,
+  so a batch can evaluate the verdict once per distinct key instead of once per snapshot. The verdict
+  turns on the snapshot's database, its captured lens token, and the perms its query requires — not
+  on who created it, so `creator_id` is deliberately absent from the key (two creators' snapshots
+  over the same table + lens share a verdict).
 
   Keying on the `dataset_query` itself would never dedupe: an exploration's charts are variants
   over one metric card, so their queries differ textually while requiring identical permissions.
@@ -43,9 +35,9 @@
   It cannot account for every query — a raw source-card reference (`\"card__1\"`) matches none of
   its patterns and yields nothing. When it accounts for no source at all, we fall back to keying on
   the whole query so those snapshots are never merged with each other."
-  [{:keys [creator_id database_id dataset_query data_access_token]}]
+  [{:keys [database_id dataset_query data_access_token]}]
   (let [source-ids (some-> dataset_query query-perms/query->source-ids)]
-    [creator_id database_id data_access_token
+    [database_id data_access_token
      (if (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids)))
        source-ids
        dataset_query)]))
@@ -56,7 +48,7 @@
   blob and most callers here are polling."
   [thread-ids]
   (t2/select [:model/StoredResult
-              :stored_result.id :stored_result.creator_id :stored_result.database_id
+              :stored_result.id :stored_result.database_id
               :stored_result.data_access_token
               [:exploration_query.exploration_thread_id :exploration_thread_id]]
              {:join  [:exploration_query_result
@@ -66,14 +58,16 @@
               :where [:in :exploration_query.exploration_thread_id thread-ids]}))
 
 (defn- with-dataset-queries
-  "Attach `:dataset_query` to the `snapshots` that need it. Ones the current user created are
-  visible on that basis alone, so their queries are never read — which is the common case, since
-  the person polling an exploration is usually the one who ran it."
+  "Attach `:dataset_query` to every snapshot. The verdict needs it for both the data-perms check and
+  the lens comparison, so it is read for all of them — the poller's own snapshots included, since
+  being the creator no longer exempts a snapshot from the gate. Fetched here rather than in
+  [[backing-snapshots]] because it is a large blob, and read once per distinct `StoredResult` id so a
+  blob shared across a thread's queries isn't fetched repeatedly."
   [snapshots]
-  (let [needed (into #{} (comp (remove own-snapshot?) (map :id)) snapshots)
-        by-id  (when (seq needed)
-                 (t2/select-fn->fn :id :dataset_query
-                                   [:model/StoredResult :id :dataset_query] :id [:in needed]))]
+  (let [ids   (into #{} (map :id) snapshots)
+        by-id (when (seq ids)
+                (t2/select-fn->fn :id :dataset_query
+                                  [:model/StoredResult :id :dataset_query] :id [:in ids]))]
     (mapv #(cond-> % (contains? by-id (:id %)) (assoc :dataset_query (by-id (:id %))))
           snapshots)))
 
@@ -84,16 +78,18 @@
   the expensive check run once per group rather than once per snapshot."
   [snapshots]
   (->> (group-by visibility-key snapshots)
-       (remove (fn [[_key [representative]]] (stored-result-visible? representative)))
+       (remove (fn [[_key [representative]]]
+                 (queries/viewer-can-view-cached-result? representative)))
        (mapcat val)
        (map :exploration_thread_id)
        set))
 
 (defn thread-ids-with-visible-derived-data
   "The subset of `thread-ids` whose derived read-data the current user may see: every
-  `StoredResult` backing the thread's materialized queries must pass [[stored-result-visible?]].
-  Threads with no materialized results yet have nothing computed under anyone's lens, so they stay
-  visible. Returns a set."
+  `StoredResult` backing the thread's materialized queries must pass the cached-read gate
+  ([[metabase.queries.cached-result/viewer-can-view-cached-result?]]) for the *current* user — the
+  creator included. Threads with no materialized results yet have nothing computed under anyone's
+  lens, so they stay visible. Returns a set."
   [thread-ids]
   (let [thread-ids (set thread-ids)]
     (if (empty? thread-ids)

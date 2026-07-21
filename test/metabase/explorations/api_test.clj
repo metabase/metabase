@@ -1152,9 +1152,15 @@
             (is (nil? (:row_count q)))))
         (testing "after a result row is inserted, both scores surface via hydration"
           (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
-                                                       {:result_data (byte-array [0])
-                                                        :row_count   37
-                                                        :creator_id  (:id u)}))]
+                                                       ;; Production-shaped: real query + unrestricted
+                                                       ;; token, so the derived-data gate admits the
+                                                       ;; creator on their current perms.
+                                                       {:result_data       (byte-array [0])
+                                                        :row_count         37
+                                                        :creator_id        (:id u)
+                                                        :database_id       (mt/id)
+                                                        :dataset_query     (:dataset_query metric)
+                                                        :data_access_token {}}))]
             (t2/insert! :model/ExplorationQueryResult
                         {:exploration_query_id             qid
                          :stored_result_id                 sr-id
@@ -1168,23 +1174,33 @@
 (defn- store-fake-result!
   "Insert a StoredResult holding the worker-serialized bytes plus an ExplorationQueryResult
   that points at it, mirroring what the runner produces so the read endpoints can replay it.
-  Stamps `creator_id` from the owning Exploration (as the real runner does) so the cached-read
-  gate's creator bypass behaves like production."
+  Stamps `creator_id`, `dataset_query`, `database_id`, and an unrestricted (`{}`) `data_access_token`
+  as the real runner does for a user with full data access, so the cached-read gate sees a
+  production-shaped snapshot and admits the creator on their *current* perms (not on being the
+  creator, which is no longer a bypass)."
   [query-id qp-result]
-  (let [bytes      (qp.core/do-with-serialization
-                    (fn [in result-fn]
-                      (in qp-result)
-                      (result-fn)))
-        creator-id (t2/select-one-fn :creator_id :model/Exploration
-                                     {:select [:e.creator_id]
-                                      :from   [[:exploration :e]]
-                                      :join   [[:exploration_thread :t] [:= :t.exploration_id :e.id]
-                                               [:exploration_query :q]  [:= :q.exploration_thread_id :t.id]]
-                                      :where  [:= :q.id query-id]})
-        sr-id      (first (t2/insert-returning-pks!
-                           :model/StoredResult
-                           {:result_data bytes
-                            :creator_id  creator-id}))]
+  (let [bytes         (qp.core/do-with-serialization
+                       (fn [in result-fn]
+                         (in qp-result)
+                         (result-fn)))
+        card-id       (t2/select-one-fn :card_id :model/ExplorationQuery :id query-id)
+        ;; The metric Card's own query — a real, runnable query with a source table the creator can
+        ;; query. The finalized ExplorationQuery.dataset_query is nil for these fake-dimension rows,
+        ;; and the gate needs a query it can resolve source tables from to compare the lens.
+        dataset-query (t2/select-one-fn :dataset_query :model/Card :id card-id)
+        creator-id    (t2/select-one-fn :creator_id :model/Exploration
+                                        {:select [:e.creator_id]
+                                         :from   [[:exploration :e]]
+                                         :join   [[:exploration_thread :t] [:= :t.exploration_id :e.id]
+                                                  [:exploration_query :q]  [:= :q.exploration_thread_id :t.id]]
+                                         :where  [:= :q.id query-id]})
+        sr-id         (first (t2/insert-returning-pks!
+                              :model/StoredResult
+                              {:result_data       bytes
+                               :creator_id        creator-id
+                               :database_id       (mt/id)
+                               :dataset_query     dataset-query
+                               :data_access_token {}}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
                  :stored_result_id     sr-id})))
