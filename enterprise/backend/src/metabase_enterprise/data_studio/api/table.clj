@@ -10,7 +10,6 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.upload.core :as upload]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -210,61 +209,6 @@
           (events/publish-event! :event/table-unpublish {:object  table
                                                          :user-id api/*current-user-id*}))))
     nil))
-
-;;; +-----------------------------
-;;; |  seeds
-;;; +-----------------------------
-
-(defn- library-data-collection
-  "The root Library / Data collection that published tables (and seeds) live in."
-  []
-  (when-let [lib-id (:id (collection/library-collection))]
-    (t2/select-one :model/Collection
-                   :type     collection/library-data-collection-type
-                   :location (str "/" lib-id "/"))))
-
-(defn- publish-seed!
-  "Move a freshly-materialized seed table into the Library and mark it published, mirroring `/publish-tables`."
-  [table]
-  (let [target (api/check-404 (library-data-collection))]
-    (t2/update! :model/Table (:id table) {:collection_id (:id target)
-                                          :is_published  true})
-    (let [published (t2/select-one :model/Table (:id table))]
-      (events/publish-event! :event/table-publish {:object  published
-                                                   :user-id api/*current-user-id*})
-      published)))
-
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/seed"
-  "Create a *seed*: materialize the attached CSV into a plain, stably-named table (no model Card) and publish it into
-  the Library. Unlike an upload, the caller supplies `name`, which becomes the table name that dependents reference.
-
-  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
-  {:multipart {:max-file-size  upload/max-upload-size-bytes
-               :max-file-count upload/max-upload-part-count}}
-  [_route-params
-   _query-params
-   _body
-   {:keys [multipart-params], :as _request}
-   :- [:map
-       [:multipart-params
-        [:map {:closed true}
-         ["name" :string]
-         ["file" [:map
-                  [:filename :string]
-                  [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  (api/check-data-analyst)
-  (let [settings (upload/uploads-settings)
-        db-id    (or (:db_id settings)
-                     (throw (ex-info (tru "The uploads database is not configured.") {:status-code 422})))
-        file     (get multipart-params "file")
-        table    (upload/create-csv-table! {:filename    (:filename file)
-                                            :file        (:tempfile file)
-                                            :db-id       db-id
-                                            :schema-name (:schema_name settings)
-                                            :table-name  (get multipart-params "name")
-                                            :data-source :seed})]
-    (publish-seed! table)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-studio/table` routes."
