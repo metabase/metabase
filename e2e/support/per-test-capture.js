@@ -3,12 +3,21 @@
  *
  * For every test (attempt) this records:
  *  - the API routes it touched: app traffic (fetch/XHR) via a pass-through
- *    middleware intercept, plus setup traffic issued through cy.request
- *    (helpers like H.createQuestion never hit cy.intercept because they go
- *    through the Cypress server, not the browser).
+ *    middleware intercept plus fetch/XHR wrappers installed on every app
+ *    window, and setup traffic issued through cy.request (helpers like
+ *    H.createQuestion never hit cy.intercept because they go through the
+ *    Cypress server, not the browser).
  *  - which instrumented functions fired, computed node-side as the delta of
  *    the accumulated Istanbul counters between tests (recordTestCapture in
  *    e2e/support/config.js).
+ *
+ * Two app-traffic capture paths on purpose: the intercept sees traffic the
+ * window wrappers can't (child iframes in embedding specs), while the
+ * wrappers see traffic the intercept can't — suite-level before() hooks run
+ * ahead of every beforeEach and intercepts reset between tests, so no
+ * intercept can be live during them, but window:before:load fires for every
+ * app window regardless of which hook visited it. The overlap dedupes at
+ * flush.
  *
  * The afterEach flush below MUST run after @cypress/code-coverage's own
  * afterEach, which drains window.__coverage__ into the node-side accumulator.
@@ -16,10 +25,9 @@
  * "@cypress/code-coverage/support" in e2e/support/cypress.js and root-level
  * hooks run in registration order.
  *
- * Known attribution gaps, all acceptable for manifest purposes: app traffic
- * during a suite-level before() escapes the intercept (it is registered per
- * test in beforeEach), and requests from hooks attribute to the surrounding
- * test:before:run/afterEach window.
+ * Known attribution gap, acceptable for manifest purposes: requests from
+ * hooks attribute to the surrounding test:before:run/afterEach window, so
+ * suite-level before() traffic lands on the suite's first test.
  */
 
 const isInstrumented = Cypress.expose("coverage") === true;
@@ -88,10 +96,42 @@ function recordRequestArgs(args) {
   }
 }
 
+// Records a fetch() call. `input` is fetch's first argument (string, URL, or
+// Request); per the fetch spec an explicit init.method overrides a Request's.
+function recordFetchArgs(win, input, init) {
+  if (input instanceof win.Request) {
+    recordRoute(init?.method || input.method || "GET", input.url);
+  } else {
+    recordRoute(init?.method || "GET", String(input));
+  }
+}
+
 if (isInstrumented) {
   // Fires once per attempt, before any of the attempt's hooks.
   Cypress.on("test:before:run", () => {
     routeBuffer = [];
+  });
+
+  Cypress.on("window:before:load", (win) => {
+    const originalFetch = win.fetch;
+    win.fetch = function (input, init) {
+      try {
+        recordFetchArgs(win, input, init);
+      } catch {
+        // Recording must never break the app's request.
+      }
+      return originalFetch.apply(this, arguments);
+    };
+
+    const originalOpen = win.XMLHttpRequest.prototype.open;
+    win.XMLHttpRequest.prototype.open = function (method, url) {
+      try {
+        recordRoute(method, String(url));
+      } catch {
+        // Recording must never break the app's request.
+      }
+      return originalOpen.apply(this, arguments);
+    };
   });
 
   beforeEach(() => {
