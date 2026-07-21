@@ -358,28 +358,45 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
     cy.visit("/admin/settings/uploads");
     cy.wait("@getUploadTables");
 
-    cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog_breeds/i).should("have.length", 3);
-      cy.findAllByText(/star_wars_characters/i).should("have.length", 2);
+    // Re-query the container fresh on each assertion instead of caching it via
+    // `within`: the table re-renders when `getUploadTables` resolves, detaching
+    // the captured node, and a retrying query against a detached subtree gets
+    // stuck on the intermediate render (metabase flake: found 2, expected 3).
+    cy.findByTestId("upload-tables-table")
+      .findAllByText(/dog_breeds/i)
+      .should("have.length", 3);
+    cy.findByTestId("upload-tables-table")
+      .findAllByText(/star_wars_characters/i)
+      .should("have.length", 2);
 
-      // single delete
-      cy.findAllByLabelText("trash icon").first().click();
-    });
+    // single delete
+    cy.findByTestId("upload-tables-table")
+      .findAllByLabelText("trash icon")
+      .first()
+      .click();
 
     H.modal().button("Delete").click();
     cy.wait("@getUploadTables");
 
     cy.findByTestId("undo-list").findByText(/1 table deleted/i);
 
-    cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog_breeds/i).should("have.length", 2);
-      cy.findAllByText(/star_wars_characters/i).should("have.length", 2);
+    cy.findByTestId("upload-tables-table")
+      .findAllByText(/dog_breeds/i)
+      .should("have.length", 2);
+    cy.findByTestId("upload-tables-table")
+      .findAllByText(/star_wars_characters/i)
+      .should("have.length", 2);
 
-      // multiple delete
-      cy.findAllByRole("checkbox").first().click();
+    // multiple delete
+    cy.findByTestId("upload-tables-table")
+      .findAllByRole("checkbox")
+      .first()
+      .click();
+    cy.findByTestId("upload-tables-table")
+      .findAllByRole("checkbox")
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByRole("checkbox").last().click();
-    });
+      .last()
+      .click();
 
     cy.findByTestId("toast-card").button("Delete").click();
     H.modal().button("Delete").click();
@@ -387,10 +404,12 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
 
     cy.findByTestId("undo-list").findByText(/2 tables deleted/i);
 
-    cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog_breeds/i).should("have.length", 1);
-      cy.findAllByText(/star_wars_characters/i).should("have.length", 1);
-    });
+    cy.findByTestId("upload-tables-table")
+      .findAllByText(/dog_breeds/i)
+      .should("have.length", 1);
+    cy.findByTestId("upload-tables-table")
+      .findAllByText(/star_wars_characters/i)
+      .should("have.length", 1);
   });
 });
 
