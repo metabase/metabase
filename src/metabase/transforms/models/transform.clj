@@ -111,7 +111,10 @@
       mi/json-out-without-keywordization
       (update-keys keyword)
       (m/update-existing :query (fn [q] (if (orphan-query? q) q (lib-be/normalize-query q))))
-      (m/update-existing :source-incremental-strategy #(update-keys % keyword))
+      (m/update-existing :source-incremental-strategy
+                         (fn [strategy]
+                           (-> (update-keys strategy keyword)
+                               (m/update-existing :lookback #(some-> % (update-keys keyword))))))
       (m/update-existing :source-tables (fn [st] (mapv #(update-keys % keyword) st)))
       (m/update-existing :type keyword)))
 
