@@ -61,6 +61,7 @@
  * other ported specs rebuild.
  */
 import { expect, test } from "../support/fixtures";
+import { writableDbName } from "../support/writable-db";
 import { startNewNativeQuestion } from "../support/native-editor";
 import { runNativeQuery } from "../support/models";
 import {
@@ -114,7 +115,7 @@ const POSTGRES_CONFIG: AdvancedConfig = {
         details: {
           host: QA_DB_CREDENTIALS.host,
           port: QA_POSTGRES_PORT,
-          dbname: "writable_db",
+          dbname: writableDbName(),
           user: QA_DB_CREDENTIALS.user,
           password: QA_DB_CREDENTIALS.password,
           ssl: false,
@@ -149,7 +150,7 @@ const MYSQL_CONFIG: AdvancedConfig = {
         details: {
           host: QA_DB_CREDENTIALS.host,
           port: QA_MYSQL_PORT,
-          dbname: "writable_db",
+          dbname: writableDbName(),
           user: "root",
           password: QA_DB_CREDENTIALS.password,
           ssl: false,

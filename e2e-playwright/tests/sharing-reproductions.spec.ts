@@ -487,9 +487,23 @@ test.describe("issue 22524", () => {
     await textFilter.pressSequentially("Rye");
     await page.keyboard.press("Enter");
 
-    // Check results
+    // Check results.
+    //
+    // Scoped to the dashcard, not page-wide. MEASURED: page-wide this resolves
+    // to TWO `[data-testid=cell-data]` divs with identical text — the on-screen
+    // cell, and the data-grid's off-screen width-measurement clone, which
+    // `createMeasurementContainer` / `useBodyCellMeasure` append to
+    // `document.body` (visibility:hidden at -9999px) and tear down a tick
+    // later. Cypress's `findByText` retries through the transient
+    // "found multiple elements" error until the clone unmounts; Playwright's
+    // `toBeVisible()` does NOT retry through a strict-mode violation — it
+    // throws immediately, which is why this read as a deterministic failure.
+    // The clones live outside the dashcard, so scoping removes the ambiguity
+    // without weakening the assertion.
     await expect(
-      page.getByText("2-7900 Cuerno Verde Road", { exact: true }),
+      getDashboardCard(page).getByText("2-7900 Cuerno Verde Road", {
+        exact: true,
+      }),
     ).toBeVisible();
   });
 });

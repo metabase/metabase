@@ -25,6 +25,7 @@ import { TableSection } from "./data-model";
 import { closeToast } from "./datamodel-data-studio";
 import { expect } from "./fixtures";
 import { undoToast } from "./metrics";
+import { writableDbConnection } from "./writable-db";
 
 /** USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js). */
 export const ALL_USERS_GROUP = 1;
@@ -190,14 +191,7 @@ export async function foreignWritableSchemas(): Promise<string[]> {
       end(): Promise<void>;
     };
   };
-  const client = new Client({
-    host: "localhost",
-    user: "metabase",
-    password: "metasample123",
-    database: "writable_db",
-    port: 5404,
-    ssl: false,
-  });
+  const client = new Client(writableDbConnection("postgres"));
   await client.connect();
   try {
     const { rows } = await client.query(

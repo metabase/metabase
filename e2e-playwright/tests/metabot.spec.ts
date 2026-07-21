@@ -363,25 +363,32 @@ test.describe("Metabot in full-app embedding", () => {
     await expect(
       icon(frame.getByLabel("Navigation bar"), "metabot"),
     ).toBeVisible();
-    // The QB header's "Explain this chart" button mounts ~160ms AFTER the navbar
-    // metabot icon — both are gated on the same metabot-permissions query, but
-    // the toolbar lags the navbar — so at the instant the metabot icon is
-    // visible the chart explainer is not yet in the DOM. On a fully-settled
-    // embedded question the app DOES surface it (verified against the jar — see
-    // findings-inbox). That mount lag is what makes upstream's absence check
-    // vacuous, and it is the substance of FINDINGS #46.
+
+    // DELIBERATE DIVERGENCE FROM UPSTREAM (FINDINGS #46).
     //
-    // NOTE on form: `should("not.exist")` and `toHaveCount(0)` BOTH retry and
-    // both pass at the first absent observation, so they are equivalent here —
-    // an earlier comment claiming a retrying check would "wait out the lag" was
-    // wrong (see the corrected rule in PORTING.md). The one-shot read is kept
-    // deliberately because it fails FAST if the timing ever shifts and the
-    // explainer is already mounted, which is precisely the race under test;
-    // a retrying form would burn the full timeout to report the same thing.
-    // The positive anchor above is what pins the instant.
-    expect(
-      await frame.getByLabel("Explain this chart", { exact: true }).count(),
-    ).toBe(0);
+    // Upstream asserts `cy.findByLabelText("Explain this chart").should("not.exist")`
+    // here. That assertion is a RACE, not a behaviour: the QB header's
+    // "Explain this chart" button (AIQuestionAnalysisButton, rendered by
+    // ViewTitleHeaderRightSide whenever `useUserMetabotPermissions().hasMetabotAccess`
+    // is true) mounts a few hundred ms AFTER the navbar metabot icon. Both are
+    // gated on the same metabot-permissions query; the toolbar just lags the
+    // navbar. So an absence check fired at the instant the navbar icon appears
+    // passes or fails purely on timing.
+    //
+    // Measured on the post-merge build: count=0 at the instant the navbar icon
+    // is visible, then count=1 from ~500ms onwards and stable for the rest of
+    // the run. The settled truth is that the explainer IS rendered when
+    // `embedded-metabot-enabled?` is true — which matches the test's own title.
+    // The CI failure ("Expected: 0, Received: 1") was this race landing on the
+    // other side, not a regression.
+    //
+    // So we assert the settled state instead. This is strictly stronger than
+    // upstream's check: it is a positive assertion that fails if the app ever
+    // stops surfacing the explainer in full-app embedding, whereas upstream's
+    // passes vacuously whenever it wins the race.
+    await expect(
+      frame.getByLabel("Explain this chart", { exact: true }),
+    ).toBeVisible();
   });
 
   test("should not show the metabot button when embedded-metabot-enabled? is false", async ({

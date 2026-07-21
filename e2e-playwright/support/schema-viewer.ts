@@ -6,6 +6,7 @@ import { expect } from "@playwright/test";
 import type { Locator, Page, Response } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
+import { writableDbConnection } from "./writable-db";
 
 /** Mirrors e2e/support/cypress_data.js */
 export const WRITABLE_DB_ID = 2;
@@ -14,17 +15,6 @@ export const WRITABLE_DB_ID = 2;
 export const MAGIC_USER_GROUPS = {
   EXTERNAL_USERS_GROUP: 3,
   DATA_ANALYSTS_GROUP: 4,
-};
-
-// Writable-postgres connection facts from e2e/support/cypress_data.js
-// (QA_DB_CREDENTIALS / QA_POSTGRES_PORT / WRITABLE_DB_CONFIG.postgres).
-const WRITABLE_PG_CONFIG = {
-  host: "localhost",
-  user: "metabase",
-  password: "metasample123",
-  database: "writable_db",
-  port: 5404,
-  ssl: false,
 };
 
 export function tableNode(page: Page, tableId: number): Locator {
@@ -143,7 +133,7 @@ export async function queryWritableDB(query: string): Promise<void> {
   const { Client } = require("pg") as {
     Client: new (config: Record<string, unknown>) => PgClient;
   };
-  const client = new Client(WRITABLE_PG_CONFIG);
+  const client = new Client(writableDbConnection("postgres"));
   await client.connect();
   try {
     await client.query(query);

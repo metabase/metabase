@@ -369,8 +369,17 @@ test.describe("scenarios > metrics > editing", () => {
           response.request().method() === "POST" &&
           new URL(response.url()).pathname === "/api/dataset/query_metadata",
       );
-      await miniPicker(page).getByText("Our analytics", { exact: true }).click();
-      await miniPicker(page)
+      // UPSTREAM DRIFT (re-ported): the metric used to be selectable directly
+      // in the mini picker. "Hide existing metrics from the metric mini
+      // picker" (#78054, a492c1091b0) removed metrics from that list, so
+      // upstream now goes through "Browse all" into the entity picker modal.
+      // Without this the metric name is never clickable and the
+      // query_metadata wait below times out.
+      await miniPickerBrowseAll(page).click();
+      await entityPickerModal(page)
+        .getByText("Our analytics", { exact: true })
+        .click();
+      await entityPickerModal(page)
         .getByText(ORDERS_SCALAR_METRIC.name, { exact: true })
         .click();
       await metadata;

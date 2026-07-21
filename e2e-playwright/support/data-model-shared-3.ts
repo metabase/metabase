@@ -149,6 +149,7 @@ export {
   expectToastsContainText,
   verifyAndCloseToast,
 } from "./data-model-shared-2";
+import { writableDbConfig } from "./writable-db";
 
 /** `H.undoToast().should("not.exist")`. */
 export async function expectNoToast(page: Page) {
@@ -348,17 +349,7 @@ export async function resetManyDataTypesTable() {
   const tableName = "many_data_types";
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Knex = require("knex") as (config: unknown) => KnexClient;
-  const client = Knex({
-    client: "pg",
-    connection: {
-      host: "localhost",
-      user: "metabase",
-      password: "metasample123",
-      database: "writable_db",
-      port: 5404,
-      ssl: false,
-    },
-  });
+  const client = Knex(writableDbConfig("postgres"));
 
   try {
     await client.schema.dropTableIfExists(tableName);

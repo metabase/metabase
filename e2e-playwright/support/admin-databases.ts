@@ -22,11 +22,14 @@ export const QA_MYSQL_PORT = 3304;
 export const QA_MONGO_PORT = 27004;
 export const QA_POSTGRES_PORT = 5404;
 
-/** Mirrors WRITABLE_DB_CONFIG[dialect].connection.database. */
-export const WRITABLE_DB_DBNAME: Record<string, string> = {
-  mysql: "writable_db",
-  postgres: "writable_db",
-};
+/**
+ * The database Metabase's database 2 points at after a `-writable` restore.
+ * Not a constant any more: with per-worker isolation on, `restore()` re-points
+ * database 2 at this worker's own `writable_db_w<slot>` (support/writable-db.ts),
+ * and a test asserting the literal `writable_db` would fail for the right
+ * reason but the wrong cause.
+ */
+export { writableDbName } from "./writable-db";
 
 /**
  * Port of `cy.button(name)` (e2e/support/commands/ui/button.ts):

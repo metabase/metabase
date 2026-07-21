@@ -52,10 +52,18 @@ const DOMESTIC_SCHEMA = "Domestic";
  * the assertion. `TablePicker.getTable("Animals")` genuinely matches two rows
  * here (the fixture creates `Domestic.Animals` AND `Wild.Animals`), so this is
  * not hypothetical.
+ *
+ * The "at least one" step must RETRY. `locator.count()` is a one-shot snapshot,
+ * whereas the Cypress original retries the whole assertion until the tree has
+ * rendered. Every other call site here happens to be preceded by a
+ * `toHaveCount(n)` that incidentally supplied that wait; "should allow to
+ * hide/show table and schemas" is not, so it read the count while the search
+ * results were still rendering and failed with `Expected: > 0, Received: 0`.
+ * `expect.poll` restores the retry — it does not weaken the assertion.
  */
 async function expectAllVisible(locator: Locator) {
+  await expect.poll(() => locator.count()).toBeGreaterThan(0);
   const count = await locator.count();
-  expect(count).toBeGreaterThan(0);
   for (let index = 0; index < count; index++) {
     await expect(locator.nth(index)).toBeVisible();
   }

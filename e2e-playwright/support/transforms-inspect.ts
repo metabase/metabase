@@ -55,6 +55,7 @@ import { WRITABLE_DB_ID, getTableId } from "./schema-viewer";
 // H.waitForSucceededTransformRuns — already ported (and exercised) by the
 // sibling transforms spec; imported read-only rather than duplicated here.
 import { waitForSucceededTransformRuns } from "./transforms";
+import { writableDbConfig } from "./writable-db";
 
 // ---------------------------------------------------------------------------
 // Constants (verbatim from the spec header)
@@ -71,20 +72,12 @@ export const QA_DB_SKIP_REASON =
 // Writable-DB fixtures
 // ---------------------------------------------------------------------------
 
-// Writable-postgres connection facts from e2e/support/cypress_data.js
-// (WRITABLE_DB_CONFIG.postgres). Mirrors transforms-codegen.ts, which owns the
-// `many_schemas` reset; `no_pk_table` has no counterpart there.
-const WRITABLE_PG_CONFIG = {
-  client: "pg",
-  connection: {
-    host: "localhost",
-    user: "metabase",
-    password: "metasample123",
-    database: "writable_db",
-    port: 5404,
-    ssl: false,
-  },
-};
+// Connection facts live in support/writable-db.ts, which resolves this
+// worker's own writable database (writable_db_w<slot>) when per-worker
+// isolation is on.
+//
+// transforms-codegen.ts owns the `many_schemas` reset; `no_pk_table` has no
+// counterpart there.
 
 type KnexClient = {
   schema: {
@@ -101,7 +94,7 @@ function knexClient(): KnexClient {
   // module must still load with the QA gate off and the drivers absent.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Knex = require("knex") as (config: unknown) => KnexClient;
-  return Knex(WRITABLE_PG_CONFIG);
+  return Knex(writableDbConfig("postgres"));
 }
 
 /**

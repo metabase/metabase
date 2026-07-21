@@ -7,8 +7,18 @@ import {
 } from "./reset-writable-db";
 import { BASE_URL } from "./env";
 import { LOGIN_CACHE, USERS, UserName } from "./sample-data";
+import {
+  provisionWritableDb,
+  writableDbDetailsPatch,
+  writableDbName,
+  writableDbSlot,
+} from "./writable-db";
 import type { SnowplowCollector } from "./snowplow-collector";
 import { startWorkerBackend } from "./worker-backend";
+
+/** WRITABLE_DB_ID (e2e/support/cypress_data.js) — database 2 under the
+ * `-writable` snapshots. */
+const WRITABLE_DB_ID = 2;
 
 /**
  * Port of the Cypress auth model (e2e/support/commands/user/authentication.ts):
@@ -152,6 +162,27 @@ class MetabaseHarness {
         details: { db: this.sampleDbUrl },
       });
     }
+    // Same problem shape as database 1 above, for database 2. The `-writable`
+    // snapshots pin database 2 to the shared `writable_db`, which every worker
+    // then resets destructively; re-point it at this worker's private copy so
+    // the app and the direct-warehouse helpers agree on one database that
+    // nobody else can drop tables in. Gated on per-worker isolation being on —
+    // with it off `writableDbName()` is `writable_db` and this is a no-op we
+    // skip entirely.
+    if (name.includes("-writable") && writableDbSlot() !== null) {
+      const adminApi = new MetabaseApi(
+        this.api.requestContext,
+        () => LOGIN_CACHE.admin?.sessionId,
+      );
+      const dialect = writableDialectFor(name);
+      const current = await adminApi
+        .get(`/api/database/${WRITABLE_DB_ID}`, { failOnStatusCode: false })
+        .then((response) => (response.ok() ? response.json() : undefined))
+        .catch(() => undefined);
+      await adminApi.put(`/api/database/${WRITABLE_DB_ID}`, {
+        details: writableDbDetailsPatch(current?.details, dialect),
+      });
+    }
   }
 
   private async setSessionCookies(sessionId: string, deviceId: string) {
@@ -199,6 +230,23 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       const backend = await startWorkerBackend(
         workerInfo.parallelIndex + Number(process.env.PW_SLOT_OFFSET || 0),
       );
+      // Give this worker its own writable warehouse databases, once, before
+      // any spec can reach one. Best-effort per dialect: a machine running only
+      // the postgres QA container must not fail every worker over a missing
+      // mysql — the specs that need mysql will fail loudly on their own, which
+      // is the honest signal.
+      for (const dialect of ["postgres", "mysql"] as const) {
+        try {
+          const name = await provisionWritableDb(dialect);
+          console.log(
+            `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] writable ${dialect} db: ${name}`,
+          );
+        } catch (error) {
+          console.log(
+            `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] could not provision ${dialect} ${writableDbName()}: ${error}`,
+          );
+        }
+      }
       console.log(
         `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] backend on :${backend.port} ${
           backend.startupMs === 0

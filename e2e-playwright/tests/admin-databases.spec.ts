@@ -85,7 +85,7 @@ import {
   QA_MYSQL_PORT,
   QA_POSTGRES_PORT,
   SAMPLE_DB_ID,
-  WRITABLE_DB_DBNAME,
+  writableDbName,
   WRITABLE_DB_ID,
   button,
   chooseDatabase,
@@ -158,7 +158,7 @@ test.describe("admin > database > external databases > enable actions", () => {
       const body = await visitDatabase(page, WRITABLE_DB_ID);
       expect(String(body.name)).toContain("Writable");
       expect(String(body.name).toLowerCase()).toContain(dialect);
-      expect(body.details.dbname).toBe(WRITABLE_DB_DBNAME[dialect]);
+      expect(body.details.dbname).toBe(writableDbName());
       expect(body.settings["database-enable-actions"]).toBe(true);
 
       await expect(labeled(page, "Model actions")).toBeChecked();

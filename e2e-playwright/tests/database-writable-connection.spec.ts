@@ -156,6 +156,7 @@ import {
 } from "../support/database-writable-connection";
 import type { MetabaseApi } from "../support/api";
 import { expect, test } from "../support/fixtures";
+import { writableDbName } from "../support/writable-db";
 import { openQuestionActions } from "../support/models";
 import { createCard, createTestNativeQuery } from "../support/native-reproductions";
 import { FIRST_COLLECTION_ID } from "../support/sample-data";
@@ -182,7 +183,9 @@ const READ_ONLY_USER: DatabaseCredentials = {
   password: "readonly_user",
 };
 
-const DATABASE_NAME = "writable_db";
+// Per-worker when isolation is on: the GRANT below must name the database
+// this worker's database 2 actually points at.
+const DATABASE_NAME = writableDbName();
 const TRANSFORM_TABLE_NAME = "transform_table";
 const ORDERS_TABLE_NAME = "ORDERS";
 

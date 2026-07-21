@@ -24,6 +24,7 @@ import type { MetabaseApi } from "./api";
 import { tooltip as pageTooltip } from "./charts";
 import { createTransform, runTransformAndWaitForSuccess } from "./dependency-graph";
 import { WRITABLE_DB_ID, getTableId, queryWritableDB } from "./schema-viewer";
+import { writableDbConfig } from "./writable-db";
 
 export { WRITABLE_DB_ID, getTableId, createTransform, runTransformAndWaitForSuccess };
 
@@ -117,17 +118,6 @@ export async function resetTransformTargetTables() {
  * is lazy — the module must still load with the gate off.
  */
 export async function resetCompositePkTable() {
-  const WRITABLE_PG_CONFIG = {
-    client: "pg",
-    connection: {
-      host: "localhost",
-      user: "metabase",
-      password: "metasample123",
-      database: "writable_db",
-      port: 5404,
-      ssl: false,
-    },
-  };
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Knex = require("knex") as (config: unknown) => {
     schema: {
@@ -138,7 +128,7 @@ export async function resetCompositePkTable() {
     (table: string): { insert(rows: Record<string, unknown>[]): Promise<unknown> };
     destroy(): Promise<void>;
   };
-  const client = Knex(WRITABLE_PG_CONFIG);
+  const client = Knex(writableDbConfig("postgres"));
   const tableName = "composite_pk_table";
   try {
     await client.schema.dropTableIfExists(tableName);

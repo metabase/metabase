@@ -644,6 +644,20 @@ evidence isn't worth making.
     a mount-lag window is vacuous by construction** — a distinct class from the
     #15/#38 family.
 
+    **Update (2026-07-21): the port no longer replicates the vacuous check.**
+    The ported assertion was still upstream's one-shot `toBe(0)`, which duly
+    failed in CI at `workers=1` with `Expected: 0, Received: 1` — the race
+    landing on the *other* side for once. Re-measured by polling every 500ms:
+    `t=0 count=0` (the instant the navbar icon is visible), `t=500ms count=1`,
+    stable through `t=5500ms`. That confirms this finding's original mechanism
+    from the opposite direction. The port now asserts
+    `expect(getByLabel("Explain this chart")).toBeVisible()` — strictly
+    stronger than upstream, which passes vacuously whenever it wins the race,
+    and it fails if the app ever stops surfacing the explainer. The divergence
+    is documented at the call site. The open *product* question is unchanged:
+    nobody has established whether the explainer appearing in embedding is a
+    defect or an intended affordance.
+
 ### Findings that cut against the migration case
 
 47. **The first recorded case of the migration REDUCING coverage**
@@ -4331,3 +4345,72 @@ Porting consequence: converting these to real assertions is correct, but the
 expected values in them have never been validated — three of the four in
 `data-model-shared-1` were simply wrong (`Domestic` copy-pasted throughout).
 A dead assertion carries no evidence that its expectation was ever right.
+
+---
+
+### #220 PRODUCT BUG (app code, NOT ours to fix): "No results" on a pin map
+### with only null coordinates is render-order dependent
+
+**Status: measured, and corroborated from source. No app code changed, and the
+spec was deliberately NOT changed.** Reported for whoever owns visualizations.
+
+**The behaviour.** metabase#18061 case 3: a map card whose filtered result set
+contains rows with `null` latitude/longitude should show the "No results" empty
+state. It does so only sometimes. Cypress reliably observes the correct state;
+Playwright observes it roughly 3 times in 5 on an idle machine and fails
+consistently under CI load — which is why it first looked like a deterministic
+port defect.
+
+**Why it is not an empty-dataset case.** With the filter applied
+(`?category=Twitter`) the dashcard IS re-queried and the response is **1 row**
+(`ID=1, SOURCE="Twitter"`, `CClat`/`CClong` both `null`). So the dataset is not
+empty and the empty state cannot be coming from "no rows returned".
+
+**The mechanism, verified in source.**
+`frontend/src/metabase/visualizations/components/PinMap.jsx:191` mutates its own
+props during render, stripping the null-coordinate rows:
+
+```js
+const mapProps = { ...this.props };
+mapProps.series[0].data.rows = rows;   // rows = null coords removed
+```
+
+`Visualization.tsx:897` then gates the empty state on a flag derived from that
+same series data:
+
+```jsx
+) : (isDashboard || isMetricsViewer) && noResults ? (
+  <NoResultsView isSmall={small} />
+```
+
+So "no plottable points" is only ever observed by a **subsequent** render. If no
+further render lands, the card shows an empty pin map with zero markers instead
+of "No results". That is a race between a render-time side effect and whatever
+happens to schedule the next render — not a test-timing question.
+
+**Evidence it is the app and not the port:**
+- The **upstream Cypress spec** was run against the same running code: it passes,
+  and a DOM probe shows `noRes=1 pin=0` at t+500ms. The app can reach the right
+  state — it just isn't guaranteed to.
+- The port is faithful (upstream does `cy.findAllByTestId("no-results-image")`;
+  the port asserts visibility, which is strictly stronger).
+- Ruled out as levers, each measured: `reducedMotion` (`no-preference` still
+  1/3), browser build (`channel: "chrome"`, Chrome 150 — same as Cypress —
+  still 1/4), and post-hoc mouse/scroll/viewport-resize nudges (never flip it).
+
+**The assertion is provably not vacuous** — the usual worry for an empty-state
+check. It currently *fails* while the app renders results, and it is paired with
+`expect(pin-map).toHaveCount(0)`, so a rendered map kills it.
+
+**A real fix belongs in the product**, not the spec: compute "no plottable
+points" declaratively rather than mutating `series[0].data.rows` during render.
+Mutating props in `render()` is the underlying defect; the flaky empty state is
+a symptom.
+
+**Porting lesson, and the reason this is worth recording even if the product
+team decides the empty state is cosmetic:** Cypress's slower command pacing was
+*hiding* a real render-order bug. The migration did not introduce this flake —
+it made an existing product race observable. Same family as #218, where a dead
+assertion hid a product bug; here it is slow pacing rather than a dead
+assertion, but the conclusion is identical: the old suite was green for reasons
+unrelated to correctness.

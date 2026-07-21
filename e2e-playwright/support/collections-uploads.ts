@@ -25,6 +25,7 @@ import path from "path";
 import type { MetabaseApi } from "./api";
 import type { WritebackDialect } from "./actions-on-dashboards";
 import { WRITABLE_DB_ID } from "./schema-viewer";
+import { writableDbName } from "./writable-db";
 import type { SnowplowCollector } from "./snowplow-collector";
 import { modal, popover } from "./ui";
 
@@ -133,6 +134,49 @@ export function waitForUpload(page: Page, mode: UploadMode) {
 
 export function statusRoot(page: Page): Locator {
   return page.getByTestId("status-root-container");
+}
+
+/**
+ * Hold the upload request until `release()` is called, so the transient
+ * "Uploading data to …" status card can be asserted on deterministically.
+ *
+ * This does not fake anything: the request is `continue()`d untouched once
+ * released, and every downstream assertion still runs against the real
+ * backend response. It only widens the window in which the in-progress UI
+ * state is observable, which on a real backend is ~120ms.
+ */
+async function gateUpload(page: Page, mode: UploadMode) {
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  // Resolves once the handler has actually let the request through. `unroute`
+  // aborts any still-pending handler ("Route is already handled!"), so the
+  // unroute has to wait for `continue()` to have been issued.
+  let handled!: () => void;
+  const continued = new Promise<void>((resolve) => {
+    handled = resolve;
+  });
+
+  const matches = (url: URL) => UPLOAD_ENDPOINTS[mode].test(url.pathname);
+
+  await page.route(matches, async (route) => {
+    await released;
+    try {
+      await route.continue();
+    } finally {
+      handled();
+    }
+  });
+
+  return {
+    async release() {
+      release();
+      await continued;
+      await page.unroute(matches);
+    },
+  };
 }
 
 /**
@@ -257,6 +301,23 @@ export async function uploadToExisting(
 
   const uploaded = waitForUpload(page, uploadMode);
 
+  // Upstream asserts the IN-PROGRESS status toast ("Uploading data to …")
+  // after selecting the file. Measured against a real backend, append/replace
+  // of a 97-row CSV round-trips in ~120ms, and the toast flips to "Data added
+  // to …" ~10ms after the response lands — so the state the assertion claims
+  // to observe exists for barely a tenth of a second. Cypress and Playwright
+  // both merely *usually* win that race; it is the same latent race upstream,
+  // and it is what makes this assertion flake (and fail outright on a loaded
+  // CI box, where the first poll lands after the upload has already finished).
+  //
+  // Rather than delete the assertion or paper over it with a timeout, hold the
+  // upload response open until the in-progress assertions have run. The toast
+  // is rendered optimistically on dispatch — it does not wait for the
+  // response — so gating the network makes the transient state deterministically
+  // observable without changing what is being asserted.
+  const gate =
+    identicalSchema && (await gateUpload(page, uploadMode));
+
   await popover(page)
     .getByText(UPLOAD_OPTIONS[uploadMode], { exact: true })
     .click();
@@ -266,15 +327,40 @@ export async function uploadToExisting(
     .setInputFiles(fixturePayload(testFile));
 
   if (identicalSchema) {
-    await expect(statusRoot(page)).toContainText("Uploading data to");
-    await expect(statusRoot(page)).toContainText(testFile.fileName);
+    // Scoped to the individual status card rather than the whole status root.
+    // The root still holds the completed toast from the preceding
+    // `uploadFileToCollection` step, whose text ALSO contains the fixture's
+    // file name — so a root-scoped `toContainText(fileName)` (upstream's
+    // literal form) is satisfied by the stale card and cannot fail. The
+    // upload-in-progress card is the only one that can carry "Uploading data
+    // to", so filtering on it isolates the card this step created.
+    const uploading = page
+      .getByRole("status")
+      .filter({ hasText: "Uploading data to" });
+    await expect(uploading).toHaveCount(1);
+    await expect(uploading).toContainText(testFile.fileName);
+
+    // The destination table name, so the completion assertion below can be
+    // pinned to THIS card instead of whichever card happens to be last.
+    const uploadingText = (await uploading.textContent()) ?? "";
+    const tableName = uploadingText.match(/Uploading data to (\S+)/)?.[1];
+    expect(tableName, "in-progress toast names a destination table").toBeTruthy();
+
+    if (gate) {
+      await gate.release();
+    }
 
     await uploaded;
 
+    // Upstream: `findAllByRole("status").last().findByText(/Data (added|replaced)/i)`.
+    // `.last()` resolves to the earlier collection-upload card ("Data added to
+    // Uploads Collection"), which matches the regex whatever the append does,
+    // so the upstream form passes without observing this upload at all.
+    // Pinned to the card for the table we just uploaded into instead.
     await expect(
       page
         .getByRole("status")
-        .last()
+        .filter({ hasText: tableName as string })
         .getByText(/Data (added|replaced)/i),
     ).toBeVisible({ timeout: 10_000 });
   } else {
@@ -488,7 +574,7 @@ export async function foreignWritableSchemasWithTables(): Promise<string[]> {
       `WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'empty_uploads') ` +
       `ORDER BY table_schema;`,
     "postgres",
-    "writable_db",
+    writableDbName(),
   );
   return rows.map((row) => String(row.table_schema));
 }

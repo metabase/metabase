@@ -127,6 +127,7 @@ import { FIRST_COLLECTION_ID } from "../support/sample-data";
 import { WRITABLE_DB_ID, resyncDatabase } from "../support/schema-viewer";
 import { expectNoBadCollectedSnowplowEvents } from "../support/snowplow-collector";
 import { modal, popover } from "../support/ui";
+import { writableDbName } from "../support/writable-db";
 import type { MetabaseApi } from "../support/api";
 
 const QA_DB_SKIP_MESSAGE =
@@ -514,23 +515,23 @@ test.describe("CSV Uploading", () => {
     // Restore the shared containers. Upstream leaves every uploaded table
     // behind; four other slots share this instance (FINDINGS #85).
     const pg = await dropUploadTables("postgres", {
-      database: "writable_db",
+      database: writableDbName(),
       schema: "public",
     });
     const pgEmpty = await dropUploadTables("postgres", {
-      database: "writable_db",
+      database: writableDbName(),
       schema: "empty_uploads",
     });
     const my = await dropUploadTables("mysql", {
-      database: "writable_db",
-      schema: "writable_db",
+      database: writableDbName(),
+      schema: writableDbName(),
     });
     // `empty_uploads` is created by this spec's first test, so dropping it is
     // restoring — no FOREIGN schema is touched.
     await queryQaDB(
       "DROP SCHEMA IF EXISTS empty_uploads CASCADE;",
       "postgres",
-      "writable_db",
+      writableDbName(),
     );
     console.log(
       `[collections-uploads] cleanup: dropped ${pg.length} table(s) from ` +

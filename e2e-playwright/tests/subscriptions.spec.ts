@@ -56,7 +56,6 @@ import {
   createQuestion,
   createQuestionAndDashboard,
 } from "../support/factories";
-import { findByDisplayValue } from "../support/filters-repros";
 import { test, expect } from "../support/fixtures";
 import { isMaildevRunning, setupSMTP } from "../support/onboarding-extras";
 import { USER_NAMES, getFullName } from "../support/onboarding";
@@ -278,9 +277,8 @@ test.describe("scenarios > dashboard > subscriptions", () => {
         await expect(recipientInput(page)).toBeVisible();
 
         // Change the schedule to "Monthly"
-        const scheduleType = await findByDisplayValue(sidebar(page), "Hourly");
-        await scheduleType.click();
-        await popover(page).getByText("Monthly", { exact: true }).click();
+        await sidebar(page).getByTestId("select-frequency").click();
+        await popover(page).getByText("monthly", { exact: true }).click();
 
         await expect(
           sidebar(page).getByRole("button", { name: "Done", exact: true }),
@@ -686,18 +684,14 @@ test.describe("scenarios > dashboard > subscriptions", () => {
       await assignRecipient(page, mb.api, { userFullName: ADMIN_NAME });
       await sidebar(page).getByText("To:", { exact: true }).click();
 
-      // findByDisplayValue scoped to the sidebar — a page-wide scan resolves an
-      // nth() index that goes stale when the page re-renders.
-      await (await findByDisplayValue(sidebar(page), "Hourly")).click();
-      await popover(page).getByText("Monthly", { exact: true }).click();
+      await sidebar(page).getByTestId("select-frequency").click();
+      await popover(page).getByText("monthly", { exact: true }).click();
 
-      await (await findByDisplayValue(sidebar(page), "First")).click();
-      await popover(page).getByText("15th (Midpoint)", { exact: true }).click();
+      await sidebar(page).getByTestId("select-frame").click();
+      await popover(page).getByText("15th", { exact: true }).click();
 
-      await (
-        await findByDisplayValue(sidebar(page), "15th (Midpoint)")
-      ).click();
-      await popover(page).getByText("First", { exact: true }).click();
+      await sidebar(page).getByTestId("select-frame").click();
+      await popover(page).getByText("first", { exact: true }).click();
 
       await clickButton(page, "Done");
       // Implicit assertion (word mustn't contain string "null")

@@ -20,39 +20,13 @@ import type { Locator, Page } from "@playwright/test";
 import type { MetabaseApi } from "./api";
 import { WRITABLE_DB_ID, getTableId } from "./schema-viewer";
 import { popover } from "./ui";
+import { writableDbConfig } from "./writable-db";
 
 export type WritebackDialect = "mysql" | "postgres";
 
-// Writable-DB connection facts from e2e/support/cypress_data.js
-// (WRITABLE_DB_CONFIG). Postgres connects as `metabase`; mysql needs `root`
-// (only root has create-database privileges — see the upstream comment).
-const WRITABLE_DB_CONFIG: Record<
-  WritebackDialect,
-  { client: string; connection: Record<string, unknown> }
-> = {
-  postgres: {
-    client: "pg",
-    connection: {
-      host: "localhost",
-      user: "metabase",
-      password: "metasample123",
-      database: "writable_db",
-      port: 5404,
-      ssl: false,
-    },
-  },
-  mysql: {
-    client: "mysql2",
-    connection: {
-      host: "localhost",
-      user: "root",
-      password: "metasample123",
-      database: "writable_db",
-      port: 3304,
-      multipleStatements: true,
-    },
-  },
-};
+// Connection facts live in support/writable-db.ts, which resolves this
+// worker's own writable database (writable_db_w<slot>) when per-worker
+// isolation is on.
 
 type KnexClient = {
   raw(sql: string): Promise<unknown>;
@@ -67,7 +41,7 @@ type KnexClient = {
 function knexClient(dialect: WritebackDialect): KnexClient {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Knex = require("knex") as (config: unknown) => KnexClient;
-  return Knex(WRITABLE_DB_CONFIG[dialect]);
+  return Knex(writableDbConfig(dialect));
 }
 
 /**

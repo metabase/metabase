@@ -55,7 +55,10 @@ import { fieldSectionNameInput } from "../support/data-studio-tables";
 import { queryBuilderFiltersPanel } from "../support/detail-view";
 import { createDashboard, createNativeQuestion, createQuestion } from "../support/factories";
 import { filterSimple } from "../support/filter";
-import { findByDisplayValue } from "../support/filters-repros";
+import {
+  dashboardParametersPopover,
+  findByDisplayValue,
+} from "../support/filters-repros";
 import {
   assertDescendantsNotOverflowContainer,
   pickMiniPickerTable,
@@ -1142,28 +1145,40 @@ test.describe("issue 49642", () => {
     await saveDashboard(page);
 
     await filterWidget(page).click();
+    // PORTING: upstream switched this block from H.popover() to
+    // H.dashboardParametersPopover() in 184c415f6e3 (GDGT-2578, TokenField →
+    // Autocomplete). The generic `.popover` selector still matches the
+    // parameter dropdown, but the Autocomplete's own Combobox dropdown is a
+    // SECOND match, so `popover(page)` is ambiguous here. Scope to the
+    // parameter dropdown's testid like upstream now does.
+    const paramPopover = dashboardParametersPopover(page);
+    // Anchor: the dropdown really is open and populated before the absence
+    // check below, so `toHaveCount(0)` cannot pass vacuously.
+    await expect(paramPopover.getByPlaceholder("Search the list")).toBeVisible();
     await expect(
-      popover(page).getByText("Zackery Bailey", { exact: true }),
+      paramPopover.getByText("Zackery Bailey", { exact: true }),
     ).toHaveCount(0);
-    const searchInput = popover(page).getByPlaceholder("Search the list", {
+    const searchInput = paramPopover.getByPlaceholder("Search the list", {
       exact: true,
     });
     await searchInput.click();
     await page.keyboard.type("Zackery");
     await expect(
-      popover(page).getByText("Zackery Bailey", { exact: true }),
+      paramPopover.getByText("Zackery Bailey", { exact: true }),
     ).toBeVisible();
-    const kuhn = popover(page).getByText("Zackery Kuhn", { exact: true });
+    const kuhn = paramPopover.getByText("Zackery Kuhn", { exact: true });
     await expect(kuhn).toBeVisible();
     await kuhn.click();
 
     await expect(
-      popover(page).getByPlaceholder("Search the list", { exact: true }),
+      paramPopover.getByPlaceholder("Search the list", { exact: true }),
     ).toHaveValue("Zackery Kuhn");
 
+    // Upstream INVERTED this in 184c415f6e3: selecting a value now filters the
+    // option list down to the selected text, so the other match is gone.
     await expect(
-      popover(page).getByText("Zackery Bailey", { exact: true }),
-    ).toBeVisible();
+      paramPopover.getByText("Zackery Bailey", { exact: true }),
+    ).toHaveCount(0);
   });
 });
 

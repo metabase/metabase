@@ -16,6 +16,7 @@ import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import { popover } from "./ui";
+import { writableDbConfig, writableDbName } from "./writable-db";
 
 export const QA_DB_SKIP =
   "@external — requires the writable QA postgres/mysql containers and their " +
@@ -23,35 +24,9 @@ export const QA_DB_SKIP =
 
 export type WritableDialect = "postgres" | "mysql";
 
-// Writable-DB connection facts from e2e/support/cypress_data.js
-// (WRITABLE_DB_CONFIG). Postgres connects as `metabase`; mysql needs `root`.
-const WRITABLE_DB_CONFIG: Record<
-  WritableDialect,
-  { client: string; connection: Record<string, unknown> }
-> = {
-  postgres: {
-    client: "pg",
-    connection: {
-      host: "localhost",
-      user: "metabase",
-      password: "metasample123",
-      database: "writable_db",
-      port: 5404,
-      ssl: false,
-    },
-  },
-  mysql: {
-    client: "mysql2",
-    connection: {
-      host: "localhost",
-      user: "root",
-      password: "metasample123",
-      database: "writable_db",
-      port: 3304,
-      multipleStatements: true,
-    },
-  },
-};
+// Connection facts live in support/writable-db.ts, which resolves this
+// worker's own writable database (writable_db_w<slot>) when per-worker
+// isolation is on.
 
 type KnexClient = {
   raw(sql: string): Promise<unknown>;
@@ -69,7 +44,7 @@ type KnexClient = {
 function knexClient(dialect: WritableDialect): KnexClient {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Knex = require("knex") as (config: unknown) => KnexClient;
-  return Knex(WRITABLE_DB_CONFIG[dialect]);
+  return Knex(writableDbConfig(dialect));
 }
 
 export const COMPOSITE_PK_TABLE = "composite_pk_table";
@@ -139,7 +114,7 @@ export async function listWritableTables(
     const sql =
       dialect === "postgres"
         ? "select table_schema, table_name from information_schema.tables where table_schema not in ('pg_catalog','information_schema') order by 1,2"
-        : "select table_schema, table_name from information_schema.tables where table_schema = 'writable_db' order by 2";
+        : `select table_schema, table_name from information_schema.tables where table_schema = '${writableDbName()}' order by 2`;
     const result = await client.raw(sql);
     return dialect === "mysql"
       ? (result as [unknown, unknown])[0]

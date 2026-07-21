@@ -30,6 +30,7 @@ import {
 import type { MetabaseApi } from "./api";
 import { focusNativeEditor, nativeEditor } from "./native-editor";
 import { WRITABLE_DB_ID } from "./schema-viewer";
+import { writableDbConfig } from "./writable-db";
 
 export const SOURCE_TABLE = "Animals";
 
@@ -49,19 +50,9 @@ export type PythonTransformTableAliases = Array<{
 // Writable-DB table reset (port of H.resetTestTable({ type, table }))
 // ---------------------------------------------------------------------------
 
-// Writable-postgres connection facts from e2e/support/cypress_data.js
-// (WRITABLE_DB_CONFIG.postgres).
-const WRITABLE_PG_CONFIG = {
-  client: "pg",
-  connection: {
-    host: "localhost",
-    user: "metabase",
-    password: "metasample123",
-    database: "writable_db",
-    port: 5404,
-    ssl: false,
-  },
-};
+// Connection facts live in support/writable-db.ts, which resolves this
+// worker's own writable database (writable_db_w<slot>) when per-worker
+// isolation is on.
 
 type SchemaBuilder = {
   createSchemaIfNotExists(name: string): Promise<unknown>;
@@ -79,7 +70,7 @@ type KnexClient = {
 function knexClient(): KnexClient {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Knex = require("knex") as (config: unknown) => KnexClient;
-  return Knex(WRITABLE_PG_CONFIG);
+  return Knex(writableDbConfig("postgres"));
 }
 
 /**

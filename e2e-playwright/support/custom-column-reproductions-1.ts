@@ -14,24 +14,15 @@ import {
   focusCustomExpressionEditor,
 } from "./custom-column-3";
 import { expect } from "./fixtures";
+import { writableDbConfig } from "./writable-db";
 
 /* ------------------------------------------------------------------ *
  * Writable QA database (issue 27745)
  * ------------------------------------------------------------------ */
 
-// Mirrors WRITABLE_DB_CONFIG.postgres in e2e/support/cypress_data.js. Only the
-// postgres arm is needed: upstream's dialect loop has mysql commented out.
-const WRITABLE_PG_CONFIG = {
-  client: "pg",
-  connection: {
-    host: "localhost",
-    user: "metabase",
-    password: "metasample123",
-    database: "writable_db",
-    port: 5404,
-    ssl: false,
-  },
-};
+// Connection facts live in support/writable-db.ts, which resolves this
+// worker's own writable database (writable_db_w<slot>) when per-worker
+// isolation is on.
 
 type KnexClient = {
   schema: {
@@ -57,7 +48,7 @@ type KnexClient = {
 export async function resetColorsTable() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Knex = require("knex") as (config: unknown) => KnexClient;
-  const client = Knex(WRITABLE_PG_CONFIG);
+  const client = Knex(writableDbConfig("postgres"));
   const tableName = "colors27745";
   try {
     await client.schema.dropTableIfExists(tableName);

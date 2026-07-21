@@ -39,6 +39,7 @@ import {
 } from "./database-routing-admin";
 import { COLLECTION_GROUP } from "./dashboard-repros";
 import { expect } from "./fixtures";
+import { writableDbName } from "./writable-db";
 
 /** Mirrors QA_DB_CREDENTIALS (e2e/support/cypress_data.js). */
 export const QA_DB_CREDENTIALS = {
@@ -160,7 +161,7 @@ async function queryPg(
  * importing a second knex config.
  */
 export function queryWritableDB(query: string) {
-  return queryPg("writable_db", query);
+  return queryPg(writableDbName(), query);
 }
 
 /**

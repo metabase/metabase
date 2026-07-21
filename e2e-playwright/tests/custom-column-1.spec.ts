@@ -78,6 +78,7 @@ import {
   queryBuilderMain,
   startNewQuestion,
   tableHeaderClick,
+  tableHeaderColumn,
   visualize,
 } from "../support/notebook";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
@@ -510,7 +511,17 @@ test.describe("scenarios > question > custom column", () => {
       .locator(".Icon-close")
       .click();
 
-    await expect(page.getByText(CC_NAME, { exact: true })).toBeVisible();
+    // Scoped to the results-table header, not page-wide. `useMeasureColumnWidths`
+    // renders a second copy of every header cell into an off-screen
+    // (visibility:hidden, -9999px) container appended to `document.body`, and
+    // tears it down a tick later. While it is up, a page-wide
+    // `getByText(CC_NAME, { exact: true })` resolves to TWO elements —
+    // Playwright's `toBeVisible()` does not retry through a strict-mode
+    // violation, it throws immediately, so the failure reads as deterministic.
+    // Cypress's `findByText` retried past the transient duplicate. Scoping to
+    // `table-header` (the port of `H.tableInteractiveHeader`) excludes the
+    // body-level clone without weakening what is asserted.
+    await expect(tableHeaderColumn(page, CC_NAME)).toBeVisible();
   });
 
   test("should handle identical custom column and table column names (metabase#14255)", async ({

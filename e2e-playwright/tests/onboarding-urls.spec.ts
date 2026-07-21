@@ -35,18 +35,21 @@ test.describe("URLs", () => {
   });
 
   test.describe("browse databases", () => {
-    test('should slugify database name when opening it from /browse/databases"', async ({
+    // UPSTREAM DRIFT (re-ported): this was
+    // 'should slugify database name when opening it from /browse/databases"',
+    // which clicked through from /browse/databases and asserted the id-slug
+    // URL. "Permalinks for dbs, schemas and tables" (#77274, 1a6755d898a)
+    // switched the browser to NAME-based URLs — clicking now lands on
+    // /browse/databases/Sample%20Database — and replaced the test with the
+    // legacy-URL compatibility check below. Verified against a current build:
+    // the name-based URL is the new intended behaviour, not a regression.
+    test("should still open a database from a legacy id-slug url", async ({
       page,
     }) => {
-      await page.goto("/browse/databases");
-      await page.getByText("Sample Database", { exact: true }).click();
-      await expect(
-        page.getByText("Sample Database", { exact: true }),
-      ).toBeVisible();
-      await expectPathname(
-        page,
-        `/browse/databases/${SAMPLE_DB_ID}-sample-database`,
-      );
+      const url = `/browse/databases/${SAMPLE_DB_ID}-sample-database`;
+      await page.goto(url);
+      await expect(page.getByTestId("browse-schemas")).toBeAttached();
+      await expectPathname(page, url);
     });
 
     for (const url of [

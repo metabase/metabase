@@ -73,6 +73,7 @@ import type { Page } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
 import { DataStudio } from "./transforms";
+import { writableDbConnection } from "./writable-db";
 
 // ---------------------------------------------------------------------------
 // Constants (verbatim from the spec header)
@@ -113,18 +114,9 @@ export const QA_DB_SKIP_REASON =
 // Writable-DB access
 // ---------------------------------------------------------------------------
 
-// Writable-postgres connection facts from e2e/support/cypress_data.js
-// (WRITABLE_DB_CONFIG.postgres). Duplicated rather than imported because
-// `support/schema-viewer.ts` keeps its copy private, and shared support
-// modules are not editable from here.
-const WRITABLE_PG_CONFIG = {
-  host: "localhost",
-  user: "metabase",
-  password: "metasample123",
-  database: "writable_db",
-  port: 5404,
-  ssl: false,
-};
+// Connection facts live in support/writable-db.ts, which resolves this
+// worker's own writable database (writable_db_w<slot>) when per-worker
+// isolation is on.
 
 type PgClient = {
   connect(): Promise<void>;
@@ -140,7 +132,7 @@ function pgClient(): PgClient {
   const { Client } = require("pg") as {
     Client: new (config: Record<string, unknown>) => PgClient;
   };
-  return new Client(WRITABLE_PG_CONFIG);
+  return new Client(writableDbConnection("postgres"));
 }
 
 /**

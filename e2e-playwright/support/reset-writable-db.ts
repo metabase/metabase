@@ -13,56 +13,29 @@
  * could not pass at all.
  *
  * 🔴 This is destructive by design — it DROPs every non-`public` schema in the
- * writable postgres and every table in `writable_db` on mysql. That is exactly
- * what upstream does, and it is safe because the snapshot restore that follows
- * rebuilds whatever the spec needs. It is NOT safe to run while another agent
- * or worker is using the same container: the containers are shared across
- * slots even though the app DBs are not (FINDINGS #178).
+ * writable postgres and every table in the writable database on mysql. That is
+ * exactly what upstream does, and it is safe because the snapshot restore that
+ * follows rebuilds whatever the spec needs.
+ *
+ * Upstream can be this destructive because a Cypress job is single-worker. We
+ * run `--workers=2` against a SHARED container, so the blast radius had to be
+ * narrowed instead: with `PW_PER_WORKER_BACKEND` set, every name below resolves
+ * through `writableDbName()` to this worker's OWN `writable_db_w<slot>`, so the
+ * drops can only ever reach tables this worker created. See
+ * support/writable-db.ts for the full rationale.
  */
-export type WritebackDialect = "mysql" | "postgres";
+import {
+  type WritebackDialect,
+  writableDbClient,
+  writableDbName,
+} from "./writable-db";
+
+export type { WritebackDialect };
 
 type RawClient = {
   raw(sql: string): Promise<unknown>;
   destroy(): Promise<void>;
 };
-
-// Duplicated from e2e/support/cypress_data.js (WRITABLE_DB_CONFIG) rather than
-// imported from support/actions-on-dashboards.ts: that is a per-spec module,
-// and shared infrastructure must not depend on one. Postgres connects as
-// `metabase`; mysql needs `root` (only root can create databases).
-const WRITABLE_DB_CONFIG: Record<
-  WritebackDialect,
-  { client: string; connection: Record<string, unknown> }
-> = {
-  postgres: {
-    client: "pg",
-    connection: {
-      host: "localhost",
-      user: "metabase",
-      password: "metasample123",
-      database: "writable_db",
-      port: 5404,
-      ssl: false,
-    },
-  },
-  mysql: {
-    client: "mysql2",
-    connection: {
-      host: "localhost",
-      user: "root",
-      password: "metasample123",
-      database: "writable_db",
-      port: 3304,
-      multipleStatements: true,
-    },
-  },
-};
-
-function knexClient(dialect: WritebackDialect): RawClient {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const Knex = require("knex") as (config: unknown) => RawClient;
-  return Knex(WRITABLE_DB_CONFIG[dialect]);
-}
 
 /** Mirrors upstream's `dontDrop` regex. `public` is kept and emptied instead —
  * dropping it would take the schema itself, which the restore does not
@@ -94,7 +67,7 @@ async function resetPostgres(client: RawClient) {
 
 async function resetMysql(client: RawClient) {
   const [tables] = (await client.raw(
-    "SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'writable_db';",
+    `SELECT table_name as name FROM information_schema.tables WHERE table_schema = '${writableDbName()}';`,
   )) as [{ name: string }[], unknown];
 
   if (!tables?.length) {
@@ -114,13 +87,13 @@ async function resetMysql(client: RawClient) {
 
 /**
  * Drops all non-`public` schemas and all `public` tables (postgres), or every
- * table in `writable_db` (mysql). Call BEFORE the snapshot restore, matching
- * upstream's ordering.
+ * table in this worker's writable database (mysql). Call BEFORE the snapshot
+ * restore, matching upstream's ordering.
  */
 export async function resetWritableDb({
   type = "postgres",
 }: { type?: WritebackDialect } = {}) {
-  const client = knexClient(type);
+  const client = writableDbClient(type);
   try {
     if (type === "postgres") {
       await resetPostgres(client);

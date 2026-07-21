@@ -96,7 +96,7 @@ import {
   visitQuestion,
 } from "../support/ui";
 
-const { PRODUCTS, PRODUCTS_ID, ORDERS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const QA_DB_SKIP_REASON =
   "Requires the QA Postgres container on :5404 (set PW_QA_DB_ENABLED)";
@@ -486,36 +486,34 @@ test.describe("issue 19451", () => {
   test("question field filter shows all tables from a selected database (metabase#19451)", async ({
     page,
   }) => {
-    // ANCHOR (PORTING: "anchor on the response that populates the list before
-    // resolving the row" — never a sleep). The field-filter picker decides
-    // which STEP to open on from the mapped field's table metadata. If
-    // `GET /api/table/<PRODUCTS_ID>/query_metadata` has not landed when
-    // "Products" is clicked, the picker cannot resolve the selection and opens
-    // on the TABLE step instead of the FIELD step — so there is no
-    // `chevronleft` back button and the next click hangs forever (the state is
-    // terminal; 30s does not rescue it).
-    //
-    // Measured, and proven causal by an inversion probe: with a 2.5s route
-    // delay on /api/(table|field|database)/, the passing trace's
-    // `+291ms GET /api/table/7/query_metadata` disappears and the picker
-    // instead fetches `/api/database/1/schema/PUBLIC` and opens on the table
-    // list — 6/6 field-level undelayed, table-list under the delay. Upstream
-    // never saw this because Cypress's command queue paces the two clicks
-    // apart. It surfaced only in a full-file `--repeat-each` run (1/4), which
-    // is exactly the "passes in isolation, fails in sequence" signature the
-    // playbook warns not to write off as flake.
-    //
-    // PRODUCTS_ID is read from the sample-database fixture, never guessed.
-    const productsMetadata = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname ===
-        `/api/table/${PRODUCTS_ID}/query_metadata`,
-    );
     await page.getByText("Open Editor", { exact: true }).click();
     // `cy.icon("variable")` — unscoped, first match.
     await icon(page, "variable").first().click();
-    await productsMetadata;
-    await page.getByText("Products", { exact: true }).first().click();
+
+    // ANCHOR. This replaces a `page.waitForResponse` on
+    // `/api/table/<PRODUCTS_ID>/query_metadata`, which is NOT a sound anchor:
+    // `getTableQueryMetadata` is an RTK Query CACHED endpoint
+    // (frontend/src/metabase/api/table.ts), so when loading the question has
+    // already fetched that table, opening the variable sidebar re-renders from
+    // the cache and issues NO second request — the wait then blocks for its
+    // full 30s. That is exactly the observed CI failure
+    // (`page.waitForResponse: Timeout 30000ms exceeded`), and it is a race the
+    // local dev backend happens to lose in the other direction.
+    //
+    // The cache-independent signal is the widget itself. `FieldMappingSelect`
+    // renders the selector only once `field != null`, and `FieldTrigger`
+    // renders the literal "Select..." until the field's table metadata
+    // resolves — only then does it render the table display name ("Products")
+    // and the field name. So the trigger showing "Products" IS
+    // "metadata has loaded", which is precisely what upstream's retrying
+    // `cy.findByText("Products")` waits on. Scoping to the tag editor sidebar
+    // keeps it unambiguous: "Products" also appears in the data-reference
+    // sidebar on this page, and an unscoped `.first()` can resolve to that one.
+    const fieldTrigger = page
+      .getByTestId("tag-editor-sidebar")
+      .getByText("Products", { exact: true });
+    await expect(fieldTrigger).toBeVisible();
+    await fieldTrigger.click();
     await icon(page, "chevronleft").first().click();
 
     // The table list of the data-reference sidebar. Upstream's unscoped
