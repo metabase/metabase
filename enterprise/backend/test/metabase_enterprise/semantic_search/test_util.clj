@@ -626,7 +626,7 @@
     (or (:count result) 0)))
 
 ;; REPL debugging helper, never called from tests; the thread-safe-name rule targets test helpers
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn full-index
   "Query the full index table and return all documents with decoded embeddings.
   Not used in tests, but useful for debugging."

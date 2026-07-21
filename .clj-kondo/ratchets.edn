@@ -6,46 +6,48 @@
 ;; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or
 ;; widening the exemptions is a hand edit to defend in your PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
-{:ignore-counts  {:aliased-namespace-symbol                                            3
-                  :all                                                                 50
+{:ignore-counts  {:aliased-namespace-symbol                                            6
                   :case-symbol-test                                                    1
                   :clojure-lsp/unused-public-var                                       9
+                  :consistent-alias                                                    2
                   :def-fn                                                              1
                   :deprecated-namespace                                                97
-                  :deprecated-var                                                      81
-                  :discouraged-java-method                                             3
-                  :discouraged-namespace                                               81
-                  :discouraged-var                                                     104
+                  :deprecated-var                                                      83
+                  :discouraged-java-method                                             4
+                  :discouraged-namespace                                               82
+                  :discouraged-var                                                     127
+                  :duplicate-require                                                   1
                   :equals-true                                                         1
                   :main-without-gen-class                                              1
                   :metabase/defsetting-namespace                                       7
                   :metabase/disallow-hardcoded-driver-names-in-tests                   34
                   :metabase/discourage-millis-duration                                 1
                   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 14
-                  :metabase/modules                                                    8
+                  :metabase/modules                                                    10
                   :metabase/namespace-name                                             4
                   :metabase/prefer-with-dynamic-fn-redefs                              25
-                  :metabase/test-helpers-use-non-thread-safe-functions                 17
+                  :metabase/test-helpers-use-non-thread-safe-functions                 18
                   :metabase/validate-defendpoint-has-response-schema                   444
                   :metabase/validate-defendpoint-query-params-use-kebab-case           40
                   :metabase/validate-defendpoint-route-uses-kebab-case                 44
                   :metabase/validate-deftest                                           8
-                  :missing-docstring                                                   10
+                  :missing-docstring                                                   12
                   :missing-protocol-method                                             3
                   :non-arg-vec-return-type-hint                                        1
                   :reduce-without-init                                                 3
+                  :redundant-do                                                        1
                   :redundant-fn-wrapper                                                1
                   :syntax                                                              2
-                  :type-mismatch                                                       2
+                  :type-mismatch                                                       8
                   :unquote-not-syntax-quoted                                           1
-                  :unresolved-namespace                                                3
+                  :unresolved-namespace                                                9
                   :unresolved-require                                                  1
-                  :unresolved-symbol                                                   6
+                  :unresolved-symbol                                                   11
                   :unsorted-required-namespaces                                        1
-                  :unused-alias                                                        1
+                  :unused-alias                                                        2
                   :unused-binding                                                      9
                   :unused-excluded-var                                                 2
-                  :unused-namespace                                                    1
+                  :unused-namespace                                                    2
                   :unused-private-var                                                  8
                   :unused-value                                                        1}
  :config-counts  {:deprecated-namespace                    7
@@ -66,8 +68,7 @@
                   :unresolved-symbol                       19
                   :unresolved-var                          1
                   :unused-referred-var                     4}
- :comment-exempt #{:all
-                   :clojure-lsp/unused-public-var
+ :comment-exempt #{:clojure-lsp/unused-public-var
                    :deprecated-namespace
                    :discouraged-namespace
                    :discouraged-var
