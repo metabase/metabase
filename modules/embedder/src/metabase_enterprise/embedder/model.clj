@@ -45,6 +45,8 @@
 
 (def ^:private model-name-aliases
   "Pinned HF repo paths → the bare names bundles (and the zoo default) are keyed by.
+  The bare name is the canonical one: the model registry, the `MB_EMBEDDER_MODEL_SOURCES` lookup and the
+  bundle path all key off it, so both spellings name one resident model and one override entry.
   Consumer settings often carry the full repo path (the complexity-score synonym default is
   `sentence-transformers/all-MiniLM-L6-v2`). Only pinned aliases collapse: HF repo names are
   namespace-scoped, so another org's `<org>/all-MiniLM-L6-v2` is a different model that needs its own
@@ -59,7 +61,10 @@
 (defn- model-source-overrides
   "Per-model source overrides from the `MB_EMBEDDER_MODEL_SOURCES` env var: an EDN map of model name →
   `{:path \"/dir\"}` or `{:url \"...\"}`, with optional `:model-file-name` (weights file minus `.onnx`,
-  default `model`) and `:include-token-types?` (default true)."
+  default `model`) and `:include-token-types?` (default true).
+  Keys are normalized like consumer-supplied names, so an entry keyed with either spelling of a pinned
+  alias covers consumers configured with the other; keying both spellings is a config error rather than a
+  silent last-one-wins."
   []
   (when-let [raw (not-empty (getenv "MB_EMBEDDER_MODEL_SOURCES"))]
     (let [parsed (try
@@ -69,7 +74,16 @@
       (when-not (map? parsed)
         (throw (ex-info "MB_EMBEDDER_MODEL_SOURCES must be an EDN map of model name → source entry"
                         {:value raw})))
-      parsed)))
+      (reduce (fn [acc [k v]]
+                (let [k' (normalize-model-name k)]
+                  (when (contains? acc k')
+                    (throw (ex-info (format (str "MB_EMBEDDER_MODEL_SOURCES has entries for two names of "
+                                                 "the same model (%s); configure it once.")
+                                            (pr-str k'))
+                                    {:value raw :model-name k'})))
+                  (assoc acc k' v)))
+              {}
+              parsed))))
 
 (defn- model-source
   "Where to load `model-name` from, in priority order:
@@ -91,8 +105,11 @@
   have a third `token_type_ids` graph input the translator must feed, while the DJL zoo export takes two.
   Override entries default to the bundle convention; set `:include-token-types? false` for a two-input
   custom model."
-  [model-name]
-  (let [resource-path   (str "metabase-embedder/" (normalize-model-name model-name) "-" (bundled-model-arch) ".zip")
+  [requested-name]
+  ;; Normalize before anything else: the override lookup, the bundle path and the zoo-download gate must all
+  ;; agree on one canonical name, or an alias would pick up some of them and miss the others.
+  (let [model-name      (normalize-model-name requested-name)
+        resource-path   (str "metabase-embedder/" model-name "-" (bundled-model-arch) ".zip")
         ;; `find`, not `get`: a present-but-nil entry must be treated as malformed, not as absent.
         [_ override
          :as entry]     (find (model-source-overrides) model-name)
@@ -107,7 +124,7 @@
     (when (and entry (not (or (:path override) (:url override))))
       (throw (ex-info (format "MB_EMBEDDER_MODEL_SOURCES entry for %s must have a :path or :url key."
                               (pr-str model-name))
-                      {:model-name model-name :entry override})))
+                      {:model-name model-name :requested-name requested-name :entry override})))
     (cond
       (:path override)
       (override-source :path)
@@ -118,7 +135,7 @@
       (bundled-model-resource resource-path)
       {:type :url :url (str "jar:///" resource-path) :include-token-types? true}
 
-      (and (= (normalize-model-name model-name) default-model-name)
+      (and (= model-name default-model-name)
            (= "true" (getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD")))
       {:type :url
        :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"
@@ -130,7 +147,7 @@
                                    "are not enabled (MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true, dev only, "
                                    "default model only).")
                               (pr-str model-name))
-                      {:model-name model-name :resource resource-path})))))
+                      {:model-name model-name :requested-name requested-name :resource resource-path})))))
 
 (defn- build-model ^ZooModel [model-name]
   (let [source   (model-source model-name)
@@ -158,13 +175,16 @@
 ;; racing to pay the one-time DJL/ONNX Runtime native init.
 (defonce ^:private models* (atom {}))
 
-(defn- model ^ZooModel [model-name]
-  (or (get @models* model-name)
-      (locking models*
-        (or (get @models* model-name)
-            (let [loaded (build-model model-name)]
-              (swap! models* assoc model-name loaded)
-              loaded)))))
+(defn- model ^ZooModel [requested-name]
+  ;; Keyed by the normalized name, so two consumers naming the same model differently (bare vs. pinned HF
+  ;; repo path) share the one resident copy instead of each loading their own ZooModel + ONNX session.
+  (let [model-name (normalize-model-name requested-name)]
+    (or (get @models* model-name)
+        (locking models*
+          (or (get @models* model-name)
+              (let [loaded (build-model model-name)]
+                (swap! models* assoc model-name loaded)
+                loaded))))))
 
 (defn reset-models!
   "Close and discard all loaded models so the next embed reloads them.

@@ -99,6 +99,20 @@
       (.closeEntry out)))
   (u/announce "Wrote %s" (str zip-file)))
 
+(defn- clear-bundle-dir!
+  "Empty the bundle dir before rebuilding it. Everything under it is generated (it's gitignored in full),
+  and the plugin build copies the whole resources tree into the jar — so a bundle for a model or arch
+  `bundled-models` no longer names would otherwise linger across builds and ship inside the jar.
+  Free to do: every bundle is rewritten below anyway, from the separately-cached downloads."
+  []
+  ;; Depth-first (children before their parent), so the dir itself empties out; write-zip! recreates it.
+  (doseq [^File file (reverse (file-seq (io/file bundle-dir)))
+          :when      (.exists file)]
+    (when (.isFile file)
+      (u/announce "Removing stale bundle file %s" (str file)))
+    ;; Fail the build if a stale artifact cannot be removed; continuing could package it into the plugin.
+    (io/delete-file file)))
+
 (defn fetch-model!
   "Fetch (or reuse cached) pinned model files and assemble per-model, per-arch bundle zips.
   Skip with SKIP_EMBEDDER_MODEL=true."
@@ -106,6 +120,7 @@
   (if (= (env/env :skip-embedder-model) "true")
     (u/announce "Skipping embedder model fetch (SKIP_EMBEDDER_MODEL=true)")
     (u/step "Fetch embedder models and assemble bundles"
+      (clear-bundle-dir!)
       (doseq [[model-name model-spec] bundled-models
               arch                    (keys (:arch->onnx-file model-spec))]
         (write-zip! model-name model-spec arch

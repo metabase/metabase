@@ -109,6 +109,23 @@
                                       embedder.model/bundled-model-resource (constantly nil)]
             (is (=? {:type :url :url #"djl://.*all-MiniLM-L6-v2"}
                     (#'embedder.model/model-source "sentence-transformers/all-MiniLM-L6-v2")))))
+        (testing "and an override entry keyed with either spelling covers both"
+          (doseq [key-spelling ["all-MiniLM-L6-v2" "sentence-transformers/all-MiniLM-L6-v2"]
+                  lookup-name  ["all-MiniLM-L6-v2" "sentence-transformers/all-MiniLM-L6-v2"]]
+            (testing (str key-spelling " -> " lookup-name)
+              (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_MODEL_SOURCES"
+                                                                                (format "{%s {:path \"/models/tuned\"}}"
+                                                                                        (pr-str key-spelling))}
+                                          embedder.model/bundled-model-resource bundle-only]
+                (is (= {:type :path :path "/models/tuned" :include-token-types? true}
+                       (#'embedder.model/model-source lookup-name)))))))
+        (testing "but entries for both spellings are a config error, not a silent last-one-wins"
+          (mt/with-dynamic-fn-redefs [embedder.model/getenv {"MB_EMBEDDER_MODEL_SOURCES"
+                                                            (str "{\"all-MiniLM-L6-v2\" {:path \"/a\"} "
+                                                                 "\"sentence-transformers/all-MiniLM-L6-v2\" {:path \"/b\"}}")}]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"entries for two names of the same model"
+                                  (#'embedder.model/model-source "all-MiniLM-L6-v2")))))
         (testing "but another org's same-named model doesn't collapse to our bundle (or the zoo download)"
           (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD" "true"}
                                       embedder.model/bundled-model-resource bundle-only]
@@ -143,6 +160,18 @@
             (is (identical? a a'))
             (is (not= a b))
             (is (= ["model-a" "model-b"] @builds)))
+          (finally
+            (embedder.model/reset-models!))))))
+  (testing "both spellings of a pinned alias share one resident model"
+    (let [builds (atom [])]
+      (mt/with-dynamic-fn-redefs [embedder.model/build-model (fn [model-name]
+                                                               (swap! builds conj model-name)
+                                                               {:stub model-name})]
+        (embedder.model/reset-models!)
+        (try
+          (is (identical? (#'embedder.model/model "all-MiniLM-L6-v2")
+                          (#'embedder.model/model "sentence-transformers/all-MiniLM-L6-v2")))
+          (is (= ["all-MiniLM-L6-v2"] @builds))
           (finally
             (embedder.model/reset-models!)))))))
 

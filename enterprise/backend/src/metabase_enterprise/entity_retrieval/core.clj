@@ -304,7 +304,10 @@
   blended score (cosine similarity plus a slight doc_type bump).
   Each result is shaped `{:entity {:model :id} :doc_type :doc_text :score}`, best score first; the caller
   dedupes the (many-per-entity) docs down to distinct entities.
-  Returns [] when the pgvector store is unconfigured."
+  Returns [] when the pgvector store is unconfigured.
+  A [[configured-model]] misconfiguration propagates rather than degrading to []: the tool is only offered
+  behind [[entity-retrieval-available?]], which reads that state as not-ready, so reaching here with bad
+  settings means they changed mid-request — an empty library would misreport that as \"nothing matches\"."
   :feature :library-retrieval
   [user-search-prompt limit]
   (if-not (available?)
