@@ -154,7 +154,7 @@
                              (common/encode-serialized-query serialized-query)
                              prompt))
 
-(defn- validate-only-response
+(defn- validate-only-response!
   [session-id serialized-query prompt]
   (let [counts {:query_handle (mint-handle! session-id serialized-query prompt)
                 :returned     0
@@ -163,7 +163,7 @@
      (str (json/encode counts)
           "\nQuery validated, not executed — execute or save it later by passing this query_handle."))))
 
-(defn- execute-response
+(defn- execute-response!
   [session-id serialized-query prompt row-limit]
   (let [result      (execute! serialized-query row-limit)
         cols        (get-in result [:data :cols])
@@ -223,5 +223,5 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
   (let [input (query-input args)
         {serialized-query :query prompt :prompt} (resolve-input input args session-id)]
     (if (true? validate_only)
-      (validate-only-response session-id serialized-query prompt)
-      (execute-response session-id serialized-query prompt (or row_limit default-row-limit)))))
+      (validate-only-response! session-id serialized-query prompt)
+      (execute-response! session-id serialized-query prompt (or row_limit default-row-limit)))))
