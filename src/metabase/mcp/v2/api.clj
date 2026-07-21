@@ -11,8 +11,13 @@
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.tools.question :as v2.question]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util.i18n :refer [tru]]))
+
+;; Required only for its `deftool` side effect (tool registration); nothing here calls into it.
+(comment
+  v2.question/keep-me)
 
 (set! *warn-on-reflection* true)
 

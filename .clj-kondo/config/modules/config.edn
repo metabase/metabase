@@ -1267,6 +1267,8 @@
            ai-tracing
            api
            app-db
+           channel
+           collections
            config
            eid-translation
            lib
@@ -1275,6 +1277,8 @@
            metabot
            oauth-server
            premium-features
+           queries
+           query-permissions
            request
            server
            session
@@ -1282,7 +1286,7 @@
            system
            task
            util}
-   :model-imports #{:model/Collection}}
+   :model-imports #{:model/Card :model/Collection :model/Field}}
 
   measures
   {:team "Graphy"
