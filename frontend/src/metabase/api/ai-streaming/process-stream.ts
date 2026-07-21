@@ -91,7 +91,9 @@ export async function processChatResponse(
   };
 
   const events = parseSSEStream(stream);
-  const paced = isReducedMotionPreferred() ? events : smoothStreamEvents(events);
+  const paced = isReducedMotionPreferred()
+    ? events
+    : smoothStreamEvents(events);
 
   try {
     for await (const event of paced) {
