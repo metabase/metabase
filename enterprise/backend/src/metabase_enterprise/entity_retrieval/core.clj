@@ -321,6 +321,12 @@
   model: it is written for that model, so an ee-library-embedding-* override would otherwise get a prefix
   its own model was never trained on. The family default, derived from the model in use, always applies."
   [model user-search-prompt]
+  ;; Compares `:model-name` only, deliberately — not `:provider`. A prefix is a property of the model:
+  ;; `embedding/default-query-prefix` picks one by regex over the model name and never consults the
+  ;; provider, so gating inheritance on the provider would be inconsistent with how prefixes are chosen.
+  ;; Overriding the provider requires naming a model too (see [[configured-model]]), so an override that
+  ;; repeats the global model name is the operator saying it is that same model served elsewhere — for
+  ;; which their configured prefix still applies. Adding `:provider` here would silently drop it instead.
   (embedding/get-embedding model
                            (embedding/prefix-search-query
                             model user-search-prompt
