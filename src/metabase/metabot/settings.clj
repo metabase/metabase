@@ -104,7 +104,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "openai" "openrouter"})
+  #{"anthropic" "azure" "bedrock" "google" "openai" "openrouter"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -113,6 +113,11 @@
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
+
+(def ^:private default-google-llm-metabot-model
+  "Default Google Gemini Enterprise Agent Platform model used for Metabot when no explicit model
+  is selected."
+  "gemini-3.5-flash")
 
 (def ^:private default-openai-llm-metabot-model
   "Default OpenAI model used for Metabot when no explicit model is selected."
@@ -135,6 +140,7 @@
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "google"                               default-google-llm-metabot-model
    "openai"                               default-openai-llm-metabot-model
    "openrouter"                           default-openrouter-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
@@ -283,9 +289,11 @@
   "Returns the configured credentials map for the given provider, or nil if unrecognized or unconfigured.
 
   The shape of the map varies by provider: API-key providers return `{:api-key ...}`, Azure returns `:api-key` and
-  `:base-url` from the `llm-azure-*` settings, and Bedrock returns `:access-key-id`, `:secret-access-key`,
-  `:session-token`, and `:region` from the `llm-bedrock-*` settings. Azure counts as configured only when both the
-  API key and base URL are set; Bedrock only when both the access key ID and secret access key are set."
+  `:base-url` from the `llm-azure-*` settings, Bedrock returns `:access-key-id`, `:secret-access-key`,
+  `:session-token`, and `:region` from the `llm-bedrock-*` settings, and Google returns `:api-key` and
+  `:project-id` plus the optional `:location` from the `llm-google-*` settings. Azure counts as configured only
+  when both the API key and base URL are set; Bedrock only when both the access key ID and secret access key are
+  set; Google only when both the API key and project ID are set."
   [provider]
   (case provider
     "anthropic"  (configured-api-key-credentials (llm.settings/llm-anthropic-api-key))
@@ -298,14 +306,19 @@
                     :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
                     :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
                     :region            (non-blank (llm.settings/llm-bedrock-region))})
+    "google"     (when-let [api-key (non-blank (llm.settings/llm-google-api-key))]
+                   (when-let [project-id (non-blank (llm.settings/llm-google-project-id))]
+                     {:api-key    api-key
+                      :project-id project-id
+                      :location   (non-blank (llm.settings/llm-google-location))}))
     "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
     "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
     nil))
 
 (defn provider-credentials-complete?
   "Whether a credentials map carries everything `provider` needs to make requests: both the AWS access key ID and
-  secret access key for Bedrock, both the API key and base URL for Azure, an `:api-key` for the other direct
-  providers."
+  secret access key for Bedrock, both the API key and base URL for Azure, both the API key and project ID for
+  Google, an `:api-key` for the other direct providers."
   [provider credentials]
   (boolean
    (case provider
@@ -313,6 +326,8 @@
                     (non-blank (:secret-access-key credentials)))
      "azure"   (and (non-blank (:api-key credentials))
                     (non-blank (:base-url credentials)))
+     "google"  (and (non-blank (:api-key credentials))
+                    (non-blank (:project-id credentials)))
      (non-blank (:api-key credentials)))))
 
 (defn- llm-provider-configured?

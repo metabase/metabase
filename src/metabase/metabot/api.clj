@@ -462,14 +462,17 @@
 
 (def ^:private provider-credentials-schema
   "Provider credentials carried by the request body's `:credentials` map.
-  Bedrock sends AWS key material; Azure sends an API key and base URL."
+  Bedrock sends AWS key material; Azure sends an API key and base URL; Google sends an API key
+  and project ID plus an optional location."
   [:map
    [:access-key-id     {:optional true} [:maybe :string]]
    [:secret-access-key {:optional true} [:maybe :string]]
    [:region            {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
    [:api-key           {:optional true} [:maybe :string]]
-   [:base-url          {:optional true} [:maybe :string]]])
+   [:base-url          {:optional true} [:maybe :string]]
+   [:project-id        {:optional true} [:maybe :string]]
+   [:location          {:optional true} [:maybe :string]]])
 
 (def ^:private metabot-settings-request-schema
   [:map
@@ -681,6 +684,24 @@
    :base-url (or (llm.settings/normalize-llm-base-url base-url)
                  (llm.settings/normalize-llm-base-url (llm.settings/llm-azure-api-base-url)))})
 
+(def ^:private google-credential-fields
+  [:api-key :project-id :location])
+
+(defn- effective-google-credentials
+  "The Google credentials a settings request resolves to.
+
+  Each field follows the same presence contract as the top-level `:credentials` key: a field present
+  in the request replaces the saved `llm-google-*` value, while an absent field keeps the saved
+  value. Nil or blank means an explicit clear — the location is optional (blank means the global
+  location), so an admin can drop it without touching the key; completeness of the resolved map
+  (API key and project ID) is the caller's check."
+  [supplied-creds]
+  (reduce (fn [creds field]
+            (cond-> creds
+              (contains? supplied-creds field) (assoc field (non-blank-string (get supplied-creds field)))))
+          (metabot.settings/configured-provider-credentials "google")
+          google-credential-fields))
+
 (defn- request-credentials
   "The credentials override carried by a `PUT /api/metabot/settings` request body as a provider credentials map.
 
@@ -724,6 +745,21 @@
                                                         [:api-key :base-url]))})))
           creds)))
 
+    "google"
+    (when (contains? body :credentials)
+      (if (nil? credentials)
+        {:api-key    nil
+         :project-id nil
+         :location   nil}
+        (let [creds (effective-google-credentials credentials)]
+          (when-not (metabot.settings/provider-credentials-complete? provider creds)
+            (throw (ex-info (tru "A Google Cloud API key and project ID are required.")
+                            {:status-code  400
+                             :api-error    true
+                             :missing-keys (vec (remove #(non-blank-string (get creds %))
+                                                        [:api-key :project-id]))})))
+          creds)))
+
     (when (contains? body :api-key)
       {:api-key (non-blank-string api-key)})))
 
@@ -756,6 +792,14 @@
   (setting/set! :llm-azure-api-key api-key)
   (setting/set! :llm-azure-api-base-url base-url))
 
+(defn- save-google-credentials!
+  "Persist a Google credentials map resolved by [[request-credentials]]; nil values clear those
+  settings."
+  [{:keys [api-key project-id location]}]
+  (setting/set! :llm-google-api-key api-key)
+  (setting/set! :llm-google-project-id project-id)
+  (setting/set! :llm-google-location location))
+
 (defn- save-credentials!
   "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
   [provider credentials]
@@ -763,6 +807,7 @@
     (case provider
       "bedrock" (save-bedrock-credentials! credentials)
       "azure"   (save-azure-credentials! credentials)
+      "google"  (save-google-credentials! credentials)
       (setting/set! (provider-api-key-setting-key provider) (:api-key credentials)))))
 
 (defn- credential-setting-keys
@@ -776,6 +821,7 @@
     "bedrock" (cond-> [:llm-bedrock-access-key-id :llm-bedrock-secret-access-key :llm-bedrock-session-token]
                 (contains? credentials :region) (conj :llm-bedrock-region))
     "azure"   [:llm-azure-api-key :llm-azure-api-base-url]
+    "google"  [:llm-google-api-key :llm-google-project-id :llm-google-location]
     [(provider-api-key-setting-key provider)]))
 
 (api.macros/defendpoint :put "/settings"
