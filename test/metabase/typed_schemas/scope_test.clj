@@ -8,7 +8,7 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(deftest library-collections-scope-accepts-comma-separated-subcollection-ids-test
+(deftest library-scope-accepts-comma-separated-subcollection-ids-test
   (mt/with-temp [:model/Collection root          {:name "Library"
                                                   :type "library"
                                                   :location "/"}
@@ -31,11 +31,11 @@
       (is (= {:collection-ids        #{(:id data-child) (:id data-grandkid) (:id metric-child)}
               :data-collection-ids   #{(:id data-child) (:id data-grandkid)}
               :metric-collection-ids #{(:id metric-child)}}
-             (select-keys (#'typed-schemas.scope/library-collections-scope
-                           [{:id (:id data-child)} {:id (:id metric-child)}])
+             (select-keys (#'typed-schemas.scope/library-scope
+                           {:library-collection-refs [{:id (:id data-child)} {:id (:id metric-child)}]})
                           [:collection-ids :data-collection-ids :metric-collection-ids]))))))
 
-(deftest library-collections-scope-accepts-representation-entity-ids-test
+(deftest library-scope-accepts-representation-entity-ids-test
   (mt/with-temp [:model/Collection root         {:name "Library"
                                                  :type "library"
                                                  :location "/"}
@@ -53,7 +53,8 @@
       (is (= {:collection-ids        #{(:id website) (:id website-page)}
               :data-collection-ids   #{(:id website) (:id website-page)}
               :metric-collection-ids #{}}
-             (select-keys (#'typed-schemas.scope/library-collections-scope [{:entity-id "g-jLnamuHKdezZMthJ-z7"}])
+             (select-keys (#'typed-schemas.scope/library-scope
+                           {:library-collection-refs [{:entity-id "g-jLnamuHKdezZMthJ-z7"}]})
                           [:collection-ids :data-collection-ids :metric-collection-ids]))))))
 
 (deftest library-scope-includes-canonical-data-and-metrics-libraries-test
@@ -82,6 +83,30 @@
                 :metric-collection-ids #{(:id metrics) (:id metric-child)}}
                (select-keys (#'typed-schemas.scope/library-scope
                              {:include-data-library?   true
+                              :include-metric-library? true})
+                            [:collection-ids :data-collection-ids :metric-collection-ids])))))))
+
+(deftest library-scope-combines-explicit-and-root-collections-test
+  (with-redefs [typed-schemas.scope/library-metrics-entity-id "test-library-metrics"]
+    (mt/with-temp [:model/Collection root         {:name "Library"
+                                                   :type "library"
+                                                   :location "/"}
+                   :model/Collection data         {:name "Data"
+                                                   :type "library-data"
+                                                   :location (collection/children-location root)}
+                   :model/Collection metrics      {:name      "Metrics"
+                                                   :type      "library-metrics"
+                                                   :entity_id "test-library-metrics"
+                                                   :location  (collection/children-location root)}
+                   :model/Collection metric-child {:name "Boba Metrics"
+                                                   :type "library-metrics"
+                                                   :location (collection/children-location metrics)}]
+      (mt/with-test-user :crowberto
+        (is (= {:collection-ids        #{(:id data) (:id metrics) (:id metric-child)}
+                :data-collection-ids   #{(:id data)}
+                :metric-collection-ids #{(:id metrics) (:id metric-child)}}
+               (select-keys (#'typed-schemas.scope/library-scope
+                             {:library-collection-refs [{:id (:id data)}]
                               :include-metric-library? true})
                             [:collection-ids :data-collection-ids :metric-collection-ids])))))))
 
