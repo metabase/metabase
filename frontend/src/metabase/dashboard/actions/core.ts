@@ -1,8 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 
-import type { Dispatch, GetState } from "metabase/redux/store";
-import { push } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import type { Dispatch } from "metabase/redux/store";
+import { type Location, push } from "metabase/router";
 import type {
   DashCardId,
   DashCardVisualizationSettings,
@@ -12,12 +11,23 @@ import type {
 } from "metabase-types/api";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
-export const setEditingDashboard = (dashboard: Dashboard | null) => {
-  return (dispatch: Dispatch, getState: GetState) => {
-    if (dashboard === null) {
-      const location = getLocation(getState());
-      const locationWithoutEditHash = { ...location, hash: "" };
-      dispatch(push(locationWithoutEditHash));
+export const setEditingDashboard = (
+  dashboard: Dashboard | null,
+  location?: Omit<Location, "query" | "action">,
+) => {
+  return (dispatch: Dispatch) => {
+    // Leaving edit mode drops any hash params from the URL. The caller passes the
+    // current location, since this no longer reads the retired routing slice.
+    //
+    // Only navigate when there is actually a hash to strip. The location is
+    // captured when the caller rendered, so pushing it unconditionally would
+    // clobber query params written since then (e.g. the tab the dashboard URL
+    // sync just selected, which it will not re-add because it dedupes on the
+    // previous params). Push a path string rather than spreading the location:
+    // it has no v3 `query` field, and the v3 history rebuilds `search` from
+    // `query`, so spreading it would drop the query string entirely.
+    if (dashboard === null && location?.hash) {
+      dispatch(push(`${location.pathname}${location.search}`));
     }
 
     dispatch({
@@ -29,10 +39,11 @@ export const setEditingDashboard = (dashboard: Dashboard | null) => {
 
 export const CANCEL_EDITING_DASHBOARD =
   "metabase/dashboard/CANCEL_EDITING_DASHBOARD";
-export const cancelEditingDashboard = () => (dispatch: Dispatch) => {
-  dispatch(setEditingDashboard(null));
-  dispatch({ type: CANCEL_EDITING_DASHBOARD });
-};
+export const cancelEditingDashboard =
+  (location?: Omit<Location, "query" | "action">) => (dispatch: Dispatch) => {
+    dispatch(setEditingDashboard(null, location));
+    dispatch({ type: CANCEL_EDITING_DASHBOARD });
+  };
 
 export type SetDashboardAttributesOpts = {
   id: DashboardId;
