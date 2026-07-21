@@ -730,6 +730,26 @@
                                                         :data-source  data-source})]
         table))))
 
+(mu/defn replace-csv-table!
+  "Full-refresh a CSV-backed table: drop the physical table and rebuild it from `file`, keeping the app-db Table row.
+  Any schema change is allowed since the table is recreated from scratch. Used by seeds (enterprise)."
+  [{:keys [table filename ^File file]}
+   :- [:map
+       [:table :map]
+       [:filename :string]
+       [:file (ms/InstanceOfClass File)]]]
+  (check-workspace-mode!)
+  (let [database   (table/database table)
+        driver     (driver.u/database->driver database)
+        table-name (table-identifier table)]
+    (check-filetype filename file)
+    (driver.conn/with-write-connection
+      (driver/drop-table! driver (:id database) table-name)
+      (let [{:keys [columns]} (create-from-csv! driver database table-name filename file)]
+        (scan-and-sync-table! database table)
+        (set-display-names! (:id table) columns))))
+  (t2/select-one :model/Table :id (:id table)))
+
 ;;; +-----------------------------
 ;;; |  appending to uploaded table
 ;;; +-----------------------------

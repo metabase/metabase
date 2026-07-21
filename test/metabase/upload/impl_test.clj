@@ -2456,6 +2456,20 @@
             (testing "We do not clean up any of the child resources synchronously (yet?)"
               (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
 
+(deftest replace-csv-table-full-refresh-test
+  (mt/test-driver :h2
+    (with-upload-table! [table (create-upload-table!)]
+      ;; new CSV with a different shape entirely: renamed + added column
+      (let [file (csv-file-with ["name,flavor" "chocolate,dark" "vanilla,plain"])
+            drop-auto-pk (if (auto-pk-column?) #(map rest %) identity)]
+        (upload/replace-csv-table! {:table table :filename "ice_cream.csv" :file file})
+        (let [table' (t2/select-one :model/Table :id (:id table))
+              fields (t2/select-fn-set :name :model/Field :table_id (:id table) :active true)]
+          (is (= (:name table) (:name table')) "table row survives with the same name")
+          (is (contains? fields "flavor") "new column exists")
+          (is (= [["chocolate" "dark"] ["vanilla" "plain"]]
+                 (drop-auto-pk (rows-for-table table')))))))))
+
 (deftest create-csv-from-really-long-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

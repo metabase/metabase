@@ -23,5 +23,6 @@
   max-upload-part-count
   max-upload-size-bytes
   model-hydrate-based-on-upload
+  replace-csv-table!
   update-action-schema
   update-csv!])
