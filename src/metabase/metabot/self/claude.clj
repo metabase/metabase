@@ -224,17 +224,22 @@
 
 (defn- tool->claude
   "Convert a tool definition map to Claude API format.
-  Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (schema/filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                     ;; strip that stuff we're appending in mu/defn
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
+  Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn. When :input-schema is present
+  (MCP-bridged tools), it's a pre-built JSON Schema passed straight through."
+  [{:keys [tool-name doc schema input-schema]}]
+  (if input-schema
     {:name         (or tool-name "unknown")
      :description  doc
-     :input_schema (mjs/transform params {:additionalProperties false})}))
+     :input_schema input-schema}
+    (let [[_:=> [_:cat params] _out] schema
+          params                     (schema/filter-schema-by-features params)
+          doc                        (if (str/starts-with? (or doc "") "Inputs: ")
+                                       ;; strip that stuff we're appending in mu/defn
+                                       (second (str/split doc #"\n\n  " 2))
+                                       doc)]
+      {:name         (or tool-name "unknown")
+       :description  doc
+       :input_schema (mjs/transform params {:additionalProperties false})})))
 
 (defn- add-tools-cache-breakpoint
   "Attach an ephemeral cache_control marker to the last tool in `tools`.

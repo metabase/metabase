@@ -27,11 +27,13 @@
 ;; format) happens inside each adapter, but the **input contract is identical**.
 
 (def ToolEntry
-  "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
+  "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt.
+  :input-schema is a pre-built JSON Schema that bypasses :schema when serializing (MCP-bridged tools)."
   [:map
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema :any]
+   [:input-schema {:optional true} [:maybe :map]]
    [:fn [:fn fn?]]])
 
 (def LLMRequestOpts
