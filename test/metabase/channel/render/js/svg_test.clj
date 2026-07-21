@@ -7,9 +7,12 @@
   resulting svg."
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.render.js.common :as js.common]
+   [metabase.channel.render.js.graal :as js.graal]
    [metabase.channel.render.js.svg :as js.svg])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
+   (org.graalvm.polyglot Context Engine HostAccess)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -47,6 +50,67 @@
     (is (.hasAttribute line "fill-opacity"))
     (is (= "0.0"
            (.getAttribute line "fill-opacity")))))
+
+(defn- context-on-engine ^Context [^Engine engine]
+  (.. (Context/newBuilder (into-array String ["js"]))
+      (engine engine)
+      (allowHostAccess HostAccess/NONE)
+      (build)))
+
+(defn- load-bundle-ms
+  "Load the static-viz bundle into a fresh context on `engine`, returning the wall-clock load time in ms."
+  ^double [^Engine engine]
+  (let [^Context ctx (context-on-engine engine)
+        start        (System/nanoTime)]
+    (try
+      (js.graal/load-resource ctx js.common/bundle-resource-path)
+      (/ (- (System/nanoTime) start) 1e6)
+      (finally (.close ctx true)))))
+
+(deftest ^:mb/slow shared-engine-parsed-source-cache-speeds-bundle-reloads-test
+  (testing "reloading the ~16MB static-viz bundle on the same engine reuses its parsed-source cache"
+    ;; Same Engine-level cache that keeps the untrusted-plugin isolate's per-render plugin-bundle reloads cheap
+    ;; (see js.graal/do-with-untrusted-static-viz-context). Tested on the plain engine because an UNTRUSTED
+    ;; engine would need the full sandbox context builder; the parsed-source cache is identical for both.
+    ;;
+    ;; Pre-warm the host JVM's JS parser with a throwaway engine so the measured gap reflects the engine's
+    ;; parsed-source cache, not one-time JIT warmup.
+    (let [^Engine warmup (#'js.graal/create-engine)]
+      (load-bundle-ms warmup)
+      (load-bundle-ms warmup)
+      (.close warmup))
+    (let [^Engine engine (#'js.graal/create-engine)
+          cold           (load-bundle-ms engine)          ; first parse of the bundle on this engine: cold
+          warm           (min (load-bundle-ms engine)     ; reloads on the same engine hit the cache
+                              (load-bundle-ms engine))]
+      (.close engine)
+      (testing (format "(cold=%.0fms warm=%.0fms)" cold warm)
+        ;; Observed ~2x cheaper; assert a generous 25% floor so the timing test stays robust to noise.
+        (is (< warm (* 0.75 cold)))))))
+
+(deftest ^:mb/slow untrusted-context-loads-slim-bundle-test
+  (testing "the untrusted isolate pool loads the slim custom-viz bundle, exposing the interface surface it needs"
+    (js.graal/do-with-untrusted-static-viz-context
+     (fn [^Context ctx]
+       (doseq [fn-name ["renderChartJSON" "initializeContextJSON" "registerCustomVizPlugin"]]
+         (is (= "function" (.asString (.eval ctx "js" (str "typeof MetabaseStaticViz." fn-name))))
+             (str "slim bundle should expose MetabaseStaticViz." fn-name)))
+       ;; getCellBackgroundColorsJSON is only exported by the full bundle (only the trusted pool's table
+       ;; rendering calls it), so its absence proves the slim bundle is what got loaded here.
+       (is (= "undefined" (.asString (.eval ctx "js" "typeof MetabaseStaticViz.getCellBackgroundColorsJSON")))
+           "the full static-viz bundle (getCellBackgroundColorsJSON present) leaked into the untrusted pool")))))
+
+(deftest ^:mb/slow untrusted-static-viz-context-is-pooled-test
+  (testing "pooled untrusted isolate contexts are reused across renders (bundle parsed once, not per render)"
+    ;; Regression guard: the previous fresh-context-per-render path re-parsed the ~16MB bundle every render
+    ;; (a 55s pulse-test regression). The pool loads the bundle once and hands the same context to each render.
+    ;; Tests run in :test mode (config/is-dev? false), so do-with-untrusted... takes the pooled branch.
+    (let [ids (atom [])]
+      (dotimes [_ 3]
+        (js.graal/do-with-untrusted-static-viz-context
+         (fn [^Context ctx] (swap! ids conj (System/identityHashCode ctx)))))
+      (is (= 1 (count (distinct @ids)))
+          "the same pooled isolate context should serve every render"))))
 
 (deftest ^:parallel parse-svg-sanitizes-characters-test
   (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"
