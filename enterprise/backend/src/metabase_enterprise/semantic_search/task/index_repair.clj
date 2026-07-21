@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.core :as semantic-search.core]
    [metabase-enterprise.semantic-search.health :as semantic.health]
    [metabase-enterprise.semantic-search.util :as semantic.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -22,8 +23,10 @@
   (try
     (log/info "Starting semantic search index repair")
     ;; Reuse repair's anti-join result instead of running a second garbage query.
-    (semantic.health/report-repair-orphans!
-     (semantic-search.core/repair-index! (search.ingestion/searchable-documents)))
+    ;; Keep the cache bound while the document eduction is realized inside repair-index!.
+    (lib-be/with-metadata-provider-cache
+      (semantic.health/report-repair-orphans!
+       (semantic-search.core/repair-index! (search.ingestion/searchable-documents))))
     (log/info "Completed semantic search index repair")
     (catch Exception e
       ;; The pushed gauge has no timestamp. Invalidate its last value when the producing job fails.

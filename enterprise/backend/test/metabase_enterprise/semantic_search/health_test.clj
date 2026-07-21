@@ -10,7 +10,6 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.health :as semantic.health]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
-   [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
@@ -38,13 +37,7 @@
   (testing "an inactive engine (unlicensed, unconfigured, or another engine selected) -> nil (omitted, not a
            misleading 'No active semantic search index' incident)"
     (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-active? (constantly false)]
-      (is (nil? (semantic.health/index-health-check)))))
-  (testing "the semantic-search-enabled kill switch off -> nil through the real engine chain, even with
-           pgvector + license present"
-    (mt/with-premium-features #{:semantic-search}
-      (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-capable?    (constantly true)
-                                  semantic-settings/semantic-search-enabled (constantly false)]
-        (is (nil? (semantic.health/index-health-check)))))))
+      (is (nil? (semantic.health/index-health-check))))))
 
 (deftest pgvector-unreachable-test
   (testing "a pgvector error while resolving the active index reports as degraded, not as no-index"

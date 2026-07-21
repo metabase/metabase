@@ -224,6 +224,10 @@
 ;; events (see `:metabase.metabot.schema.v2/ui-message-chunk`), one per
 ;; `data: {json}` line, terminated by `data: [DONE]`.
 
+(def done-sse-line
+  "AI SDK stream terminator line."
+  "data: [DONE]\n")
+
 (defn format-sse-event
   "Format a payload map as an SSE event line: data: {JSON}\\n. The streaming
   writer appends another newline, forming the blank-line event boundary."
@@ -244,7 +248,7 @@
   [error-part]
   (str (format-error-line error-part) "\n"
        (format-sse-event {:type "finish" :finishReason "error"}) "\n"
-       "data: [DONE]\n\n"))
+       done-sse-line "\n"))
 
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
@@ -305,8 +309,9 @@
   non-text part (or end of stream) closes the open block first.
 
   Options:
-    :message-id - When set, force this id into the `start` event so the client
-                  sees the same id we persist as `metabot_message.external_id`.
+    :message-id       - When set, force this id into the `start` event so the client
+                        sees the same id we persist as `metabot_message.external_id`.
+    :message-metadata - When set, emitted as the `start` event's `messageMetadata`.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step
@@ -321,7 +326,7 @@
     :finish           -> (ignored — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
-  ([{:keys [message-id]}]
+  ([{:keys [message-id message-metadata]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
@@ -330,6 +335,10 @@
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
+           start-event       (fn [id]
+                               (format-sse-event
+                                (cond-> {:type "start" :messageId id}
+                                  message-metadata (assoc :messageMetadata message-metadata))))
            close-text-block  (fn [result]
                                (if-let [id @current-text-id]
                                  (do (vreset! current-text-id nil)
@@ -340,8 +349,7 @@
                                  result
                                  (do (vreset! started? true)
                                      (-> result
-                                         (rf (format-sse-event {:type      "start"
-                                                                :messageId (or message-id (mkid))}))
+                                         (rf (start-event (or message-id (mkid))))
                                          (rf (format-sse-event {:type "start-step"}))))))]
        (fn
          ([] (rf))
@@ -355,7 +363,7 @@
                      (cond-> {:type         "finish"
                               :finishReason (if @error? "error" "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
-                (rf "data: [DONE]\n")
+                (rf done-sse-line)
                 (rf))))
          ([result part]
           ;; Any non-text part implicitly closes the current text block before
@@ -373,8 +381,7 @@
                 (do
                   (vreset! started? true)
                   (-> result
-                      (rf (format-sse-event {:type      "start"
-                                             :messageId (or message-id (:id part) (mkid))}))
+                      (rf (start-event (or message-id (:id part) (mkid))))
                       (rf (format-sse-event {:type "start-step"})))))
 
               :text

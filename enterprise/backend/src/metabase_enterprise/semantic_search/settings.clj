@@ -85,15 +85,6 @@
   :export?    false
   :doc        false)
 
-(defsetting semantic-search-enabled
-  (deferred-tru "Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.")
-  :visibility :internal
-  :export?    false
-  :encryption :no
-  :default    true
-  :type       :boolean
-  :doc        false)
-
 (defsetting semantic-search-embedder-circuit-breaker-enabled
   (deferred-tru
    (str "Wrap embedding-service calls in a circuit breaker that fails fast after repeated failures. "

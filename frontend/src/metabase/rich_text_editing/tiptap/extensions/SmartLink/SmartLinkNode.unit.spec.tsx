@@ -212,7 +212,7 @@ describe("SmartLink", () => {
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
         <Router history={historyWithBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
+          <Route path="*" element={<SmartLinkComponent {...props} />} />
         </Router>,
       );
 
@@ -242,7 +242,7 @@ describe("SmartLink", () => {
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
         <Router history={historyNoBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
+          <Route path="*" element={<SmartLinkComponent {...props} />} />
         </Router>,
       );
 

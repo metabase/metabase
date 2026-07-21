@@ -79,7 +79,7 @@ To nest a bulleted item under another bulleted item, indent the nested item with
 To add a link, put the link text in square brackets, followed by the URL in parentheses:
 
 ```text
-[the internet's finest webpage](https://www.metabase.com)
+[the internet's finest webpage](https://www.example.com)
 ```
 
 This renders as a clickable link: [the internet's finest webpage](https://www.metabase.com).

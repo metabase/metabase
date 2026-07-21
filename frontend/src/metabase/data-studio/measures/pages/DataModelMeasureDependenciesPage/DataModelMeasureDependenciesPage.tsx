@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Outlet } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
@@ -16,12 +15,10 @@ type DataModelMeasureDependenciesPageParams = {
 
 type DataModelMeasureDependenciesPageProps = {
   params: DataModelMeasureDependenciesPageParams;
-  children?: ReactNode;
 };
 
 export function DataModelMeasureDependenciesPage({
   params,
-  children,
 }: DataModelMeasureDependenciesPageProps) {
   const { isLoading, error, measure, table, tabUrls, onRemove } =
     useDataModelMeasurePage(params);
@@ -43,7 +40,7 @@ export function DataModelMeasureDependenciesPage({
       }
       onRemove={onRemove}
     >
-      {children}
+      <Outlet />
     </MeasureDependenciesPage>
   );
 }

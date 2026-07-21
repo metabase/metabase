@@ -1032,7 +1032,6 @@
                                        (get-in (-> drill-thru-query
                                                    qp.preprocess/preprocess
                                                    ;; legacy usage -- don't do things like this going forward
-                                                   #_{:clj-kondo/ignore [:discouraged-var]}
                                                    lib/->legacy-MBQL)
                                                [:query :filter])))))]
                         (testing "As an admin"

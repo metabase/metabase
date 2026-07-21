@@ -36,7 +36,7 @@ import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { createMockState } from "metabase/redux/store/mocks";
-import { IndexRoute, Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, Timeline, UnsavedCard } from "metabase-types/api";
 import {
@@ -216,6 +216,8 @@ const TestQueryBuilder = (
   );
 };
 
+const RoutedTestQueryBuilder = withRouteProps(TestQueryBuilder);
+
 const TestHome = () => <NewItemMenu trigger={<button>New</button>} />;
 
 const TestRedirect = () => <div />;
@@ -287,25 +289,25 @@ export const setup = async ({
   const { container, history, store } = renderWithProviders(
     <div>
       <Route>
-        <Route path="/" component={TestHome} />
+        <Route path="/" element={<TestHome />} />
         <Route path="/model">
-          <Route path="query" component={TestQueryBuilder} />
-          <Route path="columns" component={TestQueryBuilder} />
-          <Route path="metadata" component={TestQueryBuilder} />
-          <Route path="notebook" component={TestQueryBuilder} />
-          <Route path=":slug" component={TestQueryBuilder} />
-          <Route path=":slug/query" component={TestQueryBuilder} />
-          <Route path=":slug/columns" component={TestQueryBuilder} />
-          <Route path=":slug/metadata" component={TestQueryBuilder} />
-          <Route path=":slug/notebook" component={TestQueryBuilder} />
+          <Route path="query" element={<RoutedTestQueryBuilder />} />
+          <Route path="columns" element={<RoutedTestQueryBuilder />} />
+          <Route path="metadata" element={<RoutedTestQueryBuilder />} />
+          <Route path="notebook" element={<RoutedTestQueryBuilder />} />
+          <Route path=":slug" element={<RoutedTestQueryBuilder />} />
+          <Route path=":slug/query" element={<RoutedTestQueryBuilder />} />
+          <Route path=":slug/columns" element={<RoutedTestQueryBuilder />} />
+          <Route path=":slug/metadata" element={<RoutedTestQueryBuilder />} />
+          <Route path=":slug/notebook" element={<RoutedTestQueryBuilder />} />
         </Route>
         <Route path="/question">
-          <IndexRoute component={TestQueryBuilder} />
-          <Route path="notebook" component={TestQueryBuilder} />
-          <Route path=":slug" component={TestQueryBuilder} />
-          <Route path=":slug/notebook" component={TestQueryBuilder} />
+          <Route index element={<RoutedTestQueryBuilder />} />
+          <Route path="notebook" element={<RoutedTestQueryBuilder />} />
+          <Route path=":slug" element={<RoutedTestQueryBuilder />} />
+          <Route path=":slug/notebook" element={<RoutedTestQueryBuilder />} />
         </Route>
-        <Route path="/redirect" component={TestRedirect} />
+        <Route path="/redirect" element={<TestRedirect />} />
       </Route>
     </div>,
     {

@@ -193,7 +193,7 @@
         index-metadata (semantic.env/get-index-metadata)
         active-state   (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
     (if-not active-state
-      ;; Semantic can become active at runtime (kill switch re-enabled, or added to additional-search-engines)
+      ;; Semantic can become active at runtime (license applied, or added to additional-search-engines)
       ;; without init! ever having run; initializing here lets the periodic repair task backfill the index.
       ;; A fresh init has no lost deletes, so return 0 orphans to keep the garbage-metric contract.
       (do

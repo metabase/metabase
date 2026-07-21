@@ -2,9 +2,12 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
+  CreateCardRequest,
   DashboardId,
+  DatabaseId,
   DatasetQuery,
   DraftTransform,
+  PaginationRequest,
   PaginationResponse,
   RowValue,
   SuggestedTransform,
@@ -55,31 +58,6 @@ export type MetabotTool = {
   name: string; // TODO: make strictly typed - currently there's no tools
   parameters: Record<string, any>;
 };
-
-export type MetabotHistoryUserMessageEntry = {
-  role: "user";
-  message: string;
-  context: MetabotChatContext;
-};
-
-export type MetabotHistoryToolEntry = {
-  role: "assistant";
-  assistant_response_type: "tools";
-  tools: MetabotTool[];
-};
-
-export type MetabotHistoryMessageEntry = {
-  role: "assistant";
-  assistant_response_type: "message";
-  message: string;
-};
-
-export type MetabotHistoryEntry =
-  | MetabotHistoryUserMessageEntry
-  | MetabotHistoryToolEntry
-  | MetabotHistoryMessageEntry;
-
-export type MetabotHistory = any[];
 
 export type MetabotStateContext = Record<string, any>;
 
@@ -173,17 +151,41 @@ export type MetabotCodeEdit = {
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
-  history: MetabotHistory;
-  state: MetabotStateContext;
   conversation_id: string; // uuid
+  parent_message_id?: string;
+  retry_message_id?: string;
+  user_message_id?: string; // uuid
+  assistant_message_id?: string; // uuid
   metabot_id?: string;
   profile_id?: string;
 };
 
 export type MetabotAgentResponse = {
-  history: MetabotHistory[];
   conversation_id: string;
-  state: any;
+  state?: MetabotStateContext;
+};
+
+export type MetabotConversation = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  profile_id: string | null;
+  message_count: number;
+  last_message_at: string | null;
+};
+
+export type MetabotConversationTitleResponse =
+  | { status: "ready"; title: string }
+  | { status: "pending"; title: null }
+  | { status: "missing"; title: null };
+
+export type ListMetabotConversationsRequest = PaginationRequest & {
+  profile_id?: string | null;
+};
+
+export type ListMetabotConversationsResponse = PaginationResponse & {
+  data: MetabotConversation[];
 };
 
 export type MetabotProvider =
@@ -359,9 +361,17 @@ export interface MetabotGenerateContentRequest {
 }
 
 export interface MetabotGenerateContentResponse {
-  draft_card: (UnsavedCard & { name?: string }) | null;
+  draft_card: (UnsavedCard & { name?: string; database_id: DatabaseId }) | null;
   description: string;
   error: string | null;
+}
+
+/* Metabot v3 - Conversations */
+
+export interface SaveMetabotEntityRequest {
+  conversation_id: string;
+  chart_id: string;
+  card: CreateCardRequest;
 }
 
 /* Metabot v3 - Data Part Types */

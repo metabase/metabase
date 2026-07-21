@@ -29,7 +29,9 @@ module.exports = (env) => {
       // The static-viz bundle runs inside the backend's GraalVM context, so its size is
       // a startup-time and memory cost. Fail the build if it grows past the budget -
       // sudden growth almost always means app code (metabase/ui, api, metabase-lib) leaked in.
-      hints: "error",
+      // Dev builds use the unminified cljs_dev output, so the budget only applies to
+      // production builds.
+      hints: devMode ? false : "error",
       maxAssetSize: 3.5 * 1024 * 1024,
       maxEntrypointSize: 3.5 * 1024 * 1024,
     },

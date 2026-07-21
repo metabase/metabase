@@ -15,17 +15,18 @@
    [metabase.lib.core :as lib]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.provider-util :as provider-util]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
@@ -57,6 +58,87 @@
   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
+(defn- make-out-of-sync-fn
+  [conversation-id parent-message-id retry-message-id]
+  (fn [reason & [cause]]
+    (log/warn "Rejecting agent-streaming request"
+              {:conversation-id   conversation-id
+               :parent-message-id parent-message-id
+               :retry-message-id  retry-message-id
+               :reason            reason})
+    (throw (ex-info (tru "This conversation has changed. Reload to see the latest messages.")
+                    {:status-code 409 :reason reason}
+                    cause))))
+
+(defn- external-id-conflict?
+  ;; driver-specific violation messages all contain the constraint name; see the
+  ;; opaque-exception caveat on [[metabase.app-db.query/with-conflict-retry]]
+  [e]
+  (boolean (some #(re-find #"(?i)uq_metabot_message_external_id" (str (ex-message %)))
+                 (u/full-exception-chain e))))
+
+(defn- check-retry!
+  [messages retry-message-id out-of-sync!]
+  (let [retry-msg (u/seek #(= retry-message-id (:external_id %)) (rseq messages))
+        last-user (u/seek #(= :user (:role %)) (rseq messages))]
+    (cond
+      (nil? retry-msg)                       (out-of-sync! :retry-message-not-found)
+      (not= (:role retry-msg) :user)         (out-of-sync! :retry-message-not-user-role)
+      (not= (:id retry-msg) (:id last-user)) (out-of-sync! :retry-message-not-last)
+      :else
+      (let [delete-ids (->> messages
+                            (m/drop-upto #(= (:id %) (:id retry-msg)))
+                            (filter #(= :assistant (:role %)))
+                            (mapv :id))]
+        (when (> (count delete-ids) 1)
+          (log/warn "Retry found multiple live assistant rows for one prompt"
+                    {:conversation-id (:conversation_id retry-msg) :message-ids delete-ids}))
+        {:action :retry :message-ids delete-ids}))))
+
+(defn- check-parent-msg!
+  [messages parent-message-id out-of-sync!]
+  (let [parent-msg (when parent-message-id
+                     (u/seek #(= parent-message-id (:external_id %)) (rseq messages)))]
+    (cond
+      (and parent-message-id (nil? parent-msg))             (out-of-sync! :parent-message-not-found)
+      (and parent-msg (not= (:role parent-msg) :assistant)) (out-of-sync! :parent-message-not-agent-role)
+      :else
+      (let [tail       (if parent-msg
+                         (m/drop-upto #(= (:id %) (:id parent-msg)) messages)
+                         messages)
+            assistants (filter #(= :assistant (:role %)) tail)]
+        (cond
+          (and (seq assistants) (every? #(some? (:error %)) assistants))
+          {:action :replace-failed-turn :message-ids (mapv :id tail)}
+
+          (nil? parent-message-id) (out-of-sync! :parent-message-missing)
+          :else                    (out-of-sync! :parent-message-stale))))))
+
+(defn- check-turn!
+  "Decides how the incoming request continues the conversation, reading only from the
+  conversation's live `messages` (reader order, from [[metabot.persistence/live-messages]]):
+    {:action :start}                                    — append a new turn
+    {:action :retry :message-ids [pk...]}               — regenerate `retry-message-id`'s response,
+                                                          soft-deleting the trailing live replies
+    {:action :replace-failed-turn :message-ids [pk...]} — soft-delete trailing failed turns, then start
+  Calls `out-of-sync!` (which throws 409) when the request does not line up with `messages`.
+
+  A retry must target the last live user message. A plain request must either point
+  `parent-message-id` at the leaf, or at the assistant message right before trailing
+  turns that all failed (assistant rows with a recorded error) — the failed rows are
+  then handed back for replacement."
+  [messages parent-message-id retry-message-id out-of-sync!]
+  (let [leaf-id (:external_id (u/seek #(= :assistant (:role %)) (rseq messages)))]
+    (cond
+      (some? retry-message-id)
+      (check-retry! messages retry-message-id out-of-sync!)
+
+      (= parent-message-id leaf-id)
+      {:action :start}
+
+      :else
+      (check-parent-msg! messages parent-message-id out-of-sync!))))
+
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
@@ -83,6 +165,22 @@
            (vreset! canceled? true)
            (reduced acc)))))))
 
+(defn- inject-title-events-xf
+  "Inject the title once its job settles, then stop watching to avoid repeated DB reads."
+  [title-job conversation-id]
+  (let [watching? (volatile! (boolean title-job))]
+    (mapcat
+     (fn [line]
+       (if (or (not @watching?)
+               (= self.core/done-sse-line line)
+               (not (conversation-title/job-settled? title-job)))
+         [line]
+         (do
+           (vreset! watching? false)
+           (if-let [event (conversation-title/ready-title-event title-job conversation-id)]
+             [line (self.core/format-sse-event event)]
+             [line])))))))
+
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
@@ -101,15 +199,19 @@
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
   `:external-id` is the assistant row's `external_id`, emitted as the SSE
   `start` event's `messageId` so the client can correlate streamed messages
-  with feedback."
+  with feedback. `:user-external-id` is the turn's user row `external_id`,
+  emitted as the `start` event's `messageMetadata.userMessageId`.
+  `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
+  it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id]}]
+           eval-session-id assistant-msg-id external-id user-external-id title-job]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
-      (let [parts-atom (atom [])
-            canceled?  (volatile! false)
+      (let [parts-atom  (atom [])
+            memory-atom (atom nil)
+            canceled?   (volatile! false)
             ;; Captures throwables that escape the agent loop's own `catch Exception`
             ;; (e.g. setup-phase throws before the reducible is constructed, `Error`
             ;; subclasses, or failures from the agent's recovery `rf` write). Without
@@ -117,7 +219,10 @@
             ;; from a clean success.
             thrown     (volatile! nil)
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/parts->aisdk-sse-xf {:message-id external-id}))]
+                             (self.core/parts->aisdk-sse-xf
+                              (cond-> {:message-id external-id}
+                                user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
+                             (inject-title-events-xf title-job conversation-id))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
@@ -125,9 +230,11 @@
                       (cond-> {:messages        messages
                                :state           state
                                :metabot-id      metabot-id
+                               :conversation-id conversation-id
                                :profile-id      (keyword profile-id)
                                :context         enriched-context
                                :eval-session-id eval-session-id
+                               :memory-atom     memory-atom
                                :tracking-opts   {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
@@ -171,10 +278,11 @@
                                      thrown-ex (metabot.persistence/throwable->error-payload thrown-ex)
                                      :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
                 (metabot.persistence/finalize-assistant-turn!
-                 conversation-id assistant-msg-id combined-parts
+                 assistant-msg-id combined-parts
                  :profile-id profile-id
                  :finished?  (not aborted?)
-                 :error      error-data))
+                 :error      error-data
+                 :turn-state (some-> @memory-atom memory/turn-state)))
               (catch Exception e
                 (log/error e "Failed to finalize assistant turn"
                            {:conversation-id  conversation-id
@@ -188,7 +296,8 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug eval_session_id]} request-info]
+  [{:keys [metabot_id profile_id message context conversation_id debug eval_session_id parent_message_id retry_message_id
+           user_message_id assistant_message_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -199,10 +308,38 @@
         hostname   (analytics.core/extract-hostname (:origin request-info))
         pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
-    (let [{:keys [assistant-msg-id assistant-external-id]}
-          (metabot.persistence/start-turn! conversation_id profile-id message
-                                           :hostname hostname
-                                           :pii-info pii-info)]
+    (let [out-of-sync! (make-out-of-sync-fn conversation_id parent_message_id retry_message_id)
+          {:keys [messages message-ids turn]}
+          (metabot.persistence/with-conversation-lock conversation_id
+            (let [messages (metabot.persistence/live-messages conversation_id)
+                  {:keys [action message-ids]} (check-turn! messages parent_message_id retry_message_id out-of-sync!)
+                  turn     (try
+                             (if (= action :retry)
+                               (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id
+                                                                :assistant-external-id assistant_message_id
+                                                                :delete-message-ids message-ids)
+                               (metabot.persistence/start-turn! conversation_id profile-id message
+                                                                :hostname hostname
+                                                                :pii-info pii-info
+                                                                :delete-message-ids message-ids
+                                                                :user-external-id user_message_id
+                                                                :assistant-external-id assistant_message_id))
+                             (catch Exception e
+                               (if (external-id-conflict? e)
+                                 (out-of-sync! :external-id-taken e)
+                                 (throw e))))]
+              {:messages messages :message-ids message-ids :turn turn}))
+          {:keys [assistant-msg-id assistant-external-id user-external-id]} turn
+          deleted?  (set message-ids)
+          live      (remove #(deleted? (:id %)) messages)
+          history   (metabot.persistence/history live)
+          state     (metabot.persistence/conversation-state live)
+          first-msg (or (:content (metabot.persistence/first-valid-user-message live))
+                        (:content message))
+          title-job (conversation-title/ensure-title!
+                     conversation_id
+                     (metabot.usage/valid-usage-profile-id profile-id)
+                     first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id
@@ -215,7 +352,9 @@
         :debug?           debug?
         :eval-session-id  eval_session_id
         :assistant-msg-id assistant-msg-id
-        :external-id      assistant-external-id}))))
+        :external-id      assistant-external-id
+        :user-external-id user-external-id
+        :title-job        title-job}))))
 
 (defn- legacy->modern-query
   [query]
@@ -253,17 +392,16 @@
             [:message ms/NonBlankString]
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
-            [:history [:maybe ::metabot.schema/messages]]
-            [:state [:map
-                     [:queries {:optional true} [:map-of :string :any]]
-                     [:charts {:optional true} [:map-of :string :any]]
-                     [:chart-configs {:optional true} [:map-of :string :any]]]]
+            [:parent_message_id {:optional true} [:maybe ms/UUIDString]]
+            [:retry_message_id {:optional true} [:maybe ms/UUIDString]]
             ;; eval-only: lets the benchmark harness name the per-session trace file it will read back.
             ;; Length + charset enforced at this HTTP boundary so a bad id 400s cleanly instead of
             ;; throwing deep in `ait/checked-session-id` and surfacing as a generic agent error.
             ;; `ait/max-session-id-length` / `ait/safe-session-id-re` are the single source of truth.
             [:eval_session_id {:optional true}
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
+            [:user_message_id {:optional true} [:maybe ms/UUIDString]]
+            [:assistant_message_id {:optional true} [:maybe ms/UUIDString]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)

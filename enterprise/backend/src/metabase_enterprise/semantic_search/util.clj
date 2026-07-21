@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.engine :as search.engine]
@@ -82,32 +81,25 @@
 (defn semantic-search-configured?
   "Whether to schedule the semantic-search Quartz jobs at startup.
   True when the `:semantic-search` feature is present and a pgvector store might exist: a dedicated
-  MB_PGVECTOR_DB_URL, or a Postgres app DB that [[semantic-search-capable?]] can probe to answer for sure.
+  MB_PGVECTOR_DB_URL, or a Postgres app DB that [[semantic-search-available?]] can probe to answer for sure.
   Cheap and infallible by contract -- it runs at boot and never queries the DB."
   []
   ;; The license is in this boot gate, not only the per-execution gates, so an unlicensed instance's
   ;; scheduler stays free of no-op jobs. The asymmetry is deliberate: removing the feature at runtime lets
   ;; the scheduled jobs no-op via semantic-search-active?, but adding it needs a restart before they
-  ;; schedule. The kill switch and engine activity stay per-execution so they never need one.
+  ;; schedule. Engine activity stays per-execution so it never needs one.
   (and (premium-features/has-feature? :semantic-search)
        (or (semantic.db.datasource/dedicated-url-configured?)
            (= :postgres (mdb/db-type)))))
 
-(defn semantic-search-capable?
+(defn semantic-search-available?
   "Does this instance have the infrastructure for semantic search: the premium feature and a pgvector DB.
-  Deliberately excludes the kill switch, which is checked per execution so it works at runtime."
+  Engine selection and hygiene tasks key off this."
   []
   ;; Feature first: the pgvector check may probe the app DB, and instances that can't use the answer
   ;; must never probe.
   (and (premium-features/has-feature? :semantic-search)
        (semantic.db.datasource/pgvector-configured?)))
-
-(defn semantic-search-available?
-  "Whether semantic search can run on this instance: capable and not disabled by the kill switch.
-  Engine selection, hygiene tasks, and metrics key off this."
-  []
-  (and (semantic-search-capable?)
-       (semantic.settings/semantic-search-enabled)))
 
 (defn semantic-search-active?
   "Is the semantic index being maintained on this instance?

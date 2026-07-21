@@ -71,8 +71,8 @@ describe("Metabot Query Builder", () => {
     });
     H.lastChatMessage().should("have.text", "Here's what I found.");
 
-    // ...and we stay on the /ask page
-    cy.url().should("include", "/question/ask");
+    // ...and we move to the conversation's permalink
+    cy.url().should("include", "/metabot/conversation/");
   });
 
   it("should render a generated chart inline without leaving the page", () => {
@@ -85,10 +85,10 @@ describe("Metabot Query Builder", () => {
     H.sendMetabotMessage("Show me all orders");
 
     cy.wait("@metabotAgent");
-    // the chart renders inline and we stay on the /ask page
+    // the chart renders inline rather than in the query builder
     cy.findByTestId("metabot-inline-chart").should("be.visible");
     cy.findByTestId("qb-header").should("not.exist");
-    cy.url().should("include", "/question/ask");
+    cy.url().should("include", "/metabot/conversation/");
   });
 
   it("should navigate to a question when the agent returns a navigate_to", () => {

@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import {
   Anchor,
   Badge,
@@ -22,7 +23,8 @@ import type {
   AdvisorySeverity,
 } from "metabase-types/api";
 
-import { isAcknowledged } from "../../utils";
+import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
+import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
 
 interface AdvisoryCardProps {
   advisory: Advisory;
@@ -35,7 +37,11 @@ export function AdvisoryCard({
   isAffecting,
   onAcknowledge,
 }: AdvisoryCardProps) {
+  const currentVersion = useSetting("version").tag ?? "";
   const acknowledged = isAcknowledged(advisory);
+  const downloadJar = isAffecting
+    ? getDownloadJarForInstance(advisory, currentVersion)
+    : null;
 
   return (
     <Card p="xl" withBorder data-testid="advisory-card">
@@ -88,6 +94,19 @@ export function AdvisoryCard({
         </Box>
 
         <Group gap="md" mt="sm">
+          {downloadJar && (
+            <Button
+              variant="outline"
+              component="a"
+              href={downloadJar.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              leftSection={<Icon name="download" />}
+              onClick={trackSecurityAdvisoryDownloadClicked}
+            >
+              {t`Download v${downloadJar.version}`}
+            </Button>
+          )}
           {!acknowledged && onAcknowledge && (
             <Tooltip
               label={t`Clicking on Dismiss just hides the notification and you can view this later by toggling 'Show dismissed'`}

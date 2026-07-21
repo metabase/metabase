@@ -12,9 +12,12 @@
    Matches Python AI Service patterns exactly for consistency."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -400,7 +403,7 @@
   "Format table for LLM consumption.
    Matches Python Table.get_llm_representation exactly, except we additionally surface
    `database_name` as a tag attribute so the LLM has the human-readable DB name available
-   without a separate `entity_details` call — it's the first slot of every portable FK in
+   without a separate `read_resource` call — it's the first slot of every portable FK in
    the representations-format `construct_notebook_query` tool."
   [{:keys [id name database_id database_name database_engine database_schema
            description fields related_tables related_tables_total
@@ -692,12 +695,27 @@
       (clojure.core/name result-type)
       "item")))
 
+(defn- search-result-uri-type
+  "Map a search-result type to the entity-type segment of its `read_resource` URI, or nil
+   when the type has no URI form (i.e. no dispatch clause in `metabot.tools.resources`)."
+  [result-type]
+  (let [t (some-> result-type clojure.core/name)]
+    (case t
+      ("model" "dataset") "model"
+      ("card" "question") "question"
+      ("database" "collection" "table" "metric"
+                  "measure" "segment" "transform" "dashboard") t
+      nil)))
+
 (defn search-result->xml
   "Format a single search result as XML element.
+   Emits a `uri` attribute (the numeric-id `read_resource` URI) for every type that has a
+   URI form, so the LLM feeds it back verbatim instead of assembling URIs by hand — the
+   failure mode there is pasting the `portable_entity_id` NanoID into the id slot.
    Includes database_id, database_engine, and fully_qualified_name for table/model results
    to match Python AI Service search output. For saved-question and model results also
    includes `portable_entity_id` so the LLM can paste it verbatim into `source-card:`
-   without an extra `entity_details` call, and (when available) `database_name` — the
+   without an extra `read_resource` call, and (when available) `database_name` — the
    human-readable name the LLM needs as the first slot of every portable FK in
    `construct_notebook_query`.
 
@@ -705,8 +723,8 @@
    `schema.table` of the table the metric aggregates). Combined with `database_name` this
    gives the LLM the full portable FK `[database_name, schema, table]` it must put in
    `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
-   without a separate `entity_details` round-trip."
-  [{:keys [id type name description verified official curated data_authority data_layer collection
+   without a separate `read_resource` round-trip."
+  [{:keys [id type name description verified official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
            base_table_portable_fk]}]
   (let [fqn (cond
@@ -726,6 +744,9 @@
      :search_result
      {:search_tag_name (search-result-tag-name type)
       :search_id (str id)
+      :search_uri (when id
+                    (when-let [uri-type (search-result-uri-type type)]
+                      (metabase-uri uri-type id)))
       :search_name name
       :search_has_verified (some? verified)
       :search_verified verified
@@ -733,6 +754,8 @@
       :search_official official
       :search_has_curated (some? curated)
       :search_curated curated
+      :search_has_can_write (some? can_write)
+      :search_can_write can_write
       :search_data_layer (some-> data_layer clojure.core/name)
       :search_data_authority (when (and data_authority (not= "unconfigured" (clojure.core/name data_authority)))
                                (clojure.core/name data_authority))
@@ -861,7 +884,7 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id
+  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id :can_write
    :schema :display_name :authority_level :is_personal :path :location
    :engine :timestamp])
 
@@ -869,8 +892,9 @@
   [item]
   (->> item-attr-keys
        (keep (fn [k]
-               (when-let [v (get item k)]
-                 (str (clojure.core/name k) "=\"" (escape-xml v) "\""))))
+               (let [v (get item k)]
+                 (when (if (= k :can_write) (contains? item k) v)
+                   (str (clojure.core/name k) "=\"" (escape-xml (str v)) "\"")))))
        (str/join " ")))
 
 (defn- list-item->xml
@@ -932,3 +956,28 @@
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) ">"
            (escape-xml description) "</" tag ">")
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) "/>"))))
+
+(defn export-query-for-llm
+  "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
+  map with a `:database` is normalized and exported to the portable representations form
+  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
+  sources pass through; a `pprint`'d map is the last-resort fallback."
+  [query]
+  (cond
+    (string? query) query
+    (string? (:query-content query)) (:query-content query)
+    (and (map? query) (:database query))
+    (try
+      (let [normalized (lib-be/normalize-query query)
+            database-id (:database normalized)
+            mp (when database-id
+                 (lib-be/application-database-metadata-provider database-id))
+            exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
+        (if exported
+          (str "```json\n" (json/encode exported {:pretty true}) "\n```")
+          (u/pprint-to-str normalized)))
+      (catch Exception _
+        (u/pprint-to-str query)))
+    (string? (get-in query [:native :query])) (get-in query [:native :query])
+    (map? query) (u/pprint-to-str query)
+    :else (some-> query str)))
