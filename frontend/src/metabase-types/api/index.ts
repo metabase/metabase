@@ -1,7 +1,6 @@
 export * from "./actions";
 export * from "./activity";
 export * from "./admin";
-export * from "./advanced-config";
 export * from "./advanced-permission";
 export * from "./ai-entity-analysis";
 export * from "./alert";
@@ -78,7 +77,6 @@ export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
 export * from "./workspace-manager";
-export * from "./workspace-instance";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

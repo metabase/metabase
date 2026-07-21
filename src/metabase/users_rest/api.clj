@@ -368,6 +368,13 @@
                                                      :include-archived-items :exclude
                                                      :permission-level :write})}))))
 
+(defn- add-workspace-id
+  "The workspace the user is currently working in (workspaces v2), or nil. Fetched
+  explicitly because `workspace_id` is not part of the standard visible-columns
+  sets — only the current user needs it."
+  [user]
+  (assoc user :workspace_id (t2/select-one-fn :workspace_id :model/User :id (:id user))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -383,7 +390,8 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info
-      add-can-write-any-collection))
+      add-can-write-any-collection
+      add-workspace-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

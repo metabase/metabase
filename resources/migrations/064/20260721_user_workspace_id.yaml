@@ -1,0 +1,44 @@
+## Workspaces v2: a user can be "inside" a workspace. While set, the main API
+## endpoints (cards, transforms, measures, segments) and the QP transparently
+## remap entities to their workspace-local copies.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T18:00:00
+      author: ranquild
+      comment: Add core_user.workspace_id — the workspace the user is currently working in
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace this user is currently working in, or null
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T18:00:01
+      author: ranquild
+      comment: Add index on core_user.workspace_id
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: v64.2026-07-21T18:00:02
+      author: ranquild
+      comment: Add foreign key on core_user(workspace_id); workspace delete detaches users
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_core_user_workspace_id
+            onDelete: SET NULL

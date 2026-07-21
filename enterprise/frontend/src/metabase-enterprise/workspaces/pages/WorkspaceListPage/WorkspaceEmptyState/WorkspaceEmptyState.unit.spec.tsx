@@ -1,4 +1,3 @@
-import { setupApplyAdvancedConfigEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
@@ -6,7 +5,6 @@ import { Route } from "metabase/router";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 
 function setup() {
-  setupApplyAdvancedConfigEndpoint();
   renderWithProviders(
     <Route path="*" element={<WorkspaceEmptyState databases={[]} />} />,
     {
@@ -35,14 +33,6 @@ describe("WorkspaceEmptyState", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Using remote sync/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows the upload-config button", () => {
-    setup();
-
-    expect(
-      screen.getByRole("button", { name: "Upload a workspace config" }),
     ).toBeInTheDocument();
   });
 });

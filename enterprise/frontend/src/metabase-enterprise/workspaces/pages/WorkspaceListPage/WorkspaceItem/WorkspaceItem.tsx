@@ -1,6 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { useDispatch, useSelector } from "metabase/redux";
+import { refreshCurrentUser } from "metabase/redux/user";
+import { getUser } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -12,9 +15,12 @@ import {
 } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { getUserName } from "metabase/utils/user";
+import {
+  useEnterWorkspaceMutation,
+  useExitWorkspaceMutation,
+} from "metabase-enterprise/api";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
-import { trackWorkspaceConfigDownloaded } from "../../../analytics";
 import {
   getProvisioningFailureMessage,
   getWorkspaceDatabaseName,
@@ -22,8 +28,6 @@ import {
 } from "../../../utils";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
-
-const CONFIG_FILENAME = "config.yml";
 
 export type WorkspaceItemProps = {
   workspace: Workspace;
@@ -115,6 +119,21 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
     useDisclosure(false);
   const [isDeleteOpen, { open: openDelete, close: closeDelete }] =
     useDisclosure(false);
+  const dispatch = useDispatch();
+  const currentUser = useSelector(getUser);
+  const [enterWorkspace] = useEnterWorkspaceMutation();
+  const [exitWorkspace] = useExitWorkspaceMutation();
+  const isCurrentWorkspace = currentUser?.workspace_id === workspace.id;
+
+  const handleEnter = async () => {
+    await enterWorkspace(workspace.id).unwrap();
+    await dispatch(refreshCurrentUser());
+  };
+
+  const handleLeave = async () => {
+    await exitWorkspace().unwrap();
+    await dispatch(refreshCurrentUser());
+  };
 
   return (
     <>
@@ -125,17 +144,21 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            component="a"
-            href={`/api/ee/workspace-manager/${workspace.id}/config`}
-            download={CONFIG_FILENAME}
-            leftSection={<FixedSizeIcon name="download" aria-hidden />}
-            onClick={() =>
-              trackWorkspaceConfigDownloaded({ workspaceId: workspace.id })
-            }
-          >
-            {t`Download ${CONFIG_FILENAME}`}
-          </Menu.Item>
+          {isCurrentWorkspace ? (
+            <Menu.Item
+              leftSection={<FixedSizeIcon name="close" aria-hidden />}
+              onClick={handleLeave}
+            >
+              {t`Leave workspace`}
+            </Menu.Item>
+          ) : (
+            <Menu.Item
+              leftSection={<FixedSizeIcon name="arrow_right" aria-hidden />}
+              onClick={handleEnter}
+            >
+              {t`Enter workspace`}
+            </Menu.Item>
+          )}
           <Menu.Item
             leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
             onClick={openRename}

@@ -79,6 +79,8 @@ export interface User extends BaseUser {
     dashboard_id: DashboardId;
   } | null;
   permissions?: UserPermissions;
+  /** id of the workspace the user is currently working in (workspaces v2) */
+  workspace_id?: number | null;
 }
 
 export interface UserListResult {

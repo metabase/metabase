@@ -1,14 +1,14 @@
 import { Route, type RouteComponent, withRouteProps } from "metabase/router";
 
 import { AdminConnectionInfoPage } from "./pages/AdminConnectionInfoPage";
-import { WorkspaceIndexPage } from "./pages/WorkspaceIndexPage";
+import { WorkspaceListPage } from "./pages/WorkspaceListPage";
 
 const RoutedAdminConnectionInfoPage = withRouteProps(AdminConnectionInfoPage);
 
 export function getDataStudioRoutes() {
   return (
     <Route path="workspaces">
-      <Route index element={<WorkspaceIndexPage />} />
+      <Route index element={<WorkspaceListPage />} />
     </Route>
   );
 }

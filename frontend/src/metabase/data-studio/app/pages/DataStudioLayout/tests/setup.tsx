@@ -1,7 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
-  setupGetCurrentWorkspaceEndpoint,
   setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
@@ -14,7 +13,6 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type {
   Collection,
-  CurrentWorkspace,
   RemoteSyncEntity,
   TokenFeatures,
 } from "metabase-types/api";
@@ -166,7 +164,6 @@ interface SetupOpts {
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
   canAccessTransforms?: boolean;
-  currentWorkspace?: CurrentWorkspace | null;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
@@ -182,7 +179,6 @@ export const setup = ({
   remoteSyncBranch = null,
   isAdmin = true,
   canAccessTransforms = false,
-  currentWorkspace = null,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
   remoteSyncTransforms = false,
@@ -226,7 +222,6 @@ export const setup = ({
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
-  setupGetCurrentWorkspaceEndpoint(currentWorkspace);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-remote-sync-dev-instance",

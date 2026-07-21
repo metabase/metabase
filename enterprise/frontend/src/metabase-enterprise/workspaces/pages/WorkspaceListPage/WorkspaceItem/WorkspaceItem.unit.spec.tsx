@@ -1,9 +1,13 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupGetWorkspaceEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import type { User } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockUser,
   createMockUserInfo,
   createMockWorkspace,
   createMockWorkspaceDatabase,
@@ -13,10 +17,15 @@ import { WorkspaceItem } from "./WorkspaceItem";
 
 const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 
-function setup({ workspace = WORKSPACE } = {}) {
+function setup({
+  workspace = WORKSPACE,
+  currentUser = createMockUser(),
+}: { workspace?: typeof WORKSPACE; currentUser?: User } = {}) {
   // The delete modal fetches the hydrated workspace when opened.
   setupGetWorkspaceEndpoint(workspace);
-  renderWithProviders(<WorkspaceItem workspace={workspace} />);
+  renderWithProviders(<WorkspaceItem workspace={workspace} />, {
+    storeInitialState: createMockState({ currentUser }),
+  });
 }
 
 describe("WorkspaceItem", () => {
@@ -110,20 +119,34 @@ describe("WorkspaceItem", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("offers a config download link in the menu", async () => {
-    setup();
+  it("offers to enter the workspace when the user is not in it", async () => {
+    fetchMock.post(`/api/ee/workspace/${WORKSPACE.id}/enter`, 200);
+    fetchMock.get("/api/user/current", createMockUser());
+    setup({ currentUser: createMockUser({ workspace_id: null }) });
     await userEvent.click(
       screen.getByRole("button", { name: "Workspace options" }),
     );
-
-    const downloadItem = await screen.findByRole("menuitem", {
-      name: /Download config\.yml/,
-    });
-    expect(downloadItem).toHaveAttribute(
-      "href",
-      `/api/ee/workspace-manager/${WORKSPACE.id}/config`,
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Enter workspace" }),
     );
-    expect(downloadItem).toHaveAttribute("download", "config.yml");
+
+    expect(
+      fetchMock.callHistory.called(`/api/ee/workspace/${WORKSPACE.id}/enter`),
+    ).toBe(true);
+  });
+
+  it("offers to leave the workspace when the user is working in it", async () => {
+    fetchMock.post("/api/ee/workspace/exit", 200);
+    fetchMock.get("/api/user/current", createMockUser());
+    setup({ currentUser: createMockUser({ workspace_id: WORKSPACE.id }) });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace options" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Leave workspace" }),
+    );
+
+    expect(fetchMock.callHistory.called("/api/ee/workspace/exit")).toBe(true);
   });
 
   it("opens the rename modal from the menu", async () => {

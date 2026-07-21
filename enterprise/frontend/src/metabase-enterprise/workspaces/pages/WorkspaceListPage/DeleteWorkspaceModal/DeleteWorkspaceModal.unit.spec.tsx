@@ -70,7 +70,7 @@ describe("DeleteWorkspaceModal", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/ee/workspace-manager/1", {
+        fetchMock.callHistory.called("path:/api/ee/workspace/1", {
           method: "DELETE",
         }),
       ).toBe(true);
@@ -98,7 +98,7 @@ describe("DeleteWorkspaceModal", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/ee/workspace-manager/1", {
+        fetchMock.callHistory.called("path:/api/ee/workspace/1", {
           method: "DELETE",
         }),
       ).toBe(true);

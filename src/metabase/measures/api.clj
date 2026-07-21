@@ -13,6 +13,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (mr/def ::measure
@@ -93,8 +94,10 @@
   "Fetch `Measure` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [measure (hydrated-measure id)]
-    (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
+  (let [measure (hydrated-measure (workspaces/effective-entity-id :measure id))]
+    (-> measure
+        (assoc :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))
+        (workspaces/present-entity id))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
@@ -142,7 +145,8 @@
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]
-  (write-check-and-update-measure! id body))
+  (-> (write-check-and-update-measure! (workspaces/ensure-workspace-copy! :measure id) body)
+      (workspaces/present-entity id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Dimension Value Endpoints                                                |

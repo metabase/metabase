@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api-test
-  "Tests for the workspaces v2 `/api/ee/workspace` API: workspace CRUD, card
-   copy-on-write, and query execution with entity remapping."
+  "Tests for workspaces v2: `/api/ee/workspace` CRUD + enter/exit, and the
+   transparent remapping of the *normal* API endpoints (cards, /dataset) while a
+   user is working inside a workspace."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
@@ -26,6 +27,18 @@
     (-> (lib/query mp (lib.metadata/card mp card-id))
         lib/->legacy-MBQL)))
 
+(defn- do-inside-workspace
+  "Enter `workspace-id` as :crowberto, run `thunk`, always exit again."
+  [workspace-id thunk]
+  (mt/user-http-request :crowberto :post 200 (format "ee/workspace/%d/enter" workspace-id))
+  (try
+    (thunk)
+    (finally
+      (mt/user-http-request :crowberto :post 200 "ee/workspace/exit"))))
+
+(defmacro ^:private inside-workspace [workspace-id & body]
+  `(do-inside-workspace ~workspace-id (fn [] ~@body)))
+
 (deftest workspace-crud-test
   (mt/with-premium-features #{:workspaces}
     (mt/with-model-cleanup [:model/Workspace]
@@ -47,40 +60,46 @@
           (mt/user-http-request :crowberto :delete 204 (str "ee/workspace/" (:id ws)))
           (is (nil? (t2/select-one :model/Workspace :id (:id ws)))))))))
 
+(deftest enter-exit-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-temp [:model/Workspace ws {:name (mt/random-name)}]
+      (testing "enter sets the user's workspace_id"
+        (mt/user-http-request :crowberto :post 200 (format "ee/workspace/%d/enter" (:id ws)))
+        (is (= (:id ws) (t2/select-one-fn :workspace_id :model/User :id (mt/user->id :crowberto)))))
+      (testing "exit clears it"
+        (mt/user-http-request :crowberto :post 200 "ee/workspace/exit")
+        (is (nil? (t2/select-one-fn :workspace_id :model/User :id (mt/user->id :crowberto)))))
+      (testing "entering a nonexistent workspace 404s"
+        (mt/user-http-request :crowberto :post 404 "ee/workspace/999999999/enter")))))
+
 (deftest card-copy-on-write-test
   (mt/with-premium-features #{:workspaces}
     (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Workspace ws   {:name (mt/random-name)}
-                     :model/Card card-a    {:name          "A"
-                                            :dataset_query (count-query :venues)}]
-        (let [ws-url #(format "ee/workspace/%d/card/%d" (:id ws) (:id card-a))]
-          (testing "GET with no shadow returns the production card under its own id"
-            (let [fetched (mt/user-http-request :crowberto :get 200 (ws-url))]
-              (is (= (:id card-a) (:id fetched)))
-              (is (= (:id card-a) (:workspace_target_id fetched)))))
-          (testing "PUT clones the card (copy-on-write) and presents the clone under the source id"
-            (let [updated (mt/user-http-request :crowberto :put 200 (ws-url)
-                                                {:name "A (workspace)"})]
-              (is (= (:id card-a) (:id updated)))
-              (is (not= (:id card-a) (:workspace_target_id updated)))
-              (is (= "A (workspace)" (:name updated)))))
-          (testing "the production card is untouched"
-            (is (= "A" (t2/select-one-fn :name :model/Card :id (:id card-a)))))
-          (testing "the workspace card listing shows the shadow under the source id"
-            (let [[card :as cards] (mt/user-http-request :crowberto :get 200
-                                                         (format "ee/workspace/%d/card" (:id ws)))]
-              (is (= 1 (count cards)))
-              (is (= (:id card-a) (:id card)))
-              (is (= "A (workspace)" (:name card)))))
-          (testing "DELETE drops the shadow, GET falls back to the production card"
-            (let [clone-id (:workspace_target_id (mt/user-http-request :crowberto :get 200 (ws-url)))]
-              (mt/user-http-request :crowberto :delete 204 (ws-url))
-              (is (nil? (t2/select-one :model/Card :id clone-id)))
-              (is (= "A" (:name (mt/user-http-request :crowberto :get 200 (ws-url)))))))
-          (testing "DELETE without a shadow 404s — production cards are untouchable"
-            (mt/user-http-request :crowberto :delete 404 (ws-url))))))))
+      (mt/with-temp [:model/Workspace ws {:name (mt/random-name)}
+                     :model/Card card-a  {:name          "A"
+                                          :dataset_query (count-query :venues)}]
+        (let [card-url (str "card/" (:id card-a))]
+          (inside-workspace (:id ws)
+                            (testing "PUT inside a workspace clones the card and presents the clone under the source id"
+                              (let [updated (mt/user-http-request :crowberto :put 200 card-url {:name "A (workspace)"})]
+                                (is (= (:id card-a) (:id updated)))
+                                (is (not= (:id card-a) (:workspace_target_id updated)))
+                                (is (= "A (workspace)" (:name updated)))))
+                            (testing "the production card is untouched"
+                              (is (= "A" (t2/select-one-fn :name :model/Card :id (:id card-a)))))
+                            (testing "GET inside the workspace shows the copy under the source id"
+                              (let [fetched (mt/user-http-request :crowberto :get 200 card-url)]
+                                (is (= (:id card-a) (:id fetched)))
+                                (is (= "A (workspace)" (:name fetched)))))
+                            (testing "another user outside the workspace still sees production"
+                              (is (= "A" (:name (mt/user-http-request :rasta :get 200 card-url))))))
+          (testing "after exiting, the same user sees production again"
+            (is (= "A" (:name (mt/user-http-request :crowberto :get 200 card-url))))
+            (testing "and PUT hits production directly"
+              (mt/user-http-request :crowberto :put 200 card-url {:name "A v2"})
+              (is (= "A v2" (t2/select-one-fn :name :model/Card :id (:id card-a)))))))))))
 
-(deftest workspace-query-remapping-test
+(deftest transparent-query-remapping-test
   (mt/with-premium-features #{:workspaces}
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Workspace ws {:name (mt/random-name)}
@@ -88,27 +107,22 @@
                                           :dataset_query (count-query :venues)}
                      :model/Card card-b  {:name          "B"
                                           :dataset_query (source-card-query (:id card-a))}]
-        (let [ws-id     (:id ws)
-              run-b     (fn [url] (-> (mt/user-http-request :crowberto :post 202 url)
-                                      mt/rows first first))]
+        (let [b-query-url (format "card/%d/query" (:id card-b))
+              run-b       (fn [user] (-> (mt/user-http-request user :post 202 b-query-url)
+                                         mt/rows first first))]
           (testing "baseline: B counts venues through A"
-            (is (= 100 (run-b (format "card/%d/query" (:id card-b)))))
-            (is (= 100 (run-b (format "ee/workspace/%d/card/%d/query" ws-id (:id card-b))))))
-          (testing "shadowing A inside the workspace changes what B sees there"
-            (mt/user-http-request :crowberto :put 200 (format "ee/workspace/%d/card/%d" ws-id (:id card-a))
-                                  {:dataset_query (count-query :categories)})
-            (is (= 75 (run-b (format "ee/workspace/%d/card/%d/query" ws-id (:id card-b))))
-                "inside the workspace, B resolves A to its shadow")
-            (is (= 100 (run-b (format "card/%d/query" (:id card-b))))
-                "outside the workspace, B still sees the production A"))
-          (testing "ad-hoc queries via /dataset run in the workspace context too"
-            (is (= 75 (-> (mt/user-http-request :crowberto :post 202
-                                                (format "ee/workspace/%d/dataset" ws-id)
-                                                (source-card-query (:id card-a)))
-                          mt/rows first first)))
-            (is (= 100 (-> (mt/user-http-request :crowberto :post 202 "dataset"
-                                                 (source-card-query (:id card-a)))
-                           mt/rows first first))))
-          (testing "dropping the shadow restores the production behavior in the workspace"
-            (mt/user-http-request :crowberto :delete 204 (format "ee/workspace/%d/card/%d" ws-id (:id card-a)))
-            (is (= 100 (run-b (format "ee/workspace/%d/card/%d/query" ws-id (:id card-b)))))))))))
+            (is (= 100 (run-b :crowberto))))
+          (inside-workspace (:id ws)
+                            (testing "editing A inside the workspace changes what B sees there"
+                              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card-a))
+                                                    {:dataset_query (count-query :categories)})
+                              (is (= 75 (run-b :crowberto))
+                                  "in-workspace user: B resolves A to its workspace copy")
+                              (is (= 100 (run-b :rasta))
+                                  "user outside the workspace still sees production A"))
+                            (testing "ad-hoc /dataset queries remap for the in-workspace user too"
+                              (is (= 75 (-> (mt/user-http-request :crowberto :post 202 "dataset"
+                                                                  (source-card-query (:id card-a)))
+                                            mt/rows first first)))))
+          (testing "after exiting the workspace everything is production again"
+            (is (= 100 (run-b :crowberto)))))))))

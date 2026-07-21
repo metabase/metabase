@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 
 import type { Workspace, WorkspaceId } from "metabase-types/api";
 
-const BASE_URL = "path:/api/ee/workspace-manager";
+const BASE_URL = "path:/api/ee/workspace";
 
 export function setupListWorkspacesEndpoint(workspaces: Workspace[]) {
   fetchMock.get(BASE_URL, workspaces);

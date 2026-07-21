@@ -66,7 +66,6 @@ export const transformApi = Api.injectEndpoints({
         invalidateTags(error, [
           idTag("transform", id),
           tag("table"),
-          listTag("table-remapping"),
           listTag("transform-run"),
           listTag("table-index"),
         ]),

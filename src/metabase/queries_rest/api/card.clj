@@ -36,6 +36,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -258,14 +259,16 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
     :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
-    (cond-> card
-      legacy-mbql?
-      (update :dataset_query (fn [query]
-                               #_{:clj-kondo/ignore [:discouraged-var]}
-                               (cond-> query
-                                 (seq query) lib/->legacy-MBQL))))))
+  (let [source-id    (eid-translation/->id-or-404 :card id)
+        effective-id (workspaces/effective-entity-id :card source-id)
+        card         (get-card effective-id)]
+    (-> (cond-> card
+          legacy-mbql?
+          (update :dataset_query (fn [query]
+                                   #_{:clj-kondo/ignore [:discouraged-var]}
+                                   (cond-> query
+                                     (seq query) lib/->legacy-MBQL))))
+        (workspaces/present-entity source-id))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -763,7 +766,9 @@
    {delete-old-dashcards? :delete_old_dashcards} :- [:map
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! id body (boolean delete-old-dashcards?)))
+  (let [effective-id (workspaces/ensure-workspace-copy! :card id)]
+    (-> (update-card! effective-id body (boolean delete-old-dashcards?))
+        (workspaces/present-entity id))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -776,7 +781,7 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+  (let [resolved-id (workspaces/effective-entity-id :card (eid-translation/->id-or-404 :card id))]
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -902,7 +907,7 @@
   ;;    POST /api/dashboard/:dashboard-id/queries/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
-  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
+  (let [resolved-card-id (workspaces/effective-entity-id :card (eid-translation/->id-or-404 :card card-id))]
     (qp.card/process-query-for-card
      (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
      :parameters parameters

@@ -1287,7 +1287,8 @@
            permissions
            remote-sync
            search
-           util}
+           util
+           workspaces}
    :model-exports #{:model/Measure}
    :model-imports #{:model/Collection :model/Table :model/User}}
 
@@ -1830,7 +1831,8 @@
            request
            revisions
            search
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
@@ -1860,8 +1862,7 @@
               parameters
               transforms-base
               warehouse-schema}
-   :api     #{metabase.query-processor
-              metabase.query-processor.api
+   :api     #{metabase.query-processor.api
               metabase.query-processor.card
               metabase.query-processor.compile
               metabase.query-processor.core
@@ -2059,6 +2060,7 @@
            remote-sync
            search
            util
+           workspaces
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
@@ -2490,7 +2492,8 @@
            request
            transforms
            transforms-base
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Transform
                     :model/TransformJob
                     :model/TransformJobRun
@@ -2800,10 +2803,8 @@
 
   workspaces
   {:team "Graphy"
-   :api #{metabase.workspaces.core
-          metabase.workspaces.table-remapping}
-   :uses #{premium-features
-           util}}
+   :api #{metabase.workspaces.core}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"
@@ -3767,11 +3768,12 @@
            queries
            query-processor
            settings
-           transforms
            util}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Card
                     :model/Database
+                    :model/Measure
+                    :model/Segment
                     :model/Table
                     :model/Transform
                     :model/User}}}

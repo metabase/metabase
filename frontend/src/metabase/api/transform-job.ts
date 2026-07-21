@@ -84,7 +84,6 @@ export const transformJobApi = Api.injectEndpoints({
           idTag("transform-job", id),
           tag("transform"),
           tag("table"),
-          listTag("table-remapping"),
         ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(

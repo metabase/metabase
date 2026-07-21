@@ -15,6 +15,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [ring.util.response :as response]
    [toucan2.core :as t2])
   (:import
@@ -76,6 +77,8 @@
 (def ^:private TransformResponse
   [:map {:closed true}
    [:id pos-int?]
+   ;; real row id when the response is a workspace copy presented under the source id
+   [:workspace_target_id {:optional true} pos-int?]
    [:name :string]
    [:description [:maybe :string]]
    [:source :any]
@@ -190,7 +193,8 @@
   "Get a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (transforms.core/get-transform id))
+  (-> (transforms.core/get-transform (workspaces/effective-entity-id :transform id))
+      (workspaces/present-entity id)))
 
 (api.macros/defendpoint :get "/:id/dependencies" :- [:sequential TransformResponse]
   "Get the dependencies of a specific transform."
@@ -253,7 +257,11 @@
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (api/write-check :model/Transform id)
-  (transforms.core/update-transform! id body))
+  (let [effective-id (workspaces/ensure-workspace-copy! :transform id)]
+    ;; a workspace copy keeps its workspace-local :target
+    (-> (transforms.core/update-transform! effective-id (cond-> body
+                                                          (not= effective-id id) (dissoc :target)))
+        (workspaces/present-entity id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
@@ -320,7 +328,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (run-transform! (api/read-check :model/Transform id)))
+  (run-transform! (api/read-check :model/Transform (workspaces/effective-entity-id :transform id))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."

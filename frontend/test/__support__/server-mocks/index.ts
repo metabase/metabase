@@ -1,6 +1,5 @@
 export * from "./action";
 export * from "./activity";
-export * from "./advanced-config";
 export * from "./ai-entity-analysis";
 export * from "./alert";
 export * from "./api-key";
@@ -62,6 +61,5 @@ export * from "./timeline";
 export * from "./transform";
 export * from "./user";
 export * from "./user-key-value";
-export * from "./workspace-instance";
 export * from "./workspace-manager";
 export * from "./util";

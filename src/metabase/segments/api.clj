@@ -12,6 +12,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
@@ -66,7 +67,8 @@
   "Fetch `Segment` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (hydrated-segment id))
+  (-> (hydrated-segment (workspaces/effective-entity-id :segment id))
+      (workspaces/present-entity id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -123,7 +125,8 @@
             [:description             {:optional true} [:maybe :string]]
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
-  (write-check-and-update-segment! id body))
+  (-> (write-check-and-update-segment! (workspaces/ensure-workspace-copy! :segment id) body)
+      (workspaces/present-entity id)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
