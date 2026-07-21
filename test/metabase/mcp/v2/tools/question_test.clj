@@ -1,4 +1,5 @@
 (ns metabase.mcp.v2.tools.question-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.mcp.v2.tools.question-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
