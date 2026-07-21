@@ -18,7 +18,6 @@
 (def ^:private TypedSchemaQueryParams
   [:map
    [:database {:optional true} [:maybe ms/NonBlankString]]
-   [:database-name {:optional true} [:maybe ms/NonBlankString]]
    [:library {:optional true} [:maybe ms/NonBlankString]]
    [:library-collections {:optional true} [:maybe ms/NonBlankString]]
    [:collections {:optional true} [:maybe ms/NonBlankString]]

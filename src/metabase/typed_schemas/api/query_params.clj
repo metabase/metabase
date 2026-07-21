@@ -34,9 +34,7 @@
   This is the sole typed-schema function that accepts REST-shaped query
   parameters."
   [query-params]
-  {:database                 (reference (or (:database query-params)
-                                            (:database-name query-params))
-                                        :name)
+  {:database                 (reference (:database query-params) :name)
    :library                  (reference (:library query-params) :name)
    :library-collection-refs  (comma-separated-references (or (:library-collections query-params)
                                                              (:collections query-params)))
