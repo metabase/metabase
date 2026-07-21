@@ -53,11 +53,21 @@
       (log/debug e "Embedding service health probe failed")
       {:reachable? false, :error (ex-message e)})))
 
-(def embedding-service-reachable?
+(def ^:private embedding-service-reachable?*
+  "TTL-memoized [[probe-embedding-service]]. Held apart from the public var so the recovery hook's
+  memo-clear! targets the actual memo even when [[embedding-service-reachable?]] has been redefined
+  (a REPL or test wrapper carries no memoize metadata, so clearing through it silently no-ops)."
+  (memoize/ttl probe-embedding-service :ttl/threshold (* 60 1000)))
+
+(defn embedding-service-reachable?
   "Probe the embedding service by embedding a trivial string; returns `{:reachable? <bool> :error <msg>}`.
-  TTL-memoized so the two health checks share one probe per report run, and a flapping breaker (which
-  re-runs the checks on every state change) can't drive a probe storm."
-  (memoize/ttl probe-embedding-service :ttl/threshold (* 10 1000)))
+  TTL-memoized so the two health checks share one probe per report run, and so synthetic probes are capped
+  at one per window however often the breaker's state-change hooks re-run the checks. The window outlasts
+  the breaker's 30s open delay, so a steady open<->half-open flap reuses the cached probe instead of firing
+  one per transition; [[persist-index-check-on-breaker-change!]] busts the cache on recovery, the only
+  transition that needs a fresh answer."
+  []
+  (embedding-service-reachable?*))
 
 (defn embedding-problem
   "Human-readable embedding-service problem, or nil when it looks healthy.
@@ -138,7 +148,7 @@
   ;; flap, the storm the TTL exists to prevent, and an outage still surfaces immediately through the
   ;; untrusted-circuit branch of [[embedding-problem]] regardless of the cached probe.
   (when (= :closed state)
-    (memoize/memo-clear! embedding-service-reachable?))
+    (memoize/memo-clear! embedding-service-reachable?*))
   (health-inspector/run-and-save-check! :semantic-search-index))
 
 (swap! semantic.embedding/embedder-circuit-state-change-hooks conj #'persist-index-check-on-breaker-change!)
@@ -252,7 +262,13 @@
                     :measure    measure
                     :collect    collect}]
     (health-inspector/register-check! (:check-name descriptor) #(run-measure! descriptor))
-    (swap! index-measures assoc (:check-name descriptor) descriptor)
+    ;; A live upgrade can leave the defonce'd atom holding the registry's earlier vector shape, on which
+    ;; assoc-by-keyword would throw and abort the reload; key those entries first.
+    (swap! index-measures (fn [measures]
+                            (let [keyed (if (map? measures)
+                                          measures
+                                          (into {} (map (juxt :check-name identity)) measures))]
+                              (assoc keyed (:check-name descriptor) descriptor))))
     descriptor))
 
 (defn- refresh-measure!

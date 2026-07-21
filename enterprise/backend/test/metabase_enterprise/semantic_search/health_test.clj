@@ -1,5 +1,6 @@
 (ns metabase-enterprise.semantic-search.health-test
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
@@ -10,6 +11,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.health-inspector.core :as health-inspector]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -138,6 +140,38 @@
                   semantic.embedding/get-embedding        (fn [& _] (throw (ex-info "connection refused" {})))]
       (is (=? {:reachable? false :error "connection refused"}
               (#'semantic.health/probe-embedding-service))))))
+
+(deftest ^:sequential breaker-transition-probe-cache-test
+  (testing "open/half-open hook runs reuse the TTL'd probe (no forced cache miss -- clearing there would
+           re-probe a struggling service on every flap); only :closed forces a fresh probe"
+    (let [probes (atom 0)]
+      ;; get-embedding is a multimethod; with-dynamic-fn-redefs can't patch those, so with-redefs is required.
+      (with-redefs [semantic.embedding/get-configured-model (constantly {:model-name "m"})
+                    semantic.embedding/get-embedding        (fn [& _] (swap! probes inc) [0.1])]
+        (mt/with-dynamic-fn-redefs [health-inspector/run-and-save-check! (constantly nil)]
+          (memoize/memo-clear! @#'semantic.health/embedding-service-reachable?*)
+          (semantic.health/embedding-service-reachable?)
+          (is (= 1 @probes))
+          (#'semantic.health/persist-index-check-on-breaker-change! :open)
+          (#'semantic.health/persist-index-check-on-breaker-change! :half-open)
+          (semantic.health/embedding-service-reachable?)
+          (is (= 1 @probes) "an open<->half-open flap rides the cached probe")
+          (#'semantic.health/persist-index-check-on-breaker-change! :closed)
+          (semantic.health/embedding-service-reachable?)
+          (is (= 2 @probes) "recovery busts the cache so the persisted row can't be a stale 'unreachable'")
+          (memoize/memo-clear! @#'semantic.health/embedding-service-reachable?*))))))
+
+(deftest ^:sequential register-index-check!-migrates-a-legacy-registry-test
+  (testing "a live upgrade can leave the defonce'd registry holding its earlier vector shape; registering
+           into it migrates the entries instead of throwing on assoc-by-keyword"
+    (let [measures @#'semantic.health/index-measures
+          before   @measures]
+      (try
+        (reset! measures [{:check-name :legacy-measure, :collect (constantly nil)}])
+        (let [{:keys [check-name]} (semantic.health/register-index-check! :test-migration :coverage (constantly nil))]
+          (is (= #{:legacy-measure check-name} (set (keys @measures)))
+              "legacy entries are keyed by check-name and the new registration lands alongside"))
+        (finally (reset! measures before))))))
 
 ;;; --------------------------------------- AI index metric shaping -----------------------------------------
 

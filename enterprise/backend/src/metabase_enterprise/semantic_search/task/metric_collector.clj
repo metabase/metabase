@@ -93,8 +93,8 @@
   ;; answer). The dedicated-URL arm schedules without the feature, so a token entered post-boot starts the
   ;; AI-index gauges without a restart; app-db-pgvector instances licensed post-boot need one, matching the
   ;; other semantic tasks (see [[semantic.u/semantic-search-configured?]]).
-  (when (or (semantic.datasource/dedicated-url-configured?)
-            (semantic.u/semantic-search-configured?))
+  (if (or (semantic.datasource/dedicated-url-configured?)
+          (semantic.u/semantic-search-configured?))
     (let [job (jobs/build
                (jobs/of-type SemanticMetricCollector)
                (jobs/with-identity collector-job-key))
@@ -106,4 +106,7 @@
                      (simple/with-interval-in-milliseconds job-interval-ms)
                      (simple/repeat-forever)))
                    (triggers/start-now))]
-      (task/schedule-task! job trigger))))
+      (task/schedule-task! job trigger))
+    ;; Quartz's job store is persistent, so a collector scheduled by an earlier deploy would otherwise
+    ;; keep firing (as a no-op) on an instance whose configuration went away.
+    (task/delete-task! collector-job-key collector-trigger-key)))
