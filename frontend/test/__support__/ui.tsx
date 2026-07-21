@@ -188,10 +188,7 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  // There's no `settings` reducer — settings come from the `getSessionProperties`
-  // cache / `window.MetabaseBootstrap`. Pull any seeded settings out of the
-  // preloaded state (so combineReducers doesn't warn about the unknown key) and
-  // seed the bootstrap below.
+  // settings isn't in the store anymore. Pull it out and seed the settings bootstrap
   let {
     routing,
     settings: seededSettings,
