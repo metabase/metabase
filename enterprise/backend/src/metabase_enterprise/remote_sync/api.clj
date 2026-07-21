@@ -52,14 +52,17 @@
   [_route-params
    _query-params
    {:keys [branch]} :- [:map [:branch [:maybe ms/NonBlankString]]]]
-  (when (and branch (settings/remote-sync-enabled))
-    (when-let [source (source/source-from-settings)]
-      (api/check-400 (some #(= branch (if (coll? %) (first %) %)) (source.p/branches source))
-                     (format "Branch '%s' does not exist on the remote" branch))))
-  (when (and branch (not (branching/branch-materialized? branch)))
-    (branching/materialize-branch! (spec/exportable-entities) (branching/current-branch) branch))
-  (t2/update! :model/User :id api/*current-user-id* {:branch branch})
-  {:branch branch})
+  ;; checking out the global sync branch IS the global view — store no personal
+  ;; branch, so pulls/pushes/dirty tracking take the global paths
+  (let [branch (when (not= branch (settings/remote-sync-branch)) branch)]
+    (when (and branch (settings/remote-sync-enabled))
+      (when-let [source (source/source-from-settings)]
+        (api/check-400 (some #(= branch (if (coll? %) (first %) %)) (source.p/branches source))
+                       (format "Branch '%s' does not exist on the remote" branch))))
+    (when (and branch (not (branching/branch-materialized? branch)))
+      (branching/materialize-branch! (spec/exportable-entities) (branching/current-branch) branch))
+    (t2/update! :model/User :id api/*current-user-id* {:branch branch})
+    {:branch branch}))
 
 (api.macros/defendpoint :get "/checkout" :- [:map [:branch [:maybe :string]]]
   "The git branch the current user has checked out, or nil for main."
@@ -124,12 +127,20 @@
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
 
+(defn- personal-branch
+  "The current user's checked-out branch, when it differs from the global sync
+  branch; nil for the global view."
+  []
+  (let [b (t2/select-one-fn :branch :model/User :id api/*current-user-id*)]
+    (when (and b (not= b (settings/remote-sync-branch)))
+      b)))
+
 (api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
   "Check if any remote-synced collection or collection item has local changes that have not been pushed
-  to the remote sync source."
+  to the remote sync source — scoped to the current user's branch."
   []
   (api/check-superuser)
-  {:is_dirty (remote-sync.object/dirty?)})
+  {:is_dirty (remote-sync.object/dirty? (personal-branch))})
 
 (api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
   "Check if there are new changes on the remote branch that can be pulled.
@@ -145,7 +156,8 @@
    _body]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
+  (let [result (impl/has-remote-changes? {:force-refresh? force-refresh
+                                          :branch         (personal-branch)})]
     (cond-> {:has_changes (:has-changes? result)
              :remote_version (:remote-version result)
              :local_version (:local-version result)
@@ -159,7 +171,7 @@
   (api/check-superuser)
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
-                (remote-sync.object/dirty-objects))})
+                (remote-sync.object/dirty-objects (personal-branch)))})
 
 (api.macros/defendpoint :post "/export" :- remote-sync.schema/ExportResponse
   "Export the current state of the Remote Sync collection to a Source.

@@ -97,14 +97,30 @@
    `syncable-ids` is `{model-name [row-id ...]}` — the syncable content closure,
    typically `(spec/exportable-entities)` (passed in to avoid a module cycle)."
   [syncable-ids from-branch to-branch]
-  (let [entities (into []
-                       (for [[model-name ids] syncable-ids
-                             :let  [model (content-models model-name)]
-                             :when (and model (seq ids))
-                             row   (t2/select model :id [:in ids])
-                             :when (or (nil? (:branch row))
-                                       (= from-branch (:branch row)))]
-                         (serdes/extract-one model-name {} row)))]
+  (let [candidates (for [[model-name ids] syncable-ids
+                         :let  [model (content-models model-name)]
+                         :when (and model (seq ids))
+                         row   (t2/select model :id [:in ids])
+                         :when (or (nil? (:branch row))
+                                   (= from-branch (:branch row)))]
+                     [model-name row])
+        ;; a legacy nil-branch row and its from-branch copy can both be visible;
+        ;; materialize from the branch row only
+        branched   (into #{} (comp (filter (fn [[_ row]] (some? (:branch row))))
+                                   (map (fn [[model-name row]] [model-name (:entity_id row)])))
+                         candidates)
+        rows       (remove (fn [[model-name row]]
+                             (and (nil? (:branch row))
+                                  (contains? branched [model-name (:entity_id row)])))
+                           candidates)
+        entities   (mapv (fn [[model-name row]] (serdes/extract-one model-name {} row)) rows)]
+    ;; adopt legacy unbranched rows into the branch they were visible on — the
+    ;; runtime equivalent of the migration backfill, for content that became
+    ;; git-synced after it ran
+    (when from-branch
+      (doseq [[model-name row] rows
+              :when (nil? (:branch row))]
+        (t2/update! (content-models model-name) :id (:id row) {:branch from-branch})))
     (log/infof "Materializing branch %s from %s: %d entities" to-branch from-branch (count entities))
     (serialization/load-metabase! (in-memory-ingestable entities) :branch to-branch)
     (count entities)))

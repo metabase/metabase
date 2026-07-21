@@ -278,3 +278,39 @@ databaseChangeLog:
               UPDATE timeline SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
               UPDATE native_query_snippet SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true);
               UPDATE action SET branch = (SELECT s.`value` FROM setting s WHERE s.`key` = 'remote-sync-branch') WHERE model_id IN (SELECT id FROM report_card WHERE collection_id IN (SELECT id FROM collection WHERE is_remote_synced = true));
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:10
+      author: ranquild
+      comment: Add branch to remote_sync_object — per-branch dirty tracking
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch the tracked entity row belongs to; NULL for legacy/global rows
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: remote_sync_object
+            indexName: idx_remote_sync_object_branch
+            columns:
+              - column:
+                  name: branch
+
+  - changeSet:
+      id: v64.2026-07-21T21:00:11
+      author: ranquild
+      comment: Add branch to remote_sync_task — per-branch version tracking
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Personal branch the task operated on; NULL for global sync-branch tasks
+                  constraints:
+                    nullable: true

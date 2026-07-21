@@ -52,7 +52,14 @@ export const GitSyncControls = () => {
   // Per-user branch checkout: when the user has a branch checked out, the controls
   // operate on it — the label shows it, and pull/push target it directly.
   const currentUser = useSelector(getUser);
-  const userBranch = currentUser?.branch ?? null;
+  // A checkout of the global sync branch is stored as null, but guard against a
+  // stale user object anyway: only a branch that differs from the global one
+  // gets the per-user pull/push paths.
+  const checkedOutBranch = currentUser?.branch ?? null;
+  const userBranch =
+    checkedOutBranch && checkedOutBranch !== currentBranch
+      ? checkedOutBranch
+      : null;
   const displayBranch = userBranch ?? currentBranch;
 
   const [importChanges, { isLoading: isImporting }] =
@@ -72,6 +79,9 @@ export const GitSyncControls = () => {
   // reads the remote trees, so it can take a few seconds — show the control as busy meanwhile.
   const [isCheckingPreflight, setIsCheckingPreflight] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  // Set when a branch pull would overwrite unpushed branch changes and needs an explicit confirmation.
+  const [showPullOverwriteConfirm, setShowPullOverwriteConfirm] =
+    useState(false);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
   const combobox = useCombobox();
@@ -174,19 +184,15 @@ export const GitSyncControls = () => {
     userBranch,
   ]);
 
-  const handlePullClick = useCallback(async () => {
-    if (!currentBranch) {
-      return;
-    }
-
-    combobox.closeDropdown();
-
-    // A personal branch pull is self-contained: no global-branch staleness guard,
-    // no dirty/merge machinery — just fetch the branch's latest content.
-    if (userBranch) {
+  const pullUserBranch = useCallback(
+    async (force: boolean) => {
+      if (!userBranch) {
+        return;
+      }
+      setShowPullOverwriteConfirm(false);
       try {
-        await importChanges({ branch: userBranch }).unwrap();
-        trackPullChanges({ triggeredFrom: "app-bar", force: false });
+        await importChanges({ branch: userBranch, force }).unwrap();
+        trackPullChanges({ triggeredFrom: "app-bar", force });
         sendToast({ message: t`Pulled the latest changes from ${userBranch}` });
       } catch {
         sendToast({
@@ -195,6 +201,26 @@ export const GitSyncControls = () => {
           message: t`Sorry, we were unable to pull ${userBranch}.`,
         });
       }
+    },
+    [importChanges, sendToast, userBranch],
+  );
+
+  const handlePullClick = useCallback(async () => {
+    if (!currentBranch) {
+      return;
+    }
+
+    combobox.closeDropdown();
+
+    // A personal branch pull is self-contained: no global-branch staleness guard,
+    // no merge machinery — but it replaces the branch's content with the remote
+    // tree, so unpushed changes need an explicit confirmation first.
+    if (userBranch) {
+      if (isDirty) {
+        setShowPullOverwriteConfirm(true);
+        return;
+      }
+      await pullUserBranch(false);
       return;
     }
 
@@ -259,6 +285,7 @@ export const GitSyncControls = () => {
     dispatch,
     importChanges,
     isDirty,
+    pullUserBranch,
     runExportPreflight,
     sendToast,
     showBranchMismatchIfPresent,
@@ -318,7 +345,7 @@ export const GitSyncControls = () => {
 
         <GitSyncOptionsDropdown
           onCheckoutClick={() => setShowCheckoutModal(true)}
-          isPullDisabled={userBranch ? false : !hasRemoteChanges}
+          isPullDisabled={!hasRemoteChanges}
           isPullError={hasRemoteChangesError}
           isLoadingPull={isFetchingRemoteChanges}
           isPushDisabled={!isDirty || isLoading}
@@ -349,6 +376,34 @@ export const GitSyncControls = () => {
           forcePushCasualties={conflictPreflight?.force_push_casualties}
           historyRewritten={conflictPreflight?.reason === "history-rewritten"}
         />
+      )}
+
+      {showPullOverwriteConfirm && userBranch && (
+        <Modal
+          opened
+          padding="xl"
+          title={t`Overwrite your unpushed changes?`}
+          onClose={() => setShowPullOverwriteConfirm(false)}
+        >
+          <Text mt="md">
+            {t`You have changes on ${userBranch} that haven't been pushed. Pulling will replace them with the branch's remote content.`}
+          </Text>
+          <Group gap="sm" justify="end" mt="xl">
+            <Button
+              variant="subtle"
+              onClick={() => setShowPullOverwriteConfirm(false)}
+            >
+              {t`Cancel`}
+            </Button>
+            <Button
+              variant="filled"
+              color="danger"
+              onClick={() => pullUserBranch(true)}
+            >
+              {t`Pull and overwrite`}
+            </Button>
+          </Group>
+        </Modal>
       )}
 
       {branchMismatch && (

@@ -32,7 +32,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive remote-sync/branched-content-hook))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -288,7 +289,7 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  (remote-sync/stamp-branch model))
+  model)
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))

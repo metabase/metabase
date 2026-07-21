@@ -28,6 +28,38 @@
       row)
     row))
 
+(defn stamp-branch-on-move
+  "before-update helper for content models: when the row moves between
+   collections, recompute `:branch` from the target collection — the current
+   branch when it is remote-synced, NULL otherwise. An explicit `:branch` in
+   the update wins. No-op when `:collection_id` is not changing."
+  [instance]
+  (let [changes (t2/changes instance)]
+    (if (and (contains? changes :collection_id)
+             (not (contains? changes :branch)))
+      (assoc instance :branch
+             (when-let [b (current-branch)]
+               (when (and (:collection_id changes)
+                          (t2/exists? :model/Collection
+                                      :id (:collection_id changes)
+                                      :is_remote_synced true))
+                 b)))
+      instance)))
+
+(def branched-content-hook
+  "t2 hook keyword for content models with a git-sync `branch` column. Deriving a
+   model from this stamps `:branch` from the target collection on insert and
+   re-stamps it when a row moves between collections."
+  :hook/branched-content)
+
+(t2/define-before-insert :hook/branched-content
+  [row]
+  (stamp-branch row))
+
+(t2/define-before-update :hook/branched-content
+  [row]
+  (stamp-branch-on-move row))
+
 (defn branch-filter-clause
   "HoneySQL WHERE clause restricting branchable content to the current branch:
    rows with a NULL `branch` (not under git sync) are always visible; branch rows

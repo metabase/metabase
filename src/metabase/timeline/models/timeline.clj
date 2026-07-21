@@ -14,7 +14,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive remote-sync/branched-content-hook))
 
 ;;;; transforms
 
@@ -27,7 +28,7 @@
 
 (t2/define-before-insert :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id model))
-  (remote-sync/stamp-branch model))
+  model)
 
 (t2/define-before-update :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))

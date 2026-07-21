@@ -90,6 +90,7 @@
   (cond->>
    (t2/select :model/Collection
               {:where [:and
+                       (remote-sync/branch-filter-clause)
                        (case archived
                          nil nil
                          false [:and

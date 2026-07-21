@@ -129,7 +129,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive remote-sync/branched-content-hook))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
@@ -820,7 +821,6 @@
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
-        remote-sync/stamp-branch
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields)

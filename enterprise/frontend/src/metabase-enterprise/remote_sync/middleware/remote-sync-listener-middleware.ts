@@ -81,6 +81,16 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.checkoutBranch.matchFulfilled,
+  effect: async (_action, { dispatch }) => {
+    // Switching branches changes which rows every content query returns, so
+    // refresh everything, same as after a pull.
+    dispatch(EnterpriseApi.util.invalidateTags(ALL_INVALIDATION_TAGS));
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchPending,
   effect: async (_action, { dispatch }) => {
     dispatch(taskStarted({ taskType: "import" }));

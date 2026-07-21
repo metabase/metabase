@@ -47,7 +47,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive remote-sync/branched-content-hook))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -80,8 +81,7 @@
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (remote-sync/stamp-branch
-                   (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard)))]
+        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
     (u/prog1 dashboard
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)

@@ -312,7 +312,8 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive remote-sync/branched-content-hook))
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
@@ -1777,8 +1778,7 @@
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type)))
-               remote-sync/stamp-branch)
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
     (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!

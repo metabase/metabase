@@ -850,16 +850,23 @@
     - [[row entity]] (if no entity, then omit)"
   [{:keys [model_type rows]}]
   (let [id->row (u/index-by :model_id rows)
-        opts    {:where [:in :id (mapv :model_id rows)] :skip-archived true}]
-    ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
-    (into [] (keep (fn [instance]
-                     (when-let [row (id->row (:id instance))]
-                       ;; content branching: only serialize rows visible on the operation's branch
-                       (when (or (not ((set serdes.models/content) model_type))
-                                 (nil? (:branch instance))
-                                 (= (:branch instance) (branching/current-branch)))
-                         [row (serdes/extract-one model_type opts instance)]))))
-          (serdes/extract-query model_type opts))))
+        opts    {:where [:in :id (mapv :model_id rows)] :skip-archived true}
+        ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
+        triples (into [] (keep (fn [instance]
+                                 (when-let [row (id->row (:id instance))]
+                                   ;; content branching: only serialize rows visible on the operation's branch
+                                   (when (or (not ((set serdes.models/content) model_type))
+                                             (nil? (:branch instance))
+                                             (= (:branch instance) (branching/current-branch)))
+                                     [row (serdes/extract-one model_type opts instance) (:branch instance)]))))
+                      (serdes/extract-query model_type opts))
+        ;; both a legacy nil-branch row and its branch copy can be visible; keep only
+        ;; the branch row so an entity is never serialized (or staged) twice
+        branched (into #{} (keep (fn [[_ entity b]] (when b (:entity_id entity)))) triples)]
+    (into []
+          (comp (remove (fn [[_ entity b]] (and (nil? b) (contains? branched (:entity_id entity)))))
+                (map (fn [[row entity _]] [row entity])))
+          triples)))
 
 (defn- path-free?
   "Is this path free to write the entity with eid to?
@@ -1280,13 +1287,14 @@
   endpoints go through `ensure-no-active-task!` first (in `async-import!` / `async-export!` / etc.), which
   uses the stricter `task-running?` predicate and refuses if any task — including stale — is alive. So
   this function only reaches the supersession branch on the auto-import path."
-  [task-type]
+  [task-type & {:keys [branch]}]
   (cluster-lock/with-cluster-lock ::remote-sync-task
     (if-let [task (remote-sync.task/current-task)]
       (assoc task :existing? true)
       (do
         (remote-sync.task/supersede-stale-tasks!)
-        (remote-sync.task/create-sync-task! task-type api/*current-user-id*)))))
+        (remote-sync.task/create-sync-task! task-type api/*current-user-id*
+                                            (when branch {:branch branch}))))))
 
 ;;; ------------------------------------------- Remote Changes Check -------------------------------------------
 
@@ -1373,12 +1381,12 @@
    - force-refresh? is true"
   ([]
    (has-remote-changes? nil))
-  ([{:keys [force-refresh?]}]
+  ([{:keys [force-refresh? branch]}]
    (let [cache-state @remote-changes-cache
-         current-branch (settings/remote-sync-branch)]
+         current-branch (or branch (settings/remote-sync-branch))]
      (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
-       (let [last-imported (remote-sync.task/last-version)
+       (let [last-imported (remote-sync.task/last-version branch)
              source (source/source-from-settings current-branch)
              snapshot (snapshot-or-missing-branch source)]
          (if (= ::missing-branch snapshot)
@@ -1456,6 +1464,11 @@
         ingestable      (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
     (serdes/with-cache
       (serialization/load-metabase! ingestable :branch branch))
+    ;; post-pull, the branch matches the remote — its tracking rows are synced
+    ;; and the pulled version becomes the branch's local version
+    (t2/update! :model/RemoteSyncObject {:branch branch}
+                {:status "synced" :status_changed_at (t/offset-date-time)})
+    (remote-sync.task/set-version! task-id (source.p/version snapshot))
     {:status  :success
      :outcome {:kind "pulled" :branch branch}}))
 
@@ -1475,8 +1488,16 @@
                                               (stage-writes commit opts export-rows nil))
                                             report)]
       (if (= version :remote-sync/empty-commit)
-        {:status :success :outcome {:kind "push-skipped" :branch branch}}
-        {:status :success :outcome {:kind "pushed" :branch branch}}))))
+        (do
+          (remote-sync.task/set-version! task-id (source.p/version snapshot))
+          {:status :success :outcome {:kind "push-skipped" :branch branch}})
+        (do
+          ;; the branch's whole tree is now on the remote — its tracking rows are synced
+          ;; and the pushed commit becomes the branch's local version
+          (t2/update! :model/RemoteSyncObject {:branch branch}
+                      {:status "synced" :status_changed_at (t/offset-date-time)})
+          (remote-sync.task/set-version! task-id version)
+          {:status :success :outcome {:kind "pushed" :branch branch}})))))
 
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
@@ -1487,8 +1508,8 @@
   running), then executes the sync function in a virtual thread with a timeout.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
-  [task-type branch sync-fn & {:keys [on-success]}]
-  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
+  [task-type branch sync-fn & {:keys [on-success task-branch]}]
+  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type :branch task-branch)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
@@ -1525,11 +1546,19 @@
   [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
   (guards/ensure-no-active-task!)
   (if-let [user-branch branching/*branch*]
-    (let [source   (source/source-from-settings user-branch)
-          snapshot (source.p/snapshot source)]
-      (run-async! "import" (settings/remote-sync-branch)
-                  (fn [task-id] (branch-import! user-branch snapshot task-id))
-                  :on-success on-success))
+    (do
+      ;; a branch pull replaces the branch's rows with the remote tree, so unpushed
+      ;; branch changes would be silently lost — require an explicit force
+      (when (and (not force?) (remote-sync.object/dirty? user-branch))
+        (throw (ex-info (format "You have unpushed changes on '%s'. Push them first, or force the pull to discard them."
+                                user-branch)
+                        {:status-code 400 :conflicts true})))
+      (let [source   (source/source-from-settings user-branch)
+            snapshot (source.p/snapshot source)]
+        (run-async! "import" (settings/remote-sync-branch)
+                    (fn [task-id] (branch-import! user-branch snapshot task-id))
+                    :on-success on-success
+                    :task-branch user-branch)))
     (async-global-import! branch force? import-args
                           :on-success on-success :merge? merge? :force-deletion? force-deletion?)))
 
@@ -1599,7 +1628,8 @@
       (run-async! "export" (settings/remote-sync-branch)
                   (fn [task-id]
                     (branch-export! user-branch snapshot task-id (or message "Pushed from Metabase")))
-                  :on-success on-success))
+                  :on-success on-success
+                  :task-branch user-branch))
     (async-global-export! branch force? message :on-success on-success :merge? merge?)))
 
 (defn- async-global-export!
