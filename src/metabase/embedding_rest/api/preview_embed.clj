@@ -11,6 +11,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.database-routing.core :as database-routing]
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
@@ -55,13 +56,16 @@
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
         card           (api/check-404 (t2/select-one :model/Card card-id))]
-    (api.embed.common/process-query-for-card-with-params
-     :export-format    :api
-     :card             card
-     :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
-     :constraints      {:max-results max-results}
-     :query-params     (api.embed.common/parse-query-params query-params))))
+    ;; routing off so the preview shows what the published embed will show: router-DB data, not data
+    ;; routed via the previewing admin's user attribute
+    (database-routing/with-database-routing-off
+      (api.embed.common/process-query-for-card-with-params
+       :export-format    :api
+       :card             card
+       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+       :constraints      {:max-results max-results}
+       :query-params     (api.embed.common/parse-query-params query-params)))))
 
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values" :- ms/FieldValuesResult
   "Embedded version of api.card filter values endpoint."
@@ -167,14 +171,15 @@
         card             (api/check-404 (t2/select-one :model/Card card-id))
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed.common/process-query-for-dashcard
-     :export-format    :api
-     :dashboard        dashboard
-     :dashcard         dashcard
-     :card             card
-     :embedding-params embedding-params
-     :token-params     token-params
-     :query-params     (api.embed.common/parse-query-params query-params))))
+    (database-routing/with-database-routing-off
+      (api.embed.common/process-query-for-dashcard
+       :export-format    :api
+       :dashboard        dashboard
+       :dashcard         dashcard
+       :card             card
+       :embedding-params embedding-params
+       :token-params     token-params
+       :query-params     (api.embed.common/parse-query-params query-params)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -188,13 +193,14 @@
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
         card           (api/check-404 (t2/select-one :model/Card card-id))]
-    (api.embed.common/process-query-for-card-with-params
-     :export-format    :api
-     :card             card
-     :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
-     :query-params     (api.embed.common/parse-query-params query-params)
-     :qp               qp.pivot/run-pivot-query)))
+    (database-routing/with-database-routing-off
+      (api.embed.common/process-query-for-card-with-params
+       :export-format    :api
+       :card             card
+       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+       :query-params     (api.embed.common/parse-query-params query-params)
+       :qp               qp.pivot/run-pivot-query))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -214,15 +220,16 @@
         card             (api/check-404 (t2/select-one :model/Card card-id))
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed.common/process-query-for-dashcard
-     :export-format    :api
-     :dashboard        dashboard
-     :dashcard         dashcard
-     :card             card
-     :embedding-params embedding-params
-     :token-params     token-params
-     :query-params     (api.embed.common/parse-query-params query-params)
-     :qp               qp.pivot/run-pivot-query)))
+    (database-routing/with-database-routing-off
+      (api.embed.common/process-query-for-dashcard
+       :export-format    :api
+       :dashboard        dashboard
+       :dashcard         dashcard
+       :card             card
+       :embedding-params embedding-params
+       :token-params     token-params
+       :query-params     (api.embed.common/parse-query-params query-params)
+       :qp               qp.pivot/run-pivot-query))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -247,8 +254,9 @@
         parameters (json/decode+kw parameters)
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
-    (request/as-admin
-      (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
+    (database-routing/with-database-routing-off
+      (request/as-admin
+        (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -277,5 +285,6 @@
         parameters       (json/decode+kw parameters)
         lat-field        (json/decode+kw latField)
         lon-field        (json/decode+kw lonField)]
-    (request/as-admin
-      (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field))))
+    (database-routing/with-database-routing-off
+      (request/as-admin
+        (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field)))))

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.database-routing.core :as database-routing]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
@@ -17,6 +18,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
+   [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -453,9 +455,10 @@
         (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
-        (binding [api/*current-user-permissions-set* (atom #{"/"})
-                  api/*is-superuser?* true]
-          (queries/card-param-values card param-key search-prefix))
+        ;; guest embeds always use the router (primary) database, never a routed destination
+        (database-routing/with-database-routing-off
+          (request/as-admin
+            (queries/card-param-values card param-key search-prefix)))
         (catch Throwable e
           (throw (ex-info (.getMessage e)
                           {:card-id       (u/the-id card)
@@ -498,9 +501,9 @@
                              (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
-        (binding [api/*current-user-permissions-set* (atom #{"/"})
-                  api/*is-superuser?* true]
-          (queries/card-param-remapped-value card param-key value))
+        (database-routing/with-database-routing-off
+          (request/as-admin
+            (queries/card-param-remapped-value card param-key value)))
         (catch Throwable e
           (throw (ex-info (.getMessage e)
                           {:card-id   (u/the-id card)
@@ -558,9 +561,9 @@
       ;; ok, at this point we can run the query
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
-          (binding [api/*current-user-permissions-set* (atom #{"/"})
-                    api/*is-superuser?*                true]
-            (parameters.dashboard/param-values dashboard searched-param-id merged-id-params prefix))
+          (database-routing/with-database-routing-off
+            (request/as-admin
+              (parameters.dashboard/param-values dashboard searched-param-id merged-id-params prefix)))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}
@@ -615,6 +618,6 @@
                        {:status-code 400})))
      (let [constraints (-> (param-values-merged-params id->slug slug->id embedding-params slug-token-params {})
                            (select-keys locked-param-ids))]
-       (binding [api/*current-user-permissions-set* (atom #{"/"})
-                 api/*is-superuser?*                true]
-         (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints))))))
+       (database-routing/with-database-routing-off
+         (request/as-admin
+           (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints)))))))
