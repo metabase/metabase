@@ -7,6 +7,7 @@ import {
 } from "react-router-v7";
 
 import { type RouterLinkProps, V3RouterLink } from "./react-router";
+import { queryToSearch } from "./v7/location";
 
 /**
  * The app's `<Link>`, engine-aware.
@@ -34,8 +35,9 @@ function toV7Target(to: V3To): { to: V7LinkProps["to"]; state?: unknown } {
     return { to: "" };
   }
   const { pathname, search, hash, query, state } = to;
-  const searchString =
-    search ?? (query ? `?${new URLSearchParams(query).toString()}` : undefined);
+  // `query` wins over `search`, matching history@3: call sites build
+  // `{ ...location, query }`, where the spread carries a stale `search`.
+  const searchString = query ? queryToSearch(query) : search;
   return {
     to: { pathname: pathname ?? "", search: searchString, hash },
     state,

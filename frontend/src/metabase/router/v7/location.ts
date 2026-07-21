@@ -19,6 +19,27 @@ export function searchToQuery(
 }
 
 /**
+ * Serialize v3's `location.query` object back into a search string, the only form
+ * v7 understands. Repeated values become repeated keys, mirroring what
+ * `searchToQuery` parses. Returns `""` for an empty query.
+ */
+export function queryToSearch(query: Record<string, unknown>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value == null) {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => params.append(key, String(item)));
+    } else {
+      params.append(key, String(value));
+    }
+  }
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+/**
  * Build the v3-shaped `history` location the facade context and `state.routing`
  * expect from a v7 location plus the current navigation type.
  */

@@ -3,6 +3,8 @@ import type { NavigateFunction, NavigateOptions, To } from "react-router-v7";
 
 import type { RouterNavigator } from "../middleware";
 
+import { queryToSearch } from "./location";
+
 /**
  * The live v7 `navigate`, registered by `V7ReduxBridge` once the router mounts.
  * The redux navigator adapter is built at store creation, before the router
@@ -48,10 +50,18 @@ export function toNavigateArgs(
   if (typeof location === "string") {
     return [location, options];
   }
+  // v3 descriptors carry the query as a `query` object, which v7 does not read, so
+  // serialize it into the search string. Dropping it silently loses params (e.g.
+  // the dashboard's tab and filter slugs). `query` wins over `search`, matching
+  // history@3's `useQueries`: callers build `{ ...location, query }`, so the
+  // spread's stale `search` must not shadow the query they just set.
+  const search = location.query
+    ? queryToSearch(location.query)
+    : location.search;
   return [
     {
       pathname: location.pathname,
-      search: location.search,
+      search,
       hash: location.hash,
     },
     { ...options, state: location.state },
