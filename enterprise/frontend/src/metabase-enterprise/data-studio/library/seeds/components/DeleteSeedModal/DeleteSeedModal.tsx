@@ -3,16 +3,18 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import { type Seed, useDeleteSeedMutation } from "metabase-enterprise/api";
+import { useDeleteSeedMutation } from "metabase-enterprise/api";
 
 export function DeleteSeedModal({
   seed,
   opened,
   onClose,
+  onDeleted,
 }: {
-  seed: Seed;
+  seed: { id: number; name: string };
   opened: boolean;
   onClose: () => void;
+  onDeleted?: () => void;
 }) {
   const dispatch = useDispatch();
   const [deleteSeed, { isLoading }] = useDeleteSeedMutation();
@@ -22,6 +24,7 @@ export function DeleteSeedModal({
       await deleteSeed(seed.id).unwrap();
       dispatch(addUndo({ message: t`Seed ${seed.name} deleted` }));
       onClose();
+      onDeleted?.();
     } catch (error: any) {
       const message = error?.data?.message ?? t`Could not delete the seed`;
       dispatch(addUndo({ message, icon: "warning" }));

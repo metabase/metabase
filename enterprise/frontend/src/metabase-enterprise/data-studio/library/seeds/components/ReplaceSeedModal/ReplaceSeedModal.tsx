@@ -12,14 +12,14 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { type Seed, useReplaceSeedCsvMutation } from "metabase-enterprise/api";
+import { useReplaceSeedCsvMutation } from "metabase-enterprise/api";
 
 export function ReplaceSeedModal({
   seed,
   opened,
   onClose,
 }: {
-  seed: Seed;
+  seed: { id: number; name: string };
   opened: boolean;
   onClose: () => void;
 }) {

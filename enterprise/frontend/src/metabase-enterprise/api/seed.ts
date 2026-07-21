@@ -1,5 +1,5 @@
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag, tag } from "./tags";
+import { idTag, invalidateTags, listTag, tag } from "./tags";
 
 export type Seed = {
   id: number;
@@ -45,7 +45,16 @@ export const seedApi = EnterpriseApi.injectEndpoints({
           body: formData,
         };
       },
-      invalidatesTags: (_, error) => invalidateTags(error, [listTag("table")]),
+      // Replace rebuilds the table, so refresh its metadata (columns) and the
+      // adhoc dataset cache (rows) too, not just the table list.
+      invalidatesTags: (result, error) =>
+        invalidateTags(error, [
+          listTag("table"),
+          ...(result?.table_id != null
+            ? [idTag("table", result.table_id)]
+            : []),
+          tag("dataset"),
+        ]),
     }),
     deleteSeed: builder.mutation<void, number>({
       query: (id) => ({
