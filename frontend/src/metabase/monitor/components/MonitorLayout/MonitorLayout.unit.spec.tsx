@@ -36,6 +36,8 @@ const { trackMonitorSectionClicked } = jest.requireMock(
 interface SetupOpts {
   isNavbarOpened?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  aiFeaturesEnabled?: boolean;
+  isConfigured?: boolean;
   mcpEnabled?: boolean;
   initialRoute?: string;
   user?: ReturnType<typeof createMockUser>;
@@ -82,6 +84,8 @@ function TestSidebarToggle({ onRender }: { onRender: () => void }) {
 const setup = ({
   isNavbarOpened = true,
   tokenFeatures,
+  aiFeaturesEnabled = true,
+  isConfigured = true,
   mcpEnabled = true,
   initialRoute = "/monitor",
   user = createMockUser({ is_superuser: true }),
@@ -89,6 +93,8 @@ const setup = ({
 }: SetupOpts = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
+    "ai-features-enabled?": aiFeaturesEnabled,
+    "llm-metabot-configured?": isConfigured,
     "mcp-enabled?": mcpEnabled,
   });
 
@@ -96,6 +102,8 @@ const setup = ({
   setupPropertiesEndpoints(
     createMockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
+      "ai-features-enabled?": aiFeaturesEnabled,
+      "llm-metabot-configured?": isConfigured,
       "mcp-enabled?": mcpEnabled,
     }),
   );
@@ -509,7 +517,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides MCP analytics when the MCP server toggle is off", async () => {
+  it("keeps MCP analytics available when the MCP server toggle is off", async () => {
     setup({
       tokenFeatures: { audit_app: true, ai_controls: true },
       mcpEnabled: false,
@@ -519,16 +527,36 @@ describe("MonitorLayout", () => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByRole("link", { name: "Usage stats" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Conversations" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "MCP analytics" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "MCP analytics" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingMcp(),
+    );
   });
+
+  it.each([
+    ["AI features are disabled", { aiFeaturesEnabled: false }],
+    ["the AI provider is not configured", { isConfigured: false }],
+  ])(
+    "keeps Metabot analytics links visible when %s",
+    async (_label, settings) => {
+      setup({
+        tokenFeatures: { audit_app: true, ai_controls: true },
+        ...settings,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole("link", { name: "Usage stats" })).toHaveAttribute(
+        "href",
+        Urls.monitorAiAuditing(),
+      );
+      expect(
+        screen.getByRole("link", { name: "Conversations" }),
+      ).toHaveAttribute("href", Urls.monitorAiAuditingConversations());
+    },
+  );
 
   it("hides the AI Auditing group for a non-admin user", async () => {
     setup({

@@ -1,7 +1,7 @@
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
   type MonitorSection,
@@ -75,7 +75,6 @@ export function MonitorLayout() {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const hasAiControlsFeature = useHasTokenFeature("ai_controls");
-  const mcpEnabled = useSetting("mcp-enabled?");
   const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
   const canAccessTools = useSelector(canAccessMonitoringTools);
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
@@ -207,16 +206,14 @@ export function MonitorLayout() {
               }
             />
           )}
-          {mcpEnabled && (
-            <AreaTab
-              label={t`MCP analytics`}
-              icon="metabot"
-              to={Urls.monitorAiAuditingMcp()}
-              isSelected={activeSection === "ai-auditing-mcp"}
-              showLabel={isNavbarOpened}
-              onClick={() => trackMonitorSectionClicked("ai-auditing-mcp")}
-            />
-          )}
+          <AreaTab
+            label={t`MCP analytics`}
+            icon="metabot"
+            to={Urls.monitorAiAuditingMcp()}
+            isSelected={activeSection === "ai-auditing-mcp"}
+            showLabel={isNavbarOpened}
+            onClick={() => trackMonitorSectionClicked("ai-auditing-mcp")}
+          />
         </AreaTabGroup>
       )}
     </>
