@@ -355,6 +355,9 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
     [:string {:min 1 :description "The raw SQL text, run verbatim against the database. Put caller-supplied values behind {{tag}} placeholders bound via template_tag_values — never splice them into this string."}]]
    [:template_tag_values {:optional true}
     [:maybe [:map-of {:description "Values for the {{tag}} placeholders in sql, keyed by tag name. Each value binds as a driver-level prepared-statement parameter (injection-safe): strings bind as text, numbers as numbers. Snippet ({{snippet: …}}) and card-reference ({{#123}}) tags cannot be populated here."}
+             ;; No date case: a date value arrives as a JSON string and binds as `:text`, which
+             ;; the warehouse coerces. A `:date` tag type would change the QP's parsing, so it
+             ;; needs an explicit caller signal rather than a guess at the string's shape.
              :keyword [:or :string number? :boolean]]]]
    [:prompt {:optional true}
     [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle so visualize_query can surface it in the feedback flow."}]]]
@@ -365,6 +368,8 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
 
 (registry/deftool execute-sql
   "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the target database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql string runs verbatim against the warehouse, so it is the injection surface — never splice caller-supplied or user-supplied values into it. Put values behind {{tag}} placeholders and pass them in template_tag_values instead: they bind as driver-level prepared-statement parameters, injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (template tags and permissions checked; the SQL text itself is not validated) — use it to stage SQL for saving or visualizing without pulling rows into context. Every call returns a query_handle accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination for SQL: when a result is truncated, narrow the SQL (add filters/aggregation) or raise row_limit (max 2000)."
+  ;; No `:readOnlyHint` — unlike execute_query, arbitrary SQL can write. MCP's defaults for an
+  ;; unannotated tool (not read-only, possibly destructive) are the honest ones here.
   {:name  "execute_sql"
    :scope metabot.scope/agent-sql-execute
    :args  execute-sql-args-schema}
@@ -378,6 +383,12 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
         ;; Re-attached after serialization (which strips `:parameters` as runtime-only) so the
         ;; execution and the minted handle both carry the bound values: what the agent later
         ;; visualizes or re-runs through the handle is exactly what ran here.
+        ;;
+        ;; This makes the stored query deliberately wider than the app-DB shape —
+        ;; [[metabase.lib.schema]]'s serialize-query strips `:parameters` because it "doesn't get
+        ;; saved along with the query in the app DB". Re-run and visualize want it; a consumer
+        ;; that saves the handle as a card must lift these into the card's own `:parameters` (or
+        ;; template-tag `:default`s) rather than storing them inside `dataset_query`.
         serialized (cond-> (lib/prepare-for-serialization query)
                      (seq parameters) (assoc :parameters parameters))]
     (if (true? validate_only)
