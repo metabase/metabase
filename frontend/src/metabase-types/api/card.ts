@@ -253,7 +253,7 @@ export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 export type YAxisScale = NumericScale;
 
 export type MapType = "region" | "pin" | "heat" | "grid";
-export type PinMapType = "tiles" | "markers" | "grid" | "heat";
+export type PinMapStyle = "tiles" | "markers" | "grid" | "heat";
 
 export type ColumnSettings = TimeOnlyOptions & {
   _column_title_full?: string;
@@ -525,7 +525,7 @@ export type VisualizationSettings = {
 
   /** Map settings */
   "map.type"?: MapType;
-  "map.pin_type"?: PinMapType;
+  "map.pin_type"?: PinMapStyle;
   "map.latitude_column"?: string;
   "map.longitude_column"?: string;
   "map.metric_column"?: string;

@@ -10,7 +10,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   DatasetData,
-  PinMapType,
+  PinMapStyle,
   RowValue,
   RowValues,
   VisualizationSettings,
@@ -39,11 +39,11 @@ const MAP_COMPONENTS_BY_TYPE = {
   markers: LeafletMarkerPinMap,
   tiles: LeafletTilePinMap,
   grid: LeafletGridHeatMap,
-} as Partial<Record<PinMapType, ComponentClass<PinMapChildProps>>>;
+} as Partial<Record<PinMapStyle, ComponentClass<PinMapChildProps>>>;
 
-// A point is [latitude, longitude, metric]. For pin maps the metric can be
-// null; grid/heat maps require it, so it's typed as a number here.
-export type PinMapPoint = LeafletMapPoint<[number]>;
+// A point is [latitude, longitude, metric]; non-pin maps filter out rows
+// with a null metric.
+export type PinMapPoint = LeafletMapPoint<[number | null]>;
 
 export interface GetPointsResult {
   rows: RowValues[];
@@ -91,10 +91,9 @@ export function getPoints({
 
     return lat != null && lng != null && metric != null;
   });
-  // Valid points have non-null numeric lat/lng (and metric for non-pin maps).
   const points = allPoints.filter(
-    (_point, i) => validPoints[i],
-  ) as PinMapPoint[];
+    (_point, i): _point is PinMapPoint => validPoints[i],
+  );
   const updatedRows = rows.filter((_row, i) => validPoints[i]);
 
   const warnings: string[] = [];

@@ -12,7 +12,7 @@ import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Series } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
 import { isObject } from "metabase-types/guards/common";
 
@@ -35,14 +35,15 @@ export function isOpenStreetMapHost(hostname: string): boolean {
   );
 }
 
-type MapSettings = {
-  "map.latitude_column"?: string;
-  "map.longitude_column"?: string;
-  "map.metric_column"?: string;
-  "map.center_latitude"?: number;
-  "map.center_longitude"?: number;
-  "map.zoom"?: number;
-};
+type MapSettings = Pick<
+  VisualizationSettings,
+  | "map.latitude_column"
+  | "map.longitude_column"
+  | "map.metric_column"
+  | "map.center_latitude"
+  | "map.center_longitude"
+  | "map.zoom"
+>;
 
 export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   className?: string;

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import MetabaseSettings from "metabase/utils/settings";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
 import type { RowValue } from "metabase-types/api";
 import {
   createMockColumn,
@@ -168,7 +168,7 @@ describe("PinMap", () => {
       ),
     ];
 
-    const props: VisualizationProps = {
+    const props = createMockVisualizationProps({
       series,
       rawSeries: series,
       data: series[0].data,
@@ -180,30 +180,10 @@ describe("PinMap", () => {
         "map.longitude_column": "lng",
       },
       metadata: createMockMetadata({ databases: [createSampleDatabase()] }),
-      fontFamily: "Lato",
-      isFullscreen: false,
-      isQueryBuilder: false,
-      isEmbeddingSdk: false,
-      showTitle: false,
       isDashboard,
-      isDocument: false,
-      isVisualizer: false,
-      isVisualizerCard: false,
-      isEditing: false,
-      isMetricsViewer: false,
-      isMobile: false,
-      isSettings: false,
-      width: 500,
       height: 300,
-      visualizationIsClickable: () => false,
       onRender,
-      onRenderError: () => undefined,
-      onActionDismissal: () => undefined,
-      onHoverChange: () => undefined,
-      onVisualizationClick: () => undefined,
-      onUpdateVisualizationSettings: () => undefined,
-      dispatch: jest.fn(),
-    };
+    });
 
     render(<PinMap {...props} token={token} />);
 
@@ -254,7 +234,6 @@ describe("PinMap", () => {
   it("should not render either map button on dashboards outside editing", async () => {
     setup({ isDashboard: true });
 
-    // positive control: the map itself mounted
     expect(await screen.findByText("OpenStreetMap")).toBeInTheDocument();
     expect(screen.queryByText("Set as default view")).not.toBeInTheDocument();
     expect(screen.queryByText("Draw box to filter")).not.toBeInTheDocument();
