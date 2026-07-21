@@ -85,11 +85,14 @@
       false)))
 
 (defn- tiebreaker-specs
-  "Deterministic tiebreakers appended after the existing order-bys to make the order total:
+  "Deterministic tiebreakers to append after the existing order-bys to make the order total:
    the projected source-table PK alone when there is one (unique per result row — the fan-out
    guard in [[next-page-query]] is what upgrades the PK's metadata-level uniqueness to a
    row-level fact — and none at all if it is already ordered), else the full remaining
-   projected-column tuple."
+   projected-column tuple.
+
+   Empty means the query's own order is already total. That is the condition
+   [[next-page-query]] mints on and the condition [[with-total-order]] establishes."
   [resolved-query ret-cols ordered-idxs]
   (let [pk-idx (pk-index resolved-query ret-cols)]
     (cond
@@ -168,14 +171,18 @@
    pre-aggregation); if that stage also carries its own limit the base set is cut before the
    total order can pin it down, so no cursor.
 
-   A query that joins — directly, or through a saved question it sources — gets no cursor at
-   all. A 1:many join repeats the source-table PK across result rows, so the PK-only tiebreaker
-   would drop the boundary row's remaining fan-out rows; and the full-tuple fallback is no
-   better, because the already-served first page broke ties in whatever order the engine
-   produced, while the cursor's appended tiebreakers impose their own — the two orders disagree
-   within tie groups straddling the boundary, yielding both dropped and repeated rows. No
-   tiebreaker derivable at mint time can agree with an order the first page never ran under, so
-   a joined query refuses the cursor (an explicit dead end) rather than paging with silent gaps."
+   Mints only for a query whose own order is already total — an empty [[tiebreaker-specs]]. A
+   page served under a partial order broke its ties however the engine happened to, and no
+   tiebreaker derived here can agree with an order that execution never ran under: around a
+   boundary inside a tie group the two disagree, dropping rows and repeating others.
+   [[with-total-order]] is what establishes the condition, by imposing the tiebreakers on the
+   execution itself; a query that reaches here without them gets no cursor.
+
+   A query that joins — directly, or through a saved question it sources — gets no cursor even
+   with the order imposed. A 1:many join repeats the source-table PK across result rows, so the
+   PK tiebreaker isn't unique per row and the order it makes isn't total after all; the
+   full-tuple fallback can't be trusted either, since fanned-out rows can be wholly identical.
+   A joined query is an explicit dead end rather than paging with silent gaps."
   [resolved-query result-cols last-row]
   (let [mp (lib-be/application-database-metadata-provider (:database resolved-query))]
     (when-not (fan-out-join? mp resolved-query)
@@ -187,33 +194,69 @@
                 positions (when (and (seq ret-cols) (sequential? last-row))
                             (row-positions ret-cols result-cols last-row))]
             (when positions
-              (when-let [ordered (order-by-specs query ret-cols)]
-                (let [tiebreakers (tiebreaker-specs resolved-query ret-cols (into #{} (map :idx) ordered))
-                      specs       (into ordered tiebreakers)
-                      values      (mapv #(nth last-row (nth positions (:idx %))) specs)
-                      ;; a remapped column can't be a cursor key (the remap middleware rewrites an
-                      ;; order-by on it to sort by the display value, so the executed order and the
-                      ;; keyset predicate — which compares raw values — would disagree: a gap), and
-                      ;; neither can a column whose boundary value doesn't round-trip exactly.
-                      unsafe-key?   (some (fn [{:keys [idx]}]
+              (when-let [specs (order-by-specs query ret-cols)]
+                (when (= [] (tiebreaker-specs resolved-query ret-cols (into #{} (map :idx) specs)))
+                  (let [values      (mapv #(nth last-row (nth positions (:idx %))) specs)
+                        ;; a remapped column can't be a cursor key (the remap middleware rewrites an
+                        ;; order-by on it to sort by the display value, so the executed order and the
+                        ;; keyset predicate — which compares raw values — would disagree: a gap), and
+                        ;; neither can a column whose boundary value doesn't round-trip exactly.
+                        unsafe-key? (some (fn [{:keys [idx]}]
                                             (let [col (nth ret-cols idx)]
                                               (or (:lib/external-remap col)
                                                   (:lib/internal-remap col)
                                                   (lossy-boundary-col? col))))
                                           specs)]
-                  (when (and (seq specs) (not unsafe-key?) (every? some? values))
-                    (let [base        (if aggregated? (lib/append-stage query) query)
-                          target-cols (if aggregated? (vec (lib/returned-columns base)) ret-cols)
-                          ;; the unaggregated stage already carries its own order-bys; the appended
-                          ;; stage starts bare, so the whole total order is re-imposed there.
-                          to-order    (if aggregated? specs tiebreakers)
-                          with-order  (reduce (fn [q {:keys [idx dir]}]
-                                                (lib/order-by q (nth target-cols idx) dir))
-                                              base
-                                              to-order)]
-                      (-> with-order
-                          (lib/filter (keyset-filter-clause target-cols specs values))
-                          lib/prepare-for-serialization))))))))))))
+                    (when (and (seq specs) (not unsafe-key?) (every? some? values))
+                      (let [base        (if aggregated? (lib/append-stage query) query)
+                            target-cols (if aggregated? (vec (lib/returned-columns base)) ret-cols)
+                            ;; the unaggregated stage already carries the total order; the appended
+                            ;; stage starts bare, so it is re-imposed there.
+                            with-order  (if aggregated?
+                                          (reduce (fn [q {:keys [idx dir]}]
+                                                    (lib/order-by q (nth target-cols idx) dir))
+                                                  base
+                                                  specs)
+                                          base)]
+                        (-> with-order
+                            (lib/filter (keyset-filter-clause target-cols specs values))
+                            lib/prepare-for-serialization)))))))))))))
+
+(defn with-total-order
+  "`serialized-query` with the tiebreakers that make its row order total appended to the last
+   stage's order-bys — the same total order [[next-page-cursor!]] seeks past, imposed on the
+   execution itself so the page that was served and the page that continues it agree on how ties
+   break. Run a query through this before executing it if it may later be paged: a cursor is
+   minted only for a query whose order is already total, so skipping this costs paging, never
+   correctness.
+
+   Returns the query unchanged when its order is already total, when no tiebreakers can be
+   derived (an order-by outside the projection), when a join makes them unsound anyway (see
+   [[next-page-query]]), or on any failure to rehydrate or manipulate the query. Idempotent: a
+   second pass finds every tiebreaker already ordered."
+  [serialized-query]
+  (or (when (and (map? serialized-query)
+                 (pos-int? (:database serialized-query))
+                 (sequential? (:stages serialized-query))
+                 (seq (:stages serialized-query))
+                 (not (query-guards/native-query? serialized-query)))
+        (try
+          (let [mp (lib-be/application-database-metadata-provider (:database serialized-query))]
+            (when-not (fan-out-join? mp serialized-query)
+              (let [query    (lib/query mp serialized-query)
+                    ret-cols (vec (lib/returned-columns query))]
+                (when-let [ordered (order-by-specs query ret-cols)]
+                  (when-let [tiebreakers (seq (tiebreaker-specs serialized-query ret-cols
+                                                                (into #{} (map :idx) ordered)))]
+                    (-> (reduce (fn [q {:keys [idx dir]}]
+                                  (lib/order-by q (nth ret-cols idx) dir))
+                                query
+                                tiebreakers)
+                        lib/prepare-for-serialization))))))
+          (catch Exception e
+            (log/warn e "Failed to impose a total order on the query")
+            nil)))
+      serialized-query))
 
 (defn next-page-cursor!
   "For a truncated MBQL page, build the next-page query (the same resolved query with a
@@ -229,13 +272,17 @@
    - `:prompt` — the user's original prompt, carried onto the cursor handle for the
      visualization feedback flow.
 
+   `resolved-query` must be what actually ran, and must have been run through
+   [[with-total-order]] first — the keyset seeks past the boundary in the query's own order, so
+   a page served under a partial order has no continuation to seek.
+
    Returns nil whenever a gap-free cursor cannot be guaranteed: native SQL anywhere in the
-   tree, an explicit join anywhere — directly or inside a sourced saved question, or a sourced
-   question whose stored query can't be read (a fan-out defeats every mint-time tiebreaker — see
-   [[next-page-query]]), an order-by outside the projection, a row that can't be aligned with
-   the projection, a nil boundary value, a key column that is remapped or whose values don't
-   round-trip exactly (raw datetimes), an aggregated stage carrying its own limit, or any
-   failure to rehydrate or manipulate the query."
+   tree, an order that isn't already total, an explicit join anywhere — directly or inside a
+   sourced saved question, or a sourced question whose stored query can't be read (a fan-out
+   defeats every tiebreaker — see [[next-page-query]]), an order-by outside the projection, a
+   row that can't be aligned with the projection, a nil boundary value, a key column that is
+   remapped or whose values don't round-trip exactly (raw datetimes), an aggregated stage
+   carrying its own limit, or any failure to rehydrate or manipulate the query."
   ([mcp-session-id user-id resolved-query last-row]
    (next-page-cursor! mcp-session-id user-id resolved-query last-row nil))
   ([mcp-session-id user-id resolved-query last-row {:keys [result-cols prompt]}]

@@ -29,7 +29,7 @@
   (testing "view correctly counts messages by role and sums tokens from ai_usage_log"
     (let [convo-id (str (random-uuid))]
       (mt/with-temp [:model/User {user-id :id} {}
-                     :model/MetabotConversation _ {:id convo-id :user_id user-id :summary "token counting"}
+                     :model/MetabotConversation _ {:id convo-id :user_id user-id :title "token counting"}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "user"      :profile_id "nlq" :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data []}
@@ -75,9 +75,9 @@
           convo-3 (str (random-uuid))]
       (mt/with-temp [:model/User              {user-a :id} {}
                      :model/User              {user-b :id} {}
-                     :model/MetabotConversation _ {:id convo-1 :user_id user-a :summary "multi-turn chat"}
-                     :model/MetabotConversation _ {:id convo-2 :user_id user-b :summary "quick question"}
-                     :model/MetabotConversation _ {:id convo-3 :user_id user-a :summary "long conversation"}
+                     :model/MetabotConversation _ {:id convo-1 :user_id user-a :title "multi-turn chat"}
+                     :model/MetabotConversation _ {:id convo-2 :user_id user-b :title "quick question"}
+                     :model/MetabotConversation _ {:id convo-3 :user_id user-a :title "long conversation"}
                      ;; convo-1: 3 messages
                      :model/MetabotMessage      _ {:conversation_id convo-1 :role "user"      :profile_id "nlq" :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-1 :role "assistant" :profile_id "nlq" :total_tokens 0 :data []}
@@ -329,8 +329,8 @@
   (testing "conversation with no messages returns zero counts and nil profile_id"
     (let [convo-id (str (random-uuid))]
       (mt/with-temp [:model/User {user-id :id} {}
-                     :model/MetabotConversation _ {:id convo-id :user_id user-id :summary "empty conversation"}]
-        (is (=? {:summary                 "empty conversation"
+                     :model/MetabotConversation _ {:id convo-id :user_id user-id :title "empty conversation"}]
+        (is (=? {:title                   "empty conversation"
                  :message_count           0
                  :user_message_count      0
                  :assistant_message_count 0
@@ -362,8 +362,8 @@
     (let [convo-1 (str (random-uuid))
           convo-2 (str (random-uuid))]
       (mt/with-temp [:model/User {user-id :id} {}
-                     :model/MetabotConversation _ {:id convo-1 :user_id user-id :summary "conversation one"}
-                     :model/MetabotConversation _ {:id convo-2 :user_id user-id :summary "conversation two"}
+                     :model/MetabotConversation _ {:id convo-1 :user_id user-id :title "conversation one"}
+                     :model/MetabotConversation _ {:id convo-2 :user_id user-id :title "conversation two"}
                      :model/MetabotMessage      _ {:conversation_id convo-1 :role "user"      :profile_id "nlq"      :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-1 :role "assistant" :profile_id "nlq"      :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-2 :role "user"      :profile_id "internal" :total_tokens 0 :data []}

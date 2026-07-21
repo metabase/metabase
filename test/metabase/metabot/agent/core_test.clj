@@ -326,6 +326,7 @@
                    :arguments {:reasoning     "User wants to see orders"
                                :query         external-query
                                :title         "First 10 orders"
+                               :description   "The first 10 orders."
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
                  ;; Iteration 3: Final text response

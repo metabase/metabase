@@ -29,16 +29,46 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [uid    (mt/user->id :rasta)
             sid    (str (random-uuid))
-            query  (lib/limit (orders-query) 3)
-            [rows cols] (run-rows+cols query)
-            cursor (q/next-page-cursor! sid uid (lib/prepare-for-serialization query) (last rows)
-                                        {:result-cols cols})
+            ;; the executed query carries the total order — that is what makes it continuable
+            query  (q/with-total-order (lib/prepare-for-serialization (lib/limit (orders-query) 3)))
+            [rows cols] (run-rows+cols (lib/query (mp) query))
+            cursor (q/next-page-cursor! sid uid query (last rows) {:result-cols cols})
             stage  (-> (common/resolve-query-handle! sid uid cursor) :query :stages last)]
         (testing "a table-sourced query gets a keyset cursor: ORDER BY the PK, WHERE strictly past the boundary, LIMIT preserved"
           (is (some? cursor))
           (is (seq (:order-by stage)) "the next-page query carries a total order")
           (is (= ">" (ffirst (:filters stage))) "the next-page query filters strictly past the last row")
           (is (= 3 (:limit stage))))))))
+
+(deftest with-total-order-test
+  ;; The seam this closes: a page served under a partial order broke its ties however the engine
+  ;; happened to, while a keyset built afterwards imposes its own tie order — around a boundary
+  ;; inside a tie group the two disagree, dropping rows and repeating others. An unordered query
+  ;; is the extreme case (the whole result is one tie group), and it is what an agent writes by
+  ;; default. So the order goes on before execution, and the mint refuses anything else.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [uid        (mt/user->id :rasta)
+          sid        (str (random-uuid))
+          unordered  (lib/prepare-for-serialization (lib/limit (orders-query) 3))
+          ordered    (q/with-total-order unordered)
+          last-stage #(-> % :stages last)]
+      (testing "GHY-4142: an unordered query comes back ordered by the PK — a total order"
+        (is (empty? (:order-by (last-stage unordered))))
+        (is (= 1 (count (:order-by (last-stage ordered))))))
+      (testing "GHY-4142: idempotent — a second pass finds the tiebreakers already ordered"
+        (is (= ordered (q/with-total-order ordered))))
+      (testing "GHY-4142: a query whose own order is already total is left alone"
+        (let [by-pk (lib/prepare-for-serialization
+                     (-> (orders-query)
+                         (lib/order-by (lib.metadata/field (mp) (mt/id :orders :id)) :asc)
+                         (lib/limit 3)))]
+          (is (= by-pk (q/with-total-order by-pk)))))
+      (testing "GHY-4142: only the ordered query is continuable — a page served unordered has no continuation to seek"
+        (let [[rows cols] (run-rows+cols (lib/query (mp) unordered))]
+          (is (nil? (q/next-page-cursor! sid uid unordered (last rows) {:result-cols cols}))))
+        (let [[rows cols] (run-rows+cols (lib/query (mp) ordered))]
+          (mt/with-model-cleanup [:model/McpQueryHandle]
+            (is (some? (q/next-page-cursor! sid uid ordered (last rows) {:result-cols cols})))))))))
 
 (deftest next-page-cursor-bails-test
   (mt/with-current-user (mt/user->id :rasta)
@@ -76,23 +106,25 @@
   ;; The contract pinned here is "no silent gaps": whenever a cursor IS minted, following the
   ;; chain must serve exactly the unpaged result set — and when that can't be guaranteed, the
   ;; mechanism must mint nothing (the caller then sees a truncated page with no cursor: an
-  ;; explicit dead end, not a gap). A fan-out join breaks both mint-time tiebreakers: the
-  ;; source-table PK repeats across result rows (a PK-only boundary drops the boundary row's
-  ;; remaining fan-out rows), and the full-tuple fallback imposes a tie order the already-served
-  ;; first page never ran under (dropping AND repeating rows around each boundary).
+  ;; explicit dead end, not a gap). Imposing the total order before execution — what makes an
+  ;; unjoined page continuable — doesn't rescue this one: the source-table PK repeats across
+  ;; result rows, so ordering by it still leaves ties, and the full-tuple fallback can't break
+  ;; them either since fanned-out rows can be wholly identical.
   (mt/with-current-user (mt/user->id :rasta)
     (let [query     (products-orders-fanout-query)
           o-id-of   (fn [row] (nth row 2))
           reference (let [[rows _] (run-rows+cols query)] (mapv o-id-of rows))
           page-size 50
           {:keys [paged refused?]}
-          (loop [q (lib/limit query page-size), acc [], pages 1]
-            (let [[rows cols] (run-rows+cols q)
+          (loop [q     (q/with-total-order (lib/prepare-for-serialization (lib/limit query page-size)))
+                 acc   []
+                 pages 1]
+            (let [[rows cols] (run-rows+cols (lib/query (mp) q))
                   acc' (into acc (map o-id-of) rows)]
               (if (or (< (count rows) page-size) (> pages 10))
                 {:paged acc' :refused? false}
-                (if-let [nxt (#'q/next-page-query (lib/prepare-for-serialization q) cols (last rows))]
-                  (recur (lib/query (mp) nxt) acc' (inc pages))
+                (if-let [nxt (#'q/next-page-query q cols (last rows))]
+                  (recur (q/with-total-order nxt) acc' (inc pages))
                   {:paged acc' :refused? true}))))]
       (testing "GHY-4142: paging a 1:many join must either serve every result row exactly once or mint no cursor at all"
         (is (> (count reference) page-size)
@@ -104,8 +136,11 @@
               "rows served across a completed cursor chain equal the unpaged run — a shortfall means a page boundary dropped fan-out rows")
           (is (= [] (->> reference (remove (set paged)) sort vec))
               "every unpaged row appears on some page — ids listed here were dropped at a boundary")))
-      (testing "GHY-4142: a fan-out page refuses the cursor — sound fan-out paging would need the total order imposed on the first page's own execution, which the cursor mint can't do retroactively"
-        (is (true? refused?))))))
+      (testing "GHY-4142: a fan-out page refuses the cursor — no order derivable from metadata is total when the PK repeats across rows"
+        (is (true? refused?)))
+      (testing "GHY-4142: and it is refused the imposed order too — sorting by a repeating PK buys nothing"
+        (let [joined (lib/prepare-for-serialization (lib/limit query page-size))]
+          (is (= joined (q/with-total-order joined))))))))
 
 (deftest next-page-cursor-sourced-card-fan-out-test
   ;; The join that fans the result out need not be in the payload: a query sourcing a saved
@@ -144,15 +179,18 @@
   (mt/with-current-user (mt/user->id :rasta)
     (let [page-size 4
           n-pages   4
-          ids (loop [query (lib/limit (orders-query) page-size), acc [], pages 0]
-                (let [[rows cols] (run-rows+cols query)
+          ids (loop [query (q/with-total-order
+                             (lib/prepare-for-serialization (lib/limit (orders-query) page-size)))
+                     acc   []
+                     pages 0]
+                (let [[rows cols] (run-rows+cols (lib/query (mp) query))
                       id-idx (col-index cols "ID")
                       acc'   (into acc (map #(nth % id-idx) rows))
                       pages' (inc pages)]
                   (if (or (>= pages' n-pages) (< (count rows) page-size))
                     acc'
-                    (if-let [nxt (#'q/next-page-query (lib/prepare-for-serialization query) cols (last rows))]
-                      (recur (lib/query (mp) nxt) acc' pages')
+                    (if-let [nxt (#'q/next-page-query query cols (last rows))]
+                      (recur nxt acc' pages')
                       acc'))))]
       (testing "keyset paging yields strictly increasing, distinct PKs across boundaries"
         (is (= (* page-size n-pages) (count ids)))
