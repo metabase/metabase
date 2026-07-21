@@ -378,7 +378,12 @@ function assertNoDatabaseSelected() {
 }
 
 function selectDatabase(database) {
-  H.popover().findByText(database).click();
+  // The database picker popover opens automatically and re-mounts its rows as the
+  // database list finishes loading, which can detach the target row mid-click
+  // ("elements ... disappeared from the page"). Anchoring the click behind a
+  // visibility assertion makes Cypress re-query the popover chain on detach, so it
+  // clicks a freshly attached, settled row.
+  H.popover().findByText(database).should("be.visible").click();
   cy.findByTestId("selected-database").should("have.text", database);
 }
 
