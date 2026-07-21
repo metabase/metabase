@@ -3,6 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -22,6 +24,10 @@
           :user_id         user-id
           :created_at      created-at}
          row))
+
+(defn- venues-query []
+  (lib/query (mt/metadata-provider)
+             (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
 
 (deftest list-conversations-authentication-test
   (testing "GET /api/metabot/conversations requires auth"
@@ -447,3 +453,70 @@
         (finally
           (t2/delete! :model/MetabotMessage :conversation_id convo-id)
           (t2/delete! :model/MetabotConversation :id convo-id))))))
+
+(deftest record-saved-entity-test
+  (testing "POST /api/metabot/conversations/:id/saved-entity creates the card with its origin stamped"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+          (let [created (mt/user-http-request :crowberto :post 200
+                                              (str "metabot/conversations/" convo-id "/saved-entity")
+                                              {:chart_id "chart-1"
+                                               :card      {:name          "Venues by price"
+                                                           :dataset_query (venues-query)
+                                                           :display       "bar"}})]
+            (is (= "Venues by price" (:name created)))
+            (is (= {:metabot_conversation_id convo-id
+                    :metabot_chart_id        "chart-1"
+                    :display                 :bar}
+                   (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id :display]
+                                  :id (:id created))))
+            (testing "the conversation detail lists the saved entity"
+              (is (= [{:card_id (:id created) :chart_id "chart-1"}]
+                     (:saved_entities
+                      (mt/user-http-request :crowberto :get 200
+                                            (str "metabot/conversations/" convo-id))))))
+            (testing "archived cards drop out of saved_entities"
+              (t2/update! :model/Card (:id created) {:archived true})
+              (is (= []
+                     (:saved_entities
+                      (mt/user-http-request :crowberto :get 200
+                                            (str "metabot/conversations/" convo-id))))))))))))
+
+(deftest record-saved-entity-collection-mismatch-test
+  (testing "an explicit collection_id that doesn't match the dashboard's own collection 400s"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                       :model/Collection {coll-id :id} {}
+                       :model/Dashboard {dash-id :id} {}]
+          (mt/user-http-request :crowberto :post 400
+                                (str "metabot/conversations/" convo-id "/saved-entity")
+                                {:chart_id "chart-1"
+                                 :card     {:name          "x"
+                                            :dataset_query (venues-query)
+                                            :display       "bar"
+                                            :dashboard_id  dash-id
+                                            :collection_id coll-id}})
+          (is (zero? (t2/count :model/Card :metabot_conversation_id convo-id))))))))
+
+(deftest record-saved-entity-permissions-test
+  (let [user-id (mt/user->id :crowberto)
+        body    {:chart_id "chart-1"
+                 :card      {:name          "x"
+                             :dataset_query (venues-query)
+                             :display       "bar"}}]
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+        (testing "a non-participant cannot save into the conversation, and no card is created"
+          (mt/user-http-request :lucky :post 403
+                                (str "metabot/conversations/" convo-id "/saved-entity")
+                                body)
+          (is (zero? (t2/count :model/Card :metabot_conversation_id convo-id))))
+        (testing "a nonexistent conversation 404s"
+          (mt/user-http-request :crowberto :post 404
+                                (str "metabot/conversations/" (random-uuid) "/saved-entity")
+                                body))))))

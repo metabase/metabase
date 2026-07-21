@@ -108,7 +108,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
 
 // TODO: add test coverage for these
 export interface MetabotConfig {
-  agentId?: MetabotAgentId;
+  agentId: MetabotAgentId;
   emptyText?: string;
   hideSuggestedPrompts?: boolean;
   preventRetryMessage?: boolean;

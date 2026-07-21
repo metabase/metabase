@@ -230,6 +230,7 @@
                       (cond-> {:messages        messages
                                :state           state
                                :metabot-id      metabot-id
+                               :conversation-id conversation-id
                                :profile-id      (keyword profile-id)
                                :context         enriched-context
                                :eval-session-id eval-session-id

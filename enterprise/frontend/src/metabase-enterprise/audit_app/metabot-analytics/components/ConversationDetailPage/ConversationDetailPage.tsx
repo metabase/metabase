@@ -121,6 +121,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   key={item.id}
                   feedback={item}
                   chatMessages={feedbackChatMessages}
+                  conversationId={convoId}
                 />
               ))}
             </Stack>
@@ -143,6 +144,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               isDoingScience={false}
               debug
               readonly
+              conversationId={convoId}
             />
           </Card>
         </Stack>
@@ -179,9 +181,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FeedbackCard({
   feedback,
   chatMessages,
+  conversationId,
 }: {
   feedback: ConversationFeedback;
   chatMessages: MetabotChatMessage[];
+  conversationId: string;
 }) {
   const agentResponse = feedback.external_id
     ? chatMessages.find(
@@ -222,6 +226,7 @@ function FeedbackCard({
             message={agentResponse}
             debug
             readonly
+            conversationId={conversationId}
             hideActions
             getCopyText={noopGetCopyText}
             submittedFeedback={undefined}

@@ -78,6 +78,8 @@ export interface Card<
   dashboard_id: DashboardId | null;
   document_id?: DocumentId | null;
   document?: CardDocumentInfo | null;
+  metabot_conversation_id?: string | null;
+  metabot_chart_id?: string | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
 

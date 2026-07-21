@@ -91,6 +91,7 @@ export const {
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   setIsPollingForTitle,
+  markChartSaved,
 } = metabot.actions;
 
 const TITLE_POLL_INTERVAL_MS = 1500;
@@ -582,6 +583,15 @@ export const sendAgentRequest = createAsyncThunk<
                   part,
                   metadata: { editorTransform, suggestionId },
                 });
+              })
+              .with({ type: "data-entity_saved" }, (part) => {
+                dispatch(
+                  markChartSaved({
+                    entityId: part.data.chart_id,
+                    cardId: part.data.card_id,
+                  }),
+                );
+                pushDataPart({ type: "data_part", part });
               })
               .with(
                 { type: "data-generated_entity" },

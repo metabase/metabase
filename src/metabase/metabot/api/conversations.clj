@@ -10,10 +10,15 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
+   [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.request.core :as request]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -47,6 +52,10 @@
    [:title           [:maybe :string]]
    [:user_id         [:maybe ms/PositiveInt]]
    [:state           {:optional true} [:maybe ::metabot.schema/state]]
+   [:saved_entities  [:sequential
+                      [:map
+                       [:card_id  ms/PositiveInt]
+                       [:chart_id [:maybe :string]]]]]
    [:messages        [:sequential :map]]])
 
 (def ^:private ConversationTitleResponse
@@ -61,6 +70,37 @@
   [:maybe
    [:map
     [:profile_id {:optional true} [:maybe ms/NonBlankString]]]])
+
+(def ^:private SaveEntityCard
+  [:map
+   [:name                   ms/NonBlankString]
+   [:description            {:optional true} [:maybe :string]]
+   [:dataset_query          :map]
+   [:display                ms/NonBlankString]
+   [:visualization_settings {:optional true} [:maybe :map]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+
+(def ^:private SaveEntityBody
+  [:map
+   ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
+   [:chart_id [:and ms/NonBlankString [:string {:max 36}]]]
+   [:card     SaveEntityCard]])
+
+(def ^:private SaveEntityResponse
+  [:map
+   [:id                      ms/PositiveInt]
+   [:name                    ms/NonBlankString]
+   [:description             {:optional true} [:maybe :string]]
+   [:dataset_query           :map]
+   [:display                 :keyword]
+   [:visualization_settings  {:optional true} [:maybe :map]]
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id            {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:metabot_conversation_id ms/UUIDString]
+   [:metabot_chart_id        ms/NonBlankString]])
 
 ;;; ---------------------------------------- Queries ----------------------------------------
 
@@ -173,6 +213,54 @@
   [{:keys [id]} :- ConversationIdParams]
   (api/read-check :model/MetabotConversation id)
   (metabot.persistence/conversation-detail id))
+
+(api.macros/defendpoint :post "/:id/saved-entity" :- SaveEntityResponse
+  "Save a Metabot-generated chart from this conversation as a card, stamping the
+  card's origin columns in the same request — used by the inline chart's
+  manual Save button, which runs outside any agent turn. Creating and stamping
+  together (rather than stamping after a separate `POST /api/card`) means the
+  card and its origin cannot desync when the follow-up request is lost.
+
+  Accessible to any participant in the conversation or to any superuser."
+  [{:keys [id]} :- ConversationIdParams
+   _query-params
+   {:keys [chart_id card]} :- SaveEntityBody]
+  (api/read-check :model/MetabotConversation id)
+  ;; Mirror the POST /api/card pre-checks: `create-card!` itself does not check
+  ;; permissions on the query's data or the target container. Like the card API's
+  ;; `actual-collection-id`, an explicit `collection_id` on a dashboard save must
+  ;; match the dashboard's own collection.
+  (query-perms/check-run-permissions-for-query (:dataset_query card))
+  (if-let [dashboard-id (:dashboard_id card)]
+    (let [dashboard-collection-id (:collection_id (api/write-check :model/Dashboard dashboard-id))
+          [_ specified-collection-id :as specified?] (find card :collection_id)]
+      (when specified?
+        (api/check-400 (= specified-collection-id dashboard-collection-id)
+                       (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                            dashboard-collection-id specified-collection-id))))
+    (api/create-check :model/Card {:collection_id (:collection_id card)}))
+  ;; Create the card and stamp its origin in ONE transaction so they cannot desync.
+  ;; The stamp is a raw table update — it should not run the Card model's heavy
+  ;; before-update pipeline (query normalization, metadata population). The
+  ;; `:card-create` event is delayed until after the transaction commits so
+  ;; subscribers see the card.
+  (let [created (t2/with-transaction [_conn]
+                  (u/prog1 (queries/create-card!
+                            (-> (select-keys card [:name :description :dataset_query :display
+                                                   :visualization_settings :collection_id
+                                                   :dashboard_id :dashboard_tab_id])
+                                (update :display keyword)
+                                (update :visualization_settings #(or % {})))
+                            {:id api/*current-user-id*}
+                            :delay-event)
+                    (t2/update! (t2/table-name :model/Card) (:id <>)
+                                {:metabot_conversation_id id
+                                 :metabot_chart_id        chart_id})))]
+    (events/publish-event! :event/card-create
+                           {:object created :user-id api/*current-user-id*})
+    (assoc created
+           :metabot_conversation_id id
+           :metabot_chart_id        chart_id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/conversations` routes."

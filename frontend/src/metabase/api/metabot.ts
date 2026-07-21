@@ -1,5 +1,6 @@
 import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
+  Card,
   DeleteSuggestedMetabotPromptRequest,
   ListMetabotConversationsRequest,
   ListMetabotConversationsResponse,
@@ -14,6 +15,7 @@ import type {
   MetabotSlackSettings,
   MetabotSourceFeedback,
   RegenerateSuggestedMetabotPromptsResponse,
+  SaveMetabotEntityRequest,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
@@ -151,6 +153,14 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
+    saveMetabotEntity: builder.mutation<Card, SaveMetabotEntityRequest>({
+      query: ({ conversation_id, ...body }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/saved-entity`,
+        body,
+      }),
+      invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
+    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -200,6 +210,7 @@ export const {
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
+  useSaveMetabotEntityMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
