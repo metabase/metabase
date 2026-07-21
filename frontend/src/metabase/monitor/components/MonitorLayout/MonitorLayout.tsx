@@ -1,13 +1,14 @@
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
   type MonitorSection,
   trackMonitorSectionClicked,
 } from "metabase/common/monitor/analytics";
 import {
+  canAccessAiAuditing,
   canAccessAlertsManagement,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
@@ -44,6 +45,18 @@ function getActiveSection(pathname: string): MonitorSection | null {
       P.string.startsWith(Urls.monitorModelCaching()),
       () => "model-caching",
     )
+    .with(
+      P.string.startsWith(Urls.monitorAiAuditingMcp()),
+      () => "ai-auditing-mcp",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorAiAuditingConversations()),
+      () => "ai-auditing-conversations",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorAiAuditing()),
+      () => "ai-auditing-usage-stats",
+    )
     .otherwise(() => null);
 }
 
@@ -61,9 +74,12 @@ export function MonitorLayout() {
   const { pathname } = useSelector(getLocation);
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
+  const hasAiControlsFeature = useHasTokenFeature("ai_controls");
+  const mcpEnabled = useSetting("mcp-enabled?");
   const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
   const canAccessTools = useSelector(canAccessMonitoringTools);
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
+  const canAccessAiAuditingTab = useSelector(canAccessAiAuditing);
 
   const activeSection = getActiveSection(pathname);
 
@@ -114,7 +130,11 @@ export function MonitorLayout() {
         </AreaTabGroup>
       )}
       {hasLogsAndActivity && (
-        <AreaTabGroup label={t`Logs and activity`} showLabel={isNavbarOpened}>
+        <AreaTabGroup
+          label={t`Logs and activity`}
+          showLabel={isNavbarOpened}
+          mb="md"
+        >
           <AreaTab
             label={t`Background tasks`}
             icon="clipboard"
@@ -147,6 +167,56 @@ export function MonitorLayout() {
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("model-caching")}
           />
+        </AreaTabGroup>
+      )}
+      {canAccessAiAuditingTab && hasAuditAppFeature && (
+        <AreaTabGroup label={t`AI Auditing`} showLabel={isNavbarOpened}>
+          {hasAiControlsFeature ? (
+            <>
+              <AreaTab
+                label={t`Usage stats`}
+                icon="metabot"
+                to={Urls.monitorAiAuditing()}
+                isSelected={activeSection === "ai-auditing-usage-stats"}
+                showLabel={isNavbarOpened}
+                onClick={() =>
+                  trackMonitorSectionClicked("ai-auditing-usage-stats")
+                }
+              />
+              <AreaTab
+                label={t`Conversations`}
+                icon="metabot"
+                to={Urls.monitorAiAuditingConversations()}
+                isSelected={activeSection === "ai-auditing-conversations"}
+                showLabel={isNavbarOpened}
+                onClick={() =>
+                  trackMonitorSectionClicked("ai-auditing-conversations")
+                }
+              />
+            </>
+          ) : (
+            <AreaTab
+              label={t`Usage stats`}
+              icon="metabot"
+              to={Urls.monitorAiAuditing()}
+              isSelected={activeSection === "ai-auditing-usage-stats"}
+              showLabel={isNavbarOpened}
+              isGated
+              onClick={() =>
+                trackMonitorSectionClicked("ai-auditing-usage-stats")
+              }
+            />
+          )}
+          {mcpEnabled && (
+            <AreaTab
+              label={t`MCP analytics`}
+              icon="metabot"
+              to={Urls.monitorAiAuditingMcp()}
+              isSelected={activeSection === "ai-auditing-mcp"}
+              showLabel={isNavbarOpened}
+              onClick={() => trackMonitorSectionClicked("ai-auditing-mcp")}
+            />
+          )}
         </AreaTabGroup>
       )}
     </>

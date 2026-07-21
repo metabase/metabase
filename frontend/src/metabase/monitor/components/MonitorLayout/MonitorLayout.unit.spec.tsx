@@ -36,6 +36,7 @@ const { trackMonitorSectionClicked } = jest.requireMock(
 interface SetupOpts {
   isNavbarOpened?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  mcpEnabled?: boolean;
   initialRoute?: string;
   user?: ReturnType<typeof createMockUser>;
   children?: ReactNode;
@@ -81,18 +82,21 @@ function TestSidebarToggle({ onRender }: { onRender: () => void }) {
 const setup = ({
   isNavbarOpened = true,
   tokenFeatures,
+  mcpEnabled = true,
   initialRoute = "/monitor",
   user = createMockUser({ is_superuser: true }),
   children = <div data-testid="content">{"Content"}</div>,
 }: SetupOpts = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
+    "mcp-enabled?": mcpEnabled,
   });
 
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(
     createMockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
+      "mcp-enabled?": mcpEnabled,
     }),
   );
   setupUserKeyValueEndpoints({
@@ -392,5 +396,100 @@ describe("MonitorLayout", () => {
 
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  const AI_AUDITING_GROUP = "AI Auditing";
+
+  it("shows ungated Usage stats, Conversations, and MCP analytics when audit_app and ai_controls are both enabled", async () => {
+    setup({ tokenFeatures: { audit_app: true, ai_controls: true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("heading", { name: AI_AUDITING_GROUP }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Usage stats" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditing(),
+    );
+    expect(getTabGem("Usage stats")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Conversations" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingConversations(),
+    );
+    expect(screen.getByRole("link", { name: "MCP analytics" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingMcp(),
+    );
+  });
+
+  it("gates Usage stats and hides Conversations when ai_controls is unavailable", async () => {
+    setup({ tokenFeatures: { audit_app: true, ai_controls: false } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Usage stats")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Conversations" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the whole AI Auditing group when audit_app is unavailable", async () => {
+    setup({ tokenFeatures: { audit_app: false, ai_controls: true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: AI_AUDITING_GROUP }),
+    ).not.toBeInTheDocument();
+    ["Usage stats", "Conversations", "MCP analytics"].forEach((name) => {
+      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    });
+  });
+
+  it("hides MCP analytics when the MCP server toggle is off", async () => {
+    setup({
+      tokenFeatures: { audit_app: true, ai_controls: true },
+      mcpEnabled: false,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("link", { name: "Usage stats" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Conversations" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "MCP analytics" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the AI Auditing group for a non-admin user", async () => {
+    setup({
+      tokenFeatures: { audit_app: true, ai_controls: true },
+      user: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: AI_AUDITING_GROUP }),
+    ).not.toBeInTheDocument();
   });
 });
