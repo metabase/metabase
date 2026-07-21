@@ -87,6 +87,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     prompt,
     setPrompt,
     messages,
+    conversationId,
     retryMessage,
     isDoingScience,
     activeToolCalls,
@@ -363,6 +364,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               }
               isDoingScience={isDoingScience}
               debug={false}
+              conversationId={conversationId}
             />
             {isDoingScience && <MetabotThinking toolCalls={activeToolCalls} />}
           </Stack>

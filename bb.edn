@@ -13,7 +13,7 @@
         org.babashka/json {:mvn/version "0.1.6"} ;; json parsing
         table/table {:mvn/version "0.5.0"} ;; table printing
         }
- :pods {org.babashka/postgresql {:version "0.1.0"}}
+ ;; No :pods key on purpose: tasks lazily load only what they need.
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]

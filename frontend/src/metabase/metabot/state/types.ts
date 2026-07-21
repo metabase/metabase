@@ -8,7 +8,10 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-export type MetabotDataPart = Exclude<KnownDataPart, { type: "data-state" }>;
+export type MetabotDataPart = Exclude<
+  KnownDataPart,
+  { type: "data-state" } | { type: "data-conversation-title" }
+>;
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
@@ -120,6 +123,8 @@ export type MetabotReactionsState = {
 
 export interface MetabotConverstationState {
   conversationId: string;
+  loadId: string;
+  title: string | undefined;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;
@@ -147,7 +152,9 @@ export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;
 export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
+  titlePollingConversationIds: string[];
   debugMode: boolean;
+  savedChartCardIds: Record<string, number>;
 }
 
 export interface SlashCommand {

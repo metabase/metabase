@@ -137,13 +137,16 @@ function setup({
     treeItemFilter,
   } = getSidebarTestContext(exploration, tab);
 
+  // Mirrors ExplorationPage: the empty initial thread (which carries the
+  // all-hidden note) is only retained when pages are actually hidden.
+  const hasHiddenPages = allPages.some((page) => page.hidden);
   const displayTree = getExplorationSidebarTree(
     exploration,
     showHidden
       ? treeItemFilter
       : (node) => treeItemFilter(node) && !isHiddenTreeItem(node),
     sortOrder,
-    { keepEmptyInitialThread: tab === "all" },
+    { keepEmptyInitialThread: tab === "all" && hasHiddenPages },
   );
 
   const sidebar = (
@@ -535,17 +538,14 @@ describe("ExplorationSidebar", () => {
       ).toHaveAttribute("aria-expanded", "true");
     });
 
-    it("shows the all-hidden note (not the generic message) when there is nothing to show", () => {
+    it("shows the generic empty message (not the all-hidden note) when nothing is hidden yet", () => {
+      // No pages at all — e.g. an exploration still generating its charts.
+      // Nothing is hidden, so the empty state should show rather than the note.
       setup({ queries: [] });
 
-      // The thread anchor is kept on the "All" tab; whenever it has no
-      // visible children the inline note shows in place of its rows.
-      expect(screen.getByText("Initial investigation")).toBeInTheDocument();
+      expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
       expect(
-        screen.getByText("All items have been hidden."),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("Nothing to see here yet."),
+        screen.queryByText("All items have been hidden."),
       ).not.toBeInTheDocument();
     });
 
