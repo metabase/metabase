@@ -20,10 +20,9 @@ type History = HistoryRouterProps["history"];
  * which silently discarded state such as the text typed into a modal that was
  * opened right after clicking a link.
  *
- * `onLocationChange` runs inside the same history subscription, so `state.routing`
- * is updated as part of the transition the way v3's `syncHistoryWithStore` did.
- * Thunks read the store synchronously right after navigating, so a store that
- * lags a render makes them push a stale location. This stays the blocking
+ * `onLocationChange` runs inside the same history subscription, so LOCATION_CHANGE
+ * is dispatched as part of the transition the way v3's `syncHistoryWithStore` did,
+ * and the reducers keyed off it settle before the next render. This stays the blocking
  * history's only subscriber: its POP-revert bookkeeping is per-history rather
  * than per-listener, so a second subscription would double-evaluate the leave
  * hooks.

@@ -44,8 +44,8 @@ export type Query<T = DefaultQuery> = T;
 
 /**
  * The `state` carried through a navigation. history@3 typed this `any` and the
- * legacy route-prop readers were written against that; tightened when the
- * `state.routing` slice is thinned to the pure v7 shape (DEV-2290).
+ * legacy route-prop readers were written against that; tightened once those call
+ * sites migrate off the compat shape onto the pure v7 `Location`.
  */
 export type LocationState = any;
 
@@ -53,8 +53,8 @@ export type LocationState = any;
  * An entry in a history stack. Mirrors history@3's `Location`: alongside the URL
  * parts it carries the parsed `query` object and the navigation `action` that
  * the legacy route-prop call sites still read. The generic is the shape of
- * `query`, not `state`. Thinned to the pure v7 shape (no `query`/`action`) when
- * the `state.routing` slice is retired (DEV-2290).
+ * `query`, not `state`. Thinned to the pure v7 shape (no `query`/`action`) once
+ * those call sites migrate off `query`/`action` (follow-up to DEV-2290).
  *
  * @see https://api.reactrouter.com/v7/interfaces/react-router.Location.html
  */

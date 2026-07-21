@@ -8,7 +8,7 @@ import {
 
 import { useDispatch } from "metabase/redux";
 
-import { LOCATION_CHANGE } from "../routing-reducer";
+import { LOCATION_CHANGE } from "../location-change";
 
 import { toV3Location } from "./location";
 import { notifyLocationListeners, setV7Navigate } from "./navigator";
@@ -19,14 +19,13 @@ import { notifyLocationListeners, setV7Navigate } from "./navigator";
  *
  * - registers the live `navigate` so the redux navigator adapter (and thus
  *   `dispatch(push(...))`) can drive the v7 router;
- * - mirrors every location into `state.routing` via LOCATION_CHANGE, so
- *   `getLocation` / `isNavbarOpen` / `errorPage` keep working.
+ * - emits LOCATION_CHANGE on every navigation so `isNavbarOpen` / `errorPage`
+ *   (and trace-id rotation) keep reacting to route changes.
  *
  * The mirror subscribes to the history when one is passed, because v3 dispatched
- * LOCATION_CHANGE as part of the transition rather than after a render. Thunks
- * read the store synchronously right after navigating (`setEditingDashboard`
- * pushes `{ ...getLocation(getState()) }`), so a store that lags a render makes
- * them push a stale location and clobber query params that were just set.
+ * LOCATION_CHANGE as part of the transition rather than after a render, so the
+ * reducers keyed off it (`isNavbarOpen`, `errorPage`) settle before the new route
+ * renders.
  * Falls back to the rendered location when no history is available, which is how
  * tests mount the tree under a plain `<MemoryRouter>`. Deleted with the v3 engine
  * in Phase 4.
