@@ -75,7 +75,7 @@
        (into (sorted-set))))
 
 (def ^:private slug-id-prefix-re
-  #"#\d+")
+  #"#\d+-")
 
 (defn- replace-entropy
   [s]
