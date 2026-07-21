@@ -1,13 +1,12 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { Metabot } from "./Metabot";
 
 export function MetabotDataStudioSidebar() {
-  const location = useSelector(getLocation);
+  const location = useLocation();
   const disabled = !location.pathname?.startsWith(Urls.transformList());
 
   return (

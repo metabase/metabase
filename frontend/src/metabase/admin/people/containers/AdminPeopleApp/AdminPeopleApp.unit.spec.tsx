@@ -4,8 +4,6 @@ import { createTenantsRouteGuard } from "metabase/admin/utils";
 import {
   createMockAdminAppState,
   createMockAdminState,
-  createMockLocation,
-  createMockRoutingState,
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
@@ -78,11 +76,6 @@ const setupTenantRoute = async (initialRoute: string) => {
     }),
     currentUser: createMockUser({
       is_superuser: true,
-    }),
-    routing: createMockRoutingState({
-      locationBeforeTransitions: createMockLocation({
-        pathname: initialRoute,
-      }),
     }),
     settings: createMockSettingsState({
       "setup-embedding-autoenabled": true,

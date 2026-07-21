@@ -12,8 +12,7 @@ import {
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Outlet } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { Outlet, useLocation } from "metabase/router";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
@@ -30,7 +29,7 @@ export function DataStudioLayout() {
   });
   const isNavbarOpened = _isNavbarOpened !== false;
 
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
