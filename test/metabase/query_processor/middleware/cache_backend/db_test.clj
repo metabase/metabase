@@ -69,7 +69,6 @@
                                    (await-race! (first args))
                                    (apply orig-ins-instances args))
             cache-backend        (i/cache-backend :db)]
-        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs-fn {ins-pks-var       coordinated-ins-pks
                          ins-instances-var coordinated-ins-inst}
           (fn []

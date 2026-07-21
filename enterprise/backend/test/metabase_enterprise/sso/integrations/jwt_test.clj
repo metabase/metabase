@@ -630,6 +630,7 @@
         (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
         ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name               (constantly "test")]
@@ -822,6 +823,7 @@
                                                       :is_active false}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
           ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+          ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)]
             (testing "with user provisioning turned off"
@@ -969,6 +971,7 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
       ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                     appearance.settings/site-name               (constantly "test")]
@@ -1375,3 +1378,21 @@
                     (is (some? tenant))
                     (testing "tenant created but with no attributes since the value wasn't a map"
                       (is (nil? (:attributes tenant))))))))))))))
+
+(deftest successful-jwt-login-does-not-log-pii-test
+  (testing "Successful JWT authentication should not log user's first or last name"
+    (with-jwt-default-setup!
+      (mt/with-log-messages-for-level [log-messages [metabase-enterprise.sso.providers.jwt :info]]
+        ;; client-full-response uses mock client (in-process, future) so dynamic bindings are conveyed
+        (let [response (client/client-full-response :get 302 "/auth/sso"
+                                                    {:request-options {:redirect-strategy :none}}
+                                                    :return_to default-redirect-uri
+                                                    :jwt
+                                                    (jwt/sign
+                                                     {:email      "rasta@metabase.com"
+                                                      :first_name "Rasta"
+                                                      :last_name  "Toucan"}
+                                                     default-jwt-secret))]
+          (is (sso.test-setup/successful-login? response))
+          (is (not-any? #(re-find #"Rasta|Toucan" (:message %)) (log-messages))
+              "Log messages should not contain user's first or last name"))))))

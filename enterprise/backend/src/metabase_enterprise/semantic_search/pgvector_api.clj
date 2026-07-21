@@ -22,7 +22,6 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [unresolved-require]}
 (comment
   (require '[metabase-enterprise.semantic-search.db.datasource :as semantic.db])
   (def pgvector (or @semantic.db/data-source (semantic.db/init-db!)))
