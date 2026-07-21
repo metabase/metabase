@@ -1,9 +1,12 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type {
   AvailableDimension,
+  AvailableDimensionsResult,
   MetricSourceId,
+  SourceDisplayInfo,
 } from "metabase/metrics-viewer/types";
 import type { DimensionPickerSection } from "metabase/metrics-viewer/utils";
 
@@ -17,6 +20,22 @@ export function useDimensionPickerSidebarSections(): DimensionPickerSection[] {
     sourceDataById,
   } = useMetricsViewerContext();
 
+  return useMemo(
+    () =>
+      getDimensionPickerSidebarSections(
+        availableDimensions,
+        sourceOrder,
+        sourceDataById,
+      ),
+    [availableDimensions, sourceDataById, sourceOrder],
+  );
+}
+
+function getDimensionPickerSidebarSections(
+  availableDimensions: AvailableDimensionsResult,
+  sourceOrder: MetricSourceId[],
+  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>,
+) {
   const sections: DimensionPickerSection[] = [];
 
   const pushSection = (

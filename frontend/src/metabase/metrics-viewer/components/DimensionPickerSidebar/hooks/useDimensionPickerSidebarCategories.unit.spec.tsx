@@ -575,6 +575,111 @@ describe("useDimensionPickerSidebarCategories", () => {
     ]);
   });
 
+  it("shows every dimension shared by repeated metric slots", () => {
+    const { result } = setup({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: {
+                  0: "dim-created-at",
+                  1: "dim-created-at",
+                },
+              },
+            },
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Updated At",
+                dimensionMapping: {
+                  0: "dim-updated-at",
+                  1: "dim-updated-at",
+                },
+              },
+            },
+            {
+              icon: "label",
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Category",
+                dimensionMapping: {
+                  0: "dim-category",
+                  1: "dim-category",
+                },
+              },
+            },
+            {
+              icon: "label",
+              isPreferred: false,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Title",
+                dimensionMapping: { 0: "dim-title", 1: "dim-title" },
+              },
+            },
+            {
+              icon: "io",
+              dimensionBreakoutInfo: {
+                type: "boolean",
+                label: "Is Active",
+                dimensionMapping: {
+                  0: "dim-is-active",
+                  1: "dim-is-active",
+                },
+              },
+            },
+            {
+              icon: "int",
+              dimensionBreakoutInfo: {
+                type: "numeric",
+                label: "Amount",
+                dimensionMapping: { 0: "dim-amount", 1: "dim-amount" },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+      },
+      metricSlots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: REVENUE_SOURCE_ID },
+      ],
+    });
+
+    expect(result.current.map((category) => category.name)).toEqual([
+      "Time",
+      "Category",
+      "Title",
+      "Is Active",
+      "Amount",
+    ]);
+    expect(result.current.find((category) => category.name === "Time")).toEqual(
+      expect.objectContaining({
+        targetItems: [
+          expect.objectContaining({ name: "Created At" }),
+          expect.objectContaining({ name: "Updated At" }),
+        ],
+      }),
+    );
+    expect(
+      result.current.every(
+        (category) =>
+          category.dimensionBreakoutInfo.dimensionMapping[0] != null &&
+          category.dimensionBreakoutInfo.dimensionMapping[1] != null,
+      ),
+    ).toBe(true);
+  });
+
   it("hides categories that do not match every metric slot", () => {
     const { result } = setup({
       availableDimensions: {

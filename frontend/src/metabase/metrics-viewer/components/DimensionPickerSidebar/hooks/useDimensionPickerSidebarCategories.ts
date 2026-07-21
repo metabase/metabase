@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
@@ -16,9 +17,20 @@ import { useDimensionPickerSidebarSections } from "./useDimensionPickerSidebarSe
 export function useDimensionPickerSidebarCategories(): DimensionPickerSidebarCategory[] {
   const { metricSlots } = useMetricsViewerContext();
   const sections = useDimensionPickerSidebarSections();
+
+  return useMemo(
+    () => getDimensionPickerSidebarCategories(sections, metricSlots),
+    [metricSlots, sections],
+  );
+}
+
+function getDimensionPickerSidebarCategories(
+  sections: ReturnType<typeof useDimensionPickerSidebarSections>,
+  metricSlots: MetricSlot[],
+) {
   const items = sections
     .flatMap((section) => section.items)
-    .filter(shouldShowInDefaultSidebar);
+    .filter((item) => shouldShowInDefaultSidebar(item, metricSlots));
   const categories: DimensionPickerSidebarCategory[] = [];
   const groupedItems = new Map<string, DimensionPickerItem[]>();
 
@@ -86,7 +98,14 @@ function isTypeKeyedAggregateCategory(
   return config.matchMode === "aggregate" && key === `type:${config.type}`;
 }
 
-function shouldShowInDefaultSidebar(item: DimensionPickerItem) {
+function shouldShowInDefaultSidebar(
+  item: DimensionPickerItem,
+  metricSlots: MetricSlot[],
+) {
+  if (metricSlots.length > 1 && hasMappingForEverySlot(item, metricSlots)) {
+    return true;
+  }
+
   if (item.dimensionBreakoutInfo.type === "numeric") {
     return false;
   }
@@ -138,11 +157,11 @@ function getSidebarCategoryName(item: DimensionPickerItem) {
 }
 
 function hasMappingForEverySlot(
-  category: DimensionPickerSidebarCategory,
+  item: DimensionPickerItem,
   metricSlots: MetricSlot[],
 ) {
   return metricSlots.every(
-    (slot) => category.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex],
+    (slot) => item.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex],
   );
 }
 

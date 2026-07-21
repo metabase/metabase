@@ -2535,6 +2535,21 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
   });
 
   describe("Shared dimension matching", () => {
+    it("shows every dimension shared by repeated metric slots", () => {
+      visitViewerWithMetrics(["Plain products", "Plain products"]);
+
+      H.MetricsViewer.openDimensionPickerSidebar().within(() => {
+        cy.findByText("Dimensions").should("be.visible");
+        cy.findByRole("button", { name: "Time" }).should("be.visible");
+        cy.findByRole("button", { name: "Category" }).should("be.visible");
+        cy.findByRole("button", { name: "Title" }).should("be.visible");
+        cy.findByRole("button", { name: "Vendor" }).should("be.visible");
+        cy.findByRole("button", { name: "Price" }).should("be.visible");
+        cy.findByRole("button", { name: "Rating" }).should("be.visible");
+        cy.findByRole("button", { name: "Created At" }).should("not.exist");
+      });
+    });
+
     it("shares dimensions with the same source column under the first metric's dimension name", () => {
       visitViewerWithMetrics([
         "Orders with product category",
