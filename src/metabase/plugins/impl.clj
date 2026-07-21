@@ -191,16 +191,15 @@
 
 (defn load-plugins!
   "Load Metabase plugins. Bundled drivers are compiled directly into the uberjar and their plugin manifests are
-  discovered on the classpath at `metabase/<driver>/metabase-plugin.yaml`. User-supplied plugins (e.g. Oracle JDBC
-  driver JARs) are loaded from the plugins directory, which defaults to `./plugins`.
+  discovered on the classpath at `metabase/<driver>/metabase-plugin.yaml`. User-supplied plugins are loaded from the
+  plugins directory, which defaults to `./plugins`.
 
   When loading plugins, Metabase performs the following steps:
 
   *  Metabase creates the plugins directory if it does not already exist.
   *  Each JAR in the plugins directory that *does not* include a Metabase plugin manifest is added to the classpath.
-  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), a lazy-loading Metabase driver
-     is registered; when the driver is initialized (automatically, when certain methods are called) the JAR is added
-     to the classpath and the driver namespace is loaded.
+  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), non-driver plugins initialize
+     immediately. Driver plugins register lazily unless their manifest opts out of lazy loading.
   *  Bundled driver plugin manifests are loaded from the classpath (not from disk).
 
   This function will only perform loading steps the first time it is called — it is safe to call this function more

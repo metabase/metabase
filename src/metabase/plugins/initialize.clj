@@ -3,8 +3,8 @@
   Metabase launches as soon as all dependencies for that plugin are met; for plugins with unmet dependencies, it is
   retried after other plugins are loaded (e.g. for things like BigQuery which depend on the shared Google driver.)
 
-  Note that this is not the same thing as initializing *drivers* -- drivers are initialized lazily when first needed;
-  this step on the other hand runs at launch time and sets up that lazy load logic."
+  Non-driver plugins initialize at launch. Driver plugins can instead register a lazy placeholder and defer their code
+  until the driver is first needed."
   (:require
    [metabase.plugins.dependencies :as deps]
    [metabase.plugins.init-steps :as init-steps]
@@ -15,6 +15,27 @@
 
 (defonce ^:private initialized-plugin-names (atom #{}))
 
+(def plugin-api-version
+  "Current version of the generic Metabase plugin initialization contract."
+  1)
+
+(defn- validate-plugin-api-version!
+  [{declared-version :metabase-plugin-api-version, {plugin-name :name} :info, driver-or-drivers :driver}]
+  ;; Existing driver manifests predate the generic contract and remain valid when the field is absent.
+  (cond
+    (and (nil? declared-version) (empty? (u/one-or-many driver-or-drivers)))
+    (throw (ex-info (format "Non-driver plugin %s must declare Metabase plugin API version %s."
+                            (pr-str plugin-name) plugin-api-version)
+                    {:plugin-name           plugin-name
+                     :supported-api-version plugin-api-version}))
+
+    (and (some? declared-version) (not= plugin-api-version declared-version))
+    (throw (ex-info (format "Plugin %s requires unsupported Metabase plugin API version %s; this server supports %s."
+                            (pr-str plugin-name) (pr-str declared-version) plugin-api-version)
+                    {:plugin-name           plugin-name
+                     :plugin-api-version    declared-version
+                     :supported-api-version plugin-api-version}))))
+
 (defn- init!
   [{:keys [add-to-classpath!], init-steps :init, {plugin-name :name} :info, driver-or-drivers :driver, :as info}]
   {:pre [(string? plugin-name)]}
@@ -24,8 +45,11 @@
       (doseq [{:keys [lazy-load], :or {lazy-load true}, :as driver} drivers]
         (when lazy-load
           (lazy-loaded-driver/register-lazy-loaded-driver! (assoc info :driver driver))))
-      ;; if *any* of the drivers is not lazy-load, initialize it now
-      (when (some false? (map :lazy-load drivers))
+      ;; Non-driver plugins have no lazy placeholder to register, so initialize them eagerly. Driver
+      ;; plugins keep their existing behavior: initialize now only when at least one driver opts out of
+      ;; lazy loading.
+      (when (or (empty? drivers)
+                (some false? (map :lazy-load drivers)))
         (when add-to-classpath!
           (add-to-classpath!))
         (init-steps/do-init-steps! init-steps)))
@@ -48,12 +72,12 @@
   "Initialize plugin using parsed info from a plugin manifest. Returns truthy if plugin was successfully initialized;
   falsey otherwise."
   [info :- [:map
+            [:metabase-plugin-api-version {:optional true} :int]
             [:info [:map
                     [:name    :string]
                     [:version :string]]]]]
-  (or
-   (initialized? info)
-   (locking initialized-plugin-names
-     (or
-      (initialized? info)
-      (init! info)))))
+  (validate-plugin-api-version! info)
+  (or (initialized? info)
+      (locking initialized-plugin-names
+        (or (initialized? info)
+            (init! info)))))
