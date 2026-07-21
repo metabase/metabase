@@ -17,6 +17,12 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 
+// Toggling a sidebar option re-renders (and re-runs the query of) the embedded
+// question inside the already-loaded preview iframe. That round-trip can exceed
+// Cypress's default 4s command timeout, so lookups that depend on the re-render
+// finishing get a longer budget to wait it out.
+const RERENDER_TIMEOUT = 15000;
+
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed options";
 
@@ -641,7 +647,7 @@ describe(suiteTitle, () => {
 
     cy.log("assert that alert button appears in preview");
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
       .should("be.visible");
 
     cy.log(
@@ -653,7 +659,7 @@ describe(suiteTitle, () => {
       .click()
       .should("not.be.checked");
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
       .should("be.visible");
 
     cy.log("assert that unchecking alerts will close the alert modal");
@@ -663,15 +669,20 @@ describe(suiteTitle, () => {
     // question, so a cached body (and the element found inside it) goes stale
     // and the "Alerts" ActionIcon detaches mid-click. Asserting visibility and
     // clicking as separate re-queried chains lets Cypress re-run the full query
-    // for the action and land on a freshly-attached, stable button.
+    // for the action and land on a freshly-attached, stable button. The re-render
+    // re-executes the question's query inside the already-loaded iframe, which can
+    // exceed the default 4s command timeout, so give these lookups a longer budget.
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
       .should("be.visible");
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
       .click();
     H.getSimpleEmbedIframeContent()
-      .findByRole("heading", { name: newAlertModalTitle })
+      .findByRole("heading", {
+        name: newAlertModalTitle,
+        timeout: RERENDER_TIMEOUT,
+      })
       .should("be.visible");
 
     getEmbedSidebar()
