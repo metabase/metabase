@@ -39,6 +39,12 @@
 (def ^:private bare-form-re
   (re-pattern (str "(?:#_\\s*|\\^)" ignore-marker "(?![\\w./-])")))
 
+;; The ignore key buried behind other keys in a metadata/attr map, e.g. `^{:added "x" :clj-kondo/ignore
+;; [:y]}`. Matched separately and tagged `:embedded?` -- these count and need justification like any
+;; ignore, but a removal can't excise them without taking the map's other keys, so removal skips them.
+(def ^:private embedded-form-re
+  (re-pattern (str "\\{[^{}]*?" ignore-marker "\\s*\\[([^\\]]*)\\]")))
+
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
   Same length as the input, so offsets and line numbers carry over.
@@ -82,15 +88,6 @@
   (map (comp keyword #(subs % 1))
        (re-seq #":[A-Za-z][A-Za-z0-9*+!?<>=._/-]*" vector-contents)))
 
-(defn line-linters
-  "Linter keywords suppressed by inline ignore forms on `line`.
-  The bare vector-less form counts as `:all`.
-  Like [[scan]], ignore forms inside string literals or line comments don't count."
-  [line]
-  (let [masked (mask-strings-and-comments line)]
-    (concat (mapcat (comp linter-keywords second) (re-seq vector-form-re masked))
-            (repeat (count (re-seq bare-form-re masked)) :all))))
-
 (defn- offset->line
   "1-based line number of character offset `i` in `content`."
   [content i]
@@ -131,15 +128,30 @@
 (defn ignore-matches
   "Inline ignore matches in `content`, in file order:
   `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
-  Matches inside string literals or line comments are excluded."
+  An ignore key buried behind other attr-map keys is included too, tagged `:embedded? true` -- it
+  counts and needs justification, but removal tooling must skip it (excising it would take the map's
+  other keys along). Matches inside string literals or line comments are excluded."
   [content]
-  (let [masked (mask-strings-and-comments content)]
-    (->> (concat (matches-with-offsets vector-form-re masked false)
-                 (matches-with-offsets bare-form-re masked true))
+  (let [masked   (mask-strings-and-comments content)
+        primary  (concat (matches-with-offsets vector-form-re masked false)
+                         (matches-with-offsets bare-form-re masked true))
+        covered? (fn [{:keys [start end]}]
+                   (some #(and (< start (:end %)) (< (:start %) end)) primary))
+        embedded (->> (matches-with-offsets embedded-form-re masked false)
+                      (remove covered?)
+                      (map #(assoc % :embedded? true)))]
+    (->> (concat primary embedded)
          (sort-by :start)
          (map #(assoc %
                       :line       (offset->line masked (:start %))
                       :justified? (justified? content masked (:start %) (:end %)))))))
+
+(defn line-linters
+  "Linter keywords suppressed by inline ignore forms on `line`.
+  The bare vector-less form counts as `:all`.
+  Like [[scan]], ignore forms inside string literals or line comments don't count."
+  [line]
+  (mapcat :linters (ignore-matches line)))
 
 (defn scan
   "Occurrences of inline ignore forms under `roots` (relative to the repo root).
@@ -155,10 +167,11 @@
          :let  [content (slurp f)]
          :when (str/includes? content ignore-marker)
          m     (ignore-matches content)]
-     {:file       (.getPath f)
-      :line       (:line m)
-      :linters    (:linters m)
-      :justified? (:justified? m)})))
+     (cond-> {:file       (.getPath f)
+              :line       (:line m)
+              :linters    (:linters m)
+              :justified? (:justified? m)}
+       (:embedded? m) (assoc :embedded? true)))))
 
 (defn actual-counts
   "Per-linter occurrence counts for `occurrences`, as returned by [[scan]]."

@@ -35,10 +35,11 @@
                   :reduce-without-init                                                 3
                   :redundant-fn-wrapper                                                1
                   :syntax                                                              2
+                  :type-mismatch                                                       2
                   :unquote-not-syntax-quoted                                           1
                   :unresolved-namespace                                                3
                   :unresolved-require                                                  1
-                  :unresolved-symbol                                                   4
+                  :unresolved-symbol                                                   6
                   :unsorted-required-namespaces                                        1
                   :unused-alias                                                        1
                   :unused-binding                                                      9

@@ -258,8 +258,9 @@
                     (let [span (subs masked start end)]
                       (= (count (filter #{\{} span))
                          (count (filter #{\}} span)))))
+        ;; embedded matches share their attr map with other keys; excising one would take those along
         {removable true, unbalanced false}
-        (group-by balanced?
+        (group-by (every-pred (complement :embedded?) balanced?)
                   (->> (kondo-ratchet/ignore-matches text)
                        (filter (comp rowset :line))
                        (remove (comp names-lsp? :linters))))
@@ -366,7 +367,7 @@
                                        (remove-ignores-at (slurp file) (map :row file-candidates))]
                                    (spit file text)
                                    (doseq [row skipped]
-                                     (println (format "WARNING: %s:%d skipped -- the ignore form's braces don't balance within the match; remove it by hand"
+                                     (println (format "WARNING: %s:%d skipped -- can't be excised cleanly (embedded in a shared attr map, or unbalanced braces); remove it by hand"
                                                       file row)))
                                    ;; whether the removed site carried a marker decides where its marker
                                    ;; goes on restore ([[site-restore-plan]]) -- record it, don't infer it

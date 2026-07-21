@@ -102,6 +102,9 @@
     [:deprecated-var]   "#_ {:clj-kondo/ignore [:deprecated-var]} (old-fn)"
     [:attr-map]         "(ns b {:clj-kondo/ignore [:attr-map]})"
     [:extra]            "#_{:clj-kondo/ignore [:extra] :reason 1}"
+    ;; the ignore key buried behind other attr-map keys still counts (tagged :embedded? in matches)
+    [:buried]           "(def ^{:added \"0.1\" :clj-kondo/ignore [:buried]} x 1)"
+    [:buried]           "(ns b {:doc \"d\" :clj-kondo/ignore [:buried]})"
     ;; vector-less forms suppress everything -> :all
     [:all]              "  #_:clj-kondo/ignore"
     [:all]              "  #_ :clj-kondo/ignore (foo)"
