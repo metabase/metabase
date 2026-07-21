@@ -159,6 +159,48 @@
   (testing "a model that feeds no search-model hooks has nothing to capture"
     (is (nil? (search.spec/hook-where-fields :model/User)))))
 
+(deftest ^:parallel search-models-to-update-with-changes-test
+  (testing "only hooks whose :fields intersect the changed columns fire"
+    (is (= #{}
+           (search.spec/search-models-to-update-with-changes (t2/instance :model/Card {:id 1}) {:cache_ttl 123})))
+    (testing "primary hooks plus the action/indexed-entity joins feed off :name; pre and post dedupe to one
+              message each, since the where clause is id-based and the id itself doesn't change"
+      (is (= #{["indexed-entity" [:= 1 :model_index.model_id]]
+               ["action" [:= 1 :this.model_id]]
+               ["card" [:= 1 :this.id]]
+               ["dataset" [:= 1 :this.id]]
+               ["metric" [:= 1 :this.id]]}
+             (search.spec/search-models-to-update-with-changes (t2/instance :model/Card {:id 1}) {:name "x"})))))
+  (testing "a change to a field that also parameterizes the hook's own where clause emits distinct pre- and
+            post-image messages: :model/ModelIndexValue's composite id is both a hook field and the join key"
+    (is (= #{["indexed-entity" [:and [:= 5 :this.model_index_id] [:= 10 :this.model_pk]]]
+             ["indexed-entity" [:and [:= 5 :this.model_index_id] [:= 20 :this.model_pk]]]}
+           (search.spec/search-models-to-update-with-changes
+            (t2/instance :model/ModelIndexValue {:model_index_id 5 :model_pk 10 :name "foo"})
+            {:model_pk 20}))))
+  (testing "a honeysql-expression change contributes to hook relevance but has no computable post-image value:
+            it's excluded from the merge, so pre and post collapse to the same id-based message"
+    (is (= #{["card" [:= 42 :this.id]]
+             ["dataset" [:= 42 :this.id]]
+             ["metric" [:= 42 :this.id]]}
+           (search.spec/search-models-to-update-with-changes
+            (t2/instance :model/Card {:id 42})
+            {:view_count [:+ :view_count 1]}))))
+  (testing "a change to a join-topology column fires the hook even when no content field changed: flipping
+            revision.most_recent emits pre- and post-image variants (the post-image [:= false true] and the
+            cross-model [:= \"Card\" \"Dashboard\"] clauses re-derive nothing, harmlessly)"
+    (is (= #{["card"      [:and [:= 7 :this.id] [:= true true] [:= "Card" "Card"]]]
+             ["card"      [:and [:= 7 :this.id] [:= false true] [:= "Card" "Card"]]]
+             ["dataset"   [:and [:= 7 :this.id] [:= true true] [:= "Card" "Card"]]]
+             ["dataset"   [:and [:= 7 :this.id] [:= false true] [:= "Card" "Card"]]]
+             ["metric"    [:and [:= 7 :this.id] [:= true true] [:= "Card" "Card"]]]
+             ["metric"    [:and [:= 7 :this.id] [:= false true] [:= "Card" "Card"]]]
+             ["dashboard" [:and [:= 7 :this.id] [:= true true] [:= "Card" "Dashboard"]]]
+             ["dashboard" [:and [:= 7 :this.id] [:= false true] [:= "Card" "Dashboard"]]]}
+           (search.spec/search-models-to-update-with-changes
+            (t2/instance :model/Revision {:id 999 :model "Card" :model_id 7 :most_recent true})
+            {:most_recent false})))))
+
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"
     (let [hash1 (search.spec/index-version-hash)
