@@ -12,7 +12,7 @@
    [metabase.channel.render.js.svg :as js.svg])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
-   (org.graalvm.polyglot Context Engine HostAccess)
+   (org.graalvm.polyglot Context Engine)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -51,44 +51,35 @@
     (is (= "0.0"
            (.getAttribute line "fill-opacity")))))
 
-(defn- context-on-engine ^Context [^Engine engine]
-  (.. (Context/newBuilder (into-array String ["js"]))
-      (engine engine)
-      (allowHostAccess HostAccess/NONE)
-      (build)))
-
-(defn- load-bundle-ms
-  "Load the static-viz bundle into a fresh context on `engine`, returning the wall-clock load time in ms."
-  ^double [^Engine engine]
-  (let [^Context ctx (context-on-engine engine)
+(defn- load-custom-viz-bundle-ms
+  "Load the slim custom-viz bundle into a fresh UNTRUSTED isolate context on the currently-bound shared
+  untrusted-plugin engine, returning the wall-clock load time in ms."
+  ^double []
+  (let [^Context ctx (js.graal/untrusted-plugin-context)
         start        (System/nanoTime)]
     (try
-      (js.graal/load-resource ctx js.common/bundle-resource-path)
+      (js.graal/load-resource ctx js.common/custom-viz-bundle-resource-path)
       (/ (- (System/nanoTime) start) 1e6)
       (finally (.close ctx true)))))
 
-(deftest ^:mb/slow shared-engine-parsed-source-cache-speeds-bundle-reloads-test
-  (testing "reloading the ~16MB static-viz bundle on the same engine reuses its parsed-source cache"
-    ;; Same Engine-level cache that keeps the untrusted-plugin isolate's per-render plugin-bundle reloads cheap
-    ;; (see js.graal/do-with-untrusted-static-viz-context). Tested on the plain engine because an UNTRUSTED
-    ;; engine would need the full sandbox context builder; the parsed-source cache is identical for both.
-    ;;
-    ;; Pre-warm the host JVM's JS parser with a throwaway engine so the measured gap reflects the engine's
-    ;; parsed-source cache, not one-time JIT warmup.
-    (let [^Engine warmup (#'js.graal/create-engine)]
-      (load-bundle-ms warmup)
-      (load-bundle-ms warmup)
+(deftest shared-engine-parsed-source-cache-speeds-bundle-reloads-test
+  (testing "reloading the slim custom-viz bundle in fresh UNTRUSTED isolate contexts reuses the engine's parsed-source cache"
+    (let [^Engine warmup (#'js.graal/new-untrusted-plugin-engine)]
+      (with-redefs [js.graal/shared-untrusted-plugin-engine (delay warmup)]
+        (load-custom-viz-bundle-ms)
+        (load-custom-viz-bundle-ms))
       (.close warmup))
-    (let [^Engine engine (#'js.graal/create-engine)
-          cold           (load-bundle-ms engine)          ; first parse of the bundle on this engine: cold
-          warm           (min (load-bundle-ms engine)     ; reloads on the same engine hit the cache
-                              (load-bundle-ms engine))]
-      (.close engine)
+    (let [^Engine engine (#'js.graal/new-untrusted-plugin-engine)
+          [cold warm]    (with-redefs [js.graal/shared-untrusted-plugin-engine (delay engine)]
+                           (try
+                             [(load-custom-viz-bundle-ms)          ; first parse on this engine: cold
+                              (min (load-custom-viz-bundle-ms)     ; reloads on the same engine hit the cache
+                                   (load-custom-viz-bundle-ms))]
+                             (finally (.close engine))))]
       (testing (format "(cold=%.0fms warm=%.0fms)" cold warm)
-        ;; Observed ~2x cheaper; assert a generous 25% floor so the timing test stays robust to noise.
         (is (< warm (* 0.75 cold)))))))
 
-(deftest ^:mb/slow untrusted-context-loads-slim-bundle-test
+(deftest untrusted-context-loads-slim-bundle-test
   (testing "the untrusted isolate pool loads the slim custom-viz bundle, exposing the interface surface it needs"
     (js.graal/do-with-untrusted-static-viz-context
      (fn [^Context ctx]
@@ -100,11 +91,8 @@
        (is (= "undefined" (.asString (.eval ctx "js" "typeof MetabaseStaticViz.getCellBackgroundColorsJSON")))
            "the full static-viz bundle (getCellBackgroundColorsJSON present) leaked into the untrusted pool")))))
 
-(deftest ^:mb/slow untrusted-static-viz-context-is-pooled-test
+(deftest untrusted-static-viz-context-is-pooled-test
   (testing "pooled untrusted isolate contexts are reused across renders (bundle parsed once, not per render)"
-    ;; Regression guard: the previous fresh-context-per-render path re-parsed the ~16MB bundle every render
-    ;; (a 55s pulse-test regression). The pool loads the bundle once and hands the same context to each render.
-    ;; Tests run in :test mode (config/is-dev? false), so do-with-untrusted... takes the pooled branch.
     (let [ids (atom [])]
       (dotimes [_ 3]
         (js.graal/do-with-untrusted-static-viz-context
