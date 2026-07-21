@@ -402,3 +402,14 @@
   (testing "ollama is always supported; an unrecognized provider is not (:default)"
     (is (true?  (embedding/embedding-supported? {:provider "ollama"})))
     (is (false? (embedding/embedding-supported? {:provider "no-embedder"})))))
+
+(deftest resolve-model-test
+  (let [requested {:provider          "openai"
+                   :model-name        "text-embedding-3-small"
+                   :vector-dimensions 1536}
+        resolved  (embedding/resolve-model requested)]
+    (is (= requested (select-keys resolved (keys requested))))
+    (is (= 1 (:embedding-spi-version resolved)))
+    (is (re-matches #"emb:v1:sha256:[0-9a-f]{64}" (:embedding-space-id resolved)))
+    (testing "transport credentials are not part of vector-space identity"
+      (is (= resolved (embedding/resolve-model (assoc requested :api-key "do-not-persist")))))))

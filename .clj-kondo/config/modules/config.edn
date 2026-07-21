@@ -978,7 +978,7 @@
 
   embeddings
   {:team "Metabot"
-   :api  #{}
+   :api  #{metabase.embeddings.provider}
    :uses #{util}}
 
   entity-retrieval
@@ -3595,6 +3595,7 @@
            collections
            config
            connection-pool
+           embeddings
            events
            lib-be
            llm
