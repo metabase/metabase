@@ -27,6 +27,7 @@
    [toucan2.core :as t2])
   (:import
    [com.mchange.v2.c3p0 PooledDataSource]
+   [java.nio.charset StandardCharsets]
    [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
    [java.util.concurrent ArrayBlockingQueue RejectedExecutionHandler RejectedExecutionException TimeUnit ThreadPoolExecutor]
    [org.postgresql.util PGobject]))
@@ -271,7 +272,7 @@
 
   Note: The index parameters will still be available in index_metadata"
   [identifier]
-  (if (<= (count identifier) 63)
+  (if (<= (alength (.getBytes ^String identifier StandardCharsets/UTF_8)) 63)
     identifier
     (let [hashed-name (str "index_" (buddy-codecs/bytes->hex (buddy-hash/sha1 identifier)))]
       (log/warnf "Using hashed name for index table %s as original table name %s exceeded the maximum table name length" hashed-name identifier)
@@ -287,10 +288,13 @@
 
   Table names produced here must stay recognizable by [[index-table-name?]]."
   [embedding-model]
-  (let [{:keys [model-name provider vector-dimensions]} embedding-model
+  (let [{:keys [model-name provider vector-dimensions embedding-space-id]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
-        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
+        space-suffix (when embedding-space-id
+                       (subs (buddy-codecs/bytes->hex (buddy-hash/sha1 embedding-space-id)) 0 12))
+        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions
+                              (when space-suffix (str "_e" space-suffix)))]
     (hash-identifier-if-exceeds-pg-limit ideal-table-name)))
 
 (def ^:private index-table-name-pattern
@@ -298,8 +302,9 @@
   suffix appended by [[metabase-enterprise.semantic-search.pgvector-api/fresh-index]]),
   [[hash-identifier-if-exceeds-pg-limit]], and the legacy pre-BOT-337 naming era:
 
-    index_<provider>_<model>_<dims>            e.g. index_ais_text_3_sm_1536
-    index_<provider>_<model>_<dims>_<digits>   force-reset suffix ([[model-table-suffix]])
+    index_<provider>_<model>_<dims>                  legacy name
+    index_<provider>_<model>_<dims>_e<12-hex>        immutable-space name
+    either modern name followed by _<digits>         force-reset suffix ([[model-table-suffix]])
     index_<40-hex-sha1>                        names exceeding the 63-byte pg identifier limit
     index_table_<anything>                     legacy pre-BOT-337 naming (index_table_<provider>_<model>_<dims>)
 
@@ -308,7 +313,7 @@
   gives the modern shapes their structure, while the index_table_ prefix — used exclusively by the
   legacy era — claims anything under it. Deliberately does NOT match the control-plane tables
   (index_metadata, index_control, index_gate): no trailing _<digits>, not 40-hex, not index_table_."
-  #"\Aindex_(?:.+_\d+|[0-9a-f]{40}|table_.+)\z")
+  #"\Aindex_(?:.+_\d+(?:_e[0-9a-f]{12})?(?:_\d+)?|[0-9a-f]{40}|table_.+)\z")
 
 (defn index-table-name?
   "Does the bare (schema- and qualifier-stripped) table name look like a semantic-search index table?

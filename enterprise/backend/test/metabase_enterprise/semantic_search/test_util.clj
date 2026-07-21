@@ -279,10 +279,18 @@
 
 ;;;; mock provider
 
+(defn resolved-mock-embedding-model
+  "Build a self-consistent resolved descriptor for a mock model variant."
+  [& {:as overrides}]
+  (-> (merge {:provider          "mock"
+              :model-name        "model"
+              :vector-dimensions 4}
+             overrides)
+      embeddings.provider/legacy-resolved-model
+      (assoc :embedding-spi-version embeddings.provider/embedding-spi-version)))
+
 (def mock-embedding-model
-  {:provider          "mock"
-   :model-name        "model"
-   :vector-dimensions 4})
+  (resolved-mock-embedding-model))
 
 (def mock-index-metadata
   "An index metadata to qualify and isolate mock indexes"
