@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas.api.javascript
+(ns metabase.typed-schemas.javascript
   "JavaScript syntax rendering helpers for typed schemas."
   (:require
    [clojure.string :as str]

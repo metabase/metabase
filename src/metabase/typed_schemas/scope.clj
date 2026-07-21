@@ -1,5 +1,5 @@
-(ns metabase.typed-schemas.api.scope
-  "Scope resolution for typed-schema endpoints."
+(ns metabase.typed-schemas.scope
+  "Scope resolution for typed schemas."
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]

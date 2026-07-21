@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas.api.schema.common
+(ns metabase.typed-schemas.schema.common
   "Shared typed-schema source helpers."
   (:require
    [medley.core :as m]
@@ -7,7 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
-   [metabase.typed-schemas.api.scope :as scope]
+   [metabase.typed-schemas.scope :as scope]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

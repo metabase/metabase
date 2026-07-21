@@ -1,12 +1,12 @@
-(ns metabase.typed-schemas.api.schema.model
+(ns metabase.typed-schemas.schema.model
   "Typed schema generation for models and actions."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.typed-schemas.api.common :as common]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
+   [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

@@ -1,8 +1,8 @@
-(ns metabase.typed-schemas.api.render
+(ns metabase.typed-schemas.render
   "TypeScript rendering for typed schemas."
   (:require
    [clojure.string :as str]
-   [metabase.typed-schemas.api.javascript :as javascript]
+   [metabase.typed-schemas.javascript :as javascript]
    [metabase.util :as u]))
 
 (def ^:private const-suffix

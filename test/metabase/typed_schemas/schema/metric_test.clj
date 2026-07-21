@@ -1,11 +1,11 @@
-(ns metabase.typed-schemas.api.schema.metric-test
+(ns metabase.typed-schemas.schema.metric-test
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
-   [metabase.typed-schemas.api.schema.metric :as schema.metric]
-   [metabase.typed-schemas.api.schema.table :as schema.table]
+   [metabase.typed-schemas.schema.metric :as schema.metric]
+   [metabase.typed-schemas.schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel metric-dimension-schema-uses-dimension-id-test

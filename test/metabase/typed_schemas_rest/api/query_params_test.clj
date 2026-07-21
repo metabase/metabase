@@ -1,7 +1,7 @@
-(ns metabase.typed-schemas.api.query-params-test
+(ns metabase.typed-schemas-rest.api.query-params-test
   (:require
    [clojure.test :refer :all]
-   [metabase.typed-schemas.api.query-params :as query-params]))
+   [metabase.typed-schemas-rest.api.query-params :as query-params]))
 
 (deftest ^:parallel query-params->options-test
   (is (= {:database                 {:name "Boba"}

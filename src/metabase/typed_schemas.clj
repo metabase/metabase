@@ -2,13 +2,13 @@
   "Programmatic API for building and rendering typed schemas."
   (:require
    [clojure.set :as set]
-   [metabase.typed-schemas.api.render :as render]
-   [metabase.typed-schemas.api.schema :as schema]
-   [metabase.typed-schemas.api.schema.metric :as schema.metric]
-   [metabase.typed-schemas.api.schema.model :as schema.model]
-   [metabase.typed-schemas.api.schema.question :as schema.question]
-   [metabase.typed-schemas.api.schema.table :as schema.table]
-   [metabase.typed-schemas.api.scope :as scope]
+   [metabase.typed-schemas.render :as render]
+   [metabase.typed-schemas.schema :as schema]
+   [metabase.typed-schemas.schema.metric :as schema.metric]
+   [metabase.typed-schemas.schema.model :as schema.model]
+   [metabase.typed-schemas.schema.question :as schema.question]
+   [metabase.typed-schemas.schema.table :as schema.table]
+   [metabase.typed-schemas.scope :as scope]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
