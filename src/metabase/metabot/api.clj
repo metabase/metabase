@@ -335,7 +335,10 @@
           state     (metabot.persistence/conversation-state live)
           first-msg (or (:content (metabot.persistence/first-valid-user-message live))
                         (:content message))
-          title-job (conversation-title/ensure-title! conversation_id profile-id first-msg)]
+          title-job (conversation-title/ensure-title!
+                     conversation_id
+                     (metabot.usage/valid-usage-profile-id profile-id)
+                     first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id

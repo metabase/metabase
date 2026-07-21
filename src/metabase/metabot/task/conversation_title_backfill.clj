@@ -18,7 +18,7 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (java.util.concurrent Future)
+   (java.util.concurrent Future TimeoutException TimeUnit)
    (org.quartz DisallowConcurrentExecution JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
@@ -39,6 +39,8 @@
     (not (metabot.config/any-metabot-enabled?))          :metabot-disabled
     (not (metabot.settings/llm-metabot-configured?))     :provider-unconfigured
     (metabot.usage/managed-free-limit-reached?)          :managed-limit-reached
+    ;; instance-level usage limit; tenant/user limits need a request context this job lacks
+    (metabot.usage/check-usage-limits!)                  :usage-limit-reached
     :else                                                :ready))
 
 ;; these pauses only end when a setting changes, and `handle-setting-update!` already reschedules
@@ -56,6 +58,9 @@
 
     :managed-limit-reached
     (log/info "Skipping Metabot conversation title backfill because the managed AI limit has been reached.")
+
+    :usage-limit-reached
+    (log/info "Skipping Metabot conversation title backfill because a usage limit has been reached.")
 
     nil))
 
@@ -81,7 +86,9 @@
                                    content)]
       (case status
         :ready   :already-titled
-        :pending (if (some-> ^Future future .get) :generated :failed)
+        :pending (try
+                   (if (some-> ^Future future (.get 60 TimeUnit/SECONDS)) :generated :failed)
+                   (catch TimeoutException _ :failed))
         :missing :failed
         :failed))
     (catch InterruptedException _
