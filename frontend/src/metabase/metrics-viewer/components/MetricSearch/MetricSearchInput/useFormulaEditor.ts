@@ -182,6 +182,7 @@ export function useFormulaEditor({
       return;
     }
     isEditingSessionActiveRef.current = true;
+    pendingMetricIdentitiesRef.current = null;
     const { text: fullText, identities: initialIdentities } =
       buildFullTextWithIdentities(
         formulaEntitiesRef.current,
@@ -314,6 +315,7 @@ export function useFormulaEditor({
     setValidationError(null);
     setIsExpressionDirty(false);
     setEditingSessionIdentities([]);
+    pendingMetricIdentitiesRef.current = null;
   }, [
     editorRef,
     metricNamesRef,
@@ -333,6 +335,7 @@ export function useFormulaEditor({
         )
       ) {
         isEditingSessionActiveRef.current = false;
+        pendingMetricIdentitiesRef.current = null;
         setIsFocused(false);
         setIsOpen(false);
         setCurrentWord("");
@@ -363,7 +366,19 @@ export function useFormulaEditor({
     (newText: string) => {
       const view = editorRef.current?.view;
       if (view) {
-        pendingMetricIdentitiesRef.current = readMetricIdentities(view);
+        // @uiw/react-codemirror's value-prop sync fires onChange *after* a full
+        // doc replacement that has already dropped our identity RangeSet, so a
+        // naive read here can report an impoverished set and clobber the good
+        // pre-drop snapshot. Keep the richer snapshot so recoverDroppedIdentities
+        // (including the synchronous call in handleRun) can still restore it.
+        const currentIdentities = readMetricIdentities(view);
+        const previousIdentities = pendingMetricIdentitiesRef.current;
+        if (
+          previousIdentities == null ||
+          currentIdentities.length >= previousIdentities.length
+        ) {
+          pendingMetricIdentitiesRef.current = currentIdentities;
+        }
       }
       editTextRef.current = newText;
       setEditText(newText);
@@ -449,7 +464,13 @@ export function useFormulaEditor({
         ),
       });
     }
-    pendingMetricIdentitiesRef.current = null;
+    // Intentionally do NOT clear pendingMetricIdentitiesRef here: a later
+    // destructive value-sync can drop the RangeSet again after this post-render
+    // effect ran, and handleRun's synchronous recover must still have the
+    // snapshot to restore from. It is cleared only at editing-session
+    // boundaries (focus start, commit/collapse, blur-collapse). Re-applying an
+    // identity is guarded by an exact position+text match, so a retained
+    // snapshot cannot resurrect a token whose text has since changed.
   }, [editingSessionIdentities, editorRef, metricNamesRef]);
 
   // Once a controlled value sync has settled (doc matches editText), restore
