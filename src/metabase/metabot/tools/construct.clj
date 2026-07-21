@@ -109,7 +109,8 @@
    ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
    [:query [:map {:json-schema construct-notebook-query-json-schema}]]
    [:visualization {:optional true} construct-visualization-schema]
-   [:title :string]])
+   [:title :string]
+   [:description :string]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -445,9 +446,11 @@
   "Construct and visualize a notebook query from a metric, model, or table.
 
   Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
-  short, human-friendly `title` shown above the resulting chart. See
+  short, human-friendly `title` shown above the resulting chart. Also provide a concise
+  one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
+  any notable filter); it is used as the saved question's description. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -479,13 +482,14 @@
                         "<instructions>\n" instruction-text "\n</instructions>")
            :data-parts        (when results-url
                                 [(streaming/viz-part
-                                  {:inline?   (shared/inline-viz-capable?)
-                                   :entity-id (:chart-id chart-result)
-                                   :query-id  (:query-id structured)
-                                   :query     (links/->legacy-mbql (:query structured))
-                                   :display   chart-type
-                                   :title     title
-                                   :link      results-url})])
+                                  {:inline?     (shared/inline-viz-capable?)
+                                   :entity-id   (:chart-id chart-result)
+                                   :query-id    (:query-id structured)
+                                   :query       (links/->legacy-mbql (:query structured))
+                                   :display     chart-type
+                                   :title       title
+                                   :description description
+                                   :link        results-url})])
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output
