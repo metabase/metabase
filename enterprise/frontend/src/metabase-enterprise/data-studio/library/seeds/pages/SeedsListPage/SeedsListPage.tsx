@@ -4,7 +4,6 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListTablesQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
@@ -14,6 +13,7 @@ import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
+  ActionIcon,
   Badge,
   Button,
   Card,
@@ -21,15 +21,19 @@ import {
   Group,
   Icon,
   Loader,
+  Menu,
   Stack,
   Text,
   TextInput,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Table } from "metabase-types/api";
+import { type Seed, useListSeedsQuery } from "metabase-enterprise/api";
 
+import { DeleteSeedModal } from "../../components/DeleteSeedModal";
 import { NewSeedModal } from "../../components/NewSeedModal";
+import { ReplaceSeedModal } from "../../components/ReplaceSeedModal";
 
 dayjs.extend(relativeTime);
 
@@ -50,20 +54,18 @@ function SeedsListPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, { open: openModal, close: closeModal }] =
     useDisclosure(false);
+  const [replaceSeed, setReplaceSeed] = useState<Seed | null>(null);
+  const [deleteSeed, setDeleteSeed] = useState<Seed | null>(null);
 
-  const { data: tables = [], isLoading } = useListTablesQuery({
-    "data-source": "seed",
-  });
+  const { data: allSeeds = [], isLoading } = useListSeedsQuery();
 
   const seeds = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) {
-      return tables;
+      return allSeeds;
     }
-    return tables.filter((seed) =>
-      (seed.display_name ?? seed.name).toLowerCase().includes(query),
-    );
-  }, [tables, searchQuery]);
+    return allSeeds.filter((seed) => seed.name.toLowerCase().includes(query));
+  }, [allSeeds, searchQuery]);
 
   return (
     <>
@@ -107,9 +109,13 @@ function SeedsListPageContent() {
                   <SeedRow
                     key={seed.id}
                     seed={seed}
-                    onClick={() =>
-                      dispatch(push(Urls.dataStudioTable(seed.id)))
-                    }
+                    onClick={() => {
+                      if (seed.table_id != null) {
+                        dispatch(push(Urls.dataStudioTable(seed.table_id)));
+                      }
+                    }}
+                    onReplace={() => setReplaceSeed(seed)}
+                    onDelete={() => setDeleteSeed(seed)}
                   />
                 ))}
               </Stack>
@@ -118,22 +124,87 @@ function SeedsListPageContent() {
         </Stack>
       </SectionLayout>
       <NewSeedModal opened={isModalOpen} onClose={closeModal} />
+      {replaceSeed != null && (
+        <ReplaceSeedModal
+          seed={replaceSeed}
+          opened
+          onClose={() => setReplaceSeed(null)}
+        />
+      )}
+      {deleteSeed != null && (
+        <DeleteSeedModal
+          seed={deleteSeed}
+          opened
+          onClose={() => setDeleteSeed(null)}
+        />
+      )}
     </>
   );
 }
 
-function SeedRow({ seed, onClick }: { seed: Table; onClick: () => void }) {
+function SeedRow({
+  seed,
+  onClick,
+  onReplace,
+  onDelete,
+}: {
+  seed: Seed;
+  onClick: () => void;
+  onReplace: () => void;
+  onDelete: () => void;
+}) {
   return (
     <UnstyledButton onClick={onClick} px="lg" py="md">
       <Group justify="space-between">
         <Group gap="sm">
           <Icon name={SEED_ICON} c="brand" />
-          <Text fw="bold">{seed.display_name ?? seed.name}</Text>
-          <Badge variant="light">{t`Seed`}</Badge>
+          <Text fw="bold">{seed.name}</Text>
+          {seed.sync_error != null ? (
+            <Tooltip label={seed.sync_error}>
+              <Badge variant="light" color="negative">{t`Error`}</Badge>
+            </Tooltip>
+          ) : seed.table_id == null ? (
+            <Badge variant="light" color="neutral">{t`Not materialized`}</Badge>
+          ) : null}
         </Group>
-        <Text c="text-secondary" size="sm">
-          {t`updated ${dayjs(seed.updated_at).fromNow()}`}
-        </Text>
+        <Group gap="sm">
+          <Text c="text-secondary" size="sm">
+            {t`updated ${dayjs(seed.updated_at).fromNow()}`}
+          </Text>
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <ActionIcon
+                onClick={(e) => e.stopPropagation()}
+                aria-label={t`Seed actions`}
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="refresh" />}
+                onClick={onReplace}
+              >
+                {t`Replace CSV…`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="download" />}
+                component="a"
+                href={`/api/ee/data-studio/seed/${seed.id}/csv`}
+              >
+                {t`Download CSV`}
+              </Menu.Item>
+              <Menu.Divider />
+              <Menu.Item
+                c="error"
+                leftSection={<Icon name="trash" />}
+                onClick={onDelete}
+              >
+                {t`Delete…`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
       </Group>
     </UnstyledButton>
   );
