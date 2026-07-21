@@ -17,7 +17,6 @@
    [clojure.string :as str]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib-be.core :as lib-be]
@@ -233,72 +232,12 @@
 
 ;;; --------------------------------------------------- dashboard --------------------------------------------------
 
-(defn- dashcard-kind
-  [{:keys [card_id action_id visualization_settings]}]
-  (cond
-    action_id "action"
-    card_id   "card"
-    :else     (or (some->> (get-in visualization_settings [:virtual_card :display]) name (str "virtual_"))
-                  "virtual")))
-
-(defn- dashcard-card-ref
-  "The `{id, name}` card reference for a card-backed dashcard; unreadable cards collapse to
-   `{id}` only, as the REST dashboard response does."
-  [{:keys [card_id action_id card]}]
-  (when (and card_id (not action_id))
-    (if (and card (mi/can-read? card))
-      {:id (:id card) :name (:name card)}
-      {:id card_id})))
-
-(defn- dashcard-summary
-  [{:keys [visualization_settings] :as dc}]
-  (compact
-   {:id                (:id dc)
-    :kind              (dashcard-kind dc)
-    :card              (dashcard-card-ref dc)
-    ;; External link URLs only — a link card's stored entity snapshot may describe something
-    ;; this user can't read, so it never rides the summary.
-    :text              (when-not (:card_id dc)
-                         (or (:text visualization_settings)
-                             (get-in visualization_settings [:link :url])))
-    :dashboard_tab_id  (:dashboard_tab_id dc)
-    :row               (:row dc)
-    :col               (:col dc)
-    :size_x            (:size_x dc)
-    :size_y            (:size_y dc)
-    :series            (not-empty
-                        (mapv (fn [s] (if (mi/can-read? s) {:id (:id s) :name (:name s)} {:id (:id s)}))
-                              (:series dc)))
-    :inline_parameters (not-empty (:inline_parameters dc))}))
-
-(defn- dashboard-parameters-summary
-  "One row per dashboard parameter: id, name, type, and the ids of the dashcards it is wired
-   to (via [[dashboard/dashboard->resolved-params]], the same resolution the QP uses)."
-  [dash]
-  (let [resolved (dashboard/dashboard->resolved-params dash)]
-    (mapv (fn [{param-id :id :as param}]
-            (compact
-             {:id           param-id
-              :name         (:name param)
-              :type         (:type param)
-              :dashcard_ids (not-empty
-                             (vec (sort (distinct (keep (comp :id :dashcard)
-                                                        (:mappings (get resolved (u/qualified-name param-id))))))))}))
-          (:parameters dash))))
-
 (defn- fetch-dashboard
   [id-or-eid]
   (let [dash (-> (common/resolve-and-read :model/Dashboard id-or-eid
                                           (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
                  (t2/hydrate [:dashcards :series :card] :tabs))]
-    (-> (select-keys dash [:id :name :description :entity_id :collection_id :creator_id :archived
-                           :created_at :updated_at :width :auto_apply_filters :cache_ttl
-                           :collection_position])
-        (assoc :tabs       (mapv #(select-keys % [:id :name]) (:tabs dash))
-               :parameters (dashboard-parameters-summary dash)
-               :dashcards  (mapv dashcard-summary
-                                 (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0)) (:dashcards dash)))
-               ::dashboard dash))))
+    (assoc (projections/dashboard-row dash) ::dashboard dash)))
 
 (defn- dashboard-layout
   "The `layout` include: tabs with positions and the per-dashcard grid/wiring detail
@@ -315,28 +254,6 @@
                                     #(cond-> % (map? (:link %)) (update :link dissoc :entity)))
                             compact))
                       (:dashcards dash))}))
-
-(def ^:private dashboard-concise-keys
-  [:id :name :description :tabs :parameters :dashcards])
-
-(def ^:private dashboard-detailed-keys
-  (into dashboard-concise-keys
-        [:entity_id :collection_id :creator_id :archived :created_at :updated_at :width
-         :auto_apply_filters :cache_ttl :collection_position]))
-
-(def ^:private dashboard-sample
-  (-> (zipmap dashboard-detailed-keys (repeat "x"))
-      (assoc :tabs [{:id 1 :name "x"}]
-             :parameters [{:id "x" :name "x" :type "x" :dashcard_ids [1]}]
-             :dashcards [{:id 1 :kind "x" :card {:id 1 :name "x"} :text "x" :dashboard_tab_id 1
-                          :row 0 :col 0 :size_x 1 :size_y 1 :series [{:id 1 :name "x"}]
-                          :inline_parameters ["x"]}])))
-
-(projections/register-projection!
- :dashboard
- {:concise  #(compact (select-keys % dashboard-concise-keys))
-  :detailed #(compact (select-keys % dashboard-detailed-keys))
-  :sample   dashboard-sample})
 
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
 
