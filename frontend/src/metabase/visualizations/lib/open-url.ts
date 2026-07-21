@@ -1,9 +1,12 @@
 import querystring from "querystring";
 
-import type { LocationDescriptor, LocationDescriptorObject } from "history";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type {
+  LocationDescriptor,
+  LocationDescriptorObject,
+} from "metabase/router";
 import {
   clickLink,
   getPathnameWithoutSubPath,

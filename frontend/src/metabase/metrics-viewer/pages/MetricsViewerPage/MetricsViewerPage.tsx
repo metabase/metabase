@@ -1,4 +1,3 @@
-import type { Location } from "history";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
@@ -14,6 +13,7 @@ import {
   useMetricsViewerContext,
 } from "metabase/metrics-viewer/context";
 import { useViewerState } from "metabase/metrics-viewer/hooks";
+import type { Location } from "metabase/router";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import S from "./MetricsViewerPage.module.css";

@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
@@ -18,6 +17,7 @@ import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import type { Route } from "metabase/router";
 import { goBack, push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";

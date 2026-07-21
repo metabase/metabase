@@ -103,7 +103,9 @@ type GuardSelectors = {
  */
 function createGuard(
   { isAllowed, isAuthenticating = NEVER_AUTHENTICATING }: GuardSelectors,
-  renderRedirect: (location: Location) => ReactElement | null,
+  renderRedirect: (
+    location: Omit<Location, "query" | "action">,
+  ) => ReactElement | null,
 ) {
   return function Guard({ children = <Outlet /> }: Props) {
     const location = useLocation();
@@ -140,7 +142,7 @@ function FullPageRedirect({ to }: { to: string }): null {
   return null;
 }
 
-const loginUrlWithRedirect = (location: Location) => {
+const loginUrlWithRedirect = (location: Omit<Location, "query" | "action">) => {
   const from = `${location.pathname}${location.search}`;
   const query = new URLSearchParams({ redirect: from }).toString();
   return `/auth/login?${query}`;

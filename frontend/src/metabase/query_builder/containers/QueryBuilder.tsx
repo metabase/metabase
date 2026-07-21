@@ -1,5 +1,4 @@
 import { useHotkeys } from "@mantine/hooks";
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
@@ -51,6 +50,7 @@ import {
   setUIControls,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import type { Route, WithRouterProps } from "metabase/router";
 import { push } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";

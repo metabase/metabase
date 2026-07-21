@@ -1,4 +1,3 @@
-import type { LocationDescriptorObject } from "history";
 
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -22,6 +21,7 @@ import type {
   QueryBuilderUIControls,
 } from "metabase/redux/store";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import type { LocationDescriptorObject } from "metabase/router";
 import { replace } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";

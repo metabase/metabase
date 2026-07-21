@@ -1,5 +1,5 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
-import type { Location } from "history";
+
 
 import {
   useGetSubscriptionQuery,
@@ -7,6 +7,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 
 import { ArchiveNotificationModal } from "../../components/ArchiveModal";

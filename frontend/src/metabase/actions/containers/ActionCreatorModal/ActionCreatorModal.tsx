@@ -1,4 +1,3 @@
-import type { LocationDescriptor } from "history";
 import { useEffect } from "react";
 
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
@@ -7,6 +6,7 @@ import type { ModalComponentProps } from "metabase/common/components/ModalRoute"
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
+import type { LocationDescriptor } from "metabase/router";
 import type { Route } from "metabase/router";
 import { replace } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -1,8 +1,8 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { NewMetricPage } from "metabase/metrics/pages/NewMetricPage";
+import type { Location } from "metabase/router";
 import { Link, type Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 

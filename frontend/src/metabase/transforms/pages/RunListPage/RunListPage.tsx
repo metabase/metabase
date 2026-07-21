@@ -1,6 +1,5 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import type { Location } from "history";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -15,6 +14,7 @@ import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { replace } from "metabase/router";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";

@@ -18,17 +18,104 @@ export interface Path {
 export type To = string | Partial<Path>;
 
 /**
- * An entry in a history stack. A location contains information about the URL
- * path, as well as possibly some arbitrary state and a key.
+ * The navigation action that produced a location.
+ */
+export type Action = "POP" | "PUSH" | "REPLACE";
+
+/**
+ * The default parsed `query` shape: repeated keys become arrays, matching
+ * history@3's parser that the `location.query` readers were written against.
+ */
+export type DefaultQuery = Record<string, string | string[] | null | undefined>;
+
+/**
+ * The parsed query object carried on a `Location`. The generic is the concrete
+ * shape a call site knows its query to have (e.g. `Location<{ tab?: string }>`).
+ */
+export type Query<T = DefaultQuery> = T;
+
+/**
+ * The `state` carried through a navigation. history@3 typed this `any` and the
+ * legacy route-prop readers were written against that; tightened when the
+ * `state.routing` slice is thinned to the pure v7 shape (DEV-2290).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type LocationState = any;
+
+/**
+ * An entry in a history stack. Mirrors history@3's `Location`: alongside the URL
+ * parts it carries the parsed `query` object and the navigation `action` that
+ * the legacy route-prop call sites still read. The generic is the shape of
+ * `query`, not `state`. Thinned to the pure v7 shape (no `query`/`action`) when
+ * the `state.routing` slice is retired (DEV-2290).
  *
  * @see https://api.reactrouter.com/v7/interfaces/react-router.Location.html
  */
-export interface Location<State = unknown> {
+export interface Location<Q = DefaultQuery> {
   pathname: string;
   search: string;
   hash: string;
-  state: State;
+  query: Query<Q>;
+  state: LocationState;
+  action: Action;
   key: string;
+}
+
+/**
+ * The loose query accepted when building a navigation target, where values may
+ * still be numbers or other primitives before serialization. Mirrors history@3's
+ * `QueryLike`, distinct from the parsed `DefaultQuery` a `Location` carries.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type QueryLike = Record<string, any>;
+
+/**
+ * A location to navigate to, as an object. Mirrors history@3's
+ * `LocationDescriptorObject`; the string form is `LocationDescriptor`.
+ */
+export interface LocationDescriptorObject {
+  pathname?: string;
+  search?: string;
+  query?: QueryLike;
+  hash?: string;
+  state?: LocationState;
+}
+
+/**
+ * A location to navigate to: either a path string or a descriptor object.
+ * Mirrors history@3's `LocationDescriptor`.
+ */
+export type LocationDescriptor = LocationDescriptorObject | string;
+
+type LocationListener = (location: Location) => void;
+type TransitionHook = (
+  location: Location,
+  callback: (result: unknown) => void,
+) => unknown;
+
+/**
+ * The `history` object interface the facade still passes around (the middleware
+ * driver, the sync bridge, and the route-leave tests). Mirrors history@3's
+ * `History` so the v3 engine and the v7 navigator both satisfy it.
+ */
+export interface History<Q = DefaultQuery> {
+  listenBefore(hook: TransitionHook): () => void;
+  listen(listener: LocationListener): () => void;
+  transitionTo(location: Location<Q>): void;
+  push(path: LocationDescriptor): void;
+  replace(path: LocationDescriptor): void;
+  go(n: number): void;
+  goBack(): void;
+  goForward(): void;
+  createKey(): string;
+  createPath(path: LocationDescriptor): string;
+  createHref(path: LocationDescriptor): string;
+  createLocation(
+    path?: LocationDescriptor,
+    action?: Action,
+    key?: string,
+  ): Location<Q>;
+  getCurrentLocation(): Location<Q>;
 }
 
 /**

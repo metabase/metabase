@@ -1,4 +1,4 @@
-import type { LocationDescriptor } from "history";
+import type { LocationDescriptor } from "./types";
 
 /**
  * Re-owned equivalent of react-router-redux's navigation action creators.

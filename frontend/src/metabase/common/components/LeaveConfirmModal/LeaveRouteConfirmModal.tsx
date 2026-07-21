@@ -1,8 +1,8 @@
-import type { Location } from "history";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
+import type { Location } from "metabase/router";
 import type { Route } from "metabase/router";
 import { useRoute, useRouter } from "metabase/router";
 

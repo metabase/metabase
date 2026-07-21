@@ -1,6 +1,5 @@
-import type { Location } from "history";
-
 import { createMockState } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import type { RouterProps } from "metabase/selectors/app";
 
 import { getIsCollectionPathVisible } from "./selectors";

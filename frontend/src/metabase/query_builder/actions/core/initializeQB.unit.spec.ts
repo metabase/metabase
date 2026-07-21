@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import type { LocationDescriptorObject } from "history";
+
 
 import { createMockEntitiesState } from "__support__/store";
 import { databaseApi, snippetApi } from "metabase/api";
@@ -10,6 +10,7 @@ import { setErrorPage } from "metabase/redux/app";
 import * as metadataActions from "metabase/redux/metadata";
 import * as sharedQB from "metabase/redux/query-builder";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { LocationDescriptorObject } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";

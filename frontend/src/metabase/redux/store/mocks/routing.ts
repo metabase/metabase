@@ -1,5 +1,4 @@
-import type { Location } from "history";
-
+import type { Location } from "metabase/router";
 import type { RouterState } from "metabase/router";
 
 export const createMockRoutingState = (

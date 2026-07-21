@@ -1,8 +1,8 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { push, replace } from "metabase/router";
 import type { InspectorLensMetadata } from "metabase-types/api";
 

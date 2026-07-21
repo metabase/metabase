@@ -1,5 +1,4 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import type { Location } from "history";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,6 +9,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import type { Location } from "metabase/router";
 import { Outlet } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { Component } from "react";
 
 import { cardApi } from "metabase/api";
@@ -11,6 +10,7 @@ import type { Dispatch } from "metabase/redux/store";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import * as actions from "metabase/reference/reference";
 import { SegmentQuestions } from "metabase/reference/segments/SegmentQuestions";
+import type { Location } from "metabase/router";
 import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 import type { User } from "metabase-types/api";
 

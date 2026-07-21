@@ -2,7 +2,6 @@ import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import dayjs from "dayjs";
-import type { Location } from "history";
 import {
   type ReactNode,
   useCallback,
@@ -39,6 +38,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { Location } from "metabase/router";
 import type { Route } from "metabase/router";
 import { Outlet, push, replace } from "metabase/router";
 import { Box } from "metabase/ui";
