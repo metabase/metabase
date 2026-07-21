@@ -6,6 +6,11 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
+- Added a new multimethod `metabase.driver.sql.query-processor/use-ctes-for-stages?`. SQL drivers can opt in to
+  compiling the stages of a multi-stage query as a chain of CTEs instead of nested subselects. The default
+  implementation returns `false`; drivers can return `true` if their database allows a `WITH` clause everywhere a
+  subquery can appear. The Postgres driver now opts in.
+
 - The `:sql-mbql5` abstract driver has been removed, and the `:sql` driver now compiles MBQL 5 directly. SQL drivers
   must handle MBQL 5 clause shapes (options map as the second element) in their `sql.qp/->honeysql` implementations.
   The transitional multimethods added in 0.61.0 to support both MBQL formats (e.g. `sql.qp/mbql-clause-with-opts`,

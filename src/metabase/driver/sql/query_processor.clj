@@ -2253,7 +2253,7 @@
   Default is `false`. Drivers can opt in if their database allows a `WITH` clause everywhere a subquery can appear:
   the source of a multi-stage join compiles to a `WITH` nested inside the join parens, and a query used as a
   subexpression (e.g. a card referenced from native SQL, or `CREATE TABLE ... AS`) may likewise start with `WITH`."
-  {:added "0.62.0", :arglists '([driver])}
+  {:added "0.63.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
