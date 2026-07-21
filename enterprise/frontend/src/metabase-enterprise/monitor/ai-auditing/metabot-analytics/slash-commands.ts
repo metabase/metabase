@@ -3,8 +3,7 @@ import type { MetabotSlashCommandHandler } from "metabase/plugins/oss/audit";
 import { addUndo } from "metabase/redux/undo";
 import { push } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
-
-import * as EnterpriseUrls from "../../urls";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 
 export const handleMetabotSlashCommand: MetabotSlashCommandHandler = ({
   command,
