@@ -4606,3 +4606,38 @@ Reading those on a failing CI run attributes the latency directly instead of
 inferring it from outside. Warming the pool inside the spec is NOT a fix — the
 warm-up would have to run a native query, which is the very thing being timed,
 so it would hide the cost rather than remove it.
+
+---
+
+### #224 AMBIGUOUS SIGNATURE (security-relevant): in custom-viz confinement,
+### "widget never rendered" and "sandbox escape" both produce `top === 0`
+
+`custom-viz` :: "confines custom viz and custom viz setting widget to its
+container" asserts the attacker's `position: fixed; inset: 0` widget is clamped
+by the wrapper's `contain: layout paint`
+(`SandboxedPluginContainer.module.css`), which makes it the containing block.
+
+**The trap:** an *unrendered* element yields an all-zero DOMRect, which
+satisfies `height === 0` and `width < 1280` and fails **only** on `top > 0` —
+the identical signature to a genuine escape. Verified: with the sidebar forced
+to `display: none`, `rect = {top:0,w:0,h:0}` AND `toHaveCSS("position","fixed")`
+still passed, so the guard is blind to it.
+
+The CI failure was resolved in favour of "unrendered", on two grounds: the
+failing input (`settingRect.top`) measured **byte-identical at 720 and 800**
+(169 both times), so it is viewport-insensitive; and 66 local runs were green.
+The fix restores upstream's retry (`.should(callback)` retries; the port
+snapshotted once) via `expect(...).toPass()`.
+
+**If this test fails again after that fix, do NOT assume harness flake.** That
+would point at the escape reading and should be treated as a security bug.
+
+Mutation evidence includes a **simulated genuine escape** — injecting
+`contain: none` to defeat the boundary makes the test fail with `Received: 0`,
+the exact CI message. So `toPass()` does not mask a real escape: a truly-escaped
+widget never satisfies the block however long you retry. That distinction is the
+reason the retry fix is safe here.
+
+**Correction on the record:** this was reported as a viewport casualty when the
+1280x800 fix landed. It is not. The viewport commit surfaced a pre-existing
+latent flake by coincidence.

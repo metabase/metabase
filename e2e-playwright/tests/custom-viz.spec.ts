@@ -2304,33 +2304,58 @@ test.describe("sandbox", () => {
 
     await page.getByTestId("viz-settings-button").click();
 
-    const viewport = page.viewportSize();
-    const viewportWidth = viewport?.width ?? 1280;
-    const viewportHeight = viewport?.height ?? 720;
+    const { width: viewportWidth, height: viewportHeight } =
+      page.viewportSize()!;
 
     const settingWidget = vizSettingsSidebar(page).locator(
       "[data-plugin-sandbox]",
     );
-    await expect(settingWidget).toHaveCSS("position", "fixed");
-    const settingRect = await settingWidget.evaluate((el) =>
-      el.getBoundingClientRect().toJSON(),
-    );
-    expect(settingRect.top, "setting widget top offset from viewport").toBeGreaterThan(0);
-    expect(settingRect.width, "setting widget width vs viewport").toBeLessThan(
-      viewportWidth,
-    );
-    expect(settingRect.height, "setting widget height vs viewport").toBe(0);
 
-    const containerRect = await queryVisualizationRoot(page)
-      .locator("[data-plugin-sandbox]")
-      .evaluate((el) => el.getBoundingClientRect().toJSON());
-    expect(containerRect.top, "container top offset from viewport").toBeGreaterThan(0);
-    expect(containerRect.width, "container width vs viewport").toBeLessThan(
-      viewportWidth,
+    // Cypress asserts this geometry inside `.should(callback)`, which RETRIES
+    // the whole block. Snapshotting the rect once is not an equivalent port:
+    // `toHaveCSS("position", "fixed")` is not a rendering guard — computed
+    // `position` reads "fixed" even while an ancestor is `display: none`, and
+    // an unrendered element returns an all-zero rect. That produces exactly
+    // the CI signature seen here (top === 0, failing on the first assertion)
+    // without the sandbox having escaped anything. `toPass` restores the
+    // upstream retry; every asserted value is unchanged, and a genuine escape
+    // still fails because a truly-escaped widget never satisfies the block.
+    await expect(async () => {
+      const settingRect = await settingWidget.evaluate((el) =>
+        el.getBoundingClientRect().toJSON(),
+      );
+      expect(
+        settingRect.top,
+        "setting widget top offset from viewport",
+      ).toBeGreaterThan(0);
+      expect(settingRect.width, "setting widget width vs viewport").toBeLessThan(
+        viewportWidth,
+      );
+      expect(settingRect.height, "setting widget height vs viewport").toBe(0);
+    }).toPass();
+
+    // The attack re-applies `position: fixed; inset: 0` every 100ms, so the
+    // `position` check must hold at the same time as the geometry, not before.
+    await expect(settingWidget).toHaveCSS("position", "fixed");
+
+    const container = queryVisualizationRoot(page).locator(
+      "[data-plugin-sandbox]",
     );
-    expect(containerRect.height, "container height vs viewport").toBeLessThan(
-      viewportHeight,
-    );
+    await expect(async () => {
+      const containerRect = await container.evaluate((el) =>
+        el.getBoundingClientRect().toJSON(),
+      );
+      expect(
+        containerRect.top,
+        "container top offset from viewport",
+      ).toBeGreaterThan(0);
+      expect(containerRect.width, "container width vs viewport").toBeLessThan(
+        viewportWidth,
+      );
+      expect(containerRect.height, "container height vs viewport").toBeLessThan(
+        viewportHeight,
+      );
+    }).toPass();
   });
 
   test("MutationObserver on out-of-scope nodes observes a decoy and never fires for host mutations", async ({
