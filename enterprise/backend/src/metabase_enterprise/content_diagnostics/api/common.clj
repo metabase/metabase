@@ -116,21 +116,37 @@
 ;;; name/created_at/creator are denormalized (frozen at scan time); description, the collection
 ;;; breadcrumb, the transform owner, and slow roll-up culprits are live-hydrated, batched per entity-type.
 
-(defn- entity-context
-  "For one entity-type's id set → `{entity-id → row}`. Live-hydrates only the non-denormalized display
-  fields: `description`, `collection_id`, `view_count` (all but transform), and (transform only) the owner.
-  `document` has no description."
+(defmulti ^:private hydrate-owner
+  "Batch-hydrate the per-type `owner` onto already-selected rows. card/dashboard/document have no owner, so
+  `::collection-item` returns rows unchanged; transform hydrates its `:owner` (a user row, or an `{:email …}`
+  external stand-in)."
+  {:arglists '([entity-type rows])}
+  (fn [entity-type _rows] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod hydrate-owner ::common/collection-item [_ rows] rows)
+(defmethod hydrate-owner :transform [_ rows] (t2/hydrate rows :owner))
+
+(defn- context-rows
+  "Build `{entity-id → row}` for a column-resident type: select `common/context-cols` plus `id`/`collection_id`,
+  hydrate the owner (`hydrate-owner`), index by id."
   [entity-type ids]
-  (when-let [model (common/entity-type->model entity-type)]
-    (let [cols (cond-> [:id :collection_id]
-                 (not= entity-type :document)  (conj :description)
-                 ;; card/dashboard/document have a native view_count column; transform has none.
-                 (not= entity-type :transform) (conj :view_count)
-                 (= entity-type :transform)    (conj :owner_user_id :owner_email))
-          rows (cond-> (t2/select (into [model] cols) :id [:in (set ids)])
-                 ;; reuse the transform model's batched :owner hydrate (user row, or {:email …} external)
-                 (= entity-type :transform) (t2/hydrate :owner))]
-      (m/index-by :id rows))))
+  (->> (t2/select (into [(common/entity-type->model entity-type) :id :collection_id]
+                        (common/context-cols entity-type))
+                  :id [:in (set ids)])
+       (hydrate-owner entity-type)
+       (m/index-by :id)))
+
+(defmulti ^:private entity-context
+  "For one entity-type's id set → `{entity-id → row}` of the live display fields (description, collection_id,
+  view_count, transform owner). card/dashboard/document (`::collection-item`) and transform share the
+  column-based [[context-rows]]; a non-column-resident type (e.g. collection) would get its own method."
+  {:arglists '([entity-type ids])}
+  (fn [entity-type _ids] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod entity-context ::common/collection-item [entity-type ids] (context-rows entity-type ids))
+(defmethod entity-context :transform [entity-type ids] (context-rows entity-type ids))
 
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
@@ -181,33 +197,43 @@
                       [:model/Card :id :name :type :view_count :card_schema]
                       {:where (readable-entities-where (set card-ids) excluded-personal-ids)})))
 
+(defmulti ^:private read-entity-rows
+  "Permission-filtered rows for hydrating a type's duplicate ids, read-gated by [[readable-entities-where]].
+  For card/dashboard/document (`::collection-item`) that collection clause IS the read permission (they derive
+  `:perms/use-parent-collection-perms`), with projection cols from `common/peer-select-cols`; transform
+  readability isn't collection-based, so it selects full rows and additionally filters by `mi/can-read?`."
+  {:arglists '([entity-type ids excluded-personal-ids])}
+  (fn [entity-type _ids _excluded] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod read-entity-rows ::common/collection-item
+  [entity-type ids excluded-personal-ids]
+  ;; :card_schema (a peer-select-col for cards) is required on any Card select - its after-select hook reads it.
+  (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/peer-select-cols entity-type))
+             {:where (readable-entities-where ids excluded-personal-ids)}))
+
+(defmethod read-entity-rows :transform
+  [_ ids excluded-personal-ids]
+  ;; mi/can-read? on a transform = source-type feature gate + (superuser, or data-analyst with readable
+  ;; source tables) - the collection clause alone would leak transform names to collection-granted
+  ;; non-analysts. It reads :source, so select full rows; peer sets are page-bounded, so the per-row check
+  ;; is cheap.
+  (filter mi/can-read? (t2/select :model/Transform {:where (readable-entities-where ids excluded-personal-ids)})))
+
 (defn- hydrate-duplicate-entities
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
   :card_type <kw> :view_count <int>}}`. `card_type` and `view_count` are present only on card/dashboard/
   document peers (transforms have no view concept, so their peers carry no usage signal). Peers share the
-  finding's own entity type, so each type's ids resolve from that type's own model, read-filtered by
-  [[readable-entities-where]]. For card/dashboard/document that collection gate IS the read permission
-  (they derive `:perms/use-parent-collection-perms`); transform readability is not collection-based, so
-  transform peers additionally require `mi/can-read?`. A filtered-out peer drops out of
-  `duplicate_entities` like a deleted one."
+  finding's own entity type, so each type's ids resolve from that type's own model via [[read-entity-rows]]
+  (which applies the per-type read gate); a filtered-out peer drops out of `duplicate_entities` like a
+  deleted one."
   [findings excluded-personal-ids]
   (into {}
         (for [[etype rows] (group-by :entity_type findings)
               :let  [model (common/entity-type->model etype)
                      ids   (into #{} (mapcat (comp :duplicate_entity_ids :details)) rows)]
               :when (and model (seq ids))
-              :let  [where (readable-entities-where ids excluded-personal-ids)]
-              row   (if (= etype :transform)
-                      ;; mi/can-read? on a transform = source-type feature gate + (superuser, or
-                      ;; data-analyst with readable source tables) - the collection clause alone would
-                      ;; leak transform names to collection-granted non-analysts. It reads :source, so
-                      ;; select full rows; peer sets are page-bounded, so the per-row check is cheap.
-                      (filter mi/can-read? (t2/select :model/Transform {:where where}))
-                      (t2/select (cond-> [model :id :name :view_count]
-                                   ;; :card_schema is required on any Card select - its after-select
-                                   ;; hook reads it.
-                                   (= etype :card) (conj :type :card_schema))
-                                 {:where where}))]
+              row   (read-entity-rows etype ids excluded-personal-ids)]
           [[etype (:id row)]
            (if (= etype :transform)
              {:id (:id row) :name (:name row) :entity_type etype}

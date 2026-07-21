@@ -27,16 +27,24 @@
       (str/replace #"(?U)\s+" " ")
       str/trim))
 
-(defn- entity-rows
-  "Lightweight `(id, name[, type])` rows for one covered entity type - non-archived only. Transform has
-  no archived column (transforms are hard-deleted), so every row counts."
+(defmulti ^:private candidate-rows
+  "Lightweight non-archived `(id, name[, sub-kind])` rows for one entity type, for name clustering.
+  card/dashboard/document (`::collection-item`) filter on their `archived` column, sub-kind cols from
+  `common/candidate-cols`; transform has no `archived` column (hard-deleted), so every row counts. Scan-time
+  and instance-wide - deliberately un-permissioned, unlike the serve layer's `read-entity-rows`."
+  {:arglists '([entity-type])}
+  identity
+  :hierarchy #'common/hierarchy)
+
+(defmethod candidate-rows ::common/collection-item
   [entity-type]
-  (case entity-type
-    ;; :card_schema is required on any Card select - its after-select schema-upgrade hook reads it.
-    :card      (t2/select [:model/Card :id :name :type :card_schema] :archived false)
-    :dashboard (t2/select [:model/Dashboard :id :name] :archived false)
-    :document  (t2/select [:model/Document :id :name] :archived false)
-    :transform (t2/select [:model/Transform :id :name])))
+  ;; :card_schema (a candidate-col for cards) is required on any Card select - its after-select hook reads it.
+  (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/candidate-cols entity-type))
+             :archived false))
+
+(defmethod candidate-rows :transform
+  [_]
+  (t2/select [:model/Transform :id :name]))
 
 (defn- cluster-findings
   "One `:duplicated` finding per member of a name cluster; peers are the other members (symmetric: in
@@ -60,7 +68,7 @@
   [entity-type]
   (for [[[norm-name _card-type] rows] (group-by (fn [{nm :name card-type :type}]
                                                   [(normalize-name nm) card-type])
-                                                (entity-rows entity-type))
+                                                (candidate-rows entity-type))
         :when   (and (not (str/blank? norm-name)) (>= (count rows) 2))
         finding (cluster-findings entity-type norm-name rows)]
     finding))
