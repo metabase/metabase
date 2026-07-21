@@ -632,6 +632,218 @@
    (- (:total-view-count evidence))
    signature])
 
+(defn- table-dependency-path
+  [model-lineage]
+  {:direct? (empty? model-lineage)
+   :models  model-lineage})
+
+(defn- merge-table-dependency-results
+  [left right]
+  {:table-paths (merge-with into (:table-paths left) (:table-paths right))
+   :unsupported (into (:unsupported left) (:unsupported right))})
+
+(defn- card-table-dependencies
+  "Resolve every physical table reached by `card`, following saved-model references recursively.
+
+  `model-lineage` records only the intermediate models between the original evidence Card and a
+  table. `visited` is path-local: it prevents cycles without collapsing distinct model paths that
+  happen to reach the same table."
+  [card model-index model-lineage visited]
+  (try
+    (if-let [query (wrap-query (:database_id card) (:dataset_query card))]
+      (if (lib/any-native-stage? query)
+        {:table-paths {}
+         :unsupported [{:reason :native-query, :model-lineage model-lineage}]}
+        (let [table-ids (into (or (lib/all-source-table-ids query) #{})
+                              (or (lib/all-implicitly-joined-table-ids query) #{}))
+              direct    {:table-paths (into {}
+                                            (map (fn [table-id]
+                                                   [table-id #{(table-dependency-path model-lineage)}]))
+                                            table-ids)
+                         :unsupported []}
+              model-ids (->> (lib/all-source-card-ids query)
+                             (keep model-index)
+                             (map :id)
+                             distinct
+                             sort)]
+          (reduce
+           (fn [result model-id]
+             (if (contains? visited model-id)
+               result
+               (let [model (model-index model-id)]
+                 (merge-table-dependency-results
+                  result
+                  (card-table-dependencies model
+                                           model-index
+                                           (conj model-lineage (select-keys model [:id :name]))
+                                           (conj visited model-id))))))
+           direct
+           model-ids)))
+      {:table-paths {}
+       :unsupported [{:reason :unreadable-query, :model-lineage model-lineage}]})
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
+      (log/debug e "Failed to resolve candidate table dependencies")
+      {:table-paths {}
+       :unsupported [{:reason :unreadable-query, :model-lineage model-lineage}]})))
+
+(defn- dependency-path-sort-key
+  [{:keys [direct? models]}]
+  [(if direct? 0 1) (mapv :id models)])
+
+(defn- table-source-item-evidence
+  [source-items]
+  (let [{:keys [id name type verified? official-collection? popular? view-count]} (first source-items)]
+    {:id                   id
+     :name                 name
+     :type                 type
+     :verified?            verified?
+     :official-collection? official-collection?
+     :popular?             popular?
+     :view-count           view-count
+     :dependency-paths     (->> source-items
+                                (mapcat :dependency-paths)
+                                distinct
+                                (sort-by dependency-path-sort-key)
+                                vec)}))
+
+(defn- table-candidate-evidence
+  [source-items]
+  (let [items (->> source-items
+                   (group-by :id)
+                   vals
+                   (map table-source-item-evidence)
+                   (sort-by :id)
+                   vec)]
+    {:source-items          items
+     :distinct-source-count (count items)
+     :verified-source-count (count (filter :verified? items))
+     :official-source-count (count (filter :official-collection? items))
+     :popular-source-count  (count (filter :popular? items))
+     :total-view-count      (reduce + 0 (map :view-count items))}))
+
+(defn- raw-table-candidate-analysis
+  [cards model-index]
+  (reduce
+   (fn [analysis card]
+     (let [{:keys [table-paths unsupported]}
+           (card-table-dependencies card model-index [] #{(:id card)})
+           source-base (select-keys card [:id :name :type :verified? :official-collection? :popular? :view-count])]
+       (-> analysis
+           (update :table-source-items into
+                   (map (fn [[table-id dependency-paths]]
+                          {:table-id    table-id
+                           :source-item (assoc source-base :dependency-paths (vec dependency-paths))})
+                        table-paths))
+           (update :unsupported into
+                   (map (fn [{:keys [reason model-lineage]}]
+                          (cond-> (assoc (select-keys source-base [:id :name :type]) :reason reason)
+                            (seq model-lineage) (assoc :model-lineage model-lineage)))
+                        unsupported)))))
+   {:table-source-items [], :unsupported []}
+   cards))
+
+(defn- eligible-candidate-table?
+  [table database]
+  (boolean
+   (and (:active table)
+        (nil? (:visibility_type table))
+        (not= :hidden (:data_layer table))
+        (not (:is_published table))
+        database
+        (not (:is_audit database))
+        (not (:is_sample database))
+        (nil? (:router_database_id database)))))
+
+(defn- candidate-table-index
+  [table-ids]
+  (let [table-ids (into #{} (filter pos-int?) table-ids)
+        tables    (when (seq table-ids)
+                    (t2/select [:model/Table :id :db_id :schema :name :display_name :description
+                                :data_layer :data_authority :view_count :active :visibility_type
+                                :is_published]
+                               :id [:in table-ids]))
+        db-ids    (into #{} (keep :db_id) tables)
+        databases (when (seq db-ids)
+                    (u/index-by :id
+                                (t2/select [:model/Database :id :name :is_audit :is_sample
+                                            :router_database_id]
+                                           :id [:in db-ids])))]
+    (into {}
+          (keep (fn [{:keys [id db_id schema name display_name description data_layer data_authority
+                             view_count]
+                      :as table}]
+                  (let [database (databases db_id)]
+                    (when (eligible-candidate-table? table database)
+                      [id {:id             id
+                           :database-id    db_id
+                           :database-name  (:name database)
+                           :schema         schema
+                           :name           name
+                           :display-name   (or display_name name)
+                           :description    description
+                           :data-layer     data_layer
+                           :data-authority data_authority
+                           :view-count     (long (or view_count 0))}]))))
+          tables)))
+
+(defn- candidate-table-sort-key
+  [{:keys [table evidence]}]
+  [(- (:verified-source-count evidence))
+   (- (:official-source-count evidence))
+   (if (= :authoritative (:data-authority table)) 0 1)
+   (if (= :final (:data-layer table)) 0 1)
+   (- (:distinct-source-count evidence))
+   (- (:popular-source-count evidence))
+   (- (:total-view-count evidence))
+   (- (:view-count table))
+   (or (:database-name table) "")
+   (or (:schema table) "")
+   (or (:name table) "")
+   (:id table)])
+
+(defn- rank-candidate-tables
+  [candidates limit]
+  (->> candidates
+       (sort-by candidate-table-sort-key)
+       (take limit)
+       vec))
+
+(defn- unsupported-source-item-sort-key
+  [{:keys [id reason model-lineage]}]
+  [id (name reason) (mapv :id model-lineage)])
+
+(mu/defn candidate-tables :- ::usage-metadata.schema/candidate-table-report
+  "Rank unpublished physical tables reached by selected MBQL questions and models.
+
+  Saved-model dependencies are followed without the stage lineage barriers used by Measure and
+  Segment extraction. The original selected Card remains the sole endorsement source, while every
+  distinct model path is retained as provenance. Native and unreadable branches are returned in
+  `:unsupported-source-items`. This is a read-only analysis and never publishes or updates a Table."
+  ([] (candidate-tables {}))
+  ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
+   (lib-be/with-metadata-provider-cache
+     (let [limit        (or limit candidate-default-limit)
+           cards        (candidate-source-cards opts)
+           models       (candidate-model-index)
+           analysis     (raw-table-candidate-analysis cards models)
+           by-table     (group-by :table-id (:table-source-items analysis))
+           table-index  (candidate-table-index (keys by-table))
+           candidates   (rank-candidate-tables
+                         (keep (fn [[table-id rows]]
+                                 (when-let [table (table-index table-id)]
+                                   {:table    table
+                                    :evidence (table-candidate-evidence (map :source-item rows))}))
+                               by-table)
+                         limit)
+           unsupported  (->> (:unsupported analysis)
+                             distinct
+                             (sort-by unsupported-source-item-sort-key)
+                             vec)]
+       {:candidates candidates, :unsupported-source-items unsupported}))))
+
 (def ^:private candidate-name-max-length
   254)
 

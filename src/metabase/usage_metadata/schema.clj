@@ -74,6 +74,67 @@
    [:popular-source-count  nat-int?]
    [:total-view-count      nat-int?]])
 
+(mr/def ::candidate-table-model
+  [:map {:closed true}
+   [:id   pos-int?]
+   [:name [:maybe :string]]])
+
+(mr/def ::candidate-table-dependency-path
+  [:map {:closed true}
+   [:direct? :boolean]
+   [:models  [:sequential ::candidate-table-model]]])
+
+(mr/def ::candidate-table-source-item
+  [:map {:closed true}
+   [:id                   pos-int?]
+   [:name                 [:maybe :string]]
+   [:type                 [:enum :question :model]]
+   [:verified?            :boolean]
+   [:official-collection? :boolean]
+   [:popular?             :boolean]
+   [:view-count           nat-int?]
+   [:dependency-paths     [:sequential {:min 1} ::candidate-table-dependency-path]]])
+
+(mr/def ::candidate-table-evidence
+  [:map {:closed true}
+   [:source-items          [:sequential {:min 1} ::candidate-table-source-item]]
+   [:distinct-source-count pos-int?]
+   [:verified-source-count nat-int?]
+   [:official-source-count nat-int?]
+   [:popular-source-count  nat-int?]
+   [:total-view-count      nat-int?]])
+
+(mr/def ::candidate-table-metadata
+  [:map {:closed true}
+   [:id             pos-int?]
+   [:database-id    pos-int?]
+   [:database-name  [:maybe :string]]
+   [:schema         [:maybe :string]]
+   [:name           [:maybe :string]]
+   [:display-name   [:maybe :string]]
+   [:description    [:maybe :string]]
+   [:data-layer     [:maybe :keyword]]
+   [:data-authority [:maybe :keyword]]
+   [:view-count     nat-int?]])
+
+(mr/def ::candidate-table
+  [:map {:closed true}
+   [:table    ::candidate-table-metadata]
+   [:evidence ::candidate-table-evidence]])
+
+(mr/def ::unsupported-candidate-source-item
+  [:map {:closed true}
+   [:id            pos-int?]
+   [:name          [:maybe :string]]
+   [:type          [:enum :question :model]]
+   [:reason        [:enum :native-query :unreadable-query]]
+   [:model-lineage {:optional true} [:sequential {:min 1} ::candidate-table-model]]])
+
+(mr/def ::candidate-table-report
+  [:map {:closed true}
+   [:candidates               [:sequential ::candidate-table]]
+   [:unsupported-source-items [:sequential ::unsupported-candidate-source-item]]])
+
 (mr/def ::mbql-clause
   [:fn {:error/message "expected an MBQL clause"}
    (fn [x] (and (vector? x) (keyword? (first x))))])

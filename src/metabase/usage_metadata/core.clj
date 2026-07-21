@@ -7,6 +7,13 @@
 
 (set! *warn-on-reflection* true)
 
+(mu/defn candidate-tables :- ::usage-metadata.schema/candidate-table-report
+  "Deterministically rank unpublished physical tables reached by selected MBQL questions and models.
+  The report preserves source curation and usage evidence plus every saved-model dependency path.
+  Native and unreadable source branches are reported separately instead of being silently ignored."
+  [opts :- ::usage-metadata.schema/candidate-opts]
+  (insights/candidate-tables opts))
+
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
   "Deterministically mine creation-ready Measure candidates from questions and models selected by
   `:query-source`. Without one, verified, official-collection, or popular items are used. Bare row

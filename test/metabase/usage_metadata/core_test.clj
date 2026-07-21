@@ -34,6 +34,43 @@
    :observation {:type :low-cardinality, :value 5}
    :count       1})
 
+(def ^:private sample-candidate-table-report
+  {:candidates
+   [{:table {:id 42
+             :database-id 1
+             :database-name "DB"
+             :schema nil
+             :name "orders"
+             :display-name "Orders"
+             :description nil
+             :data-layer :final
+             :data-authority :authoritative
+             :view-count 7}
+     :evidence {:source-items [{:id 99
+                                :name "Question"
+                                :type :question
+                                :verified? true
+                                :official-collection? false
+                                :popular? true
+                                :view-count 12
+                                :dependency-paths [{:direct? true, :models []}]}]
+                :distinct-source-count 1
+                :verified-source-count 1
+                :official-source-count 0
+                :popular-source-count 1
+                :total-view-count 12}}]
+   :unsupported-source-items []})
+
+(deftest candidate-tables-delegate-to-insights-test
+  (let [captured-args (atom nil)]
+    (with-redefs [insights/candidate-tables
+                  (fn [opts]
+                    (reset! captured-args opts)
+                    sample-candidate-table-report)]
+      (is (= sample-candidate-table-report
+             (usage-metadata/candidate-tables {:limit 3})))
+      (is (= {:limit 3} @captured-args)))))
+
 (deftest implicit-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (with-redefs [insights/implicit-segments
