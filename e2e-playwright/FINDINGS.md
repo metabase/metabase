@@ -4724,3 +4724,65 @@ containment and therefore failing in CI. If they confirm the trade was
 intentional and weighed, delete our test to match upstream's deletion and close
 this. Do not silently delete it before then — it is the only automated evidence
 that the boundary was given up.
+
+---
+
+### #225 PRODUCT LIMITATION (app code, NOT ours to fix): Metabase cannot
+### connect to a MySQL 8.4 account with a cold `caching_sha2_password` cache
+### over a non-TLS connection
+
+Surfaced by `database-writable-connection` :: "should show up-to-date connection
+health status", which fails **deterministically** (both CI attempts) with:
+
+```
+expect(locator).toHaveText(expected) failed
+Locator: ...getByTestId('database-connection-health-info')
+Expected: "Connected"
+Received: "Could not connect to address=(host=localhost)(port=3304)(type=master) :
+           (conn=176) Plugin 'mysql_native_password' is not loaded"
+```
+
+**Mechanism.** The QA image `metabase/qa-databases:mysql-sample-8` is now
+**MySQL 8.4.2**, where `mysql_native_password` is DISABLED and
+`authentication_policy = *,,` — every account defaults to
+`caching_sha2_password`. The spec creates `readonly_user` fresh in `beforeEach`
+and drops it in `afterEach`, and `DROP USER` **evicts the server's sha2 password
+cache**. A cold-cache account requires caching_sha2 "full authentication", which
+needs either TLS or the server's RSA public key. Metabase's MySQL driver
+(MariaDB Connector/J) is configured `useSSL false` with no
+`serverRsaPublicKeyFile` / `allowPublicKeyRetrieval`
+(`src/metabase/driver/mysql.clj:743`), so it cannot complete it.
+
+Measured against a live backend via `POST /api/database/validate`:
+
+| connection | result |
+|---|---|
+| `root` (long-lived, cache warm) | `valid: true` |
+| `readonly_user`, **cold** cache | `valid: false` — *"RSA public key is not available client side (option serverRsaPublicKeyFile not set)"* |
+| `readonly_user`, after one mysql2 connect (warms the cache) | `valid: true` |
+
+Local and CI report different messages for the same failure (locally the RSA
+error; in CI the connector falls back to requesting the disabled
+`mysql_native_password`), but it is one failure class.
+
+**Why this is a product finding, not a test one.** `/api/database/validate` is
+the same path the admin "add a database" UI uses. A user adding a MySQL 8.4
+warehouse with a fresh `caching_sha2` account over a non-TLS connection hits
+exactly this. The e2e failure is the symptom, not the bug.
+
+**Not port drift.** The port's `createUser` is byte-identical to upstream's, and
+upstream's Cypress spec has the same defect — it was presumably green when the
+**mutable** `mysql-sample-8` tag pointed at an older MySQL. Note the wider
+hazard: a mutable image tag means CI's warehouse can change under the suite
+without any commit.
+
+**Why only one test fails.** Of the nine in that describe, this is the only one
+asserting `readonly_user` **can** connect. One changes to that user without
+asserting health; four expect operations to *fail*, so they pass for the wrong
+reason. Exactly one visible failure is consistent with the diagnosis.
+
+**Nothing changed in the spec**, per the faithfulness rule. If we want to unblock
+it without weakening anything, the minimal fixture-side fix is to connect once as
+`readonly_user` through mysql2 inside `createUser` to warm the server cache —
+proven to flip validation to `valid: true`. That masks a real product limitation,
+so it should only be done alongside reporting #225 to the drivers owners.

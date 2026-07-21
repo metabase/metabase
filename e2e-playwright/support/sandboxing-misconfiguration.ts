@@ -234,11 +234,63 @@ export async function configureSandboxPolicyOnColumn(
   //
   // Racing the two locators makes the sample happen only once the sidebar has
   // committed to one shape or the other. It changes no assertion.
-  await expect(tableItem.or(schemaItem).first()).toBeVisible();
-  if ((await tableItem.count()) === 0) {
-    await schemaItem.click();
-  }
-  await tableItem.click();
+  //
+  // ── WHY THAT RACE WAS NOT ENOUGH ──────────────────────────────────────────
+  // CI run 29825096184 (shard 38) failed with the SAME 30s
+  // `menuitem name='public'` click timeout WITH the race already in the tree
+  // (verified by `git show f39d02a13d4 -- <this file>`). So the race fixed
+  // *when* the sample is taken but not the thing that turns a bad sample into
+  // a 30s hard failure: the decision is one-shot and IRREVERSIBLE. Once the
+  // `count() === 0` branch is entered, the flow is committed to clicking a
+  // locator that — on a single-schema database, which is every per-worker
+  // writable database (651bc2d5d25) — will never exist, and the only exit is
+  // the full click timeout.
+  //
+  // Measured on this harness while investigating, so the next reader does not
+  // re-derive it:
+  //   - The `postgres-writable` snapshot's 8 stale tables are ALL in `public`,
+  //     so `database.schemasCount() > 1` (data-sidebar.ts `shouldIncludeSchemas`)
+  //     is false both before and after a sync. `public` is therefore not merely
+  //     unlikely here, it is unreachable.
+  //   - The sidebar does NOT re-render when db 2's metadata changes behind it
+  //     (the RTK `getDatabaseMetadata` query does not poll): dropping the
+  //     warehouse table and forcing `POST /sync_schema` left the sidebar
+  //     showing `Products` for 12s. So a mid-test wipe cannot un-paint an
+  //     already-painted sidebar either.
+  // Neither of those explains a 0 sample in a HEALTHY page, and the failure
+  // did not reproduce locally. What is left is a sample taken across a
+  // document boundary: the pre-wait passes against the painted sidebar, the
+  // page remounts/reloads, and `count()` — which returns 0 rather than
+  // throwing on a swapped-out document — reads 0. The CI timing supports it:
+  // the failing attempt spent ~7.5s before the click (37550ms total, 30000ms
+  // of it the timeout) where the passing retry finished the WHOLE test in
+  // 9983ms, i.e. it was the slow, contended load. That mechanism is not proven
+  // — it is the residual after the two measurements above — so the change
+  // below is written to survive it AND to name the real state next time.
+  //
+  // Retrying the decide-and-click is safe in both directions: with tables
+  // shown, `tableItem.click()` succeeds on the first pass; with schemas shown,
+  // the schema click descends and the retry then finds the table directly. No
+  // assertion is relaxed — if neither ever resolves this still fails, just
+  // with the sidebar's actual contents instead of an opaque timeout.
+  //
+  // The `.or(...).toBeVisible()` pre-wait is gone: `toPass` subsumes it (its
+  // first iteration is the same sample) and keeping it would let a 10s opaque
+  // "expected to be visible" shadow the diagnostic below on exactly the runs
+  // where the diagnostic is the point.
+  await expect(async () => {
+    if ((await tableItem.count()) === 0) {
+      if ((await schemaItem.count()) === 0) {
+        throw new Error(
+          `Neither a "${tableName}" table nor a "${schema}" schema in the ` +
+            `permissions sidebar. Menuitems present: ` +
+            `${JSON.stringify(await page.getByRole("menuitem").allInnerTexts())}`,
+        );
+      }
+      await schemaItem.click({ timeout: 5_000 });
+    }
+    await tableItem.click({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
 
   await modifyPermission(page, "data", 0, "Row and column security");
 

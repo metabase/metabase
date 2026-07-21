@@ -1382,6 +1382,36 @@ test.describe("scenarios > admin > settings > map settings", () => {
 // Ensure the webhook tester docker container is running
 // docker run -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
 test.describe("notifications", () => {
+  // Every test in here shares ONE webhook-tester session — the fixed
+  // `00000000-0000-0000-0000-000000000000` on the single :9080 container — and
+  // each `beforeEach` DELETEs all of that session's requests. So a sibling test
+  // starting while another is mid-flight wipes the very request the first is
+  // about to assert on. Per-worker backends do not help: the backends are
+  // isolated, the webhook tester is not.
+  //
+  // The config sets `fullyParallel: false` for exactly this class of reason,
+  // but CI runs `bunx playwright test --fully-parallel` (e2e-playwright.yml)
+  // and the CLI flag wins — so in CI these DO interleave. MEASURED from the CI
+  // timeline of run 29825096184 shard 3: "Bearer Auth" and "Should allow you to
+  // create and edit Notifications" ran on worker 0 while "API Key - Header
+  // Auth" ran on worker 1, and the latter's request was deleted out from under
+  // it, leaving a foreign request that satisfied the `/Requests 1/` heading but
+  // carried no `Mb_foo` header.
+  //
+  // A/B under CI's exact flags (`--workers=2 --fully-parallel`, 8 invocations
+  // each): without this line 8/8 invocations failed (14/32 tests), with it
+  // 0/8 across two rounds.
+  //
+  // `default`, not `serial`: this only needs to pin the describe to one worker
+  // in order, and `serial` would additionally SKIP the rest of the describe
+  // after any failure, hiding real regressions behind the first one.
+  //
+  // NOTE this does not close the CROSS-FILE half of the hazard —
+  // question-saved.spec.ts resets the same shared session and would collide if
+  // sharding ever co-locates it. The durable fix is a per-worker webhook-tester
+  // container, exactly as support/maildev.ts already does for maildev.
+  test.describe.configure({ mode: "default" });
+
   test.beforeEach(async ({ mb }) => {
     test.skip(
       !(await isWebhookTesterRunning()),
