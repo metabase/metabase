@@ -64,10 +64,17 @@
                         (#'embedder.model/model-source "my-model")))]
     (testing "an MB_EMBEDDER_MODEL_SOURCES entry wins over the bundled resource"
       (let [sources "{\"my-model\" {:path \"/models/custom\"}}"]
-        (is (= {:type :path :path "/models/custom" :include-token-types? true}
+        (is (= {:type                 :path
+                :path                 "/models/custom"
+                :include-token-types? true
+                :origin               :override}
                (source-with {"MB_EMBEDDER_MODEL_SOURCES" sources} true))))
       (let [sources "{\"my-model\" {:url \"s3://models/custom.zip\" :include-token-types? false :model-file-name \"weights\"}}"]
-        (is (= {:type :url :url "s3://models/custom.zip" :include-token-types? false :model-file-name "weights"}
+        (is (= {:type                 :url
+                :url                  "s3://models/custom.zip"
+                :include-token-types? false
+                :model-file-name      "weights"
+                :origin               :override}
                (source-with {"MB_EMBEDDER_MODEL_SOURCES" sources} true)))))
     (testing "entries for other models don't apply"
       (is (=? {:type :url :url #"jar:///metabase-embedder/my-model-.*\.zip"}
@@ -90,7 +97,10 @@
                               (source-with {"MB_EMBEDDER_MODEL_SOURCES" "{\"my-model\" nil}"} true)))))
     (testing "a stray key in an entry can't clobber the internal source-map discriminator"
       (let [sources "{\"my-model\" {:path \"/models/custom\" :type :dir}}"]
-        (is (= {:type :path :path "/models/custom" :include-token-types? true}
+        (is (= {:type                 :path
+                :path                 "/models/custom"
+                :include-token-types? true
+                :origin               :override}
                (source-with {"MB_EMBEDDER_MODEL_SOURCES" sources} true)))))
     (testing "the bundled resource is the default, always with token types"
       (is (=? {:type :url :url #"jar:///metabase-embedder/my-model-.*\.zip" :include-token-types? true}
@@ -117,7 +127,10 @@
                                                                                  (format "{%s {:path \"/models/tuned\"}}"
                                                                                          (pr-str key-spelling))}
                                           embedder.model/bundled-model-resource bundle-only]
-                (is (= {:type :path :path "/models/tuned" :include-token-types? true}
+                (is (= {:type                 :path
+                        :path                 "/models/tuned"
+                        :include-token-types? true
+                        :origin               :override}
                        (#'embedder.model/model-source lookup-name)))))))
         (testing "but entries for both spellings are a config error, not a silent last-one-wins"
           (mt/with-dynamic-fn-redefs [embedder.model/getenv {"MB_EMBEDDER_MODEL_SOURCES"
@@ -147,27 +160,42 @@
 
 (deftest source-log-summary-test
   (testing "credential-bearing URL components (userinfo, query, fragment) are dropped"
-    (is (= {:type :url :origin :override :url "https://models.example.com:8443"}
+    (is (= {:type :url, :origin :override, :url "https://models.example.com:8443"}
            (#'embedder.model/source-log-summary
-            {:type :url
-             :url  "https://user:password@models.example.com:8443/private/model.onnx?token=secret#fragment"})))
-    (is (= {:type :url :origin :override :url "s3://bucket"}
-           (#'embedder.model/source-log-summary {:type :url :url "s3://key:secret@bucket/model.zip"}))))
+            {:type   :url
+             :origin :override
+             :url    "https://user:password@models.example.com:8443/private/model.onnx?token=secret#fragment"})))
+    (is (= {:type :url, :origin :override, :url "s3://bucket"}
+           (#'embedder.model/source-log-summary
+            {:type :url, :origin :override, :url "s3://key:secret@bucket/model.zip"}))))
   (testing "the sources that identify which model loaded stay legible"
     ;; The bundled resource is the production default, and the arch suffix is the diagnostic — redacting
     ;; it would leave the load log unable to answer \"which bundle did this instance actually load?\".
-    (is (= {:type :url :origin :built-in :url "jar:///metabase-embedder/all-MiniLM-L6-v2-arm64.zip"}
+    (is (= {:type   :url
+            :origin :built-in
+            :url    "jar:///metabase-embedder/all-MiniLM-L6-v2-arm64.zip"}
            (#'embedder.model/source-log-summary
-            {:type :url :url "jar:///metabase-embedder/all-MiniLM-L6-v2-arm64.zip"})))
-    (is (= {:type :url :origin :built-in
-            :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"}
+            {:type   :url
+             :origin :built-in
+             :url    "jar:///metabase-embedder/all-MiniLM-L6-v2-arm64.zip"})))
+    (is (= {:type   :url
+            :origin :built-in
+            :url    "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"}
            (#'embedder.model/source-log-summary
-            {:type :url :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"})))
-    (is (= {:type :path :origin :override :path "/models/tuned"}
-           (#'embedder.model/source-log-summary {:type :path :path "/models/tuned"}))))
+            {:type   :url
+             :origin :built-in
+             :url    "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"})))
+    (is (= {:type :path, :origin :override, :path "/models/tuned"}
+           (#'embedder.model/source-log-summary {:type :path, :origin :override, :path "/models/tuned"}))))
+  (testing "an override cannot gain built-in trust by mimicking the bundled-resource prefix"
+    (mt/with-dynamic-fn-redefs [embedder.model/getenv {"MB_EMBEDDER_MODEL_SOURCES"
+                                                       "{\"my-model\" {:url \"jar:///metabase-embedder/path-secret/model.zip\"}}"}]
+      (is (= {:type :url, :origin :override, :url "jar:<redacted>"}
+             (#'embedder.model/source-log-summary
+              (#'embedder.model/model-source "my-model"))))))
   (testing "an unparseable URL is redacted rather than logged raw"
-    (is (= {:type :url :origin :override :url "<redacted>"}
-           (#'embedder.model/source-log-summary {:type :url :url "not a URL"})))))
+    (is (= {:type :url, :origin :override, :url "<redacted>"}
+           (#'embedder.model/source-log-summary {:type :url, :origin :override, :url "not a URL"})))))
 
 (deftest model-registry-test
   (testing "models are cached per name and only built once each"
