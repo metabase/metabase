@@ -1,9 +1,9 @@
-(ns metabase.typed-schemas.api.schema.model-test
+(ns metabase.typed-schemas.schema.model-test
   (:require
    [clojure.test :refer :all]
    [metabase.actions.core :as actions]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
-   [metabase.typed-schemas.api.schema.model :as schema.model]))
+   [metabase.typed-schemas.schema.common :as schema.common]
+   [metabase.typed-schemas.schema.model :as schema.model]))
 
 (deftest model-schema-includes-actions-test
   (with-redefs [schema.model/model-action-schemas

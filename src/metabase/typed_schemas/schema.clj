@@ -1,8 +1,8 @@
-(ns metabase.typed-schemas.api.schema
+(ns metabase.typed-schemas.schema
   "Top-level typed schema helpers."
   (:require
    [metabase.system.core :as system]
-   [metabase.typed-schemas.api.common :as common])
+   [metabase.typed-schemas.common :as common])
   (:import
    (java.time Instant)))
 

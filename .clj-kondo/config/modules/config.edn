@@ -2508,9 +2508,8 @@
 
   typed-schemas
   {:team "Embedding"
-   :api  #{metabase.typed-schemas.api}
+   :api  #{metabase.typed-schemas}
    :uses #{actions
-           api
            collections
            lib
            lib-be
@@ -2527,6 +2526,13 @@
                     :model/Field
                     :model/Measure
                     :model/Table}}
+
+  typed-schemas-rest
+  {:team "Embedding"
+   :api  #{metabase.typed-schemas-rest.api}
+   :uses #{api
+           typed-schemas
+           util}}
 
   types
   {:team "Querying Platform"

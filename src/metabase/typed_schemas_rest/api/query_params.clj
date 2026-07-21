@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas.api.query-params
+(ns metabase.typed-schemas-rest.api.query-params
   "REST query parameter parsing for typed schemas."
   (:require
    [clojure.string :as str]))

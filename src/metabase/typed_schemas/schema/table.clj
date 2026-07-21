@@ -1,13 +1,13 @@
-(ns metabase.typed-schemas.api.schema.table
+(ns metabase.typed-schemas.schema.table
   "Typed schema generation for tables, fields, segments and measures."
   (:require
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
-   [metabase.typed-schemas.api.common :as common]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
-   [metabase.typed-schemas.api.scope :as scope]
+   [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.schema.common :as schema.common]
+   [metabase.typed-schemas.scope :as scope]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

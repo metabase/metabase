@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas.api.render-test
+(ns metabase.typed-schemas.render-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

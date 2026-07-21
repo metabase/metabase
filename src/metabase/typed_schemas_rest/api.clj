@@ -1,9 +1,9 @@
-(ns metabase.typed-schemas.api
+(ns metabase.typed-schemas-rest.api
   "/api/typed-schemas endpoints."
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.typed-schemas :as typed-schemas]
-   [metabase.typed-schemas.api.query-params :as query-params]
+   [metabase.typed-schemas-rest.api.query-params :as query-params]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
