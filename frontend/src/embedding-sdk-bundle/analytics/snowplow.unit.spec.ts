@@ -11,10 +11,9 @@ const mockNewTracker = jest.fn();
 const mockTrackSelfDescribingEvent = jest.fn();
 const mockTrackMetaplowEvent = jest.fn();
 
-// The factories reference the shared jest.fn()s lazily (via wrappers): the
-// top-level `metabase/redux/store/mocks/api` import transitively imports
-// `@snowplow/browser-tracker`, so the hoisted factories execute before the
-// consts above initialize — a direct reference would hit the TDZ.
+// Defer binding the mocks to the real module until after the jest.mock(...) calls below, so that
+// the mocks are initialized before the module under test is imported.
+// Otherwise, the module under test would import the real module and bind to the real functions before the mocks are set up.
 jest.mock("@snowplow/browser-tracker", () => ({
   newTracker: (...args: unknown[]) => mockNewTracker(...args),
   trackSelfDescribingEvent: (...args: unknown[]) =>
@@ -29,8 +28,7 @@ jest.mock("metabase/utils/metaplow", () => ({
 const loadModule = () => import("./snowplow");
 
 function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
-  // Settings live in the `getSessionProperties` RTK Query cache (read via
-  // `getSettings`), so seed that cache entry rather than a `settings` slice.
+  // Seed the `getSessionProperties` RTK Query cache.
   const state = createMockState({ sdk: createMockSdkState() });
   const stateWithSettings = {
     ...state,

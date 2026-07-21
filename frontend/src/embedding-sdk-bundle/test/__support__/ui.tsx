@@ -39,9 +39,8 @@ export function renderWithSDKProviders(
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
-  // `settings` is served from the `getSessionProperties` RTK Query cache rather
-  // than a redux slice; capture any seeded settings here and seed the cache
-  // through `preloadedState` below.
+  // `settings` is served from the `getSessionProperties` RTK Query cache.
+  // Capture any seeded settings here and seed the cache through `preloadedState` below.
   let {
     routing,
     settings: seededSettings,
