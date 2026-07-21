@@ -36,6 +36,9 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log])
   (:import
@@ -278,20 +281,62 @@
 ;;; Janitor
 ;;; ---------------------------------------------------------------------------
 
-(defn- list-tables-in-schema
+;; TODO ------------------------------------------------------------------------
+;; DRIVER IMPL OUTSIDE THE DRIVER TREE — DO NOT SHIP AS-IS.
+;; The :bigquery-cloud-sdk method below is a driver-specific implementation
+;; living in an enterprise module. One exit: promote [[list-tables-sql]] to a
+;; real driver multimethod in a namespace the driver modules can implement
+;; (e.g. metabase.driver.sql), move the BigQuery method into
+;; modules/drivers/bigquery-cloud-sdk, and delete both from here. But that
+;; design is itself a first guess — an existing driver API may already cover
+;; what the sweep below ([[cleanup-all-test-tables!]]) requires: list tables in
+;; a namespace, DDL-fresh, empty tables included. driver/describe-database does
+;; NOT — Redshift's omits empty tables, MySQL's reports :schema nil. A different
+;; enumeration strategy may also fit better. Decide deliberately before shipping.
+;; ------------------------------------------------------------------------------
+(defmulti ^:private list-tables-sql
+  "`[sql params]` enumerating table names in namespace `schema` on the warehouse.
+  The default is the standard `information_schema.tables`, schema as a bound
+  parameter. BigQuery exposes INFORMATION_SCHEMA only per-dataset, so its
+  relation is dataset-qualified (identifier-quoted; no parameters)."
+  {:arglists '([driver schema])}
+  (fn [driver _schema] driver)
+  :hierarchy #'driver/hierarchy)
+
+(defmethod list-tables-sql :default
+  [_driver schema]
+  [(str "SELECT table_name"
+        " FROM information_schema.tables"
+        " WHERE table_schema = ?"
+        " ORDER BY table_name")
+   [schema]])
+
+(defmethod list-tables-sql :bigquery-cloud-sdk
+  [driver schema]
+  [(str "SELECT table_name"
+        " FROM " (sql.u/quote-name driver :schema schema) ".INFORMATION_SCHEMA.TABLES"
+        " ORDER BY table_name")
+   []])
+
+(defn list-tables-in-schema
   "Return a vector of table-name strings in namespace `schema` on the warehouse — a
   real schema, or the catalog on engines whose namespace travels in the `:db` slot
-  (MySQL, where `describe-database` reports the catalog as each table's `:schema`)."
-  [driver db ^String schema]
-  ;; driver/describe-database, not raw `information_schema.tables` SQL: BigQuery
-  ;; exposes INFORMATION_SCHEMA only per-dataset, so an unqualified reference
-  ;; resolves to a nonexistent dataset. describe-database lists the whole
-  ;; warehouse; filter to the target namespace. Sync's temp-table skip runs
-  ;; downstream of describe-database, so scratch tables remain visible here.
-  (into []
-        (comp (filter #(= schema (:schema %)))
-              (map :name))
-        (:tables (driver/describe-database driver db))))
+  (MySQL, where `information_schema.table_schema` holds the database)."
+  [driver db-id ^String schema]
+  ;; A live information_schema query, not driver/describe-database: describe-database
+  ;; is a sync API with per-driver visibility gaps fatal to a janitor — Redshift's
+  ;; omits empty tables, MySQL's reports `:schema` nil. information_schema sees DDL
+  ;; immediately on every gated driver; BigQuery needs only the dataset-qualified
+  ;; relation ([[list-tables-sql]]).
+  ;;
+  ;; Schema bound as a parameter (or identifier-quoted, on BigQuery), never
+  ;; interpolated: a name containing SQL metacharacters must not produce malformed
+  ;; SQL or injection. (Not execute/native-query: execute requires this ns.)
+  (let [[sql params] (list-tables-sql driver schema)
+        query        (cond-> (lib/native-query (lib-be/application-database-metadata-provider db-id) sql)
+                       (seq params) (lib/update-query-stage 0 assoc :params params))
+        result       (qp/process-query query)]
+    (mapv first (get-in result [:data :rows]))))
 
 (defn cleanup-all-test-tables!
   "Drop every test scratch table in `schema` older than `:min-age-seconds`
@@ -306,8 +351,8 @@
   (let [driver   (keyword (:engine db))
         now-secs (quot (System/currentTimeMillis) 1000)]
     ;; Self-elevate: the sweep's DROPs run on write-data credentials via the
-    ;; :transform pool. The describe-database enumeration is read-only metadata, so
-    ;; sharing that scope is harmless.
+    ;; :transform pool. The information_schema enumeration is a fixed system query,
+    ;; not user SQL, so sharing that scope is harmless.
     (driver.conn/with-transform-connection
       (reduce
        (fn [report tbl-name]
@@ -322,7 +367,7 @@
              (update report :skipped-young conj tbl-name))
            (update report :non-matching-count inc)))
        {:dropped [] :skipped-young [] :non-matching-count 0 :drop-errors []}
-       (list-tables-in-schema driver db schema)))))
+       (list-tables-in-schema driver db-id schema)))))
 
 (defn sweep-old-test-tables!
   "Reap old test scratch tables, best-effort. Never throws; returns nil.

@@ -11,8 +11,7 @@
   [[wrong-expected-csv]] are t2's expected output. e2e-test uses richer local
   fixtures that are load-bearing for its hand-derived expectations."
   (:require
-   [clojure.string :as str]
-   [metabase.driver :as driver]
+   [metabase-enterprise.transforms-verification.scratch :as scratch]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -119,21 +118,17 @@
         (driver.sql/db-slot-value (keyword (:engine db)) db))))
 
 (defn count-test-scratch-tables
-  "Count mb_transform_temp_table_test_* tables in namespace `schema` — nil (or the
-  1-arity) means the current driver's scratch namespace. Enumerates via
-  `driver/describe-database` (portable across warehouses; BigQuery has no
-  instance-global information_schema)."
+  "Count test scratch tables in namespace `schema` — nil (or the 1-arity) means the
+  current driver's scratch namespace. Enumerates via the janitor's
+  [[scratch/list-tables-in-schema]], filtered by [[scratch/test-table-name?]]."
   ([db-id]
    (count-test-scratch-tables db-id nil))
   ([db-id schema]
-   (let [db     (t2/select-one :model/Database :id db-id)
-         driver (keyword (:engine db))
-         ns*    (or schema (scratch-namespace db-id))]
-     (count
-      (into []
-            (comp (filter #(= ns* (:schema %)))
-                  (filter #(str/starts-with? (str (:name %)) "mb_transform_temp_table_test_")))
-            (:tables (driver/describe-database driver db)))))))
+   (let [db (t2/select-one :model/Database :id db-id)]
+     (->> (scratch/list-tables-in-schema (keyword (:engine db)) db-id
+                                         (or schema (scratch-namespace db-id)))
+          (filter scratch/test-table-name?)
+          count))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; HTTP helpers

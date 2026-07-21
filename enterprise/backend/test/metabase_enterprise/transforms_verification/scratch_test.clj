@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -519,8 +520,40 @@
       (is (nil? (scratch/sweep-old-test-tables! 1 {:engine "postgres"} "public"))
           "sweep-old-test-tables! must not propagate errors"))))
 
-;;; list-tables-in-schema's schema scoping (private; enumerates via
-;;; driver/describe-database) is covered end-to-end by janitor-selectivity-test and
-;;; sweep-old-test-tables-drops-orphan-test on real warehouses. A schema name with
-;;; SQL metacharacters is inert: the janitor compares `:schema` by value and builds
-;;; no SQL from it.
+;;; ---------------------------------------------------------------------------
+;;; list-tables-in-schema must not interpolate schema
+;;; ---------------------------------------------------------------------------
+
+(deftest list-tables-in-schema-uses-parameterized-query-test
+  ;; The schema name must be a query parameter, not interpolated: a value like
+  ;; "pub'lic" would otherwise produce malformed SQL and crash the janitor. We
+  ;; intercept qp/process-query to inspect the query it submits. (BigQuery's
+  ;; dataset-qualified variant identifier-quotes the schema instead; that path
+  ;; needs the driver loaded, so it is CI's to prove.)
+  (testing "list-tables-in-schema submits a parameterized query (schema in :params, not interpolated)"
+    (let [captured-queries (atom [])
+          ;; Intercept qp/process-query to capture the query without executing
+          fake-process (fn [query]
+                         (swap! captured-queries conj query)
+                         ;; Return a minimal successful result so the caller can proceed
+                         {:status :completed
+                          :data   {:cols [{:name "table_name"}]
+                                   :rows []}})]
+      ;; A real Database row: the query is built against its metadata.
+      (mt/with-temp [:model/Database db {:engine :postgres}]
+        (mt/with-dynamic-fn-redefs [qp/process-query fake-process]
+          ;; cleanup-all-test-tables! calls list-tables-in-schema internally.
+          ;; Use a schema string with a single quote — this is the injection vector.
+          (scratch/cleanup-all-test-tables! (:id db) db "pub'lic" {})))
+      (is (= 1 (count @captured-queries))
+          "exactly one query should have been submitted")
+      (let [q      (first @captured-queries)
+            sql    (lib/raw-native-query q)
+            params (:params (lib/query-stage q 0))]
+        ;; The schema must appear in :params, not embedded in the SQL string
+        (is (= ["pub'lic"] params)
+            "schema string must be a parameter, not interpolated into SQL")
+        (is (not (str/includes? sql "pub'lic"))
+            "the schema value must not appear literally in the query string")
+        (is (str/includes? sql "?")
+            "the query must use a ? placeholder for the schema parameter")))))
