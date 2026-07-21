@@ -426,7 +426,7 @@
     (tx/destroy-db! driver dbdef)
     (log! "[%s] Done." (name driver))))
 
-;; wants the conventional `!` but clojure -X can't resolve `!`-suffixed fn names (see docstring)
+;; deliberately bang-less; the docstring documents the clojure -X naming concern
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn test-drop-dataset
   "Like [[drop-dataset!]] but checks existence before and after, verifying deletion.

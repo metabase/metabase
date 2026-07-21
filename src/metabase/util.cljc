@@ -1300,7 +1300,7 @@
   #?(:clj
      (reify CollReduce
        (coll-reduce [_ f]
-         ;; this IS the no-init reduce arity; delegating without init preserves CollReduce semantics
+         ;; this IS the no-init reduce arity; it must delegate without an init
          #_{:clj-kondo/ignore [:reduce-without-init]}
          (let [acc1 (reduce f r1)
                acc2 (reduce f acc1 r2)]

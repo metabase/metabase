@@ -333,7 +333,7 @@
                   [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
    :source-table (format "card__%s" base-card-id)})
 
-;; one native->model->metamodel card chain must be asserted consistent across every render path at once
+;; one native->model->metamodel card chain asserted consistent across the CSV attachment renders
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest consistent-date-formatting-test
   (mt/with-temporary-setting-values [custom-formatting nil]

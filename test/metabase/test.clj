@@ -102,6 +102,7 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
+;; re-exported vars keep their deprecated/discouraged status for callers; the facade must require them
 #_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util

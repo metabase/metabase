@@ -439,7 +439,7 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp         (mt/metadata-provider)
                 mbql-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
-            ;; model persistence (persist-models!, PersistedInfo) needs real app-db rows; no MP support
+            ;; persist-models! and the persistence job machinery need real app-db rows
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Card model {:name          "model"
                                               :type          :model
