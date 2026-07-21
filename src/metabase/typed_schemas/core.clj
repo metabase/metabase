@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas
+(ns metabase.typed-schemas.core
   "Programmatic API for building and rendering typed schemas."
   (:require
    [clojure.set :as set]

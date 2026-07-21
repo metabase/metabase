@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.typed-schemas :as typed-schemas]
+   [metabase.typed-schemas.core :as typed-schemas]
    [metabase.typed-schemas.schema.metric :as typed-schemas.schema.metric]
    [metabase.typed-schemas.schema.model :as typed-schemas.schema.model]
    [metabase.typed-schemas.schema.question :as typed-schemas.schema.question]

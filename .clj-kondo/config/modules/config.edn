@@ -2516,7 +2516,7 @@
 
   typed-schemas
   {:team "Embedding"
-   :api  #{metabase.typed-schemas}
+   :api  #{metabase.typed-schemas.core}
    :uses #{actions
            collections
            lib
