@@ -1,7 +1,10 @@
 (ns metabase.remote-sync.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (defenterprise current-branch
   "The git branch context for the current request/operation: the explicit sync
@@ -59,6 +62,15 @@
 (t2/define-before-update :hook/branched-content
   [row]
   (stamp-branch-on-move row))
+
+;; models deriving this hook also derive the timestamp/entity-id hooks; methodical
+;; needs an explicit order between unrelated aux methods on the same model
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/branched-content)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/branched-content)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/branched-content)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/entity-id :hook/branched-content)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/timestamped? :hook/branched-content)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/updated-at-timestamped? :hook/branched-content)
 
 (defn branch-filter-clause
   "HoneySQL WHERE clause restricting branchable content to the current branch:
