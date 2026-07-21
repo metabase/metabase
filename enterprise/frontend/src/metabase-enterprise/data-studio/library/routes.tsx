@@ -5,6 +5,7 @@ import { Route } from "metabase/router";
 import { LibraryPage } from "./LibraryPage";
 import { LibrarySectionLayout } from "./LibrarySectionLayout";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
+import { getDataStudioSeedRoutes } from "./seeds/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
 
@@ -15,6 +16,7 @@ export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
       {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}
       {getDataStudioSnippetRoutes()}
+      {getDataStudioSeedRoutes()}
     </Route>
   );
 };
