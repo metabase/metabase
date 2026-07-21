@@ -99,22 +99,33 @@
 
 (defn- page-cap
   "The number of rows this call could return at most — the binding cap between `row-limit` and
-   the query's own last-stage limit. A page that fills to this cap is reported `truncated`."
+   the query's own last-stage limit."
   [serialized-query row-limit]
   (if-let [limit (:limit (last-stage serialized-query))]
     (min limit row-limit)
     row-limit))
 
+(defn- remaining-rows
+  "Rows still owed by the query's own last-stage limit once `returned` of them have been served,
+   or nil when the query carries no limit of its own. That limit bounds the whole result set, so
+   paging has to spend it down across pages rather than reapply it to each one."
+  [serialized-query returned]
+  (when-let [limit (:limit (last-stage serialized-query))]
+    (- limit returned)))
+
 (defn- cursor-query
-  "The query the next-page cursor stores: the page's own query with the served page size
-   embedded as the last-stage limit, so continuing with `cursor` alone serves another page of
-   the same size. An aggregated last stage is passed through unchanged — an embedded limit
-   there would cut the base set before the keyset order can pin it down, and
+  "The query the next-page cursor stores: the page's own query with the budget for everything
+   after this page embedded as the last-stage limit — the query's own limit spent down by the
+   rows already served, so a `limit 500` query pages to row 500 and stops, or the served page
+   size when the query set no limit of its own, so continuing with `cursor` alone serves another
+   page of the same size. An aggregated last stage is passed through unchanged — an embedded
+   limit there would cut the base set before the keyset order can pin it down, and
    [[metabase.mcp.v2.query/next-page-cursor!]] would rightly refuse to mint."
-  [serialized-query page-size]
+  [serialized-query page-size remaining]
   (if (aggregated-last-stage? serialized-query)
     serialized-query
-    (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit] page-size)))
+    (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit]
+              (or remaining page-size))))
 
 ;;; ------------------------------------------------- Response -----------------------------------------------------
 
@@ -158,12 +169,17 @@
         rows        (get-in result [:data :rows])
         returned    (count rows)
         cap         (page-cap serialized-query row-limit)
-        truncated?  (and (pos? returned) (= returned cap))
+        remaining   (remaining-rows serialized-query returned)
+        ;; a full page has more behind it only when `row-limit` is what capped it: a `limit 3`
+        ;; query that returned 3 rows is complete, and paging it would serve rows it excluded.
+        truncated?  (and (pos? returned)
+                         (= returned cap)
+                         (or (nil? remaining) (pos? remaining)))
         handle      (mint-handle! session-id serialized-query prompt)
         next-cursor (when truncated?
                       (v2.query/next-page-cursor! session-id
                                                   api/*current-user-id*
-                                                  (cursor-query serialized-query cap)
+                                                  (cursor-query serialized-query cap remaining)
                                                   (last rows)
                                                   {:result-cols cols :prompt prompt}))
         counts      (cond-> {:query_handle handle

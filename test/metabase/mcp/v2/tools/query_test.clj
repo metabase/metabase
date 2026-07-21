@@ -187,6 +187,30 @@
           (is (= (count ids) (count (distinct ids)))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest query-limit-bounds-the-cursor-chain-test
+  ;; The query's own :limit bounds the whole result set, not each page. Paging must spend it down
+  ;; and stop, never reapply it per page and run off the end of what the caller asked for.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid (str (random-uuid))]
+        (testing "GHY-4142: a query exhausted by its own limit is complete, not truncated"
+          (let [body (payload (call! sid {:query (orders-query {:limit 3})}))]
+            (is (= 3 (:returned body)))
+            (is (false? (:truncated body)))
+            (is (nil? (:next_cursor body))
+                "a cursor here would page past row 3 — rows the caller's limit excluded")))
+        (testing "GHY-4142: a limit larger than row_limit pages, but only up to the limit"
+          (let [ids (loop [args {:query (orders-query {:limit 12}) :row_limit 5}, acc [], pages 0]
+                      (let [body (payload (call! sid args))
+                            acc' (into acc (row-ids body))]
+                        (if (or (>= pages 5) (not (:next_cursor body)))
+                          acc'
+                          (recur {:cursor (:next_cursor body) :row_limit 5} acc' (inc pages)))))]
+            (is (= 12 (count ids)) "the chain serves exactly the 12 rows the query asked for")
+            (is (= (count ids) (count (distinct ids))))
+            (is (apply < ids))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest fan-out-join-refuses-cursor-test
   ;; Companion to the refusal contract in metabase.mcp.v2.query-test: at the tool surface a
   ;; truncated fan-out page must be an explicit dead end — truncated with no next_cursor,
