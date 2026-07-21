@@ -100,6 +100,42 @@
     (is (true? (transforms-base.u/full-incremental-run?
                 {:target {:type :table-incremental} :last_checkpoint_value nil})))))
 
+(deftest ^:parallel apply-lookback-test
+  (let [apply-lookback @#'transforms-base.u/apply-lookback]
+    (testing "temporal checkpoints are pushed back by value units"
+      (is (= (t/local-date-time 2026 1 27 21 0 4)
+             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 4 :unit "day"})))
+      (is (= (t/local-date-time 2026 1 31 19 0 4)
+             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 2 :unit "hour"})))
+      (is (= (t/local-date 2026 1 24)
+             (apply-lookback (t/local-date 2026 1 31) :type/Date {:value 1 :unit "week"}))))
+    (testing "numeric checkpoints subtract the value directly"
+      (is (= (biginteger 38) (apply-lookback (biginteger 42) :type/Integer {:value 4})))
+      (is (= 195.99M (apply-lookback 199.99M :type/Float {:value 4}))))
+    (testing "a temporal lookback without a unit throws a user-facing error"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"requires a unit"
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 4}))))
+    (testing "a numeric lookback with a unit throws a user-facing error"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"must not specify a unit"
+           (apply-lookback (biginteger 42) :type/Integer {:value 4 :unit "day"}))))))
+
+(deftest ^:parallel checkpoint-compare-test
+  (let [checkpoint-compare @#'transforms-base.u/checkpoint-compare]
+    (testing "numeric values compare numerically across numeric classes"
+      (is (neg? (checkpoint-compare :type/Integer (biginteger 41) 42)))
+      (is (zero? (checkpoint-compare :type/Integer (biginteger 42) 42))))
+    (testing "temporal values compare as instants even across temporal classes"
+      (is (neg? (checkpoint-compare :type/DateTimeWithTZ
+                                    (t/instant "2026-01-30T10:00:00Z")
+                                    (t/offset-date-time "2026-01-31T10:00:00Z"))))
+      (is (pos? (checkpoint-compare :type/DateTime
+                                    (t/local-date-time 2026 2 1 0 0 0)
+                                    (t/local-date-time 2026 1 31 0 0 0)))))))
+
 (deftest ^:parallel checkpoint-span-attrs-test
   (testing "nil source-range-params yields an empty attrs map"
     (is (= {} (transforms-base.u/checkpoint-span-attrs nil))))

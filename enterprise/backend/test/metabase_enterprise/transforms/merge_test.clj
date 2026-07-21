@@ -218,6 +218,88 @@
                 (is (= expected (:field-id (first unique-key)))
                     "field-id resolved to the target's order_id field")))))))))
 
+(deftest merge-lookback-test
+  (testing "a lookback window re-reads rows behind the checkpoint so late-arriving data is upserted (GDGT-2868)"
+    (mt/test-drivers (test-drivers)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/dataset merge-temporal-test
+          (with-transform-cleanup! [target-table {:type     :table
+                                                  :name     "merge_lookback"
+                                                  :schema   (t2/select-one-fn :schema :model/Table
+                                                                              (mt/id :order_status_ts))
+                                                  :database (mt/id)}]
+            (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
+                  ts-field-id  (t2/select-one-pk :model/Field :name "changed_at"
+                                                 :table_id (mt/id :order_status_ts))
+                  source-query {:database (mt/id)
+                                :type     :native
+                                :native   {:query         (format "SELECT %s, %s FROM {{t}} AS %s"
+                                                                  (q "order_id") (q "status") (q "t"))
+                                           :template-tags {"t" {:id           "t"
+                                                                :name         "t"
+                                                                :display-name "T"
+                                                                :type         "table"
+                                                                :table-id     (mt/id :order_status_ts)
+                                                                :required     true}}}}
+                  payload      {:name               "Lookback Merge"
+                                :source_database_id (mt/id)
+                                :source             {:type                        "query"
+                                                     :query                       source-query
+                                                     :source-incremental-strategy {:type "checkpoint"
+                                                                                   :checkpoint-filter-field-id ts-field-id
+                                                                                   :lookback {:value 1 :unit "day"}}}
+                                :target             (merge target-table
+                                                           {:type                        "table-incremental"
+                                                            :target-incremental-strategy {:type "merge"
+                                                                                          :unique-key [{:name "order_id"}]}})}
+                  insert!      (fn [rows]
+                                 (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
+                                                                      (mt/id :order_status_ts))
+                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                       values       (str/join ", " (map (fn [[oid st ts]]
+                                                                          (format "(%d, '%s', '%s')" oid st ts))
+                                                                        rows))
+                                       sql          (format "INSERT INTO %s (%s) VALUES %s"
+                                                            (sql.u/quote-name driver/*driver* :table schema tbl)
+                                                            (str/join "," (map q ["order_id" "status" "changed_at"]))
+                                                            values)]
+                                   (driver/execute-raw-queries! driver/*driver* spec [[sql]])))
+                  read-target  (fn []
+                                 (let [sql  (format "SELECT %s, %s FROM %s"
+                                                    (q "order_id") (q "status")
+                                                    (sql.u/quote-name driver/*driver* :table
+                                                                      (:schema target-table) (:name target-table)))
+                                       rows (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+                                                :data :rows)]
+                                   {:by-order (into {} (map (fn [[oid st]] [(long oid) st])) rows)
+                                    :count    (count rows)}))
+                  watermark    (fn [id] (t2/select-one-fn :last_checkpoint_value :model/Transform id))]
+              (mt/with-temp [:model/Transform transform payload]
+                (testing "first run builds the full target and records the watermark"
+                  (transforms.execute/execute! transform {:run-method :manual})
+                  (transforms.tu/wait-for-table (:name target-table) 10000)
+                  (is (= {:by-order {1 "created", 2 "created", 3 "created"} :count 3}
+                         (read-target)))
+                  (is (some? (watermark (:id transform)))))
+                (testing "a late-arriving row older than the watermark but inside the lookback window is picked up"
+                  ;; watermark after run 1 is 2026-01-31T21:00:04; a 1-day lookback rescans from
+                  ;; 2026-01-30T21:00:04. The late row (order 1, 01-31T00:00) is behind the watermark but
+                  ;; inside the window; order 1's original row (01-30T10:00) is outside it.
+                  (insert! [[1 "shipped" "2026-01-31T00:00:00"] [4 "created" "2026-02-01T10:00:00"]])
+                  (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                                               {:run-method :manual})
+                  (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
+                         (read-target))
+                      "late order 1 upserted, order 4 inserted, re-read rows not duplicated"))
+                (testing "a run with no new rows leaves the target and the watermark unchanged"
+                  (let [before (watermark (:id transform))]
+                    (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                                                 {:run-method :manual})
+                    (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
+                           (read-target)))
+                    (is (= before (watermark (:id transform)))
+                        "the watermark must not slide backwards by the lookback window")))))))))))
+
 (deftest merge-composite-key-test
   (testing "a merge transform can upsert on a two-column key"
     (mt/test-drivers (test-drivers)
