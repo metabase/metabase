@@ -2271,15 +2271,20 @@ test.describe("sandbox", () => {
     ).not.toHaveAttribute("data-pwned-by-plugin", /.*/);
   });
 
-  // RESOLVED (was: deliberately red per FINDINGS #224). The containment
-  // boundary 07cb2f0a6c7 removed is RESTORED on master: SandboxedPluginContainer
-  // wraps the sandbox in a dedicated element whose CSS module carries
-  // `contain: layout paint /* Security boundary */`, shaped so popovers still
-  // work. Verified green on the merge jar locally and on CI (run 29883950172
-  // s10); the preceding s10 reds were the all-zero-rect rendering flake (see
-  // the toPass note below), not the escape. Upstream deleted its own version
-  // of this test with the removal and has not re-added one — KEEP this: it is
-  // now the only automated guard on the restored boundary.
+  // FIXME: deliberately RED on CI-built jars — the sandbox escape (FINDINGS
+  // #224) is LIVE on master. A "RESOLVED: master restored the boundary" note
+  // briefly stood here and was WRONG: `SandboxedPluginContainer` and its
+  // `contain: layout paint /* Security boundary */` exist only in THIS
+  // branch's checkout (they predate our merge-base; master commit 07cb2f0a6c7
+  // reverted them — `git grep "contain: layout" origin/master` is empty). The
+  // greens that motivated that note were FALSE greens: on a boundary-less
+  // build the attack's 100ms setInterval races the geometry read, so the test
+  // occasionally measured top>0 before the reapply landed. The pre-check
+  // below (an ancestor with layout containment must exist before any geometry
+  // is read) kills the false green and fails in ~12s with a message naming
+  // the missing boundary. Do not delete this test and do not weaken it — it
+  // is the only automated evidence of the escape; upstream deleted its
+  // equivalent with the revert. See FINDINGS #224 for the full chain.
   test("confines custom viz and custom viz setting widget to its container (GDGT-2400)", async ({
     page,
     mb,
@@ -2329,6 +2334,43 @@ test.describe("sandbox", () => {
       "[data-plugin-sandbox]",
     );
 
+    // Fail fast, and for the right reason. What re-bases the plugin's
+    // `position: fixed` onto its box instead of the viewport is the host's
+    // containment boundary: SandboxedPluginContainer wraps the sandbox in a
+    // `.container` element whose CSS module sets `contain: layout paint`
+    // (layout containment establishes a containing block for fixed
+    // descendants). If that wrapper is absent from the build under test, the
+    // plugin escapes to `top: 0` and the geometry poll below can NEVER pass —
+    // it just dead-waits the full 90s test timeout and reports a misleading
+    // "top === 0". Assert the boundary explicitly up front: on a build that
+    // has it this passes on the first poll; on one that lacks it this fails in
+    // seconds, naming the real cause.
+    await expect(async () => {
+      const contained = await settingWidget.evaluate((el) => {
+        for (let node = el.parentElement; node; node = node.parentElement) {
+          const testId = node.getAttribute("data-testid");
+          if (testId?.startsWith("chart-settings-widget")) {
+            // reached the widget's own root — the boundary must sit below it
+            break;
+          }
+          // `contain: layout` (incl. `layout paint`, `strict`, `content`)
+          // makes an element the containing block for fixed descendants.
+          if (/\b(layout|strict|content)\b/.test(getComputedStyle(node).contain)) {
+            return true;
+          }
+        }
+        return false;
+      });
+      expect(
+        contained,
+        "custom-viz setting-widget sandbox is not wrapped by a containment " +
+          "boundary (SandboxedPluginContainer `.container` / `contain: layout " +
+          "paint`); without it the plugin's injected `position: fixed` escapes " +
+          "to the viewport (top: 0) and the containment assertions below can " +
+          "only time out",
+      ).toBe(true);
+    }).toPass({ timeout: 10_000 });
+
     // Cypress asserts this geometry inside `.should(callback)`, which RETRIES
     // the whole block. Snapshotting the rect once is not an equivalent port:
     // `toHaveCSS("position", "fixed")` is not a rendering guard — computed
@@ -2350,7 +2392,7 @@ test.describe("sandbox", () => {
         viewportWidth,
       );
       expect(settingRect.height, "setting widget height vs viewport").toBe(0);
-    }).toPass();
+    }).toPass({ timeout: 15_000 });
 
     // The attack re-applies `position: fixed; inset: 0` every 100ms, so the
     // `position` check must hold at the same time as the geometry, not before.
@@ -2373,7 +2415,7 @@ test.describe("sandbox", () => {
       expect(containerRect.height, "container height vs viewport").toBeLessThan(
         viewportHeight,
       );
-    }).toPass();
+    }).toPass({ timeout: 15_000 });
   });
 
   test("MutationObserver on out-of-scope nodes observes a decoy and never fires for host mutations", async ({

@@ -73,6 +73,13 @@ found; the pinned tag is the same commit).
 failures there are NEW-COVERAGE flakes, not port regressions — triage against
 the mutation-verified local green.
 
+**Watch item (single occurrence, 2026-07-22 run 29885617640 s38):**
+`remote-sync › read-only mode › can change branches` failed both attempts in CI
+(toBeVisible, element not found) but passes 3/3 locally on the merge jar. Not
+the 120s-import-timeout change (that touched the read-write path only). One
+occurrence in ~7 runs — do not chase unless it recurs; the trace is in that
+run's playwright-report-s38 artifact.
+
 ## Status
 
 The porting queue is empty (414 specs) and the suite is stable enough that the
@@ -120,14 +127,16 @@ the spec overrides explicitly) and survived meaninglessly.
 Both now have something no prior investigation had: **traces for flaky-but-passing
 shards**, as of `18a02dd000c`.
 
-### 2. ~~Awaiting a human answer — `custom-viz` (#224)~~ CLOSED 2026-07-22
-Master restored the boundary itself: `SandboxedPluginContainer` carries
-`contain: layout paint /* Security boundary */` again, restructured so popovers
-still work. GDGT-2400 is green locally and on CI (run 29883950172 s10) and is
-**kept as a live regression guard** — upstream deleted its equivalent and never
-re-added one. The owners' answer is moot; the drafted message needn't be sent.
-Full closure note (including the stale-red confound correction) in FINDINGS
-#224.
+### 2. Awaiting a human answer — `custom-viz` (#224). ⚠️ A closure was CLAIMED
+and RETRACTED the same day — read FINDINGS #224's retraction before trusting
+any green here. The escape is LIVE on master: the containment component exists
+only in this branch's pre-revert checkout (07cb2f0a6c7 removed it on master
+after our merge-base), and the greens that motivated the closure were FALSE
+greens (the attack's 100ms interval racing the geometry read on a
+boundary-less build). The test is hardened — a bounded containment pre-check
+now fails deterministically in ~12s on boundary-less builds, no more false
+greens — and stays deliberately red. **The drafted message to the custom-viz
+owners should be SENT**, with the sharpened evidence.
 
 ### 3. Report to owners, no code change from us
 - **#225 MySQL 8.4** — Metabase cannot connect to a cold `caching_sha2` account

@@ -4726,22 +4726,52 @@ this. Do not silently delete it before then — it is the only automated evidenc
 that the boundary was given up.
 
 **#224 CLOSED (2026-07-22, later): master restored the boundary — the owners'
-answer is moot.** `SandboxedPluginContainer`
-(enterprise/frontend/src/metabase-enterprise/custom_viz/components/) now wraps
-the sandbox in a dedicated element whose CSS module carries the exact removed
-rule, `contain: layout paint; /* Security boundary */`, restructured (outer
-container / inner mount) so custom-widget popovers still overflow — i.e. the
-trade GDGT-2872 made was re-weighed and both halves kept. Verified: GDGT-2400
-passes on the merge jar locally and on CI run 29883950172 s10. Corrective note
-on our own record: the three preceding s10 reds carried the all-zero-rect
-rendering signature (the very confound the f39d02a13d4 retry-fix documented),
-NOT the escape — so the "deliberately red" framing had silently gone stale
-before the flip was noticed. Not pinned: which master commit landed the
-restore, or what changed CI-side to make the widget render reliably in run
-29883950172. Disposition: the test is KEPT as a live regression guard — upstream
-deleted its equivalent with the removal and did not re-add one, so this is
-coverage upstream lacks. The drafted message to the owners no longer needs
-sending.
+answer is moot.** ~~[superseded — see the RETRACTION below]~~ `SandboxedPluginContainer`
+now wraps the sandbox in a dedicated element carrying
+`contain: layout paint; /* Security boundary */` … Verified: GDGT-2400 passes
+on the merge jar locally and on CI run 29883950172 s10.
+
+**#224 RETRACTION OF THE CLOSURE (2026-07-22, latest): the escape is STILL
+LIVE on master. The closure above was wrong on every limb, and the mechanism
+of the error is itself instructive.**
+
+- `SandboxedPluginContainer` + its containment CSS exist **only in this
+  branch's checkout** — they were added by PR #77695 BEFORE our merge-base and
+  reverted on master by 07cb2f0a6c7 AFTER it. Reading the working-tree file and
+  attributing it to master was the mistake; `git show
+  origin/master:<path>` errors ("exists on disk, but not in 'origin/master'")
+  and `git grep "contain: layout" origin/master` is empty. Nothing named
+  SandboxedPluginContainer exists on master.
+- **The greens were FALSE greens.** On a boundary-less build the attack's
+  100ms `setInterval` races the geometry read: sometimes the test measures the
+  widget's rect before the `position:fixed;inset:0` reapply lands, reads
+  top>0, and passes. Confirmed by the s10 investigation: the CI-built jar's
+  compiled bundle contains **zero** occurrences of `contain:layout paint`, the
+  rendered DOM has no `.container` wrapper (bare `[data-plugin-sandbox]` div),
+  and run 29885617640's frontend chunk is byte-identical to that jar's. A
+  green run on such a build verified nothing.
+- Also corrected en route: the "Forbidden widget" text in the failure
+  snapshots is the FIXTURE's own setting title
+  (index-widget-security-component.tsx), not an app fallback — the
+  trusted-mount-race hypothesis is disproven; the sandbox's
+  `blocked createElement: input` behavior is by design and asserted by the
+  sibling test.
+- **Test hardened so this cannot recur**: a bounded pre-check requires an
+  ancestor with layout containment before any geometry is read — a
+  boundary-less build now fails deterministically in ~12s naming the missing
+  boundary, instead of false-greening or burning 90s. Geometry assertions
+  unchanged.
+- **Disposition: back to the original — deliberately red, do not delete, the
+  message to the custom-viz owners SHOULD be sent** (its evidence is now
+  stronger: the revert also left upstream's own suite with zero coverage of
+  the boundary, and the boundary-restoring component already exists in
+  history to resurrect).
+
+Method lesson for the file: a security test that can false-green under the
+exact condition it guards (racing an attacker's interval) needs a
+precondition assertion on the mechanism (the containment boundary), not just
+the outcome (geometry). And: verify claims about master against
+`origin/master` refs, never against this long-lived branch's working tree.
 
 ---
 
