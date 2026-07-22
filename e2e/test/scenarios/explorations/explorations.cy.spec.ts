@@ -1178,7 +1178,7 @@ describe("scenarios > explorations > collection placement + archive", () => {
             },
           );
 
-          H.undoToast().findByText("Trashed exploration").should("exist");
+          H.undoToast().findByText("Trashed research").should("exist");
           H.undo();
 
           cy.findByTestId("collection-table")
