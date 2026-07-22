@@ -1819,11 +1819,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     beaker: { component: formula_component, source: formula_source },
     test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
-  };
+  } as const;
 
-// Unjustified type cast. FIXME
-export const iconNames = Object.keys(Icons) as unknown as IconName[];
+const iconSet = new Set(Object.keys(Icons));
 
-export const isValidIconName = (name: unknown): name is IconName =>
-  // Unjustified type cast. FIXME
-  iconNames.includes(name as IconName);
+export const isValidIconName = (name: unknown): name is IconName => {
+  return typeof name === "string" && iconSet.has(name);
+};

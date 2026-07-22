@@ -1,0 +1,20 @@
+{
+  "notifications": [
+    {
+       "id": "metabase-join-2026-07-22",
+       "schemaVersion": 1,
+       "conditions": {
+         "admin": true,
+         "cloud": true,
+         "start_date": "2026-07-22",
+         "end_date": "2026-10-05",
+         "min_version": "",
+         "max_version": "",
+         "edition": ""
+       },
+       "title": "We'd love to see you in-person",
+       "icon": "join_full_outer",
+       "content": "OUTER JOIN, our first in-person conference, is Oct 5-7 in Denver, CO. Use code \"CLOUD\" for $100 off. [Register](https://www.metabase.com/events/outer-join-2026?utm=in-app-notification)."
+    }
+  ]
+}
