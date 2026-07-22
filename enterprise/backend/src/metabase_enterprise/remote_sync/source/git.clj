@@ -232,11 +232,12 @@
   it holds, not to the size of the repository. The clone is bare (git objects, no working tree), which is
   exactly what this walks.
 
-  Returns a vector of repo-root relative paths — the same shape `list-files` returns, and what
-  `read-file` takes — or an empty vector when the path doesn't exist or isn't a directory. Directories
-  are listed alongside files, which is how a caller finds a directory at all (a directory is a tree, so
-  it never appears in `list-files`). This is `git ls-tree <path>/` minus the metadata columns, as
-  `list-files` is `git ls-tree -r`, except for the ordering [[tree-children]] normalizes."
+  `.isSubtree` is what makes a non-directory return `[]`: a symlink and a submodule are entries with
+  their own modes, not trees, so neither can be descended into (and a submodule's tree isn't in this
+  repository at all).
+
+  See [[metabase-enterprise.remote-sync.source.protocol/list-dir]] for the contract this implements and
+  why it takes the shape it does."
   [{:keys [^Git git ^String version]} ^String path]
   (let [repo (.getRepository git)]
     (with-open [rev-walk (RevWalk. repo)]
