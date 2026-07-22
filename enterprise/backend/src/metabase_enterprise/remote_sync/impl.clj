@@ -362,7 +362,7 @@
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
       ;; insert. Chunked so insert/IN params and memory stay bounded.
-      (t2/delete! :model/RemoteSyncObject)
+      (t2/delete! :model/RemoteSyncObject {:where (remote-sync.worktree/worktree-filter-clause nil)})
       (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                              (source.ingestable/cached-file-paths base-ingestable))
       (when finalize! (finalize!)))
@@ -1137,12 +1137,15 @@
       {:model_type model :model_id id :id (rso-id [model id])})))
 
 (defn- find-departed-entities
-  "Find RSO rows for entity-id entities that left the synced set (removed/delete status and not in
-  `targets`), matching the incremental path; path/hybrid and still-exported rows are kept."
-  [exported-rows]
+  "Find `worktree`'s (nil = the default's) RSO rows for entity-id entities that left the synced set
+  (removed/delete status and not in `targets`), matching the incremental path; path/hybrid rows,
+  still-exported rows, and other worktrees' ledgers are kept."
+  [exported-rows worktree]
   (let [exported (into #{} (map #(select-keys % [:model_type :model_id])) exported-rows)]
     (->> (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
-                    :status [:in ["removed" "delete"]])
+                    {:where [:and
+                             [:in :status ["removed" "delete"]]
+                             (remote-sync.worktree/worktree-filter-clause (:id worktree))]})
          (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
          (remove #(exported (select-keys % [:model_type :model_id])))
          (map :id))))
@@ -1220,7 +1223,7 @@
       (t2/with-transaction [_]
         (when-not (= version :remote-sync/empty-commit)
           (remote-sync.task/set-version! task-id version))
-        (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
+        (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows worktree))]
           (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
         ;; a full export rewrites the managed dirs wholesale, so pending deletions are now pushed:
         ;; their ledger rows are done
@@ -1228,9 +1231,8 @@
           (t2/delete! :model/RemoteSyncObject
                       :worktree_id (:id worktree)
                       :status [:in ["delete" "removed"]]))
-        (mark-rows-synced! (if worktree
-                             (t2/select-pks-set :model/RemoteSyncObject :worktree_id (:id worktree))
-                             (t2/select-pks-set :model/RemoteSyncObject))
+        (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject
+                                              {:where (remote-sync.worktree/worktree-filter-clause (:id worktree))})
                            synced sync-timestamp))
       (if (= version :remote-sync/empty-commit)
         (do
@@ -1602,6 +1604,10 @@
   are unsaved changes and neither force? nor merge? is set."
   [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
   (guards/ensure-no-active-task!)
+  ;; a branch switch adopts `branch` as the default sync set; a branch that is checked out as a
+  ;; worktree cannot be adopted (its rows carry worktree-prefixed entity ids)
+  (when (not= branch (settings/remote-sync-branch))
+    (remote-sync.worktree/check-branch-not-checked-out! branch))
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
         has-dirty?             (remote-sync.object/dirty?)
@@ -1708,7 +1714,10 @@
         (log/errorf e "Failed to push worktree %s: %s" (:id worktree) (ex-message e))
         (analytics/inc! :metabase-remote-sync/exports-failed)
         {:status  :error
-         :message (source-error-message e)}))))
+         :message (source-error-message e)})
+      (finally
+        (analytics/observe! :metabase-remote-sync/export-duration-ms
+                            (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
 
 (defn async-worktree-pull!
   "Pull `worktree`'s branch asynchronously. `force?` discards unpushed local changes in the worktree;
@@ -1800,6 +1809,7 @@
    is responsible for those concerns."
   [name base-branch]
   (guards/ensure-no-active-task!)
+  (remote-sync.worktree/check-branch-not-checked-out! name)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source name base-branch)
     (remote-sync.worktree/set-default-branch! name)))
@@ -1809,6 +1819,7 @@
    async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
   [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
+  (remote-sync.worktree/check-branch-not-checked-out! new-branch)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source new-branch (settings/remote-sync-branch))
     (async-export! new-branch false message :on-success on-success)))

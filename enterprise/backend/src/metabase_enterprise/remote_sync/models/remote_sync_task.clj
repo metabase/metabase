@@ -219,7 +219,9 @@
    (t2/select-one :model/RemoteSyncTask
                   {:where (cond-> [:and
                                    [:<> :started_at nil]]
-                            worktree-id (conj [:= :worktree_id worktree-id]))
+                            worktree-id (conj [:or
+                                               [:= :worktree_id worktree-id]
+                                               [:= :worktree_id nil]]))
                    :limit 1
                    :order-by [[:started_at :desc]
                               [:id :desc]]})))

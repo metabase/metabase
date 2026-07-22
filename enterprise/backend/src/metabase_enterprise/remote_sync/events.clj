@@ -63,6 +63,16 @@
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
+(defn- ledger-worktree-id
+  "Worktree whose ledger tracks a changed entity: its collection's worktree (for a Collection, its
+   own), falling back to the default worktree for collection-less trackables (e.g. the transforms
+   sentinel). Content created inside a checkout must land in that checkout's ledger, not the default's."
+  [model-type model-id collection-id]
+  (or (when-let [coll-id (if (= model-type "Collection") model-id collection-id)]
+        (when (pos-int? coll-id)
+          (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id coll-id)))
+      (remote-sync.worktree/default-worktree-id)))
+
 (defn- resolve-status
   "Suppresses a no-op 'update' based on status and content_hash, otherwise keep status unchanged."
   [model-type model-id status existing]
@@ -104,7 +114,7 @@
                      :model_table_name (:table_name model-details)
                      :status status
                      :status_changed_at (t/offset-date-time)
-                     :worktree_id (remote-sync.worktree/default-worktree-id)}))
+                     :worktree_id (ledger-worktree-id model-type model-id (:collection_id model-details))}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
       (= "delete" (:status existing))
@@ -139,7 +149,8 @@
                             :model_id          model-id
                             :status            status
                             :status_changed_at (t/offset-date-time)
-                            :worktree_id       (remote-sync.worktree/default-worktree-id)}
+                            :worktree_id       (ledger-worktree-id model-type model-id
+                                                                   (:model_collection_id fields))}
                            fields)))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))

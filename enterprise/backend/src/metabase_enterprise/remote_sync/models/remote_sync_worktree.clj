@@ -64,6 +64,17 @@
     (or (t2/select-one-fn :id :model/RemoteSyncWorktree :branch branch)
         (:id (ensure-default-worktree!)))))
 
+(mu/defn worktree-filter-clause :- [:sequential :any]
+  "HoneySQL clause scoping a worktree_id-tagged table (remote_sync_object, remote_sync_task) to one
+   worktree's rows. With a nil `worktree-id`, scopes to the default worktree — which also owns rows
+   that predate worktrees (nil worktree_id); when no default worktree exists yet, only such rows."
+  [worktree-id :- [:maybe pos-int?]]
+  (if worktree-id
+    [:= :worktree_id worktree-id]
+    (if-let [default-id (default-worktree-id)]
+      [:or [:= :worktree_id default-id] [:= :worktree_id nil]]
+      [:= :worktree_id nil])))
+
 (mu/defn set-base-version! :- :nil
   "Record `version` (a git SHA) as `worktree-id`'s sync base — the commit local changes are built on."
   [worktree-id :- pos-int?
@@ -91,6 +102,22 @@
              :set    {:worktree_id to-id}
              :where  [:= :worktree_id from-id]}))
 
+(mu/defn check-branch-not-checked-out! :- :nil
+  "Throw a 400 when `branch` is materialized as a checkout: a worktree whose collections carry
+   worktree-prefixed entity ids. Making such a branch the default would adopt those prefixed copies as
+   the default sync set, so the worktree must be deleted first. Worktree rows without materialized
+   checkout content (e.g. rows a branch was previously synced as the default under) are harmless."
+  [branch :- :string]
+  (when-let [worktree (t2/select-one :model/RemoteSyncWorktree :branch branch)]
+    (when (t2/exists? :model/Collection
+                      :remote_sync_worktree_id (:id worktree)
+                      :entity_id [:like (str (:id worktree) "/%")])
+      (throw (ex-info (format "Branch '%s' is checked out as a worktree. Delete the worktree before syncing it as the default branch."
+                              branch)
+                      {:status-code 400
+                       :worktree_id (:id worktree)}))))
+  nil)
+
 (mu/defn default-worktree? :- :boolean
   "Is `worktree` the default worktree — the one whose branch the `remote-sync-branch` setting names?"
   [worktree :- [:map [:branch :string]]]
@@ -107,11 +134,6 @@
                           (some-> location collection/location-path->parent-id member?)))
                 (map #(select-keys % [:id :name])))
           members)))
-
-(mu/defn worktree-dirty-rows :- [:sequential :map]
-  "RemoteSyncObject rows of `worktree-id` with local changes not yet pushed (status other than synced)."
-  [worktree-id :- pos-int?]
-  (t2/select :model/RemoteSyncObject :worktree_id worktree-id :status [:not= "synced"]))
 
 (mu/defn delete-worktree! :- :nil
   "Delete `worktree` and the collection trees it materialized. Its RemoteSyncObject rows go with the

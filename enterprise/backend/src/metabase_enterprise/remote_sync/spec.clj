@@ -19,6 +19,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as oss.remote-sync]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -698,15 +699,21 @@
    - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
    - Snippets-namespace collections (when Library is remote-synced)
 
-   Used by import cleanup to determine which collections to scope deletions to."
+   Used by import cleanup to determine which collections to scope deletions to. Collections
+   materialized by non-default worktrees are never part of the default sync set — their reconcile is
+   worktree-scoped — so they are excluded here."
   []
-  (into []
-        cat
-        [(t2/select-pks-vec :model/Collection :is_remote_synced true)
-         (when (rs-settings/remote-sync-transforms)
-           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns)))
-         (when (rs-settings/library-is-remote-synced?)
-           (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
+  (let [default-scope (oss.remote-sync/non-default-worktree-filter-clause)]
+    (into []
+          cat
+          [(t2/select-pks-vec :model/Collection
+                              {:where [:and [:= :is_remote_synced true] default-scope]})
+           (when (rs-settings/remote-sync-transforms)
+             (t2/select-pks-vec :model/Collection
+                                {:where [:and [:= :namespace (name collections/transforms-ns)] default-scope]}))
+           (when (rs-settings/library-is-remote-synced?)
+             (t2/select-pks-vec :model/Collection
+                                {:where [:and [:= :namespace "snippets"] default-scope]}))])))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -1162,28 +1169,33 @@
   [{:keys [export-scope]}]
   (case (or export-scope :derived)
     :root-collections
-    ;; Excludes archived collections - their files are handled by the removal logic
-    (concat
-     (t2/select-fn-set (juxt (constantly "Collection") :id)
-                       :model/Collection
-                       {:where [:and
-                                [:= :is_remote_synced true]
-                                [:= :location "/"]
-                                [:not :archived]]})
-     (when (rs-settings/remote-sync-transforms)
+    ;; Excludes archived collections - their files are handled by the removal logic - and non-default
+    ;; worktree checkouts, which export only through their own worktree-scoped push
+    (let [default-scope (oss.remote-sync/non-default-worktree-filter-clause)]
+      (concat
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
                          {:where [:and
-                                  [:= :namespace (name collections/transforms-ns)]
+                                  [:= :is_remote_synced true]
                                   [:= :location "/"]
-                                  [:not :archived]]}))
-     (when (rs-settings/library-is-remote-synced?)
-       (t2/select-fn-set (juxt (constantly "Collection") :id)
-                         :model/Collection
-                         {:where [:and
-                                  [:= :namespace "snippets"]
-                                  [:= :location "/"]
-                                  [:not :archived]]})))
+                                  [:not :archived]
+                                  default-scope]})
+       (when (rs-settings/remote-sync-transforms)
+         (t2/select-fn-set (juxt (constantly "Collection") :id)
+                           :model/Collection
+                           {:where [:and
+                                    [:= :namespace (name collections/transforms-ns)]
+                                    [:= :location "/"]
+                                    [:not :archived]
+                                    default-scope]}))
+       (when (rs-settings/library-is-remote-synced?)
+         (t2/select-fn-set (juxt (constantly "Collection") :id)
+                           :model/Collection
+                           {:where [:and
+                                    [:= :namespace "snippets"]
+                                    [:= :location "/"]
+                                    [:not :archived]
+                                    default-scope]}))))
     :derived
     nil))
 

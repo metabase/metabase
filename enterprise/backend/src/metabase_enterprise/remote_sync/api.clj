@@ -238,9 +238,12 @@
   [_route-params
    {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
-  (when-let [task (if worktree-id
-                    (remote-sync.task/most-recent-task (:id (resolve-worktree! worktree-id)))
-                    (remote-sync.task/most-recent-task))]
+  (when-let [task (remote-sync.task/most-recent-task
+                   (if worktree-id
+                     (:id (resolve-worktree! worktree-id))
+                     ;; the legacy form is the default worktree's view: other worktrees' tasks are
+                     ;; not "the current task" of the main git-sync UI
+                     (remote-sync.worktree/default-worktree-id)))]
     (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
@@ -248,16 +251,15 @@
   [_route-params
    {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
-  (let [resolved-id (when worktree-id (:id (resolve-worktree! worktree-id)))
-        task        (if resolved-id
-                      (remote-sync.task/most-recent-task resolved-id)
-                      (remote-sync.task/most-recent-task))]
+  (let [scope-id (if worktree-id
+                   (:id (resolve-worktree! worktree-id))
+                   ;; scope the legacy form to the default worktree so it cannot cancel another
+                   ;; worktree's in-flight sync
+                   (remote-sync.worktree/default-worktree-id))
+        task     (remote-sync.task/most-recent-task scope-id)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (t2/hydrate (if resolved-id
-                  (remote-sync.task/most-recent-task resolved-id)
-                  (remote-sync.task/most-recent-task))
-                :status)))
+    (t2/hydrate (remote-sync.task/most-recent-task scope-id) :status)))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
   "Test whether the Remote Sync credentials can reach the git repository.
@@ -510,7 +512,7 @@
   (let [worktree (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))]
     (api/check-400 (not (remote-sync.worktree/default-worktree? worktree))
                    "Cannot delete the default worktree. Change the remote-sync-branch setting instead.")
-    (let [dirty (remote-sync.worktree/worktree-dirty-rows id)]
+    (let [dirty (remote-sync.object/dirty-rows id)]
       (when (and (seq dirty) (not force))
         (throw (ex-info "This worktree has changes that have not been pushed."
                         {:status-code   400

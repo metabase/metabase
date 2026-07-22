@@ -6,6 +6,7 @@
    and for Field/Segment/Table models, parent table information."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -21,12 +22,15 @@
 
 (defn- dirty-where
   "WHERE clause for unsynced rows: status filter, disabled model types (e.g. transforms when transform
-  sync is off), and — when `worktree-id` is given — scoping to that worktree's ledger."
+  sync is off), and ledger scoping — the given worktree's, or with a nil `worktree-id` the default
+  worktree's (which also owns rows that predate worktrees), so one worktree's unpushed changes never
+  dirty another's flows."
   [worktree-id]
   (let [excluded (spec/excluded-model-types)]
-    (cond-> [:and [:not= :status "synced"]]
-      (seq excluded) (conj [:not-in :model_type excluded])
-      worktree-id    (conj [:= :worktree_id worktree-id]))))
+    (cond-> [:and
+             [:not= :status "synced"]
+             (remote-sync.worktree/worktree-filter-clause worktree-id)]
+      (seq excluded) (conj [:not-in :model_type excluded]))))
 
 (defn dirty?
   "Checks if any collection has changes since the last sync.

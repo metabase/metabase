@@ -253,7 +253,9 @@
               ;; branch writes go through set-default-branch! so the setting and the worktree
               ;; table (default worktree row + content bookkeeping) cannot drift
               (if (and (= k :remote-sync-branch) (some? (k settings)))
-                (remote-sync.worktree/set-default-branch! (k settings))
+                (do
+                  (remote-sync.worktree/check-branch-not-checked-out! (k settings))
+                  (remote-sync.worktree/set-default-branch! (k settings)))
                 (setting/set! k (k settings))))))))))
 
 (defn library-is-remote-synced?
