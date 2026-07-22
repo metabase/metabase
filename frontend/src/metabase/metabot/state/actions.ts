@@ -960,6 +960,10 @@ export const forkConversation = createAsyncThunk(
       }),
     );
 
+    if (agentId === "ask") {
+      dispatch(push(Urls.metabotConversation(conversation.conversation_id)));
+    }
+
     return conversation;
   },
 );

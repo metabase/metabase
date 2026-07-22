@@ -82,6 +82,9 @@ function createConversation(
     embedding_path: null,
     user_agent: null,
     sanitized_user_agent: null,
+    forked_from_conversation_id: null,
+    forked_from_title: null,
+    fork_boundary_message_id: null,
     feedback,
   };
 }
@@ -117,6 +120,54 @@ describe("ConversationDetailPage", () => {
     expect(
       await screen.findByRole("heading", { name: "A conversation" }),
     ).toBeInTheDocument();
+  });
+
+  it("marks the fork boundary and links to the original conversation", async () => {
+    setup({
+      ...createConversation([
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "inherited answer"),
+        userMessage("u2", "a1", "follow up"),
+        agentMessage("a2", "u2", "new answer"),
+      ]),
+      forked_from_conversation_id: "convo-0",
+      forked_from_title: "Original conversation",
+      fork_boundary_message_id: "a1",
+    });
+
+    expect(await screen.findByText("inherited answer")).toBeInTheDocument();
+    const forkBoundary = screen.getByTestId("metabot-fork-boundary");
+    expect(forkBoundary).toBeInTheDocument();
+
+    const forkBoundaryLink = within(forkBoundary).getByRole("link", {
+      name: "Forked from a previous conversation",
+    });
+    expect(forkBoundaryLink).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-auditing/conversations/convo-0",
+    );
+
+    const forkedLink = screen.getByRole("link", {
+      name: "Forked from Original conversation",
+    });
+    expect(forkedLink).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-auditing/conversations/convo-0",
+    );
+  });
+
+  it("does not render a fork boundary for a non-forked conversation", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "an answer"),
+      ]),
+    );
+
+    expect(await screen.findByText("an answer")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-fork-boundary"),
+    ).not.toBeInTheDocument();
   });
 
   it("defaults a regenerated turn to the latest attempt and pages between attempts", async () => {
