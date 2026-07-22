@@ -102,3 +102,34 @@ databaseChangeLog:
             dbms: h2
             path: ../instance_analytics_views/metabot_conversations/v5/h2-metabot_conversations.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.p2w8xk
+      author: maksymyakubych
+      comment: Recreate v_metabot_messages excluding forked (copied) messages
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_messages/v3/postgres-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_messages/v3/mysql-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_messages/v3/h2-metabot_messages.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_messages/v2/postgres-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_messages/v2/mysql-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_messages/v2/h2-metabot_messages.sql
+            relativeToChangelogFile: true
