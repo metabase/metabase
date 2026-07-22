@@ -32,6 +32,7 @@ import { getUserName } from "metabase/utils/user";
 import { useGetTenantQuery } from "metabase-enterprise/api";
 import * as EnterpriseUrls from "metabase-enterprise/urls";
 
+import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationDetail } from "../../types";
 
 import S from "./ConversationDetailPage.module.css";
@@ -41,6 +42,12 @@ export function ConversationHeader({
 }: {
   conversation: ConversationDetail;
 }) {
+  const { data: forkedFromConversation } =
+    useGetMetabotAnalyticsConversationQuery(
+      conversation.forked_from_conversation_id ?? skipToken,
+    );
+  const forkedFromTitle =
+    forkedFromConversation?.title || t`original conversation`;
   const userGroupsInfo = useUserGroupsInfo(conversation.user?.id);
   const tenantId = conversation.user?.tenant_id ?? null;
   const { data: tenant } = useGetTenantQuery(
@@ -144,9 +151,7 @@ export function ConversationHeader({
                   size="md"
                   underline="hover"
                 >
-                  {conversation.forked_from_title
-                    ? t`Forked from ${conversation.forked_from_title}`
-                    : t`Forked from original conversation`}
+                  {t`Forked from ${forkedFromTitle}`}
                 </Anchor>
               </Flex>
             )}

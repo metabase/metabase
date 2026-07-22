@@ -16,6 +16,7 @@ import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
+import { forkBoundaryAttemptIds } from "metabase/metabot/utils/message-tree";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
@@ -70,6 +71,13 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     conversationMessages,
     { isSlack },
   );
+
+  const forkBoundaryMessageIds = useMemo(() => {
+    const boundaryId = conversation?.fork_boundary_message_id;
+    return boundaryId
+      ? forkBoundaryAttemptIds(conversationMessages, boundaryId)
+      : null;
+  }, [conversationMessages, conversation?.fork_boundary_message_id]);
 
   const feedbackChatMessages = normalizeFetchedChatMessages(
     conversationMessages,
@@ -145,7 +153,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               debug
               readonly
               conversationId={convoId}
-              forkBoundaryMessageId={conversation.fork_boundary_message_id}
+              forkBoundaryMessageIds={forkBoundaryMessageIds}
               forkBoundaryHref={
                 conversation.forked_from_conversation_id
                   ? `/admin/metabot/usage-auditing/conversations/${conversation.forked_from_conversation_id}`

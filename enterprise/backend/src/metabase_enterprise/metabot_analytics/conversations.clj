@@ -262,7 +262,5 @@
        :user_agent           (:user_agent conversation)
        :sanitized_user_agent (:sanitized_user_agent conversation)
        :forked_from_conversation_id forked-from
-       :forked_from_title           (when forked-from
-                                      (t2/select-one-fn :title :model/MetabotConversation :id forked-from))
        :fork_boundary_message_id    (fork-boundary-external-id all-messages)
        :feedback             (fetch-conversation-feedback conversation-id)})))

@@ -127,7 +127,6 @@
    [:user_agent           [:maybe :string]]
    [:sanitized_user_agent [:maybe :string]]
    [:forked_from_conversation_id [:maybe ms/UUIDString]]
-   [:forked_from_title           [:maybe :string]]
    [:fork_boundary_message_id    [:maybe :string]]
    [:feedback             [:sequential ConversationFeedback]]])
 

@@ -106,7 +106,6 @@ export type ConversationDetail = {
   user_agent: string | null;
   sanitized_user_agent: string | null;
   forked_from_conversation_id: string | null;
-  forked_from_title: string | null;
   fork_boundary_message_id: string | null;
   feedback: ConversationFeedback[];
 };
