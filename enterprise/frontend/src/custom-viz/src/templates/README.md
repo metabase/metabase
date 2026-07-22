@@ -189,7 +189,7 @@ settings: {
 > **Note:** The setting ids `column_settings` and `column` are reserved by Metabase
 > (they power the built-in column formatting popover). TypeScript rejects them in your
 > `Settings` type, and Metabase ignores setting definitions that use them. To apply
-> the formatting people pick in the popover, pass result of `settings.column?.(col)`
+> the formatting people pick in the popover, pass the result of `settings.column?.(col)`
 > to `formatValue`.
 
 ### Built-in widgets
