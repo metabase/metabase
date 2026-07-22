@@ -1,7 +1,7 @@
 # Step 1 of the SDK release process: bump the version (and the sdkRelease
 # metadata that controls the npm dist-tag / `latest` promotion) in
-# package.template.json, then open a PR labeled `sdk-release-trigger` for
-# human review. Merging that PR is what actually triggers a release, via the
+# package.template.json, then open a PR labeled `sdk-release-trigger`.
+# Merging that PR is what actually triggers a release, via the
 # `pull_request` trigger on release-embedding-sdk.yml.
 name: SDK Version Bump PR
 run-name: Bump Embedding SDK version (${{ inputs.release_type }}) on ${{ github.ref_name }}
@@ -59,8 +59,6 @@ jobs:
     env:
       package_template: enterprise/frontend/src/embedding-sdk-package/package.template.json
     steps:
-      # No explicit `ref:` - actions/checkout defaults to the ref that triggered
-      # the run, which for workflow_dispatch is the ref picker's selection.
       - name: Check out the code
         uses: actions/checkout@v6
         with:
@@ -124,9 +122,9 @@ jobs:
           # `npm version` only works on a file named package.json, and it is
           # just a wrapper around `semver` - so we call semver directly.
           #
-          # This job installs no dependencies, so npx would otherwise fetch
-          # whatever the registry calls latest. Take the range the repo already
-          # pins instead, so there is no second version to keep in step.
+          # This job installs no dependencies, so a bare `npx semver` would fetch
+          # whatever the registry calls latest. Reuse the semver spec package.json
+          # already declares, so there's no separate version to keep in sync.
           SEMVER="semver@$(jq -r '.devDependencies.semver' package.json)"
           if [ "$SEMVER" = "semver@null" ]; then
             echo "::error::package.json has no devDependencies.semver to pin against."
@@ -199,6 +197,8 @@ jobs:
               ;;
           esac
 
+          # jq can't edit in place; redirecting into the same file would truncate
+          # it before jq reads it, so write a temp and mv (atomic) over the original.
           jq --arg v "$NEW_VERSION" '.version = $v' "$package_template" > "$package_template.tmp"
           mv "$package_template.tmp" "$package_template"
 
