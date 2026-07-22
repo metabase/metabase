@@ -110,7 +110,11 @@ function activeThreadStaleDeadlines(
     });
 }
 
-export function ExplorationPage({ params, location }: ExplorationPageProps) {
+export function ExplorationPage(props: ExplorationPageProps) {
+  return <ExplorationPageForId key={props.params.id} {...props} />;
+}
+
+function ExplorationPageForId({ params, location }: ExplorationPageProps) {
   const dispatch = useDispatch();
 
   const isCommentsSidebarOpen = location.query?.comments === "true";

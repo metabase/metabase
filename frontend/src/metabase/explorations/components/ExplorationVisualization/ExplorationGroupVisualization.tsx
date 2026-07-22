@@ -454,6 +454,7 @@ function ExplorationGroupVisualizationChart({
             }}
             childTargetId={String(page.id)}
             showCloseButton={false}
+            onCloseComments={onCloseCommentsSidebar}
             context={{
               timeline_id: selectedTimelineId,
             }}

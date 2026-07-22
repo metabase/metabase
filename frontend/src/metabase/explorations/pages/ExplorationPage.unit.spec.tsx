@@ -103,7 +103,7 @@ function renderExplorationPage(initialRoute?: string) {
   const path = Urls.exploration(explorationData.id);
   return renderWithProviders(
     <Route
-      path={`/${Urls.EXPLORATION_BASE_PATH}/:id(/:entityType/:entityId)`}
+      path={`/${Urls.EXPLORATION_BASE_PATH}/:id(/page/:pageId)`}
       element={<ExplorationPageHarness />}
     />,
     {
@@ -258,6 +258,41 @@ describe("ExplorationPage thread-ready toasts", () => {
         foo: "bar",
       });
     });
+  });
+
+  it("does not toast about existing threads when navigating to a different exploration", async () => {
+    const { history } = renderExplorationPage();
+    if (!history) {
+      throw new Error("expected router history");
+    }
+    expect(sendToastMock).not.toHaveBeenCalled();
+
+    // Another exploration whose named thread already has a ready page. Without
+    // remounting on `:id` change, the previous exploration's seen-thread set
+    // would treat it as newly added and toast about it.
+    explorationData = {
+      ...makeExploration([
+        makeThread(
+          7,
+          "Other exploration thread",
+          [
+            createPage({
+              id: 700,
+              name: "Other page",
+              query_ids: [7],
+            }),
+          ],
+          [createQuery({ id: 7, name: "Other query", status: "done" })],
+        ),
+      ]),
+      id: 2,
+    };
+    act(() => {
+      history.push("/question/research/2/page/700");
+    });
+
+    expect(screen.getByTestId("group-viz")).toBeInTheDocument();
+    expect(sendToastMock).not.toHaveBeenCalled();
   });
 
   it("toasts once for each newly ready named thread", async () => {
