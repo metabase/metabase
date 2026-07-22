@@ -11,9 +11,6 @@ const mockNewTracker = jest.fn();
 const mockTrackSelfDescribingEvent = jest.fn();
 const mockTrackMetaplowEvent = jest.fn();
 
-// Defer binding the mocks to the real module until after the jest.mock(...) calls below, so that
-// the mocks are initialized before the module under test is imported.
-// Otherwise, the module under test would import the real module and bind to the real functions before the mocks are set up.
 jest.mock("@snowplow/browser-tracker", () => ({
   newTracker: (...args: unknown[]) => mockNewTracker(...args),
   trackSelfDescribingEvent: (...args: unknown[]) =>

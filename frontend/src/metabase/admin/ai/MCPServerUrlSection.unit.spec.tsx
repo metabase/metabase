@@ -17,8 +17,7 @@ const SITE_URL = "https://metabase.example.com";
 const MCP_URL = `${SITE_URL}/api/metabase-mcp`;
 
 function setup({ siteUrl = SITE_URL }: { siteUrl?: string | null } = {}) {
-  // `null` (not `undefined`) unsets the site-url — an explicit `undefined`
-  // would be swallowed by the `siteUrl = SITE_URL` default parameter above.
+  // site-url setting can take null, but it's type doesn't reflect that
   const settings = createMockSettings({ "site-url": siteUrl as string });
 
   setupPropertiesEndpoints(settings);

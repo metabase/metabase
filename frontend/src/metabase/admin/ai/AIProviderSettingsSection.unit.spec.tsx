@@ -665,9 +665,7 @@ describe("AIProviderSettingsSection", () => {
 
   it("shows Connect instead of Disconnect when the configured API key input is dirty", async () => {
     await setup();
-    // Wait for the saved (masked) key to hydrate from the setting-details
-    // fetch before editing — clearing the still-empty input is a no-op, and
-    // the mask would then land on top of the typed value.
+    // Wait for the saved key from the setting-details
     await waitFor(() =>
       expect(screen.getByLabelText("API key")).not.toHaveValue(""),
     );
@@ -757,12 +755,9 @@ describe("AIProviderSettingsSection", () => {
       },
     });
 
-    // The env-backed state comes from the setting-details fetch, which lands
-    // after the field first renders (settings resolve early via the
-    // bootstrap), so wait for the disabling rather than asserting it
-    // synchronously.
-    await waitFor(async () => {
-      expect(await screen.findByLabelText("API key")).toBeDisabled();
+    // Wait for the env-backed state from setting-details
+    await waitFor(() => {
+      expect(screen.getByLabelText("API key")).toBeDisabled();
     });
     expect(
       await screen.findByText("Anthropic API key expired or invalid"),
