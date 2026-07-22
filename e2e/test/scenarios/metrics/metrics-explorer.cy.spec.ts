@@ -2235,10 +2235,13 @@ describe("scenarios > metrics > explorer", () => {
           "Category",
         );
         cy.log(
+          "wait for every metric instance query to settle before asserting on filter state",
+        );
+        cy.findByTestId("loading-indicator").should("not.exist");
+        cy.log(
           "filter pills are in place and show the badge indicating the unique metric instance",
         );
-        const filterPills = H.MetricsViewer.getAllFilterPills();
-        filterPills.should("have.length", 2);
+        H.MetricsViewer.getAllFilterPills().should("have.length", 2);
         H.MetricsViewer.getAllFilterPills()
           .eq(0)
           .findByText("2")
