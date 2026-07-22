@@ -76,11 +76,19 @@ export function RouterBridge({
   const routes = useMemo<RouteStub[]>(
     () =>
       matches.map((match) => {
-        // `handle` is typed `unknown`; we only ever put `{ v3Path }` on it.
-        const handle = match.route.handle as { v3Path?: string } | undefined;
+        // `handle` is typed `unknown`; we only ever put `{ v3Path, props }` on it.
+        const handle = match.route.handle as
+          | { v3Path?: string; props?: PlainRoute["props"] }
+          | undefined;
         // The facade hooks read `route.path`; `pathnameBase` is the route's matched
         // pathname, which `setRouteLeaveHook` uses to scope its hook to this route.
-        return { path: handle?.v3Path, pathnameBase: match.pathname };
+        // `props` carries the arbitrary route props v3 exposed (the command palette
+        // reads `route.props.disableCommandPalette`).
+        return {
+          path: handle?.v3Path,
+          props: handle?.props,
+          pathnameBase: match.pathname,
+        };
       }),
     // Keyed on the matched branch, not the array identity, which changes each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
