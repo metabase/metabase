@@ -65,6 +65,25 @@
            :new-chart-type :bar
            :charts-state {}})))))
 
+(deftest edit-chart-result-carries-query-id-test
+  (testing "edit-chart's :result carries the source chart's query-id"
+    ;; Regression: without :query-id on the result, `chart->xml` renders an empty
+    ;; `query-id=""` attribute and `agent/extract-charts` (which requires BOTH
+    ;; :chart-id and :query-id — see commit 6d5721c5853) never captures the edited
+    ;; chart into `:charts` state. `create-chart` includes :query-id; `edit-chart`
+    ;; must match.
+    (let [mp           (mt/metadata-provider)
+          charts-state {"chart-abc" {:chart_id                "chart-abc"
+                                     :query_id                "query-xyz"
+                                     :queries                 [(lib/native-query mp "SELECT * FROM orders")]
+                                     :visualization_settings  {:chart_type :bar}}}
+          {:keys [result]} (edit-chart/edit-chart
+                            {:chart-id       "chart-abc"
+                             :new-chart-type :line
+                             :charts-state   charts-state})]
+      (is (contains? result :query-id))
+      (is (= "query-xyz" (:query-id result))))))
+
 (deftest edit-chart-of-constructed-query-test
   (mt/with-current-user (test.users/user->id :crowberto)
     (let [table-fields-uri (str "metabase://table/" (mt/id :products) "/fields")
