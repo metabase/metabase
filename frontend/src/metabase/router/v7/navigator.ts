@@ -23,7 +23,13 @@ let pendingNavigations: Array<(navigate: NavigateFunction) => void> = [];
 
 export function setV7Navigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
-  if (navigate && pendingNavigations.length > 0) {
+  if (!navigate) {
+    // The router unmounted. Anything still buffered was meant for it, not for
+    // whatever router mounts next, so drop it rather than replay it later.
+    pendingNavigations = [];
+    return;
+  }
+  if (pendingNavigations.length > 0) {
     const flushing = pendingNavigations;
     pendingNavigations = [];
     for (const run of flushing) {
