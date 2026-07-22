@@ -243,9 +243,49 @@
       (let [cid    (:id metric)
             g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
             orphan (orphan-page! (:id g) cid "would-be-orphan")]
-        (is (zero? (#'query-plan/insert-plan-rows! (:id t) {} [])))
+        (is (= :no-rows (#'query-plan/insert-plan-rows! (:id t) {} [])))
         (is (some? (t2/select-one-pk :model/ExplorationPage :id orphan))
             "no rows materialized → GC skipped → the page id survives")))))
+
+(defn- terminal-stamps
+  "The two lifecycle timestamps whose presence tells the client the thread is finished."
+  [thread-id]
+  (select-keys (t2/select-one :model/ExplorationThread :id thread-id)
+               [:analysis_started_at :completed_at]))
+
+(deftest skip-empty-terminally-stamps-the-thread-test
+  (testing "a thread where no block has both a metric and a dimension is terminally stamped, not
+            left with completed_at nil for the client to poll forever"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      ;; a block with a metric but no dimensions → nothing to cross → :skip-empty
+      (t2/insert! :model/ExplorationBlock
+                  {:exploration_thread_id (:id t)
+                   :metrics               [{:card_id (:id metric) :dimension_mappings []}]
+                   :dimensions            []
+                   :position              0})
+      (is (= :skip-empty (query-plan/generate-query-plan! (:id t))))
+      (let [{:keys [analysis_started_at completed_at]} (terminal-stamps (:id t))]
+        (is (some? completed_at) "completed_at stamped so the client stops polling")
+        (is (some? analysis_started_at))))))
+
+(deftest ok-plan-with-no-materialized-rows-terminally-stamps-the-thread-test
+  (testing "when the planner returns :ok but every plan item fails to materialize, 0 rows are
+            inserted and no query will ever run — so the thread must be terminally stamped rather
+            than left polling. (Distinct from losing the persist race, where the winner completes it.)"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (mk-block! (:id t) (:id metric) "d1" "Price" "type/Number")
+      ;; force every plan item to fail to materialize → insert-plan-rows! sees zero rows
+      (mt/with-dynamic-fn-redefs [query-plan/materialize-item (fn [_ _] (throw (ex-info "boom" {})))]
+        (is (= :skip-empty (query-plan/generate-query-plan! (:id t)))))
+      (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
+          "no queries were inserted")
+      (let [{:keys [analysis_started_at completed_at]} (terminal-stamps (:id t))]
+        (is (some? completed_at) "completed_at stamped so the client stops polling")
+        (is (some? analysis_started_at))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Redelivery safety

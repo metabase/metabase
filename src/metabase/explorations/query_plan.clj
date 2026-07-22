@@ -187,8 +187,15 @@
 (defn- insert-plan-rows!
   "Materialize each plan item into row recipes, reconcile each to its persisted
   `ExplorationPage`, insert them as `ExplorationQuery` rows, and GC pages left with no
-  queries. Returns the number of rows inserted, or 0 when another planner got there first
-  (see [[lock-thread-for-planning!]]). A rerun deletes a thread's queries first, so it still plans."
+  queries. A rerun deletes a thread's queries first, so it still plans. Returns one of:
+
+    a positive int — the number of rows this planner inserted
+    `:no-rows`      — nothing materialized (empty plan, or every item failed to materialize); the
+                      thread has no queries and no one else will run any, so the caller must stamp it
+                      terminal rather than leave it polling
+    `:lost-race`    — a concurrent delivery already planned this thread (see
+                      [[lock-thread-for-planning!]]); that winner owns completion, so the caller
+                      must NOT stamp — distinguishing this from `:no-rows` is why they are separate."
   [thread-id metric-by-key plan]
   (let [rows (vec
               (for [item   plan
@@ -214,14 +221,14 @@
     ;; failed to materialize (or the plan was empty), and treating that as "every selection
     ;; was removed" would destroy page-id stability for a later retry.
     (if (empty? rows)
-      0
+      :no-rows
       (t2/with-transaction [_conn]
         (lock-thread-for-planning! thread-id)
         (if (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
           (do
             (log/infof "Thread %d was planned by a concurrent delivery; discarding this planner's %d row(s)"
                        thread-id (count rows))
-            0)
+            :lost-race)
           (let [key->page (reconcile-pages! rows)
                 ;; `:block_id` is only here to compute the page key; the queries reach their block
                 ;; through their page now, so it isn't persisted on the query row.
@@ -325,11 +332,33 @@
                          :planner      transcript}]
     (case outcome
       :ok
-      (let [n (insert-plan-rows! thread-id metric-by-key plan)]
-        (record-outcome! thread-id pre :ok :rows-count n :transcript transcript-body)
-        (log/infof "Query plan for thread %d (%s): inserted %d ExplorationQuery rows"
-                   thread-id (name planner-id) n)
-        :ok)
+      (let [result (insert-plan-rows! thread-id metric-by-key plan)]
+        (case result
+          ;; A concurrent delivery planned this thread and owns its completion — record the outcome
+          ;; but do NOT stamp terminal, or we'd race the winner's own completion machinery.
+          :lost-race
+          (do (record-outcome! thread-id pre :ok :rows-count 0 :note :lost-persist-race
+                               :transcript transcript-body)
+              (log/infof "Query plan for thread %d (%s): concurrent delivery already planned it"
+                         thread-id (name planner-id))
+              :ok)
+
+          ;; Planner said :ok but nothing materialized (empty plan, or every item threw): no query
+          ;; will ever run, so the completion machinery would never stamp. Stamp terminal now, like
+          ;; the top-level skip-empty branch, so the client stops polling.
+          :no-rows
+          (do (log/warnf "Query plan for thread %d (%s): :ok but no rows materialized; terminally marking thread"
+                         thread-id (name planner-id))
+              (record-outcome! thread-id pre :skip-empty :note :no-rows-materialized
+                               :transcript transcript-body)
+              (mark-thread-terminally-failed! thread-id)
+              :skip-empty)
+
+          ;; default: a positive count — rows inserted, thread completes as its queries finish
+          (do (record-outcome! thread-id pre :ok :rows-count result :transcript transcript-body)
+              (log/infof "Query plan for thread %d (%s): inserted %d ExplorationQuery rows"
+                         thread-id (name planner-id) result)
+              :ok)))
 
       :skip-not-applicable
       (do (log/infof "Query plan for thread %d (%s): planner reported nothing to do"
@@ -362,6 +391,7 @@
       (if (not-any? #(and (seq (:metrics %)) (seq (:dimensions %))) thread-blocks)
         (do (log/infof "Thread %d: no block has both a metric and a dimension; skipping query plan" thread-id)
             (record-outcome! thread-id pre :skip-empty)
+            (mark-thread-terminally-failed! thread-id)
             :skip-empty)
         (run-planner! ctx picked planner-id pre)))
     (catch Throwable e
