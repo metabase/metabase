@@ -319,14 +319,10 @@
                            :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
                            :model/Transform transform {:name "To Run"}
                            :model/TransformTransformTag _ {:transform_id (:id transform) :tag_id (:id tag) :position 0}]
-              ;; with-redefs (not with-dynamic-fn-redefs) because the job executes on a server-spawned
-              ;; thread that does not inherit the test thread's bindings; the `called` promise keeps
-              ;; the redef scope alive until the stub has actually run
               (let [called (promise)]
-                #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-                (with-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                     (deliver called run-id)
-                                                     {::jobs/status :succeeded})]
+                (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                   (deliver called run-id)
+                                                                   {::jobs/status :succeeded})]
                   (let [response (mt/user-http-request :lucky :post 202 (str "transform-job/" (:id job) "/run"))]
                     (is (= "Job run started" (:message response)))
                     (is (pos-int? (:job_run_id response)))
