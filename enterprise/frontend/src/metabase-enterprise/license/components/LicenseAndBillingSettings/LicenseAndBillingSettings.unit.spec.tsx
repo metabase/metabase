@@ -24,26 +24,24 @@ import { getBillingInfoId } from "../BillingInfo/utils";
 
 import { LicenseAndBillingSettings } from "./LicenseAndBillingSettings";
 
-const selfHostedBillingInfo = (): BillingInfo => {
-  const manageAccount: BillingInfoLineItem = {
-    name: "Visit the Metabase store to manage your account and billing preferences.",
-    value: "Manage account",
-    format: "string",
-    display: "external-link",
-    link: "https://store.metabase.com/account/manage/plans",
-  };
-  const cancelSubscription: BillingInfoLineItem = {
-    name: "Cancel your Metabase Starter plan",
-    value: "Cancel subscription",
-    format: "string",
-    display: "external-link",
-    link: "https://store.metabase.com/account/cancel",
-  };
-
-  return {
-    version: "v1",
-    content: [manageAccount, cancelSubscription],
-  };
+const selfHostedBillingInfo: BillingInfo = {
+  version: "v1",
+  content: [
+    {
+      name: "Visit the Metabase store to manage your account and billing preferences.",
+      value: "Manage account",
+      format: "string",
+      display: "external-link",
+      link: "https://store.metabase.com/account/manage/plans",
+    },
+    {
+      name: "Cancel your Metabase Starter plan",
+      value: "Cancel subscription",
+      format: "string",
+      display: "external-link",
+      link: "https://store.metabase.com/account/cancel",
+    },
+  ],
 };
 
 const setup = async ({
@@ -92,7 +90,7 @@ const setup = async ({
   } else if (billingInfo !== undefined) {
     fetchMock.get("path:/api/ee/billing", billingInfo);
   } else if (token && token !== "invalid") {
-    fetchMock.get("path:/api/ee/billing", selfHostedBillingInfo());
+    fetchMock.get("path:/api/ee/billing", selfHostedBillingInfo);
   }
 
   renderWithProviders(<LicenseAndBillingSettings />, {
@@ -287,7 +285,7 @@ describe("LicenseAndBilling", () => {
   });
 
   it("renders billing links for store-managed self-hosted billing with a valid token", async () => {
-    const mockData = selfHostedBillingInfo();
+    const mockData = selfHostedBillingInfo;
     const manageAccount = mockData.content?.[0];
     const cancelSubscription = mockData.content?.[1];
 
