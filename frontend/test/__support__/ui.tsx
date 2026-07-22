@@ -35,9 +35,9 @@ import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { Action, LocationDescriptor } from "metabase/router";
 import {
-  ReactRouterRoute,
+  type Action,
+  type LocationDescriptor,
   Route,
   type RouterEngine,
   RouterProvider,
@@ -170,7 +170,7 @@ export function renderHookWithProviders<TProps, TResult>(
   const WrapperWithRoute = ({ children, ...props }: any) => {
     return (
       <Wrapper {...props}>
-        <ReactRouterRoute path="/" component={() => <>{children}</>} />
+        <Route path="*" element={<>{children}</>} />
       </Wrapper>
     );
   };
