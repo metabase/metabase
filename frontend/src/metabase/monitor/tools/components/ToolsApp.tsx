@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
@@ -7,6 +6,7 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
+import type { Location } from "metabase/router";
 import { Outlet } from "metabase/router";
 import * as Urls from "metabase/urls";
 

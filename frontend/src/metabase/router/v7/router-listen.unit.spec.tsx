@@ -1,10 +1,10 @@
-import type { Location as HistoryLocation } from "history";
 import { useEffect, useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { Outlet, Route, push, useRouter } from "metabase/router";
 
 import type { RouterEngine } from "../engine";
+import type { Location as HistoryLocation } from "../types";
 
 // Both engines expose `listen` at runtime; v3's `InjectedRouter` type omits it.
 type RouterWithListen = {

@@ -1,4 +1,3 @@
-import type { Location as HistoryLocation, LocationDescriptor } from "history";
 import { type ReactNode, useContext, useMemo, useRef } from "react";
 import {
   type NavigateOptions,
@@ -20,6 +19,7 @@ import type {
   WithRouterProps,
 } from "../react-router";
 import type { Route } from "../route";
+import type { Location as HistoryLocation, LocationDescriptor } from "../types";
 
 import { registerLeaveHook } from "./blocking-history";
 import { toV3Location } from "./location";

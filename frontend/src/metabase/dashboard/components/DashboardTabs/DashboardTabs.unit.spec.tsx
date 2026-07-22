@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import type { Location } from "history";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
@@ -13,6 +12,7 @@ import type { DashboardState } from "metabase/redux/store";
 import {
   type InjectedRouter,
   Link,
+  type Location,
   Route,
   type WithRouterProps,
   withRouteProps,

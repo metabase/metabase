@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
@@ -15,6 +14,7 @@ import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { updateMetadata } from "metabase/redux/metadata";
+import type { Location } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";

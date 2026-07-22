@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useEffect, useState } from "react";
 
 import { AppBarContainer } from "metabase/app/nav/AppBar";
@@ -26,6 +25,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
