@@ -1806,7 +1806,7 @@
                (as-> $changes (stamp-remote-sync-worktree-id $changes (:location $changes))))
     (assert-valid-remote-synced-parent <>)))
 
-(defn- copy-collection-permissions!
+(defn copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
   and write perms for every Group with write perms for the source Collection."
   [source-collection-or-id dest-collections-or-ids]
@@ -2005,6 +2005,19 @@
     (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (3.7) Check if it's a semantic-library collection that can't be updated
     (check-library-update collection)
+    ;; (3.8) A collection cannot move between two different remote sync worktrees: the move would
+    ;; silently mean delete-from-one-ledger / create-in-another. Moving into or out of a worktree
+    ;; (from/to unsynced space) stays legal — those are ordinary checkout add/remove events.
+    (when (api/column-will-change? :location collection-before-updates collection-updates)
+      (let [before-worktree-id (:remote_sync_worktree_id collection-before-updates)
+            parent-worktree-id (when-let [parent-id (some-> (:location collection-updates)
+                                                            location-path->parent-id)]
+                                 (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id))]
+        (when (and before-worktree-id
+                   parent-worktree-id
+                   (not= before-worktree-id parent-worktree-id))
+          (throw (ex-info (tru "Cannot move a collection between remote sync worktrees.")
+                          {:status-code 400})))))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
