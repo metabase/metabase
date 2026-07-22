@@ -34,12 +34,14 @@ export function BillingInfo({
     return <BillingInfoNotStoreManaged />;
   }
 
-  if (!billingInfo || !billingInfo.content || !billingInfo.content.length) {
-    return <BillingGoToStore />;
+  if (billingInfo?.content?.length) {
+    return <BillingInfoTable billingInfo={billingInfo} />;
   }
 
-  return <BillingInfoTable billingInfo={billingInfo} />;
+  // Store-managed token but no billing content from Store (e.g. `{ "version": "v1" }`)
+  return <BillingGoToStore />;
 }
+
 const BillingInfoError = () => {
   return (
     <>

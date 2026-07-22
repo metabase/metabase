@@ -9,11 +9,12 @@ export const BillingInfoCard = styled(Card)`
   margin-top: 1rem;
 `;
 
-export const BillingInfoRowContainer = styled.div<{ extraPadding?: boolean }>`
+export const BillingInfoRowContainer = styled.div`
   display: flex;
   justify-content: space-between;
-  padding: ${({ extraPadding }) => (extraPadding ? `1.5rem` : `0.5rem`)} 1rem;
   align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 1.5rem;
 
   &:not(:last-child) {
     border-bottom: 1px solid var(--mb-color-background-tertiary);
@@ -22,6 +23,7 @@ export const BillingInfoRowContainer = styled.div<{ extraPadding?: boolean }>`
 
 const linkStyles = css`
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   color: var(--mb-color-brand);
 `;
