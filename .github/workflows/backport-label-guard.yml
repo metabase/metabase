@@ -1,0 +1,28 @@
+name: Backport label guard
+
+# Backport labels (`backport`, `single-backport`, `double-backport`, `triple-backport`) only act on PRs
+# targeting master: auto-backport.yml and backport-reminder.yml are both master-scoped. On a release-branch
+# PR they do nothing, so fail loudly rather than let the author assume a backport was queued. `was-backported`
+# (carried by auto-created backport PRs) is deliberately not matched — `contains` is an exact element match,
+# so it never fires for `was-backported` or `no-backport`.
+#
+# Keep this check non-required: it runs only on non-master PRs, so requiring it would block every master PR
+# on a check that never reports there.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled, edited]  # edited: re-check after base change
+    branches-ignore: [master]
+
+jobs:
+  guard:
+    if: >
+      contains(github.event.pull_request.labels.*.name, 'backport') ||
+      contains(github.event.pull_request.labels.*.name, 'single-backport') ||
+      contains(github.event.pull_request.labels.*.name, 'double-backport') ||
+      contains(github.event.pull_request.labels.*.name, 'triple-backport')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - name: Fail on a fan-out backport label
+        run: |
+          echo "::error::Backport labels only act on PRs targeting master; this PR targets ${{ github.base_ref }}, where they do nothing. Land the change on master and label that PR instead. (Auto-created backports carry 'was-backported', which is fine here.)"
+          exit 1
