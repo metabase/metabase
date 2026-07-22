@@ -8,6 +8,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -30,17 +31,27 @@
 ;;; Query/Chart URL Generation
 
 (defn ->legacy-mbql
-  "Normalize a pMBQL query (has `:lib/type`) to legacy MBQL. Frontend /question#
-  URLs require legacy MBQL format; non-pMBQL values pass through unchanged.
+  "Normalize a pMBQL query to legacy MBQL. Frontend /question# URLs require legacy
+  MBQL format; non-pMBQL values pass through unchanged.
 
-  Agent state is JSON-persisted between turns, which preserves namespaced keys but
-  turns enum values such as `:mbql/query`, `:field`, and `:day` into strings.
-  Normalize before converting so rehydrated queries have their canonical enum
-  values restored."
+  A query is treated as pMBQL when it is a map carrying either `:lib/type` or the
+  structural `:stages` marker. The `:stages`-without-`:lib/type` case is real: a
+  query that round-trips through the frontend's viewing context (`user_is_viewing`
+  / `chart_configs`) comes back as pMBQL stripped of its internal `:lib/*` keys
+  (`:lib/type`, `:lib/uuid`, `:lib/metadata`). Guarding only on `:lib/type` (the
+  old behavior) let such a query fall through unchanged, so the raw pMBQL leaked
+  into the `/question#<base64>` hash and the frontend crashed with \"Stage 0 does
+  not exist\" (BOT-1604 follow-up).
+
+  Normalizing against `::lib.schema/query` re-stamps `:lib/type`/`:lib/uuid` and
+  restores canonical enum values, so the subsequent `->legacy-MBQL` conversion
+  succeeds regardless of whether the query arrived fresh from a tool (keyword
+  `:lib/type`), rehydrated from JSON state (string enum values), or serialized by
+  the frontend (no `:lib/*` keys at all)."
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (if (and (map? query) (:lib/type query))
-    (lib/->legacy-MBQL (lib/normalize query))
+  (if (and (map? query) (or (:lib/type query) (:stages query)))
+    (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
     query))
 
 (defn- query->url-hash

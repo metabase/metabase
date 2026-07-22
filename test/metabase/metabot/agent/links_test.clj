@@ -38,6 +38,53 @@
                                                    :base-type     :type/DateTime}]]}}
              (links/->legacy-mbql rehydrated))))))
 
+(defn- strip-lib-keys
+  "Recursively remove all namespaced `:lib/*` keys from a query, mimicking how a
+  pMBQL query that round-trips through the frontend's viewing context comes back:
+  structurally pMBQL (`:stages`, pMBQL-order field clauses, `:effective-type`s)
+  but stripped of its internal `:lib/type`, `:lib/uuid`, and `:lib/metadata`."
+  [x]
+  (cond
+    (map? x)        (into {} (keep (fn [[k v]]
+                                     (when-not (and (keyword? k) (= "lib" (namespace k)))
+                                       [k (strip-lib-keys v)])))
+                          x)
+    (sequential? x) (mapv strip-lib-keys x)
+    :else           x))
+
+(deftest ^:parallel ->legacy-mbql-lib-type-less-pmbql-test
+  (testing "converts pMBQL stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
+    ;; Regression for the BOT-1604 follow-up: a query that round-trips through the
+    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as pMBQL
+    ;; without `:lib/type`. The old guard keyed only on `:lib/type`, so such a query
+    ;; fell through unchanged and the raw pMBQL (`:stages`, pMBQL-order field clauses)
+    ;; leaked into the `/question#<base64>` hash — the frontend then crashed with
+    ;; "Error calculating display info for query: Stage 0 does not exist".
+    (let [fe-query (strip-lib-keys (lib.tu/venues-query))
+          legacy   (links/->legacy-mbql fe-query)]
+      (is (not (contains? fe-query :lib/type)))
+      (is (contains? fe-query :stages))
+      (testing "is normalized + converted to legacy MBQL, not passed through as raw pMBQL"
+        (is (= :query (:type legacy)))
+        (is (not (contains? legacy :stages)))
+        (is (map? (:query legacy)))
+        (is (some? (:database legacy)))))))
+
+(deftest ^:parallel resolve-chart-link-lib-type-less-query-test
+  (testing "chart link whose query lost :lib/type resolves to a renderable legacy /question# URL"
+    (let [chart-id     "chart-fe-1"
+          fe-query     (strip-lib-keys (lib.tu/venues-query))
+          charts-state {chart-id {:chart_id               chart-id
+                                  :queries                [fe-query]
+                                  :visualization_settings {:chart_type :bar}}}
+          result       (links/resolve-metabase-uri (str "metabase://chart/" chart-id) {} charts-state)
+          decoded      (decode-question-url result)]
+      (is (str/starts-with? result "/question#"))
+      (testing "decoded dataset_query is legacy MBQL — raw pMBQL :stages would crash the FE"
+        (is (= "query" (get-in decoded [:dataset_query :type])))
+        (is (not (contains? (:dataset_query decoded) :stages)))
+        (is (map? (get-in decoded [:dataset_query :query])))))))
+
 ;;; resolve-metabase-uri tests
 
 (deftest ^:parallel resolve-metabase-uri-query-links-test
