@@ -112,7 +112,8 @@
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
         
-        universe-domain (or (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
+        universe-domain (or (:universe-domain details)
+                            (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
                             (System/getProperty "google.cloud.universe_domain"))
         
         read-timeout-ms driver.settings/*query-timeout-ms*
