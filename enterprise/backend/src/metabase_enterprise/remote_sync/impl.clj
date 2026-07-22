@@ -14,6 +14,7 @@
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.remote-sync.worktree-identity :as worktree-identity]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
@@ -21,6 +22,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as oss.remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -298,9 +300,9 @@
 (defn- insert-with-metadata!
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
-  [rows repo-paths]
+  [rows repo-paths & {:keys [worktree-id]}]
   (serdes/with-cache
-    (let [worktree-id (remote-sync.worktree/default-worktree-id)]
+    (let [worktree-id (or worktree-id (remote-sync.worktree/default-worktree-id))]
       (doseq [chunk (partition-all app-db-batch-size rows)]
         (t2/insert! :model/RemoteSyncObject
                     (map #(assoc % :worktree_id worktree-id)
@@ -370,6 +372,59 @@
       (settings/remote-sync-transforms! false))
     (remote-sync.task/update-progress! task-id 0.95)
     imported-data))
+
+;;; ------------------------------------------- Worktree Pull ---------------------------------------------------------
+
+(defn- remove-unsynced-worktree!
+  "Deletes `worktree-id`'s materialized content that was NOT part of the import. Worktree copies are
+  identified by their entity-id prefix (`<worktree-id>/...`), which uniformly covers collection-scoped
+  and global models without touching any other worktree's rows. Entities created inside the worktree
+  (bare entity ids) are the pull's business to keep or fold, not this reconcile's — they are left alone."
+  [worktree-id {:keys [by-entity-id]}]
+  (let [prefix-like (str worktree-id "/%")]
+    (doseq [[model-key model-spec] (spec/specs-for-deletion)
+            :when (isa? model-key :hook/entity-id)
+            :let [kept (get by-entity-id (:model-type model-spec) [])]]
+      (t2/delete! model-key {:where (cond-> [:and [:like :entity_id prefix-like]]
+                                      (seq kept) (conj [:not-in :entity_id kept]))}))))
+
+(defn worktree-pull!
+  "Pull `worktree`'s branch into its materialized collection trees: load the snapshot under
+  worktree-local entity ids, reconcile the worktree's content and RemoteSyncObject ledger to match it,
+  and record the pulled version on the task. Always a full reconcile (no incremental or 3-way paths for
+  non-default worktrees yet); never touches the default worktree's content, settings toggles, or data
+  apps. Returns a result map like [[import!]]."
+  [worktree ^SourceSnapshot snapshot task-id]
+  (log/infof "Pulling worktree %s (branch %s)" (:id worktree) (:branch worktree))
+  (analytics/inc! :metabase-remote-sync/imports)
+  (let [sync-timestamp   (t/instant)
+        snapshot-version (source.p/version snapshot)]
+    (try
+      (let [path-filters    (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+            base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+            wrapped         (worktree-identity/wrap-ingestable base-ingestable (:id worktree))
+            ingestable      (source.ingestable/wrap-progress-ingestable task-id 0.7 wrapped)
+            load-result     (binding [oss.remote-sync/*importing-worktree-id* (:id worktree)]
+                              (serdes/with-cache
+                                (serialization/load-metabase! ingestable)))
+            imported-data   (spec/extract-imported-entities (:seen load-result))]
+        (remote-sync.task/update-progress! task-id 0.8)
+        (t2/with-transaction [_conn]
+          (remove-unsynced-worktree! (:id worktree) imported-data)
+          (t2/delete! :model/RemoteSyncObject :worktree_id (:id worktree))
+          (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
+                                 (source.ingestable/cached-file-paths base-ingestable)
+                                 :worktree-id (:id worktree))
+          (remote-sync.task/set-version! task-id snapshot-version))
+        (remote-sync.task/update-progress! task-id 0.95)
+        {:status  :success
+         :version snapshot-version
+         :outcome {:kind "pulled" :branch (:branch worktree)}})
+      (catch Exception e
+        (log/errorf e "Failed to pull worktree %s: %s" (:id worktree) (ex-message e))
+        (analytics/inc! :metabase-remote-sync/imports-failed)
+        {:status  :error
+         :message (source-error-message e)}))))
 
 ;;; ------------------------------------------- Incremental Import Fast-Path -------------------------------------------
 
@@ -1028,8 +1083,14 @@
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
     (not (settings/library-is-remote-synced?)) (conj "snippets")))
 
+(def ^:private ^:dynamic *export-entity-transform*
+  "Applied to each extracted entity before its repo path and serialized content are computed. Worktree
+  pushes bind this to strip worktree-local entity-id prefixes so git only ever sees canonical ids."
+  identity)
+
 (defn- stage-write [commit opts [row entity]]
-  (let [path    (or (:file_path row) (source/entity->path opts entity))
+  (let [entity  (*export-entity-transform* entity)
+        path    (or (:file_path row) (source/entity->path opts entity))
         content (source/entity->content entity)]
     (source.p/stage-upsert! commit {:path path :content content})
     (when (:id row)
@@ -1114,43 +1175,73 @@
 (def ^:private export-progress-plan-done 0.33) ; phase 1 (plan) complete / serialize start
 (def ^:private export-progress-serialize 0.66) ; phase 2 (serialize) complete
 
+(declare full-export!*)
+
 (defn- full-export!
-  "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject.
+  "Re-serialize and commit the entire remote-synced set — the instance-wide one, or `worktree`'s when
+  given — then reconcile every affected RemoteSyncObject.
 
   Returns:
    - {:status :success}
    or throws"
-  [snapshot task-id message sync-timestamp]
-  (let [export-rows (vec (exportable-write-rows))]
+  [snapshot task-id message sync-timestamp & {:keys [worktree]}]
+  (let [export-rows (if worktree
+                      ;; a worktree's RSO ledger is its complete synced set (a full pull seeds it), so it
+                      ;; is the export root list; entities pending deletion have no row to extract anyway
+                      (mapv #(select-keys % [:id :model_type :model_id])
+                            (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
+                                       :worktree_id (:id worktree)
+                                       :status [:not-in ["delete" "removed"]]))
+                      (vec (exportable-write-rows)))]
     (when (empty? export-rows)
       (throw (ex-info "No remote-syncable content available." {})))
-    (let [report (remote-sync.task/make-progress-reporter task-id)
-          total  (count export-rows)
-          span   (- export-progress-serialize export-progress-plan-done)]
-      (report export-progress-plan-done {:force? true})
-      (let [opts             (serdes/storage-base-context)
-            [synced version] (commit-staged! snapshot message
-                                             (fn [commit]
-                                               (source.p/replace-all! commit) ; replace the managed dirs wholesale
-                                               (let [synced (stage-writes commit opts export-rows
-                                                                          (fn [staged]
-                                                                            (report (+ export-progress-plan-done
-                                                                                       (* span (/ staged total))))))]
-                                                 (report export-progress-serialize {:force? true})
-                                                 synced))
-                                             report)]
-        (t2/with-transaction [_]
-          (when-not (= version :remote-sync/empty-commit)
-            (remote-sync.task/set-version! task-id version))
-          (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
-            (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
-        (if (= version :remote-sync/empty-commit)
-          (do
-            (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
-            {:status :success :outcome {:kind "push-skipped"}})
-          {:status :success
-           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
+    (binding [*export-entity-transform* (if worktree
+                                          #(worktree-identity/canonicalize-entity-ids % (:id worktree))
+                                          identity)]
+      (full-export!* snapshot task-id message sync-timestamp worktree export-rows))))
+
+(defn- full-export!*
+  [snapshot task-id message sync-timestamp worktree export-rows]
+  (let [report (remote-sync.task/make-progress-reporter task-id)
+        total  (count export-rows)
+        span   (- export-progress-serialize export-progress-plan-done)]
+    (report export-progress-plan-done {:force? true})
+    (let [opts             (serdes/storage-base-context)
+          [synced version] (commit-staged! snapshot message
+                                           (fn [commit]
+                                             (source.p/replace-all! commit) ; replace the managed dirs wholesale
+                                             (let [synced (stage-writes commit opts export-rows
+                                                                        (fn [staged]
+                                                                          (report (+ export-progress-plan-done
+                                                                                     (* span (/ staged total))))))]
+                                               (report export-progress-serialize {:force? true})
+                                               synced))
+                                           report)]
+      (t2/with-transaction [_]
+        (when-not (= version :remote-sync/empty-commit)
+          (remote-sync.task/set-version! task-id version))
+        (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
+          (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+        ;; a full export rewrites the managed dirs wholesale, so pending deletions are now pushed:
+        ;; their ledger rows are done
+        (when worktree
+          (t2/delete! :model/RemoteSyncObject
+                      :worktree_id (:id worktree)
+                      :status [:in ["delete" "removed"]]))
+        (mark-rows-synced! (if worktree
+                             (t2/select-pks-set :model/RemoteSyncObject :worktree_id (:id worktree))
+                             (t2/select-pks-set :model/RemoteSyncObject))
+                           synced sync-timestamp))
+      (if (= version :remote-sync/empty-commit)
+        (do
+          (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
+          {:status :success :outcome {:kind "push-skipped"}})
+        {:status :success
+         :outcome {:kind "pushed"
+                   :count (count synced)
+                   :branch (if worktree
+                             (:branch worktree)
+                             (settings/remote-sync-branch))}}))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
@@ -1276,14 +1367,23 @@
   endpoints go through `ensure-no-active-task!` first (in `async-import!` / `async-export!` / etc.), which
   uses the stricter `task-running?` predicate and refuses if any task — including stale — is alive. So
   this function only reaches the supersession branch on the auto-import path."
-  [task-type]
-  (cluster-lock/with-cluster-lock ::remote-sync-task
-    (if-let [task (remote-sync.task/current-task)]
+  [task-type & [worktree]]
+  ;; per-worktree lock: operations on different worktrees don't contend, same-worktree operations
+  ;; serialize. The keyword just names the cluster-lock row.
+  (cluster-lock/with-cluster-lock (if worktree
+                                    (keyword (namespace ::remote-sync-task)
+                                             (str "remote-sync-task-worktree-" (:id worktree)))
+                                    ::remote-sync-task)
+    (if-let [task (if worktree
+                    (remote-sync.task/current-task (:id worktree))
+                    (remote-sync.task/current-task))]
       (assoc task :existing? true)
       (do
         (remote-sync.task/supersede-stale-tasks!)
         (remote-sync.task/create-sync-task! task-type api/*current-user-id*
-                                            {:worktree_id (remote-sync.worktree/default-worktree-id)})))))
+                                            {:worktree_id (if worktree
+                                                            (:id worktree)
+                                                            (remote-sync.worktree/default-worktree-id))})))))
 
 ;;; ------------------------------------------- Remote Changes Check -------------------------------------------
 
@@ -1417,9 +1517,14 @@
               :else
               (do
                 (case (:status result)
-                  :success (let [worktree (if branch
-                                            (remote-sync.worktree/set-default-branch! branch)
-                                            (remote-sync.worktree/ensure-default-worktree!))]
+                  :success (let [worktree (cond
+                                            ;; legacy default-worktree flows pass the branch and may
+                                            ;; switch the default; worktree-scoped flows pass nil and
+                                            ;; resolve through the task's own worktree
+                                            branch               (remote-sync.worktree/set-default-branch! branch)
+                                            (:worktree_id task)  (t2/select-one :model/RemoteSyncWorktree
+                                                                                :id (:worktree_id task))
+                                            :else                (remote-sync.worktree/ensure-default-worktree!))]
                              (when worktree
                                ;; the task may have been created under the previous default worktree
                                ;; (branch switch): retag it onto the branch it actually synced
@@ -1462,8 +1567,8 @@
   running), then executes the sync function in a virtual thread with a timeout.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
-  [task-type branch sync-fn & {:keys [on-success]}]
-  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
+  [task-type branch sync-fn & {:keys [on-success worktree]}]
+  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type worktree)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
@@ -1578,6 +1683,81 @@
                            :source          source
                            :base-snapshot   base-snapshot))
                 :on-success on-success)))
+
+;;; ------------------------------------------- Worktree Async Entry Points -------------------------------------------
+
+(defn- worktree-push!
+  "Push `worktree`'s content to its branch: full export of the worktree's set with entity ids
+  canonicalized. When the remote has advanced past the worktree's base and `force?` is not set,
+  returns a conflict result instead of overwriting."
+  [worktree ^SourceSnapshot snapshot task-id message force?]
+  (let [sync-timestamp (t/instant)]
+    (try
+      (analytics/inc! :metabase-remote-sync/exports)
+      (serdes/with-cache
+        (let [remote-version (source.p/version snapshot)
+              base-version   (:base_version worktree)
+              diverged?      (and (some? base-version) (not= base-version remote-version))]
+          (if (and diverged? (not force?))
+            {:status    :conflict
+             :version   remote-version
+             :conflicts []
+             :message   "The remote branch has changed since your last sync. Choose how to proceed."}
+            (full-export! snapshot task-id message sync-timestamp :worktree worktree))))
+      (catch Exception e
+        (log/errorf e "Failed to push worktree %s: %s" (:id worktree) (ex-message e))
+        (analytics/inc! :metabase-remote-sync/exports-failed)
+        {:status  :error
+         :message (source-error-message e)}))))
+
+(defn async-worktree-pull!
+  "Pull `worktree`'s branch asynchronously. `force?` discards unpushed local changes in the worktree;
+  without it a dirty worktree is a 400 carrying the dirty objects (mirroring [[async-import!]]).
+  Returns a RemoteSyncTask."
+  [worktree force? & {:keys [on-success]}]
+  (guards/ensure-no-active-task! (:id worktree))
+  (when (and (remote-sync.object/dirty? (:id worktree)) (not force?))
+    (throw (ex-info "This worktree has changes that have not been pushed. Force the pull to discard them."
+                    {:status-code   400
+                     :conflicts     true
+                     :dirty_objects (remote-sync.object/dirty-objects (:id worktree))})))
+  (let [source   (source/source-from-settings (:branch worktree))
+        snapshot (source.p/snapshot source)]
+    (run-async! "import" nil
+                (fn [task-id]
+                  (worktree-pull! worktree snapshot task-id))
+                :worktree worktree
+                :on-success on-success)))
+
+(defn async-worktree-push!
+  "Push `worktree`'s content to its branch asynchronously. Returns a RemoteSyncTask."
+  [worktree force? message & {:keys [on-success]}]
+  (guards/ensure-no-active-task! (:id worktree))
+  (let [source   (source/source-from-settings (:branch worktree))
+        snapshot (source.p/snapshot source)]
+    (run-async! "export" nil
+                (fn [task-id]
+                  (worktree-push! worktree snapshot task-id message force?))
+                :worktree worktree
+                :on-success on-success)))
+
+(defn worktree-has-remote-changes?
+  "Compare `worktree`'s base version against its remote branch tip. Always fresh (no cache).
+  Returns a map shaped like [[has-remote-changes?]]'s."
+  [worktree]
+  (let [source   (source/source-from-settings (:branch worktree))
+        snapshot (snapshot-or-missing-branch source)]
+    (if (= snapshot ::missing-branch)
+      {:has-changes?    false
+       :remote-version  nil
+       :local-version   (:base_version worktree)
+       :cached?         false
+       :branch-missing? true}
+      (let [remote-version (source.p/version snapshot)]
+        {:has-changes?   (not= remote-version (:base_version worktree))
+         :remote-version remote-version
+         :local-version  (:base_version worktree)
+         :cached?        false}))))
 
 (defn preview-export-merge
   "Dry-run preview of what exporting the current state would do given the live remote, without writing

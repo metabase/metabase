@@ -19,45 +19,52 @@
 
 ;;; ------------------------------------------------- Public API -------------------------------------------------------
 
+(defn- dirty-where
+  "WHERE clause for unsynced rows: status filter, disabled model types (e.g. transforms when transform
+  sync is off), and — when `worktree-id` is given — scoping to that worktree's ledger."
+  [worktree-id]
+  (let [excluded (spec/excluded-model-types)]
+    (cond-> [:and [:not= :status "synced"]]
+      (seq excluded) (conj [:not-in :model_type excluded])
+      worktree-id    (conj [:= :worktree_id worktree-id]))))
+
 (defn dirty?
   "Checks if any collection has changes since the last sync.
    Returns true if any remote-synced object has a status other than 'synced', false otherwise.
-   Excludes transform model types when transform sync is disabled."
-  []
-  (let [excluded (spec/excluded-model-types)]
-    (if (empty? excluded)
-      (t2/exists? :model/RemoteSyncObject :status [:not= "synced"])
-      (t2/exists? :model/RemoteSyncObject
-                  :status [:not= "synced"]
-                  :model_type [:not-in excluded]))))
+   With `worktree-id`, only considers that worktree's ledger."
+  ([]
+   (dirty? nil))
+  ([worktree-id]
+   (t2/exists? :model/RemoteSyncObject {:where (dirty-where worktree-id)})))
 
 (defn dirty-rows
   "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced'),
-  excluding disabled model types (e.g. transforms when transform sync is off)."
-  []
-  (let [excluded (spec/excluded-model-types)]
-    (if (empty? excluded)
-      (t2/select :model/RemoteSyncObject :status [:not= "synced"])
-      (t2/select :model/RemoteSyncObject
-                 :status [:not= "synced"]
-                 :model_type [:not-in excluded]))))
+  excluding disabled model types (e.g. transforms when transform sync is off).
+  With `worktree-id`, only that worktree's rows."
+  ([]
+   (dirty-rows nil))
+  ([worktree-id]
+   (t2/select :model/RemoteSyncObject {:where (dirty-where worktree-id)})))
 
 (defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.
    Returns a sequence of model maps that have changed since the last remote sync,
    including details about their current state and sync status.
-   Excludes transform model types when transform sync is disabled."
-  []
-  (->> (dirty-rows)
-       (map #(-> %
-                 (dissoc :id :status_changed_at)
-                 (set/rename-keys {:model_id :id
-                                   :model_name :name
-                                   :model_type :model
-                                   :model_collection_id :collection_id
-                                   :model_display :display
-                                   :model_table_id :table_id
-                                   :model_table_name :table_name
-                                   :status :sync_status})
-                 (update :model u/lower-case-en)))
-       (into [])))
+   Excludes transform model types when transform sync is disabled.
+   With `worktree-id`, only that worktree's ledger."
+  ([]
+   (dirty-objects nil))
+  ([worktree-id]
+   (->> (dirty-rows worktree-id)
+        (map #(-> %
+                  (dissoc :id :status_changed_at)
+                  (set/rename-keys {:model_id :id
+                                    :model_name :name
+                                    :model_type :model
+                                    :model_collection_id :collection_id
+                                    :model_display :display
+                                    :model_table_id :table_id
+                                    :model_table_name :table_name
+                                    :status :sync_status})
+                  (update :model u/lower-case-en)))
+        (into []))))

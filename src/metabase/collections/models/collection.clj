@@ -1788,7 +1788,8 @@
     changes
     (assoc changes :remote_sync_worktree_id
            (when (:is_remote_synced changes)
-             (or (when-let [parent-id (some-> location location-path->parent-id)]
+             (or remote-sync/*importing-worktree-id*
+                 (when-let [parent-id (some-> location location-path->parent-id)]
                    (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id))
                  (remote-sync/default-worktree-id))))))
 

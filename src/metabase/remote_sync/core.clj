@@ -29,6 +29,11 @@
   []
   true)
 
+(def ^:dynamic *importing-worktree-id*
+  "Bound to a worktree id while a non-default worktree pull loads content, so collection writes made by
+  the load stamp that worktree instead of deriving one from the parent or the default branch setting."
+  nil)
+
 (defenterprise default-worktree-id
   "ID of the default remote sync worktree — the row tracking the branch in the `remote-sync-branch`
   setting — creating it if needed. Nil when remote sync is not configured, and always nil on OSS."
