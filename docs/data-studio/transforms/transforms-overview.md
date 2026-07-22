@@ -248,11 +248,11 @@ To set a merge key:
 2. Switch to the **Settings** tab and turn on incremental processing.
 3. In **Merge key**, choose the columns that identify a record. If the target table already exists, you'll pick from its columns. If the transform hasn't run yet, type each column name and press comma or enter. Pick the column (or columns) that identify a record.
 
-The merge key refers to columns in the _target_ table (the columns your transform outputs), not columns in the _source_ tables. If identifying a record requires a combination of columns, like an order ID plus a region, pick more than one column as merge keys.
+The merge key refers to columns in the _target_ table (the columns your transform outputs), not columns in the _source_ tables. If identifying a record requires a combination of columns, like an `id` plus a `region`, pick more than one column as merge keys.
 
 For merge keys to work, you'll need to pick a checkpoint field that increases every time a row is written, like an `updated_at` timestamp. Otherwise, the transform won't pick up the change, and a merge key won't matter.
 
-If a merge key names a column that isn't in the target table, the run fails with an error telling you which columns are missing.
+If a merge key names a column that isn't in the target table, the run will fail with an error telling you which columns are missing.
 
 ### Make a transform incremental
 
