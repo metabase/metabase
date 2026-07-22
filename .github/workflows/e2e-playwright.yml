@@ -12,12 +12,11 @@ on:
     inputs:
       workers:
         description: >-
-          Playwright workers per shard. Default 2. Dispatch with 1 to measure
-          how much of our per-spec time is CPU contention between the two
-          worker browsers + their two backend JVMs on one runner, versus our
-          own wait/retry patterns. Compare per-test durations in the
-          playwright-timings-s* artifacts against a workers=2 run of the same
-          commit (scripts/compare-timings.mjs).
+          Playwright workers per shard. Default 1 (serial, like a Cypress
+          shard). Dispatch with 2 to re-measure the CPU-contention cost of two
+          worker browsers + their two backend JVMs sharing one 4vCPU runner;
+          compare per-test durations in the playwright-timings-s* artifacts
+          across the two runs of the same commit (scripts/compare-timings.mjs).
         required: false
         default: "2"
   pull_request:
@@ -86,10 +85,12 @@ jobs:
       # every shard now pulls/starts postgres+mysql+mongo+maildev+webhook+
       # openldap and generates the QA-database snapshots.
       #
-      # Each shard runs a slice with workers=2 + per-worker backends (the A/B
-      # winner — see git history). Playwright's --shard split is count/order-
-      # based, not duration-balanced, and can't split a single spec file, so the
-      # heaviest file plus setup are the floor. To go below it, generate the
+      # Each shard runs a slice with workers=1 + a per-worker backend (serial,
+      # like a Cypress shard — reverted from the w=2 A/B after its residual reds
+      # proved to be CPU-contention flakes, not bugs; see the run-step comment).
+      # Playwright's --shard split is count/order-based, not duration-balanced,
+      # and can't split a single spec file, so the heaviest file plus setup are
+      # the floor. To go below it, generate the
       # snapshots ONCE as a shared artifact instead of per-shard — that is the
       # single highest-value remaining CI optimisation, because lowering the
       # floor is the only lever left once test/N is already small.
@@ -241,7 +242,15 @@ jobs:
       - name: Run Playwright tests
         working-directory: e2e-playwright
         env:
-          # workers=2 + per-worker backends on every shard (the A/B winner).
+          # One worker per shard (serial, like a Cypress shard). We ran w=2 for
+          # a while — it reached parity on real races (fixed) but its remaining
+          # reds were 4vCPU CPU-contention timeouts, not bugs (green at both w=1
+          # AND w=2 locally), so each run reshuffled and surfaced a different
+          # marginal flake. w=1 removes that per-worker CPU starvation; measured
+          # ~1.07x Cypress wall-clock, so the cost is small. Still per-worker
+          # backend (one slot) — CI has no shared :4000 to fall back to.
+          # Dispatch with workers=2 to A/B; --fully-parallel is dropped so
+          # w=1 is fully serial and w=N parallelises across files, not within.
           PW_PER_WORKER_BACKEND: "1"
           PW_ACTION_TIMEOUT: "30000"
           # Opens the QA-database tier. Without it every @external-gated test
@@ -253,7 +262,7 @@ jobs:
           # Worker backends boot from the fetched jar with capped heaps.
           JAR_PATH: ${{ github.workspace }}/target/uberjar/metabase.jar
           PW_WORKER_MAX_HEAP: 1500m
-        run: bunx playwright test --workers=${{ inputs.workers || '2' }} --fully-parallel --shard=${{ matrix.shard }}/${{ env.SHARD_TOTAL }}
+        run: bunx playwright test --workers=${{ inputs.workers || '1' }} --shard=${{ matrix.shard }}/${{ env.SHARD_TOTAL }}
 
       # Plain GitHub artifact only — deliberately NOT the upload-test-results
       # action (S3/Trunk) and nothing reports to ci-conductor. Always kept,
