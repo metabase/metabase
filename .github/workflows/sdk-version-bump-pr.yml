@@ -81,7 +81,17 @@ jobs:
         env:
           BRANCH: ${{ github.ref_name }}
           RELEASE_TYPE: ${{ inputs.release_type }}
+          PRERELEASE_ID: ${{ inputs.prerelease_id }}
         run: |
+          # prerelease_id only means something to release_type=custom (it becomes
+          # the one-off branch's id). On any other type it would be silently
+          # ignored, so reject it loudly rather than run a bump that quietly drops
+          # the field the caller filled in.
+          if [ "$RELEASE_TYPE" != "custom" ] && [ -n "$PRERELEASE_ID" ]; then
+            echo "::error::prerelease_id is only used with release_type=custom (got release_type=$RELEASE_TYPE). Either pick release_type=custom, or clear prerelease_id."
+            exit 1
+          fi
+
           # Each branch class gets only the release types that make sense for it.
           # `preminor` (master -> next major's alpha) is grouped with `alpha`
           # since it only makes sense on master, same as a regular alpha bump.
