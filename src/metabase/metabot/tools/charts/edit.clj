@@ -67,6 +67,12 @@
                              (assoc :visualization_settings {:chart_type new-chart-type}))]
       {:new-chart-data new-chart-data
        :result {:chart-id (:chart_id new-chart-data)
+                ;; Carry the source chart's query-id through. `extract-charts` only
+                ;; captures a tool's chart into `:charts` state when the structured
+                ;; output has BOTH `:chart-id` and `:query-id` (see commit 6d5721c5853),
+                ;; and `chart->xml` renders it as the `query-id=""` attribute — both were
+                ;; empty/broken while this key was missing (unlike `create-chart`).
+                :query-id (:query_id new-chart-data)
                 :chart-content (format-chart-for-llm new-chart-data)
                 :chart-link (format-chart-link (:chart_id new-chart-data))
                 :chart-type new-chart-type
