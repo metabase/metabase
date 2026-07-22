@@ -45,11 +45,12 @@
   [model {:keys [op rows changes]}]
   ;; Capture rows are plain raw-value maps; search-models-to-update needs the model attached. Do not hand the
   ;; re-derivation off until the outer transaction commits; Metabase discards the callback on rollback.
-  (let [instances (mapv #(t2/instance model %) rows)]
-    (mdb/do-after-commit
-     #(submit-handoff!
-       model op
-       (fn []
-         (case op
-           (:insert :delete) (search/bulk-update! instances)
-           :update           (search/bulk-update-with-changes! instances changes)))))))
+  (mdb/do-after-commit
+   (fn []
+     (submit-handoff!
+      model op
+      (fn []
+        (let [instances (mapv #(t2/instance model %) rows)]
+          (case op
+            (:insert :delete) (search/bulk-update! instances)
+            :update           (search/bulk-update-with-changes! instances changes))))))))

@@ -502,9 +502,13 @@
                [search-model (insert-values where :updated @raw-values)])))
           (get (model-hooks) (t2/model instance)))))
 
+(defn- non-scalar-expression?
+  [x]
+  ((some-fn coll? symbol?) x))
+
 (defn- honeysql-expression?
   [x]
-  ((some-fn coll? keyword? symbol?) x))
+  (or (non-scalar-expression? x) (keyword? x)))
 
 (defn search-models-to-update-with-changes
   "Statement-level variant of [[search-models-to-update]]: `instance` is one pre-image row of an update
@@ -520,7 +524,7 @@
         ;; scalar input transforms. Transform the remaining candidates so a keyword-backed column turns :dashboard
         ;; into the literal "dashboard", while an untransformed :%now remains an expression.
         db-changes      (delay (->> changes
-                                    (remove (comp (some-fn coll? symbol?) val))
+                                    (remove (comp non-scalar-expression? val))
                                     (into {})
                                     (values->db-values model)))
         literal-changes (delay (into {} (remove (comp honeysql-expression? val)) @db-changes))
