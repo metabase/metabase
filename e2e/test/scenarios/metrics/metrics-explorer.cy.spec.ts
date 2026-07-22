@@ -196,8 +196,13 @@ const addMetricInputSequence = (
   if (runExpression) {
     runFormula();
     if (!skipRunCompletionWait) {
-      // It is expected that the elements below do not exist after the expression ran successfully
-      cy.findByTestId("metrics-viewer-search-input").should("not.exist");
+      // It is expected that the elements below do not exist after the expression
+      // ran successfully. The panel only collapses once the dataset run returns,
+      // which can take longer than the default 4s under a throttled/slow CI, so
+      // give these a generous timeout instead of masking a real wait.
+      cy.findByTestId("metrics-viewer-search-input", { timeout: 15000 }).should(
+        "not.exist",
+      );
       cy.findByTestId("run-expression-button").should("not.exist");
       cy.findByTestId("loading-indicator").should("not.exist");
     }
@@ -225,12 +230,14 @@ const addMetric = (
 const runFormula = () => {
   cy.log("Make sure mini picker is closed before clicking Run");
   H.MetricsViewer.runButton().should("be.visible");
-  cy.get("body").then(($body) => {
-    if ($body.find('[data-testid="mini-picker"]').length > 0) {
-      cy.realPress("Escape");
-      cy.get('[data-testid="mini-picker"]').should("not.exist");
-    }
-  });
+  // The mini picker may still be open/animating after selecting an entity, and
+  // clicking Run while it is open swallows the click so the formula never runs.
+  // A one-shot `if ($body.find(...))` conditional is evaluated a single time and
+  // races the picker's render/close animation; instead dismiss it deterministically
+  // and assert it is gone (retries) before clicking Run. There is no modal in this
+  // flow, so an Escape when the picker is already closed is a harmless no-op.
+  cy.realPress("Escape");
+  cy.findByTestId("mini-picker").should("not.exist");
 
   H.MetricsViewer.runButton().should("not.be.disabled").click();
 };

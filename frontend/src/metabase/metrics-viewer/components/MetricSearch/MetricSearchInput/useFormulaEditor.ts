@@ -182,6 +182,7 @@ export function useFormulaEditor({
       return;
     }
     isEditingSessionActiveRef.current = true;
+    pendingMetricIdentitiesRef.current = null;
     const { text: fullText, identities: initialIdentities } =
       buildFullTextWithIdentities(
         formulaEntitiesRef.current,
@@ -314,6 +315,7 @@ export function useFormulaEditor({
     setValidationError(null);
     setIsExpressionDirty(false);
     setEditingSessionIdentities([]);
+    pendingMetricIdentitiesRef.current = null;
   }, [
     editorRef,
     metricNamesRef,
@@ -333,6 +335,7 @@ export function useFormulaEditor({
         )
       ) {
         isEditingSessionActiveRef.current = false;
+        pendingMetricIdentitiesRef.current = null;
         setIsFocused(false);
         setIsOpen(false);
         setCurrentWord("");
@@ -363,7 +366,19 @@ export function useFormulaEditor({
     (newText: string) => {
       const view = editorRef.current?.view;
       if (view) {
-        pendingMetricIdentitiesRef.current = readMetricIdentities(view);
+        // @uiw/react-codemirror's value-prop sync fires onChange *after* a full
+        // doc replacement that has already dropped our identity RangeSet, so a
+        // naive read here can report an impoverished set and clobber the good
+        // pre-drop snapshot. Keep the richer snapshot so recoverDroppedIdentities
+        // (including the synchronous call in handleRun) can still restore it.
+        const currentIdentities = readMetricIdentities(view);
+        const previousIdentities = pendingMetricIdentitiesRef.current;
+        if (
+          previousIdentities == null ||
+          currentIdentities.length >= previousIdentities.length
+        ) {
+          pendingMetricIdentitiesRef.current = currentIdentities;
+        }
       }
       editTextRef.current = newText;
       setEditText(newText);
@@ -402,15 +417,17 @@ export function useFormulaEditor({
    * replacement, which drops our custom identity field. Restore identities that
    * still point at the same metric text so validation does not reject them.
    */
-  useEffect(() => {
+  // Restore identities dropped by @uiw/react-codemirror's value-prop sync (a
+  // full doc replacement drops the RangeSet-tracked identity field). Any
+  // identity that still points at the same metric text is re-applied, using
+  // the identities captured just before the drop. Reads the current doc
+  // directly so it can also be invoked synchronously (see handleRun) instead
+  // of only from the post-render effect below.
+  const recoverDroppedIdentities = useCallback(() => {
     const view = editorRef.current?.view;
     const pendingIdentities = pendingMetricIdentitiesRef.current;
 
     if (!view || pendingIdentities == null) {
-      return;
-    }
-
-    if (view.state.doc.toString() !== editText) {
       return;
     }
 
@@ -423,7 +440,7 @@ export function useFormulaEditor({
     );
 
     const recoverableIdentities =
-      editText === textAtFocusRef.current
+      view.state.doc.toString() === textAtFocusRef.current
         ? [...editingSessionIdentities, ...pendingIdentities]
         : pendingIdentities;
 
@@ -447,8 +464,24 @@ export function useFormulaEditor({
         ),
       });
     }
-    pendingMetricIdentitiesRef.current = null;
-  }, [editText, editingSessionIdentities, editorRef, metricNamesRef]);
+    // Intentionally do NOT clear pendingMetricIdentitiesRef here: a later
+    // destructive value-sync can drop the RangeSet again after this post-render
+    // effect ran, and handleRun's synchronous recover must still have the
+    // snapshot to restore from. It is cleared only at editing-session
+    // boundaries (focus start, commit/collapse, blur-collapse). Re-applying an
+    // identity is guarded by an exact position+text match, so a retained
+    // snapshot cannot resurrect a token whose text has since changed.
+  }, [editingSessionIdentities, editorRef, metricNamesRef]);
+
+  // Once a controlled value sync has settled (doc matches editText), restore
+  // any identities it dropped.
+  useEffect(() => {
+    const view = editorRef.current?.view;
+    if (!view || view.state.doc.toString() !== editText) {
+      return;
+    }
+    recoverDroppedIdentities();
+  }, [editText, editorRef, recoverDroppedIdentities]);
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
@@ -661,6 +694,11 @@ export function useFormulaEditor({
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
     const view = editorRef.current?.view;
+    // A Run click can land before the restore effect has re-applied identities
+    // dropped by the value-prop sync; recover them synchronously so validation
+    // sees the real identities instead of spuriously failing and leaving the
+    // panel open.
+    recoverDroppedIdentities();
     const identities = view ? readMetricIdentities(view) : [];
     const invalidRanges = findInvalidRanges(
       editTextRef.current,
@@ -674,7 +712,7 @@ export function useFormulaEditor({
 
     setValidationError(null);
     commitAndCollapse();
-  }, [commitAndCollapse, editorRef, metricNamesRef]);
+  }, [commitAndCollapse, editorRef, metricNamesRef, recoverDroppedIdentities]);
   handleRunRef.current = handleRun;
 
   // Sync validation error into the CodeMirror decoration field
