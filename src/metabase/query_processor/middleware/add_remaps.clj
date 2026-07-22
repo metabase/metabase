@@ -172,7 +172,8 @@
                                   infos)]
     (mapv
      (fn [field-ref]
-       (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name] (field->remapped-col (simplify-ref-options field-ref))]
+       (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name]
+                (field->remapped-col (simplify-ref-options field-ref))]
          (lib/update-options field-ref assoc ::original-field-dimension-id new-field-dimension-id)
          field-ref))
      fields)))
