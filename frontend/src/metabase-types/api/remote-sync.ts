@@ -218,8 +218,6 @@ export type RemoteSyncWorktree = {
   branch: string;
   /** Last synced git SHA; null until the first successful pull. */
   base_version: string | null;
-  /** Whether this is the default worktree (its branch matches the remote-sync-branch setting). */
-  is_default: boolean;
   roots: RemoteSyncWorktreeRoot[];
   creator_id: UserId | null;
   created_at: string;

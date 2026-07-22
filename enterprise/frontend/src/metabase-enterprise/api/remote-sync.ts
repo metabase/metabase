@@ -209,7 +209,8 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       query: ({ id, force }) => ({
         method: "DELETE",
         url: `/api/ee/remote-sync/worktrees/${id}`,
-        body: { force },
+        // the endpoint reads force from query params; DELETE bodies are not bound
+        params: force ? { force } : undefined,
       }),
       invalidatesTags: () => [
         listTag("remote-sync-worktree"),
