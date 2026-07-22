@@ -107,10 +107,10 @@ describe("Metabot Query Builder", () => {
     });
     cy.get("main").findByText("Show me all orders").click();
 
-    // the chart renders inline and we stay on the /ask page
+    // the chart renders inline rather than in the query builder
     cy.wait("@metabotAgent");
     cy.findByTestId("metabot-inline-chart").should("be.visible");
-    cy.url().should("include", "/question/ask");
+    cy.url().should("include", "/metabot/conversation/");
   });
 
   it("should handle errors", () => {
