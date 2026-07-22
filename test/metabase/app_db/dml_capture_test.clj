@@ -36,6 +36,7 @@
   (atom identity))
 
 (def ^:private after-insert-count (atom 0))
+(def ^:private after-update-count (atom 0))
 
 (defmethod dml-capture/capture-fields ::bird [_ op] (get @bird-capture-fields op))
 (defmethod dml-capture/capture-fields ::moody-bird [_ _op] [:id :group_id])
@@ -46,6 +47,7 @@
 (t2/define-before-update ::moody-bird [row] (@moody-before-update-fn row))
 (t2/define-before-delete ::moody-bird [row] row)
 (t2/define-after-insert ::moody-bird [row] (swap! after-insert-count inc) row)
+(t2/define-after-update ::moody-bird [row] (swap! after-update-count inc) row)
 
 ;;; `::decorated-bird` carries the decorations capture must bypass. Its after-select dereferences a column a
 ;;; narrow snapshot doesn't fetch (the shape of :model/Revision's :object deserializer), and its transforms
@@ -79,7 +81,8 @@
                                :update [:id :group_id]
                                :delete [:id :group_id]})
   (reset! moody-before-update-fn identity)
-  (reset! after-insert-count 0))
+  (reset! after-insert-count 0)
+  (reset! after-update-count 0))
 
 (defn- events [] @captured)
 
@@ -307,6 +310,17 @@
     (testing "the rows survive the rollback"
       (is (= 2 (t2/count ::bird :group_id 100))))))
 
+(deftest insert-backfill-fires-before-outer-rollback-test
+  (reset-capture!)
+  (swap! bird-capture-fields assoc :insert [:id :group_id :n])
+  (testing "insert backfill shares the outer transaction while delivery retains the generic pre-commit contract"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (t2/with-transaction [_conn]
+                   (t2/insert! ::bird {:name "rollback" :group_id 101})
+                   (throw (ex-info "boom" {})))))
+    (is (=? [{:op :insert, :model ::bird, :rows [{:group_id 101, :n 0}]}] (events)))
+    (is (= 0 (t2/count ::bird :group_id 101)))))
+
 (deftest raw-table-name-bypass-test
   (reset-capture!)
   (testing "DML addressed to the raw table name bypasses capture entirely"
@@ -337,6 +351,19 @@
                          {:id pos-int?, :group_id 200}]
                  :pks   [pos-int? pos-int? pos-int?]}
                 event))
+        (is (= (set pks) (set (map :id (:rows event)))))))))
+
+(deftest composition-after-update-reentry-test
+  (reset-capture!)
+  (testing "with an after-update tool present, every row hook runs and exactly one :update event fires"
+    (let [pks (t2/insert-returning-pks! ::moody-bird [(bird 205 0 "a") (bird 205 0 "b")])]
+      (reset! captured [])
+      (reset! after-update-count 0)
+      (is (= 2 (t2/update! ::moody-bird :group_id 205 {:n 1})))
+      (is (= 2 @after-update-count))
+      (is (= 1 (count (events))))
+      (let [event (first (events))]
+        (is (=? {:op :update, :model ::moody-bird, :changes {:n 1}} event))
         (is (= (set pks) (set (map :id (:rows event)))))))))
 
 (deftest composition-before-update-rewrite-test
@@ -389,35 +416,43 @@
     (let [{:keys [rows pks]} (first (events))]
       (is (= 1 (count rows)))
       (is (= #{:id :group_id :n} (set (keys (first rows)))))
-      (is (=? [{:group_id 240, :n 0, :id (first pks)}] rows))))
+      (is (=? [{:group_id 240, :n 0, :id (first pks)}] rows)))))
+
+(deftest multi-row-insert-backfill-correlates-by-pk-test
+  (reset-capture!)
   (testing "multiple rows are back-filled and correlated by PK, not input/result position"
-    (reset-capture!)
     (swap! bird-capture-fields assoc :insert [:id :group_id :n])
     (let [pks (t2/insert-returning-pks! ::bird [{:name "multi-a", :group_id 242}
                                                 {:name "multi-b", :group_id 243}])
           {event-pks :pks, rows :rows} (first (events))
           persisted (t2/select [::bird :id :group_id :n] :id [:in pks])]
       (is (= pks event-pks))
-      (is-same-rows-by-pk pks persisted rows)))
+      (is-same-rows-by-pk pks persisted rows))))
+
+(deftest explicit-pk-expression-insert-backfills-test
+  (reset-capture!)
   (testing "an explicit PK does not bypass backfill when a captured value is a SQL expression"
-    (reset-capture!)
     (swap! bird-capture-fields assoc :insert [:id :group_id :n])
     (t2/with-call-count [call-count]
       (t2/insert! ::bird {:id 24001, :name "expression", :group_id 244, :n [:+ 1 2]})
       (is (= 2 (call-count))))
     (is (= [{:id 24001, :group_id 244, :n 3}]
-           (:rows (first (events))))))
+           (:rows (first (events)))))))
+
+(deftest failed-insert-backfill-rolls-back-test
+  (reset-capture!)
   (testing "a failed insert backfill rolls the insert back"
-    (reset-capture!)
     (swap! bird-capture-fields assoc :insert [:id :group_id :n])
     (with-redefs [t2.execute/query (fn [_sql-args]
                                      (throw (java.sql.SQLException. "backfill failed")))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"backfill failed"
                             (t2/insert! ::bird {:id 24002, :name "rollback", :group_id 244, :n [:+ 1 2]}))))
     (is (false? (t2/exists? ::bird :id 24002)))
-    (is (empty? (events))))
-  (testing "complete literals keep the zip path: no extra select"
-    (reset-capture!)
+    (is (empty? (events)))))
+
+(deftest complete-literal-insert-avoids-backfill-test
+  (reset-capture!)
+  (testing "complete literals keep the fast path: no extra select"
     (swap! bird-capture-fields assoc :insert [:id :group_id :n])
     (t2/with-call-count [call-count]
       (t2/insert! ::bird {:name "no-backfill" :group_id 241 :n 7})
