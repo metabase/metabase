@@ -63,7 +63,10 @@ describe("metabot > tool calls", () => {
     pause2.resolve();
 
     // once settled the chain collapses and every label flips to the past tense
-    expect(await screen.findByText(/Worked (for|on)/)).toBeInTheDocument();
+    // (a fast turn rolls up to "Worked briefly")
+    expect(
+      await screen.findByText(/Worked (briefly|for|on)/),
+    ).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText("Analyzed the data")).not.toBeVisible();
     });

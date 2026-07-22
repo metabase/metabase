@@ -181,15 +181,20 @@
 
 ;;; Stream Processing Transducers
 
+(def ^:private tool-call-scoped-data-types
+  "Data types stamped with their originating tool-call id so the client can render
+  them under the matching chain-of-thought step (search hits, saved-entity link)."
+  #{search-results-type entity-saved-type})
+
 (def expand-data-parts-xf
   "Stateless transducer that appends a tool-output's :data-parts after it, passing
-  everything else through. Search-results parts get stamped with their originating
-  tool-call id so the client can render them under the matching search step."
+  everything else through. Tool-call-scoped parts get stamped with their originating
+  tool-call id so the client can render them under the matching step."
   (mapcat (fn [part]
             (if (= (:type part) :tool-output)
               (cons part (for [dp (get-in part [:result :data-parts])]
                            (cond-> dp
-                             (= search-results-type (:data-type dp))
+                             (contains? tool-call-scoped-data-types (:data-type dp))
                              (assoc-in [:data :tool_call_id] (:id part)))))
               [part]))))
 

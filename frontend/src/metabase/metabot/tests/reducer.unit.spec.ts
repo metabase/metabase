@@ -543,6 +543,35 @@ describe("metabot reducer", () => {
       ).toMatchObject({ kind: "tool", searchResults: { totalCount: 1 } });
     });
 
+    it("stamps a save_entity step title from its saved-entity data part", () => {
+      const store = createTestStore();
+      store.dispatch(
+        metabotActions.toolCallStart({
+          agentId,
+          toolCallId: "t1",
+          toolName: "save_entity",
+        }),
+      );
+      store.dispatch(metabotActions.addAgentTextDelta({ agentId, text: "hi" }));
+      // the saved card's link only exists once the tool finishes
+      store.dispatch(
+        metabotActions.toolCallSaved({
+          agentId,
+          toolCallId: "t1",
+          title: "[Sales by Month](metabase://question/5)",
+        }),
+      );
+
+      const chain = getChain(store);
+      expect(
+        chain?.type === "chain_of_thought" && chain.steps[0],
+      ).toMatchObject({
+        kind: "tool",
+        name: "save_entity",
+        title: "[Sales by Month](metabase://question/5)",
+      });
+    });
+
     it("backfills a title arriving on tool-input-available", () => {
       const store = createTestStore();
       store.dispatch(

@@ -108,6 +108,10 @@ export type EntitySavedValue = {
   chart_id: string;
   card_id: number;
   destination: SavedEntityDestination;
+  // present when the save ran as a chain-of-thought tool call: the id ties the
+  // saved-entity link (`title`, a metabase:// markdown link) to its "Saved …" step
+  tool_call_id?: string;
+  title?: string;
 };
 
 export type KnownDataPart =

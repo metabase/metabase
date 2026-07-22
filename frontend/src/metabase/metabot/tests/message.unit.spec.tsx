@@ -7,7 +7,6 @@ import {
   enterChatMessage,
   input,
   mockAgentEndpoint,
-  responseLoader,
   sendMessageButton,
   setup,
   whoIsYourFavoriteResponse,
@@ -26,7 +25,11 @@ describe("metabot > message", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
 
     await enterChatMessage("Who is your favorite?");
-    expect(await responseLoader()).toBeInTheDocument();
+    // while the turn is pending the "Thinking" chain-of-thought shell stands in
+    // for the old response loader
+    expect(
+      await screen.findByTestId("metabot-chain-of-thought"),
+    ).toBeInTheDocument();
 
     sendResponse();
 

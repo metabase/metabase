@@ -188,6 +188,20 @@ export const setChainToolSearchResults = (
   }
 };
 
+// a tool whose display label is only known once it finishes (e.g. save_entity,
+// which can't name the saved entity until the card exists) stamps its step title
+// from an output data part, keyed by tool-call id
+export const setChainToolTitle = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+  title: string,
+) => {
+  const step = findChainToolStep(convo, toolCallId);
+  if (step) {
+    step.title = title;
+  }
+};
+
 export const endChainTool = (
   convo: WritableDraft<MetabotConverstationState>,
   id: string,

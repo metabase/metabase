@@ -140,6 +140,7 @@ export const TOOL_CALL_DONE_MESSAGES = tmap({
   construct_notebook_query: () => t`Created a query`,
   get_field_values: () => t`Retrieved table metadata`,
   get_transform_details: () => t`Got transform details`,
+  save_entity: () => t`Saved`,
   search_data_sources: () => t`Checked available data sources`,
   search_metabase_documentation: () => t`Consulted the docs`,
   search_tables: () => t`Searched database tables`,

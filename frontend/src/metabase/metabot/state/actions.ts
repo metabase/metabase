@@ -83,6 +83,7 @@ export const {
   toolCallStart,
   toolCallArgs,
   toolCallEnd,
+  toolCallSaved,
   toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
@@ -605,6 +606,12 @@ export const sendAgentRequest = createAsyncThunk<
                     cardId: part.data.card_id,
                   }),
                 );
+                const { tool_call_id, title } = part.data;
+                if (tool_call_id && title) {
+                  dispatchToConvo(
+                    toolCallSaved({ agentId, toolCallId: tool_call_id, title }),
+                  );
+                }
                 pushDataPart({ type: "data_part", part });
               })
               .with(

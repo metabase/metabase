@@ -33,6 +33,7 @@ import {
   pushNewToolCall,
   resetReactionState,
   setChainToolSearchResults,
+  setChainToolTitle,
   startChainReasoning,
 } from "./reducer-utils";
 import type {
@@ -275,6 +276,15 @@ export const metabot = createSlice({
       ) => {
         const { toolCallId, totalCount, results } = action.payload;
         setChainToolSearchResults(convo, toolCallId, { totalCount, results });
+      },
+    ),
+    toolCallSaved: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{ toolCallId: string; title: string }>,
+      ) => {
+        const { toolCallId, title } = action.payload;
+        setChainToolTitle(convo, toolCallId, title);
       },
     ),
     // only the last turn is rewindable (retry), so a single pre-turn snapshot

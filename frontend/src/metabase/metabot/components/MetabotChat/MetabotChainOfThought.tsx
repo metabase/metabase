@@ -257,6 +257,7 @@ const renderTitle = (title: string) =>
   );
 
 const SEARCH_TOOL_NAME = "search";
+const SAVE_ENTITY_TOOL_NAME = "save_entity";
 
 // search & read_resource stream just the *object* (the query / the entities) as
 // their title; the FE owns the verb + tense so the same object reads present
@@ -274,6 +275,11 @@ const specificLabel = (step: ToolChainStep, done: boolean): string | null => {
   }
   if (step.name === RESOURCE_TOOL_NAME) {
     return done ? t`Read ${step.title}` : t`Reading ${step.title}`;
+  }
+  // save_entity's title (a metabase:// entity link) only arrives once the card
+  // exists, so a running save has no title and reads the generic "Saving"
+  if (step.name === SAVE_ENTITY_TOOL_NAME) {
+    return done ? t`Saved ${step.title}` : t`Saving ${step.title}`;
   }
   return step.title;
 };

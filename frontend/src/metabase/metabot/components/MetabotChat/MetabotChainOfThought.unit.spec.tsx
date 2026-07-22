@@ -244,6 +244,44 @@ describe("MetabotChainOfThought", () => {
     ).toBeInTheDocument();
   });
 
+  it("labels a settled save_entity step with a clickable Saved link", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "save_entity",
+            // the link title only arrives once the saved card exists
+            title: "[Sales by Month](metabase://dashboard/123)",
+            status: "ended",
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    expect(await screen.findByText("Saved")).toHaveTextContent(
+      "Saved Sales by Month",
+    );
+    expect(await screen.findByText("Sales by Month")).toBeInTheDocument();
+  });
+
+  it("labels a running save_entity step with the generic Saving verb", () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "t1", name: "save_entity", status: "started" },
+        ],
+      }),
+      true,
+    );
+    // no link title yet (the card doesn't exist mid-save) -> the generic verb
+    expect(screen.getAllByText("Saving").length).toBeGreaterThan(0);
+  });
+
   it("keeps the top-level preview generic but names the entity in the active row", async () => {
     setup(
       chain({
