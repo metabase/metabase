@@ -514,7 +514,7 @@ export const Messages = ({
   conversationId,
   onInternalLinkClick,
   getExtraActions,
-  forkBoundaryMessageIds,
+  forkBoundaryMessageId,
   forkBoundaryHref,
 }: {
   messages: MetabotChatMessage[];
@@ -528,7 +528,7 @@ export const Messages = ({
   conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
-  forkBoundaryMessageIds?: ReadonlySet<string> | null;
+  forkBoundaryMessageId?: string | null;
   forkBoundaryHref?: string | null;
 }) => {
   const dispatch = useDispatch();
@@ -542,15 +542,12 @@ export const Messages = ({
   );
   const forkBoundaryIndex = useMemo(
     () =>
-      forkBoundaryMessageIds
+      forkBoundaryMessageId
         ? visibleMessages.findLastIndex(
-            (m) =>
-              "externalId" in m &&
-              m.externalId != null &&
-              forkBoundaryMessageIds.has(m.externalId),
+            (m) => "externalId" in m && m.externalId === forkBoundaryMessageId,
           )
         : -1,
-    [visibleMessages, forkBoundaryMessageIds],
+    [visibleMessages, forkBoundaryMessageId],
   );
   const [sendToast] = useToast();
   const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);

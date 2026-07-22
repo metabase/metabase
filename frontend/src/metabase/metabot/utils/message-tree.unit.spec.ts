@@ -1,8 +1,4 @@
-import {
-  type ParentedChatMessage,
-  activeResponses,
-  forkBoundaryAttemptIds,
-} from "./message-tree";
+import { type ParentedChatMessage, activeResponses } from "./message-tree";
 
 function user(id: string, parentId: string | null): ParentedChatMessage {
   return {
@@ -170,41 +166,5 @@ describe("activeResponses", () => {
         selected.flatMap(({ messages }) => messages.map(({ id }) => id)),
       ).toEqual(["u1", "a1", "uErr", "aErr"]);
     });
-  });
-});
-
-describe("forkBoundaryAttemptIds", () => {
-  it("returns every sibling attempt of a regenerated boundary turn", () => {
-    expect(forkBoundaryAttemptIds(regenerated, "a1")).toEqual(
-      new Set(["a1", "a2"]),
-    );
-    expect(forkBoundaryAttemptIds(regenerated, "a2")).toEqual(
-      new Set(["a1", "a2"]),
-    );
-  });
-
-  it("walks up a multi-message reply to find the turn head's siblings", () => {
-    const messages = [
-      user("u1", null),
-      agent("a1", "u1"),
-      agent("a2", "u1"),
-      agent("a2-tool", "a2"),
-    ];
-
-    expect(forkBoundaryAttemptIds(messages, "a2-tool")).toEqual(
-      new Set(["a1", "a2"]),
-    );
-  });
-
-  it("returns the single id for an unregenerated boundary turn", () => {
-    expect(
-      forkBoundaryAttemptIds([user("u1", null), agent("a1", "u1")], "a1"),
-    ).toEqual(new Set(["a1"]));
-  });
-
-  it("falls back to the boundary id when it can't be located", () => {
-    expect(forkBoundaryAttemptIds(regenerated, "missing")).toEqual(
-      new Set(["missing"]),
-    );
   });
 });
