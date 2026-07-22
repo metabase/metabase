@@ -37,22 +37,26 @@
                      ["indexed-entity" [:= id :model_index.model_id]]}]
                   (mapv set @calls))))))))
 
-(deftest capture-fields-guards-test
+(deftest capture-fields-disabled-without-engine-test
   (testing "capture-fields is skipped entirely (no pre-select) when no search engine is active"
     (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
-      (is (nil? (dml-capture/capture-fields :model/Card :delete)))))
+      (is (nil? (dml-capture/capture-fields :model/Card :delete))))))
+
+(deftest only-delete-capture-is-enabled-test
   (testing "only :delete is wired up in this PR; insert/update capture-fields stay nil even with engines on"
     (is (some? (seq (search.engine/active-engines))) "this test needs an active engine to be meaningful")
     (is (nil? (dml-capture/capture-fields :model/Card :insert)))
     (is (nil? (dml-capture/capture-fields :model/Card :update)))))
 
-(deftest ^:synchronized purge-on-delete-test
+(deftest ^:synchronized purge-one-on-delete-test
   (testing "deleting an indexed card purges its index row (appdb engine)"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {id :id} {:name "Temp Purge Card"}]
         (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str id))))
         (t2/delete! :model/Card id)
-        (is (= 0 (t2/count (search.index/active-table) :model "card" :model_id (str id)))))))
+        (is (= 0 (t2/count (search.index/active-table) :model "card" :model_id (str id))))))))
+
+(deftest ^:synchronized purge-bulk-on-delete-test
   (testing "bulk deletion purges every affected row (cards first, then their now-empty collection)"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Temp Bulk Collection"}
