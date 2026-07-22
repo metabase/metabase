@@ -85,7 +85,7 @@ jobs:
         run: echo "value=$(cat .evals_branch)" >> "$GITHUB_OUTPUT"
       - name: Dispatch smoke eval-run
         env:
-          GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           EVALS_BRANCH: ${{ steps.branch.outputs.value }}
         run: |
@@ -100,7 +100,7 @@ jobs:
       - name: Locate the dispatched eval-run
         id: evalrun
         env:
-          GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           url=""
@@ -144,7 +144,7 @@ jobs:
         run: echo "value=${INPUT_BRANCH:-$(cat .evals_branch)}" >> "$GITHUB_OUTPUT"
       - name: Dispatch eval-run
         env:
-          GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           EVALS_BRANCH: ${{ steps.branch.outputs.value }}
           PR: ${{ inputs.pr }}
           REF: ${{ inputs.ref }}
