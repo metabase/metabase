@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 import { useMemo } from "react";
 
 import {
@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import type { NotificationListItem } from "metabase/notifications/types";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
@@ -21,13 +22,7 @@ import {
 } from "../../actions";
 import { NotificationList } from "../../components/NotificationList";
 
-interface NotificationsAppProps {
-  children?: ReactNode;
-}
-
-export const NotificationsApp = ({
-  children,
-}: NotificationsAppProps): JSX.Element | null => {
+export const NotificationsApp = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
@@ -84,7 +79,7 @@ export const NotificationsApp = ({
       onUnsubscribe={onUnsubscribe}
       onArchive={onArchive}
     >
-      {children}
+      <Outlet />
     </NotificationList>
   );
 };

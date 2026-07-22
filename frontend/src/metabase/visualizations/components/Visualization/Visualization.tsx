@@ -714,6 +714,9 @@ class Visualization extends PureComponent<
       rowChecked,
       onAllSelectClick,
       onRowSelectClick,
+      isSortable,
+      sorting,
+      onSortingChange,
       visualizerRawSeries,
       renderEmptyMessage,
       renderLoadingView = LoadingView,
@@ -1016,6 +1019,9 @@ class Visualization extends PureComponent<
                     rowChecked={rowChecked}
                     onAllSelectClick={onAllSelectClick}
                     onRowSelectClick={onRowSelectClick}
+                    isSortable={isSortable}
+                    sorting={sorting}
+                    onSortingChange={onSortingChange}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

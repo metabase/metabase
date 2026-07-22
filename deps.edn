@@ -126,7 +126,7 @@
   {:mvn/version "2.26.1"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
   {:mvn/version "2.26.1"}             ; allows the slf4j2 API to work with log4j 2
-  org.apache.pdfbox/pdfbox                  {:mvn/version "3.0.5"}              ; PDF generation (backend dashboard PDF prototype)
+  org.apache.pdfbox/pdfbox                  {:mvn/version "3.0.8"}              ; PDF generation (backend dashboard PDF prototype)
   org.apache.poi/poi                        {:mvn/version "5.5.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.5.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
@@ -161,10 +161,10 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.7"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.7"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.7"}
-  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.7"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.11"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.11"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.11"}
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.11"}
   org.eclipse.jgit/org.eclipse.jgit        {:mvn/version "7.3.0.202506031305-r"}; Java implementation of Git version control system
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine

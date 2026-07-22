@@ -1,0 +1,85 @@
+name: Kondo Ratchets Self-Heal
+
+# Stale budgets in .clj-kondo/ratchets.edn (above the actual ignore counts) fail CI. On PRs
+# labelled kondo-ratchets-self-healing, this commits the lowered budgets to the branch;
+# unlabelled PRs rely on local test runs to tighten the file.
+#
+# Two jobs so the automation token never shares an environment with PR-controlled code: the
+# ratchet-down job runs ./bin/mage from the PR branch and only exports the fixed file as an
+# artifact; the push job starts from a clean runner, executes nothing from the PR, and pushes.
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths:
+      - "**.clj"
+      - "**.cljc"
+      - "**.cljs"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ratchet-down:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    # fork PRs don't get the automation token, so we couldn't push to them anyway
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'kondo-ratchets-self-healing')
+      && github.event.pull_request.head.repo.full_name == github.repository
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+      - name: Lower ignore budgets to match the source tree
+        run: ./bin/mage fix-kondo-ratchets
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet .clj-kondo/ratchets.edn; then
+            echo "budgets already tight"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: steps.diff.outputs.changed == 'true'
+        with:
+          name: ratchets-edn
+          path: .clj-kondo/ratchets.edn
+          # dot-directories are excluded by default, which would ship an empty artifact
+          include-hidden-files: true
+
+  push:
+    needs: ratchet-down
+    if: needs.ratchet-down.outputs.changed == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: ratchets-edn
+          path: .clj-kondo/
+      - name: Commit to the PR branch
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
+          # METABASE_AUTOMATION_USER_TOKEN so the self-healing commit triggers CI
+          # (a GITHUB_TOKEN push would not)
+          AUTOMATION_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          git config --global user.name "Metabase Automation"
+          git config --global user.email "github-automation@metabase.com"
+          git add .clj-kondo/ratchets.edn
+          git commit -m "Ratchet down kondo ignore budgets" --no-verify
+          git push "https://x-access-token:${AUTOMATION_TOKEN}@github.com/${REPO}.git" "HEAD:$PR_BRANCH"

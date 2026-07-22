@@ -250,8 +250,7 @@ jobs:
 
             const message = [
               `:announcement-animated: ${eng} The v${next} release branch has been cut.`,
-              `- \`backport\`s will go to v${next} now`,
-              `- If you want to go back to v${current}, you'll need to add the double-backport tag`,
+              `Add the \`backport\` label to backport changes to all supported release branches.`,
             ].join('\n');
 
             await sendSlackMessage({

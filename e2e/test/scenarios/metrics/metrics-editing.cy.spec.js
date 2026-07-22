@@ -380,7 +380,8 @@ describe("scenarios > metrics > editing", () => {
       H.startNewMetric();
       H.MetricPage.queryEditor().should("be.visible");
       cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
-      H.miniPicker().within(() => {
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModal().within(() => {
         cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });

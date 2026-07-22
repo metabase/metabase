@@ -1,33 +1,48 @@
+import type { Location } from "history";
 import type { ComponentType } from "react";
 
-import type { Location, Params } from "./types";
-import { useLocation } from "./use-location";
-import { useParams } from "./use-params";
+import { useRoute } from "./Outlet";
+import type { InjectedRouter, PlainRoute } from "./react-router";
+import type { Route } from "./route";
+import type { Params } from "./types";
+import { useRouter } from "./use-router";
 
 /**
- * The router props injected by the facade hooks into a wrapped component.
+ * The v3 router props a wrapped component may read. `params`/`location` are
+ * always injected; the rest are optional so a component that reads only a subset
+ * still satisfies the constraint.
  */
 export interface InjectedRouteProps {
   params: Params;
   location: Location;
+  route?: Route;
+  router?: InjectedRouter;
+  routes?: PlainRoute[];
 }
 
 /**
  * Temporary shim for the react-router v7 migration. Wraps a legacy component
- * that still reads `params` and `location` from props, feeding them in from the
- * facade hooks so the router no longer needs to inject them directly. This lets
- * the engine swap happen without touching the wrapped components. Removed in
- * Phase 4 once they read the hooks themselves.
+ * that still reads the v3-injected router props (`params`, `location`, `route`,
+ * `router`, `routes`) and feeds them in from the router context, so the
+ * component runs as an `element` route without being rewritten. Removed in
+ * Phase 4 once these components read the hooks themselves.
  */
-export function withRouteProps<Props extends InjectedRouteProps>(
+export function withRouteProps<Props extends object>(
   WrappedComponent: ComponentType<Props>,
 ): ComponentType<Omit<Props, keyof InjectedRouteProps>> {
   function WithRouteProps(props: Omit<Props, keyof InjectedRouteProps>) {
-    const params = useParams();
-    const location = useLocation();
+    const { router, location, params, routes } = useRouter();
+    const route = useRoute();
 
     // TS cannot see that re-adding the omitted route props reconstructs `Props`.
-    const injectedProps = { ...props, params, location } as Props;
+    const injectedProps = {
+      ...props,
+      router,
+      location,
+      params,
+      routes,
+      route,
+    } as unknown as Props;
     return <WrappedComponent {...injectedProps} />;
   }
 

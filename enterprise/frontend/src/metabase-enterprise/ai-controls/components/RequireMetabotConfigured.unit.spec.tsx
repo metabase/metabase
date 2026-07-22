@@ -10,13 +10,10 @@ const INDEX_PATH = "/admin/metabot/";
 function setup({ configured }: { configured: boolean }) {
   return renderWithProviders(
     <>
-      <Route component={RequireMetabotConfigured}>
-        <Route
-          path={SUB_PAGE_PATH}
-          component={() => <div>SUB PAGE CONTENT</div>}
-        />
+      <Route element={<RequireMetabotConfigured />}>
+        <Route path={SUB_PAGE_PATH} element={<div>SUB PAGE CONTENT</div>} />
       </Route>
-      <Route path={INDEX_PATH} component={() => <div>METABOT INDEX</div>} />
+      <Route path={INDEX_PATH} element={<div>METABOT INDEX</div>} />
     </>,
     {
       withRouter: true,

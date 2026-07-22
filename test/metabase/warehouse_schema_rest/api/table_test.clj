@@ -1305,10 +1305,19 @@
       (mt/with-temp [:model/Database {source-db-id :id} {:engine "h2", :details (:details (mt/db))}
                      :model/Database {mirror-db-id :id} {:engine "h2"
                                                          :details (:details (mt/db))
-                                                         :router_database_id source-db-id}
-                     :model/Table    table              {:db_id mirror-db-id :schema "PUBLIC"}]
-        (is (= "Not found."
-               (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" (u/the-id table)))))))))
+                                                         :router_database_id source-db-id}]
+        ;; A table can't exist on a mirror (destination) db in production (destinations aren't synced),
+        ;; so a normal `with-temp :model/Table` trips the destination-permission guard. Insert it
+        ;; directly to fabricate the mirror-db table this 404 test needs.
+        (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                {:db_id      mirror-db-id
+                                                 :schema     "PUBLIC"
+                                                 :name       "mirror_table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" table-id)))))))))
 
 (deftest ^:parallel sync-schema-nonexistent-table-test
   (testing "POST /api/table/:id/sync_schema"

@@ -29,7 +29,6 @@ export const cloudAddOnApi = EnterpriseApi.injectEndpoints({
     }),
   }),
 });
-
 export const {
   useListAddOnsQuery,
   usePurchaseCloudAddOnMutation,

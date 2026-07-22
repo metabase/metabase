@@ -1,9 +1,13 @@
 (ns metabase.mq.core
   "Unified public API for the Metabase messaging subsystem.
 
-  **Queue** — single-consumer, at-least-once delivery.  Each message is processed by exactly
-  one listener and removed after successful processing.  Failed messages are retried up to a
-  configurable limit.
+  **Queue** — single-consumer, at-least-once delivery. A queue has exactly one registered listener,
+  which is handed each message and removed after successful processing. Failed messages are retried
+  up to a configurable limit.
+
+  \"Single-consumer\" is about *registration*, not delivery: it means one handler per queue, not that
+  a message is handled exactly once. Delivery is at-least-once, so a listener must be idempotent —
+  see the `Idempotency` section of `metabase/mq/README.md`.
 
   A queue is declared once with `def-queue!` — this is the source of truth for what queues
   exist and where all queue config lives (exclusivity, batch size, dedup). The consumer-side

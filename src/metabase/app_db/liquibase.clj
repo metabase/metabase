@@ -60,6 +60,9 @@
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
 
+;; Disable phoning home to Liquibase analytics (since 4.28)
+(System/setProperty "liquibase.analytics.enabled" "false")
+
 (def ^{:private true
        :doc     "Liquibase setting used for upgrading instances running version < 45."}
   ^String changelog-legacy-file "liquibase_legacy.yaml")

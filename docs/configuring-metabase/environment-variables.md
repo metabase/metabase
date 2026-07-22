@@ -1580,15 +1580,6 @@ Allow persisting models into the source database.
 
 Token for premium features. Go to the MetaStore to get yours!
 
-### `MB_QUERY_CACHING_MAX_CONCURRENT_WRITES`
-
-- Type: integer
-- Default: `0`
-
-Maximum number of queries that can write their results to the query cache at the same time; 0 means no limit. Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent storing results during a burst of cache misses. Each concurrent write buffers a result capped by query-caching-max-kb (2 MB by default), so e.g. a limit of 32 bounds the worst-case burst cost at roughly 200 MB including growth transients.
-
-Maximum number of queries that can write their results to the query cache at the same time; 0 (the default) means no limit. Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent storing results during a burst of cache misses. E.g. a limit of 32 bounds the worst-case burst cost at roughly 200 MB.
-
 ### `MB_QUERY_CACHING_MAX_KB`
 
 - Type: integer
@@ -1890,8 +1881,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 - Default: `null`
 - [Configuration file name](./config-file.md): `saml-identity-provider-slo-uri`
 
-This is the URL where your users go to logout of your identity provider. Depending on which IdP you're
-using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`.
+If SAML single logout (SLO) is enabled, Metabase will make an HTTP-Redirect SLO request to this endpoint when a user logs out of Metabase.
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
@@ -1942,7 +1932,7 @@ Absolute path to the Keystore file to use for signing SAML requests.
 - Default: `false`
 - [Configuration file name](./config-file.md): `saml-slo-enabled`
 
-Is SAML Single Log Out enabled?
+If enabled, Metabase will redirect users to your configured SAML Single Logout endpoint when they log out of Metabase.
 
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 

@@ -152,9 +152,9 @@ export const actionApi = Api.injectEndpoints({
       PrefetchActionValuesRequest
     >({
       query: ({ id, parameters }) => ({
-        method: "GET",
-        url: `/api/action/${id}/execute`,
-        params: { parameters: JSON.stringify(parameters) },
+        method: "POST",
+        url: `/api/action/${id}/execute/values`,
+        body: { parameters },
       }),
       // Prefetch is an imperative fetch-and-discard with row-specific params
       // that rarely repeat, so there's nothing to gain from caching entries.
@@ -175,9 +175,9 @@ export const actionApi = Api.injectEndpoints({
       PrefetchDashcardValuesRequest
     >({
       query: ({ dashboardId, dashcardId, parameters }) => ({
-        method: "GET",
-        url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
-        params: { parameters: JSON.stringify(parameters) },
+        method: "POST",
+        url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute/values`,
+        body: { parameters },
       }),
       // Prefetch is an imperative fetch-and-discard with per-dashcard params
       // that rarely repeat, so there's nothing to gain from caching entries.

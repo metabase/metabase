@@ -335,7 +335,6 @@
                           :where     [:= :table.db_id [:inline 0]]}))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (deftest ^:parallel build-before-delete-query-test
   (testing "before-delete's select query should remove `:delete`/`:delete-from` (workaround for https://github.com/camsaul/toucan2/issues/203)"
     (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
