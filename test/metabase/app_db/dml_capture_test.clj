@@ -6,6 +6,7 @@
    [mb.hawk.assert-exprs]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.dml-capture :as dml-capture]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -45,6 +46,33 @@
 (t2/define-before-delete ::moody-bird [row] row)
 (t2/define-after-insert ::moody-bird [row] (swap! after-insert-count inc) row)
 
+;;; `::decorated-bird` carries the decorations capture must bypass. Its after-select dereferences a column a
+;;; narrow snapshot doesn't fetch (the shape of :model/Revision's :object deserializer, which broke the
+;;; production capture path before selects went modelless), and its transforms rewrite :name on the way in
+;;; and out, so a decorated read is distinguishable from a raw one.
+(methodical/defmethod t2.model/table-name ::decorated-bird [_] table-name)
+
+(t2/deftransforms ::decorated-bird
+  {:name {:in  (fn [s] (u/upper-case-en ^String s))
+          :out (fn [s] (u/lower-case-en ^String s))}})
+
+(t2/define-after-select ::decorated-bird
+  [row]
+  ;; (inc nil) throws, so this after-select cannot survive a row that didn't fetch :n — a live trap for any
+  ;; capture path that runs instance decorations against a narrow snapshot.
+  (assoc row :n-plus (inc (:n row))))
+
+(defmethod dml-capture/capture-fields ::decorated-bird
+  [_ op]
+  ;; Neither op captures :n, keeping the after-select trap armed; :delete includes :name so the raw stored
+  ;; value is observable.
+  (case op
+    :update [:id :group_id]
+    :delete [:id :group_id :name]
+    nil))
+
+(defmethod dml-capture/captured! ::decorated-bird [_ event] (swap! captured conj event))
+
 (defn- reset-capture! []
   (reset! captured [])
   (reset! bird-capture-fields {:insert [:id :group_id]
@@ -78,11 +106,13 @@
     (t2/query [(create-table-sql)])
     (derive ::bird dml-capture/hook)
     (derive ::moody-bird dml-capture/hook)
+    (derive ::decorated-bird dml-capture/hook)
     (try
       (thunk)
       (finally
         (underive ::bird dml-capture/hook)
         (underive ::moody-bird dml-capture/hook)
+        (underive ::decorated-bird dml-capture/hook)
         (t2/query [(drop-table-sql)])))))
 
 (defn- bird [group-id n name-str] {:name name-str, :group_id group-id, :n n})
@@ -114,11 +144,16 @@
 
 (deftest insert-returning-pks-passthrough-test
   (reset-capture!)
-  (testing "insert-returning-pks! returns the pks unchanged and fires one event"
+  (testing "insert-returning-pks! returns the pks unchanged and fires one event with pk'd row literals"
     (let [pks (t2/insert-returning-pks! ::bird [(bird 30 0 "a") (bird 30 0 "b")])]
       (is (= 2 (count pks)))
       (is (= 1 (count (events))))
-      (is (=? {:op :insert, :pks pks} (first (events)))))))
+      (is (=? {:op    :insert
+               :model ::bird
+               :pks   pks
+               :rows  [(assoc (bird 30 0 "a") :id (first pks))
+                       (assoc (bird 30 0 "b") :id (second pks))]}
+              (first (events)))))))
 
 (deftest insert-returning-instances-passthrough-test
   (reset-capture!)
@@ -127,7 +162,14 @@
       (is (= 2 (count instances)))
       (is (= #{"a" "b"} (set (map :name instances))))
       (is (= 1 (count (events))))
-      (is (=? {:op :insert} (first (events)))))))
+      (testing "the event's pks are the instance ids, and rows are the literals with those pks zipped on"
+        (is (=? {:op    :insert
+                 :model ::bird
+                 :pks   (mapv :id instances)
+                 :rows  (mapv (fn [instance literal] (assoc literal :id (:id instance)))
+                              instances
+                              [(bird 31 0 "a") (bird 31 0 "b")])}
+                (first (events))))))))
 
 (deftest bulk-update-statement-level-changes-test
   (reset-capture!)
@@ -198,20 +240,23 @@
       (is (=? {:op :delete, :model ::bird, :rows [{:id id, :group_id 80}]} (first (events))))))
   (testing "delete with a honeysql where-map captures the pre-image rows"
     (reset-capture!)
-    (t2/insert! ::bird [(bird 81 0 "a") (bird 81 0 "b")])
-    (reset! captured [])
-    (is (= 2 (t2/delete! ::bird {:where [:= :group_id 81]})))
-    (is (=? {:op :delete, :model ::bird} (first (events))))
-    (is (= 2 (count (:rows (first (events))))))))
+    (let [pks (t2/insert-returning-pks! ::bird [(bird 81 0 "a") (bird 81 0 "b")])]
+      (reset! captured [])
+      (is (= 2 (t2/delete! ::bird {:where [:= :group_id 81]})))
+      (is (=? {:op :delete, :model ::bird} (first (events))))
+      (is (= (set (map (fn [pk] {:id pk, :group_id 81}) pks))
+             (set (:rows (first (events)))))))))
 
 (deftest honeysql-expression-changes-passthrough-test
   (reset-capture!)
-  (testing "a honeysql expression in :changes is delivered as-is (pass-through)"
-    (t2/insert! ::bird [(bird 90 3 "a") (bird 90 7 "b")])
-    (reset! captured [])
-    (t2/update! ::bird :group_id 90 {:n [:+ :n 1]})
-    (is (= 1 (count (events))))
-    (is (= {:n [:+ :n 1]} (:changes (first (events)))))))
+  (testing "a honeysql expression in :changes is delivered as-is (pass-through), with the usual pre-image rows"
+    (let [pks (t2/insert-returning-pks! ::bird [(bird 90 3 "a") (bird 90 7 "b")])]
+      (reset! captured [])
+      (t2/update! ::bird :group_id 90 {:n [:+ :n 1]})
+      (is (= 1 (count (events))))
+      (is (= {:n [:+ :n 1]} (:changes (first (events)))))
+      (is (= (set (map (fn [pk] {:id pk, :group_id 90}) pks))
+             (set (:rows (first (events)))))))))
 
 (deftest rollback-fires-at-least-once-test
   (reset-capture!)
@@ -222,9 +267,9 @@
                  (t2/with-transaction [_conn]
                    (t2/delete! ::bird :group_id 100)
                    (throw (ex-info "boom" {})))))
-    (testing "the event fired before the rollback"
+    (testing "the event fired before the rollback, carrying the (still-live) pre-image rows"
       (is (= 1 (count (events))))
-      (is (=? {:op :delete} (first (events)))))
+      (is (=? {:op :delete, :model ::bird, :rows [{:group_id 100} {:group_id 100}]} (first (events)))))
     (testing "the rows survive the rollback"
       (is (= 2 (t2/count ::bird :group_id 100))))))
 
@@ -249,7 +294,16 @@
     (is (= 3 (t2/insert! ::moody-bird [(bird 200 0 "a") (bird 200 0 "b") (bird 200 0 "c")])))
     (is (= 3 @after-insert-count))
     (is (= 1 (count (events))))
-    (is (=? {:op :insert, :model ::moody-bird} (first (events))))))
+    (testing "the re-dispatched (instances-upgraded) path still delivers full rows with pks zipped in order"
+      (let [{:keys [pks] :as event} (first (events))]
+        (is (=? {:op    :insert
+                 :model ::moody-bird
+                 :rows  [(assoc (bird 200 0 "a") :id pos-int?)
+                         (assoc (bird 200 0 "b") :id pos-int?)
+                         (assoc (bird 200 0 "c") :id pos-int?)]
+                 :pks   [pos-int? pos-int? pos-int?]}
+                event))
+        (is (= pks (mapv :id (:rows event))))))))
 
 (deftest composition-before-update-rewrite-test
   (reset-capture!)
@@ -273,18 +327,21 @@
         (is (= (count ids) (count (events))))
         (is (= (set (map (fn [id] {:n (+ 100 id)}) ids))
                (set (map :changes (events)))))
-        (testing "each event carries exactly its own group's single pre-image row"
-          (is (every? #(= 1 (count (:rows %))) (events))))))))
+        (testing "each event pairs its group's changes with that group's own pre-image row, not another's"
+          (is (every? #(= 1 (count (:rows %))) (events)))
+          (doseq [{:keys [changes rows]} (events)]
+            (is (= (:n changes) (+ 100 (:id (first rows)))))))))))
 
 (deftest composition-delete-no-ambiguity-test
   (reset-capture!)
   (testing "a model mixing before-delete with capture deletes without ambiguity and fires one :delete event"
-    (t2/insert! ::moody-bird [(bird 230 0 "a") (bird 230 0 "b")])
-    (reset! captured [])
-    (is (= 2 (t2/delete! ::moody-bird :group_id 230)))
-    (is (= 1 (count (events))))
-    (is (=? {:op :delete, :model ::moody-bird} (first (events))))
-    (is (= 2 (count (:rows (first (events))))))))
+    (let [pks (t2/insert-returning-pks! ::moody-bird [(bird 230 0 "a") (bird 230 0 "b")])]
+      (reset! captured [])
+      (is (= 2 (t2/delete! ::moody-bird :group_id 230)))
+      (is (= 1 (count (events))))
+      (is (=? {:op :delete, :model ::moody-bird} (first (events))))
+      (is (= (set (map (fn [pk] {:id pk, :group_id 230}) pks))
+             (set (:rows (first (events)))))))))
 
 (deftest insert-backfills-missing-capture-fields-test
   (reset-capture!)
@@ -306,3 +363,21 @@
       (t2/insert! ::bird {:name "no-backfill" :group_id 241 :n 7})
       (is (= 1 (call-count))))
     (is (=? [{:rows [{:group_id 241, :n 7}]}] (events)))))
+
+(deftest capture-bypasses-instance-decorations-test
+  (reset-capture!)
+  (testing "capture selects run modelless: no after-select decoration, no out-transforms"
+    (t2/insert! ::decorated-bird {:name "abc" :group_id 250})
+    (testing "an after-select that dereferences an unfetched column would throw if decorations ran"
+      (reset! captured [])
+      (is (= 1 (t2/update! ::decorated-bird :group_id 250 {:n 1})))
+      (is (=? [{:op :update, :rows [{:group_id 250}]}] (events)))
+      (is (= #{:id :group_id} (set (keys (first (:rows (first (events)))))))))
+    (testing "captured values are the raw stored column values: in-transformed on write, never out-transformed"
+      (reset! captured [])
+      (is (= 1 (t2/delete! ::decorated-bird :group_id 250)))
+      (let [[{:keys [rows]} :as evs] (events)]
+        (is (= 1 (count evs)))
+        (is (=? [{:group_id 250, :name "ABC"}] rows))
+        (testing "no decoration keys leak into the snapshot"
+          (is (= #{:id :group_id :name} (set (keys (first rows))))))))))
