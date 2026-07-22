@@ -25,6 +25,8 @@ function Home() {
       <Link to="/other" activeClassName="is-active">
         section
       </Link>
+      {/* v3 resolved a bare path against the root, not the current route. */}
+      <Link to="other">bare</Link>
       <Outlet />
     </div>
   );
@@ -54,6 +56,21 @@ describe.each<RouterEngine>(["v3", "v7"])(
 
       expect(await screen.findByTestId("other")).toBeInTheDocument();
       expect(screen.getByTestId("location")).toHaveTextContent("/other");
+    });
+
+    // Only the destination is asserted: v3's memory history leaves the bare path
+    // literal in tests, though a real browser resolves it against the root the way
+    // v7 now does.
+    it("resolves a bare relative path against the root", async () => {
+      renderWithProviders(tree, {
+        withRouter: true,
+        routerEngine,
+        initialRoute: "/",
+      });
+
+      await userEvent.click(screen.getByRole("link", { name: "bare" }));
+
+      expect(await screen.findByTestId("other")).toBeInTheDocument();
     });
 
     it("applies activeClassName to the link that matches the route", async () => {

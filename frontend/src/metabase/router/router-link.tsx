@@ -26,9 +26,23 @@ type V3To = RouterLinkProps["to"];
 // v3 descriptors carry the query as a `query` object and `state` inline; v7 uses
 // a `search` string and a separate `state` prop. Translate so existing call sites
 // keep working on v7.
+/**
+ * v3 resolved a bare path against the root, so call sites write `to="reference"`
+ * meaning `/reference`. v7 resolves it against the current route instead, which
+ * would nest it (that link sits on `/browse/databases`). Anchor it so the target
+ * does not depend on where the link is rendered. A leading `?` or `#` keeps the
+ * current path by design, so leave those alone.
+ */
+function toRootRelative(pathname: string): string {
+  return pathname === "" || /^[/?#]/.test(pathname) ? pathname : `/${pathname}`;
+}
+
 function toV7Target(to: V3To): { to: V7LinkProps["to"]; state?: unknown } {
-  if (to == null || typeof to === "string") {
-    return { to: to ?? "" };
+  if (to == null) {
+    return { to: "" };
+  }
+  if (typeof to === "string") {
+    return { to: toRootRelative(to) };
   }
   if (typeof to === "function") {
     // v3's function form of `to` has no v7 analog and is not used in the app.
@@ -39,7 +53,11 @@ function toV7Target(to: V3To): { to: V7LinkProps["to"]; state?: unknown } {
   // `{ ...location, query }`, where the spread carries a stale `search`.
   const searchString = query ? queryToSearch(query) : search;
   return {
-    to: { pathname: pathname ?? "", search: searchString, hash },
+    to: {
+      pathname: pathname == null ? "" : toRootRelative(pathname),
+      search: searchString,
+      hash,
+    },
     state,
   };
 }

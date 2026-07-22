@@ -73,4 +73,16 @@ describe("queryToSearch", () => {
     expect(queryToSearch({ state: "AK", city: "" })).toBe("?city=&state=AK");
     expect(queryToSearch({ city: "", state: "AK" })).toBe("?city=&state=AK");
   });
+
+  // `URLSearchParams` would write these as %7E and `+`, changing URLs users see.
+  it("leaves `encodeURIComponent`-safe characters alone", () => {
+    expect(queryToSearch({ date_filter: "next30days~" })).toBe(
+      "?date_filter=next30days~",
+    );
+    expect(queryToSearch({ q: "a b" })).toBe("?q=a%20b");
+  });
+
+  it("still escapes characters that would break the query string", () => {
+    expect(queryToSearch({ q: "a&b=c" })).toBe("?q=a%26b%3Dc");
+  });
 });
