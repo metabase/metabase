@@ -47,11 +47,12 @@
     (let [{:keys [name groups timelines]} plan]
       (when (or (seq groups) (seq timelines) (not (str/blank? name)))
         (te/lines
-         (str "The user is assembling a Research plan. Below is its current contents — the user "
-              "may have added or removed items directly in addition to your tool calls, so treat "
-              "this as the source of truth. Refer to a group by its [block_id]. Each metric, "
-              "dimension, and timeline is followed by its id in parentheses — pass those ids to "
-              "the plan-editing tools.")
+         (str "The user is assembling a Research plan. Below is its current contents as of the "
+              "start of this turn — the user may edit it directly in the UI, so it can differ "
+              "from what your tool calls alone would produce. Once you've made plan edits this "
+              "turn, trust your tool results over this snapshot. Refer to a group by its "
+              "[block_id]. Each metric, dimension, and timeline is followed by its id in "
+              "parentheses — pass those ids to the plan-editing tools.")
          ""
          (te/field "Plan name" (not-empty name))
          (when (seq groups)
