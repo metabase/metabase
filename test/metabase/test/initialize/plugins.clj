@@ -55,7 +55,7 @@
    (doseq [driver drivers
            :let   [info (driver-plugin-manifest driver)]
            :when  info]
-     (plugins.init/init-plugin-with-info! info)
+     (plugins.init/register-plugin-with-info! info)
      ;; ok, now we need to make sure we load any depenencies for those drivers as well (!)
      (load-plugin-manifests! (driver-parents driver)))))
 

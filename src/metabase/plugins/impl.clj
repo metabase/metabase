@@ -99,18 +99,18 @@
   (some-> (slurp-plugin-manifest-from-archive jar-path)
           yaml/parse-string))
 
-(defn- init-plugin-with-info!
-  "Initialize plugin using parsed info from a plugin manifest. Returns truthy if plugin was successfully initialized;
+(defn- register-plugin-with-info!
+  "Register a plugin using parsed info from its manifest. Returns truthy if registration was successful;
   falsey otherwise."
   [info]
-  (plugins.init/init-plugin-with-info! info))
+  (plugins.init/register-plugin-with-info! info))
 
-(defn- init-plugin!
-  "Init plugin JAR file; returns truthy if plugin initialization was successful."
+(defn- register-plugin!
+  "Register a plugin JAR without loading its code. JARs without a manifest are dependency JARs and are added directly
+  to the classpath."
   [^Path jar-path]
   (if-let [info (plugin-info jar-path)]
-    ;; for plugins that include a metabase-plugin.yaml manifest run the normal init steps, don't add to classpath yet
-    (init-plugin-with-info! (assoc info :add-to-classpath! #(add-to-classpath! jar-path)))
+    (register-plugin-with-info! (assoc info :add-to-classpath! #(add-to-classpath! jar-path)))
     ;; for all other JARs just add to classpath and call it a day
     (add-to-classpath! jar-path)))
 
@@ -133,7 +133,7 @@
     path))
 
 (defn- load-plugin-manifest! [path]
-  (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
+  (some-> (slurp (str path)) yaml/parse-string plugins.init/register-plugin-with-info!))
 
 (defn- bundled-driver-manifest-paths
   "Return a sequence of paths (URIs when running from a jar, Paths in dev) for `metabase-plugin.yaml` plugin manifests
@@ -166,17 +166,17 @@
 (defn- has-manifest? ^Boolean [^Path path]
   (boolean (slurp-plugin-manifest-from-archive path)))
 
-(defn- init-plugins! [paths]
+(defn- register-plugins! [paths]
   ;; sort paths so that ones that correspond to JARs with no plugin manifest (e.g. a dependency like the Oracle JDBC
-  ;; driver `ojdbc8.jar`) always get initialized (i.e., added to the classpath) first; that way, Metabase drivers that
-  ;; depend on them (such as Oracle) can be initialized the first time we see them.
+  ;; driver `ojdbc8.jar`) are always added to the classpath first; that way, plugin manifests can satisfy class
+  ;; dependencies when they are registered.
   ;;
   ;; In Clojure world at least `false` < `true` so we can use `sort-by` to get non-Metabase-plugin JARs in front
   (doseq [^Path path (sort-by has-manifest? paths)]
     (try
-      (init-plugin! path)
+      (register-plugin! path)
       (catch Throwable e
-        (log/errorf e "Failed to initialize plugin %s" (.getFileName path))))))
+        (log/errorf e "Failed to register plugin %s" (.getFileName path))))))
 
 (defn- load! []
   ;; Load any user-supplied plugin JARs from the plugins directory (e.g. Oracle JDBC driver).
@@ -184,7 +184,7 @@
   ;; and their manifests are loaded from the classpath via load-driver-plugin-manifests! below.
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))
   (let [paths (plugins-paths)]
-    (init-plugins! paths))
+    (register-plugins! paths))
   (load-bundled-driver-plugin-manifests!))
 
 (defonce ^:private loaded? (atom false))
@@ -198,8 +198,8 @@
 
   *  Metabase creates the plugins directory if it does not already exist.
   *  Each JAR in the plugins directory that *does not* include a Metabase plugin manifest is added to the classpath.
-  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), non-driver plugins initialize
-     immediately. Driver plugins register lazily unless their manifest opts out of lazy loading.
+  *  JARs with a Metabase plugin manifest are registered without adding them to the classpath. Their code is loaded
+     only when the plugin is activated.
   *  Bundled driver plugin manifests are loaded from the classpath (not from disk).
 
   This function will only perform loading steps the first time it is called — it is safe to call this function more
