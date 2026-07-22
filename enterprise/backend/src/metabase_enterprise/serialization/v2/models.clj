@@ -137,6 +137,7 @@
    "ReplacementRun"
    "RemoteSyncObject"
    "RemoteSyncTask"
+   "RemoteSyncWorktree"
    "Revision"
    "Sandbox"
    "SearchIndexMetadata"

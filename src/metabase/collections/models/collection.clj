@@ -1665,6 +1665,9 @@
                                   (t2/select-one :model/Collection :id new-parent-id)
                                   root-collection)
         new-parent-is-remote-synced? (:is_remote_synced new-parent)
+        new-parent-worktree-id  (when new-parent-is-remote-synced?
+                                  (or (:remote_sync_worktree_id new-parent)
+                                      (remote-sync/default-worktree-id)))
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
         new-children-location   (children-location (assoc collection :location new-location))
@@ -1694,6 +1697,7 @@
        {:update :collection
         :set    {:location             [:replace :location orig-children-location new-children-location]
                  :is_remote_synced (boolean new-parent-is-remote-synced?)
+                 :remote_sync_worktree_id new-parent-worktree-id
                  :archive_operation_id nil
                  :archived_directly    nil
                  :archived             false}
@@ -1730,7 +1734,13 @@
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))
-        will-be-in-remote-synced? (t2/select-one-fn :is_remote_synced :model/Collection :id (parent-id* {:location new-location}))]
+        new-parent (when-let [parent-id (parent-id* {:location new-location})]
+                     (t2/select-one [:model/Collection :is_remote_synced :remote_sync_worktree_id]
+                                    :id parent-id))
+        will-be-in-remote-synced? (:is_remote_synced new-parent)
+        new-worktree-id (when will-be-in-remote-synced?
+                          (or (:remote_sync_worktree_id new-parent)
+                              (remote-sync/default-worktree-id)))]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
@@ -1749,7 +1759,8 @@
       (u/prog1 (t2/query-one
                 {:update :collection
                  :set {:location [:replace :location orig-children-location new-children-location]
-                       :is_remote_synced (boolean will-be-in-remote-synced?)}
+                       :is_remote_synced (boolean will-be-in-remote-synced?)
+                       :remote_sync_worktree_id new-worktree-id}
                  :where [:like :location (str orig-children-location "%")]})
         (when into-remote-synced?
           (check-non-remote-synced-dependencies collection))
@@ -1768,6 +1779,19 @@
       (when (= :api-key (t2/select-one-fn :type :model/User user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
+(defn- stamp-remote-sync-worktree-id
+  "When `changes` writes `:is_remote_synced`, also write `:remote_sync_worktree_id`: the parent's worktree
+  when the collection sits under a synced parent, else the default worktree. `location` is the collection's
+  (possibly new) location."
+  [changes location]
+  (if-not (contains? changes :is_remote_synced)
+    changes
+    (assoc changes :remote_sync_worktree_id
+           (when (:is_remote_synced changes)
+             (or (when-let [parent-id (some-> location location-path->parent-id)]
+                   (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id))
+                 (remote-sync/default-worktree-id))))))
+
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [type] :as collection}]
   (assert-valid-location collection)
@@ -1777,7 +1801,8 @@
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type)))
+               (as-> $changes (stamp-remote-sync-worktree-id $changes (:location $changes))))
     (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!
@@ -1989,9 +2014,12 @@
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; slugify the collection name in case it's changed in the output; the results of this will get passed along
     ;; to Toucan's `update!` impl
-    (u/prog1 (cond-> collection-updates
-               (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
-               collection-name (assoc :slug (slugify collection-name)))
+    (u/prog1 (-> (cond-> collection-updates
+                   (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+                   collection-name (assoc :slug (slugify collection-name)))
+                 (as-> $changes (stamp-remote-sync-worktree-id
+                                 $changes
+                                 (or (:location $changes) (:location collection-before-updates)))))
       (when-not *clearing-remote-sync*
         (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
 
@@ -2198,7 +2226,9 @@
           :namespace
           :slug
           :type]
-   :skip []
+   ;; worktree membership is local state (which checkout this instance materialized the collection into),
+   ;; not portable content
+   :skip [:remote_sync_worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id

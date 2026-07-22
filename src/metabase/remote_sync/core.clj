@@ -29,6 +29,13 @@
   []
   true)
 
+(defenterprise default-worktree-id
+  "ID of the default remote sync worktree — the row tracking the branch in the `remote-sync-branch`
+  setting — creating it if needed. Nil when remote sync is not configured, and always nil on OSS."
+  metabase-enterprise.remote-sync.core
+  []
+  nil)
+
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration.
 

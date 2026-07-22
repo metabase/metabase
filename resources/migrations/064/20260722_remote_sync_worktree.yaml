@@ -1,0 +1,440 @@
+## Remote sync worktrees: branch checkouts materialized as collection trees.
+## The remote_sync_worktree table holds one row per checked-out branch; the
+## default worktree is the row whose branch matches the remote-sync-branch
+## setting. Collections, remote_sync_object, and remote_sync_task gain a
+## worktree reference so sync state can be scoped per worktree.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-22T10:00:00
+      author: ranquild
+      comment: Create remote_sync_worktree table
+      changes:
+        - createTable:
+            tableName: remote_sync_worktree
+            remarks: One row per checked-out remote sync branch (git-worktree-style)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch this worktree is checked out to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_version
+                  type: varchar(254)
+                  remarks: Last synced git SHA for this worktree; null until first successful pull
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created this worktree
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this worktree was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:01
+      author: ranquild
+      comment: Unique index on remote_sync_worktree.branch
+      changes:
+        - createIndex:
+            tableName: remote_sync_worktree
+            indexName: idx_remote_sync_worktree_branch
+            unique: true
+            columns:
+              - column:
+                  name: branch
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:02
+      author: ranquild
+      comment: FK remote_sync_worktree.creator_id -> core_user
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_worktree
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_worktree_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:03
+      author: ranquild
+      comment: Add collection.remote_sync_worktree_id
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this collection belongs to; null for content not under remote sync
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:04
+      author: ranquild
+      comment: FK collection.remote_sync_worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_collection_remote_sync_worktree_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:05
+      author: ranquild
+      comment: Index on collection.remote_sync_worktree_id
+      changes:
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_remote_sync_worktree_id
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:06
+      author: ranquild
+      comment: Add remote_sync_object.worktree_id
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree whose dirty ledger this row belongs to
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:07
+      author: ranquild
+      comment: FK remote_sync_object.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_object
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_object_worktree_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:08
+      author: ranquild
+      comment: Index on remote_sync_object.worktree_id
+      changes:
+        - createIndex:
+            tableName: remote_sync_object
+            indexName: idx_remote_sync_object_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:09
+      author: ranquild
+      comment: Add remote_sync_task.worktree_id
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this task operated on
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:10
+      author: ranquild
+      comment: FK remote_sync_task.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_task
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_task_worktree_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:11
+      author: ranquild
+      comment: Index on remote_sync_task.worktree_id
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  ## Worktree copies carry a prefixed entity id - "<worktree-id>/<entity-id>", with "/"
+  ## as a separator that cannot appear in the NanoID alphabet - so the canonical (git)
+  ## identity is parseable from the local id and the two can never collide. Widen
+  ## entity_id on every table a worktree checkout can materialize.
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:12
+      author: ranquild
+      comment: Widen collection.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: collection
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: collection
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:13
+      author: ranquild
+      comment: Widen report_card.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:14
+      author: ranquild
+      comment: Widen report_dashboard.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:15
+      author: ranquild
+      comment: Widen report_dashboardcard.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: report_dashboardcard
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboardcard
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:16
+      author: ranquild
+      comment: Widen dashboard_tab.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: dashboard_tab
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: dashboard_tab
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:17
+      author: ranquild
+      comment: Widen document.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: document
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: document
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:18
+      author: ranquild
+      comment: Widen native_query_snippet.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: native_query_snippet
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: native_query_snippet
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:19
+      author: ranquild
+      comment: Widen timeline.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: timeline
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: timeline
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:20
+      author: ranquild
+      comment: Widen segment.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: segment
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: segment
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:21
+      author: ranquild
+      comment: Widen measure.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: measure
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: measure
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:22
+      author: ranquild
+      comment: Widen transform.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: transform
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: transform
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:23
+      author: ranquild
+      comment: Widen transform_tag.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: transform_tag
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: transform_tag
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:24
+      author: ranquild
+      comment: Widen transform_job.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: transform_job
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: transform_job
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:25
+      author: ranquild
+      comment: Widen transform_transform_tag.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: transform_transform_tag
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: transform_transform_tag
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:26
+      author: ranquild
+      comment: Widen transform_job_transform_tag.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: transform_job_transform_tag
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: transform_job_transform_tag
+            columnName: entity_id
+            newDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:27
+      author: ranquild
+      comment: Widen python_library.entity_id for worktree-prefixed ids
+      changes:
+        - modifyDataType:
+            tableName: python_library
+            columnName: entity_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: python_library
+            columnName: entity_id
+            newDataType: char(21)
