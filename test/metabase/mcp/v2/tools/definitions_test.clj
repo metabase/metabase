@@ -15,6 +15,7 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tools the assertions below drive.
+   [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.mcp.v2.tools.definitions :as tools.definitions]
    [metabase.measures.api :as measures.api]
    [metabase.metabot.scope :as metabot.scope]
@@ -29,7 +30,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(comment tools.definitions/keep-me)
+(comment tools.content/keep-me tools.definitions/keep-me)
 
 ;;; ------------------------------------------------- Harness ------------------------------------------------------
 
@@ -94,6 +95,30 @@
   (t2/select-one-fn :message :model/Revision
                     :model model-name :model_id id
                     {:order-by [[:id :desc]]}))
+
+(defn- read-definition!
+  "The `definition` section `get_content` returns for one item, exactly as it comes off the wire.
+   Driven through the real dispatch seam so the assertions see the shape an agent sees."
+  [type id]
+  (-> (call-tool! :crowberto nil "get_content" {:items [{:type type :id id}] :include ["definition"]})
+      tool-result
+      :results
+      first
+      :definition))
+
+(defn- venues-fk
+  "The portable FK path the external dialect names the venues table (or one of its fields) by."
+  [& field-names]
+  (into [(t2/select-one-fn :name :model/Database :id (mt/id)) "PUBLIC" "VENUES"] field-names))
+
+(defn- without-uuids
+  "Strip `lib/uuid`s, which are regenerated on every resolve and so are never equal across a
+   round-trip even when the query is."
+  [x]
+  (cond
+    (map? x)        (into {} (map (fn [[k v]] [k (without-uuids v)])) (dissoc x :lib/uuid))
+    (sequential? x) (mapv without-uuids x)
+    :else           x))
 
 ;;; ------------------------------------------- Argument validation ------------------------------------------------
 
@@ -293,6 +318,95 @@
                                              {:method "update" :id measure-id :revision_message "x"
                                               :definition {:aggregation [["count"]]}}))))))))
 
+;;; --------------------------------------------- Round-tripping ---------------------------------------------------
+
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest segment-definition-round-trip-test
+  (testing "GHY-4153: get_content's `definition` feeds straight back into segment_write, as its description promises"
+    (mt/with-model-cleanup [:model/Segment :model/Revision]
+      (let [created  (tool-result (call-tool! :crowberto nil "segment_write"
+                                              {:method "create" :table_id (mt/id :venues)
+                                               :name "definitions-test round-trip segment"
+                                               :definition (venues-filter-definition)}))
+            read-back (read-definition! "segment" (:id created))]
+        (testing "the read is the bare clause form — an array of filter clauses, not a query map"
+          (is (vector? read-back))
+          (is (= "=" (ffirst read-back))))
+        (let [updated (tool-result (call-tool! :crowberto nil "segment_write"
+                                               {:method "update" :id (:id created)
+                                                :definition (wire read-back)
+                                                :revision_message "round-trip the read definition"}))]
+          (is (= (mt/id :venues) (:table_id updated))
+              "table_id is derived from the clause form's reassembly onto the segment's own table")
+          (is (= 1 (count (get-in updated [:definition :stages]))))
+          (is (= (without-uuids read-back)
+                 (without-uuids (read-definition! "segment" (:id created))))
+              "the stored definition reads back identically after the round-trip"))))))
+
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest measure-definition-round-trip-test
+  (testing "GHY-4154: get_content's `definition` feeds straight back into measure_write"
+    (mt/with-model-cleanup [:model/Measure :model/Revision]
+      (let [created   (tool-result (call-tool! :crowberto nil "measure_write"
+                                               {:method "create" :table_id (mt/id :venues)
+                                                :name "definitions-test round-trip measure"
+                                                :definition (venues-count-definition)}))
+            read-back (read-definition! "measure" (:id created))]
+        (testing "the read is the bare clause form — a one-element array holding the aggregation"
+          (is (vector? read-back))
+          (is (= 1 (count read-back)))
+          (is (= "count" (ffirst read-back))))
+        (let [updated (tool-result (call-tool! :crowberto nil "measure_write"
+                                               {:method "update" :id (:id created)
+                                                :definition (wire read-back)
+                                                :revision_message "round-trip the read definition"}))]
+          (is (= (mt/id :venues) (:table_id updated)))
+          (is (= 1 (count (get-in updated [:definition :stages 0 :aggregation]))))
+          (is (= (without-uuids read-back)
+                 (without-uuids (read-definition! "measure" (:id created))))
+              "the stored definition reads back identically after the round-trip"))
+        (testing "the bare clause is accepted too, not only the one-element array get_content emits"
+          (let [updated (tool-result (call-tool! :crowberto nil "measure_write"
+                                                 {:method "update" :id (:id created)
+                                                  :definition (wire (first read-back))
+                                                  :revision_message "bare clause"}))]
+            (is (= 1 (count (get-in updated [:definition :stages 0 :aggregation]))))))))))
+
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest clause-form-create-test
+  (testing "GHY-4153/GHY-4154: create accepts the clause form, reassembling it onto table_id"
+    (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
+      (let [field-ref ["field" {} (venues-fk "PRICE")]
+            segment   (tool-result (call-tool! :crowberto nil "segment_write"
+                                               {:method "create" :table_id (mt/id :venues)
+                                                :name "definitions-test clause-form segment"
+                                                :definition (wire [["=" {} field-ref 3]])}))
+            measure   (tool-result (call-tool! :crowberto nil "measure_write"
+                                               {:method "create" :table_id (mt/id :venues)
+                                                :name "definitions-test clause-form measure"
+                                                :definition (wire [["count" {}]])}))]
+        (is (= (mt/id :venues) (:table_id segment)))
+        (is (= 1 (count (get-in segment [:definition :stages 0 :filters]))))
+        (is (= (mt/id :venues) (:table_id measure)))
+        (is (= 1 (count (get-in measure [:definition :stages 0 :aggregation]))))))))
+
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest portable-full-query-create-test
+  (testing "GHY-4153: a full query in the external dialect — what execute_query takes — is accepted as a definition"
+    (mt/with-model-cleanup [:model/Segment :model/Revision]
+      (let [created (tool-result
+                     (call-tool! :crowberto nil "segment_write"
+                                 {:method "create" :table_id (mt/id :venues)
+                                  :name "definitions-test portable segment"
+                                  :definition (wire {:lib/type "mbql/query"
+                                                     :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                 :source-table (venues-fk)
+                                                                 :filters      [["=" {}
+                                                                                 ["field" {} (venues-fk "PRICE")]
+                                                                                 3]]}]})}))]
+        (is (= (mt/id :venues) (:table_id created)))
+        (is (= 1 (count (get-in created [:definition :stages 0 :filters]))))))))
+
 ;;; ------------------------------------------ Definition validation -----------------------------------------------
 
 (deftest ^:parallel definition-validation-teaching-test
@@ -323,6 +437,30 @@
                                                   :name "definitions-test garbage"
                                                   :definition {:database 0 :type "query" :query {:source-table 0}}}))
                          "`definition` is not a valid MBQL query")))))
+
+(deftest ^:parallel definition-shape-teaching-test
+  (testing "GHY-4153/GHY-4154: a definition in neither accepted shape names both shapes"
+    (doseq [[tool definition] {"segment_write" {:database 0 :type "query" :query {:source-table 0}}
+                               "measure_write" {:not "a query"}}]
+      (testing tool
+        (let [msg (tool-error (call-tool! :crowberto nil tool
+                                          {:method "create" :table_id (mt/id :venues)
+                                           :name "definitions-test bad shape" :definition definition}))]
+          (is (str/includes? msg "bare clause form"))
+          (is (str/includes? msg "full single-stage"))
+          (is (not= "Internal error" msg)))))
+    (testing "an unresolvable clause array is a teaching error naming both shapes, not an internal error"
+      (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
+                                        {:method "create" :table_id (mt/id :venues)
+                                         :name "definitions-test bad clauses"
+                                         :definition [["nonsense-operator" {} 1]]}))]
+        (is (str/includes? msg "bare clause form"))
+        (is (not= "Internal error" msg))))
+    (testing "a scalar definition never reaches the handler — the schema rejects both accepted shapes' negation"
+      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "segment_write"
+                                                    {:method "create" :table_id (mt/id :venues)
+                                                     :name "x" :definition "not a definition"}))
+                            "Invalid arguments")))))
 
 ;;; ------------------------------------------------- Scopes -------------------------------------------------------
 
