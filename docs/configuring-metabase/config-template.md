@@ -334,5 +334,6 @@ config:
     usage-metadata-last-completed-day: null
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
+    use-v7-router: true
     user-visibility: all
 ```

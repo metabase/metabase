@@ -2345,156 +2345,6 @@
         },
         "required" : [ "min", "fixed" ]
       },
-      "metabase-enterprise.serialization.schema.export-metadata-response" : {
-        "type" : "object",
-        "properties" : {
-          "databases" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-database"
-            }
-          },
-          "fields" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-field"
-            }
-          },
-          "tables" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-table"
-            }
-          }
-        }
-      },
-      "metabase-enterprise.serialization.schema.exported-database" : {
-        "type" : "object",
-        "properties" : {
-          "engine" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "name", "engine" ]
-      },
-      "metabase-enterprise.serialization.schema.exported-field" : {
-        "type" : "object",
-        "properties" : {
-          "base_type" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "coercion_strategy" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "semantic_type" : {
-            "type" : "string"
-          },
-          "table_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          },
-          "nfc_path" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "effective_type" : {
-            "type" : "string"
-          },
-          "parent_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "database_type" : {
-            "type" : "string"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "fk_target_field_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          }
-        },
-        "required" : [ "id", "table_id", "name", "base_type" ]
-      },
-      "metabase-enterprise.serialization.schema.exported-table" : {
-        "type" : "object",
-        "properties" : {
-          "db_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "schema" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "db_id", "name" ]
-      },
-      "metabase-enterprise.serialization.schema.import-status-response" : {
-        "description" : "Wire shape of `GET /metadata/import/:id`. Timestamps are ISO-8601 strings.\n  `:started-at`/`:finished-at`/`:wall-ms` are nil until the relevant lifecycle\n  stage is reached; `:error` is nil unless the import failed.",
-        "type" : "object",
-        "properties" : {
-          "enqueued-at" : {
-            "type" : "string"
-          },
-          "error" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "finished-at" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "started-at" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "status" : {
-            "type" : "string",
-            "enum" : [ "queued", "running", "ok", "error" ]
-          },
-          "wall-ms" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "status", "enqueued-at", "started-at", "finished-at", "wall-ms", "error" ],
-        "additionalProperties" : false
-      },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
         "type" : "object",
@@ -15067,11 +14917,11 @@
         "tags" : [ "/api/action" ]
       }
     },
-    "/api/action/{action-id}/execute" : {
-      "get" : {
-        "operationId" : "get-api-action-action-id-execute",
-        "summary" : "GET /api/action/{action-id}/execute",
-        "description" : "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.",
+    "/api/action/{action-id}/execute/values" : {
+      "post" : {
+        "operationId" : "post-api-action-action-id-execute-values",
+        "summary" : "POST /api/action/{action-id}/execute/values",
+        "description" : "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.\n\n  Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs.",
         "parameters" : [ {
           "in" : "path",
           "name" : "action-id",
@@ -15081,24 +14931,40 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "parameters",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "parameters" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  }
+                },
+                "required" : [ "parameters" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/action" ]
@@ -16524,6 +16390,439 @@
           }
         },
         "tags" : [ "/api/api-key" ]
+      }
+    },
+    "/api/apps" : {
+      "get" : {
+        "operationId" : "get-api-apps",
+        "summary" : "GET /api/apps",
+        "description" : "List the data apps provided by the connected repository. Pass `available=true`\n   to return only enabled apps without sync errors.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "available",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "last_synced_at" : {
+                          "oneOf" : [ { }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "enabled" : {
+                          "type" : "boolean"
+                        },
+                        "id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "updated_at" : { },
+                        "display_name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "created_at" : { },
+                        "bundle_hash" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "last_synced_sha" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "sync_error" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "allowed_hosts" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        },
+                        "bundle_path" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      },
+                      "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                    }, {
+                      "type" : "object",
+                      "properties" : {
+                        "display_name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      },
+                      "required" : [ "name", "display_name" ],
+                      "additionalProperties" : false
+                    } ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
+    "/api/apps/repo-status" : {
+      "get" : {
+        "operationId" : "get-api-apps-repo-status",
+        "summary" : "GET /api/apps/repo-status",
+        "description" : "Status of the connected repository as it relates to data apps. Data apps are\n   pulled by the remote-sync import (manual \"Pull changes\", auto-import, or\n   startup); the connection is configured on the remote-sync settings page.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "configured" : {
+                      "type" : "boolean"
+                    },
+                    "url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "configured", "url" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
+    "/api/apps/{slug}" : {
+      "put" : {
+        "operationId" : "put-api-apps-slug",
+        "summary" : "PUT /api/apps/{slug}",
+        "description" : "Enable or disable a single data app. Disabled apps are not served.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "last_synced_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : { },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "last_synced_sha" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "sync_error" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "allowed_hosts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "bundle_path" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "enabled" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "enabled" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-apps-slug",
+        "summary" : "DELETE /api/apps/{slug}",
+        "description" : "Remove a single data app (its row and cached bundle). Intended for clearing out\n   apps left behind by a repository that is no longer connected: while a repo is\n   connected, an app still in it is re-materialized by the next sync, and one no\n   longer in it is pruned by that sync anyway.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      },
+      "get" : {
+        "operationId" : "get-api-apps-slug",
+        "summary" : "GET /api/apps/{slug}",
+        "description" : "Fetch metadata for a single enabled data app by its slug.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "type" : "object",
+                    "properties" : {
+                      "last_synced_at" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "enabled" : {
+                        "type" : "boolean"
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "updated_at" : { },
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "created_at" : { },
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "last_synced_sha" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "sync_error" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "allowed_hosts" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
+                      "bundle_path" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  }, {
+                    "type" : "object",
+                    "properties" : {
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "name", "display_name" ],
+                    "additionalProperties" : false
+                  } ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
+    "/api/apps/{slug}/bundle" : {
+      "get" : {
+        "operationId" : "get-api-apps-slug-bundle",
+        "summary" : "GET /api/apps/{slug}/bundle",
+        "description" : "Serve the cached JS bundle for a single enabled data app by slug. Honors\n   `If-None-Match` against the content-hash ETag with a 304.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
       }
     },
     "/api/automagic-dashboards/database/{id}/candidates" : {
@@ -20879,50 +21178,6 @@
       }
     },
     "/api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/execute" : {
-      "get" : {
-        "operationId" : "get-api-dashboard-dashboard-id-dashcard-dashcard-id-execute",
-        "summary" : "GET /api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/execute",
-        "description" : "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "dashboard-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "path",
-          "name" : "dashcard-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "parameters",
-          "required" : false,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/dashboard" ]
-      },
       "post" : {
         "operationId" : "post-api-dashboard-dashboard-id-dashcard-dashcard-id-execute",
         "summary" : "POST /api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/execute",
@@ -20949,6 +21204,71 @@
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "parameters" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "additionalProperties" : { }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/dashboard" ]
+      }
+    },
+    "/api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/execute/values" : {
+      "post" : {
+        "operationId" : "post-api-dashboard-dashboard-id-dashcard-dashcard-id-execute-values",
+        "summary" : "POST /api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/execute/values",
+        "description" : "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.\n\n  Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "dashboard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22983,7 +23303,7 @@
       "get" : {
         "operationId" : "get-api-database-id-schema",
         "summary" : "GET /api/database/{id}/schema",
-        "description" : "Return a list of Tables for a Database whose `schema` is `nil` or an empty string.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
+        "description" : "Return a list of Tables for a Database whose schema is the `schema` query parameter, or `nil` or an\n  empty string when no `schema` is given. Unlike the `/:id/schema/:schema` route, the query parameter\n  supports schema names containing slashes, which are rejected at the HTTP layer when percent-encoded in\n  the URL path (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -22993,6 +23313,17 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "schema",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
         }, {
           "in" : "query",
           "name" : "include_hidden",
@@ -23069,7 +23400,7 @@
       "get" : {
         "operationId" : "get-api-database-id-schema-schema",
         "summary" : "GET /api/database/{id}/schema/{schema}",
-        "description" : "Returns a list of Tables for the given Database `id` and `schema`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
+        "description" : "Returns a list of Tables for the given Database `id` and `schema`.\n\n  Schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when\n  percent-encoded in the URL path; pass those as the `schema` query parameter of `GET /:id/schema/`\n  instead (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -28401,13 +28732,6 @@
                               "type" : "null"
                             } ]
                           },
-                          "summary" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
                           "message_count" : {
                             "description" : "value must be an integer greater or equal to than zero.",
                             "type" : "integer",
@@ -28419,6 +28743,13 @@
                             "minimum" : 0
                           },
                           "profile_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "title" : {
                             "oneOf" : [ {
                               "type" : "string"
                             }, {
@@ -28477,7 +28808,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
+                        "required" : [ "conversation_id", "created_at", "title", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
                       }
                     },
                     "limit" : {
@@ -28667,13 +28998,6 @@
                         "type" : "null"
                       } ]
                     },
-                    "summary" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
                     "feedback" : {
                       "type" : "array",
                       "items" : {
@@ -28774,6 +29098,13 @@
                         "type" : "null"
                       } ]
                     },
+                    "title" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
@@ -28839,7 +29170,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
+                  "required" : [ "conversation_id", "created_at", "title", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
                 }
               }
             }
@@ -31798,151 +32129,6 @@
         "tags" : [ "/api/ee/serialization" ]
       }
     },
-    "/api/ee/serialization/metadata/export" : {
-      "post" : {
-        "operationId" : "post-api-ee-serialization-metadata-export",
-        "summary" : "POST /api/ee/serialization/metadata/export",
-        "description" : "Get warehouse metadata (databases, tables, and fields) for all databases visible to the\n  current user. References between rows are emitted as raw numeric ids (`db_id`,\n  `table_id`, `parent_id`, `fk_target_field_id`).\n\n  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`\n  query parameters — they all default to `false`. The response is streamed for efficiency\n  with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "with-databases",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "with-tables",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "with-fields",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.export-metadata-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/serialization" ]
-      }
-    },
-    "/api/ee/serialization/metadata/import" : {
-      "post" : {
-        "operationId" : "post-api-ee-serialization-metadata-import",
-        "summary" : "POST /api/ee/serialization/metadata/import",
-        "description" : "Import warehouse metadata previously emitted by `POST /metadata/export`. The\n  request body is the JSON document `{databases, tables, fields}`; sections are\n  parsed incrementally so memory stays bounded regardless of payload size.\n\n  To bypass the JSON-parsing request middleware, send with `Content-Type:\n  application/octet-stream`. Restricted to superusers.\n\n  Returns `202` immediately with an `:import-id`; the import runs\n  asynchronously. Poll `GET /metadata/import/:id` for its outcome.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "body" : {
-                      "type" : "object",
-                      "properties" : {
-                        "import-id" : {
-                          "type" : "string"
-                        },
-                        "queued" : {
-                          "type" : "boolean"
-                        }
-                      },
-                      "required" : [ "queued", "import-id" ],
-                      "additionalProperties" : false
-                    },
-                    "status" : {
-                      "const" : 202
-                    }
-                  },
-                  "required" : [ "status", "body" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/serialization" ]
-      }
-    },
-    "/api/ee/serialization/metadata/import/{id}" : {
-      "get" : {
-        "operationId" : "get-api-ee-serialization-metadata-import-id",
-        "summary" : "GET /api/ee/serialization/metadata/import/{id}",
-        "description" : "Status of a metadata import previously started by `POST /metadata/import`.\n  Status is retained in-memory and is not durable across server restarts.\n  Restricted to superusers.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-          },
-          "description" : "value must be a valid UUID."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.import-status-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/serialization" ]
-      }
-    },
     "/api/ee/stale/{id}" : {
       "get" : {
         "operationId" : "get-api-ee-stale-id",
@@ -33811,78 +33997,6 @@
                     }
                   },
                   "required" : [ "status", "headers", "body" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      }
-    },
-    "/api/ee/workspace-manager/{id}/metadata/export" : {
-      "get" : {
-        "operationId" : "get-api-ee-workspace-manager-id-metadata-export",
-        "summary" : "GET /api/ee/workspace-manager/{id}/metadata/export",
-        "description" : "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,\n  scoped to each database's `:input` namespaces. Same flag semantics as\n  `/api/ee/serialization/metadata/export` — sections must be opted into via the\n  `with-databases` / `with-tables` / `with-fields` query parameters.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "with-databases",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "with-tables",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "with-fields",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.export-metadata-response"
                 }
               }
             }
@@ -37646,7 +37760,7 @@
       "get" : {
         "operationId" : "get-api-metabot-conversations",
         "summary" : "GET /api/metabot/conversations",
-        "description" : "List conversations visible in the current user's history, most-recent first.\n\n  New conversations are participation-based (the user authored at least one\n  message); legacy conversations created before message authors were stamped\n  fall back to the conversation originator.",
+        "description" : "List conversations visible in the current user's history, most-recent first.\n\n  New conversations are participation-based (the user authored at least one\n  message); legacy conversations created before message authors were stamped\n  fall back to the conversation originator. Optionally filter by the last live\n  message's `profile_id`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -37683,7 +37797,14 @@
                             "type" : "integer",
                             "minimum" : 0
                           },
-                          "summary" : {
+                          "profile_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "title" : {
                             "oneOf" : [ {
                               "type" : "string"
                             }, {
@@ -37700,7 +37821,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "summary", "user_id", "message_count", "last_message_at" ]
+                        "required" : [ "conversation_id", "created_at", "title", "user_id", "profile_id", "message_count", "last_message_at" ]
                       }
                     },
                     "limit" : {
@@ -37757,13 +37878,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "chat_messages" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : { }
-                      }
-                    },
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
@@ -37773,6 +37887,34 @@
                       "type" : "string",
                       "format" : "date-time"
                     },
+                    "messages" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "saved_entities" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "card_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "chart_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "card_id", "chart_id" ]
+                      }
+                    },
                     "state" : {
                       "oneOf" : [ {
                         "$ref" : "#/components/schemas/metabase.metabot.schema.state"
@@ -37780,7 +37922,7 @@
                         "type" : "null"
                       } ]
                     },
-                    "summary" : {
+                    "title" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -37797,7 +37939,244 @@
                       } ]
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "summary", "user_id", "chat_messages" ]
+                  "required" : [ "conversation_id", "created_at", "title", "user_id", "saved_entities", "messages" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/conversations/{id}/saved-entity" : {
+      "post" : {
+        "operationId" : "post-api-metabot-conversations-id-saved-entity",
+        "summary" : "POST /api/metabot/conversations/{id}/saved-entity",
+        "description" : "Save a Metabot-generated chart from this conversation as a card, stamping the\n  card's origin columns in the same request — used by the inline chart's\n  manual Save button, which runs outside any agent turn. Creating and stamping\n  together (rather than stamping after a separate `POST /api/card`) means the\n  card and its origin cannot desync when the follow-up request is lost.\n\n  Accessible to any participant in the conversation or to any superuser.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "visualization_settings" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : { }
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dashboard_tab_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dataset_query" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "metabot_chart_id" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "collection_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "display" : {
+                      "type" : "string"
+                    },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabot_conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "dashboard_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "dataset_query", "display", "metabot_conversation_id", "metabot_chart_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "card" : {
+                    "type" : "object",
+                    "properties" : {
+                      "collection_id" : {
+                        "oneOf" : [ {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "dashboard_id" : {
+                        "oneOf" : [ {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "dashboard_tab_id" : {
+                        "oneOf" : [ {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "dataset_query" : {
+                        "type" : "object",
+                        "properties" : { }
+                      },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "display" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "visualization_settings" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "name", "dataset_query", "display" ]
+                  },
+                  "chart_id" : {
+                    "allOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "string",
+                      "maxLength" : 36
+                    } ]
+                  }
+                },
+                "required" : [ "chart_id", "card" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/conversations/{id}/title" : {
+      "get" : {
+        "operationId" : "get-api-metabot-conversations-id-title",
+        "summary" : "GET /api/metabot/conversations/{id}/title",
+        "description" : "Return the title generation status for a conversation.\n\n  Accessible to any participant in the conversation or to any superuser.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "ready", "pending", "missing" ]
+                    },
+                    "title" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "status", "title" ]
                 }
               }
             }
@@ -42988,50 +43367,6 @@
       }
     },
     "/api/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute" : {
-      "get" : {
-        "operationId" : "get-api-public-dashboard-uuid-dashcard-dashcard-id-execute",
-        "summary" : "GET /api/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute",
-        "description" : "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "uuid",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-          },
-          "description" : "value must be a valid UUID."
-        }, {
-          "in" : "path",
-          "name" : "dashcard-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "parameters",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/public" ]
-      },
       "post" : {
         "operationId" : "post-api-public-dashboard-uuid-dashcard-dashcard-id-execute",
         "summary" : "POST /api/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute",
@@ -43081,6 +43416,68 @@
                     } ]
                   }
                 }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/public" ]
+      }
+    },
+    "/api/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute/values" : {
+      "post" : {
+        "operationId" : "post-api-public-dashboard-uuid-dashcard-dashcard-id-execute-values",
+        "summary" : "POST /api/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute/values",
+        "description" : "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.\n\n  Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "parameters" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  }
+                },
+                "required" : [ "parameters" ]
               }
             }
           }
@@ -48400,6 +48797,14 @@
                                 "type" : "null"
                               } ]
                             },
+                            "dag_run_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "transform_name" : {
                               "oneOf" : [ {
                                 "type" : "string"
@@ -48771,6 +49176,14 @@
                               "type" : "null"
                             } ]
                           },
+                          "dag_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "transform_name" : {
                             "oneOf" : [ {
                               "type" : "string"
@@ -49051,6 +49464,199 @@
         "tags" : [ "/api/transform" ]
       }
     },
+    "/api/transform-dag-run/{run-id}/cancel" : {
+      "post" : {
+        "operationId" : "post-api-transform-dag-run-run-id-cancel",
+        "summary" : "POST /api/transform-dag-run/{run-id}/cancel",
+        "description" : "Cancel an in-progress manual DAG run and request cancellation of its still-running transforms.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "run-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform-dag-run" ]
+      }
+    },
+    "/api/transform-dag-run/{run-id}/transform-runs" : {
+      "get" : {
+        "operationId" : "get-api-transform-dag-run-run-id-transform-runs",
+        "summary" : "GET /api/transform-dag-run/{run-id}/transform-runs",
+        "description" : "Get the transform runs that made up a specific DAG run.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "run-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "message" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "user_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "checkpoint_hi_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "is_active" : {
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "transform_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "id" : {
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "transform" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "run_method" : {
+                        "type" : "string"
+                      },
+                      "checkpoint_lo_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "status" : {
+                        "type" : "string",
+                        "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
+                      },
+                      "transform_entity_id" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "checkpoint_filter_field_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "end_time" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "metered_as" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "dag_run_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "transform_name" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "start_time" : { },
+                      "job_run_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "transform_id", "job_run_id", "dag_run_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
+                    "additionalProperties" : false
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform-dag-run" ]
+      }
+    },
     "/api/transform-job" : {
       "post" : {
         "operationId" : "post-api-transform-job",
@@ -49107,7 +49713,7 @@
                           "updated_at" : { },
                           "status" : {
                             "type" : "string",
-                            "enum" : [ "started", "succeeded", "failed", "timeout" ]
+                            "enum" : [ "started", "succeeded", "failed", "timeout", "canceled" ]
                           },
                           "job_id" : {
                             "type" : "integer",
@@ -49118,7 +49724,21 @@
                               "type" : "null"
                             } ]
                           },
+                          "job_entity_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "created_at" : { },
+                          "job_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "start_time" : { }
                         },
                         "required" : [ "id", "job_id", "run_method", "status", "is_active", "start_time", "message", "created_at", "updated_at" ],
@@ -49349,7 +49969,7 @@
                             "updated_at" : { },
                             "status" : {
                               "type" : "string",
-                              "enum" : [ "started", "succeeded", "failed", "timeout" ]
+                              "enum" : [ "started", "succeeded", "failed", "timeout", "canceled" ]
                             },
                             "job_id" : {
                               "type" : "integer",
@@ -49360,7 +49980,21 @@
                                 "type" : "null"
                               } ]
                             },
+                            "job_entity_id" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "created_at" : { },
+                            "job_name" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "start_time" : { }
                           },
                           "required" : [ "id", "job_id", "run_method", "status", "is_active", "start_time", "message", "created_at", "updated_at" ],
@@ -49557,7 +50191,7 @@
                           "updated_at" : { },
                           "status" : {
                             "type" : "string",
-                            "enum" : [ "started", "succeeded", "failed", "timeout" ]
+                            "enum" : [ "started", "succeeded", "failed", "timeout", "canceled" ]
                           },
                           "job_id" : {
                             "type" : "integer",
@@ -49568,7 +50202,21 @@
                               "type" : "null"
                             } ]
                           },
+                          "job_entity_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "created_at" : { },
+                          "job_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "start_time" : { }
                         },
                         "required" : [ "id", "job_id", "run_method", "status", "is_active", "start_time", "message", "created_at", "updated_at" ],
@@ -49779,7 +50427,7 @@
                           "updated_at" : { },
                           "status" : {
                             "type" : "string",
-                            "enum" : [ "started", "succeeded", "failed", "timeout" ]
+                            "enum" : [ "started", "succeeded", "failed", "timeout", "canceled" ]
                           },
                           "job_id" : {
                             "type" : "integer",
@@ -49790,7 +50438,21 @@
                               "type" : "null"
                             } ]
                           },
+                          "job_entity_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "created_at" : { },
+                          "job_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "start_time" : { }
                         },
                         "required" : [ "id", "job_id", "run_method", "status", "is_active", "start_time", "message", "created_at", "updated_at" ],
@@ -49873,7 +50535,7 @@
       "post" : {
         "operationId" : "post-api-transform-job-job-id-run",
         "summary" : "POST /api/transform-job/{job-id}/run",
-        "description" : "Run a transform job manually. By default, fresh pulled-in dependencies are skipped; pass `run_all`\n  to force-refresh the whole plan.",
+        "description" : "Run a transform job manually. Returns a 202 with the created `job_run_id`, or a nil `job_run_id`\n  when nothing was run (the job is already running, or has no transforms). By default, fresh\n  pulled-in dependencies are skipped; pass `run_all` to force-refresh the whole plan.",
         "parameters" : [ {
           "in" : "path",
           "name" : "job-id",
@@ -49892,15 +50554,27 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "job_run_id" : {
-                      "type" : "string"
+                    "body" : {
+                      "type" : "object",
+                      "properties" : {
+                        "job_run_id" : {
+                          "oneOf" : [ {
+                            "type" : "integer",
+                            "minimum" : 1
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "message" : { }
+                      },
+                      "required" : [ "message", "job_run_id" ],
+                      "additionalProperties" : false
                     },
-                    "message" : {
-                      "type" : "string"
+                    "status" : {
+                      "const" : 202
                     }
                   },
-                  "required" : [ "message", "job_run_id" ],
-                  "additionalProperties" : false
+                  "required" : [ "status", "body" ]
                 }
               }
             }
@@ -49952,7 +50626,7 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "string",
-              "enum" : [ "started", "succeeded", "failed", "timeout" ]
+              "enum" : [ "started", "succeeded", "failed", "timeout", "canceled" ]
             }, {
               "type" : "null"
             } ]
@@ -50043,7 +50717,7 @@
                           "updated_at" : { },
                           "status" : {
                             "type" : "string",
-                            "enum" : [ "started", "succeeded", "failed", "timeout" ]
+                            "enum" : [ "started", "succeeded", "failed", "timeout", "canceled" ]
                           },
                           "job_id" : {
                             "type" : "integer",
@@ -50054,7 +50728,21 @@
                               "type" : "null"
                             } ]
                           },
+                          "job_entity_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "created_at" : { },
+                          "job_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "start_time" : { }
                         },
                         "required" : [ "id", "job_id", "run_method", "status", "is_active", "start_time", "message", "created_at", "updated_at" ],
@@ -50074,6 +50762,51 @@
                   },
                   "required" : [ "data", "limit", "offset", "total" ],
                   "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform-job" ]
+      }
+    },
+    "/api/transform-job/{job-id}/runs/{run-id}/cancel" : {
+      "post" : {
+        "operationId" : "post-api-transform-job-job-id-runs-run-id-cancel",
+        "summary" : "POST /api/transform-job/{job-id}/runs/{run-id}/cancel",
+        "description" : "Cancel an in-progress job run and request cancellation of its still-running transforms.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "job-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "run-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
                 }
               }
             }
@@ -50212,6 +50945,14 @@
                           "type" : "null"
                         } ]
                       },
+                      "dag_run_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "transform_name" : {
                         "oneOf" : [ {
                           "type" : "string"
@@ -50229,7 +50970,7 @@
                         } ]
                       }
                     },
-                    "required" : [ "id", "transform_id", "job_run_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
+                    "required" : [ "id", "transform_id", "job_run_id", "dag_run_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                     "additionalProperties" : false
                   }
                 }
@@ -50686,9 +51427,9 @@
             "oneOf" : [ {
               "type" : "array",
               "items" : {
-                "description" : "value must be an integer greater or equal to than zero.",
+                "description" : "value must be an integer greater than zero.",
                 "type" : "integer",
-                "minimum" : 0
+                "minimum" : 1
               }
             }, {
               "type" : "null"
@@ -50916,6 +51657,14 @@
                               "type" : "null"
                             } ]
                           },
+                          "dag_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "transform_name" : {
                             "oneOf" : [ {
                               "type" : "string"
@@ -51112,6 +51861,14 @@
                         "type" : "null"
                       } ]
                     },
+                    "dag_run_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "transform_name" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -51130,6 +51887,248 @@
                     }
                   },
                   "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform" ]
+      }
+    },
+    "/api/transform/runs" : {
+      "get" : {
+        "operationId" : "get-api-transform-runs",
+        "summary" : "GET /api/transform/runs",
+        "description" : "Paginated unified run history: every row is a root run — a job run, a manual DAG-reprocess run,\n  or a standalone transform run — never a member run of a job/DAG (those are listed by `GET /run`\n  and the per-run `transform-runs` endpoints).\n\n  `types` selects which kinds to include (all by default); `transform-ids` narrows to runs that ran\n  any of the given transforms. The remaining filters work as in `GET /run`.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "types",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "job", "dag", "transform" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "statuses",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "run-methods",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "manual", "cron" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "start-time",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "end-time",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "transform-ids",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-column",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "start_time", "end_time" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-direction",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "asc", "desc" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "message" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "run_type" : {
+                            "type" : "string",
+                            "enum" : [ "job", "dag", "transform" ]
+                          },
+                          "user_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "entity_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "is_active" : {
+                            "oneOf" : [ {
+                              "type" : "boolean"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "transform_count" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "run_method" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "name" : {
+                            "oneOf" : [ {
+                              "anyOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "anyOf" : [ { }, { } ]
+                              } ]
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "direction" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "enum" : [ "upstream", "downstream" ]
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
+                          },
+                          "end_time" : {
+                            "oneOf" : [ { }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "start_time" : { }
+                        },
+                        "required" : [ "run_type", "id", "entity_id", "name", "direction", "transform_count", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "limit" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "offset" : {
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "limit", "offset", "total" ],
                   "additionalProperties" : false
                 }
               }
@@ -51306,6 +52305,14 @@
                           "metered_as" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "dag_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -51689,6 +52696,14 @@
                               "type" : "null"
                             } ]
                           },
+                          "dag_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "transform_name" : {
                             "oneOf" : [ {
                               "type" : "string"
@@ -52038,6 +53053,64 @@
         "tags" : [ "/api/transform" ]
       }
     },
+    "/api/transform/{id}/dag-transforms" : {
+      "get" : {
+        "operationId" : "get-api-transform-id-dag-transforms",
+        "summary" : "GET /api/transform/{id}/dag-transforms",
+        "description" : "Preview the transforms a DAG reprocess from this transform would run (see `POST /:id/run-dag`),\n  in execution order.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "direction",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "upstream", "downstream" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "id" : {
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "name" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "id", "name" ],
+                    "additionalProperties" : false
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform" ]
+      }
+    },
     "/api/transform/{id}/dependencies" : {
       "get" : {
         "operationId" : "get-api-transform-id-dependencies",
@@ -52201,6 +53274,14 @@
                             "metered_as" : {
                               "oneOf" : [ {
                                 "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "dag_run_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
                               }, {
                                 "type" : "null"
                               } ]
@@ -52516,6 +53597,80 @@
         "tags" : [ "/api/transform" ]
       }
     },
+    "/api/transform/{id}/run-dag" : {
+      "post" : {
+        "operationId" : "post-api-transform-id-run-dag",
+        "summary" : "POST /api/transform/{id}/run-dag",
+        "description" : "Trigger a DAG-reprocess run starting from a single transform: runs the transform and every\n  transform in its transitive dependency closure. Returns a 202 with the created `dag_run_id`, or a\n  nil `dag_run_id` when nothing was run (a DAG run for this transform is already in progress, or the\n  closure is empty).\n\n  `direction` selects which transforms are included:\n  - `upstream`   — the seed transform plus all transforms it depends on\n  - `downstream` — the seed transform plus all transforms that depend on it",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "object",
+                      "properties" : {
+                        "dag_run_id" : {
+                          "oneOf" : [ {
+                            "type" : "integer",
+                            "minimum" : 1
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "message" : { }
+                      },
+                      "required" : [ "message", "dag_run_id" ],
+                      "additionalProperties" : false
+                    },
+                    "status" : {
+                      "const" : 202
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "direction" : {
+                    "type" : "string",
+                    "enum" : [ "upstream", "downstream" ]
+                  }
+                },
+                "required" : [ "direction" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/transform" ]
+      }
+    },
     "/api/transform/{id}/table" : {
       "delete" : {
         "operationId" : "delete-api-transform-id-table",
@@ -52550,6 +53705,147 @@
           }
         },
         "tags" : [ "/api/transform" ]
+      }
+    },
+    "/api/typed-schemas/v1/typescript" : {
+      "get" : {
+        "operationId" : "get-api-typed-schemas-v1-typescript",
+        "summary" : "GET /api/typed-schemas/v1/typescript",
+        "description" : "Generate a TypeScript semantic schema module.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "database",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "database-name",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "library",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "library-collections",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "collections",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "question-collections",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-data-library",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-metric-library",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "questions",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/typed-schemas" ]
       }
     },
     "/api/upload/csv" : {
