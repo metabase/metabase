@@ -255,7 +255,11 @@ lead that survived did so because the agent happened to narrate it out loud.
   (poll + force-reindex). Don't add manual index waits.
 - Auth: `mb.signIn*` uses snapshot-cached sessions; users outside the
   `USERS` map exist in the login cache (see `signInWithCachedSession`).
-- Tokens come from repo-root `cypress.env.json` (NOT `.env` — stale).
+- Tokens come from repo-root `.env` (the current convention, 2026-07-22 —
+  support/env.ts loads it first, tolerant of `KEY = value` spacing);
+  `cypress.env.json` is the legacy fallback. The old "(NOT .env — stale)" note
+  is inverted. Never print token values. Beware: an invalid token in `.env`
+  SHADOWS a working one in cypress.env.json.
 - Local runs need the dev backend (`node e2e/runner/start-backend.js`) and
   the rspack hot server (`bun run build-hot:js`). If the whole UI goes
   blank / mass-fails: check `curl :8080/app/dist/app-main.hot.bundle.js`

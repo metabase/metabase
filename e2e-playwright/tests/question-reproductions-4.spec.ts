@@ -806,9 +806,19 @@ test.describe("issue 41464", () => {
           await route.fallback();
           return;
         }
-        const response = await route.fetch();
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        await route.fulfill({ response });
+        // This handler deliberately outlives the test: the final assertion has
+        // a 500ms budget while the delay holds 5s, so the context tears down
+        // mid-handler and the pending fetch/fulfill rejects "Test ended." —
+        // which, unhandled, fails the RUN with every test green (97 passed /
+        // exit 1, run 29888489511 s37). The route exists only to delay; its
+        // post-test failure is meaningless, so swallow it.
+        try {
+          const response = await route.fetch();
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          await route.fulfill({ response });
+        } catch {
+          // context torn down mid-delay — expected
+        }
       },
     );
 

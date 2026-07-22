@@ -79,6 +79,9 @@ the mutation-verified local green.
 the 120s-import-timeout change (that touched the read-write path only). One
 occurrence in ~7 runs — do not chase unless it recurs; the trace is in that
 run's playwright-report-s38 artifact.
+Same category, run 29888489511: navbar "should close when opening a sql
+editor" (s32, click timeout both attempts, green 3/3 locally) — watch, do not
+chase yet.
 
 ## Status
 
