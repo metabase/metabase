@@ -342,4 +342,3 @@ jobs:
           _Opened by the [SDK Version Bump PR workflow](../actions/workflows/sdk-version-bump-pr.yml), triggered by @${{ github.event.sender.login }}._
           BODY
           )"
-
