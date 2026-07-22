@@ -12,14 +12,6 @@ import { getGroupsDataPermissionEditor } from ".";
 // Unjustified type cast. FIXME
 const stateWithoutLegacyValues = mockState as unknown as State;
 
-beforeEach(() => {
-  // Settings are read from the RTK query cache with `window.MetabaseBootstrap`
-  // as the fallback. The hand-rolled fixture state never passes through
-  // `createMockState` (which seeds the bootstrap), so seed it here —
-  // jest-setup-env clears it between tests.
-  window.MetabaseBootstrap = mockState.settings.values;
-});
-
 // adding legacy no self-service in the graph will prevent getGroupsDataPermissionEditor
 // from omitting the view data permission options in the case there's only one option
 const stateWithLegacyValues = assocIn(
