@@ -8,8 +8,17 @@ export function useCopyLink() {
 
   return useCallback(
     (url: string) => {
-      navigator.clipboard.writeText(url);
-      sendToast({ icon: "check", message: t`Copied link` });
+      navigator.clipboard
+        .writeText(url)
+        .then(() => sendToast({ icon: "check", message: t`Copied link` }))
+        // Clipboard access can be denied (permissions, insecure context) —
+        // don't claim success, and don't leak an unhandled rejection.
+        .catch(() =>
+          sendToast({
+            icon: "warning_triangle_filled",
+            message: t`Couldn't copy link`,
+          }),
+        );
     },
     [sendToast],
   );

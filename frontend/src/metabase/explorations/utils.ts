@@ -35,6 +35,9 @@ export function getAdjacentById<T extends { id: unknown }>(
     return null;
   }
   const currentIndex = items.findIndex((item) => item.id === currentId);
+  if (currentIndex === -1) {
+    return direction === 1 ? items[0] : items[items.length - 1];
+  }
   const nextIndex = (currentIndex + direction + items.length) % items.length;
   return items[nextIndex];
 }

@@ -99,13 +99,11 @@ function threadHasActiveWork(thread: ExplorationThread): boolean {
 // Wall-clock deadline after which each in-flight thread is treated as stalled.
 function activeThreadStaleDeadlines(
   exploration: Exploration | undefined,
-  now: number,
 ): number[] {
   return (exploration?.threads ?? [])
     .filter(threadHasActiveWork)
     .map((thread) => {
-      const startedAt = thread.started_at;
-      const start = startedAt != null ? new Date(startedAt).getTime() : now;
+      const start = new Date(thread.started_at ?? thread.created_at).getTime();
       return start + STALE_THREAD_THRESHOLD_MS;
     });
 }
@@ -221,7 +219,7 @@ function ExplorationPageForId({ params, location }: ExplorationPageProps) {
 
   useEffect(() => {
     const now = Date.now();
-    const deadlines = activeThreadStaleDeadlines(exploration, now).filter(
+    const deadlines = activeThreadStaleDeadlines(exploration).filter(
       (deadline) => deadline > now,
     );
     setShouldPoll(deadlines.length > 0);

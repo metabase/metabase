@@ -120,10 +120,10 @@ export function buildSeriesGroup({
       }
       const card = createSeriesCard(
         query.id,
-        query.name,
+        query.name ?? null,
         display,
         cardVizSettings,
-        query.dataset_query,
+        query.dataset_query ?? undefined,
       );
       return { card, data: dataset.data };
     });

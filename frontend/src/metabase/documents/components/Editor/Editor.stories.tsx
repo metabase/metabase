@@ -44,7 +44,7 @@ const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 // Unjustified type cast. FIXME
 const mockRouterContext = {
-  location: { pathname: "/document/1", query: {} },
+  location: { pathname: "/document/1", search: "", query: {} },
 } as WithRouterProps;
 
 const StoryDecorator = (Story: StoryFn) => {

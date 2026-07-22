@@ -411,7 +411,7 @@ describe("scenarios > explorations > detail page", () => {
 
   it("auto-selects a sidebar entity on first load and toggles via ArrowRight/ArrowLeft", () => {
     H.createExplorationViaApi({ name: "Keyboard nav fixture" }).then((id) => {
-      H.visitExploration(id);
+      visitExplorationUntilSettled(id, 2);
 
       // After landing, the page auto-selects the most-interesting
       // entity (see `ExplorationPage` selection logic). The
@@ -471,44 +471,12 @@ describe("scenarios > explorations > detail page", () => {
   });
 
   it("groups sidebar rows under their metric heading, makes the headings collapsible, and marks interesting groups", () => {
-    cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
-      // Unjustified type cast. FIXME
-      const data = body as {
-        metrics: Array<{ id: number; name: string; dimension_ids: string[] }>;
-        dimension_groups: Array<{
-          dimensions: Array<{ id: string; display_name: string }>;
-        }>;
-      };
-      const ordersMetric = data.metrics.find(
-        (m) => m.name === "Count of orders",
-      );
-      expect(
-        ordersMetric,
-        '"Count of orders" metric is exposed by /api/exploration/dimensions',
-      ).to.exist;
-      const dimsById = new Map(
-        data.dimension_groups.flatMap((g) =>
-          g.dimensions.map((d) => [d.id, d] as const),
-        ),
-      );
-      const pickedDimensions = ordersMetric!.dimension_ids
-        .map((id) => dimsById.get(id))
-        .filter((d): d is { id: string; display_name: string } => d != null)
-        .slice(0, 2);
-      expect(
-        pickedDimensions.length,
-        "metric exposes at least two dimensions",
-      ).to.eq(2);
-
-      H.createExplorationViaApi({
-        name: "Sidebar grouping fixture",
-        metricCardIds: [ordersMetric!.id],
-        dimensionIds: pickedDimensions.map((d) => d.id),
-      }).then((id) => {
+    createTwoPageExploration("Sidebar grouping fixture").then(
+      ({ explorationId, metricName, pageNames }) => {
         // Settling matters here beyond query readiness: collapsing the
         // heading races the poll-driven tree rebuilds otherwise, and the
         // clicked heading node can be replaced mid-click.
-        visitExplorationUntilSettled(id, pickedDimensions.length);
+        visitExplorationUntilSettled(explorationId, pageNames.length);
 
         // Deliberately no `.within()` here: a `within` captures the sidebar
         // node once, and background refetches can remount it (or its rows) —
@@ -516,46 +484,59 @@ describe("scenarios > explorations > detail page", () => {
         // and times out. Fresh root-based chains re-query on every retry.
         const sidebarScope = () => cy.findByTestId("exploration-page-sidebar");
         const metricHeading = () =>
-          sidebarScope().findByRole("group", { name: ordersMetric!.name });
+          sidebarScope().findByRole("group", { name: metricName });
 
         metricHeading().should("be.visible");
-        for (const dim of pickedDimensions) {
-          sidebarScope().findByText(dim.display_name).should("be.visible");
+        for (const pageName of pageNames) {
+          sidebarScope().findByText(pageName).should("be.visible");
         }
 
         cy.log("Collapse the metric heading: both leaves disappear");
         metricHeading().should("have.attr", "aria-expanded", "true");
         metricHeading().click();
         metricHeading().should("have.attr", "aria-expanded", "false");
-        for (const dim of pickedDimensions) {
-          sidebarScope().findByText(dim.display_name).should("not.exist");
+        for (const pageName of pageNames) {
+          sidebarScope().findByText(pageName).should("not.exist");
         }
 
         cy.log("Re-expand: both leaves return");
         metricHeading().click();
         metricHeading().should("have.attr", "aria-expanded", "true");
-        for (const dim of pickedDimensions) {
-          sidebarScope().findByText(dim.display_name).should("be.visible");
+        for (const pageName of pageNames) {
+          sidebarScope().findByText(pageName).should("be.visible");
         }
-      });
-    });
+      },
+    );
   });
 
   it("changes sidebar selection on click and shows the corresponding visualization area", () => {
     H.createExplorationViaApi({ name: "Click selection fixture" }).then(
       (id) => {
-        H.visitExploration(id);
+        visitExplorationUntilSettled(id, 2);
 
-        // Click the FIRST sidebar row explicitly. After click,
-        // that row owns `aria-selected=true`.
-        cy.findAllByRole("treeitem").first().click();
+        // The page auto-selects a row on load, so clicking the first (already
+        // selected) row would pass even with click-to-select broken. Click a
+        // row that is NOT selected and assert the selection moves to it.
         cy.findAllByRole("treeitem")
+          .filter('[aria-selected="false"]')
           .first()
-          .should("have.attr", "aria-selected", "true");
+          .invoke("text")
+          .then((text) => {
+            const rowName = text.trim();
+            cy.findAllByRole("treeitem").contains(rowName).click();
+            cy.findAllByRole("treeitem")
+              .contains(rowName)
+              .closest('[role="treeitem"]')
+              .should("have.attr", "aria-selected", "true");
+          });
 
-        // Main area renders something — scope to `main` to avoid
-        // matching the sidebar copy.
-        cy.findByRole("main").should("not.be.empty");
+        // The clicked page's chart renders in the main area — assert a real
+        // visualization anchor, not just "main is not empty" (a spinner
+        // satisfies that).
+        cy.location("pathname").should("match", /\/page\/\d+$/);
+        cy.findByRole("main")
+          .findByTestId("visualization-root", { timeout: 15000 })
+          .should("be.visible");
       },
     );
   });
@@ -777,7 +758,10 @@ describe("scenarios > explorations > sidebar triage", () => {
 
         cy.log("Alphabetical sort is remembered per exploration");
         cy.findByRole("radio", { name: "All" }).click({ force: true });
-        filterToggle().should("have.attr", "aria-pressed", "false").click();
+        // Assert and click through separate queries — chaining `.click()` off
+        // the assertion can act on a node a poll-driven re-render detached.
+        filterToggle().should("have.attr", "aria-pressed", "false");
+        filterToggle().click();
         H.menu().findByText("Alphabetical").click();
         H.menu()
           .findByRole("menuitem", { name: /Alphabetical/ })
@@ -790,7 +774,8 @@ describe("scenarios > explorations > sidebar triage", () => {
         cy.findAllByRole("treeitem", { timeout: 15000 })
           .first()
           .should("be.visible");
-        filterToggle().should("have.attr", "aria-pressed", "false").click();
+        filterToggle().should("have.attr", "aria-pressed", "false");
+        filterToggle().click();
         H.menu()
           .findByRole("menuitem", { name: /Alphabetical/ })
           .should("have.attr", "data-checked", "true");
@@ -1001,30 +986,25 @@ describe("scenarios > explorations > chart click-through", () => {
               initialThreadIds = (exploration.threads ?? []).map(
                 (thread) => thread.id,
               );
+              // Navigate straight to the dimension's page. Driving the
+              // sidebar here would depend on which group happens to be
+              // auto-expanded — a state this test doesn't control.
+              const pages = (exploration.threads ?? []).flatMap((thread) =>
+                (thread.blocks ?? []).flatMap((block) => block.pages ?? []),
+              );
+              const page = pages.find((p) =>
+                (p.name ?? "").includes(dimension!.display_name),
+              );
+              expect(page, "the dimension's page exists on the exploration").to
+                .exist;
+              cy.wrap(page!.id).as("pageId");
+              cy.visit(
+                `/question/research/${explorationId}/page/${page!.id}?timeline=${timelineId}`,
+              );
             },
           );
 
-          cy.findByTestId("exploration-page-sidebar").within(() => {
-            cy.findByRole("group", { name: ordersMetric!.name }).then(
-              ($group) => {
-                if ($group.attr("aria-expanded") !== "true") {
-                  cy.wrap($group).click();
-                }
-              },
-            );
-            cy.findByRole("treeitem", {
-              name: new RegExp(dimension!.display_name),
-            })
-              .first()
-              .click();
-          });
-
           cy.location("pathname").should("include", "/page/");
-          cy.location("pathname").then((pathname) => {
-            const match = pathname.match(/\/page\/(\d+)/);
-            expect(match, "selected page is reflected in the URL").to.exist;
-            cy.wrap(Number(match![1])).as("pageId");
-          });
 
           // Wait for the selected page's queries to settle before clicking
           // the chart — `Ready` is the settled-state icon label.
@@ -1072,9 +1052,11 @@ describe("scenarios > explorations > chart click-through", () => {
           // then toasts once its first page lands. Timing is covered by
           // ExplorationPage.unit.spec.tsx — here we just wait for the real BE.
           cy.get("@newThreadName").then((name) => {
-            cy.findByText(`Added ${name}`, { timeout: 60000 }).should(
-              "be.visible",
-            );
+            // Scoped to the toast container — an unscoped text query could
+            // match the thread name rendered in the sidebar instead.
+            H.undoToastListContainer()
+              .findByText(`Added ${name}`, { timeout: 60000 })
+              .should("be.visible");
           });
 
           cy.findByRole("button", { name: "View" }).click();
@@ -1157,8 +1139,8 @@ describe("scenarios > explorations > collection placement + archive", () => {
           H.openCollectionItemMenu(explorationName);
           // The EntityItem dropdown renders each action as a
           // `<li aria-labelledby="...">`, not `role="menuitem"`,
-          // so match the visible text instead.
-          cy.findByText("Move to trash").click();
+          // so match the visible text — scoped to the open popover.
+          H.popover().findByText("Move to trash").click();
 
           cy.wait("@archiveExploration").then(({ request, response }) => {
             expect(request.body).to.deep.eq({ archived: true });
@@ -1214,7 +1196,7 @@ describe("scenarios > explorations > collection placement + archive", () => {
           "deleteExploration",
         );
         H.openCollectionItemMenu(explorationName);
-        cy.findByText("Delete permanently").click();
+        H.popover().findByText("Delete permanently").click();
         // The confirmation modal owns the final destructive button.
         H.modal()
           .findByRole("button", { name: /Delete permanently/i })
@@ -1266,7 +1248,7 @@ describe("scenarios > explorations > collection placement + archive", () => {
           "restoreExploration",
         );
         H.openCollectionItemMenu(explorationName);
-        cy.findByText("Restore").click();
+        H.popover().findByText("Restore").click();
 
         cy.wait("@restoreExploration").then(({ request, response }) => {
           expect(request.body).to.deep.eq({ archived: false });

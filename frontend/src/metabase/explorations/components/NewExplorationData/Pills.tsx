@@ -70,6 +70,7 @@ export function SelectedTimelinePills({
       <UnstyledButton
         className={cx(S.togglePill, S.togglePillSelected, S.timelineTogglePill)}
         aria-label={t`Remove ${primary.name}`}
+        disabled={disabled}
         onClick={() => {
           if (disabled) {
             return;

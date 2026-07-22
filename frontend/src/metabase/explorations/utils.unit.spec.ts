@@ -29,6 +29,16 @@ describe("getAdjacentById", () => {
   it("loops to the last item when moving backward past the start", () => {
     expect(getAdjacentById(items, "a", -1)).toEqual(items[2]);
   });
+
+  it("steps onto the first item moving forward with no current selection", () => {
+    expect(getAdjacentById(items, null, 1)).toEqual(items[0]);
+    expect(getAdjacentById(items, "missing", 1)).toEqual(items[0]);
+  });
+
+  it("steps onto the last item moving backward with no current selection", () => {
+    expect(getAdjacentById(items, null, -1)).toEqual(items[2]);
+    expect(getAdjacentById(items, "missing", -1)).toEqual(items[2]);
+  });
 });
 
 describe("shouldIgnoreKeyboardEvent", () => {

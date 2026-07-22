@@ -250,6 +250,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           leftSection={
             timelines.length ? <Icon name="add" size={12} /> : undefined
           }
+          aria-label={timelines.length ? t`Add events` : undefined}
           disabled={isManualDataPickingDisabled}
           onClick={() => setActiveModal("events")}
         >

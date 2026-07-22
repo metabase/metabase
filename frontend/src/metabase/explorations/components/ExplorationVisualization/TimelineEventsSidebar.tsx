@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { ActionIcon, Group, Icon, ScrollArea, Stack, Text } from "metabase/ui";
 import type { TimelineEvent } from "metabase-types/api";
@@ -30,7 +30,13 @@ export function TimelineEventsSidebar({
         py="md"
         wrap="nowrap"
       >
-        <Text fw="bold">{t`${events.length} events`}</Text>
+        <Text fw="bold">
+          {ngettext(
+            msgid`${events.length} event`,
+            `${events.length} events`,
+            events.length,
+          )}
+        </Text>
         <ActionIcon aria-label={t`Close`} onClick={onClose}>
           <Icon name="close" />
         </ActionIcon>

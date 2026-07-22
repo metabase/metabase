@@ -17,7 +17,7 @@ import type {
 import { getExplorationPages } from "metabase-types/api/exploration";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, provideMetricListTags } from "./tags";
+import { idTag, invalidateTags, listTag, provideMetricTags } from "./tags";
 
 export const explorationApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -31,7 +31,7 @@ export const explorationApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (response) =>
-        provideMetricListTags(response?.metrics ?? []),
+        (response?.metrics ?? []).flatMap(provideMetricTags),
     }),
     getExploration: builder.query<Exploration, ExplorationId>({
       query: (id) => ({

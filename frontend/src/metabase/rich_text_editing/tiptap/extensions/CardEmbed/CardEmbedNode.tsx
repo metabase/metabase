@@ -194,10 +194,9 @@ export const CardEmbedComponent = memo(
       skip: !shouldLoadData,
     });
 
-    const { card, dataset, isLoading, series, error } = useMemo(
-      () => (isExternalDocument ? externalCardDataResult : regularCardData),
-      [isExternalDocument, externalCardDataResult, regularCardData],
-    );
+    const { card, dataset, isLoading, series, error } = isExternalDocument
+      ? externalCardDataResult
+      : regularCardData;
 
     host.useReportPrefetchLoading(_id, isLoading);
 
