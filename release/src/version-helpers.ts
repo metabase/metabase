@@ -175,14 +175,11 @@ export const getExtraTagsForVersion = ({
       ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
       : [];
 
-  const tags = [...baseTags, ...minorTags];
-  const versionTags = isLts
-    ? tags.map(tag => `${tag}-lts`)
-    : tags;
-
   return [
-    ...versionTags,
+    ...baseTags,
+    ...minorTags,
     ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
+    ...(isLts ? ["lts"] : [])
   ];
 };
 

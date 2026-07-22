@@ -320,12 +320,13 @@ jobs:
         with:
           result-encoding: string
           script: | # js
-            const { getExtraTagsForVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { checkIsVersionActiveLts, getExtraTagsForVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const version = '${{ inputs.version }}';
             const latestMajorVersion = '${{ vars.LATEST_MAJOR_VERSION }}';
+            const isLts = checkIsVersionActiveLts(version);
 
-            const extra_tags = getExtraTagsForVersion({ version, latestMajorVersion });
+            const extra_tags = getExtraTagsForVersion({ version, latestMajorVersion, isLts });
 
             console.log({ extra_tags, latestMajorVersion });
             core.setOutput('extra_tags', JSON.stringify(extra_tags));
