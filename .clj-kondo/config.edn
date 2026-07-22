@@ -248,6 +248,7 @@
               :mongo
               :oracle
               :presto-jdbc
+              :quack
               :redshift
               :snowflake
               :sparksql

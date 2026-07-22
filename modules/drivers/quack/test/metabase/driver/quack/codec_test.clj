@@ -137,7 +137,7 @@
   ;; :column-values sits on the chunk (a vector per column), not nested under :columns.
   (-> (prepare-response probe) :body :chunks first :column-values))
 
-(defn- approx? [^double eps a b] (< (Math/abs (- a b)) eps))
+(defn- approx? [^double eps ^double a ^double b] (< (Math/abs (- a b)) eps))
 (defn- approx= [a b] (approx? 0.001 a b))
 
 (deftest a4-scalar-types-decode-test
@@ -200,8 +200,8 @@
   (testing "INT128 layout confirmed: lower@0 uint64, upper@8 int64 (both LE).
            The captured v_hugeint = max int128 = (2^127)-1"
     ;; hugeint_uuid fixture: col 0 = v_hugeint, col 1 = v_uuid
-    (let [cols (column-values "hugeint_uuid")
-          v    (first (nth cols 0))]
+    (let [cols                    (column-values "hugeint_uuid")
+          ^clojure.lang.BigInt v (first (nth cols 0))]
       (is (.equals (java.math.BigInteger. "170141183460469231731687303715884105727")
                    (.toBigInteger v))))))
 

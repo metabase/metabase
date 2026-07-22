@@ -120,7 +120,7 @@
     (instance? LocalDate v)  (str "'" (.format duckdb-date v) "'")
     (instance? LocalTime v)  (str "'" (.format duckdb-time v) "'")
     (instance? LocalDateTime v) (str "'" (.format duckdb-timestamp v) "'")
-    (some-> (instant-of v) str) (let [inst (instant-of v)]
+    (some-> (instant-of v) str) (let [^Instant inst (instant-of v)]
                                   (str "'" (.format duckdb-timestamp
                                                     (.atZone inst (ZoneId/of "UTC"))) "'"))
     :else                    (str "'" (str/replace (str v) "'" "''") "'")))
