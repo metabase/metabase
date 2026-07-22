@@ -13,7 +13,8 @@ export const MetricsViewer = {
     ),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
-  getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),
+  getAllFilterPills: (options?: Partial<Cypress.Timeoutable>) =>
+    cy.findAllByTestId("metrics-viewer-filter-pill", options),
   getDimensionPillBarContainer: () =>
     cy.findByTestId("metrics-viewer-dimension-pill-bar"),
   dimensionPickerSidebar: () =>

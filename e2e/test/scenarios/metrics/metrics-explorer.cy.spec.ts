@@ -2235,13 +2235,15 @@ describe("scenarios > metrics > explorer", () => {
           "Category",
         );
         cy.log(
-          "wait for every metric instance query to settle before asserting on filter state",
-        );
-        cy.findByTestId("loading-indicator").should("not.exist");
-        cy.log(
           "filter pills are in place and show the badge indicating the unique metric instance",
         );
-        H.MetricsViewer.getAllFilterPills().should("have.length", 2);
+        // Re-evaluating the metric-math formula (and reloading) transiently unmounts the
+        // filter pills while the expression re-parses and its dataset queries settle, so the
+        // remount can take longer than the 4s default retry under CI network throttling.
+        H.MetricsViewer.getAllFilterPills({ timeout: 15000 }).should(
+          "have.length",
+          2,
+        );
         H.MetricsViewer.getAllFilterPills()
           .eq(0)
           .findByText("2")
