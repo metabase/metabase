@@ -14,7 +14,29 @@ timed path. NOT in worker-backend `warmUp` (that path never hits sqlglot and
 resolution note. Verified cold on a fresh slot-5 backend: 6036ms cold → 37ms
 warm, 2/2 cold + 4/4 repeat-each=2, tsc clean. `models.ts:64` untouched.
 
-## 2026-07-22 (later): two coverage tiers went real
+## 2026-07-22 (latest): queue re-emptied at 422 — data-apps tier ported
+
+Upstream drift had silently added 7 specs (6 data-apps + browse-slash-schema,
+FINDINGS-style fall-through: in neither PORTED.txt nor QUEUE.md). All 7 are now
+ported, jar-verified green (29 tests + 27/27 cold + 54/54 ×2), and
+mutation-checked one per spec. `build-queue.mjs` reports 0 queued from 422
+entries. No drift guard was added (deliberate — refresh the queue by hand).
+
+Environment changes this required, all local-only:
+- **e2e/snapshots regenerated** (gitignored): the 07-17 snapshots predated the
+  `data_app` migration, so every data-apps route 500'd `Table "DATA_APP" not
+  found` — including `/apps/:slug`, which is SERVER-RENDERED against the table,
+  so even fully page.route-mocked tests need real schema. Regen is cheap (~16s
+  + a :4000 boot), NOT the 13-min figure older notes carry.
+- **target/uberjar/metabase.jar is now the CI merge-commit jar** (`1d91fb2`,
+  downloaded from run 29877926875's artifact; the 07-18 jar is in the session
+  scratchpad as metabase-jar-0718.jar.bak). This also let browse-permalinks be
+  re-verified on a jar (8/8) — its source-mode-only caveat is retired.
+- `configureGitAndPullChanges`' import POST got a 120s budget: the FIRST
+  remote-sync import on a cold JVM measured >30s (default request timeout),
+  ~2s warm.
+
+## 2026-07-22 (earlier): two coverage tiers went real
 
 **Snowplow stubs are GONE.** All ~53 specs (plus 9 support modules) that carried
 no-op snowplow stubs now assert for real against the per-slot collector, via the

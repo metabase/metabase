@@ -215,7 +215,14 @@ export async function configureGitAndPullChanges(
 ): Promise<void> {
   await configureGit(api, repo, syncType);
   if (syncType === "read-write") {
-    await api.post("/api/ee/remote-sync/import", { expected_branch: "main" });
+    // 120s: the FIRST import on a cold JVM (fresh slot backend) measured >30s
+    // — the default request timeout — while a warm repeat takes ~2s. Same
+    // cold-cost-relocation shape as warmSqlParsingPool (FINDINGS #222).
+    await api.post(
+      "/api/ee/remote-sync/import",
+      { expected_branch: "main" },
+      { timeout: 120_000 },
+    );
   }
   await pollForTask(api, { taskName: "import" });
 }

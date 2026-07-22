@@ -200,7 +200,7 @@
 - `startMockLlmServer` — Start a mock server impersonating the Anthropic Messages API on an ephemeral
 - `configureMockLlm` — Point the backend at the mock server (mirrors `llmMockServerSetup`). Setting
 - `visitHomeAndWaitForXray` — Register the xray-candidates wait, navigate home, await it (PORTING rule 2). */
-- `signInViaCookie` — Sign in as an arbitrary user (not one of the cached USERS) by POSTing
+- `signInViaCookie` — `mb.api` call would silently run as this user, and `mb.signInAsAdmin()`
 - `typeAndBlur` — Port of H.typeAndBlurUsingLabel for the admin settings text inputs: `fill`
 
 ## alert-permissions.ts
@@ -1185,6 +1185,21 @@
 - `assertDashboardFilterMapping` — Port of assertDashboardFilterMapping: open the filter's mapping and assert
 - `updateCollectionGraph` — Port of cy.updateCollectionGraph: GET the collection graph, shallow-merge the
 
+## data-apps-sdk.ts
+- `dataAppNumericField` — Port of `dataAppNumericField` (e2e/.../data-apps/helpers/index.ts). */
+- `mockDataApp` — `mockDataApp` with the widened SDK `testEnv`. The base helper only
+
+## data-apps.ts
+- `DATA_APP_NAME` — The fixture data app `mockDataApp` builds and serves — dir name + URL slug. */
+- `DATA_APP_DISPLAY_NAME`
+- `DATA_APP_TEST_ENV` — The `testEnv` the fixture's Overview page reads (Orders count + question). */
+- `buildDataAppBundle` — Port of the Cypress `buildDataApp` task: run the Vite build for a fixture and
+- `mockDataApp` — Port of `H.mockDataApp`: build the fixture bundle and route the `/api/apps/*`
+- `openDataApp` — Port of `H.openDataApp`: visit the host page route `/apps/:slug`. */
+- `visitDataAppRoute` — Port of `visitDataAppRoute`: deep-link a nested route inside the fixture. */
+- `dataAppIframe` — Port of `H.dataAppIframe`: the FrameLocator for the app's embed iframe. */
+- `copySyncedDataAppsFixture` — Port of `H.copySyncedDataAppsFixture` (cy.task copyDirectory → fs.cpSync):
+
 ## data-model-permissions.ts
 - `savePermissionsGraph` — Port of the spec-local savePermissionsGraph. */
 - `waitForTableMetadata` — GET /api/table/:id/query_metadata — the Cypress @tableMetadataFetch alias. */
@@ -1961,6 +1976,7 @@
 - `assertGroupIds` — Run-time re-check of the two group ids, resolved BY NAME from the live
 - `assertPgDbId` — Verifies the spec's `PG_DB_ID = 2` literal against the live instance. */
 - `setImpersonatedPermission` — Port of the spec-local `setImpersonatedPermission()`.
+- `warmSqlParsingPool` — boot — that path never reaches `is-single-stmt-of-type?`, so it does not warm
 - `getImpersonations` — Reads back the impersonation policy the graph write installed. Used as the
 
 ## instance-analytics.ts
