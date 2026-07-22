@@ -6,18 +6,19 @@ import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 
 import S from "./NavbarPromoCard.module.css";
 
-type LinkTarget =
-  | { linkTo: string; linkHref?: never }
-  | { linkHref: string; linkTo?: never };
-
 type Props = {
-  icon: ReactNode;
-  title: string;
+  icon?: ReactNode;
+  title?: string;
   body?: ReactNode;
-  linkText: string;
+  // A promo card can either link out via a dedicated `linkText` + target, or
+  // carry links inline in its `body` (e.g. rendered markdown), in which case
+  // the dedicated link is omitted.
+  linkText?: string;
+  linkTo?: string;
+  linkHref?: string;
   onDismiss?: () => void;
   external?: boolean;
-} & LinkTarget;
+};
 
 export function NavbarPromoCard({
   icon,
@@ -33,7 +34,14 @@ export function NavbarPromoCard({
     <Paper p="md" shadow="md" withBorder>
       <Stack gap="sm">
         <Flex justify="space-between" align="flex-start">
-          <span className={S.IconWrapper}>{icon}</span>
+          <Flex gap="sm">
+            {icon ? <span className={S.IconWrapper}>{icon}</span> : null}
+            {title && (
+              <Text fw="bold" size="md">
+                {title}
+              </Text>
+            )}
+          </Flex>
           {onDismiss && (
             <IconButtonWrapper
               className={S.DismissIconButtonWrapper}
@@ -45,17 +53,14 @@ export function NavbarPromoCard({
         </Flex>
 
         <Stack gap={4}>
-          <Text fw="bold" size="sm">
-            {title}
-          </Text>
           {body && (
-            <Text className={S.Body} size="sm">
+            <Text component="div" className={S.Body} size="sm">
               {body}
             </Text>
           )}
         </Stack>
 
-        {linkHref ? (
+        {linkText && linkHref && (
           <Anchor
             component="a"
             href={linkHref}
@@ -65,9 +70,9 @@ export function NavbarPromoCard({
           >
             {linkText}
           </Anchor>
-        ) : (
-          // Unjustified type cast. FIXME
-          <Anchor component={Link} to={linkTo as string} size="sm" fw="bold">
+        )}
+        {linkText && !linkHref && linkTo && (
+          <Anchor component={Link} to={linkTo} size="sm" fw="bold">
             {linkText}
           </Anchor>
         )}

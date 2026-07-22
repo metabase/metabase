@@ -7,6 +7,7 @@ import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
 import type { GroupId } from "./group";
+import type { IconName } from "./icon";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
@@ -444,6 +445,18 @@ export type CustomGeoJSONMap = {
 
 export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
+/**
+ * A single in-app product notification, as served (already filtered to the
+ * relevant, undismissed ones for the current user) under the `notifications`
+ * key of `GET /api/session/properties`.
+ */
+export type ProductNotification = {
+  id: string;
+  title: string;
+  content: string; // markdown
+  icon?: string | IconName; // we check at runtime if it's a valid IconName
+};
+
 interface InstanceSettings {
   "admin-email": string | null;
   "email-from-address-override": string | null;
@@ -515,6 +528,7 @@ interface AdminSettings {
   "token-status": TokenStatus | null;
   "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
+  notifications?: ProductNotification[];
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
   "show-simple-embed-terms": boolean | null;
@@ -670,6 +684,7 @@ export type UserSettings = {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
+  "dismissed-notification-ids"?: string[];
   "notebook-native-preview-sidebar-width"?: number | null;
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
