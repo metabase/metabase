@@ -34,10 +34,6 @@ on:
         required: false
         default: ci-milestone-3
 
-permissions:
-  contents: read
-  issues: write
-
 jobs:
   uberjar:
     if: >-
@@ -70,7 +66,7 @@ jobs:
 
       - name: Remove label
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           gh api -X DELETE \
