@@ -272,4 +272,18 @@
     (testing "rejects :terminal-tools the profile does not expose"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"terminal tools it does not expose"
                             (#'profiles/register-profile!
-                             (assoc base :terminal-tools #{"nonexistent_tool"})))))))
+                             (assoc base :terminal-tools #{"nonexistent_tool"})))))
+    (testing "rejects :skills? false combined with :always-on-skills"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"disables skills but lists"
+                            (#'profiles/register-profile!
+                             (assoc base :skills? false :always-on-skills [:read-resource])))))))
+
+(deftest explorations-profile-disables-skills-test
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (testing "explorations opts out of skills so read_resource does not inject load_skill"
+      (let [profile (profiles/get-profile :explorations)
+            tools   (profiles/profile->tools profile [])]
+        (is (false? (:skills? profile)))
+        (is (contains? tools "read_resource")
+            "precondition: read_resource is active (would otherwise match a skill)")
+        (is (not (contains? tools "load_skill")))))))

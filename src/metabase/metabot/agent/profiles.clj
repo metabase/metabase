@@ -58,6 +58,10 @@
   - :always-on-skills - Optional vector of skill ids (keywords) whose bodies are inlined into this
     profile's system prompt instead of being loaded on demand via `load_skill`. Always-on is a
     per-profile decision: the same skill can be inlined here and on-demand elsewhere.
+  - :skills? - Optional boolean (default true). When false, the profile opts out of the skills
+    system entirely: no skill catalog, no always-on inlining, and `load_skill` is not injected —
+    even if the profile's tools would otherwise match skills (e.g. `read_resource`). Use for
+    specialized profiles that carry their own tool guidance and must not invite `load_skill` calls.
   - :terminal-tools - Optional set of tool-name strings whose **successful** call ends the agent
     turn for this profile. Lets a `:required-tool-call?` profile stop as soon as it produces its
     answer (e.g. `:sql` after `edit_sql_query`) instead of being forced to keep calling tools.
@@ -73,6 +77,7 @@
                [:temperature :float]
                [:tools [:vector :any]]
                [:always-on-skills {:optional true} [:vector :keyword]]
+               [:skills? {:optional true} :boolean]
                [:terminal-tools {:optional true} [:set :string]]]]
   (let [tool-vars     (:tools profile)
         tool-name-seq (map #(:tool-name (meta %)) tool-vars)
@@ -83,6 +88,9 @@
       (let [dups (->> (frequencies tool-name-seq)
                       (filter (fn [[_ cnt]] (< 1 cnt))))]
         (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)}))))
+    (when (and (false? (:skills? profile)) (seq (:always-on-skills profile)))
+      (throw (ex-info "Profile disables skills but lists :always-on-skills"
+                      {:profile (:name profile) :always-on-skills (:always-on-skills profile)})))
     (when-let [unknown (seq (remove skills/get-skill (:always-on-skills profile)))]
       (throw (ex-info "Profile references unknown always-on skill ids"
                       {:profile (:name profile) :unknown-skill-ids unknown})))
@@ -233,6 +241,7 @@
   :prompt-template "explorations.selmer"
   :max-iterations  10
   :temperature     0.3
+  :skills?         false
   :tools           [#'tools/search-tool
                     #'tools/read-resource-tool
                     #'tools/get-research-candidates-tool
@@ -308,7 +317,8 @@
   Returns a map of tool-name -> tool-var.
   Takes the resolved profile (not an id) so callers that also need the profile's prompt resolve it once via
   [[get-profile]] — its nlq availability redirect must be probed a single time, or the prompt and tools
-  could disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading."
+  could disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading.
+  Profiles with `:skills? false` never get `load_skill` (see [[metabase.metabot.skills/build-skill-manifest]])."
   [profile capabilities]
   (when profile
     (let [base     (-> profile
