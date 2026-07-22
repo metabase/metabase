@@ -106,7 +106,7 @@ To delete a job:
 
 ## Jobs include all dependent transforms
 
-If one transform depends on another, Metabase adds the dependency to the job and runs it first, even if that transform isn't tagged in the job. So if transform B depends on A, Metabase will deal with A before running B.
+If one transform depends on another, Metabase adds the dependency to the job and runs it first, even if that transform isn't tagged in the job. So if transform B depends on A, Metabase makes sure A is up to date before running B.
 
 ### Metabase skips dependencies that are already up to date
 
@@ -114,8 +114,8 @@ Metabase won't re-run a dependency that's still fresh. That way, a transform pul
 
 Metabase skips a dependency when the dependency:
 
-- Has its own tags and jobs, and none of those jobs' schedules have come due since the last time the dependency ran.
-- Has no tags at all, and it's already run at least once.
+- Has its own tags and jobs, and none of those jobs' schedules have come due since the dependency last ran successfully.
+- Has no tags at all, and it's already run successfully at least once.
 
 ### See which transforms a job will run
 
@@ -135,7 +135,5 @@ The "Tags" column in the **Runs** table will only show the transform's specific 
 
 If your Metabase is [set up to send email](../../configuring-metabase/email.md), Metabase will let people know when transforms fail.
 
-- **Individual transform failures**: when transforms fail during a job run, Metabase emails the last person to edit each failed transform. Each email covers a single job run.
-- **Daily digest of job failures**: each morning, Metabase emails all admins a summary of the scheduled job runs that failed or timed out the previous day. For each job, the digest lists how many runs failed, when the failures started, and the most recent error. Manual runs aren't included in the digest, and Metabase skips the email entirely if no scheduled runs failed.
-
-To dig into a failure, go to **Data Studio > Runs** and open the run to see its error logs.
+- **Individual transform failures**: when transforms fail during a scheduled job run, Metabase emails the last person to edit each failed transform (or the transform's creator, or admins if neither is active). Each email covers a single job run.
+- **Daily digest of job failures**: each morning, Metabase emails all admins a summary of the scheduled job runs that failed or timed out the previous day. Manual runs aren't included in the digest, and Metabase skips the email entirely if no scheduled runs failed.
