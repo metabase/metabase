@@ -96,7 +96,7 @@ jobs:
                 branch: process.env.BRANCH,
                 releaseType: process.env.RELEASE_TYPE,
                 prereleaseId: process.env.PRERELEASE_ID,
-                latestMajorVersion: process.env.LATEST_MAJOR_VERSION || undefined,
+                latestMajorVersion: process.env.LATEST_MAJOR_VERSION,
               });
             } catch (error) {
               core.setFailed(error.message);
