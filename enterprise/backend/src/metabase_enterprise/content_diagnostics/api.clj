@@ -195,16 +195,17 @@
 
 (defn- findings-response
   "The shared list-endpoint pipeline: select the sorted, paginated page for `where`, hydrate it
-  (`hydrate-opts` per `api.common/hydrate-findings`), and wrap it in the
+  (`excluded-personal-ids` gates the culprit hydration; the per-finding-type tail - hoisted columns and
+  any details rewrite - is dispatched inside `api.common/hydrate-findings`), and wrap it in the
   `{:data :total :limit :offset :last_scan_at}` envelope every finding list returns."
-  [where sort-column->field sort-column sort-direction hydrate-opts]
+  [where sort-column->field sort-column sort-direction excluded-personal-ids]
   (let [page (t2/select :model/ContentDiagnosticsFinding
                         (cond-> {:where    where
                                  :order-by [[(sort-column->field sort-column) sort-direction]
                                             [:id sort-direction]]}
                           (request/limit)  (assoc :limit (request/limit))
                           (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page hydrate-opts)
+    {:data         (api.common/hydrate-findings page excluded-personal-ids)
      :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
      :limit        (request/limit)
      :offset       (request/offset)
@@ -260,7 +261,7 @@
                                             :threshold-days                   threshold-days
                                             :query                            query})
                        stale-sort-column->field sort-column sort-direction
-                       {:top-level-cols [:last_active_at]})))
+                       excluded-personal-ids)))
 
 (api.macros/defendpoint :get "/slow"
   :- [:map
@@ -302,9 +303,7 @@
                                            :min-duration-ms                  min-duration-ms
                                            :query                            query})
                        slow-sort-column->field sort-column sort-direction
-                       {:top-level-cols                   [:duration_ms]
-                        :hydrate-culprits?                true
-                        :excluded-personal-collection-ids excluded-personal-ids})))
+                       excluded-personal-ids)))
 
 (api.macros/defendpoint :get "/imbalanced"
   :- [:map
@@ -360,7 +359,7 @@
                                                  :max-content-count                max-content-count
                                                  :query                            query})
                        imbalanced-sort-column->field sort-column sort-direction
-                       {:top-level-cols [:content_count]})))
+                       excluded-personal-ids)))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."
