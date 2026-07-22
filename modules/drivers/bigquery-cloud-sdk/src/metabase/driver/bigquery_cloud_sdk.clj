@@ -88,6 +88,8 @@
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
+  
+
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         ;; Check if we should impersonate a different service account
         ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
@@ -109,6 +111,11 @@
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
+        
+        universe-domain (or (:universe-domain details)
+                            (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
+                            (System/getProperty "google.cloud.universe_domain"))
+        
         read-timeout-ms driver.settings/*query-timeout-ms*
         transport-options (-> (HttpTransportOptions/newBuilder)
                               (.setReadTimeout read-timeout-ms)
@@ -117,6 +124,11 @@
                        (.setCredentials final-creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
+    
+    ;; set UNIVERSE_DOMAIN
+    (when universe-domain
+      (.setUniverseDomain bq-bldr universe-domain))
+    
     ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
     ;; from the impersonation target SA, not from a key file), so the Google SDK
     ;; would throw "A project ID is required for this service but could not be
