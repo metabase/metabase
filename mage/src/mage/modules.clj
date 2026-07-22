@@ -120,6 +120,7 @@
      events
      formatter
      geojson
+     global-system
      initialization-status
      interestingness
      internal-stats

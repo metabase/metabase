@@ -137,7 +137,7 @@
             (is (= 1 (t2/count :model/QueryCache)))
             (testing "Adding encryption encrypts database on restart"
               (encryption-test/with-secret-key "key1"
-                (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+                (reset! (:status @(mdb.connection/application-db-handle)) ::setup-finished)
                 (mdb/setup-db! :create-sample-content? false)
                 (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
                 (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
@@ -150,12 +150,12 @@
           (is (encryption/possibly-encrypted-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
           (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database")))
           (testing "Re-running server works"
-            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (reset! (:status @(mdb.connection/application-db-handle)) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
             (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
           (testing "Different encryption key throws an error"
             (encryption-test/with-secret-key "different-key"
-              (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+              (reset! (:status @(mdb.connection/application-db-handle)) ::setup-finished)
               (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db! :create-sample-content? false)))
               (let [setting-value (:value (t2/select-one "setting" :key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
                 (is (not (string/valid-uuid? setting-value)))))))))))

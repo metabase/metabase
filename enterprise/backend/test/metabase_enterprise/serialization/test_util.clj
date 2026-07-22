@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
@@ -62,13 +63,16 @@
 (defmacro with-db
   "Execute `body` with the current app DB bound to an H2 `data-source`."
   [data-source & body]
-  `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
-     (with-open [conn# (.getConnection mdb.connection/*application-db*)]
-       (binding [t2.conn/*current-connectable* conn#]
-         ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
-         ;;   redefs not great for parallelism
-         (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
-           ~@body)))))
+  `(let [handle# (mdb.connection/application-db-handle)]
+     (mc/binding handle#
+       (mdb.connection/application-db :h2 ~data-source)
+       (fn []
+         (with-open [conn# (.getConnection ^javax.sql.DataSource @handle#)]
+           (binding [t2.conn/*current-connectable* conn#]
+             ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
+             ;;   redefs not great for parallelism
+             (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
+               ~@body)))))))
 
 (defn- do-with-in-memory-h2-db [f]
   (schema-migrations-test.impl/do-with-temp-empty-app-db*

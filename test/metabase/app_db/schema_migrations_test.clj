@@ -33,6 +33,7 @@
    [metabase.cmd.load-from-h2-test :as load-from-h2-test]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
@@ -1091,11 +1092,13 @@
                  (let [db-def      {:database-name "field-test-db"}
                        data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
                    (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
-                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
-                     (load-from-h2/load-from-h2! h2-filename)
-                     (testing "The defective field should still exist after loading from H2"
-                       (is (= #{defective-field-id}
-                              (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
+                   (mc/binding (mdb/application-db-handle)
+                     (mdb.connection/application-db original-app-db-type data-source)
+                     (fn []
+                       (load-from-h2/load-from-h2! h2-filename)
+                       (testing "The defective field should still exist after loading from H2"
+                         (is (= #{defective-field-id}
+                                (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true))))))
                    (when-not (= original-app-db-type :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
                      (testing "Migrating down to 48 should still work"
                        (migrate! :down 48))
@@ -2867,7 +2870,9 @@
                   "v60.2026-04-02T00:00:23"]] ; ALTER TABLE segment DROP COLUMN
         (testing (str id " is recorded as MARK_RAN")
           (is (= "MARK_RAN"
-                 (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* id)))))))))
+                 (:exectype (liquibase/changelog-by-id
+                             @(mdb.connection/application-db-handle)
+                             id)))))))))
 
 ;;;
 ;;; 62 tests

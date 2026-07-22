@@ -24,6 +24,7 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.config.core :as config]
+   [metabase.global-system.mutable-component :as mc]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -34,6 +35,7 @@
 
 (p/import-vars
  [mdb.connection
+  application-db-handle
   application-db
   data-source
   db-type
@@ -83,16 +85,16 @@
   changelog-by-id])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
-;; [[mdb.connection/*application-db*]] (or its data source)
+;; the application DB (or its data source)
 (defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
   []
-  (= @(:status mdb.connection/*application-db*) ::setup-finished))
+  (= @(:status @(mdb.connection/application-db-handle)) ::setup-finished))
 
 (defn finish-db-setup!
   "Mark the bound Metabase DB as set up and ready."
   []
-  (reset! (:status mdb.connection/*application-db*) ::setup-finished))
+  (reset! (:status @(mdb.connection/application-db-handle)) ::setup-finished))
 
 (defn verify-application-db-connection!
   "Open a connection to the bound application DB and check its server version. Throws on failure.
@@ -123,7 +125,7 @@
   "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
   implements [[javax.sql.DataSource]] directly, so you can call [[.getConnection]] on it directly."
   ^metabase.app_db.connection.ApplicationDB []
-  mdb.connection/*application-db*)
+  @(mdb.connection/application-db-handle))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
@@ -138,7 +140,8 @@
     ;; setup for DIFFERENT application DBs at the same time, but CAN NOT run it for the SAME application DB. We can just
     ;; use the application DB object itself to lock on since that will be a different object for different application
     ;; DBs.
-    (locking mdb.connection/*application-db*
+    #_{:clj-kondo/ignore [:locking-suspicious-lock]}
+    (locking @(mdb.connection/application-db-handle)
       (when-not (db-is-set-up?)
         (let [db-type       (db-type)
               data-source   (data-source)
@@ -172,16 +175,5 @@
   []
   (assert (or (not config/is-prod?)
               (config/config-bool :mb-enable-test-endpoints)))
-  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
-
-(defn do-with-application-db
-  "Impl for [[with-application-db]] macro."
-  [application-db thunk]
-  (binding [mdb.connection/*application-db* application-db]
-    (thunk)))
-
-(defmacro with-application-db
-  "Bind the current application database and execute body."
-  {:style/indent [:defn]}
-  [application-db & body]
-  `(do-with-application-db ~application-db (^:once fn* [] ~@body)))
+  (mc/swap! (mdb.connection/application-db-handle)
+            assoc :id (swap! mdb.connection/application-db-counter inc)))

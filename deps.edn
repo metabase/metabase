@@ -587,8 +587,8 @@
   ;; checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't
   ;; ship (such as `:dev` dependencies). See #27009 for more context.
   :check
-  {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
-                                 :sha     "d997df866b2a04b7ce7b17533093ee0a2e2cb729"}}
+  {:extra-deps {bgrabow/clj-check {:git/url "https://github.com/bgrabow/clj-check.git"
+                                   :sha     "465a5f253328b94f103896b1877d3c00cdd14cc9"}}
    :main-opts  ["-m" "clj-check.check"
                 "src"
                 "enterprise/backend/src"
@@ -754,7 +754,7 @@
                ["metabase\\.driver\\.mysql.*"
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
-   :jvm-opts ["-Dmb.jetty.port=3002"]}
+   :jvm-opts  ["-Dmb.jetty.port=3002"]}
 
   ;; To fix indentation in all source files
   ;;
@@ -777,7 +777,7 @@
   ;; (this doc was here because we previously had a `:cljfmt` alias here, now specified in `bb.edn`, but leaving these
   ;; dox here in case anyone comes looking for it -- Cam
 
-;;; building Uberjar, build and release scripts
+  ;;; building Uberjar, build and release scripts
 
   :build
   {:extra-paths
@@ -868,7 +868,7 @@
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
 
-;;; Other misc convenience aliases
+  ;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile
   :profile
@@ -893,7 +893,7 @@
    :main-opts  ["-m" "nrepl.cmdline" "-p" "50605"]}
 
   ;; - start a Socket REPL on port 50505 that you can connect your editor to:
-  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
+  :socket    {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
 
   ;; Liquibase CLI:
   ;;
@@ -915,7 +915,7 @@
   ;;    clojure -M:migrate rollback id "v40.00.001" ;; rollback to a specific migration with id
   ;;    clojure -M:migrate status                   ;; print the latest migration id
   :migrate
-  {:extra-deps {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
+  {:extra-deps  {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.migrate"]}
 

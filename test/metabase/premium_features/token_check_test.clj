@@ -7,6 +7,7 @@
    [mb.hawk.parallel]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.task.clear-token-cache]
    [metabase.premium-features.test-util :as tu]
@@ -313,8 +314,8 @@
     (is (= (t2/count :model/User :is_active true :type :personal)
            (premium-features/active-users-count))))
   (testing "Default to 0 if db is not setup yet"
-    (binding [mdb.connection/*application-db* {:status (atom nil)}]
-      (is (zero? (premium-features/active-users-count))))))
+    (mc/binding (mdb.connection/application-db-handle) {:status (atom nil)}
+                (fn [] (is (zero? (premium-features/active-users-count)))))))
 
 (deftest RemoteCheckedToken-regexp
   (testing "valid tokens"
