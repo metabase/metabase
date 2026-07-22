@@ -9,7 +9,7 @@ run-name: Bump Embedding SDK version (${{ inputs.release_type }}) on ${{ github.
 on:
   workflow_dispatch:
     inputs:
-      branch:
+      read_first:
         description: "Bumps the version on the branch chosen in 'Use workflow from' above."
         type: choice
         required: false
