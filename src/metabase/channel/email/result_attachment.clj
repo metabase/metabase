@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.temp-file :as temp-file]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -66,8 +67,7 @@
 (defn- create-temp-file!
   "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
   [suffix]
-  (doto (File/createTempFile "metabase_attachment" suffix)
-    .deleteOnExit))
+  (temp-file/track-temp-file! (File/createTempFile "metabase_attachment" suffix)))
 
 (defn- create-temp-file-or-throw!
   "Tries to create a temp file, will give the users a better error message if we are unable to create the temp file"
