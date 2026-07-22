@@ -74,11 +74,11 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
-  const agentResetConversation = agent.resetConversation;
+  const agentCreateNewConversation = agent.createNewConversation;
   const resetConversation = useCallback(() => {
     chartComponentsCache.current.clear();
-    agentResetConversation();
-  }, [agentResetConversation]);
+    agentCreateNewConversation();
+  }, [agentCreateNewConversation]);
 
   // keep only the last navigate_to per turn — agent may emit several mid-stream
   const finalNavigateToIds = useSelector((state) =>
