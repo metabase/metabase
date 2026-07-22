@@ -48,8 +48,33 @@ runs:
       env:
         MB_EDITION: ${{ inputs.edition }}
 
+    # Granular rerun: on a re-run of a failed job, restore the list
+    # of tests that failed on the previous attempt (uploaded below) so the test
+    # step can target only those instead of the whole suite. Best-effort: a
+    # missing/empty artifact leaves no file and the run falls back to the full
+    # suite. First attempts skip this entirely.
+    - name: Restore previously-failed tests
+      if: ${{ github.run_attempt != '1' }}
+      continue-on-error: true
+      uses: actions/download-artifact@v8
+      with:
+        name: failed-tests-${{ inputs.junit-name }}
+        path: target
+
     - name: Test database driver
-      run: clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      # On a rerun with a non-empty failed-tests file, target only those vars via
+      # hawk `:only` (a var-level selector bypasses `:only-tags`, which is fine —
+      # every listed var already passed that filter on the first attempt).
+      # Otherwise run exactly as before. Quote the file so the whole `[ns/var ...]`
+      # vector reaches clojure -X as a single argument.
+      run: |
+        BASE="clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
+        if [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
+          echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
+          $BASE :only "$(cat target/failed-tests)"
+        else
+          $BASE ${{ inputs.test-args }}
+        fi
       shell: bash
       id: run-test
       # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
@@ -64,6 +89,27 @@ runs:
       with:
         test-suite: ${{ inputs.junit-name }}
         adapter: backend
+
+    # Granular rerun: record which tests failed so a re-run of this
+    # job targets only those (restored above). Reuses the backend JUnit adapter
+    # from the ci-conductor sources the report step just prepared. Best-effort:
+    # writes nothing unless every failure is attributable to a var, so an
+    # unattributable failure falls back to a full rerun.
+    - name: Collect failed tests for rerun
+      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      continue-on-error: true
+      shell: bash
+      run: bun release/ci-conductor/src/collect-failed-backend.ts
+
+    - name: Upload failed tests for rerun
+      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      continue-on-error: true
+      uses: actions/upload-artifact@v7
+      with:
+        name: failed-tests-${{ inputs.junit-name }}
+        path: target/failed-tests
+        if-no-files-found: ignore
+        overwrite: true
 
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
