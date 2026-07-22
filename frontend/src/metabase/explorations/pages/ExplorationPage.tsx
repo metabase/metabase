@@ -10,7 +10,6 @@ import {
 } from "metabase/api";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
@@ -28,7 +27,6 @@ import type {
   TimelineId,
 } from "metabase-types/api";
 import {
-  getExplorationPages,
   isSettledExplorationQueryStatus,
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
@@ -38,11 +36,9 @@ import {
   ExplorationTitle,
 } from "../components/ExplorationSidebar";
 import {
-  type ExplorationTreeNode,
   flattenTree,
+  getExplorationSidebarModel,
   getExplorationSidebarTabsInfo,
-  getExplorationSidebarTree,
-  isHiddenTreeItem,
   pickInitialSidebarPage,
 } from "../components/ExplorationSidebar/utils";
 import {
@@ -258,24 +254,16 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     );
   }, [exploration, commentsData?.comments]);
 
-  const tree = useMemo(() => {
+  const { tree, contentMode: sidebarContentMode } = useMemo(() => {
     if (!exploration) {
-      return [];
+      return { tree: [], contentMode: "loading" as const };
     }
-    const tabFilter =
-      explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
-
-    const treeItemFilter = showHidden
-      ? tabFilter
-      : (node: ITreeNodeItem<ExplorationTreeNode>) =>
-          tabFilter(node) && !isHiddenTreeItem(node);
-
-    const hasHiddenPages = getExplorationPages(exploration).some(
-      (page) => page.hidden,
-    );
-
-    return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder, {
-      keepEmptyInitialThread: selectedSidebarTab === "all" && hasHiddenPages,
+    return getExplorationSidebarModel({
+      exploration,
+      selectedSidebarTab,
+      tabsInfo: explorationSidebarTabsInfo,
+      showHidden,
+      sortOrder,
     });
   }, [
     exploration,
@@ -525,6 +513,7 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
             onToggleShowHidden={() => setShowHidden((prev) => !prev)}
             sortOrder={sortOrder}
             onChangeSortOrder={handleChangeSortOrder}
+            contentMode={sidebarContentMode}
           />
           {selectedPage && (
             <ExplorationGroupVisualization

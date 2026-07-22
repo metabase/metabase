@@ -312,18 +312,20 @@ export const EXPLORATION_THREAD_STATUSES = [
   "empty",
   "failed",
   "completed",
+  "forbidden",
 ] as const;
 
 /**
  * Server-derived lifecycle status for a thread. Lets the FE tell a successful run from a
  * failed/empty/canceled one (and why) instead of guessing from timestamps + query statuses.
  * `empty` means the planner had nothing applicable to chart — not an error.
+ * `forbidden` means the viewer's data-access lens is incompatible with the creator's.
  */
 export type ExplorationThreadStatus =
   (typeof EXPLORATION_THREAD_STATUSES)[number];
 
 const TERMINAL_EXPLORATION_THREAD_STATUSES: ReadonlySet<ExplorationThreadStatus> =
-  new Set(["canceled", "empty", "failed", "completed"]);
+  new Set(["canceled", "empty", "failed", "completed", "forbidden"]);
 
 /** The thread has finished — no more work will happen, so the FE can stop polling. */
 export function isTerminalExplorationThreadStatus(
