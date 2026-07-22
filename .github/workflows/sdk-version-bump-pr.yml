@@ -171,7 +171,7 @@ jobs:
           | npm dist-tag | `${{ steps.metadata.outputs.dist_tag }}` |
           | Tag as `latest` | `${{ steps.metadata.outputs.tag_as_latest }}` |
 
-          `distTag` and `tagAsLatest` are computed defaults - edit them here if this release should publish under a different dist-tag, or should (not) become the `latest` tag on npm. `tagAsLatest` is `true` only when patching the current gold major (`vars.LATEST_MAJOR_VERSION`).
+          `distTag` and `tagAsLatest` are computed from the branch and release type. `tagAsLatest` is `true` only when patching the current gold major (`vars.LATEST_MAJOR_VERSION`).
 
           Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
 
