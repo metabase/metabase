@@ -190,6 +190,16 @@
 ;;; `before-update` means capture sees the statement as rewritten (final `:changes`, one event per rewrite
 ;;; group). The `after` tools re-dispatch an upgraded query rather than call `next-method`, so the capture
 ;;; method guards against re-entry with `::captured?` in `parsed-args`.
+;;;
+;;; TODO (Chris 2026-07-22) -- this namespace's eventual home is a toucan2 tool. It is pure toucan2
+;;; machinery, and its hardest-won content is composition knowledge about toucan2 internals: the prefers
+;;; below reference other tools' semi-private dispatch keywords, and a tool-dispatch refactor upstream would
+;;; break them here silently, whereas toucan2's own test suite could own that contract (the scratch-model
+;;; tests port almost verbatim). Upstream could also replace [[pre-image-rows]]'s compile-then-execute-
+;;; modelless workaround with a proper decoration-free query type — a select.raw sibling of
+;;; `:toucan.query-type/select.instances-from-pks`, skipped by after-select and transforms. Incubating here
+;;; first: the contract is new, and its sharp edges (modelless execution, insert backfill, at-least-once
+;;; delivery) should survive production contact before being frozen behind a library release cadence.
 
 (methodical/prefer-method! #'t2.pipeline/transduce-query
                            [:toucan.query-type/delete.* :toucan2.tools.before-delete/before-delete :default]
