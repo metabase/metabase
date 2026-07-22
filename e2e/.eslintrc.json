@@ -54,8 +54,13 @@
     "no-unordered-test-helpers": 2
   },
   "env": {
-    "cypress/globals": true,
     "node": true
+  },
+  "globals": {
+    "cy": "readonly",
+    "Cypress": "readonly",
+    "context": "readonly",
+    "assert": "readonly"
   },
   "plugins": ["cypress"],
   "overrides": [
