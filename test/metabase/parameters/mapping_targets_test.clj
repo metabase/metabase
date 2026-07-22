@@ -3,15 +3,23 @@
    the frontend's getParameterMappingOptions."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.mapping-targets :as mapping-targets]
    [metabase.parameters.params :as params]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
+(defn- venues-query
+  "A Lib query selecting everything from `venues`."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
 (deftest mbql-card-exposes-filterable-columns-test
   (testing "GHY-4147: an MBQL card's targets are its filterable columns, as dimension clauses"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card card {:dataset_query (venues-query)}]
       (let [targets (mapping-targets/valid-targets card {:id "p1" :type "string/="})]
         (is (seq targets))
         (is (every? #(= :dimension (first (:target %))) targets))
@@ -20,13 +28,13 @@
 (deftest dimension-targets-carry-a-stage-number-test
   (testing "GHY-4147: dimension targets carry {:stage-number 0} — without it they resolve wrong on
             multi-stage queries"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card card {:dataset_query (venues-query)}]
       (let [targets (mapping-targets/valid-targets card {:id "p1" :type "string/="})]
         (is (every? #(= {:stage-number 0} (nth (:target %) 2 nil)) targets))))))
 
 (deftest target-for-field-test
   (testing "GHY-4147: target-for-field finds the target resolving to a specific field"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card card {:dataset_query (venues-query)}]
       (let [target (mapping-targets/target-for-field card {:id "p1" :type "number/="} (mt/id :venues :price))]
         (is (= :dimension (first target)))
         (testing "and it round-trips through the codebase's own target resolver"
@@ -35,7 +43,7 @@
 
 (deftest target-for-field-returns-nil-when-absent-test
   (testing "GHY-4147: a field the card does not expose yields nil, so the caller can teach"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card card {:dataset_query (venues-query)}]
       (is (nil? (mapping-targets/target-for-field card
                                                   {:id "p1" :type "string/="}
                                                   (mt/id :users :name)))))))
