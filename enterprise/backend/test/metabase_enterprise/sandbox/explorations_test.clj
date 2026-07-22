@@ -260,7 +260,9 @@
               (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))))
 
 (deftest pending-query-status-is-not-gated-test
-  (testing "the pending/error path returns status only (409) and is not data-gated — even for a sandboxed viewer"
+  (testing "a pending query's 409 status payload is not data-gated — even for a sandboxed viewer — it
+            carries no result blob and no error_message to leak (the error_message case is gated; see
+            error-message-gated-to-viewers-without-data-perms-test)"
     (met/with-gtaps-for-user! :rasta (price-sandbox)
       (mt/with-temp [:model/Collection coll {}
                      :model/Card metric {:name "m" :type :metric :creator_id (mt/user->id :lucky)
@@ -279,6 +281,35 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
         (let [body (mt/user-http-request :rasta :get 409 (format "exploration/query/%d" (:id q)))]
           (is (= "pending" (:status body))))))))
+
+(deftest error-message-hidden-from-clients-test
+  (testing "a query's `error_message` is creator-run QP output that can embed table/column names and
+            SQL fragments, so the 409 error path NEVER returns it to the client — every viewer, admin
+            included, gets a generic notice. The real error is logged at ERROR when the query fails."
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card metric {:name "m" :type :metric :creator_id (mt/user->id :lucky)
+                                       :database_id (mt/id) :dataset_query (venues-count-query)}
+                   :model/Exploration e {:name "shared" :creator_id (mt/user->id :lucky) :collection_id (:id coll)}
+                   :model/ExplorationThread th {:exploration_id (:id e)}
+                   :model/ExplorationBlock g {:exploration_thread_id (:id th)}
+                   :model/ExplorationPage p {:exploration_block_id (:id g) :card_id (:id metric)
+                                             :dimension_id "d1" :query_type "default"}
+                   :model/ExplorationQuery q {:exploration_thread_id (:id th)
+                                              :page_id (:id p)
+                                              :card_id (:id metric)
+                                              :dimension_id "d1"
+                                              :status "error"
+                                              :error_message "Table \"SECRET_INTERNAL_TABLE\" does not exist; SELECT secret_col FROM ..."
+                                              :dataset_query (venues-count-query)}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      ;; :crowberto is a superuser; :rasta a plain collection-reader — neither may see the raw error.
+      (doseq [user [:rasta :crowberto]]
+        (testing (str user)
+          (let [body (mt/user-http-request user :get 409 (format "exploration/query/%d" (:id q)))]
+            (is (= "error" (:status body)))
+            (is (some? (:error_message body)) "the viewer is still told it failed")
+            (is (not (str/includes? (:error_message body) "SECRET_INTERNAL_TABLE"))
+                "the creator's raw error (table/column names, SQL) must never reach the client")))))))
 
 (deftest sandbox-token-fails-closed-when-attributes-missing-test
   (testing "when the enforcement guard says the user IS sandboxed but the attribute lookup returns nil,

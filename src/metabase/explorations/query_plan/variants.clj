@@ -18,10 +18,12 @@
                         `per-value-time-series`.
 
   Discovery queries (`run-top-k-discovery`) for the two variants that need
-  them are deduplicated in-process via `discovery-cache`, a bounded
-  LRU-with-TTL keyed by `[card-id dim-id k]`. Both `query-name` and
+  them are deduplicated in-process via `discovery-cache`, a TTL cache keyed
+  by `[card-id dim-id k explore-filters]`. Both `query-name` and
   `dataset-query` go through the cache, so the underlying QP call runs at
-  most once per (card, dim, k) while the entry stays warm and fresh."
+  most once per (card, dim, k, filters) while the entry is still fresh (within
+  the TTL). There is no separate size cap: distinct keys are bounded in practice
+  by the library's metric×dimension×k combinations, and the TTL evicts stale entries."
   (:require
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
@@ -132,11 +134,6 @@
         (u/keepv #(nth % dim-idx nil) (:rows data))))
     (catch Throwable _ nil)))
 
-(def ^:private discovery-cache-threshold
-  "Max distinct `[card-id dim-id k]` entries kept in [[discovery-cache]] before
-  the LRU starts evicting."
-  1024)
-
 (def ^:private discovery-cache-ttl-ms
   "How long a [[discovery-cache]] entry stays valid before the discovery query re-runs.
   Discovery results are top-K value sets over live warehouse data, so a process-lifetime
@@ -146,17 +143,15 @@
   (* 15 60 1000))
 
 (defonce ^:private discovery-cache
-  ;; TTL layered over LRU, keyed by [card-id dim-id k]: the LRU bounds how many entries a
-  ;; long-lived JVM accumulates; the TTL bounds how stale any one entry can get.
-  (atom (-> {}
-            (cache/lru-cache-factory :threshold discovery-cache-threshold)
-            (cache/ttl-cache-factory :ttl discovery-cache-ttl-ms))))
+  ;; A TTL cache keyed by [card-id dim-id k explore-filters]. The TTL both freshens entries and
+  ;; bounds accumulation on a long-lived JVM — nothing survives past it.
+  (atom (cache/ttl-cache-factory {} :ttl discovery-cache-ttl-ms)))
 
 (defn- cached-discovery
-  "Memoized `run-top-k-discovery` keyed by `[card-id dim-id k]`. Returns
+  "Memoized `run-top-k-discovery` keyed by `[card-id dim-id k explore-filters]`. Returns
   the discovered vector (or `[]` on failure / no rows). Both `query-name`
   and `dataset-query` go through this so the underlying QP query runs at
-  most once per (card, dim, k) while the entry stays in the LRU."
+  most once per (card, dim, k, filters) while the entry is still fresh (within the TTL)."
   [{:keys [mp card target dim params explore-filters]}]
   (let [card-id   (:id card)
         dim-id    (or (:dimension_id dim) (:id dim))

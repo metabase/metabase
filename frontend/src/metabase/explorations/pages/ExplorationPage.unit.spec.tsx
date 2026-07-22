@@ -1,6 +1,12 @@
 import { act } from "@testing-library/react";
+import { useReducer } from "react";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import {
   createBlock,
   createExploration,
@@ -15,6 +21,20 @@ import type { Exploration, ExplorationThread } from "metabase-types/api";
 import { ExplorationPage } from "./ExplorationPage";
 
 const RoutedExplorationPage = withRouteProps(ExplorationPage);
+
+const RERENDER_BUTTON_TESTID = "exploration-rerender-trigger";
+
+// Re-renders are driven from inside the router tree (not RTL's `rerender`), so the
+// v3 `<Router>` never receives new `routes`/`children` and stops warning about it.
+function ExplorationPageHarness() {
+  const [, forceRerender] = useReducer((tick: number) => tick + 1, 0);
+  return (
+    <>
+      <button data-testid={RERENDER_BUTTON_TESTID} onClick={forceRerender} />
+      <RoutedExplorationPage />
+    </>
+  );
+}
 
 let explorationData: Exploration;
 const sendToastMock = jest.fn();
@@ -83,8 +103,8 @@ function renderExplorationPage(initialRoute?: string) {
   const path = Urls.exploration(explorationData.id);
   return renderWithProviders(
     <Route
-      path={`${Urls.exploration(explorationData.id)}(/:entityType/:entityId)`}
-      element={<RoutedExplorationPage />}
+      path={`/${Urls.EXPLORATION_BASE_PATH}/:id(/:entityType/:entityId)`}
+      element={<ExplorationPageHarness />}
     />,
     {
       withRouter: true,
@@ -94,15 +114,8 @@ function renderExplorationPage(initialRoute?: string) {
   );
 }
 
-function rerenderExplorationPage(
-  rerender: ReturnType<typeof renderWithProviders>["rerender"],
-) {
-  rerender(
-    <Route
-      path={`${Urls.exploration(explorationData.id)}(/:entityType/:entityId)`}
-      element={<RoutedExplorationPage />}
-    />,
-  );
+function rerenderExplorationPage() {
+  fireEvent.click(screen.getByTestId(RERENDER_BUTTON_TESTID));
 }
 
 describe("ExplorationPage thread-ready toasts", () => {
@@ -132,7 +145,7 @@ describe("ExplorationPage thread-ready toasts", () => {
   });
 
   it("waits for the first page before toasting about a new thread", async () => {
-    const { rerender } = renderExplorationPage();
+    renderExplorationPage();
 
     explorationData = makeExploration([
       getThreads(explorationData)[0],
@@ -143,7 +156,7 @@ describe("ExplorationPage thread-ready toasts", () => {
         queries: [],
       }),
     ]);
-    rerenderExplorationPage(rerender);
+    rerenderExplorationPage();
     expect(sendToastMock).not.toHaveBeenCalled();
 
     explorationData = makeExploration([
@@ -161,7 +174,7 @@ describe("ExplorationPage thread-ready toasts", () => {
         [createQuery({ id: 2, name: "Follow-up query", status: "done" })],
       ),
     ]);
-    rerenderExplorationPage(rerender);
+    rerenderExplorationPage();
 
     expect(sendToastMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -172,7 +185,7 @@ describe("ExplorationPage thread-ready toasts", () => {
   });
 
   it("does not duplicate the toast on repeated polls", async () => {
-    const { rerender } = renderExplorationPage();
+    renderExplorationPage();
 
     const threadReadyExploration = makeExploration([
       getThreads(explorationData)[0],
@@ -191,13 +204,13 @@ describe("ExplorationPage thread-ready toasts", () => {
     ]);
 
     explorationData = threadReadyExploration;
-    rerenderExplorationPage(rerender);
+    rerenderExplorationPage();
     expect(sendToastMock).toHaveBeenCalledWith(
       expect.objectContaining({ message: "Added Second thread" }),
     );
 
     explorationData = threadReadyExploration;
-    rerenderExplorationPage(rerender);
+    rerenderExplorationPage();
     expect(
       sendToastMock.mock.calls.filter(
         (call) => call[0]?.message === "Added Second thread",
@@ -206,7 +219,7 @@ describe("ExplorationPage thread-ready toasts", () => {
   });
 
   it("navigates to the new page with tab=all and preserves unrelated query params when View is clicked", async () => {
-    const { rerender, history } = renderExplorationPage();
+    const { history } = renderExplorationPage();
     if (!history) {
       throw new Error("expected router history");
     }
@@ -226,7 +239,7 @@ describe("ExplorationPage thread-ready toasts", () => {
         [createQuery({ id: 2, name: "Second query", status: "done" })],
       ),
     ]);
-    rerenderExplorationPage(rerender);
+    rerenderExplorationPage();
 
     const toastCall = sendToastMock.mock.calls.find(
       (call) => call[0]?.actionLabel === "View",
@@ -248,7 +261,7 @@ describe("ExplorationPage thread-ready toasts", () => {
   });
 
   it("toasts once for each newly ready named thread", async () => {
-    const { rerender } = renderExplorationPage();
+    renderExplorationPage();
 
     explorationData = makeExploration([
       getThreads(explorationData)[0],
@@ -265,7 +278,7 @@ describe("ExplorationPage thread-ready toasts", () => {
         [createQuery({ id: 2, name: "Thread A query", status: "done" })],
       ),
     ]);
-    rerenderExplorationPage(rerender);
+    rerenderExplorationPage();
     expect(sendToastMock).toHaveBeenCalledWith(
       expect.objectContaining({ message: "Added Thread A" }),
     );
@@ -285,7 +298,7 @@ describe("ExplorationPage thread-ready toasts", () => {
         [createQuery({ id: 3, name: "Thread B query", status: "done" })],
       ),
     ]);
-    rerenderExplorationPage(rerender);
+    rerenderExplorationPage();
 
     expect(sendToastMock).toHaveBeenCalledWith(
       expect.objectContaining({ message: "Added Thread B" }),

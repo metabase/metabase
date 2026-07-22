@@ -328,7 +328,7 @@ describe("ExplorationGroupVisualization", () => {
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
-  it("surfaces the errored query's message when any query has errored", () => {
+  it("shows a generic error pane when any query has errored", () => {
     setup({
       queries: [
         createQuery({ id: 101, name: "OK", status: "done" }),
@@ -337,23 +337,6 @@ describe("ExplorationGroupVisualization", () => {
           name: "Boom",
           status: "error",
           error_message: "kaboom",
-        }),
-      ],
-    });
-
-    expect(screen.getByText("kaboom")).toBeInTheDocument();
-    expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
-  });
-
-  it("falls back to a generic error pane when the errored query has no message", () => {
-    setup({
-      queries: [
-        createQuery({ id: 101, name: "OK", status: "done" }),
-        createQuery({
-          id: 102,
-          name: "Boom",
-          status: "error",
-          error_message: null,
         }),
       ],
     });

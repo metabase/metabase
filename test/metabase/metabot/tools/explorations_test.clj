@@ -2,11 +2,36 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as metabot.self]
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.util.json :as json]))
+
+(def ^:private exploration-tool-vars
+  [#'tools.explorations/get-research-candidates-tool
+   #'tools.explorations/add-research-groups-tool
+   #'tools.explorations/remove-from-research-plan-tool
+   #'tools.explorations/set-exploration-name-tool
+   #'tools.explorations/select-exploration-timelines-tool])
+
+(deftest tools-declare-registered-scopes-granted-to-nlq-users-test
+  (testing "every exploration tool declares a registered :scope, so the per-tool scope check applies
+            (a tool with no :scope skips wrap-with-scope-check entirely), AND an NLQ-yes user is
+            granted that scope — so adding the gate does not filter the tools away from the
+            NLQ-gated :explorations profile that offers them"
+    (let [nlq-scopes (scope/user-metabot-perms->scopes {:permission/metabot     :yes
+                                                        :permission/metabot-nlq :yes})]
+      (doseq [tool-var exploration-tool-vars]
+        (let [{tool-name :tool-name required-scope :scope} (meta tool-var)]
+          (testing tool-name
+            (is (some? required-scope) "declares a :scope")
+            (when required-scope
+              (is (api-scope/registered-scope? required-scope) "scope is registered")
+              (is (api-scope/scope-matches? nlq-scopes required-scope)
+                  "scope is granted to an NLQ-yes user"))))))))
 
 (defn- decoded-output
   "The exploration tools return `{:output <json-string>}` (only `:output` survives onto the
@@ -77,11 +102,11 @@
                            :metric     {:id 42 :name "Revenue"}
                            :dimensions [{:id "d1" :name "Region"}
                                         {:id "d2" :name "Plan"}]}
-                          {:block_id "dim:7"
-                           :anchor   "dimension"
+                          {:block_id  "dim:7"
+                           :anchor    "dimension"
                            :dimension {:id "d7" :name "Plan"}
-                           :metrics  [{:id 42 :name "Revenue"}
-                                      {:id 43 :name "Churn"}]}]
+                           :metrics   [{:id 42 :name "Revenue"}
+                                       {:id 43 :name "Churn"}]}]
               :timelines [{:id 1 :name "Releases"}]}]
     (testing "renders groups with block ids, name, and timelines"
       (let [result (tools.explorations/format-research-plan {:research_plan plan})]

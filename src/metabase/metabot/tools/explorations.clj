@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.core :as explorations]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -71,7 +72,8 @@
   [:map {:closed true}
    [:q {:optional true} [:maybe :string]]])
 
-(mu/defn ^{:tool-name "get_research_candidates"}
+(mu/defn ^{:tool-name "get_research_candidates"
+           :scope     scope/agent-explorations-read}
   get-research-candidates-tool
   "List the metrics and dimensions available for research. Each metric lists its candidate
    dimensions (id, name, interestingness); each dimension group lists the dimension ids it bundles
@@ -92,7 +94,8 @@
       [:metric_ids {:optional true} [:sequential :int]]
       [:replace_default_dimensions {:optional true} :boolean]]]]])
 
-(mu/defn ^{:tool-name "add_research_groups"}
+(mu/defn ^{:tool-name "add_research_groups"
+           :scope     scope/agent-explorations-write}
   add-research-groups-tool
   "Add one or more groups to the research artifact. Each group is either:
    - metric-anchored: `{\"anchor\": \"metric\", \"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`
@@ -120,7 +123,8 @@
       [:dimension_ids {:optional true} [:sequential :string]]]]]
    [:timeline_ids {:optional true} [:sequential :int]]])
 
-(mu/defn ^{:tool-name "remove_from_research_plan"}
+(mu/defn ^{:tool-name "remove_from_research_plan"
+           :scope     scope/agent-explorations-write}
   remove-from-research-plan-tool
   "Remove groups, individual metrics/dimensions within a group, or timelines from the research
    plan. Address groups by the `block_id` shown in brackets for each group in the current research
@@ -147,7 +151,8 @@
   [:map {:closed true}
    [:name :string]])
 
-(mu/defn ^{:tool-name "set_research_name"}
+(mu/defn ^{:tool-name "set_research_name"
+           :scope     scope/agent-explorations-write}
   set-exploration-name-tool
   "Set the name of the research artifact."
   [{:keys [name]} :- set-exploration-name-schema]
@@ -157,7 +162,8 @@
   [:map {:closed true}
    [:timeline_ids [:sequential :int]]])
 
-(mu/defn ^{:tool-name "select_research_timelines"}
+(mu/defn ^{:tool-name "select_research_timelines"
+           :scope     scope/agent-explorations-write}
   select-exploration-timelines-tool
   "Select the timelines to include in the research. Populates the research artifact with the chosen timelines."
   [{:keys [timeline_ids]} :- select-exploration-timelines-schema]
