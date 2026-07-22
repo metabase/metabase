@@ -4761,11 +4761,19 @@ of the error is itself instructive.**
   boundary-less build now fails deterministically in ~12s naming the missing
   boundary, instead of false-greening or burning 90s. Geometry assertions
   unchanged.
-- **Disposition: back to the original — deliberately red, do not delete, the
-  message to the custom-viz owners SHOULD be sent** (its evidence is now
-  stronger: the revert also left upstream's own suite with zero coverage of
-  the boundary, and the boundary-restoring component already exists in
-  history to resurrect).
+- **Disposition (2026-07-22, FINAL): the ported test was DELETED** to match
+  upstream master (which deleted its own GDGT-2400 with the 07cb2f0a6c7 revert)
+  and keep the port close to Cypress. Fraser's call: he owns the relationship
+  with the custom-viz team and will raise the escape with them directly
+  (see docs/custom-viz-sandbox-escape-note.md, written for that conversation),
+  so the automated red is no longer earning its keep as a nag. The escape
+  itself is UNCHANGED and still real on master — this is a coverage decision,
+  not a resolution. If the boundary is ever restored on master, the test can
+  be resurrected from git history (it was the "confines custom viz and custom
+  viz setting widget to its container (GDGT-2400)" test in tests/custom-viz.spec.ts,
+  with the containment pre-check that made it fail fast rather than false-green).
+  The shared security fixture and interceptInjectedBundle helper stay — other
+  sandbox tests use them.
 
 Method lesson for the file: a security test that can false-green under the
 exact condition it guards (racing an attacker's interval) needs a

@@ -150,16 +150,13 @@ the spec overrides explicitly) and survived meaninglessly.
 Both now have something no prior investigation had: **traces for flaky-but-passing
 shards**, as of `18a02dd000c`.
 
-### 2. Awaiting a human answer — `custom-viz` (#224). ⚠️ A closure was CLAIMED
-and RETRACTED the same day — read FINDINGS #224's retraction before trusting
-any green here. The escape is LIVE on master: the containment component exists
-only in this branch's pre-revert checkout (07cb2f0a6c7 removed it on master
-after our merge-base), and the greens that motivated the closure were FALSE
-greens (the attack's 100ms interval racing the geometry read on a
-boundary-less build). The test is hardened — a bounded containment pre-check
-now fails deterministically in ~12s on boundary-less builds, no more false
-greens — and stays deliberately red. **The drafted message to the custom-viz
-owners should be SENT**, with the sharpened evidence.
+### 2. `custom-viz` sandbox escape (#224) — test DELETED, handed to humans
+The GDGT-2400 port was DELETED (2026-07-22) to match upstream master and stay
+close to Cypress; the escape is still real on master (a coverage decision, not
+a fix). Fraser is raising it with the custom-viz team directly —
+`docs/custom-viz-sandbox-escape-note.md` is the briefing written for that. No
+longer a CI concern (s10's deliberate red is gone with the test). Full history
+and the resurrection pointer are in FINDINGS #224.
 
 ### 3. Report to owners, no code change from us
 - **#225 MySQL 8.4** — Metabase cannot connect to a cold `caching_sha2` account
