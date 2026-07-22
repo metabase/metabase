@@ -101,7 +101,7 @@ jobs:
         env:
           BRANCH: ${{ needs.prepare-release.outputs.branch }}
         run: |
-          tee -a $GITHUB_STEP_SUMMARY << EOF
+          tee -a "$GITHUB_STEP_SUMMARY" << EOF
           **Inputs:**
 
           - \`branch\`: $BRANCH
@@ -318,7 +318,7 @@ jobs:
 
       - name: Append workflow summary
         run: |
-          tee -a $GITHUB_STEP_SUMMARY << EOF
+          tee -a "$GITHUB_STEP_SUMMARY" << EOF
           **SDK release metadata (from package.template.json):**
 
           - \`version\`: "${{ steps.metadata.outputs.sdk_version }}"
@@ -343,7 +343,7 @@ jobs:
 
       - name: check tags
         run: |
-          if [ $(git tag -l | grep $tag$) ]
+          if git tag -l | grep -q "${tag}$"
           then
             echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow."
             exit 1
