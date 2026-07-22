@@ -69,209 +69,41 @@ jobs:
           git config --global user.email "github-automation@metabase.com"
           git config --global user.name "Metabase Automation"
 
-      - name: Read current SDK version
-        id: current
-        run: |
-          VERSION=$(jq -r .version "$package_template")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
-      - name: Validate branch / release_type combination
+      - name: Compute version and sdkRelease metadata
+        id: metadata
+        uses: actions/github-script@v9
         env:
           BRANCH: ${{ github.ref_name }}
           RELEASE_TYPE: ${{ inputs.release_type }}
           PRERELEASE_ID: ${{ inputs.prerelease_id }}
-        run: |
-          # prerelease_id only means something to release_type=custom (it becomes
-          # the one-off branch's id). On any other type it would be silently
-          # ignored, so reject it loudly rather than run a bump that quietly drops
-          # the field the caller filled in.
-          if [ "$RELEASE_TYPE" != "custom" ] && [ -n "$PRERELEASE_ID" ]; then
-            echo "::error::prerelease_id is only used with release_type=custom (got release_type=$RELEASE_TYPE). Either pick release_type=custom, or clear prerelease_id."
-            exit 1
-          fi
-
-          # Each branch class gets only the release types that make sense for it.
-          # `preminor` (master -> next major's alpha) is grouped with `alpha`
-          # since it only makes sense on master, same as a regular alpha bump.
-          if [ "$BRANCH" = "master" ] && [ "$RELEASE_TYPE" != "alpha" ] && [ "$RELEASE_TYPE" != "preminor" ]; then
-            echo "::error::Only 'alpha' or 'preminor' releases can be bumped from the 'master' branch (got release_type=$RELEASE_TYPE)."
-            exit 1
-          fi
-
-          if [[ "$BRANCH" == release-x.* ]] && [ "$RELEASE_TYPE" != "beta" ] && [ "$RELEASE_TYPE" != "patch" ]; then
-            echo "::error::Only 'beta' or 'patch' releases can be bumped from a release branch (got release_type=$RELEASE_TYPE, branch=$BRANCH)."
-            exit 1
-          fi
-
-          # Any other branch is a one-off (esbuild, data-apps, ...) and may only
-          # publish to its own <major>-<prerelease-id> dist-tag. `patch` here
-          # would strip the id (0.62.5-data-apps.0 -> 0.62.5), compute distTag
-          # <major>-stable, and - if the major matches vars.LATEST_MAJOR_VERSION - take
-          # the npm `latest` tag, shipping a feature branch as the stable release.
-          if [ "$BRANCH" != "master" ] && [[ "$BRANCH" != release-x.* ]] && [ "$RELEASE_TYPE" != "custom" ]; then
-            echo "::error::'$BRANCH' is not master or a release branch - only release_type=custom is allowed here (got release_type=$RELEASE_TYPE)."
-            exit 1
-          fi
-
-      - name: Bump version with semver
-        id: bump
-        env:
-          RELEASE_TYPE: ${{ inputs.release_type }}
-          PRERELEASE_ID: ${{ inputs.prerelease_id }}
-        run: |
-          # `npm version` only works on a file named package.json, and it is
-          # just a wrapper around `semver` - so we call semver directly.
-          #
-          # This job installs no dependencies, so a bare `npx semver` would fetch
-          # whatever the registry calls latest. Reuse the semver spec package.json
-          # already declares, so there's no separate version to keep in sync.
-          SEMVER="semver@$(jq -r '.devDependencies.semver' package.json)"
-          if [ "$SEMVER" = "semver@null" ]; then
-            echo "::error::package.json has no devDependencies.semver to pin against."
-            exit 1
-          fi
-          echo "Using $SEMVER"
-
-          CURRENT_VERSION=$(jq -r .version "$package_template")
-
-          case "$RELEASE_TYPE" in
-            alpha)
-              NEW_VERSION=$(npx --yes "$SEMVER" -i prerelease --preid=alpha "$CURRENT_VERSION")
-              ;;
-            beta)
-              NEW_VERSION=$(npx --yes "$SEMVER" -i prerelease --preid=beta "$CURRENT_VERSION")
-              ;;
-            custom)
-              # The prerelease id this branch already carries, if any. alpha/beta
-              # are the normal ids for master/release branches, not one-off ids -
-              # a one-off branch cut from master sits on 0.63.0-alpha.5, and that
-              # is still a first cut.
-              EXISTING_PRERELEASE_ID=$(echo "$CURRENT_VERSION" | sed -n 's/^[0-9.]*-\([a-z][a-z0-9-]*\)\(\.[0-9]*\)\{0,1\}$/\1/p')
-              case "$EXISTING_PRERELEASE_ID" in alpha|beta) EXISTING_PRERELEASE_ID="" ;; esac
-
-              # ...and they're reserved as the input id too: a custom beta would
-              # land on the real <major>-beta dist-tag, alpha on the alpha line.
-              if [ "$PRERELEASE_ID" = "alpha" ] || [ "$PRERELEASE_ID" = "beta" ]; then
-                echo "::error::prerelease_id '$PRERELEASE_ID' is reserved for master/release-branch releases. Pick a distinct one-off id (e.g. data-apps, esbuild)."
-                exit 1
-              fi
-
-              # prerelease_id is set if and only if this is the first cut.
-              if [ -n "$EXISTING_PRERELEASE_ID" ] && [ -n "$PRERELEASE_ID" ]; then
-                echo "::error::This branch already uses the prerelease id '$EXISTING_PRERELEASE_ID' - leave prerelease_id empty to bump it. To change the id, reset the version in $package_template by hand."
-                exit 1
-              fi
-              if [ -z "$EXISTING_PRERELEASE_ID" ] && [ -z "$PRERELEASE_ID" ]; then
-                echo "::error::prerelease_id is required when cutting a new one-off branch - it becomes the prerelease id in the version (0.62.5-<id>.0) and the npm dist-tag (<major>-<id>)."
-                exit 1
-              fi
-
-              # Anything outside [a-z][a-z0-9-]* would bump fine here and then die
-              # further down, where the id is read back out of the new version.
-              if [ -n "$PRERELEASE_ID" ] && ! echo "$PRERELEASE_ID" | grep -qE '^[a-z][a-z0-9-]*$'; then
-                echo "::error::prerelease_id '$PRERELEASE_ID' must be lowercase, start with a letter, and contain only letters, digits and hyphens (e.g. data-apps)."
-                exit 1
-              fi
-
-              # First cut: caller supplies the id. Later bumps: no --preid, so
-              # semver reuses the id already in the version and bumps its counter
-              # (0.62.5-data-apps.0 -> 0.62.5-data-apps.1).
-              if [ -n "$PRERELEASE_ID" ]; then
-                NEW_VERSION=$(npx --yes "$SEMVER" -i prerelease --preid="$PRERELEASE_ID" "$CURRENT_VERSION")
-              else
-                NEW_VERSION=$(npx --yes "$SEMVER" -i prerelease "$CURRENT_VERSION")
-              fi
-              ;;
-            preminor)
-              # master -> next major's alpha (0.63.0-alpha.5 -> 0.64.0-alpha.0).
-              # `alpha` above only ever increments the existing prerelease
-              # counter, so it can never bump the minor version.
-              NEW_VERSION=$(npx --yes "$SEMVER" -i preminor --preid=alpha "$CURRENT_VERSION")
-              ;;
-            patch)
-              NEW_VERSION=$(npx --yes "$SEMVER" -i patch "$CURRENT_VERSION")
-              ;;
-            *)
-              echo "::error::Unsupported release_type: $RELEASE_TYPE"
-              exit 1
-              ;;
-          esac
-
-          # jq can't edit in place; redirecting into the same file would truncate
-          # it before jq reads it, so write a temp and mv (atomic) over the original.
-          jq --arg v "$NEW_VERSION" '.version = $v' "$package_template" > "$package_template.tmp"
-          mv "$package_template.tmp" "$package_template"
-
-          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "major_version=$(echo "$NEW_VERSION" | cut -d. -f2)" >> "$GITHUB_OUTPUT"
-
-      - name: Compute sensible sdkRelease defaults
-        id: sdk-release
-        env:
-          BRANCH: ${{ github.ref_name }}
           LATEST_MAJOR_VERSION: ${{ vars.LATEST_MAJOR_VERSION }}
-          RELEASE_TYPE: ${{ inputs.release_type }}
-        run: |
-          # Defaults, computed from the branch and the release type. They are
-          # written into the bump PR so they are visible and can be edited there
-          # before merging - but the release does not wait on anyone's approval;
-          # whoever dispatched the bump already made the call.
-          #
-          # Every dist-tag below is real and in use today: alpha, <major>-beta,
-          # <major>-stable, and the one-off <major>-<id> (56-esbuild, 63-data-apps).
-          MAJOR_VERSION="${{ steps.bump.outputs.major_version }}"
-          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          PACKAGE_TEMPLATE: ${{ env.package_template }}
+        with:
+          script: | # js
+            const { applySdkVersionBump } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-          case "$RELEASE_TYPE" in
-            alpha|preminor)
-              DIST_TAG="alpha"
-              ;;
-            beta)
-              DIST_TAG="${MAJOR_VERSION}-beta"
-              ;;
-            patch)
-              DIST_TAG="${MAJOR_VERSION}-stable"
-              ;;
-            custom)
-              # The id comes from the version just computed, so it is identical on
-              # the first cut and every later bump: 0.62.5-data-apps.0 -> 62-data-apps.
-              PRERELEASE_ID=$(echo "$NEW_VERSION" | sed -n 's/^[0-9.]*-\([a-z][a-z0-9-]*\)\.[0-9]*$/\1/p')
-              if [ -z "$PRERELEASE_ID" ]; then
-                echo "::error::Could not read a prerelease id back from '$NEW_VERSION'."
-                exit 1
-              fi
-              DIST_TAG="${MAJOR_VERSION}-${PRERELEASE_ID}"
-              ;;
-          esac
+            let result;
+            try {
+              result = applySdkVersionBump({
+                packageTemplatePath: process.env.PACKAGE_TEMPLATE,
+                branch: process.env.BRANCH,
+                releaseType: process.env.RELEASE_TYPE,
+                prereleaseId: process.env.PRERELEASE_ID,
+                latestMajorVersion: process.env.LATEST_MAJOR_VERSION || undefined,
+              });
+            } catch (error) {
+              core.setFailed(error.message);
+              return;
+            }
 
-          # Take npm's `latest` tag only when patching the current gold release.
-          # vars.LATEST_MAJOR_VERSION is its major; unset means no match, not an error.
-          # The release-branch check is a second guard, so nothing published from
-          # master or a one-off branch can ever take `latest`.
-          TAG_AS_LATEST=false
-          if [ "$RELEASE_TYPE" = "patch" ] &&
-             [[ "$BRANCH" == release-x.* ]] &&
-             [ -n "$LATEST_MAJOR_VERSION" ] &&
-             [ "$MAJOR_VERSION" = "$LATEST_MAJOR_VERSION" ]; then
-            TAG_AS_LATEST=true
-          fi
-
-          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
-          echo "tag_as_latest=$TAG_AS_LATEST" >> "$GITHUB_OUTPUT"
-
-      - name: Write sdkRelease metadata block
-        id: write-metadata
-        run: |
-          # Overwrites sdkRelease.distTag and sdkRelease.tagAsLatest with the
-          # values computed above, creating the block if it isn't there yet.
-          jq --arg distTag "${{ steps.sdk-release.outputs.dist_tag }}" \
-             --argjson tagAsLatest ${{ steps.sdk-release.outputs.tag_as_latest }} \
-             '.sdkRelease.distTag = $distTag | .sdkRelease.tagAsLatest = $tagAsLatest' \
-             "$package_template" > "$package_template.tmp"
-          mv "$package_template.tmp" "$package_template"
-
-          TAG_AS_LATEST=$(jq -r '.sdkRelease.tagAsLatest' "$package_template")
-          echo "tag_as_latest=$TAG_AS_LATEST" >> "$GITHUB_OUTPUT"
+            core.setOutput("previous_version", result.previousVersion);
+            core.setOutput("new_version", result.newVersion);
+            core.setOutput("major_version", result.majorVersion);
+            core.setOutput("dist_tag", result.distTag);
+            core.setOutput("tag_as_latest", String(result.tagAsLatest));
 
       - name: Append workflow summary
         env:
@@ -282,17 +114,17 @@ jobs:
 
           - \`branch\`: $BRANCH
           - \`release_type\`: ${{ inputs.release_type }}
-          - \`previous_version\`: ${{ steps.current.outputs.version }}
-          - \`new_version\`: ${{ steps.bump.outputs.new_version }}
-          - \`distTag\` (default, review before merging): ${{ steps.sdk-release.outputs.dist_tag }}
-          - \`tagAsLatest\` (auto-computed from \`vars.LATEST_MAJOR_VERSION\`, review before merging): ${{ steps.write-metadata.outputs.tag_as_latest }}
+          - \`previous_version\`: ${{ steps.metadata.outputs.previous_version }}
+          - \`new_version\`: ${{ steps.metadata.outputs.new_version }}
+          - \`distTag\` (default, review before merging): ${{ steps.metadata.outputs.dist_tag }}
+          - \`tagAsLatest\` (auto-computed from \`vars.LATEST_MAJOR_VERSION\`, review before merging): ${{ steps.metadata.outputs.tag_as_latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
 
       - name: Commit version bump
         env:
-          BUMP_BRANCH: sdk-version-bump-${{ steps.bump.outputs.new_version }}
+          BUMP_BRANCH: sdk-version-bump-${{ steps.metadata.outputs.new_version }}
         run: |
           # A leftover branch means an earlier bump to this same version was
           # abandoned. Say so, rather than pushing a near-duplicate alongside it.
@@ -303,7 +135,7 @@ jobs:
 
           git checkout -b "$BUMP_BRANCH"
           git add "$package_template"
-          git commit -m "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }} (${{ inputs.release_type }})"
+          git commit -m "chore(sdk): bump SDK version to ${{ steps.metadata.outputs.new_version }} (${{ inputs.release_type }})"
           git push origin HEAD
 
       - name: Open version-bump PR (using GitHub Metabase Automation account)
@@ -323,7 +155,7 @@ jobs:
                        --assignee "${GITHUB_ACTOR}" \
                        --reviewer metabase/embedding \
                        --label sdk-release-trigger \
-                       --title "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }}" \
+                       --title "chore(sdk): bump SDK version to ${{ steps.metadata.outputs.new_version }}" \
                        --body "$(cat <<'BODY'
           Bumps the Embedding SDK version in `package.template.json` and updates its `sdkRelease` metadata.
 
@@ -331,9 +163,9 @@ jobs:
           |---|---|
           | Branch | `${{ github.ref_name }}` |
           | Release type | `${{ inputs.release_type }}` |
-          | Version | `${{ steps.current.outputs.version }}` → `${{ steps.bump.outputs.new_version }}` |
-          | npm dist-tag | `${{ steps.sdk-release.outputs.dist_tag }}` |
-          | Tag as `latest` | `${{ steps.write-metadata.outputs.tag_as_latest }}` |
+          | Version | `${{ steps.metadata.outputs.previous_version }}` → `${{ steps.metadata.outputs.new_version }}` |
+          | npm dist-tag | `${{ steps.metadata.outputs.dist_tag }}` |
+          | Tag as `latest` | `${{ steps.metadata.outputs.tag_as_latest }}` |
 
           `distTag` and `tagAsLatest` are computed defaults - edit them here if this release should publish under a different dist-tag, or should (not) become the `latest` tag on npm. `tagAsLatest` is `true` only when patching the current gold major (`vars.LATEST_MAJOR_VERSION`).
 

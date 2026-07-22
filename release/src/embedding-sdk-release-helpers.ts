@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from "fs";
+
 import semver from "semver";
 
 // The logic that decides what the Embedding SDK release process publishes:
@@ -11,13 +13,6 @@ import semver from "semver";
 // are their own thing and must not be conflated with the OSS/EE tag logic.
 
 export type SdkReleaseType = "alpha" | "beta" | "preminor" | "patch" | "custom";
-
-export type SdkReleaseMetadata = {
-  version: string;
-  major: string;
-  distTag: string;
-  tagAsLatest: boolean;
-};
 
 // alpha/beta are the ids the master and release-branch flows own; a one-off
 // branch can't reuse them (a custom beta would land on the real <major>-beta
@@ -223,30 +218,58 @@ export function shouldSdkTagAsLatest(
   );
 }
 
-// One call for the bump workflow: validate, then compute the version, its
-// dist-tag, and the tagAsLatest flag together.
-export function computeSdkReleaseMetadata({
+type SdkVersionBumpResult = {
+  previousVersion: string;
+  newVersion: string;
+  majorVersion: string;
+  distTag: string;
+  tagAsLatest: boolean;
+};
+
+// The entry point the "SDK Version Bump PR" workflow calls (via
+// actions/github-script): read the current version from package.template.json,
+// compute the next version + sdkRelease metadata, write them back, and return
+// the values for the workflow to surface as step outputs. The file I/O lives
+// here rather than inline in the workflow so it stays readable and testable.
+export function applySdkVersionBump({
+  packageTemplatePath,
   branch,
-  currentVersion,
   releaseType,
   prereleaseId = "",
   latestMajorVersion,
 }: {
+  packageTemplatePath: string;
   branch: string;
-  currentVersion: string;
   releaseType: SdkReleaseType;
   prereleaseId?: string;
   latestMajorVersion?: string;
-}): SdkReleaseMetadata {
+}): SdkVersionBumpResult {
+  const packageTemplate = JSON.parse(readFileSync(packageTemplatePath, "utf8"));
+  const previousVersion: string = packageTemplate.version;
+
   validateBranchReleaseType(branch, releaseType, prereleaseId);
-  const version = computeNextSdkVersion(currentVersion, releaseType, prereleaseId);
-  const major = getSdkMajorVersion(version);
-  const distTag = computeSdkDistTag(version, releaseType, major);
+  const newVersion = computeNextSdkVersion(
+    previousVersion,
+    releaseType,
+    prereleaseId,
+  );
+  const majorVersion = getSdkMajorVersion(newVersion);
+  const distTag = computeSdkDistTag(newVersion, releaseType, majorVersion);
   const tagAsLatest = shouldSdkTagAsLatest(
     releaseType,
     branch,
-    major,
+    majorVersion,
     latestMajorVersion,
   );
-  return { version, major, distTag, tagAsLatest };
+
+  // Mutate only .version and .sdkRelease, preserving the rest of the file and
+  // its key order (the same net effect as the two jq writes this replaced).
+  packageTemplate.version = newVersion;
+  packageTemplate.sdkRelease = { distTag, tagAsLatest };
+  writeFileSync(
+    packageTemplatePath,
+    JSON.stringify(packageTemplate, null, 2) + "\n",
+  );
+
+  return { previousVersion, newVersion, majorVersion, distTag, tagAsLatest };
 }

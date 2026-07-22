@@ -1,7 +1,11 @@
+import { mkdtempSync, readFileSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+
 import {
+  applySdkVersionBump,
   computeNextSdkVersion,
   computeSdkDistTag,
-  computeSdkReleaseMetadata,
   getSdkMajorVersion,
   shouldSdkTagAsLatest,
   validateBranchReleaseType,
@@ -177,94 +181,140 @@ describe("embedding-sdk-release-helpers", () => {
     });
   });
 
-  describe("computeSdkReleaseMetadata", () => {
-    it("alpha bump on master", () => {
-      expect(
-        computeSdkReleaseMetadata({
-          branch: "master",
-          currentVersion: "0.63.0-alpha.5",
-          releaseType: "alpha",
-        }),
-      ).toEqual({
-        version: "0.63.0-alpha.6",
-        major: "63",
+  describe("applySdkVersionBump", () => {
+    function writeTemplate(version: string): string {
+      const directory = mkdtempSync(join(tmpdir(), "sdk-bump-"));
+      const path = join(directory, "package.template.json");
+      writeFileSync(
+        path,
+        JSON.stringify(
+          { name: "@metabase/embedding-sdk-react", version, description: "x" },
+          null,
+          2,
+        ) + "\n",
+      );
+      return path;
+    }
+
+    it("alpha bump on master writes the file and returns outputs", () => {
+      const path = writeTemplate("0.63.0-alpha.5");
+
+      const result = applySdkVersionBump({
+        packageTemplatePath: path,
+        branch: "master",
+        releaseType: "alpha",
+      });
+
+      expect(result).toEqual({
+        previousVersion: "0.63.0-alpha.5",
+        newVersion: "0.63.0-alpha.6",
+        majorVersion: "63",
         distTag: "alpha",
         tagAsLatest: false,
       });
+
+      const written = JSON.parse(readFileSync(path, "utf8"));
+      expect(written.version).toBe("0.63.0-alpha.6");
+      expect(written.sdkRelease).toEqual({ distTag: "alpha", tagAsLatest: false });
+      // other keys are preserved
+      expect(written.name).toBe("@metabase/embedding-sdk-react");
+      expect(written.description).toBe("x");
     });
 
     it("beta on a release branch", () => {
+      const path = writeTemplate("0.63.0-beta.1");
+
       expect(
-        computeSdkReleaseMetadata({
+        applySdkVersionBump({
+          packageTemplatePath: path,
           branch: "release-x.63.x",
-          currentVersion: "0.63.0-beta.1",
           releaseType: "beta",
         }),
       ).toEqual({
-        version: "0.63.0-beta.2",
-        major: "63",
+        previousVersion: "0.63.0-beta.1",
+        newVersion: "0.63.0-beta.2",
+        majorVersion: "63",
         distTag: "63-beta",
         tagAsLatest: false,
       });
     });
 
     it("patch that graduates to gold and takes latest", () => {
-      expect(
-        computeSdkReleaseMetadata({
-          branch: "release-x.63.x",
-          currentVersion: "0.63.0-beta.2",
-          releaseType: "patch",
-          latestMajorVersion: "63",
-        }),
-      ).toEqual({
-        version: "0.63.0",
-        major: "63",
+      const path = writeTemplate("0.63.0-beta.2");
+
+      const result = applySdkVersionBump({
+        packageTemplatePath: path,
+        branch: "release-x.63.x",
+        releaseType: "patch",
+        latestMajorVersion: "63",
+      });
+
+      expect(result).toEqual({
+        previousVersion: "0.63.0-beta.2",
+        newVersion: "0.63.0",
+        majorVersion: "63",
+        distTag: "63-stable",
+        tagAsLatest: true,
+      });
+      expect(JSON.parse(readFileSync(path, "utf8")).sdkRelease).toEqual({
         distTag: "63-stable",
         tagAsLatest: true,
       });
     });
 
     it("patch on an older release branch does not take latest", () => {
+      const path = writeTemplate("0.62.0");
+
       expect(
-        computeSdkReleaseMetadata({
+        applySdkVersionBump({
+          packageTemplatePath: path,
           branch: "release-x.62.x",
-          currentVersion: "0.62.0",
           releaseType: "patch",
           latestMajorVersion: "63",
         }),
       ).toEqual({
-        version: "0.62.1",
-        major: "62",
+        previousVersion: "0.62.0",
+        newVersion: "0.62.1",
+        majorVersion: "62",
         distTag: "62-stable",
         tagAsLatest: false,
       });
     });
 
     it("custom first cut on a one-off branch", () => {
+      const path = writeTemplate("0.63.0-alpha.5");
+
       expect(
-        computeSdkReleaseMetadata({
+        applySdkVersionBump({
+          packageTemplatePath: path,
           branch: "data-apps",
-          currentVersion: "0.63.0-alpha.5",
           releaseType: "custom",
           prereleaseId: "data-apps",
         }),
       ).toEqual({
-        version: "0.63.0-data-apps.0",
-        major: "63",
+        previousVersion: "0.63.0-alpha.5",
+        newVersion: "0.63.0-data-apps.0",
+        majorVersion: "63",
         distTag: "63-data-apps",
         tagAsLatest: false,
       });
     });
 
-    it("validates before computing (reserved custom id is rejected)", () => {
+    it("propagates validation errors without writing the file", () => {
+      const path = writeTemplate("0.63.0-alpha.5");
+
       expect(() =>
-        computeSdkReleaseMetadata({
+        applySdkVersionBump({
+          packageTemplatePath: path,
           branch: "data-apps",
-          currentVersion: "0.63.0-alpha.5",
           releaseType: "custom",
           prereleaseId: "beta",
         }),
       ).toThrow(/reserved for master\/release-branch/);
+      // the file is untouched on a validation failure
+      expect(JSON.parse(readFileSync(path, "utf8")).version).toBe(
+        "0.63.0-alpha.5",
+      );
     });
   });
 });
