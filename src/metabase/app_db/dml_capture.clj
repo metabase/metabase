@@ -38,7 +38,13 @@
     event, exactly as it bypasses every other Toucan 2 tool.
   - `update!` statements rewritten by a `before-update` method are captured after the rewrite: `:changes` is
     what actually ran, and a before-update that splits one statement into per-row groups delivers one event
-    per group."
+    per group.
+  - The pre-image select and the statement are separate, unlocked reads: a concurrent writer can make a
+    snapshot over- or under-approximate the rows the statement actually affects. toucan2's own
+    `before-delete` has the same window. Consumers already must treat events as re-examination hints, so
+    over-approximation is harmless and under-approximation is bounded by their convergence backstop.
+  - Insert back-filling requires a single-column primary key; a composite-pk model whose literals are
+    missing a capture field delivers the incomplete literals as-is (with a debug log)."
   (:require
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -67,10 +73,18 @@
 
 (defmulti captured!
   "Deliver a capture event for a DML statement against `model`; see the namespace docstring for the shape.
-  Implementations run on the DML's calling thread, inside any enclosing transaction: keep them cheap and
-  never let them throw."
+  Implementations run on the DML's calling thread, inside any enclosing transaction: keep them cheap.
+  Anything they throw is caught and logged by the seam, so a consumer bug degrades to a missed event —
+  covered by whatever convergence backstop the consumer runs — never a failure of the caller's statement."
   {:arglists '([model event])}
   (fn [model _event] (keyword model)))
+
+(defn- deliver-captured!
+  [model event]
+  (try
+    (captured! model event)
+    (catch Exception e
+      (log/errorf e "Error delivering DML capture event for %s %s" model (:op event)))))
 
 (defn- pre-image-rows
   "Select the rows a delete/update statement is about to affect, narrowed to `fields`, as plain raw-value maps.
@@ -102,7 +116,7 @@
                                  model fields parsed-args resolved-query)]
         (u/prog1 (next-method rf query-type model parsed-args resolved-query)
           (when (seq rows)
-            (captured! model {:op :delete, :model model, :rows rows})))))))
+            (deliver-captured! model {:op :delete, :model model, :rows rows})))))))
 
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/update.* #_model ::captured #_resolved-query :default]
@@ -117,10 +131,10 @@
                                  model fields parsed-args resolved-query)]
         (u/prog1 (next-method rf query-type model (assoc parsed-args ::captured? true) resolved-query)
           (when (seq rows)
-            (captured! model {:op      :update
-                              :model   model
-                              :rows    rows
-                              :changes (:changes parsed-args)})))))))
+            (deliver-captured! model {:op      :update
+                                      :model   model
+                                      :rows    rows
+                                      :changes (:changes parsed-args)})))))))
 
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/insert.* #_model ::captured #_resolved-query :default]
@@ -174,15 +188,21 @@
                                (vec row-literals))
                 ;; The literals lack a requested capture field when the column is filled in by the database
                 ;; or a before-insert method (e.g. revision.most_recent); one narrow select by the returned
-                ;; pks recovers the authoritative values.
+                ;; pks recovers the authoritative values. Back-filling needs a single-column pk to select
+                ;; by; composite-pk models deliver their incomplete literals as-is.
                 complete?    (fn [row] (every? #(contains? row %) fields))
-                rows         (if (or (every? complete? rows) (nil? single-pk))
-                               rows
-                               (pre-image-rows :toucan.query-type/select.instances model
-                                               (distinct (cons single-pk fields))
-                                               {:kv-args {:toucan/pk [:in pks]}}
-                                               {}))]
-            (captured! model {:op :insert, :model model, :rows rows, :pks pks})))
+                incomplete?  (not (every? complete? rows))
+                rows         (cond
+                               (not incomplete?) rows
+                               (nil? single-pk)  (do (log/debugf
+                                                      "Cannot back-fill capture fields for composite-pk model %s"
+                                                      model)
+                                                     rows)
+                               :else             (pre-image-rows :toucan.query-type/select.instances model
+                                                                 (distinct (cons single-pk fields))
+                                                                 {:kv-args {:toucan/pk [:in pks]}}
+                                                                 {}))]
+            (deliver-captured! model {:op :insert, :model model, :rows rows, :pks pks})))
         result))))
 
 ;;; A model may mix capture with toucan2's row-level tools; methodical needs to be told the capture method is
