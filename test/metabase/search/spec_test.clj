@@ -4,6 +4,8 @@
    [metabase.search.spec :as search.spec]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel test-qualify-column
   (is (= [:table.column :column] (#'search.spec/qualify-column :table :column)))
   (is (= :qualified.column (#'search.spec/qualify-column :table :qualified.column)))
@@ -145,6 +147,28 @@
           (is (actual-models em))))
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
+
+(deftest ^:synchronized model-hooks-cache-invalidates-on-spec-redefinition-test
+  (testing "replacing a spec method invalidates the single-entry model-hooks cache"
+    (let [spec-multifn search.spec/spec*]
+      ;; Load lazily resolved models and warm the cache before replacing the method, which is the REPL/test-reload
+      ;; path this guards.
+      (search.spec/model-hooks)
+      (let [original (get-method spec-multifn "card")]
+        (try
+          (.addMethod ^clojure.lang.MultiFn spec-multifn
+                      "card"
+                      (fn [_]
+                        (update (original "card") :render-terms assoc :cache-probe :cache_probe)))
+          (is (contains? (->> (get (search.spec/model-hooks) :model/Card)
+                              (filter #(= "card" (:search-model %)))
+                              first
+                              :fields)
+                         :cache_probe))
+          (finally
+            (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original)
+            ;; Do not leave the private cache holding the temporary method table for later tests.
+            (search.spec/model-hooks)))))))
 
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"
