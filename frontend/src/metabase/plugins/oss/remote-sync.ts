@@ -31,6 +31,11 @@ export interface GitSettingsModalProps {
   onClose: () => void;
 }
 
+export type NavbarWorktreesSectionProps = {
+  selectedId?: number | string;
+  onItemSelect: () => void;
+};
+
 export interface RemoteSyncDirtyState {
   /** Array of all dirty entities */
   dirty: RemoteSyncEntity[];
@@ -70,6 +75,9 @@ const getDefaultPluginRemoteSync = () => ({
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
   // Unjustified type cast. FIXME
   CollectionSyncStatusBadge: null as ComponentType | null,
+  NavbarWorktreesSection:
+    // widened so EE can install the section component; stays null on OSS
+    null as ComponentType<NavbarWorktreesSectionProps> | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -99,6 +107,7 @@ export const PLUGIN_REMOTE_SYNC: {
   GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
+  NavbarWorktreesSection: ComponentType<NavbarWorktreesSectionProps> | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;

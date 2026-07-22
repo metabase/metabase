@@ -675,6 +675,7 @@ export type UserSettings = {
   "expand-bookmarks-in-nav"?: boolean;
   "expand-collections-in-nav"?: boolean;
   "expand-library-in-nav"?: boolean;
+  "expand-worktrees-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
