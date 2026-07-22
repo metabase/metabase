@@ -8,8 +8,6 @@ import {
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import type { History } from "history";
-import { createMemoryHistory } from "history";
 import {
   Children,
   Fragment,
@@ -29,7 +27,6 @@ import { Api } from "metabase/api";
 import { useUpdateSettingMutation } from "metabase/api/settings";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
-import { HistoryProvider } from "metabase/history";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
@@ -37,13 +34,11 @@ import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
   type Action,
+  type History,
   type LocationDescriptor,
   Route,
-  type RouterEngine,
-  RouterProvider,
   routerMiddleware,
   routing as routingReducer,
-  useRouterHistory,
 } from "metabase/router";
 import {
   type MemoryTestHistory,
@@ -78,8 +73,6 @@ export interface RenderWithProvidersOptions {
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
-  /** Which router engine hosts the tree when `withRouter` is set. Defaults to v7. */
-  routerEngine?: RouterEngine;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
   withDND?: boolean;
@@ -100,7 +93,6 @@ export function renderWithProviders(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
-    routerEngine = "v7",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -114,7 +106,6 @@ export function renderWithProviders(
     initialRoute,
     storeInitialState,
     withRouter,
-    routerEngine,
     withKBar,
     withDND,
     withUndos,
@@ -141,7 +132,6 @@ export function renderHookWithProviders<TProps, TResult>(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
-    routerEngine = "v7",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -159,7 +149,6 @@ export function renderHookWithProviders<TProps, TResult>(
     initialRoute,
     storeInitialState,
     withRouter,
-    routerEngine,
     withKBar,
     withDND,
     withUndos,
@@ -190,14 +179,12 @@ export function getTestStoreAndWrapper({
   initialRoute,
   storeInitialState,
   withRouter,
-  routerEngine = "v7",
   withKBar,
   withDND,
   withUndos,
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  const isV7Router = withRouter && routerEngine === "v7";
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
@@ -206,22 +193,12 @@ export function getTestStoreAndWrapper({
     initialState = _.pick(initialState, ...publicReducerNames);
   }
 
-  // We need to call `useRouterHistory` to ensure the history has a `query` object,
-  // since some components and hooks rely on it to read/write query params.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const browserHistory = useRouterHistory(createMemoryHistory)({
-    entries: [initialRoute],
-  });
-  // On v7 the harness owns the memory history (rather than the provider creating
-  // it internally) so specs still get a handle to drive and assert against.
-  const v7History = isV7Router
+  // The harness owns the memory history (rather than the provider creating it
+  // internally) so specs still get a handle to drive and assert against.
+  const v7History = withRouter
     ? createMemoryTestHistory(initialRoute)
     : undefined;
-  const history = !withRouter
-    ? undefined
-    : v7History
-      ? createV3HistoryAdapter(v7History)
-      : browserHistory;
+  const history = v7History ? createV3HistoryAdapter(v7History) : undefined;
 
   let reducers;
 
@@ -239,12 +216,7 @@ export function getTestStoreAndWrapper({
     reducers = { ...reducers, ...customReducers };
   }
 
-  // Drive navigation through v3 history or the v7 navigator, matching the engine.
-  const routerNavigator = isV7Router
-    ? createV7Navigator()
-    : history
-      ? history
-      : undefined;
+  const routerNavigator = withRouter ? createV7Navigator() : undefined;
   const storeMiddleware = _.compact([
     Api.middleware,
     routerNavigator && routerMiddleware(routerNavigator),
@@ -263,10 +235,8 @@ export function getTestStoreAndWrapper({
       <TestWrapper
         {...props}
         store={store}
-        history={history}
         v7History={v7History}
         withRouter={withRouter}
-        routerEngine={routerEngine}
         initialRoute={initialRoute}
         withDND={withDND}
         withUndos={withUndos}
@@ -317,10 +287,8 @@ const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
 export function TestWrapper({
   children,
   store,
-  history,
   v7History,
   withRouter,
-  routerEngine = "v7",
   initialRoute = "/",
   withKBar,
   withDND,
@@ -331,10 +299,8 @@ export function TestWrapper({
 }: {
   children: React.ReactElement;
   store: any;
-  history?: History;
   v7History?: MemoryTestHistory;
   withRouter: boolean;
-  routerEngine?: RouterEngine;
   initialRoute?: string;
   withKBar: boolean;
   withDND: boolean;
@@ -370,8 +336,6 @@ export function TestWrapper({
                 <MaybeKBar hasKBar={withKBar}>
                   <MaybeRouter
                     hasRouter={withRouter}
-                    routerEngine={routerEngine}
-                    history={history}
                     v7History={v7History}
                     initialRoute={initialRoute}
                   >
@@ -452,43 +416,29 @@ function childrenAreRouteTree(children: React.ReactNode): boolean {
 function MaybeRouter({
   children,
   hasRouter,
-  routerEngine,
-  history,
   v7History,
   initialRoute,
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
-  routerEngine: RouterEngine;
-  history?: History;
   v7History?: MemoryTestHistory;
   initialRoute: string;
 }): JSX.Element {
   if (!hasRouter) {
     return children;
   }
-  if (routerEngine === "v7") {
-    // Tests pass either a `<Route>` tree (rendered as-is) or a bare component.
-    // v7's `<Routes>` only renders `<Route>` children, so wrap a bare component in
-    // a catch-all route, matching how the v3 harness rendered it directly.
-    const content = childrenAreRouteTree(children) ? (
-      children
-    ) : (
-      <Route path="*" element={children} />
-    );
-    return (
-      <RouterProviderV7Memory initialRoute={initialRoute} history={v7History}>
-        {content}
-      </RouterProviderV7Memory>
-    );
-  }
-  if (!history) {
-    return children;
-  }
+  // Tests pass either a `<Route>` tree (rendered as-is) or a bare component.
+  // `<Routes>` only renders `<Route>` children, so wrap a bare component in a
+  // catch-all route.
+  const content = childrenAreRouteTree(children) ? (
+    children
+  ) : (
+    <Route path="*" element={children} />
+  );
   return (
-    <HistoryProvider history={history}>
-      <RouterProvider>{children}</RouterProvider>
-    </HistoryProvider>
+    <RouterProviderV7Memory initialRoute={initialRoute} history={v7History}>
+      {content}
+    </RouterProviderV7Memory>
   );
 }
 

@@ -6,20 +6,15 @@ import {
   useInRouterContext,
 } from "react-router-v7";
 
-import { type RouterLinkProps, V3RouterLink } from "./react-router";
+import type { RouterLinkProps } from "./react-router";
 import { queryToSearch } from "./v7/location";
 
-/**
- * The app's `<Link>`, engine-aware.
- *
- * v3's `<Link>` reads v3's legacy React context, which only a v3 `<Router>`
- * provides and which does not cross portals. On the v7 engine there is no v3
- * router, so a v3 `<Link>` throws "rendered outside of a router context" the
- * moment it is clicked (worst inside portaled modals). v7's `<Link>` uses modern
- * context, provided by the engine's `<BrowserRouter>` and propagated through
- * portals, so it works everywhere. Both collapse to v7's `<Link>` when the v3
- * engine is deleted in Phase 4.
- */
+function hrefFor(target: V7LinkProps["to"]): string {
+  if (typeof target === "string") {
+    return target;
+  }
+  return `${target.pathname ?? ""}${target.search ?? ""}${target.hash ?? ""}`;
+}
 
 type V3To = RouterLinkProps["to"];
 
@@ -78,73 +73,63 @@ interface Props extends Omit<RouterLinkProps, "to"> {
 export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
   function RouterLink({ to, innerRef, ...props }, ref) {
     const linkRef = ref ?? innerRef;
-    // Detect the engine from the mounted router rather than the flag, so the link
-    // matches whichever provider actually wraps it (the flag and the provider
-    // agree in the app; tests mount a provider directly).
-    const isV7Engine = useInRouterContext();
+    const inRouter = useInRouterContext();
 
-    if (isV7Engine) {
-      // v3-only props v7's `<Link>` does not accept.
-      const { activeClassName, activeStyle, onlyActiveOnIndex, ...rest } =
-        props;
+    // v3-only props v7's `<Link>` does not accept.
+    const { activeClassName, activeStyle, onlyActiveOnIndex, ...rest } = props;
 
-      // A `<Link>` with no destination (`to` null or `""`) is used as a button: it
-      // navigates through its `onClick`. v7's `<Link>` would additionally navigate
-      // on click (an empty `to` resolves to the current route, or `/` from a
-      // top-level portal like a toast), clobbering any push the handler performs,
-      // so render a plain anchor instead. On v3 this matches `router.push("")` /
-      // `router.push(undefined)`, which are no-ops, so only the handler runs.
-      if (to == null || to === "") {
-        return <a {...rest} ref={linkRef} />;
-      }
+    // A `<Link>` with no destination (`to` null or `""`) is used as a button: it
+    // navigates through its `onClick`. v7's `<Link>` would additionally navigate
+    // on click (an empty `to` resolves to the current route, or `/` from a
+    // top-level portal like a toast), clobbering any push the handler performs,
+    // so render a plain anchor instead. On v3 this matched `router.push("")` /
+    // `router.push(undefined)`, which are no-ops, so only the handler runs.
+    if (to == null || to === "") {
+      return <a {...rest} ref={linkRef} />;
+    }
 
-      const { to: v7To, state } = toV7Target(to);
+    const { to: v7To, state } = toV7Target(to);
 
-      // v3's `<Link>` highlights itself when its route is active via
-      // `activeClassName`/`activeStyle` (and `onlyActiveOnIndex` for an exact
-      // match). v7 moved that to `<NavLink>`, so route it there when a call site
-      // asks for active styling; a plain `<Link>` would silently drop it.
-      if (activeClassName != null || activeStyle != null) {
-        const { className, style, ...navRest } = rest;
-        return (
-          <V7NavLink
-            {...navRest}
-            to={v7To}
-            state={state}
-            replace={false}
-            ref={linkRef}
-            end={onlyActiveOnIndex}
-            className={({ isActive }) =>
-              [className, isActive ? activeClassName : null]
-                .filter(Boolean)
-                .join(" ")
-            }
-            style={({ isActive }) =>
-              isActive ? { ...style, ...activeStyle } : style
-            }
-          />
-        );
-      }
+    // v7's `<Link>` reads router context and throws without one. A component
+    // rendered in isolation (common in unit tests) has no router, so fall back to
+    // a plain anchor with the resolved href. The real app always mounts a router,
+    // so this path never runs there.
+    if (!inRouter) {
+      return <a {...rest} href={hrefFor(v7To)} ref={linkRef} />;
+    }
 
-      // v7's `<Link>` silently downgrades a click to a `replace` when the target
-      // equals the current URL. v3 always pushed, and call sites rely on it: the
-      // "New document" menu item links to `/document/new` from `/document/new`,
-      // and the unsaved-changes prompt keys off the new location. Push always.
+    // v3's `<Link>` highlighted itself when its route was active via
+    // `activeClassName`/`activeStyle` (and `onlyActiveOnIndex` for an exact
+    // match). v7 moved that to `<NavLink>`, so route it there when a call site
+    // asks for active styling; a plain `<Link>` would silently drop it.
+    if (activeClassName != null || activeStyle != null) {
+      const { className, style, ...navRest } = rest;
       return (
-        <V7Link
-          {...rest}
+        <V7NavLink
+          {...navRest}
           to={v7To}
           state={state}
           replace={false}
           ref={linkRef}
+          end={onlyActiveOnIndex}
+          className={({ isActive }) =>
+            [className, isActive ? activeClassName : null]
+              .filter(Boolean)
+              .join(" ")
+          }
+          style={({ isActive }) =>
+            isActive ? { ...style, ...activeStyle } : style
+          }
         />
       );
     }
 
+    // v7's `<Link>` silently downgrades a click to a `replace` when the target
+    // equals the current URL. v3 always pushed, and call sites rely on it: the
+    // "New document" menu item links to `/document/new` from `/document/new`,
+    // and the unsaved-changes prompt keys off the new location. Push always.
     return (
-      // `innerRef` is a valid v3 `<Link>` prop but is missing from its types.
-      // @ts-expect-error see https://github.com/remix-run/react-router/blob/v3.2.6/docs/API.md#innerref
-      <V3RouterLink {...props} to={to} innerRef={linkRef} />
+      <V7Link {...rest} to={v7To} state={state} replace={false} ref={linkRef} />
     );
   },
 );

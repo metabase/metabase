@@ -111,7 +111,6 @@
     "formik": "^2.4.5",
     "frimousse": "^0.3.0",
     "fuse.js": "^7.1.0",
-    "history": "3",
     "html2canvas-pro": "^2.0.2",
     "icepick": "2.4.0",
     "iframe-resizer": "~4.3.2",

@@ -167,12 +167,7 @@ export function initializePlugin() {
           </Route>
         </Route>
         <Route path=":tenantId" element={<TenantsListingApp />}>
-          {modalRoute(
-            "edit",
-            // @ts-expect-error - params prop can't be inferred
-            EditTenantModal,
-            { noWrap: true },
-          )}
+          {modalRoute("edit", EditTenantModal, { noWrap: true })}
           {modalRoute(
             "deactivate",
             // @ts-expect-error - params prop can't be inferred
