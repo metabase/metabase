@@ -17,7 +17,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.database-routing.core :as database-routing]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embedding.jwt]
@@ -27,7 +26,6 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
-   [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -93,16 +91,15 @@
   (let [card-id (api.embed.common/unsigned-token->card-id unsigned-token)
         card    (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
-    (database-routing/with-database-routing-off
-      (api.embed.common/process-query-for-card-with-params
-       :export-format export-format
-       :card card
-       :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
-       :embedding-params (:embedding_params card)
-       :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
-       :qp qp
-       :constraints constraints
-       :options options))))
+    (api.embed.common/process-query-for-card-with-params
+     :export-format export-format
+     :card card
+     :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
+     :embedding-params (:embedding_params card)
+     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :qp qp
+     :constraints constraints
+     :options options)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -190,18 +187,17 @@
         dashcard       (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
         card           (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
-    (database-routing/with-database-routing-off
-      (api.embed.common/process-query-for-dashcard
-       :export-format export-format
-       :dashboard dashboard
-       :dashcard dashcard
-       :card card
-       :embedding-params (:embedding_params dashboard)
-       :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
-       :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
-       :constraints constraints
-       :qp qp
-       :middleware middleware))))
+    (api.embed.common/process-query-for-dashcard
+     :export-format export-format
+     :dashboard dashboard
+     :dashcard dashcard
+     :card card
+     :embedding-params (:embedding_params dashboard)
+     :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
+     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :constraints constraints
+     :qp qp
+     :middleware middleware)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -410,9 +406,8 @@
         lat-field (json/decode+kw latField)
         lon-field (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-card card)
-    (database-routing/with-database-routing-off
-      (request/as-admin
-        (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))))
+    (request/as-admin
+      (api.embed.common/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -442,6 +437,5 @@
         lat-field (json/decode+kw latField)
         lon-field (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
-    (database-routing/with-database-routing-off
-      (request/as-admin
-        (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field)))))
+    (request/as-admin
+      (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field))))
