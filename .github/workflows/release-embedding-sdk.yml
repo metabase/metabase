@@ -435,7 +435,7 @@ jobs:
         run: |
           TAG="${{ needs.read-sdk-release-metadata.outputs.dist_tag }}"
           echo "Resolved npm tag: $TAG"
-          npm publish --tag "$TAG"
+          echo "DRY RUN would run: npm publish --tag $TAG"
 
   tag-latest:
     name: Tag npm release as latest
@@ -471,11 +471,9 @@ jobs:
 
       - name: Create and push SDK version tag
         run: |
-          git tag -a ${{ env.tag }} -m "Tagging SDK version ${{ env.tag }}"
-          git push origin ${{ env.tag }}
+          echo "DRY RUN would run: git tag -a ${{ env.tag }} && git push origin ${{ env.tag }}"
 
       - name: Create and push SDK stable version tag
         if: ${{ startsWith(needs.prepare-release.outputs.branch, 'release-x.') }}
         run: |
-          git tag -a -f ${{ env.stable_tag }} -m "Tagging SDK stable version ${{ env.stable_tag }}"
-          git push origin -f ${{ env.stable_tag }}
+          echo "DRY RUN would run: git tag -f ${{ env.stable_tag }} && git push origin -f ${{ env.stable_tag }}"

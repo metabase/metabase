@@ -35,11 +35,12 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Verify version exists on npm
-        run: npm view "@metabase/embedding-sdk-react@$VERSION" version
+        run: |
+          echo "DRY RUN would run: npm view @metabase/embedding-sdk-react@$VERSION version"
 
       - name: Add `latest` dist-tag to npm release
         run: |
-          npm dist-tag add "@metabase/embedding-sdk-react@$VERSION" latest
+          echo "DRY RUN would run: npm dist-tag add @metabase/embedding-sdk-react@$VERSION latest"
           echo "Tagged @metabase/embedding-sdk-react@$VERSION as latest" >> "$GITHUB_STEP_SUMMARY"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
