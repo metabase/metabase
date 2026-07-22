@@ -16,6 +16,7 @@
    those flows are scoped per worktree."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
@@ -51,13 +52,11 @@
   "Walk `form` — including map keys, since entity ids appear in JSON-encoded key positions like
    column_settings and visualizer mappings — applying `f` to every string."
   [form f]
-  (let [rewrite (fn rewrite [x]
-                  (cond
-                    (string? x) (f x)
-                    (map? x)    (into (empty x) (map (fn [[k v]] [(rewrite k) (rewrite v)])) x)
-                    (coll? x)   (into (empty x) (map rewrite) x)
-                    :else       x))]
-    (rewrite form)))
+  (walk/postwalk #(if (string? %) (f %) %) form))
+
+(def ^:private entity-id-pattern
+  "Matches any NanoID-shaped run of characters; the replacement decides whether it is a known id."
+  #"[A-Za-z0-9_-]{21}")
 
 (defn localize-entity-ids
   "Walk `form`, rewriting every occurrence of `canonical->local`'s keys inside string values — both
@@ -68,8 +67,7 @@
   [form canonical->local]
   (if (empty? canonical->local)
     form
-    (let [pattern (re-pattern (str/join "|" (map #(Pattern/quote %) (keys canonical->local))))]
-      (rewrite-strings form #(str/replace % pattern (fn [m] (get canonical->local m m)))))))
+    (rewrite-strings form #(str/replace % entity-id-pattern (fn [m] (get canonical->local m m))))))
 
 (mu/defn canonicalize-entity-ids
   "Walk `form`, stripping worktree `worktree-id`'s prefix from every embedded local entity id — the
