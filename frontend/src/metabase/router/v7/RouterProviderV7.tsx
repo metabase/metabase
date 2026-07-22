@@ -1,7 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
 import {
-  unstable_HistoryRouter as HistoryRouter,
   Routes,
   UNSAFE_createBrowserHistory as createBrowserHistory,
   UNSAFE_createMemoryHistory as createMemoryHistory,
@@ -9,6 +8,7 @@ import {
 
 import { getBasename } from "metabase/utils/basename";
 
+import { SyncHistoryRouter } from "./SyncHistoryRouter";
 import { V7ReduxBridge } from "./V7ReduxBridge";
 import { withBlocking } from "./blocking-history";
 import { mapToV7 } from "./map-to-v7";
@@ -41,9 +41,9 @@ export function RouterProviderV7({ children }: PropsWithChildren): JSX.Element {
     withBlocking(createBrowserHistory({ v5Compat: true })),
   );
   return (
-    <HistoryRouter history={history} basename={getBasename() || undefined}>
+    <SyncHistoryRouter history={history} basename={getBasename() || undefined}>
       <V7RouterTree>{children}</V7RouterTree>
-    </HistoryRouter>
+    </SyncHistoryRouter>
   );
 }
 
@@ -62,8 +62,8 @@ export function RouterProviderV7Memory({
     ),
   );
   return (
-    <HistoryRouter history={history}>
+    <SyncHistoryRouter history={history}>
       <V7RouterTree>{children}</V7RouterTree>
-    </HistoryRouter>
+    </SyncHistoryRouter>
   );
 }
