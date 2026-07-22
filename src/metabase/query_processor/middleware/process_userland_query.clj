@@ -257,8 +257,7 @@
         (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
               execution-info (query-execution-info query)]
           (letfn [(rff* [metadata]
-                    (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                          result         (rff (dissoc metadata :preprocessed_query))
+                    (let [result         (rff metadata)
                           execution-info (enrich-with-execution-context execution-info)]
                       (add-and-save-execution-metadata-xform! execution-info result)))]
             (try
