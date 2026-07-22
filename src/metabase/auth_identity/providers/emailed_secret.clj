@@ -151,7 +151,7 @@
                                                        [:= :auth_identity.user_id user-id]
                                                        [:= :auth_identity.provider (name provider)]]})]
           (do (log/debugf "Auth Identity %s" (str auth-identity))
-              (if-not (:is_active auth-identity)
+              (if (false? (:is_active auth-identity))
                 {:success? false
                  :error :inactive-account
                  :message "Inactive Account"}
