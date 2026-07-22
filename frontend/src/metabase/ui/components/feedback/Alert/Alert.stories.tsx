@@ -52,7 +52,13 @@ const SIZES = [
   { size: "compact", label: "Compact" },
 ] as const;
 
-const COLORS = ["info", "core-brand", "warning", "error", "success"] as const;
+const COLORS = [
+  undefined,
+  "core-brand",
+  "warning",
+  "error",
+  "success",
+] as const;
 
 const Overview: StoryFn<AlertProps> = () => (
   <StoryShowcase title="Alert">
@@ -73,9 +79,9 @@ const Overview: StoryFn<AlertProps> = () => (
       ))}
       {SIZES.map(({ size, label }) =>
         COLORS.map((color) => (
-          <Fragment key={`${size}-${color}`}>
+          <Fragment key={`${size}-${color ?? "default"}`}>
             <Text size="sm" c="text-secondary" mt="sm">
-              {label} / {color}
+              {label} / {color ?? "default"}
             </Text>
             {COLUMNS.map(({ variant, withCloseButton }) => (
               <Alert
@@ -99,19 +105,17 @@ const Overview: StoryFn<AlertProps> = () => (
 
 const ColorsTemplate = (args: AlertProps) => (
   <Stack>
-    {(["info", "core-brand", "warning", "error", "success"] as const).map(
-      (color) => (
-        <Alert
-          {...args}
-          key={color}
-          color={color}
-          icon={<Icon name="info" />}
-          title={`color="${color}"`}
-        >
-          <Text>{MESSAGE}</Text>
-        </Alert>
-      ),
-    )}
+    {COLORS.map((color) => (
+      <Alert
+        {...args}
+        key={color ?? "default"}
+        color={color}
+        icon={<Icon name="info" />}
+        title={color ? `color="${color}"` : "default"}
+      >
+        <Text>{MESSAGE}</Text>
+      </Alert>
+    ))}
   </Stack>
 );
 

@@ -1,44 +1,74 @@
 import { Alert, type MantineThemeOverride } from "@mantine/core";
 
 import type { ColorName } from "metabase/ui/colors/types";
-import { color, isColorName } from "metabase/ui/utils/colors";
+import { color } from "metabase/ui/utils/colors";
 
 import AlertStyles from "./Alert.module.css";
 
-const ALERT_BACKGROUND_COLORS: Record<string, ColorName> = {
-  "core-brand": "background_surface-brand-subtle",
-  warning: "background_surface-warning",
-  error: "background_surface-error-subtle",
-  info: "background_page-tertiary",
-  success: "background_surface-success",
+export type AlertColor =
+  | "core-brand"
+  | "warning"
+  | "error"
+  | "success"
+  | "default";
+export type AlertVariant = "default" | "light";
+
+type AlertColorConfig = {
+  icon: ColorName;
+  background: ColorName;
+  border: ColorName;
+  title: ColorName;
 };
 
-const ALERT_ICON_COLORS: Record<string, ColorName> = {
-  "core-brand": "text-brand-strong",
-  warning: "feedback-warning-strong",
-  error: "feedback-negative-strong",
-  info: "text-brand",
-  success: "feedback-positive-strong",
+const COLOR_SETS: Record<AlertColor, AlertColorConfig> = {
+  default: {
+    icon: "icon-brand",
+    background: "background_surface-primary",
+    border: "border",
+    title: "text-primary",
+  },
+  "core-brand": {
+    icon: "text-brand-strong",
+    background: "background_surface-brand-subtle",
+    border: "core-brand",
+    title: "text-brand-strong",
+  },
+  warning: {
+    icon: "feedback-warning-strong",
+    background: "background_surface-warning",
+    border: "feedback-warning-strong",
+    title: "feedback-warning-strong",
+  },
+  error: {
+    icon: "feedback-negative-strong",
+    background: "background_surface-error-subtle",
+    border: "feedback-negative-strong",
+    title: "feedback-negative-strong",
+  },
+  success: {
+    icon: "feedback-positive-strong",
+    background: "background_surface-success",
+    border: "feedback-positive-strong",
+    title: "feedback-positive-strong",
+  },
 };
 
-const ALERT_BORDER_COLORS: Record<string, ColorName> = {
-  "core-brand": "core-brand",
-  success: "feedback-positive-strong",
-  error: "feedback-negative-strong",
-  warning: "feedback-warning-strong",
+const ALERT_COLORS_BY_VARIANT: Record<AlertVariant, typeof COLOR_SETS> = {
+  default: COLOR_SETS,
+  light: {
+    ...COLOR_SETS,
+    default: {
+      ...COLOR_SETS.default,
+      background: "background_surface-secondary",
+    },
+  },
 };
 
-const ALERT_TITLE_COLORS: Record<string, ColorName> = {
-  "core-brand": "text-brand-strong",
-  success: "feedback-positive-strong",
-  error: "feedback-negative-strong",
-  warning: "feedback-warning-strong",
-};
+const isAlertColor = (value?: string): value is AlertColor =>
+  value !== undefined && value in COLOR_SETS;
 
-const NEUTRAL_BACKGROUND: Record<string, ColorName> = {
-  light: "background_surface-secondary",
-  default: "background-primary",
-};
+const isAlertVariant = (value?: string): value is AlertVariant =>
+  value !== undefined && value in ALERT_COLORS_BY_VARIANT;
 
 export const alertOverrides: MantineThemeOverride["components"] = {
   Alert: Alert.extend({
@@ -55,45 +85,16 @@ export const alertOverrides: MantineThemeOverride["components"] = {
       closeButton: AlertStyles.closeButton,
     },
     vars: (_theme, props) => {
-      const variant = props.variant === "light" ? "light" : "default";
-      const iconColor = props.color
-        ? ALERT_ICON_COLORS[props.color]
-        : undefined;
-      const bgColor = props.color
-        ? ALERT_BACKGROUND_COLORS[props.color]
-        : undefined;
-      const borderColor = props.color
-        ? ALERT_BORDER_COLORS[props.color]
-        : undefined;
-      const titleColor = props.color
-        ? ALERT_TITLE_COLORS[props.color]
-        : undefined;
-      if (isColorName(iconColor) && isColorName(bgColor)) {
-        return {
-          root: {
-            "--alert-color": color(iconColor),
-            "--alert-bg": color(bgColor),
-            ...(isColorName(borderColor)
-              ? { "--alert-border-color": color(borderColor) }
-              : {}),
-            ...(isColorName(titleColor)
-              ? { "--alert-title-color": color(titleColor) }
-              : {}),
-          },
-        };
-      }
-      if (variant === "light") {
-        return {
-          root: {
-            "--alert-color": color("icon-brand"),
-            "--alert-bg": color(NEUTRAL_BACKGROUND[variant]),
-          },
-        };
-      }
+      const variant = isAlertVariant(props.variant) ? props.variant : "default";
+      const variantColors = ALERT_COLORS_BY_VARIANT[variant];
+      const colorName = isAlertColor(props.color) ? props.color : "default";
+      const colors = variantColors[colorName];
       return {
         root: {
-          "--alert-color": color("icon-brand"),
-          "--alert-bg": color("background_surface-primary"),
+          "--alert-color": color(colors.icon),
+          "--alert-bg": color(colors.background),
+          "--alert-border-color": color(colors.border),
+          "--alert-title-color": color(colors.title),
         },
       };
     },

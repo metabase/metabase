@@ -1,7 +1,7 @@
 .root {
   padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
     var(--mantine-spacing-lg) var(--mantine-spacing-lg);
-  border: 0.5px solid var(--alert-border-color, var(--mb-color-border));
+  border: 0.5px solid var(--alert-border-color);
   border-radius: 12px;
   box-shadow: 0 1px 3px 0 var(--mb-color-shadow-default);
   overflow: hidden;
@@ -32,7 +32,7 @@
   font-size: 16px;
   line-height: 22px;
   font-weight: 600;
-  color: var(--alert-title-color, var(--mb-color-text-primary));
+  color: var(--alert-title-color);
 }
 
 .message {
