@@ -432,8 +432,7 @@
   (check-worktrees-enabled!)
   (present-worktree (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/worktrees/:id"
+(api.macros/defendpoint :delete "/worktrees/:id" :- :nil
   "Delete a worktree along with the collection trees it materialized. Refused for the default worktree
   (change `remote-sync-branch` instead) and, unless `force`, for a worktree with unpushed local changes
   (400 carrying the dirty objects).
@@ -452,7 +451,7 @@
                          :dirty_objects (mapv #(select-keys % [:model_type :model_id :model_name :status])
                                               dirty)}))))
     (remote-sync.worktree/delete-worktree! worktree)
-    api/generic-204-no-content))
+    nil))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

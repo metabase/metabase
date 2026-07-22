@@ -42,8 +42,8 @@
    rows that predate it. Returns the worktree, or nil when no branch is configured."
   []
   (when-let [branch (setting/get :remote-sync-branch)]
-    (when-let [worktree (or (t2/select-one :model/RemoteSyncWorktree :branch branch)
-                            (try
+    (or (t2/select-one :model/RemoteSyncWorktree :branch branch)
+        (when-let [worktree (try
                               ;; seed the sync base from task history so pre-worktree instances don't
                               ;; regress to a full import on their first post-upgrade sync
                               (t2/insert-returning-instance! :model/RemoteSyncWorktree
@@ -51,9 +51,10 @@
                                                               :base_version (remote-sync.task/last-version)})
                               (catch Exception _
                                 ;; lost a race with another node/thread inserting the same branch
-                                (t2/select-one :model/RemoteSyncWorktree :branch branch))))]
-      (backfill-worktree-references! (:id worktree))
-      worktree)))
+                                (t2/select-one :model/RemoteSyncWorktree :branch branch)))]
+          ;; only on first creation: pre-worktree rows exist exactly when the row didn't
+          (backfill-worktree-references! (:id worktree))
+          worktree))))
 
 (mu/defn default-worktree-id :- [:maybe pos-int?]
   "ID of the default worktree — the row whose branch matches the `remote-sync-branch` setting — creating
@@ -103,7 +104,7 @@
         member? (into #{} (map :id) members)]
     (into []
           (comp (remove (fn [{:keys [location]}]
-                          (some-> (last (collection/location-path->ids location)) member?)))
+                          (some-> location collection/location-path->parent-id member?)))
                 (map #(select-keys % [:id :name])))
           members)))
 
