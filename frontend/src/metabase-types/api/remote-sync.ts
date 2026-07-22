@@ -209,3 +209,52 @@ export type TestRemoteSyncConnectionRequest = {
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
 };
+
+export type RemoteSyncWorktreeId = number;
+
+/** A remote sync worktree: a checked-out branch materialized as collection trees. */
+export type RemoteSyncWorktree = {
+  id: RemoteSyncWorktreeId;
+  branch: string;
+  /** Last synced git SHA; null until the first successful pull. */
+  base_version: string | null;
+  /** Whether this is the default worktree (its branch matches the remote-sync-branch setting). */
+  is_default: boolean;
+  roots: RemoteSyncWorktreeRoot[];
+  creator_id: UserId | null;
+  created_at: string;
+};
+
+export type RemoteSyncWorktreeRoot = {
+  id: number;
+  name: string;
+};
+
+export type ListWorktreesResponse = {
+  items: RemoteSyncWorktree[];
+};
+
+export type CreateWorktreeRequest = {
+  branch: string;
+  /** Fork the branch from this one server-side when it does not exist on the remote yet. */
+  from_branch?: string;
+};
+
+export type DeleteWorktreeRequest = {
+  id: RemoteSyncWorktreeId;
+  /** Delete even when the worktree has unpushed local changes. */
+  force?: boolean;
+};
+
+export type PullWorktreeRequest = {
+  worktree_id: RemoteSyncWorktreeId;
+  /** Discard unpushed local changes in the worktree. */
+  force?: boolean;
+};
+
+export type PushWorktreeRequest = {
+  worktree_id: RemoteSyncWorktreeId;
+  message?: string;
+  /** Overwrite the remote branch when it has advanced past the worktree's base version. */
+  force?: boolean;
+};

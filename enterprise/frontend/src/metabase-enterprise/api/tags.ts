@@ -41,6 +41,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
+  "remote-sync-worktree",
   "source-replacement-run",
   "python-transform-library",
   "support-access-grant",
