@@ -5,7 +5,6 @@ import { Alert, type AlertProps, Box, Icon, Stack, Text } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
 
-const TITLE = "Open source analytics that answers back";
 const MESSAGE =
   "Let your team and customers chat with your data, query in natural language, and explore with AI-backed tools. Connect to your database in minutes for analytics without bottlenecks.";
 
@@ -50,7 +49,7 @@ export default {
     variant: "default",
     size: "default",
     color: "default",
-    title: TITLE,
+    title: "Open source analytics that answers back",
     children: MESSAGE,
     withCloseButton: false,
     withTitle: true,
