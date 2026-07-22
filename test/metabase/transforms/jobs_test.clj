@@ -17,7 +17,7 @@
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.test-dataset :as transforms-dataset]
-   [metabase.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase.transforms.test-util :refer [transform-run-timeout-seconds with-transform-cleanup!]]
    [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2])
   (:import
@@ -564,7 +564,9 @@
                                                                       {:run-method :manual})}
                                        (catch Exception e
                                          {:error e})))
-                              results [(deref fut1 30000 {:error :timeout})
-                                       (deref fut2 30000 {:error :timeout})]]
+                              ;; each run-transforms! does a real transform execution, so give it the full run timeout
+                              timeout-ms (* 1000 transform-run-timeout-seconds)
+                              results [(deref fut1 timeout-ms {:error :timeout})
+                                       (deref fut2 timeout-ms {:error :timeout})]]
                           (is (every? #(= :succeeded (-> % :result ::jobs/status)) results)
                               "Both threads should succeed"))))))))))))))
