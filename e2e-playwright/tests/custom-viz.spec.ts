@@ -2271,9 +2271,15 @@ test.describe("sandbox", () => {
     ).not.toHaveAttribute("data-pwned-by-plugin", /.*/);
   });
 
-  // FIXME: deliberately red pending an answer from the custom-viz owners about
-  // master commit 07cb2f0a6c7 removing the containment boundary; see
-  // FINDINGS.md #224 — do not delete without reading that entry.
+  // RESOLVED (was: deliberately red per FINDINGS #224). The containment
+  // boundary 07cb2f0a6c7 removed is RESTORED on master: SandboxedPluginContainer
+  // wraps the sandbox in a dedicated element whose CSS module carries
+  // `contain: layout paint /* Security boundary */`, shaped so popovers still
+  // work. Verified green on the merge jar locally and on CI (run 29883950172
+  // s10); the preceding s10 reds were the all-zero-rect rendering flake (see
+  // the toPass note below), not the escape. Upstream deleted its own version
+  // of this test with the removal and has not re-added one — KEEP this: it is
+  // now the only automated guard on the restored boundary.
   test("confines custom viz and custom viz setting widget to its container (GDGT-2400)", async ({
     page,
     mb,

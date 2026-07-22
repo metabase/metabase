@@ -4725,6 +4725,24 @@ intentional and weighed, delete our test to match upstream's deletion and close
 this. Do not silently delete it before then — it is the only automated evidence
 that the boundary was given up.
 
+**#224 CLOSED (2026-07-22, later): master restored the boundary — the owners'
+answer is moot.** `SandboxedPluginContainer`
+(enterprise/frontend/src/metabase-enterprise/custom_viz/components/) now wraps
+the sandbox in a dedicated element whose CSS module carries the exact removed
+rule, `contain: layout paint; /* Security boundary */`, restructured (outer
+container / inner mount) so custom-widget popovers still overflow — i.e. the
+trade GDGT-2872 made was re-weighed and both halves kept. Verified: GDGT-2400
+passes on the merge jar locally and on CI run 29883950172 s10. Corrective note
+on our own record: the three preceding s10 reds carried the all-zero-rect
+rendering signature (the very confound the f39d02a13d4 retry-fix documented),
+NOT the escape — so the "deliberately red" framing had silently gone stale
+before the flip was noticed. Not pinned: which master commit landed the
+restore, or what changed CI-side to make the widget render reliably in run
+29883950172. Disposition: the test is KEPT as a live regression guard — upstream
+deleted its equivalent with the removal and did not re-add one, so this is
+coverage upstream lacks. The drafted message to the owners no longer needs
+sending.
+
 ---
 
 ### #225 PRODUCT LIMITATION (app code, NOT ours to fix): Metabase cannot

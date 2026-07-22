@@ -120,15 +120,14 @@ the spec overrides explicitly) and survived meaninglessly.
 Both now have something no prior investigation had: **traces for flaky-but-passing
 shards**, as of `18a02dd000c`.
 
-### 2. Awaiting a human answer — `custom-viz` (#224)
-A **genuine sandbox escape**: untrusted plugin code can cover the whole viewport.
-Master commit `07cb2f0a6c7` (GDGT-2872) deliberately removed
-`contain: layout paint /* Security boundary */` to let popovers overflow, and
-deleted upstream's own test in the same commit. **Triaged not urgent.** A message
-to the custom-viz owners is drafted. Our ported test is deliberately left FAILING
-until they answer — **do not silently delete it**, it is the only automated
-evidence the boundary was given up. Once they confirm the trade was weighed,
-delete it to match upstream and close.
+### 2. ~~Awaiting a human answer — `custom-viz` (#224)~~ CLOSED 2026-07-22
+Master restored the boundary itself: `SandboxedPluginContainer` carries
+`contain: layout paint /* Security boundary */` again, restructured so popovers
+still work. GDGT-2400 is green locally and on CI (run 29883950172 s10) and is
+**kept as a live regression guard** — upstream deleted its equivalent and never
+re-added one. The owners' answer is moot; the drafted message needn't be sent.
+Full closure note (including the stale-red confound correction) in FINDINGS
+#224.
 
 ### 3. Report to owners, no code change from us
 - **#225 MySQL 8.4** — Metabase cannot connect to a cold `caching_sha2` account
