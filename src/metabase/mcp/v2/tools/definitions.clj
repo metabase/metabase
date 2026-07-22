@@ -13,6 +13,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.measures.api :as measures.api]
    [metabase.metabot.scope :as metabot.scope]
@@ -25,16 +26,19 @@
 
 ;;; ------------------------------------------------ Shared plumbing -----------------------------------------------
 
-(def ^:private write-result-keys
-  "Keys of the created/updated row echoed back to the caller (membership only — the response is
-   a map). `:definition` shows the stored MBQL 5 shape, so the caller sees the result of any
-   input conversion."
-  #{:id :entity_id :name :table_id :description :archived :definition})
-
 (defn- write-result
-  [row]
-  (->> (-> (select-keys row write-result-keys)
-           (m/update-existing :definition #(some-> % lib/prepare-for-serialization)))
+  "The created/updated row echoed to the caller: `kind`'s concise read projection — so the echo
+   and a concise get_content read carry the same identity fields by construction — plus
+   `:entity_id` (a portable id to update by) and `:definition`, the stored MBQL 5 shape, so the
+   caller sees the result of any input conversion. Nils drop out: an unset description is omitted,
+   not null."
+  [row kind]
+  ;; The :segment/:measure projections are registered by metabase.mcp.v2.tools.content, which
+  ;; metabase.mcp.v2.api loads alongside this ns — so the registry is populated before any tool
+  ;; dispatch reaches here.
+  (->> (-> (projections/project kind :concise row)
+           (assoc :entity_id  (:entity_id row)
+                  :definition (some-> (:definition row) lib/prepare-for-serialization)))
        (m/remove-vals nil?)))
 
 (defn- resolve-table
@@ -338,7 +342,7 @@
         (-> (run-domain-write #(segments.api/create-segment! {:name        (:name body)
                                                               :description (:description body)
                                                               :definition  definition}))
-            write-result
+            (write-result :segment)
             common/success-content))
 
       :update
@@ -352,7 +356,7 @@
                                               :segment definition
                                               (t2/select-one :model/Table :id (:table_id segment)))))]
         (-> (run-domain-write #(segments.api/write-check-and-update-segment! (:id segment) body))
-            write-result
+            (write-result :segment)
             common/success-content)))))
 
 ;;; ------------------------------------------------ measure_write -------------------------------------------------
@@ -402,7 +406,7 @@
         (-> (run-domain-write #(measures.api/create-measure! {:name        (:name body)
                                                               :description (:description body)
                                                               :definition  definition}))
-            write-result
+            (write-result :measure)
             common/success-content))
 
       :update
@@ -416,5 +420,5 @@
                                               :measure definition
                                               (t2/select-one :model/Table :id (:table_id measure)))))]
         (-> (run-domain-write #(measures.api/write-check-and-update-measure! (:id measure) body))
-            write-result
+            (write-result :measure)
             common/success-content)))))
