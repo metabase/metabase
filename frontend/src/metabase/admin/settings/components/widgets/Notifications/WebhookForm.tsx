@@ -36,12 +36,33 @@ import {
 
 import { buildAuthInfo } from "./utils";
 
+/**
+ * Approximates the backend validator (metabase.util/url?), which unlike Yup's
+ * .url() accepts bare hostnames such as http://webhook-tester:8080/
+ */
+const isValidWebhookUrl = (value: string): boolean => {
+  if (value !== value.trim() || !value.includes("://")) {
+    return false;
+  }
+
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 const validationSchema = Yup.object({
   url: Yup.string()
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .url(t`Please enter a correctly formatted URL`)
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .required(t`Please enter a correctly formatted URL`),
+    .required(t`Please enter a correctly formatted URL`)
+    .test(
+      "is-http-url",
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+      t`Please enter a correctly formatted URL`,
+      (value) => value != null && isValidWebhookUrl(value),
+    ),
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   name: Yup.string().required(t`Please add a name`),
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
