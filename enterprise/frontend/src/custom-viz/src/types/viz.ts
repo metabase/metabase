@@ -163,6 +163,15 @@ export type CustomStaticVisualizationProps<
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
+
+  /**
+   * Pixel dimensions of the box the visualization should render into (e.g. a
+   * dashboard grid cell when exporting to PDF), mirroring the interactive
+   * `width`/`height`. Undefined when the chart is rendered at its natural size
+   * (email/Slack). Render responsively into these bounds when provided.
+   */
+  width?: number;
+  height?: number;
 };
 export type ClickObject<TSettings extends Record<string, unknown>> = {
   /** The raw value of the clicked cell. */
