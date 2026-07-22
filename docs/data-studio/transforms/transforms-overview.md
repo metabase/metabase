@@ -226,13 +226,33 @@ If a job includes a transform that depends on a table created by another transfo
 
 _Data Studio > Transforms > Settings_
 
-Incremental transforms only append new data since the previous transform run. For example, you might have new transaction data coming in every day, and run the transform nightly. With each run, the incremental transform would only write the rows added after the previous run the night before.
+Incremental transforms only process the data that's new since the previous transform run. For example, you might have new transaction data coming in every day, and run the transform nightly. With each run, the incremental transform would only handle the rows added after the previous run the night before.
+
+By default, Metabase appends those rows to the target table. If your source tables track changes to a record over time, you can set a [merge key](#merge-key) so that Metabase updates the existing rows instead of adding duplicate rows.
 
 ### Prerequisites for incremental transforms
 
 - There is a column in your data that Metabase can check for new values to determine which data is new. We'll refer to this as a "Checkpoint" column.
 - The checkpoint column has to have increasing values, like a sequential ID or timestamp column. Metabase will determine what "new" data is by looking for values that are _greater than_ already-written checkpoint values.
 - Your schema is stable, meaning that the structure of the tables is not going to change from run to run.
+
+### Add merge keys to update rows in place
+
+By default, Metabase will append rows when outputting a transform. You can add a merge key to upsert (update or append) instead.
+
+Why'd you'd want to add a merge key: some source tables get a new row each time a record changes. So for example the same order shows up once as `created`, again as `paid`, and again as `shipped`. If you append those rows, you end up with three rows for the same order. That may be what you want. But if instead you want to update these records in place, you can select one or more columns as merge keys, like an order ID column. If a merge key is set, Metabase will first check update existing records that match the key. If no match is found, Metabase will append a new record.
+
+To set a merge key:
+
+1. Go to the transform's page in **Data Studio > Transforms**.
+2. Switch to the **Settings** tab and turn on incremental processing.
+3. In **Merge key**, choose the columns that identify a record. If the target table already exists, you'll pick from its columns. If the transform hasn't run yet, type each column name and press comma or enter. Pick the column (or columns) that identify a record.
+
+The merge key refers to columns in the _target_ table (the columns your transform outputs), not columns in the _source_ tables. If identifying a record requires a combination of columns, like an order ID plus a region, pick more than one column as merge keys.
+
+For merge keys to work, you'll need to pick a checkpoint field that increases every time a row is written, like an `updated_at` timestamp. Otherwise, the transform won't pick up the change, and a merge key won't matter.
+
+If a merge key names a column that isn't in the target table, the run fails with an error telling you which columns are missing.
 
 ### Make a transform incremental
 
