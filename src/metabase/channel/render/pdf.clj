@@ -96,6 +96,20 @@
   natively-framed table path (see [[draw-table-card!]]) instead of the aspect-fit, centered image path."
   #{:table :pivot :object})
 
+(defn- chart-fills-cell?
+  "Whether a chart of `display`/`chart-type` should be rendered to exactly fill its `cell-w`x`body-h`
+  body area (like the frontend dashcard) rather than rendered at its natural size and aspect-fit.
+  - Rectangular ECharts/visx charts always fill
+  - custom viz fill when they render statically
+   -pies fill (and move their legend to the side) only when the body area is square-or-wider,
+    otherwise they keep a bottom legend."
+  [display chart-type cell-w body-h]
+  (or (contains? rectangular-displays display)
+      (and (render.util/custom-viz-display? display)
+           (= chart-type :javascript_visualization))
+      (and (= :pie display)
+           (>= cell-w body-h))))
+
 ;; --------------------------------------------------------------------------------------------
 ;; Page geometry
 ;; --------------------------------------------------------------------------------------------
@@ -1097,11 +1111,8 @@
         body-top   (- top-y header)
         body-h     (- cell-h header)
         display    (effective-display card dashcard)
-        ;; Rectangular charts and pies both fill their box exactly; the pie's static-viz component
-        ;; then places its legend to the side (wide box) or below (tall box).
-        fill?      (or (contains? rectangular-displays display)
-                       (= :pie display))
         chart-type (render.card/detect-pulse-chart-type card dashcard data)
+        fill?      (chart-fills-cell? display chart-type cell-w body-h)
         tabular?   (contains? table-like-chart-types chart-type)
         ;; a no-row result detects as :empty regardless of display -> no-results placeholder
         empty?     (= :empty chart-type)
