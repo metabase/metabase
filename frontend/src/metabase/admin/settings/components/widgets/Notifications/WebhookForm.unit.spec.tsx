@@ -65,6 +65,30 @@ describe("WebhookForm", () => {
     ).toBeInTheDocument();
   });
 
+  it("should accept bare-hostname URLs (metabase#74812)", async () => {
+    const { onSubmit } = await setup();
+    await userEvent.type(
+      await screen.findByLabelText("Webhook URL"),
+      "http://webhook-tester:8080/",
+    );
+    await userEvent.type(screen.getByLabelText("Give it a name"), "Local hook");
+    await userEvent.type(
+      screen.getByLabelText("Description"),
+      "Docker network hook",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create destination" }),
+    );
+
+    expect(
+      screen.queryByText("Please enter a correctly formatted URL"),
+    ).not.toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "http://webhook-tester:8080/" }),
+      expect.anything(),
+    );
+  });
+
   it("should error when no name is provided", async () => {
     await setup();
     await userEvent.type(
