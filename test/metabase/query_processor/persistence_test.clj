@@ -290,9 +290,9 @@
               count-col   (m/find-first #(= (:name %) "count")
                                         (lib/filterable-columns base-query))
               multi-stage-query (lib/filter base-query (lib/> count-col 5))]
-          (doseq [[description model-query] [["Persisted models with custom columns can be used as a source (#78240)" custom-col-query]
-                                             ["Persisted multi-stage models can be used as a source (#78240)" multi-stage-query]]]
-            (testing description
+          (doseq [[description model-query] [["custom columns" custom-col-query]
+                                             ["multiple stages" multi-stage-query]]]
+            (testing (format "Persisted models with %s can be used as a source (#72480)" description)
               (mt/with-temp [:model/Card model {:type          :model
                                                 :database_id   (mt/id)
                                                 :query_type    :query
