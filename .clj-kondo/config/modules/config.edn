@@ -1543,6 +1543,17 @@
            tracing
            util}}
 
+  op-cache
+  {:team "Querying Platform"
+   :api  #{metabase.op-cache.core}
+   :uses #{}}
+
+  op-cache-impl
+  {:team "Querying Platform"
+   :api  #{}
+   :uses #{op-cache
+           util}}
+
   osi
   {:team "Metabot"
    :api  #{metabase.osi.ai-context.api}

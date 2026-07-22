@@ -195,6 +195,13 @@
      metabase.mcp.usage/record-mcp-tool-call!
      metabase.notification.models/create-notification!
      metabase.oauth-server.core/reset-provider!
+     ;; op-cache tests exercise these against test-local in-memory storage, so they can't affect other tests
+     metabase.op-cache.core/evict!
+     metabase.op-cache.core/fetch-or-compute!
+     metabase.op-cache-impl.storage/delete-entry!
+     metabase.op-cache-impl.storage/release-claim!
+     metabase.op-cache-impl.storage/try-claim!
+     metabase.op-cache-impl.storage/write-entry!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
      ;; MCP usage tests isolate their rows by unique keys (session id / tool name / duration /
