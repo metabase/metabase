@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.transform-hooks
   "Enterprise hooks that integrate the transform execution path with workspace isolation."
   (:require
-   [metabase-enterprise.workspaces.instance :as ws.instance]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.premium-features.core :refer [defenterprise]]))
@@ -34,7 +34,7 @@
    provisioned, the rewrite must apply."
   :feature :none
   [db-id target]
-  (if (some? (ws.instance/db-workspace-namespace db-id))
+  (if (some? (ws/db-workspace-namespace db-id))
     (let [{to-db :db to-schema :schema to-name :name}
           (ws.table-remapping/add-transform-target-mapping! db-id target)]
       ;; **Replace** `:db` and `:schema` on the target with the to-spec's values

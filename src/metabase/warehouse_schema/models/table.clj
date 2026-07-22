@@ -588,19 +588,27 @@
     collection_id (conj [{:model "Collection" :id collection_id}])
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
-(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
-  (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
-                            {["Field" field-id] {"Table" id}}))
+(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived user-edits-only]}]
+  (let [;; When user-edits-only, emit only fields that have user-authored metadata (FieldUserSettings rows).
+        ;; On import the parent Field row is synthesized if missing, so FieldUserSettings is self-sufficient.
+        ;; Otherwise emit all Field ids for a full serdes backup/restore.
+        fields   (if user-edits-only
+                   (into {} (for [fus-field-id (t2/select-fn-set :field_id :model/FieldUserSettings
+                                                                 {:join  [[:metabase_field :f] [:= :f.id :field_id]]
+                                                                  :where [:= :f.table_id id]})]
+                              [["FieldUserSettings" fus-field-id] {"Table" id}]))
+                   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
+                              [["Field" field-id] {"Table" id}])))
         segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Segment" segment-id] {"Table" id}}))
+                            [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Measure" measure-id] {"Table" id}}))]
+                            [["Measure" measure-id] {"Table" id}]))]
     (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
@@ -643,36 +651,6 @@
 (defmethod serdes/storage-path "Table" [table _ctx]
   (conj (serdes/storage-path-prefixes (serdes/path table))
         {:label (:name table) :key (:name table)}))
-
-(defmethod serdes/metadata-query :model/Table
-  [model opts]
-  (t2/reducible-query
-   {:select [[:t.id :id]
-             [:t.db_id :db_id]
-             [:t.name :name]
-             [:t.schema :schema]
-             [:t.description :description]]
-    :from   [[(t2/table-name model) :t]]
-    :join   [[(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
-    :where  [:and
-             (serdes/metadata-query-filter :model/Database :db opts)
-             (serdes/metadata-query-filter model :t opts)]}))
-
-(defmethod serdes/metadata-query-filter :model/Table
-  [_model alias {:keys [user-info table-ids schema-ids]}]
-  (let [perm-mapping {:perms/view-data      :unrestricted
-                      :perms/create-queries :query-builder}]
-    (cond-> [:and
-             [:= (u/qualified-key alias :active) true]
-             [:= (u/qualified-key alias :visibility_type) nil]
-             [:in (u/qualified-key alias :id)
-              (perms/visible-table-filter-select :id user-info perm-mapping)]]
-      (seq schema-ids) (conj (into [:or]
-                                   (for [[db-id schemas] schema-ids]
-                                     [:and
-                                      [:= (u/qualified-key alias :db_id) db-id]
-                                      [:in (u/qualified-key alias :schema) schemas]])))
-      (seq table-ids)  (conj [:in (u/qualified-key alias :id) table-ids]))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

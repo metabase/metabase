@@ -134,6 +134,7 @@
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation
+    :model/TransformDagRun
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag

@@ -19,6 +19,7 @@
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
+(def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 
@@ -27,7 +28,8 @@
   skipped because their value is diffed separately into MetabotMessage.state;
   duplicating the full blob in the message data would bloat storage. Non-data
   parts are always persistable here; the caller is responsible for filtering
-  stream-level metadata (`:start`, `:usage`, `:finish`) separately."
+  stream-level metadata
+  (`:start`, `:usage`, `:finish`) separately."
   [part]
   (not (and (= :data (:type part))
             (= state-type (:data-type part)))))
@@ -141,6 +143,16 @@
    :data-type generated-entity-type
    :data entity})
 
+(defn entity-saved-part
+  "Create an ENTITY_SAVED data part for streaming. `value` is a map describing where a
+  previously-generated inline chart was persisted: `{:chart_id <generated chart id>,
+  :card_id <saved card id>, :destination {:type :id}}`. The FE resolves the card's
+  and the destination's display names at render time."
+  [value]
+  {:type :data
+   :data-type entity-saved-type
+   :data value})
+
 (defn viz-part
   "Return the data part used to surface a query/chart result to the frontend.
 
@@ -150,15 +162,16 @@
   returns a `navigate_to` part that sends the user to the question. Pure: the
   caller passes `inline?` (typically `(shared/inline-viz-capable?)`) and a legacy
   `query`. The caller must supply a distinct `entity-id` (card id), `query-id`,
-  and `title`; `display` is included when present."
-  [{:keys [inline? entity-id query-id query display title link]}]
+  and `title`; `display` and `description` are included when present."
+  [{:keys [inline? entity-id query-id query display title description link]}]
   (if inline?
     (generated-entity-part
      (cond-> {:type  "card"
               :id    entity-id
               :title title
               :query {:id query-id :query query}}
-       display (assoc :display (some-> display name))))
+       display     (assoc :display (some-> display name))
+       description (assoc :description description)))
     (navigate-to-part link)))
 
 ;;; Reaction Conversion

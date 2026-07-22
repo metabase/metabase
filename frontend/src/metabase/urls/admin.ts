@@ -147,10 +147,6 @@ export function uploadsSettings() {
   return "/admin/settings/uploads";
 }
 
-export function remoteSyncSettings() {
-  return "/admin/settings/remote-sync";
-}
-
 export function adminLicense() {
   return "/admin/settings/license";
 }

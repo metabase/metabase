@@ -18,13 +18,6 @@
 
     Returns the name of the newly created branch.")
 
-  (delete-branch [source branch-name]
-    "Deletes a branch from the remote source. A no-op when the branch does not exist.
-
-    Takes a source instance implementing this protocol and the branch-name to delete.
-
-    Returns nil.")
-
   (default-branch [source]
     "Gets the default branch name from the remote source.
 

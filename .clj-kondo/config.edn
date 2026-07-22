@@ -209,8 +209,6 @@
      metabase-enterprise.workspaces.test-util/create-ready-ws!
      metabase-enterprise.workspaces.core/clear-instance-workspace!
      metabase-enterprise.workspaces.core/set-instance-workspace!
-     metabase-enterprise.workspaces.instance/clear-instance-workspace!
-     metabase-enterprise.workspaces.instance/set-instance-workspace!
      metabase.workspaces.core/clear-instance-workspace!
      metabase.workspaces.core/set-instance-workspace!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
@@ -528,6 +526,7 @@
   metabase.test/with-temp-empty-app-db                                                  clojure.core/let
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
+  metabase.transforms-rest.api.transform-runs-test/with-runs-fixture!                   clojure.core/fn
   metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
   metabase.util/for-map                                                                 clojure.core/for
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let

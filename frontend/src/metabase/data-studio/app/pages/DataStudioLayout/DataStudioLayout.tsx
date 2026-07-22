@@ -233,7 +233,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             <DataStudioTab
               label={t`Runs`}
               icon="play_outlined"
-              to={Urls.transformRunList()}
+              to={Urls.transformGraphRunList()}
               isSelected={currentTab === "runs"}
               showLabel={isNavbarOpened}
             />

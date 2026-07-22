@@ -8,8 +8,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.util :as u]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
@@ -137,7 +137,7 @@
 
               (advanced-config.settings/config-from-file-sync-databases)
               (let [sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]
-                (u.jvm/in-virtual-thread* (sync-database! db)))
+                (quick-task/submit-task! (fn [] (sync-database! db))))
 
               :else
               (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))

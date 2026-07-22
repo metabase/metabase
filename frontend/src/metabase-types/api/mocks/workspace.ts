@@ -7,7 +7,6 @@ export function createMockWorkspaceDatabase(
     database_id: 1,
     input_schemas: [],
     status: "provisioned",
-    status_details: null,
     ...opts,
   };
 }
@@ -16,11 +15,6 @@ export function createMockWorkspace(opts?: Partial<Workspace>): Workspace {
   return {
     id: 1,
     name: "Test workspace",
-    target_branch: null,
-    status: "unprovisioned",
-    status_details: null,
-    instance_id: null,
-    instance_url: null,
     databases: [],
     created_at: "2026-01-01T00:00:00Z",
     creator_id: 1,
