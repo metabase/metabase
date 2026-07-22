@@ -501,9 +501,7 @@
   "Statement-level variant of [[search-models-to-update]]: `instance` is one pre-image row of an update
   statement and `changes` is the changes map that statement applied to every row it matched.
   A hook fires only when the statement touched something it reads: a content field (the hook's `:fields`) or
-  a join-topology column (its where-clause's `:updated.*` columns, e.g. `revision.most_recent`) — the
-  per-instance path cannot filter at all, because an after-update instance carries no usable change
-  information.
+  a join-topology column (its where-clause's `:updated.*` columns, e.g. `revision.most_recent`).
   Each firing hook emits messages for both the pre-image and the post-image, so re-derivation covers a
   row's old and new join targets (e.g. both sides of a foreign-key move)."
   [instance changes]
