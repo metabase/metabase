@@ -16,6 +16,7 @@
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.parameters.shared :as shared.params]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.send :as pulse.send]
@@ -511,6 +512,62 @@
                                        :verbatim true}}
                                {:type "section" :text {:type "plain_text" :text "1,000"}}]}
                     message)))))}})))
+
+(deftest dashboard-filter-with-empty-default-test
+  (tests!
+   {:pulse     {:skip_if_empty false}
+    :dashboard (update pulse.test-util/test-dashboard :parameters
+                       (fn [params]
+                         (for [param params]
+                           (cond-> param
+                             (= "State" (:name param)) (assoc :default [])))))}
+   "Dashboard subscription whose text filter had its default value cleared to [] still sends (#76854)"
+   {:card (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [_ thunk]
+      (thunk))
+
+    :assert
+    {:email
+     (fn [_ [email]]
+       (testing "The subscription is delivered and the empty filter is left out"
+         (is (some? email))
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"      true
+                                                   "Quarter and Year" true
+                                                   "State"            false}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email
+                                                     #"Aviary KPIs"
+                                                     #"Quarter and Year"
+                                                     #"State")))))}}))
+
+(deftest filter-render-failure-doesnt-fail-subscription-test
+  (tests!
+   {:pulse     {:skip_if_empty false}
+    :dashboard pulse.test-util/test-dashboard}
+   "A filter that fails to render is skipped instead of failing the whole subscription"
+   {:card (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [_ thunk]
+      (with-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
+        (thunk)))
+
+    :assert
+    {:email
+     (fn [_ [email]]
+       (testing "email is still delivered, with the broken filters left out"
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true
+                                                   "State"       false}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email #"Aviary KPIs" #"State")))))
+
+     :slack
+     (fn [_ [message]]
+       (testing "slack message is still delivered, with the broken filters left out"
+         (is (some? message))
+         (is (not (str/includes? (pr-str message) "*State*")))))}}))
 
 (deftest dashboard-with-header-filters-test
   (tests!

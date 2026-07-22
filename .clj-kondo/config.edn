@@ -179,6 +179,9 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     ;; only writes .clj-kondo/ratchets.edn, from a :once fixture that finishes before the parallel tests
+     dev.kondo-ratchet/fix!
+     metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
@@ -187,10 +190,17 @@
      metabase.channel.render.pdf.font/load-fonts!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.mcp.usage/record-mcp-session!
+     metabase.mcp.usage/record-mcp-session-end!
+     metabase.mcp.usage/record-mcp-tool-call!
      metabase.notification.models/create-notification!
      metabase.oauth-server.core/reset-provider!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
+     ;; MCP usage tests isolate their rows by unique keys (session id / tool name / duration /
+     ;; client version) and clean up only those, so these deletes are safe in parallel.
+     metabase-enterprise.mcp.usage-test/cleanup!
+     metabase-enterprise.mcp.usage-test/cleanup-calls!
      ;; Workspace isolation functions are safe in parallel tests because they operate on
      ;; isolated, test-specific workspaces and databases that don't affect other tests
      metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
@@ -446,6 +456,9 @@
   metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase-enterprise.entity-retrieval.reconcile-test/with-isolated-index                 clojure.core/fn
+  metabase-enterprise.mfa.enrollment-flow-test/with-fresh-user-session!                  clojure.core/fn
+  metabase-enterprise.mfa.login-flow-test/with-enrolled-rasta!                           clojure.core/fn
+  metabase-enterprise.mfa.recovery-codes-test/with-confirmed-enrollment!                 clojure.core/fn
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
@@ -614,6 +627,9 @@
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
+   metabase.mq.core/with-queue                                                                                               hooks.common/let-second
+   metabase.mq.test-util/with-test-mq                                                                                        hooks.common/with-one-binding
+   metabase.mq.core/def-listener!                                                                                            hooks.metabase.mq.impl/def-listener
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*
@@ -722,6 +738,7 @@
    clojurewerkz.quartzite.schedule.simple/schedule                                              macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                                        macros.quartz/build-trigger
    metabase-enterprise.database-routing.e2e-test/with-temp-dbs!                                 macros.metabase-enterprise.database-routing.e2e-test/with-temp-dbs!
+   metabase-enterprise.database-routing.e2e-test/with-routing-setup!                            macros.metabase-enterprise.database-routing.e2e-test/with-routing-setup!
    metabase-enterprise.impersonation.util-test/with-impersonations!                             macros.metabase-enterprise.impersonation.util-test/with-impersonations!
    metabase-enterprise.query-reference-validation.api-test/with-test-setup!                     macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase-enterprise.sandbox.test-util/with-gtaps!                                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
@@ -752,6 +769,7 @@
    metabase.test/with-temporary-raw-setting-values                                              macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
+   metabase.util.namespaces/import-macro                                                        macros.metabase.util.namespaces/import-macro
    metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment

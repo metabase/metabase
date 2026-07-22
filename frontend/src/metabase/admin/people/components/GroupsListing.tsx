@@ -5,17 +5,17 @@ import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import {
-  getGroupNameLocalized,
-  isAdminGroup,
-  isDefaultGroup,
-} from "metabase/admin/utils/groups";
 import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {

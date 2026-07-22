@@ -1,7 +1,6 @@
-import { Route } from "react-router";
-
 import { setupListBrokenGraphNodesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { DependencyNode } from "metabase-types/api";
 import {
   createMockAnalysisFindingError,
@@ -32,7 +31,7 @@ function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <DiagnosticsSidebar
           node={node}
           mode={mode}
@@ -41,7 +40,7 @@ function setup({
           onResizeStop={onResizeStop}
           onClose={onClose}
         />
-      )}
+      }
     />,
     { withRouter: true, initialRoute: "/" },
   );

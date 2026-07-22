@@ -267,6 +267,8 @@
   When we do so we need to be sure any index names do not exceed the postgres limit for names. This function will hash the identifier
   if it exceeds the length, and will get a name like index_${sha1} instead.
 
+  Table names produced here must stay recognizable by [[index-table-name?]].
+
   Note: The index parameters will still be available in index_metadata"
   [identifier]
   (if (<= (count identifier) 63)
@@ -281,13 +283,39 @@
   (mod (.toEpochSecond (t/offset-date-time)) 10000000))
 
 (defn model-table-name
-  "Returns a default table name for a model. If the table name would exceed the 63 byte postgres limit, a hashed name is preferred."
+  "Returns a default table name for a model. If the table name would exceed the 63 byte postgres limit, a hashed name is preferred.
+
+  Table names produced here must stay recognizable by [[index-table-name?]]."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
         ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
     (hash-identifier-if-exceeds-pg-limit ideal-table-name)))
+
+(def ^:private index-table-name-pattern
+  "Recognizes every table-name shape produced by [[model-table-name]] (optionally with the force-reset
+  suffix appended by [[metabase-enterprise.semantic-search.pgvector-api/fresh-index]]),
+  [[hash-identifier-if-exceeds-pg-limit]], and the legacy pre-BOT-337 naming era:
+
+    index_<provider>_<model>_<dims>            e.g. index_ais_text_3_sm_1536
+    index_<provider>_<model>_<dims>_<digits>   force-reset suffix ([[model-table-suffix]])
+    index_<40-hex-sha1>                        names exceeding the 63-byte pg identifier limit
+    index_table_<anything>                     legacy pre-BOT-337 naming (index_table_<provider>_<model>_<dims>)
+
+  The provider/model segments are only lightly sanitized (see [[embedding/abbrev-model-name]]), so no
+  character class is assumed for them; the trailing _<digits> (vector dimensions or force-reset suffix)
+  gives the modern shapes their structure, while the index_table_ prefix — used exclusively by the
+  legacy era — claims anything under it. Deliberately does NOT match the control-plane tables
+  (index_metadata, index_control, index_gate): no trailing _<digits>, not 40-hex, not index_table_."
+  #"\Aindex_(?:.+_\d+|[0-9a-f]{40}|table_.+)\z")
+
+(defn index-table-name?
+  "Does the bare (schema- and qualifier-stripped) table name look like a semantic-search index table?
+  Matching names are orphan-cleanup candidates, i.e. may be dropped if not registered in the metadata
+  table; see [[index-table-name-pattern]] for the shapes."
+  [bare-table-name]
+  (boolean (re-matches index-table-name-pattern bare-table-name)))
 
 (defn default-index
   "Returns the default index spec for a model."
@@ -440,8 +468,16 @@
 (defn- index-name
   "Returns the name for an index for the given index configuration, column, and index type."
   [index suffix]
-  (let [index-name (str (:table-name index) suffix)]
+  ;; index names are bare: an index lands in its table's schema and cannot be schema-qualified
+  (let [index-name (str (semantic.util/table-name-part (:table-name index)) suffix)]
     (hash-identifier-if-exceeds-pg-limit index-name)))
+
+(defn schema-qualified-index-name
+  "The index name qualified with its table's schema (when the table has one), for catalog lookups —
+  an index lives in the same schema as its table."
+  [index index-name]
+  (let [[schema _] (semantic.util/qualified-table-parts (:table-name index))]
+    (cond->> index-name schema (str schema "."))))
 
 (defn hnsw-index-name
   "Returns the name for a HNSW database index for the given semantic search index configuration."
@@ -503,7 +539,15 @@
                     (format "whitespace in the table name (%s) is not currently supported" table-name))
           {:keys [vector-dimensions]}          embedding-model]
       (log/info "Creating index table" table-name)
-      (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+      (try
+        (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+        (catch Exception e
+          ;; Extension install commonly fails on privileges (may need superuser); give the operator the way out.
+          (throw (ex-info (str "Failed to install the pgvector extension. Have a privileged user run"
+                               " CREATE EXTENSION vector; on this database, or set MB_PGVECTOR_DB_URL to a"
+                               " database where it is installed.")
+                          {:type ::extension-install-failed}
+                          e))))
       (when force-reset? (drop-index-table! connectable index))
       (jdbc/execute!
        connectable
@@ -532,7 +576,10 @@
             [(keyword table-name) :content])
            sql-format-quoted)))
     (catch Exception e
-      (throw (ex-info "Failed to create index table" {} e)))))
+      ;; let an already-actionable error (e.g. the pgvector-extension guidance) surface unwrapped
+      (if (= ::extension-install-failed (:type (ex-data e)))
+        (throw e)
+        (throw (ex-info "Failed to create index table" {} e))))))
 
 (comment
   (def embedding-model {:provider "ollama"
@@ -541,7 +588,7 @@
   (def index (default-index embedding-model))
   (drop-index-table! db index)
   (create-index-table-if-not-exists! db index)
-  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table_%'"]))
+  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index\\_%'"]))
 
 (defn- personal-collection-filter
   "Generate a WHERE condition for personal collection filtering based on the filter type.
@@ -1031,13 +1078,17 @@
     (first decoded)))
 
 (defn- find-scan-node
-  "Depth-first search of an EXPLAIN plan tree for the scan node over `table-name`."
+  "Depth-first search of an EXPLAIN plan tree for the scan node over `table-name`.
+  EXPLAIN reports \"Relation Name\" unqualified, so compare on the bare name part."
   [plan table-name]
-  (when (map? plan)
-    (if (and (#{"Seq Scan" "Index Scan" "Index Only Scan" "Bitmap Heap Scan"} (get plan "Node Type"))
-             (= table-name (get plan "Relation Name")))
-      plan
-      (some #(find-scan-node % table-name) (get plan "Plans")))))
+  (let [bare-name (semantic.util/table-name-part table-name)
+        search    (fn search [node]
+                    (when (map? node)
+                      (if (and (#{"Seq Scan" "Index Scan" "Index Only Scan" "Bitmap Heap Scan"} (get node "Node Type"))
+                               (= bare-name (get node "Relation Name")))
+                        node
+                        (some search (get node "Plans")))))]
+    (search plan)))
 
 (defn- scan-node-metrics
   "Pull the index-table scan node out of an EXPLAIN plan tree and summarise it: the plan node chosen, the
@@ -1134,7 +1185,7 @@
         ;; path); production traffic leaves it unset and gets the fail-fast.
         (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
                    (not (:vector-search-allow-missing-index? search-context))
-                   (not (semantic.util/index-exists? db (hnsw-index-name index))))
+                   (not (semantic.util/index-exists? db (schema-qualified-index-name index (hnsw-index-name index)))))
           (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no HNSW index exists. "
                                "Set the semantic-search-vector-strategy setting to an index-backed strategy "
                                "(:hnsw or :hnsw-iterative-*) to build it.")

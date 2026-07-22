@@ -2,7 +2,6 @@
   (:require
    [metabase.events.core :as events]
    [metabase.llm.settings :as llm-settings]
-   [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -84,18 +83,6 @@
   :sensitive? true
   :visibility :settings-manager
   :export?    false
-  :doc        false)
-
-(defsetting semantic-search-enabled
-  (deferred-tru "Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.")
-  :visibility :internal
-  :export?    false
-  :encryption :no
-  :default    true
-  :getter     (fn []
-                (and (setting/get-value-of-type :boolean :semantic-search-enabled)
-                     (premium-features/enable-semantic-search?)))
-  :type       :boolean
   :doc        false)
 
 (defsetting openai-max-tokens-per-batch

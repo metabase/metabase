@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -13,6 +12,7 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";

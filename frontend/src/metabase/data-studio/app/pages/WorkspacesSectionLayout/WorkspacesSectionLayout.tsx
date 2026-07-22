@@ -1,18 +1,16 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { Outlet } from "metabase/router";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
-type WorkspacesSectionLayoutProps = {
-  children?: ReactNode;
-};
-
-export function WorkspacesSectionLayout({
-  children,
-}: WorkspacesSectionLayoutProps) {
+export function WorkspacesSectionLayout() {
   usePageTitle(t`Workspaces`, { titleIndex: 1 });
 
-  return <SectionLayout>{children}</SectionLayout>;
+  return (
+    <SectionLayout>
+      <Outlet />
+    </SectionLayout>
+  );
 }

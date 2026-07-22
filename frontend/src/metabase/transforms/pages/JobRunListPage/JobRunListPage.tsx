@@ -2,8 +2,6 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -13,14 +11,11 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import {
-  PaneHeader,
-  PanelHeaderTitle,
-} from "metabase/common/data-studio/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
+import { replace } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
+import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { formatRunMethod, formatStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Select, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -33,6 +28,8 @@ import {
   type TransformRunMethod,
 } from "metabase-types/api";
 
+import { JobHeader } from "../../components/JobHeader";
+import { JobMoreMenu } from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";
 
 import S from "./JobRunListPage.module.css";
@@ -64,6 +61,7 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
   const dispatch = useDispatch();
 
   const { data: job } = useGetTransformJobQuery(jobId ?? skipToken);
+  const { readOnly, onNameChange } = useJobHeaderState(jobId);
 
   const { data, isLoading, error } = useListTransformJobRunsQuery(
     jobId != null
@@ -165,18 +163,16 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
       data-testid="job-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
-        <PaneHeader
-          title={job != null && <PanelHeaderTitle>{job.name}</PanelHeaderTitle>}
-          tabs={jobId != null && <JobTabs jobId={jobId} />}
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link to={Urls.transformJobList()}>{t`Jobs`}</Link>
-              {job?.name ?? t`Run history`}
-            </DataStudioBreadcrumbs>
-          }
-          py={0}
-          showMetabotButton
-        />
+        {job !== undefined && (
+          <JobHeader
+            job={job}
+            menu={!readOnly && <JobMoreMenu job={job} />}
+            tabs={<JobTabs jobId={job.id} />}
+            readOnly={readOnly}
+            showMetabotButton
+            onNameChange={onNameChange}
+          />
+        )}
         {isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />

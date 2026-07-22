@@ -20,5 +20,6 @@ module.exports = {
     "no-unsafe-element-filtering": require("./rules/no-unsafe-element-filtering"),
     "no-unscoped-text-selectors": require("./rules/no-unscoped-text-selectors"),
     "no-analytics-import-outside-analytics-files": require("./rules/no-analytics-import-outside-analytics-files"),
+    "no-unjustified-type-casts": require("./rules/no-unjustified-type-casts"),
   },
 };

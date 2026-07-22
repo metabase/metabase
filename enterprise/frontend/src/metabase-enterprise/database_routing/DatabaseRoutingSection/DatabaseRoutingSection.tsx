@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -20,6 +19,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,

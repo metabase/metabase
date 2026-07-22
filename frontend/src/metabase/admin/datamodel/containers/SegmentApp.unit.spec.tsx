@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -20,6 +19,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { Route, withRouteProps } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -27,6 +27,8 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { SegmentApp } from "./SegmentApp";
 
 const TestHome = () => <div />;
+
+const RoutedSegmentApp = withRouteProps(SegmentApp);
 
 const SEGMENTS_URL = "/admin/datamodel/segments";
 const FORM_URL = "/admin/datamodel/segment/create";
@@ -65,9 +67,9 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
 
   const { history } = renderWithProviders(
     <>
-      <Route path="/" component={TestHome} />
-      <Route path={SEGMENTS_URL} component={TestHome} />
-      <Route path={FORM_URL} component={SegmentApp} />
+      <Route path="/" element={<TestHome />} />
+      <Route path={SEGMENTS_URL} element={<TestHome />} />
+      <Route path={FORM_URL} element={<RoutedSegmentApp />} />
     </>,
     {
       initialRoute,

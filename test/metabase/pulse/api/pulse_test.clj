@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.response :as api.response]
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
@@ -1387,7 +1388,7 @@
      (mt/with-premium-features #{:dashboard-subscription-filters}
        (let [mp    (mt/metadata-provider)
              query (lib/native-query mp "SELECT {{p}} AS val, 1 AS n")
-             p-tag (get (lib/template-tags query) "p")
+             p-tag (m/find-first #(= (:name %) "p") (lib/template-tags query))
              query (lib/with-template-tags query {"p" (assoc p-tag :required true)})]
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
                                                    :display "table"}
@@ -1421,6 +1422,10 @@
                                                                                      :recipients    [(mt/fetch-user :rasta)]}]
                                                                     :skip_if_empty false}))))
                    content (-> channel-messages :channel/email first :message first :content)]
+               (is (=? {:channel/email [{:message [{:content string?}
+                                                   {:content java.net.URL}]}]}
+                       channel-messages)
+                   "Pro tip: if channel-messages is empty check and make sure you've built static viz with `bun run build-static-viz`")
                (is (str/includes? content "override-val"))
                (is (not (str/includes? content "default-val")))))))))))
 

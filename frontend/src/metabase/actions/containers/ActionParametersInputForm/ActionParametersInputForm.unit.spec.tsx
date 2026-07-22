@@ -140,7 +140,7 @@ describe("Actions > ActionParametersInputForm", () => {
     );
     expect(screen.getByPlaceholderText("Parameter 2")).toHaveAttribute(
       "type",
-      "number",
+      "text",
     );
   });
 

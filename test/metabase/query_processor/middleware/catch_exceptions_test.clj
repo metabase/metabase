@@ -4,6 +4,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
@@ -144,6 +146,25 @@
               (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))
       (is (=? [{:level :error, :message #"(?s)^Error processing query.*"}]
               (messages))))))
+
+(deftest ^:synchronized error-log-excludes-stack-trace-and-query-test
+  (testing "the error log carries only the error message — no stack trace and nothing carrying the query/user data"
+    (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+      (let [mp     (mt/metadata-provider)
+            query  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :name)) "hunter2-query")))
+            result (catch-exceptions
+                    (fn [] (throw (ex-info "boom" {:secret-in-ex-data "hunter2-ex-data"})))
+                    query)]
+        (is (=? [{:level :error, :message "Error processing query: boom"}]
+                (messages)))
+        (testing "the userland response still has the full detail"
+          (is (=? {:status     :failed
+                   :error      "boom"
+                   :stacktrace vector?
+                   :ex-data    {:secret-in-ex-data "hunter2-ex-data"}
+                   :json_query map?}
+                  result)))))))
 
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"

@@ -3,7 +3,7 @@ import type { AsyncThunkAction, SerializedError } from "@reduxjs/toolkit";
 import { createAction } from "@reduxjs/toolkit";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/request-session-token";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -58,6 +58,7 @@ export const refreshGuestSession = createAsyncThunk(
 export const getOrRefreshGuestSession = createAsyncThunk(
   "sdk/guest-embed/GET_OR_REFRESH_TOKEN",
   async (authConfig: MetabaseAuthConfig, { dispatch, getState }) => {
+    // Unjustified type cast. FIXME
     const state = getState() as SdkStoreState;
     const tokenState = getSessionTokenState(state);
     const currentToken = tokenState.rawToken;

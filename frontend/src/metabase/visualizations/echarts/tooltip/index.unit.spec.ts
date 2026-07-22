@@ -13,6 +13,7 @@ describe("useCloseTooltipOnScroll", () => {
 
   beforeEach(() => {
     chartRefMock = {
+      // Unjustified type cast. FIXME
       current: {
         dispatchAction: jest.fn(),
         isDisposed: () => false,

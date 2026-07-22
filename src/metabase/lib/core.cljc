@@ -1422,7 +1422,6 @@
   ->legacy-MBQL
   ->mbql5
   legacy-default-join-alias
-  with-aggregation-list
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -1667,6 +1666,8 @@
   any-native-stage-not-introduced-by-sandbox?
   replace-field-ids
   replace-table-ids])
+
+(shared.ns/import-macro lib.convert/with-aggregation-list)
 
 #?(:clj
    (defmacro with-card-clean-hook

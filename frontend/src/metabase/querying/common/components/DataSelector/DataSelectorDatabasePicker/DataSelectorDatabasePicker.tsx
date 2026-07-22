@@ -25,7 +25,7 @@ type DataSelectorDatabasePickerProps = {
   selectedSchema?: Schema;
   onBack?: () => void;
   onChangeDatabase: (database: Database) => void;
-  onChangeSchema: (item: { schema?: Schema }) => void;
+  onChangeSchema: (schema?: Schema) => void;
   databaseIsDisabled?: (database: Database) => boolean;
   databaseDisabledTooltip?: (database: Database) => string | undefined;
 };

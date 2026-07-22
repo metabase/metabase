@@ -252,10 +252,12 @@ export function applyParameters(
     if (mapping) {
       // mapped target, e.x. on a dashboard
       queryParameter.target = mapping.target;
+      // Unjustified type cast. FIXME
       datasetQuery.parameters.push(queryParameter as UiParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
       queryParameter.target = parameter.target;
+      // Unjustified type cast. FIXME
       datasetQuery.parameters.push(queryParameter as UiParameter);
     }
 

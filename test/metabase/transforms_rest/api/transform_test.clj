@@ -25,6 +25,7 @@
                                           parse-instant
                                           seconds-from-now-ns
                                           table-rows
+                                          transform-run-timeout-seconds
                                           utc-timestamp
                                           wait-for-table
                                           with-transform-cleanup!]]
@@ -69,7 +70,7 @@
       :filter-values [category]})))
 
 (deftest create-transform-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -102,7 +103,7 @@
 
 (deftest update-transform-without-schema-test
   (testing "Updating a transform to clear its schema is rejected on schemas-supporting databases"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (when (driver.u/supports? driver/*driver* :schemas (mt/db))
@@ -131,7 +132,7 @@
 
 (deftest create-transform-without-schema-test
   (testing "Creating a transform without a schema is rejected on databases that support schemas, and allowed on those that don't"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -154,7 +155,7 @@
                         (is (some? (:id response)))))))))))))))
 
 (deftest create-transform-with-param-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -174,7 +175,7 @@
                   (is (some? transform-id)))))))))))
 
 (deftest create-transform-with-required-param-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -182,7 +183,8 @@
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a required param"
                 (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                      tag          (get (lib/template-tags base-query) "id")
+                      tag          (m/find-first #(= (:name %) "id")
+                                                 (lib/template-tags base-query))
                       query        (lib/with-template-tags base-query
                                      {"id" (assoc tag :required true)})
                       schema       (get-test-schema)
@@ -199,7 +201,7 @@
                          (:message response))))))))))))
 
 (deftest create-transform-with-unofficial-required-param-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -221,7 +223,7 @@
                          (:message response))))))))))))
 
 (deftest create-transform-with-owner-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (testing "Creating a transform with explicit owner_user_id"
@@ -245,7 +247,7 @@
                   "Hydrated owner should match the specified user"))))))))
 
 (deftest create-transform-with-external-email-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (testing "Creating a transform with external owner_email"
@@ -268,7 +270,7 @@
                   "Hydrated owner should be email-only map"))))))))
 
 (deftest update-transform-owner-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "update_owner_test"]
@@ -311,7 +313,7 @@
                 (is (nil? (:owner updated)))))))))))
 
 (deftest update-transform-query-with-param-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "update_owner_test"]
@@ -333,7 +335,7 @@
                                               :query new-query}}))))))))
 
 (deftest update-transform-query-with-required-param-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "update_owner_test"]
@@ -349,7 +351,8 @@
                                                                :name table-name}})
                   transform-id (:id created)
                   base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                  tag          (get (lib/template-tags base-query) "id")
+                  tag          (m/find-first #(= (:name %) "id")
+                                             (lib/template-tags base-query))
                   new-query        (lib/with-template-tags base-query
                                      {"id" (assoc tag :required true)})
                   response     (mt/user-http-request :crowberto :put 400
@@ -360,7 +363,7 @@
                      (:message response))))))))))
 
 (deftest update-transform-query-with-unofficial-required-param-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "update_owner_test"]
@@ -384,7 +387,7 @@
                      (:message response))))))))))
 
 (deftest transform-type-detection-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Transform type is automatically detected and set based on source"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -415,7 +418,7 @@
                     (is (= "native" (:source_type response)))))))))))))
 
 (deftest transform-type-updates-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Transform type is automatically updated when source changes"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -441,69 +444,98 @@
                       (is (= "mbql" (:source_type updated))))))))))))))
 
 (deftest create-transform-feature-flag-test
-  (mt/with-premium-features #{}
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "Creating a query transform succeeds when not hosted"
-        (mt/dataset transforms-dataset/transforms-test
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-              (with-transform-cleanup! [table-name "test_transform"]
-                (let [query  (make-query "Gadget")
-                      schema (get-test-schema)
-                      response (mt/user-http-request :lucky :post 200 "transform"
-                                                     {:name   "Test Transform"
-                                                      :source {:type  "query"
-                                                               :query query}
-                                                      :target {:type   "table"
-                                                               :schema schema
-                                                               :name   table-name}})]
-                  (is (some? (:id response))))))))))))
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (testing "Creating a query transform succeeds when not hosted"
+          (mt/dataset transforms-dataset/transforms-test
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+                (with-transform-cleanup! [table-name "test_transform"]
+                  (let [query  (make-query "Gadget")
+                        schema (get-test-schema)
+                        response (mt/user-http-request :lucky :post 200 "transform"
+                                                       {:name   "Test Transform"
+                                                        :source {:type  "query"
+                                                                 :query query}
+                                                        :target {:type   "table"
+                                                                 :schema schema
+                                                                 :name   table-name}})]
+                    (is (some? (:id response)))))))))))))
 
 (deftest update-transform-feature-flag-test
-  (mt/with-premium-features #{}
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/dataset transforms-dataset/transforms-test
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (testing "Updating a query transform works when not hosted"
-              (with-transform-cleanup! [table-name "test_update"]
-                (let [query  (make-query "Gadget")
-                      schema (get-test-schema)
-                      transform-payload {:name   "Original Transform"
-                                         :source {:type  "query"
-                                                  :query query}
-                                         :target {:type   "table"
-                                                  :schema schema
-                                                  :name   table-name}}
-                      created (mt/user-http-request :lucky :post 200 "transform" transform-payload)
-                      response (mt/user-http-request :lucky :put 200
-                                                     (format "transform/%d" (:id created))
-                                                     (assoc transform-payload :name "Updated Transform"))]
-                  (is (= "Updated Transform" (:name response))))))))))))
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (testing "Updating a query transform works when not hosted"
+                (with-transform-cleanup! [table-name "test_update"]
+                  (let [query  (make-query "Gadget")
+                        schema (get-test-schema)
+                        transform-payload {:name   "Original Transform"
+                                           :source {:type  "query"
+                                                    :query query}
+                                           :target {:type   "table"
+                                                    :schema schema
+                                                    :name   table-name}}
+                        created (mt/user-http-request :lucky :post 200 "transform" transform-payload)
+                        response (mt/user-http-request :lucky :put 200
+                                                       (format "transform/%d" (:id created))
+                                                       (assoc transform-payload :name "Updated Transform"))]
+                    (is (= "Updated Transform" (:name response)))))))))))))
 
 (deftest run-transform-feature-flag-test
-  (mt/with-premium-features #{}
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "Running a query transform works when not hosted"
-        (mt/dataset transforms-dataset/transforms-test
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-              (with-transform-cleanup! [table-name "test_run"]
-                (let [query  (make-query "Gadget")
-                      schema (get-test-schema)
-                      transform-payload {:name   "Test Run Transform"
-                                         :source {:type  "query"
-                                                  :query query}
-                                         :target {:type   "table"
-                                                  :schema schema
-                                                  :name   table-name}}
-                      created (mt/user-http-request :lucky :post 200 "transform" transform-payload)
-                      response (mt/user-http-request :lucky :post 202
-                                                     (format "transform/%d/run" (:id created)))]
-                  (is (= "Transform run started" (:message response))))))))))))
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (testing "Running a query transform works when not hosted"
+          (mt/dataset transforms-dataset/transforms-test
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+                (with-transform-cleanup! [table-name "test_run"]
+                  (let [query  (make-query "Gadget")
+                        schema (get-test-schema)
+                        transform-payload {:name   "Test Run Transform"
+                                           :source {:type  "query"
+                                                    :query query}
+                                           :target {:type   "table"
+                                                    :schema schema
+                                                    :name   table-name}}
+                        created (mt/user-http-request :lucky :post 200 "transform" transform-payload)
+                        response (mt/user-http-request :lucky :post 202
+                                                       (format "transform/%d/run" (:id created)))]
+                    (is (= "Transform run started" (:message response)))))))))))))
+
+(deftest transforms-disabled-blocks-api-operations-test
+  (doseq [[features label] [[#{:transforms-basic :hosting} "hosted with transforms features"]
+                            [#{} "self-hosted"]]]
+    (testing label
+      (mt/with-temporary-raw-setting-values [transforms-enabled "false"]
+        (mt/with-premium-features features
+          (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+            (mt/dataset transforms-dataset/transforms-test
+              (testing "POST /api/transform returns 402"
+                (let [table-name (str "disabled_transform_" (u/generate-nano-id))
+                      response   (mt/user-http-request :crowberto :post 402 "transform"
+                                                       {:name   "Disabled Transform"
+                                                        :source {:type  "query"
+                                                                 :query (make-query "Gadget")}
+                                                        :target {:type   "table"
+                                                                 :schema (get-test-schema)
+                                                                 :name   table-name}})]
+                  (is (= "Premium features required for this transform type are not enabled."
+                         response))))
+              (testing "GET /api/transform returns 403"
+                (mt/user-http-request :crowberto :get 403 "transform"))
+              (testing "POST /api/transform/:id/run returns 403"
+                (mt/with-temp [:model/Transform {transform-id :id} {}]
+                  (mt/user-http-request :crowberto :post 403
+                                        (format "transform/%d/run" transform-id)))))))))))
 
 (deftest run-transform-permission-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "POST /transform/:id/run requires only read permission, not write"
         (mt/dataset transforms-dataset/transforms-test
@@ -524,7 +556,7 @@
                                                          (format "transform/%d/run" (:id transform)))))))))))))))
 
 (deftest list-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (testing "Can list without query parameters"
@@ -554,7 +586,7 @@
                         "At least one transform should have readable sources")))))))))))
 
 (deftest filter-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "should be able to filter transforms"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -584,7 +616,7 @@
                       (mt/user-http-request :lucky :get 200 "transform" :tag-ids [tag2-id]))))))))))
 
 (deftest get-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -606,8 +638,35 @@
                   (is (map? (:creator get-resp)))
                   (is (= lucky-id (get-in get-resp [:creator :id]))))))))))))
 
-(deftest source-readable-field-test
+(deftest requestable-indexes-field-test
+  ;; `#{}` keeps this on the OSS path: query transforms need no token off-cloud, just the `transforms-enabled` setting.
   (mt/with-premium-features #{}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (testing "GET /transform/:id surfaces the target driver's requestable index methods"
+        (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+          (mt/dataset transforms-dataset/transforms-test
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+                (with-transform-cleanup! [table-name "reqidx_products"]
+                  (let [body     {:name   "Reqidx Products"
+                                  :source {:type "query" :query (make-query "Gadget")}
+                                  :target {:type "table" :schema (get-test-schema) :name table-name}}
+                        created  (mt/user-http-request :lucky :post 200 "transform" body)
+                        get-resp (mt/user-http-request :lucky :get 200 (format "transform/%s" (:id created)))
+                        kinds    (set (keys (driver/supported-index-methods driver/*driver* (mt/db))))]
+                    (testing "the key is always present"
+                      (is (contains? get-resp :requestable_indexes)))
+                    (if (seq kinds)
+                      (testing "each advertised kind appears with a lifecycle and non-empty fields"
+                        (is (= kinds (set (keys (:requestable_indexes get-resp)))))
+                        (doseq [[_kind v] (:requestable_indexes get-resp)]
+                          (is (contains? #{"standalone" "inline"} (:lifecycle v)))
+                          (is (seq (:fields v)))))
+                      (testing "drivers with no index support report nil"
+                        (is (nil? (:requestable_indexes get-resp)))))))))))))))
+
+(deftest source-readable-field-test
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Transforms API includes source_readable field"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -648,7 +707,7 @@
             :type "table"}})
 
 (deftest get-transform-dependencies-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-temp [:model/Table {table :id} {:schema "public", :name "orders_2"}
@@ -671,7 +730,7 @@
               (is (every? #(map? (:creator %)) deps-resp)))))))))
 
 (deftest put-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -702,7 +761,7 @@
                   (is (= lucky-id (get-in put-resp [:creator :id]))))))))))))
 
 (deftest change-target-table-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -732,7 +791,7 @@
                 (is (false? (transforms-base.u/target-table-exists? original)))))))))))
 
 (deftest delete-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -749,7 +808,7 @@
                 (mt/user-http-request :lucky :get 404 (format "transform/%s" (:id resp)))))))))))
 
 (deftest delete-table-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -769,7 +828,7 @@
   (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (let [resp      (mt/user-http-request :lucky :post 202 (format "transform/%s/run" transform-id))
-            timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+            timeout-s transform-run-timeout-seconds
             deadline  (seconds-from-now-ns timeout-s)]
         (is (=? {:message "Transform run started"}
                 resp))
@@ -822,7 +881,7 @@
                " in table " table-name ", but got " actual-count)))))
 
 (deftest execute-transform-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "transform execution with :transforms/table target"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -1197,7 +1256,7 @@
             (assert-transform-ids response #{(:id transform1)})))))))
 
 (deftest transform-revisions-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "transform_revisions_test"]
@@ -1236,7 +1295,7 @@
             (test-transform-revisions :put (str "transform/" transform-id) widget-req 2)))))))
 
 (deftest permissions-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Transform endpoints require transforms permission"
       (mt/with-temp [:model/Transform transform {}]
         (testing "Regular users without transform permission get 403"
@@ -1263,7 +1322,7 @@
 ;;; ------------------------------------------------------------
 
 (deftest manual-run-user-attribution-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Manual runs are attributed to the triggering user, not the owner"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -1299,7 +1358,7 @@
 ;;; ------------------------------------------------------------
 
 (deftest collection-items-include-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "GET /api/collection/:id/items"
       (testing "Includes transforms in collection items"
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -1339,7 +1398,7 @@
               (is (= "Test Transform" (:name (first items)))))))))))
 
 (deftest create-transform-with-tags-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "POST /api/transform with tag_ids"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1376,7 +1435,7 @@
                       (t2/delete! :model/Transform :id (:id transform-response)))))))))))))
 
 (deftest update-transform-tags-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "PUT /api/transform/:id with tag_ids"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1405,7 +1464,7 @@
                   (is (= [] (:tag_ids updated))))))))))))
 
 (deftest get-transform-with-tags-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "GET /api/transform/:id returns tag_ids"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1436,7 +1495,7 @@
                     (is (= [] (:tag_ids fetched)))))))))))))
 
 (deftest list-transforms-with-tags-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "GET /api/transform returns transforms with tag_ids"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -1467,7 +1526,7 @@
                 (is (= [(:id tag1) (:id tag2)] (sort (:tag_ids t2))))))))))))
 
 (deftest delete-tag-removes-associations-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Deleting a tag removes it from all transforms"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1498,7 +1557,7 @@
                     (t2/delete! :model/TransformTag :id (:id tag1))))))))))))
 
 (deftest preserve-tag-order-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Tag order is preserved when adding/updating transform tags"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1542,7 +1601,7 @@
                         (t2/delete! :model/Transform :id (:id transform))))))))))))))
 
 (deftest root-collection-items-include-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "GET /api/collection/root/items"
       (testing "Includes transforms in root collection items"
         (mt/with-temp [:model/Transform {transform-id :id}
@@ -1577,7 +1636,7 @@
               (is (empty? items)))))))))
 
 (deftest transforms-appear-in-here-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "GET /api/collection/:id/items"
       (testing "Transforms in a collection appear in its :here field"
         (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent"
@@ -1593,7 +1652,7 @@
             (is (= ["transform"] (:here child-coll)))))))))
 
 (deftest transforms-appear-in-below-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "GET /api/collection/:id/items"
       (testing "Transforms in descendant collections appear in :below field"
         (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent"
@@ -1613,7 +1672,7 @@
             (is (= ["transform"] (:below child-coll)))))))))
 
 (deftest incremental-column-type-validated-on-create-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "POST /api/transform column type validation with checkpoint-filter-field-id"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -1635,7 +1694,7 @@
                 (is (re-find #"unsupported type" response))))))))))
 
 (deftest incremental-column-type-validated-on-update-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "PUT /api/transform column type validation with checkpoint-filter-field-id"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -1668,7 +1727,7 @@
 
 (deftest update-tag-ids-with-stale-checkpoint-field-test
   (testing "Updating only tag_ids succeeds even when the checkpoint field has since been deleted (GDGT-2410)"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (get-test-schema)]
@@ -1711,7 +1770,7 @@
                                               :required     true}}}})
 
 (deftest incremental-table-tag-validated-on-create-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "POST /api/transform rejects a table-incremental native query with no table template tag (GDGT-2524)"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -1745,7 +1804,7 @@
                 (is (re-find #"requires a table variable" response))))))))))
 
 (deftest incremental-table-tag-validated-on-update-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "PUT /api/transform rejects removing the table tag from an incremental transform (GDGT-2524)"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -1797,7 +1856,7 @@
                     (is (re-find #"requires a table variable" response))))))))))))
 
 (deftest search-filters-transform-source-types-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (let [search-term (str "transform-search-" (u/generate-nano-id))
@@ -1820,13 +1879,13 @@
                                                                     :schema   (get-test-schema)
                                                                     :name     (str "target_" (u/generate-nano-id))
                                                                     :database (mt/id)}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (let [transform-ids (search-transform-ids search-term)]
                 (is (contains? transform-ids query-id))
                 (is (not (contains? transform-ids python-id)))))))))))
 
 (deftest search-hides-transforms-for-non-superusers-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (let [search-term (str "transform-search-" (u/generate-nano-id))
@@ -1838,14 +1897,14 @@
                                                               :target {:type   "table"
                                                                        :schema (get-test-schema)
                                                                        :name   (str "target_" (u/generate-nano-id))}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (let [results (mt/user-http-request :rasta :get 200 "search" :q search-term :models "transform")
                     ids     (set (map :id (:data results)))]
                 (is (empty? ids))
                 (is (not (contains? ids transform-id)))))))))))
 
 (deftest search-includes-native-and-mbql-query-transforms-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (let [search-term (str "transform-search-" (u/generate-nano-id))
@@ -1865,7 +1924,7 @@
                                                          :target {:type   "table"
                                                                   :schema (get-test-schema)
                                                                   :name   (str "target_" (u/generate-nano-id))}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (is (= #{native-id mbql-id}
                      (search-transform-ids search-term))))))))))
 
@@ -1915,7 +1974,7 @@
 
 (deftest execute-transform-with-field-filter-template-tag-test
   (testing "a required field-filter (:dimension) template tag resolves via its default value at unattended execution"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1948,7 +2007,7 @@
 
 (deftest execute-transform-with-table-template-tag-test
   (testing "a table (table-variable) template tag substitutes a schema-qualified identifier at unattended execution"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1972,7 +2031,7 @@
 
 (deftest reject-target-name-collision-test
   (testing "target-name collision with a pre-existing, non-transform table is rejected"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -2002,7 +2061,7 @@
 
 (deftest delete-target-then-recreate-same-name-test
   (testing "re-running after DELETE /api/transform/:id/table recreates the same target name"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [table-name "gadget_products_recreate"]
@@ -2020,18 +2079,19 @@
 
 (deftest get-transform-with-deleted-database-test
   (testing "GET /api/transform/:id degrades gracefully when its source database has been deleted"
-    (mt/with-temp [:model/Database db {}]
-      (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:id db))
-            query (lib/native-query mp "select 1")]
-        (mt/with-temp [:model/Transform transform {:source {:type "query" :query query}
-                                                   :target {:type "table" :name (mt/random-name)}}]
-          (t2/delete! :model/Database (:id db))
-          (is (=? {:id (:id transform)}
-                  (mt/user-http-request :crowberto :get 200 (str "transform/" (:id transform))))))))))
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/Database db {}]
+        (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:id db))
+              query (lib/native-query mp "select 1")]
+          (mt/with-temp [:model/Transform transform {:source {:type "query" :query query}
+                                                     :target {:type "table" :name (mt/random-name)}}]
+            (t2/delete! :model/Database (:id db))
+            (is (=? {:id (:id transform)}
+                    (mt/user-http-request :crowberto :get 200 (str "transform/" (:id transform)))))))))))
 
 (deftest cancel-transform-run-endpoint-test
   (testing "POST /api/transform/:id/cancel"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-driver :postgres
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [table-name "cancel_endpoint_output"]

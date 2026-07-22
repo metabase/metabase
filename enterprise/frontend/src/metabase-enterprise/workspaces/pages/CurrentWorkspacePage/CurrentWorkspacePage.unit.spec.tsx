@@ -1,11 +1,10 @@
-import { Route } from "react-router";
-
 import {
   setupDatabasesEndpoints,
   setupGetCurrentWorkspaceEndpoint,
   setupListTableRemappingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { TableRemapping } from "metabase-types/api";
 import {
   createMockCurrentWorkspace,
@@ -19,6 +18,7 @@ import { CurrentWorkspacePage } from "./CurrentWorkspacePage";
 const POSTGRES = createMockDatabase({ id: 10, name: "Postgres" });
 
 function setup({
+  // Unjustified type cast. FIXME
   remappings = [] as TableRemapping[],
   workspace = createMockCurrentWorkspace({
     name: "Dev workspace",
@@ -35,7 +35,7 @@ function setup({
   setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint(remappings);
 
-  renderWithProviders(<Route path="*" component={CurrentWorkspacePage} />, {
+  renderWithProviders(<Route path="*" element={<CurrentWorkspacePage />} />, {
     withRouter: true,
   });
 }

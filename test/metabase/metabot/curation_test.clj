@@ -11,7 +11,7 @@
 (deftest curated-ids-consistent-with-index-test
   (testing "curated-ids reads the same verdict from source-of-truth tables that the search index
             precomputes from the specs, so the two definitions stay consistent (BOT-1570)"
-    (search.tu/with-new-search-if-available-without-fallback
+    (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Database   {db :id}  {}
                      :model/Collection {off :id} {:authority_level "official"}
                      ;; name avoids the "curationfixture" search token so the collection itself isn't a

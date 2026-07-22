@@ -1,10 +1,10 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -50,7 +50,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={SecurityCenterBanner} />, {
+  renderWithProviders(<Route path="*" element={<SecurityCenterBanner />} />, {
     initialRoute: "/",
     storeInitialState: state,
     withRouter: true,

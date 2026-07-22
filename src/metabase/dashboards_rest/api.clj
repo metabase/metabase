@@ -645,7 +645,6 @@
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/pdf" :- :any
   "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render charts) and stream it
   back as a file download.
@@ -860,10 +859,10 @@
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
-(defn- assert-new-dashcards-are-not-internal-to-other-dashboards [dashboard to-create]
+(defn- assert-dashcards-are-not-internal-to-other-dashboards [dashboard dashcards]
   (when-let [card-ids (seq (concat
-                            (seq (keep :card_id to-create))
-                            (->> to-create
+                            (seq (keep :card_id dashcards))
+                            (->> dashcards
                                  (mapcat :series)
                                  (keep :id))))]
     (api/check-400 (not (t2/exists? :model/Card
@@ -876,7 +875,9 @@
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
-    (assert-new-dashcards-are-not-internal-to-other-dashboards dashboard to-create)
+    ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
+    ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731).
+    (assert-dashcards-are-not-internal-to-other-dashboards dashboard (concat to-create to-update))
     (when (seq to-update)
       (update-dashcards! dashboard to-update))
     {:deleted-dashcards (when (seq to-delete)

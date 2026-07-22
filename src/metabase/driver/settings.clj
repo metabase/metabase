@@ -1,5 +1,4 @@
 (ns metabase.driver.settings
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]

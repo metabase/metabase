@@ -224,10 +224,17 @@
     :else
     :skip))
 
+(defn- hydrate-existing-notification
+  "Hydrate an existing notification row for comparison. Don't use [[models.notification/hydrate-notification]]
+   so we can migrate on schema changes."
+  [notification]
+  (t2/hydrate notification :creator :payload :subscriptions
+              [:handlers :channel :template [:recipients :recipients-detail]]))
+
 (defn- sync-notification!
   [{:keys [internal_id] :as row}]
   (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
-                                      models.notification/hydrate-notification)]
+                                      hydrate-existing-notification)]
     (u/prog1 (action existing-notification row)
       (case <>
         :create

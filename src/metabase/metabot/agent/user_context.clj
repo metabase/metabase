@@ -1,20 +1,18 @@
 (ns metabase.metabot.agent.user-context
-  "User context enrichment and formatting for agent system messages.
+  "User context enrichment and formatting for injecting into the prompt.
 
   Handles formatting of viewing context (what the user is currently looking at),
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
-   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime)
@@ -225,6 +223,17 @@
 
 ;;; Viewing Context Formatting
 
+(defn- query-if-database-readable
+  "The client-supplied adhoc query, only when the current user can read its database.
+  Exporting resolves table/field ids to names through an unfiltered metadata provider,
+  so gate it like the metabase://chart|query resources do. Queries with no :database
+  only ever pprint (no name resolution), so they pass through."
+  [query]
+  (let [database-id (and (map? query) (:database query))]
+    (when (or (not database-id)
+              (mi/can-read? :model/Database database-id))
+      query)))
+
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
@@ -233,6 +242,7 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
+              (te/field "Query" (some-> (:query item) query-if-database-readable llm-shape/export-query-for-llm))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
@@ -257,27 +267,7 @@
   Falls back to a `pprint`'d query map only as a last resort, when repr export is
   unavailable (e.g. a partially-broken `dataset_query`)."
   [source]
-  (let [query (:query source)]
-    (cond
-      (string? query) query
-      (string? (:query-content query)) (:query-content query)
-      (and (map? query) (:database query))
-      (try
-        (let [normalized (lib-be/normalize-query query)
-              database-id (:database normalized)
-              mp (when database-id
-                   (lib-be/application-database-metadata-provider database-id))
-              exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
-          (if exported
-            (str "```json\n" (json/encode exported {:pretty true}) "\n```")
-            (u/pprint-to-str normalized)))
-        (catch Exception _
-          (u/pprint-to-str query)))
-      ;; Legacy native shape with no :database (rare). Surface the raw SQL so the LLM at
-      ;; least sees the query body; if there's no :database we can't normalise / build a MP.
-      (string? (get-in query [:native :query])) (get-in query [:native :query])
-      (map? query) (u/pprint-to-str query)
-      :else (some-> query str))))
+  (llm-shape/export-query-for-llm (:query source)))
 
 (defn- transform-source-type
   [source]
@@ -348,7 +338,7 @@
                     (te/field "Selected text" text))))))))
 
 (defn format-viewing-context
-  "Format user's current viewing context for injection into system message.
+  "Format user's current viewing context.
 
   Handles different context types:
   - adhoc: Notebook query editor
@@ -370,7 +360,7 @@
 ;;; Recent Views Formatting
 
 (defn format-recent-views
-  "Format user's recently viewed items for injection into system message.
+  "Format user's recently viewed items.
 
   Returns formatted string for template variable {{recent_views}}."
   [context]
@@ -386,7 +376,7 @@
                 "Otherwise, use the search tool to find relevant entities."))))
 
 (defn format-current-user-info
-  "Format the current user and glossary for injection into the system message.
+  "Format the current user and glossary.
 
   Returns XML for template variable {{current_user_info}}."
   [_context]
@@ -403,19 +393,17 @@
 ;;; Context Enrichment
 
 (defn enrich-context-for-template
-  "Enrich context with all necessary variables for system prompt template rendering.
+  "Enrich context with all necessary variables for rendering the message-injection template.
 
   Takes raw context from API and returns map suitable for template rendering:
   - :current_time - Formatted user time string
   - :first_day_of_week - Calendar week start (default 'Sunday')
-  - :sql_dialect - SQL dialect name (lowercase)
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
   - :recent_views - Formatted recent views"
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")
-   :sql_dialect (extract-sql-dialect context)
    :current_user_info (format-current-user-info context)
    :viewing_context (format-viewing-context context)
    :recent_views (format-recent-views context)})

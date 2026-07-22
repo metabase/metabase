@@ -1,14 +1,15 @@
 import type { Location } from "history";
-import type { RouterState } from "react-router-redux";
+
+import type { RouterState } from "metabase/router";
 
 export const createMockRoutingState = (
   opts?: Partial<RouterState>,
 ): RouterState => {
+  const location = opts?.locationBeforeTransitions;
   return {
     ...opts,
-    locationBeforeTransitions: createMockLocation(
-      opts?.locationBeforeTransitions,
-    ),
+    locationBeforeTransitions:
+      location === null ? null : createMockLocation(location),
   };
 };
 
@@ -20,7 +21,7 @@ export const createMockLocation = (opts?: Partial<Location>): Location => {
     hash: "",
     state: undefined,
     action: "POP",
-    key: "", // can be null but react-router-redux@4.0.8 typings are inaccurate
+    key: "", // can be null at runtime but the history typings type it as string
     ...opts,
   };
 };

@@ -59,6 +59,8 @@
 
 (use-fixtures :once (fixtures/initialize :test-users :db :web-server))
 
+(use-fixtures :each (fn [thunk] (api.pivots/do-with-pivot-parity-check thunk)))
+
 (deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
     (let [id->new-card {123 {:id 456}
@@ -3804,6 +3806,52 @@
                     (is (= "You don't have permissions to do that."
                            (mt/user-http-request :rasta :post 403 (url))))))))))))))
 
+(deftest dashboard-card-query-metric-sourced-from-inaccessible-model-test
+  (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query with a metric sourced from a model"
+    (testing "runs for a user without collection access to the source model"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection    model-coll {}
+                       :model/Collection    dash-coll  {}
+                       :model/Card          model      {:type          :model
+                                                        :collection_id (u/the-id model-coll)
+                                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                                         (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
+                       :model/Card          metric     {:type          :metric
+                                                        :collection_id (u/the-id dash-coll)
+                                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                                         (-> (lib/query mp (lib.metadata/card mp (u/the-id model)))
+                                                                             (lib/aggregate (lib/count))))}
+                       :model/Dashboard     dashboard  {:collection_id (u/the-id dash-coll)}
+                       :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard)
+                                                        :card_id      (u/the-id metric)}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) dash-coll)
+          (is (= [[18760]]
+                 (mt/rows (mt/user-http-request :rasta :post 202
+                                                (dashboard-card-query-url
+                                                 (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard)))))))))
+    (testing "runs for a user without query-building data perms"
+      (mt/with-temp [:model/Collection    coll      {}
+                     :model/Card          model     {:type          :model
+                                                     :collection_id (u/the-id coll)
+                                                     :dataset_query (let [mp (mt/metadata-provider)]
+                                                                      (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
+                     :model/Card          metric    {:type          :metric
+                                                     :collection_id (u/the-id coll)
+                                                     :dataset_query (let [mp (mt/metadata-provider)]
+                                                                      (-> (lib/query mp (lib.metadata/card mp (u/the-id model)))
+                                                                          (lib/aggregate (lib/count))))}
+                     :model/Dashboard     dashboard {:collection_id (u/the-id coll)}
+                     :model/DashboardCard dashcard  {:dashboard_id (u/the-id dashboard)
+                                                     :card_id      (u/the-id metric)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (is (= [[18760]]
+                 (mt/rows (mt/user-http-request :rasta :post 202
+                                                (dashboard-card-query-url
+                                                 (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard)))))))))))
+
 ;; see also [[metabase.query-processor.dashboard-test]]
 (deftest dashboard-card-query-parameters-test
   (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
@@ -4588,11 +4636,12 @@
                                       :type  "string/="
                                       :value ["LinkedIn"]}],
                       :dashboard_id dash-id}]
-                    (#'api.dashboard/broken-pulses dash-id {param-id param}))))
+                    ;; `broken-pulses` doesn't order its results, so sort them for a stable comparison
+                    (sort-by :id (#'api.dashboard/broken-pulses dash-id {param-id param})))))
           (testing "We can gather all needed data regarding broken params"
             (let [bad-pulses    (mapv
                                  #(update % :affected-users (partial sort-by :email))
-                                 (#'api.dashboard/broken-subscription-data dash-id {param-id param}))
+                                 (sort-by :pulse-id (#'api.dashboard/broken-subscription-data dash-id {param-id param})))
                   bad-pulse-ids (set (map :pulse-id bad-pulses))]
               (testing "We only detect the bad pulse and not the good one"
                 (is (true? (contains? bad-pulse-ids bad-pulse-id)))
@@ -5217,6 +5266,31 @@
     (testing "If the dashboard is deleted, its dashboard internal cards are too"
       (t2/delete! :model/Dashboard :id dash-id)
       (is (not (t2/exists? :model/Card :dashboard_id dash-id))))))
+
+(deftest ^:parallel dashboard-internal-card-cannot-be-replaced-onto-another-dashboard-test
+  ;; UXW-4731: the add-card guard only checked newly-created dashcards, so "Replace" (which keeps the
+  ;; dashcard id and only swaps card_id -> lands in `to-update`) could smuggle a dashboard-internal card
+  ;; from another dashboard onto this one.
+  (mt/with-temp [:model/Dashboard     {source-dash-id :id} {}
+                 :model/Card          {dq-card-id :id}     {:dashboard_id source-dash-id}
+                 :model/DashboardCard  _                   {:card_id dq-card-id :dashboard_id source-dash-id}
+                 :model/Dashboard     {other-dash-id :id}  {}
+                 :model/Card          {regular-card-id :id} {}
+                 :model/DashboardCard {dashcard-id :id}    {:card_id regular-card-id :dashboard_id other-dash-id}]
+    (testing "Adding it as a new dashcard is rejected"
+      (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
+                            {:dashcards [{:id -1 :size_x 1 :size_y 1 :row 0 :col 0 :card_id dq-card-id}]}))
+    (testing "Replacing an existing dashcard's card with it is also rejected"
+      (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
+                            {:dashcards [{:id dashcard-id :size_x 1 :size_y 1 :row 0 :col 0 :card_id dq-card-id}]}))
+    (testing "Adding it as an extra series on an existing dashcard is also rejected"
+      (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
+                            {:dashcards [{:id dashcard-id :size_x 1 :size_y 1 :row 0 :col 0
+                                          :card_id regular-card-id
+                                          :series [{:id dq-card-id}]}]}))
+    (testing "The foreign dashboard-internal card was not persisted onto the other dashboard"
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id other-dash-id :card_id dq-card-id)))
+      (is (not (t2/exists? :model/DashboardCardSeries :card_id dq-card-id))))))
 
 (deftest dashboard-questions-are-archived-with-the-dashboard
   (testing "It gets archived with the dashboard"

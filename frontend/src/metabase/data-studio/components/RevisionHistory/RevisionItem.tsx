@@ -111,6 +111,7 @@ function getDiffForKey(
     return undefined;
   }
 
+  // Unjustified type cast. FIXME
   const revisionDiff = diff as RevisionDiffMap;
   return revisionDiff[key];
 }

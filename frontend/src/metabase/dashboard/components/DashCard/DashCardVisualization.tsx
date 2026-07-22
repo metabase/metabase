@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,6 +20,7 @@ import {
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
@@ -257,6 +257,7 @@ export function DashCardVisualization({
       dataSources,
     );
     const card = extendCardWithDashcardSettings(
+      // Unjustified type cast. FIXME
       {
         // Visualizer click handling code expect visualizer cards not to have card.id
         name: dashcard.card.name,
@@ -275,6 +276,7 @@ export function DashCardVisualization({
     const series: RawSeries = [
       {
         card,
+        // Unjustified type cast. FIXME
         data: mergeVisualizerData({
           columns,
           columnValuesMapping,
@@ -325,6 +327,7 @@ export function DashCardVisualization({
       const disableClickBehavior =
         getVisualizationRaw(series)?.disableClickBehavior;
       if (isVirtualDashCard(dashcard) || disableClickBehavior) {
+        // Unjustified type cast. FIXME
         const virtualDashcardType = getVirtualCardType(
           dashcard,
         ) as VirtualCardDisplay;
@@ -443,6 +446,7 @@ export function DashCardVisualization({
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
     const cardResult = cardId ? datasets?.[cardId] : undefined;
+    // Unjustified type cast. FIXME
     const result = cardResult ?? (series[0] as unknown as Dataset);
 
     const showMenu =

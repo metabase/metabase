@@ -177,6 +177,7 @@ const EventForm = ({
               leftSection={values.icon ? <Icon name={values.icon} /> : null}
               renderOption={({ option }) => (
                 <Group p="sm" fw="bold">
+                  {/* Unjustified type cast. FIXME */}
                   {option.value && <Icon name={option.value as IconName} />}
                   <span>{option.label}</span>
                 </Group>

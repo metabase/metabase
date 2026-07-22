@@ -4,6 +4,7 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
@@ -234,6 +235,21 @@
            (= {"extra" "keypairs", "are" "also present"}
               (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
 
+(deftest request-jwt-test
+  (let [token "some.jwt.token"]
+    (testing "GET reads jwt from query params"
+      (is (= token (sso.i/request-jwt {:request-method :get :params {:jwt token}}))))
+    (testing "GET ignores jwt in body"
+      (is (nil? (sso.i/request-jwt {:request-method :get :body {:jwt token}}))))
+    (testing "POST reads jwt from JSON body"
+      (is (= token (sso.i/request-jwt {:request-method :post :body {:jwt token}}))))
+    (testing "POST ignores jwt in query params"
+      (is (nil? (sso.i/request-jwt {:request-method :post :params {:jwt token}}))))
+    (testing "other methods return nil"
+      (is (nil? (sso.i/request-jwt {:request-method :put
+                                    :params       {:jwt token}
+                                    :body         {:jwt token}}))))))
+
 (deftest post-jwt-body-happy-path-test
   (testing "Happy path login via POST /auth/sso with JSON body {:jwt ...}, same behavior as GET with query param"
     (with-jwt-default-setup!
@@ -260,6 +276,51 @@
           (is
            (= {"extra" "keypairs", "are" "also present"}
               (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
+
+(deftest post-jwt-query-param-ignored-test
+  (testing "POST /auth/sso does not authenticate when jwt is only in the query string"
+    (with-jwt-default-setup!
+      (let [jwt-payload (jwt/sign
+                         {:email      "rasta@metabase.com"
+                          :first_name "Rasta"
+                          :last_name  "Toucan"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            response    (client/client-real-response :post 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     {}
+                                                     :return_to default-redirect-uri
+                                                     :jwt       jwt-payload)]
+        (is (not (sso.test-setup/successful-login? response)))))))
+
+(deftest post-jwt-body-precedence-test
+  (testing "POST /auth/sso uses jwt from JSON body, not from query params"
+    (with-jwt-default-setup!
+      (let [body-jwt    (jwt/sign
+                         {:email      "rasta@metabase.com"
+                          :first_name "Rasta"
+                          :last_name  "Toucan"
+                          :source     "body"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            query-jwt   (jwt/sign
+                         {:email      "crowberto@metabase.com"
+                          :first_name "Crowberto"
+                          :last_name  "Bird"
+                          :source     "query"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            response    (client/client-real-response :post 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     {:jwt body-jwt}
+                                                     :return_to default-redirect-uri
+                                                     :jwt       query-jwt)]
+        (is (sso.test-setup/successful-login? response))
+        (is (= {"source" "body"}
+               (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com")))))))
 
 (deftest no-open-redirect-test
   (testing "Check that we prevent open redirects to untrusted sites"
@@ -569,6 +630,7 @@
         (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
         ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name               (constantly "test")]
@@ -761,6 +823,7 @@
                                                       :is_active false}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
           ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+          ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)]
             (testing "with user provisioning turned off"
@@ -908,6 +971,7 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
       ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                     appearance.settings/site-name               (constantly "test")]
@@ -1314,3 +1378,21 @@
                     (is (some? tenant))
                     (testing "tenant created but with no attributes since the value wasn't a map"
                       (is (nil? (:attributes tenant))))))))))))))
+
+(deftest successful-jwt-login-does-not-log-pii-test
+  (testing "Successful JWT authentication should not log user's first or last name"
+    (with-jwt-default-setup!
+      (mt/with-log-messages-for-level [log-messages [metabase-enterprise.sso.providers.jwt :info]]
+        ;; client-full-response uses mock client (in-process, future) so dynamic bindings are conveyed
+        (let [response (client/client-full-response :get 302 "/auth/sso"
+                                                    {:request-options {:redirect-strategy :none}}
+                                                    :return_to default-redirect-uri
+                                                    :jwt
+                                                    (jwt/sign
+                                                     {:email      "rasta@metabase.com"
+                                                      :first_name "Rasta"
+                                                      :last_name  "Toucan"}
+                                                     default-jwt-secret))]
+          (is (sso.test-setup/successful-login? response))
+          (is (not-any? #(re-find #"Rasta|Toucan" (:message %)) (log-messages))
+              "Log messages should not contain user's first or last name"))))))

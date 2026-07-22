@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   fireEvent,
   render,
@@ -7,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import type { PaletteActionImpl } from "../types";
 
@@ -14,6 +13,7 @@ import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";
 
 const mockPaletteActionImpl = (opts: Partial<PaletteActionImpl>) =>
+  // Unjustified type cast. FIXME
   ({
     name: "test action",
     id: "action-1",
@@ -48,7 +48,7 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
     <>
       <Route
         path="/"
-        component={() => (
+        element={
           <PaletteResultList
             items={items.map((item) => mockPaletteActionImpl(item))}
             maxHeight={580}
@@ -68,9 +68,9 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
               return <PaletteResultItem item={item} active={active} />;
             }}
           />
-        )}
+        }
       />
-      <Route path="search" component={() => null} />
+      <Route path="search" element={null} />
     </>,
     { withRouter: true, withKBar: true },
   );

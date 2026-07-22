@@ -1,12 +1,12 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
 import { useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { useHelpUrl } from "metabase/embedding/embedding-hub/hooks";
+import { Link } from "metabase/router";
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";

@@ -11,9 +11,11 @@ class TypedStorage<T> {
     }
 
     try {
+      // Unjustified type cast. FIXME
       return JSON.parse(data) as T;
     } catch (e) {
       throw new Error(
+        // Unjustified type cast. FIXME
         `Failed to parse stored data for key "${this.key}": ${(e as Error).message}`,
       );
     }
@@ -25,6 +27,7 @@ class TypedStorage<T> {
       localStorage.setItem(this.key, JSON.stringify(value));
     } catch (e) {
       throw new Error(
+        // Unjustified type cast. FIXME
         `Failed to store data for key "${this.key}": ${(e as Error).message}`,
       );
     }
@@ -36,6 +39,7 @@ class TypedStorage<T> {
       localStorage.removeItem(this.key);
     } catch (e) {
       throw new Error(
+        // Unjustified type cast. FIXME
         `Failed to remove data for key "${this.key}": ${(e as Error).message}`,
       );
     }

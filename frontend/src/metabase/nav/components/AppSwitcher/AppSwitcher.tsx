@@ -7,7 +7,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
-import { userInitials } from "metabase/common/utils/user";
+import { prepareInitials } from "metabase/common/utils/user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
@@ -177,7 +177,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               bd="1px solid var(--mb-color-border-neutral)"
               data-testid="app-switcher-target"
             >
-              {user ? userInitials(user) : "?"}
+              {user ? prepareInitials(user) : "?"}
             </Avatar>
           )}
         </Menu.Target>
@@ -191,7 +191,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
             >
               <Group wrap="nowrap">
                 <Avatar color="core-brand" radius="lg" size={32}>
-                  {user ? userInitials(user) : "?"}
+                  {user ? prepareInitials(user) : "?"}
                 </Avatar>
                 <Stack gap="xs">
                   <Text lh="xs">{user?.first_name}</Text>

@@ -2,9 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -481,3 +483,93 @@
           "export-conditions falls back to :conditions for TransformTag")
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
           "removal-conditions falls back to :conditions for TransformTag"))))
+
+(deftest check-deletion-conflicts-test
+  (testing "unsynced transform-family content absent from an import is flagged; synced content is excluded"
+    (mt/with-temporary-setting-values [remote-sync-transforms true]
+      (mt/with-temp [:model/TransformTag unsynced {:name "Unsynced Tag"}
+                     :model/TransformTag synced   {:name "Synced Tag"}
+                     :model/RemoteSyncObject _ {:model_type "TransformTag" :model_id (:id synced)
+                                                :status "synced" :status_changed_at (t/instant)
+                                                :model_name "Synced Tag"}]
+        (testing "the unsynced tag is flagged; the already-synced one is not counted as data loss"
+          (let [tconf (first (filter #(= "Transforms" (:category %))
+                                     (spec/check-deletion-conflicts {:by-entity-id {}})))]
+            (is (= "Import would delete 1 unsynced local Transforms entity" (:message tconf)))))
+        (testing "tags present in the import are not flagged"
+          (is (empty? (filter #(= "Transforms" (:category %))
+                              (spec/check-deletion-conflicts
+                               {:by-entity-id {"TransformTag" #{(:entity_id unsynced) (:entity_id synced)}}})))))))))
+
+(deftest check-content-deletion-conflicts-test
+  (testing "GHY-4019: unsynced local collection content absent from an import is flagged as a deletion conflict"
+    (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Card metric {:name "Local Metric" :type :metric :collection_id (:id coll)}
+                   :model/Card question {:name "Local Q" :collection_id (:id coll)}]
+      (testing "cards absent from the import are reported (metrics are Cards)"
+        (let [conflicts (spec/check-content-deletion-conflicts {:by-entity-id {}})
+              card-conflict (first (filter #(= "Card" (:model %)) conflicts))]
+          (is (= 2 (:count card-conflict)))
+          (is (= #{"Local Metric" "Local Q"} (set (:names card-conflict))))
+          (is (= "Card" (:category card-conflict)))))
+      (testing "cards present in the import are not reported"
+        (is (empty? (spec/check-content-deletion-conflicts
+                     {:by-entity-id {"Card" #{(:entity_id metric) (:entity_id question)}}}))))))
+  (testing "content already synced (present in RemoteSyncObject as 'synced') is not data loss and is excluded"
+    (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Card synced-card {:name "Pushed" :collection_id (:id coll)}
+                   :model/Card _local {:name "Never pushed" :type :metric :collection_id (:id coll)}
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id synced-card)
+                                              :status "synced" :status_changed_at (t/instant)
+                                              :model_name "Pushed"}]
+      (let [conflicts (spec/check-content-deletion-conflicts {:by-entity-id {}})
+            card-conflict (first (filter #(= "Card" (:model %)) conflicts))]
+        (is (= 1 (:count card-conflict)))
+        (is (= ["Never pushed"] (:names card-conflict))))))
+  (testing "content in a non-synced collection is not scoped in, so nothing is flagged"
+    (mt/with-temp [:model/Collection coll {:name "Not synced" :is_remote_synced false :location "/"}
+                   :model/Card _card {:name "Local Q" :collection_id (:id coll)}]
+      (is (empty? (spec/check-content-deletion-conflicts {:by-entity-id {}})))))
+  (testing "GHY-4019: unsynced NativeQuerySnippets are flagged too (not just collection content)"
+    ;; Snippets sync when the Library collection is remote-synced; they are entity-id content with no
+    ;; collection scope, so they'd previously fall through both deletion-conflict checks.
+    (mt/with-temp [:model/Collection _lib {:name "Library" :type "library" :is_remote_synced true :location "/"}
+                   :model/NativeQuerySnippet _unsynced {:name "Local Snippet"}
+                   :model/NativeQuerySnippet synced {:name "Synced Snippet"}
+                   :model/RemoteSyncObject _ {:model_type "NativeQuerySnippet" :model_id (:id synced)
+                                              :status "synced" :status_changed_at (t/instant)
+                                              :model_name "Synced Snippet"}]
+      (let [conflict (first (filter #(= "NativeQuerySnippet" (:model %))
+                                    (spec/check-content-deletion-conflicts {:by-entity-id {}})))]
+        (is (= 1 (:count conflict)) "the unsynced snippet is flagged; the synced one is excluded")
+        (is (= ["Local Snippet"] (:names conflict)))))))
+
+(deftest removal-where-clauses-parity-test
+  (testing "GHY-4019: the deletion-conflict warning is exactly the unsynced subset of what an import removes"
+    ;; Both the delete path (remove-unsynced!) and the warning build their WHERE from
+    ;; spec/removal-where-clauses, so they can't diverge. This locks in that relationship: the rows the
+    ;; predicate removes (absent from the import, in a synced collection) minus the already-synced ones are
+    ;; exactly the rows the warning flags.
+    (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Card _unsynced {:name "Unsynced" :collection_id (:id coll)}
+                   :model/Card synced    {:name "Synced pushed" :collection_id (:id coll)}
+                   :model/Card imported {:name "In import" :collection_id (:id coll)}
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id synced) :status "synced"
+                                              :status_changed_at (t/instant) :model_name "Synced pushed"}]
+      (let [imported-eids #{(:entity_id imported)}
+            imported-data {:by-entity-id {"Card" imported-eids}}
+            synced-ids    (spec/all-syncable-collection-ids)
+            card-spec     (spec/spec-for-model-key :model/Card)
+            ;; what remove-unsynced! would delete for Card (its predicate, run as a SELECT rather than a delete)
+            would-delete  (t2/select-fn-set :name :model/Card
+                                            {:where (into [:and] (spec/removal-where-clauses
+                                                                  card-spec synced-ids imported-eids))})
+            flagged       (into #{}
+                                (comp (filter #(= "Card" (:model %))) (mapcat :names))
+                                (spec/check-content-deletion-conflicts imported-data))]
+        (is (= #{"Unsynced" "Synced pushed"} would-delete)
+            "the import removes everything in the synced collection that is absent from it")
+        (is (= #{"Unsynced"} flagged)
+            "the warning covers only the unsynced subset (the potential data loss)")
+        (is (set/subset? flagged would-delete)
+            "everything the warning flags would indeed be removed")))))

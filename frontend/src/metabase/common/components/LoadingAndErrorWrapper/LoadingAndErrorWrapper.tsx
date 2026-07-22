@@ -10,8 +10,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
+import { Loader } from "metabase/ui";
 
 export interface LoadingAndErrorWrapperProps {
   loading?: boolean;
@@ -133,7 +133,7 @@ export const LoadingAndErrorWrapper = forwardRef<
         renderError(contentClassName)
       ) : loading ? (
         <div className={contentClassName}>
-          {showSpinner && <LoadingSpinner />}
+          {showSpinner && <Loader size="lg" />}
           <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
             {getLoadingMessages()[messageIndex]}
           </h2>

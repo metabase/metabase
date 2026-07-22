@@ -7,13 +7,8 @@ import {
   getMaxMetricsSupported,
 } from "metabase/visualizations";
 import { trackStackedSeriesEnabled } from "metabase/visualizations/analytics";
-import {
-  ChartSettingEnumToggle,
-  type ChartSettingEnumToggleProps,
-} from "metabase/visualizations/components/settings/ChartSettingEnumToggle";
-import { ChartSettingMaxCategories } from "metabase/visualizations/components/settings/ChartSettingMaxCategories";
+import type { ChartSettingEnumToggleProps } from "metabase/visualizations/components/settings/ChartSettingEnumToggle";
 import type { ChartSettingSegmentedControlProps } from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
-import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
@@ -158,7 +153,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
   },
   "graph.series_order": {
     getSection: () => t`Data`,
-    widget: ChartSettingSeriesOrder,
+    widget: "seriesOrder",
     useRawSeries: true,
     getWrapperStyle: () => ({
       marginBottom: "1rem",
@@ -621,7 +616,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["series_settings"],
   },
   "graph.max_categories": {
-    widget: ChartSettingMaxCategories,
+    widget: "maxCategories",
     getHidden: () => true,
     // temporarily hiding the setting (metabase#50510)
     getDefault: () => Number.MAX_SAFE_INTEGER,
@@ -982,7 +977,7 @@ const BOXPLOT_LABEL_VALUE_FREQUENCY_SETTING: SeriesSettingDefinition<
   get title() {
     return t`Hide overlapping labels`;
   },
-  widget: ChartSettingEnumToggle,
+  widget: "enumToggle",
   getDefault: () => "fit",
   inline: true,
   getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],

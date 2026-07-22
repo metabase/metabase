@@ -1,5 +1,3 @@
-import { type WithRouterProps, withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -7,6 +5,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useDispatch } from "metabase/redux";
+import { push, useRouter } from "metabase/router";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -15,11 +14,12 @@ type TabConfig = {
   label: string;
 };
 
-type TasksTabsProps = WithRouterProps & {
+type TasksTabsProps = {
   children: React.ReactNode;
 };
 
-const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
+export const TasksTabs = ({ children }: TasksTabsProps) => {
+  const { location } = useRouter();
   const tabs: TabConfig[] = [
     { value: Urls.adminToolsTasksList(), label: t`Tasks` },
     { value: Urls.adminToolsTasksRuns(), label: t`Runs` },
@@ -60,5 +60,3 @@ const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
     </SettingsPageWrapper>
   );
 };
-
-export const TasksTabs = withRouter(TasksTabsBase);

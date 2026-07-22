@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
@@ -18,6 +17,7 @@ import {
   isDbModifiable,
 } from "metabase/common/utils/database";
 import type { WorkspaceDatabaseSectionProps } from "metabase/plugins/oss/workspaces";
+import { Link } from "metabase/router";
 import {
   Alert,
   Box,

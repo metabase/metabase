@@ -63,6 +63,7 @@ export const DeleteGroupMappingModal = ({
           <Radio.Group
             value={value}
             onChange={(newValue) =>
+              // Unjustified type cast. FIXME
               handleChange(newValue as DeleteMappingModalValueType)
             }
           >

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +7,7 @@ import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
+import { useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -56,10 +56,9 @@ const ArchiveDashboardModal = ({
   );
 };
 
-export const ArchiveDashboardModalConnectedInner = (
-  props: OwnProps & { params: { slug?: string } },
-) => {
-  const id = Urls.extractCollectionId(props.params?.slug);
+export const ArchiveDashboardModalConnectedInner = (props: OwnProps) => {
+  const { params } = useRouter();
+  const id = Urls.extractCollectionId(params?.slug);
   const { currentData: dashboard, error } = useGetDashboardQuery(
     id != null ? { id } : skipToken,
   );
@@ -77,6 +76,5 @@ export const ArchiveDashboardModalConnectedInner = (
   );
 };
 
-export const ArchiveDashboardModalConnected = withRouter(
-  ArchiveDashboardModalConnectedInner,
-);
+export const ArchiveDashboardModalConnected =
+  ArchiveDashboardModalConnectedInner;

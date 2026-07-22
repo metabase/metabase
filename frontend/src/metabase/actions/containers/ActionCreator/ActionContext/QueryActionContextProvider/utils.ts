@@ -51,10 +51,12 @@ export const setTemplateTagTypesFromFieldSettings = (
   settings: ActionFormSettings,
 ): Question => {
   const fields = settings.fields || {};
+  // Unjustified type cast. FIXME
   const query = question.legacyNativeQuery() as NativeQuery;
   let tempQuestion = question.clone();
 
   query.variableTemplateTags().forEach((tag: TemplateTag) => {
+    // Unjustified type cast. FIXME
     const currentQuery = tempQuestion.legacyNativeQuery() as NativeQuery;
     const fieldType = fields[tag.id]?.fieldType ?? "string";
     const nextTag = {

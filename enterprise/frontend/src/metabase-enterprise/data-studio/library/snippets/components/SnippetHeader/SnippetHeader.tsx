@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
@@ -17,6 +16,7 @@ import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collect
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { NativeQuerySnippet } from "metabase-types/api";
 

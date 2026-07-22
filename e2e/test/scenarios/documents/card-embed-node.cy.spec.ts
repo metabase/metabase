@@ -152,7 +152,9 @@ describe("documents card embed node custom logic", () => {
         cy.get("@ogWidth1").then((_first) => {
           cy.get("@ogWidth2").then((_second) => {
             cy.log("compare that changes are close to the drag distance");
+            // Unjustified type cast. FIXME
             expect((_first as unknown as number) + 100).to.be.closeTo(first, 3);
+            // Unjustified type cast. FIXME
             expect((_second as unknown as number) - 100).to.be.closeTo(
               second,
               3,
@@ -260,6 +262,7 @@ describe("documents card embed node custom logic", () => {
         cy.wrap(second).as("_second");
         cy.wrap(third).as("_third");
         expect(first).to.be.closeTo(second, 10);
+        // Unjustified type cast. FIXME
         expect(first).to.be.closeTo(third as unknown as number, 10);
       });
 
@@ -273,8 +276,11 @@ describe("documents card embed node custom logic", () => {
         cy.get("@_first").then((_first) => {
           cy.get("@_second").then((_second) => {
             cy.get("@_third").then((_third) => {
+              // Unjustified type cast. FIXME
               expect(first).to.be.closeTo(_first as unknown as number, 3);
+              // Unjustified type cast. FIXME
               expect(second).to.be.greaterThan(_second as unknown as number);
+              // Unjustified type cast. FIXME
               expect(third).to.be.lessThan(_third as unknown as number);
             });
           });
@@ -791,12 +797,15 @@ function getCardWidths(
       if (thirdCardName) {
         H.getDocumentCard(thirdCardName).then((thirdCard) => {
           cb(
+            // Unjustified type cast. FIXME
             firstCard.width() as number,
+            // Unjustified type cast. FIXME
             secondCard.width() as number,
             thirdCard.width(),
           );
         });
       } else {
+        // Unjustified type cast. FIXME
         cb(firstCard.width() as number, secondCard.width() as number);
       }
     });

@@ -149,7 +149,9 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
 
     it("sorts by policy correctly", () => {
       const sorted = unsortedRows.sort((rowA, rowB) => {
+        // Unjustified type cast. FIXME
         const a = formatValueForSorting(rowA, "policy") as string;
+        // Unjustified type cast. FIXME
         const b = formatValueForSorting(rowB, "policy") as string;
         return a.localeCompare(b);
       });
@@ -170,7 +172,9 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
 
     it("sorts by collection correctly", () => {
       const sorted = unsortedRows.sort((rowA, rowB) => {
+        // Unjustified type cast. FIXME
         const a = formatValueForSorting(rowA, "collection") as string;
+        // Unjustified type cast. FIXME
         const b = formatValueForSorting(rowB, "collection") as string;
         return a.localeCompare(b);
       });

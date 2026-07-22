@@ -71,8 +71,8 @@ describe("Metabot Query Builder", () => {
     });
     H.lastChatMessage().should("have.text", "Here's what I found.");
 
-    // ...and we stay on the /ask page
-    cy.url().should("include", "/question/ask");
+    // ...and we move to the conversation's permalink
+    cy.url().should("include", "/metabot/conversation/");
   });
 
   it("should render a generated chart inline without leaving the page", () => {
@@ -85,10 +85,10 @@ describe("Metabot Query Builder", () => {
     H.sendMetabotMessage("Show me all orders");
 
     cy.wait("@metabotAgent");
-    // the chart renders inline and we stay on the /ask page
+    // the chart renders inline rather than in the query builder
     cy.findByTestId("metabot-inline-chart").should("be.visible");
     cy.findByTestId("qb-header").should("not.exist");
-    cy.url().should("include", "/question/ask");
+    cy.url().should("include", "/metabot/conversation/");
   });
 
   it("should navigate to a question when the agent returns a navigate_to", () => {
@@ -152,12 +152,10 @@ describe("Metabot Query Builder", () => {
 
 // Response helpers
 const mockNavigateToResponse = (path: string) =>
-  `2:{"type":"navigate_to","version":1,"value":"${path}"}
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.createMetabotSSEBody(H.metabotDataPart("navigate_to", path));
 
 const mockTextOnlyResponse = (text: string) =>
-  `0:"${text}"
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.createMetabotSSEBody(H.metabotTextPart(text));
 
 const mockGeneratedEntityResponse = (datasetQuery: unknown) => {
   const value = {
@@ -167,9 +165,10 @@ const mockGeneratedEntityResponse = (datasetQuery: unknown) => {
     query: { id: "query-1", query: datasetQuery },
     display: "table",
   };
-  return `2:{"type":"generated_entity","version":1,"value":${JSON.stringify(value)}}
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  return H.createMetabotSSEBody(H.metabotDataPart("generated_entity", value));
 };
 
-const mockErrorResponse = `3:"Anthropic API key expired or invalid"
-d:{"finishReason":"error","usage":{}}`;
+const mockErrorResponse = H.createMetabotSSEBody(
+  H.metabotErrorPart("Anthropic API key expired or invalid"),
+  H.metabotFinishPart("error"),
+);

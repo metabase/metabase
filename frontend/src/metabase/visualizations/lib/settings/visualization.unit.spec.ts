@@ -9,7 +9,7 @@ import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
 } from "metabase/visualizations/lib/settings/visualization";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Series,
   VisualizationDisplay,

@@ -95,6 +95,7 @@ export function parseTimestamp(
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
+    // Unjustified type cast. FIXME
     result = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     result = NUMERIC_UNIT_FORMATS[unit](value);

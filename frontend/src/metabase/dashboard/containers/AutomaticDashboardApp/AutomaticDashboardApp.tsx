@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { dashboardApi } from "metabase/api";
@@ -19,6 +18,7 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { useRouter } from "metabase/router";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -32,8 +32,6 @@ import { SuggestionsSidebar } from "./SuggestionsSidebar";
 import { trackXRaySaved } from "./analytics";
 
 const SIDEBAR_W = 346;
-
-type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
 const AutomaticDashboardAppInner = () => {
   const { dashboard, parameters, isHeaderVisible, tabs } =
@@ -219,11 +217,8 @@ const AutomaticDashboardAppInner = () => {
   );
 };
 
-export const AutomaticDashboardApp = ({
-  router,
-  location,
-  params,
-}: AutomaticDashboardAppRouterProps) => {
+export const AutomaticDashboardApp = () => {
+  const { router, location, params } = useRouter();
   useDashboardUrlQuery(router, location);
 
   const dispatch = useDispatch();

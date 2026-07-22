@@ -1,13 +1,12 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { Link } from "./Link";
+import { Route } from "./route";
 
 describe("router/Link", () => {
   it("re-exports the to-based Link", () => {
     const Host = () => <Link to="/foo">go</Link>;
-    renderWithProviders(<Route path="*" component={Host} />, {
+    renderWithProviders(<Route path="*" element={<Host />} />, {
       withRouter: true,
     });
 

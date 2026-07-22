@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
-import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { push, useRouter } from "metabase/router";
 
 type Props = {
   shouldConfirm: boolean;

@@ -1,12 +1,10 @@
 (ns metabase.channel.render.js.color
-  "Determines the background colors of pulse table cells by delegating to the shared color-selector javascript (loaded
-  into every pooled static-viz context — see `metabase.channel.render.js.pool`). All the colors for a table are
-  computed in a single batched JS call, so no context-bound value ever escapes the pool."
+  "Determines the background colors of pulse table cells by delegating to the shared color-selector javascript through
+  [[metabase.channel.render.js.protocol]]. All the colors for a table are computed in a single batched JS call."
   (:require
-   [metabase.channel.render.js.engine :as js.engine]
-   [metabase.channel.render.js.pool :as js.pool]
+   [metabase.channel.render.js.protocol :as js.protocol]
+   [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -65,13 +63,11 @@
           (empty? (or (:table.column_formatting viz-settings)
                       (get viz-settings "table.column_formatting"))))
     (vec (repeat (count cells) nil))
-    (js.pool/with-static-viz-context context
-      (-> (js.engine/execute-fn-name context "getCellBackgroundColors"
-                                     (json/encode rows)
-                                     (json/encode cols)
-                                     (json/encode viz-settings)
-                                     (json/encode (mapv (fn [[value row-index column-name]]
-                                                          [(->js-value value) row-index column-name])
-                                                        cells)))
-          .asString
-          json/decode))))
+    (js.protocol/cell-background-colors
+     (renderer/renderer)
+     {:rows     rows
+      :cols     cols
+      :settings viz-settings
+      :cells    (mapv (fn [[value row-index column-name]]
+                        [(->js-value value) row-index column-name])
+                      cells)})))

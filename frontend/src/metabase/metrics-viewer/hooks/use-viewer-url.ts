@@ -1,10 +1,10 @@
 import type { Location } from "history";
 import { useEffect, useRef } from "react";
-import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
+import { push, replace } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";

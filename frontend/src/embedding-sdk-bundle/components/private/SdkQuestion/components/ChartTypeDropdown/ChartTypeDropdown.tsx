@@ -128,6 +128,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
       store={combobox}
       position="bottom-start"
       onOptionSubmit={(value) => {
+        // Unjustified type cast. FIXME
         updateQuestionVisualization(value as CardDisplayType);
         combobox.closeDropdown();
       }}

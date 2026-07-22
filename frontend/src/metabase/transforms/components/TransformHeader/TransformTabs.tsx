@@ -35,6 +35,10 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
       label: t`Settings`,
       to: Urls.transformSettings(id),
     },
+    {
+      label: t`Indexes`,
+      to: Urls.transformIndexes(id),
+    },
   ];
 
   if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab) {

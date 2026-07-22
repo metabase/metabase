@@ -32,8 +32,8 @@
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
                                              :exclusions [com.sun.mail/jakarta.mail]}
-  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.4"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
-  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.4"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
+  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.5"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
+  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.5"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.1"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
@@ -117,16 +117,16 @@
   org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.6.2"}              ; pinned: must pair with httpcore5 5.4.x (upstream pairing); ClickHouse JDBC needs httpcore5 5.3.4+
   org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.4.3"}              ; pinned: 5.4.2+
   org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.4.3"}              ; pinned: must match httpcore5 version
-  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.25.4"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api            {:mvn/version "2.25.4"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core           {:mvn/version "2.25.4"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.25.4"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.25.4"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.26.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api            {:mvn/version "2.26.1"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core           {:mvn/version "2.26.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.26.1"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.26.1"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
-  {:mvn/version "2.25.4"}             ; allows the custom json logging format
+  {:mvn/version "2.26.1"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
-  {:mvn/version "2.25.4"}             ; allows the slf4j2 API to work with log4j 2
-  org.apache.pdfbox/pdfbox                  {:mvn/version "3.0.5"}              ; PDF generation (backend dashboard PDF prototype)
+  {:mvn/version "2.26.1"}             ; allows the slf4j2 API to work with log4j 2
+  org.apache.pdfbox/pdfbox                  {:mvn/version "3.0.8"}              ; PDF generation (backend dashboard PDF prototype)
   org.apache.poi/poi                        {:mvn/version "5.5.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.5.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
@@ -161,10 +161,10 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.7"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.7"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.7"}
-  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.7"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.11"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.11"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.11"}
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.11"}
   org.eclipse.jgit/org.eclipse.jgit        {:mvn/version "7.3.0.202506031305-r"}; Java implementation of Git version control system
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
@@ -651,7 +651,15 @@
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
                ;; An issue has been filed here https://github.com/jonase/eastwood/issues/444
                ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
-               :exclude-namespaces [metabase.analytics.snowplow]}}
+               ;;
+               ;; The two Quartz queue-affinity DriverDelegate shims are `gen-class` namespaces whose
+               ;; only body is a `(.superRtp this ...)` call to their own exposed super method. That
+               ;; method exists only on the class the namespace itself generates, so `this` can't be
+               ;; type-hinted with it at compile time (the class isn't defined yet) — the reflective
+               ;; call is unavoidable. Eastwood also can't reliably analyze these gen-class shims.
+               :exclude-namespaces [metabase.analytics.snowplow
+                                    metabase.mq.quartz-affinity-delegate-std
+                                    metabase.mq.quartz-affinity-delegate-postgres]}}
 
   ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
   ;; issues in tests.

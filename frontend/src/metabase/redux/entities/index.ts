@@ -47,6 +47,7 @@ function mergeEntities(
     } else {
       result[id] = {
         ...(result[id] ?? {}),
+        // Unjustified type cast. FIXME
         ...(entry as Record<string, unknown>),
       };
     }
@@ -65,6 +66,7 @@ function makeSliceReducer(
 ): SliceReducer {
   return (state = {}, action: SliceAction) => {
     let nextState = state;
+    // Unjustified type cast. FIXME
     const entities = getIn(action, ["payload", "entities", sliceName]) as
       | Record<string, unknown>
       | undefined;
@@ -79,6 +81,7 @@ const customReducers: Partial<Record<string, SliceReducer>> = {
   tables: tablesReducer,
 };
 
+// Unjustified type cast. FIXME
 const sliceReducers = Object.fromEntries(
   ENTITY_SLICE_NAMES.map((name) => [
     name,

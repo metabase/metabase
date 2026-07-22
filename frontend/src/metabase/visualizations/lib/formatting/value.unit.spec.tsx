@@ -5,11 +5,14 @@ import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
+import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { ColumnSettings } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { formatValue } from "./value";
+
+registerJsxFormatting();
 
 const SITE_URL = "http://localhost:3000";
 
@@ -376,6 +379,7 @@ describe("formatValue", () => {
   it("should return the component for external links in jsx + rich mode", () => {
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatValue("http://metabase.com/", {
           jsx: true,
           rich: true,
@@ -388,6 +392,7 @@ describe("formatValue", () => {
   it("should return a component for internal links in jsx + rich mode", () => {
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatValue(SITE_URL, { jsx: true, rich: true }) as ReactElement,
         Link,
       ),
@@ -403,6 +408,7 @@ describe("formatValue", () => {
     });
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatValue("/question/12", {
           jsx: true,
           rich: true,
@@ -420,6 +426,7 @@ describe("formatValue", () => {
   });
 
   it("should not return an ExternalLink for links in jsx + rich mode if there's click behavior", () => {
+    // Unjustified type cast. FIXME
     const formatted = formatValue("http://metabase.com/", {
       jsx: true,
       rich: true,
@@ -438,6 +445,7 @@ describe("formatValue", () => {
   });
 
   it("should render image", () => {
+    // Unjustified type cast. FIXME
     const formatted = formatValue("http://metabase.com/logo.png", {
       jsx: true,
       rich: true,
@@ -449,6 +457,7 @@ describe("formatValue", () => {
   });
 
   it("should render image with a click behavior in jsx + rich mode (metabase#17161)", () => {
+    // Unjustified type cast. FIXME
     const formatted = formatValue("http://metabase.com/logo.png", {
       jsx: true,
       rich: true,
@@ -467,6 +476,7 @@ describe("formatValue", () => {
   it("should return a component for email addresses in jsx + rich mode", () => {
     expect(
       isElementOfType(
+        // Unjustified type cast. FIXME
         formatValue("tom@metabase.test", {
           jsx: true,
           rich: true,
