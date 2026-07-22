@@ -302,7 +302,7 @@
                             (pprint/pprint %)))))
      :clj  `(clojure.tools.logging/spy ~level ~expr))))
 
-;; REPL/debug sibling of `spy`; kept as public log API though nothing in-tree calls it
+;; legacy REPL/debug API with no in-tree callers; retained pending a compatibility/removal audit
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro spyf
   "Evaluates an expression, and may write both the form and its formatted result to the log.
