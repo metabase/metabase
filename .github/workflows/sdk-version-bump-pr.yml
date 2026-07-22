@@ -151,6 +151,13 @@ jobs:
               EXISTING_PRERELEASE_ID=$(echo "$CURRENT_VERSION" | sed -n 's/^[0-9.]*-\([a-z][a-z0-9-]*\)\(\.[0-9]*\)\{0,1\}$/\1/p')
               case "$EXISTING_PRERELEASE_ID" in alpha|beta) EXISTING_PRERELEASE_ID="" ;; esac
 
+              # ...and they're reserved as the input id too: a custom beta would
+              # land on the real <major>-beta dist-tag, alpha on the alpha line.
+              if [ "$PRERELEASE_ID" = "alpha" ] || [ "$PRERELEASE_ID" = "beta" ]; then
+                echo "::error::prerelease_id '$PRERELEASE_ID' is reserved for master/release-branch releases. Pick a distinct one-off id (e.g. data-apps, esbuild)."
+                exit 1
+              fi
+
               # prerelease_id is set if and only if this is the first cut.
               if [ -n "$EXISTING_PRERELEASE_ID" ] && [ -n "$PRERELEASE_ID" ]; then
                 echo "::error::This branch already uses the prerelease id '$EXISTING_PRERELEASE_ID' - leave prerelease_id empty to bump it. To change the id, reset the version in $package_template by hand."
