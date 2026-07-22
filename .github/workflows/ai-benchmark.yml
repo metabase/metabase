@@ -25,14 +25,11 @@ on:
         description: "Sample (0 = full suite)"
         required: false
         default: "5"
-      evals_action_ref:
-        description: "Evals workflow ref"
+      evals_ref:
+        # $ROOT/.evals_ref contents is used if input is empty
+        description: "Evals ref"
         required: false
-        default: ci-milestone-3
-      evals_logic_ref:
-        description: "Evals logic ref"
-        required: false
-        default: ci-milestone-3
+        default: ""
 
 jobs:
   announce:
@@ -78,17 +75,26 @@ jobs:
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
     steps:
+      - name: Read pinned evals ref
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .evals_ref
+          sparse-checkout-cone-mode: false
+      - name: Resolve evals ref
+        id: ref
+        run: echo "value=$(cat .evals_ref)" >> "$GITHUB_OUTPUT"
       - name: Dispatch smoke eval-run
         env:
           GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
+          EVALS_REF: ${{ steps.ref.outputs.value }}
         run: |
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
-            -f ref="ci-milestone-3" \
+            -f ref="$EVALS_REF" \
             -f "inputs[pr]=$PR" \
             -f "inputs[scope]=smoke" \
             -f "inputs[sample]=5" \
-            -f "inputs[evals_ref]=ci-milestone-3"
+            -f "inputs[evals_ref]=$EVALS_REF"
 
       - name: Locate the dispatched eval-run
         id: evalrun
@@ -125,20 +131,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Read pinned evals ref
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .evals_ref
+          sparse-checkout-cone-mode: false
+      - name: Resolve evals ref
+        id: ref
+        env:
+          INPUT_REF: ${{ inputs.evals_ref }}
+        run: echo "value=${INPUT_REF:-$(cat .evals_ref)}" >> "$GITHUB_OUTPUT"
       - name: Dispatch eval-run
         env:
           GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
-          ACTION_REF: ${{ inputs.evals_action_ref }}
+          EVALS_REF: ${{ steps.ref.outputs.value }}
           PR: ${{ inputs.pr }}
           REF: ${{ inputs.ref }}
           SCOPE: ${{ inputs.scope }}
           SAMPLE: ${{ inputs.sample }}
-          LOGIC_REF: ${{ inputs.evals_logic_ref }}
         run: |
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
-            -f ref="$ACTION_REF" \
+            -f ref="$EVALS_REF" \
             -f "inputs[pr]=$PR" \
             -f "inputs[ref]=$REF" \
             -f "inputs[scope]=$SCOPE" \
             -f "inputs[sample]=$SAMPLE" \
-            -f "inputs[evals_ref]=$LOGIC_REF"
+            -f "inputs[evals_ref]=$EVALS_REF"
