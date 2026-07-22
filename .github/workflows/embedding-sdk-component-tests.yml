@@ -8,6 +8,12 @@ env:
   TERM: xterm
   TZ: US/Pacific # to make Node match the instance tz
   MB_EDITION: "ee"
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  REPO_ID: ${{ github.event.repository.id }}
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+  QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
 
 jobs:
   sdk-component-tests:
@@ -19,6 +25,7 @@ jobs:
         react-version: [18, 19]
       fail-fast: false
     env:
+      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-component-react-${{ matrix.react-version }}
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
@@ -69,6 +76,8 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
+      - uses: ./.github/actions/resolve-job-id
+
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -86,6 +95,8 @@ jobs:
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js component
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
+        continue-on-error: true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -99,10 +110,21 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.run-tests.outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
       - name: "SDK component tests > Upload Cypress Artifacts upon failure"
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
         with:
           name: cypress-recording-embedding-sdk-react-${{ matrix.react-version }}
           path: |
@@ -111,7 +133,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: "SDK component tests > Publish Summary"
-        if: failure()
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
         uses: actions/github-script@v7
         with:
           script: | #js
@@ -156,6 +178,7 @@ jobs:
     env:
       MB_RUN_MODE: "e2e"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-component-backward-compatibility
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
@@ -225,6 +248,8 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
+      - uses: ./.github/actions/resolve-job-id
+
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -240,6 +265,8 @@ jobs:
         run: |
           node e2e/runner/run_cypress_ci.js component \
             --env grepTags="-@skip-backward-compatibility"
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
+        continue-on-error: true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -253,10 +280,21 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.run-tests.outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
         with:
           name: cypress-recording-embedding-sdk-cross-version
           path: |
@@ -265,7 +303,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish Summary
-        if: failure()
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
         uses: actions/github-script@v7
         with:
           script: | #js
