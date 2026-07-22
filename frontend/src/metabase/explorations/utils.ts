@@ -1,4 +1,10 @@
 export function shouldIgnoreKeyboardEvent(event: KeyboardEvent) {
+  // Never hijack OS/browser chords: Cmd+C must copy, Ctrl+S must not star a
+  // chart, and Cmd/Alt+ArrowLeft must keep navigating browser history.
+  if (event.metaKey || event.ctrlKey || event.altKey) {
+    return true;
+  }
+
   if (!(event.target instanceof HTMLElement)) {
     return true;
   }
