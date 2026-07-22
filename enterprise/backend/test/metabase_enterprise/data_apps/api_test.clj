@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -20,24 +21,13 @@
 
 (def ^:private fake-sha "0123456789abcdef0123456789abcdef01234567")
 
-(defn- child-names
-  "The immediate children of `dir` implied by `paths` — the flat-map stand-in for the real snapshot's
-   single-subtree read."
-  [paths dir]
-  (let [prefix (if (str/blank? dir) "" (str dir "/"))]
-    (->> paths
-         (keep #(when (str/starts-with? % prefix)
-                  (first (str/split (subs % (count prefix)) #"/"))))
-         distinct
-         sort
-         vec)))
-
 (defn- snapshot
   "Build a snapshot (as the remote-sync import passes one) from a path->content
-   map. `read-file` returns file text (a string) or nil."
+   map. `read-file` returns file text (a string) or nil; `list-dir` reuses the
+   derivation the real non-git snapshots use, so the fake can't drift from it."
   [path->content & {:keys [sha] :or {sha fake-sha}}]
   {:sha       sha
-   :list-dir  (fn [dir] (child-names (keys path->content) dir))
+   :list-dir  (fn [dir] (source/paths->children (keys path->content) dir))
    :read-file (fn [p] (get path->content p))})
 
 (defn- app-config

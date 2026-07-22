@@ -49,15 +49,13 @@
 
 (defn- discover-app-configs
   "Given the snapshot's `list-dir` and `read-file` fns (where `list-dir` returns a
-   directory's immediate child names and `read-file` returns file text or nil),
-   iterate the folders under `data_apps/` and return one entry per folder that is
-   an app — it holds a `data_app.yaml`; a folder without one is skipped. Each entry
-   carries `:slug` (the directory name) plus either the parsed app
-   `{:display_name :bundle :allowed_hosts}` (with `:bundle` the repo-root relative
-   bundle path) or `{:config-error <message>}`. Parse/read failures are isolated per
-   app so one bad config can't abort the sync — and the `:slug` is present either
-   way, so pruning can tell a directory that still exists (transiently broken config)
-   from one that was removed.
+   directory's immediate children as repo-root relative paths, and `read-file`
+   returns file text or nil), iterate the folders under `data_apps/` and return one
+   entry per folder that is an app — it holds a `data_app.yaml`; a folder without
+   one is skipped. Each entry is a parsed app `{:slug :display_name :bundle
+   :allowed_hosts}` (with `:bundle` the repo-root relative bundle path) or
+   `{:config-error <message>}`. Parse/read failures are isolated per app so one bad
+   config can't abort the sync.
 
    Reads only `data_apps/` and its app folders, never the whole tree. That matters
    beyond this fn: `data_apps/` is not a serdes path, so a pull that changes only
@@ -66,11 +64,10 @@
    the tree, and it now stays proportional to the number of apps rather than to
    the size of the repo."
   [list-dir read-file]
-  (for [name (list-dir data-app.config/apps-dir)
-        :let [dir         (str data-app.config/apps-dir "/" name)
-              config-path (str dir "/" data-app.config/config-file-name)]
+  (for [dir (list-dir data-app.config/apps-dir)
+        :let [config-path (str dir "/" data-app.config/config-file-name)]
         ;; a plain file under `data_apps/` lists no children, so it drops out here
-        :when (some #{data-app.config/config-file-name} (list-dir dir))]
+        :when (some #{config-path} (list-dir dir))]
     (try
       (if-let [content (read-file config-path)]
         (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
@@ -154,7 +151,7 @@
   "Materialize data apps from a synced repo `snapshot`:
 
      {:read-file <(fn [path] -> <file-text-string> | nil)>
-      :list-dir  <(fn [path] -> [<child-name-string> ...])>
+      :list-dir  <(fn [path] -> [<child-path-string> ...])>
       :sha       <commit-sha-string>}
 
    Discovers every `data_apps/<dir>/data_app.yaml`, upserts a row per app, and prunes

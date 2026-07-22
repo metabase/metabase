@@ -50,13 +50,17 @@
     Returns a collection of file path strings.")
 
   (list-dir [snapshot path]
-    "Lists the immediate children of the directory `path` (repo-root relative, no trailing slash).
+    "Lists the immediate children of the directory `path` (repo-root relative, no trailing slash; the
+    empty string is the root).
 
     Takes a SourceSnapshot instance implementing this protocol.
 
-    Returns a sorted vector of child names (not paths), or an empty vector when `path` doesn't exist or
-    isn't a directory. Unlike `list-files` this reads only the one directory, so its cost is independent
-    of the size of the rest of the repo.")
+    Returns a lexicographically sorted vector of repo-root relative paths — like `list-files`, and so
+    directly usable as `read-file`'s argument — or an empty vector when `path` doesn't exist or isn't a
+    directory. Child
+    directories are listed alongside files; they never appear in `list-files`, which yields only leaves,
+    so this is the only way to discover them. Unlike `list-files` this reads only the one directory, so
+    its cost is independent of the size of the rest of the repo.")
 
   (read-file [snapshot path]
     "Reads the contents of a file from the snapshot.

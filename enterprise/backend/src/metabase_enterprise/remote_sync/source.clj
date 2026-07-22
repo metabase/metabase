@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn paths->child-names
+(defn paths->children
   "The immediate children of directory `path` implied by a flat collection of file `paths`. For snapshots
   that hold their whole file list in memory and so have no tree objects to walk; the git source overrides
   this with a real subtree read."
@@ -30,9 +30,9 @@
          (keep (fn [^String p]
                  (when (str/starts-with? p prefix)
                    (let [child (subs p (count prefix))]
-                     (if-let [idx (str/index-of child "/")]
-                       (subs child 0 idx)
-                       child)))))
+                     (str prefix (if-let [idx (str/index-of child "/")]
+                                   (subs child 0 idx)
+                                   child))))))
          distinct
          sort
          vec)))
@@ -51,7 +51,7 @@
   ;; Derived from this view's own (filtered) file list rather than delegated, so a child filtered out of
   ;; `list-files` can't reappear here.
   (list-dir [this path]
-    (paths->child-names (source.p/list-files this) path))
+    (paths->children (source.p/list-files this) path))
 
   (read-file [_ path]
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
@@ -161,7 +161,7 @@
   (let [by-path (into {} (map (juxt :path :content)) specs)]
     (reify source.p/SourceSnapshot
       (list-files [_] (vec (keys by-path)))
-      (list-dir [_ path] (paths->child-names (keys by-path) path))
+      (list-dir [_ path] (paths->children (keys by-path) path))
       (read-file [_ path] (get by-path path))
       (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))

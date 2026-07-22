@@ -10,7 +10,7 @@
     (keys files))
 
   (list-dir [_ path]
-    (source/paths->child-names (keys files) path))
+    (source/paths->children (keys files) path))
 
   (read-file [_ path]
     (get files path))

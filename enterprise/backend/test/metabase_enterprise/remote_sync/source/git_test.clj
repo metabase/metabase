@@ -1,13 +1,15 @@
 (ns metabase-enterprise.remote-sync.source.git-test
   (:require
    [clojure.java.io :as io]
+   [clojure.java.shell :as shell]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import (java.io File)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git TransportCommand)
@@ -210,15 +212,72 @@
                                                  "zzz/other.txt"               "elsewhere"})
           snap (source.p/snapshot master)]
       (testing "immediate children only — no descendants, no siblings of the directory itself"
-        (is (= ["README.md" "alpha" "beta"] (source.p/list-dir snap "data_apps"))))
-      (testing "files and directories are both listed, sorted"
-        (is (= ["data_app.yaml" "deep" "index.js"] (source.p/list-dir snap "data_apps/alpha"))))
+        (is (= ["data_apps/README.md" "data_apps/alpha" "data_apps/beta"]
+               (source.p/list-dir snap "data_apps"))))
+      (testing "children are full repo-root relative paths, so they feed straight back into read-file"
+        (let [child (some #{"data_apps/alpha/index.js"} (source.p/list-dir snap "data_apps/alpha"))]
+          (is (= "ALPHA" (source.p/read-file snap child)))))
+      (testing "files and directories are both listed, sorted — `deep` is a directory"
+        (is (= ["data_apps/alpha/data_app.yaml" "data_apps/alpha/deep" "data_apps/alpha/index.js"]
+               (source.p/list-dir snap "data_apps/alpha"))))
       (testing "the repo root"
         (is (= ["data_apps" "root.txt" "zzz"] (source.p/list-dir snap ""))))
+      (testing "nesting: each call steps down exactly one level, and paths stay rooted at the repo"
+        (is (= ["data_apps/alpha/deep/nested.js"] (source.p/list-dir snap "data_apps/alpha/deep"))))
       (testing "a path that is a file, or absent, has no children rather than throwing"
         (is (= [] (source.p/list-dir snap "data_apps/README.md")))
         (is (= [] (source.p/list-dir snap "nope")))
         (is (= [] (source.p/list-dir snap "data_apps/alpha/nope")))))))
+
+(defn- git-cli-version
+  "The installed `git` CLI's version banner, or nil if there's no git on PATH to compare against."
+  []
+  (try
+    (let [{:keys [exit out]} (shell/sh "git" "--version")]
+      (when (zero? exit) (str/trim out)))
+    (catch Exception _ nil)))
+
+(defn- ls-tree
+  "Runs the real `git ls-tree` against `snapshot`'s own clone — the reference implementation
+  [[git/list-dir]] is checked against. Throws if git reports failure, so a broken invocation surfaces
+  instead of quietly looking like an empty directory."
+  [{:keys [^Git git ^String version]} ^String path]
+  (let [git-dir (.getAbsolutePath (.getDirectory (.getRepository git)))
+        ;; git makes the trailing slash mean "what this tree holds" rather than "the tree entry itself",
+        ;; which is what list-dir always means. The root needs no path argument at all.
+        args    (cond-> ["git" "--git-dir" git-dir "ls-tree" "--name-only" version]
+                  (not (str/blank? path)) (conj (str path "/")))
+        {:keys [exit out err]} (apply shell/sh args)]
+    (when-not (zero? exit)
+      (throw (ex-info "git ls-tree failed" {:args args :exit exit :err err})))
+    (vec (remove str/blank? (str/split-lines out)))))
+
+(deftest list-dir-matches-git-ls-tree
+  (testing "list-dir is `git ls-tree <path>/` minus the metadata columns, modulo ordering (see below)"
+    (if-let [version (git-cli-version)]
+      (mt/with-temp-dir [remote-dir nil]
+        (let [[master _remote] (init-source! "master" remote-dir
+                                             :files {"bar"                            "at the root"
+                                                     "baz/burp"                       "one level down"
+                                                     "foo/deeply/nested/bark.js"      "several levels down"
+                                                     "data_apps/README.md"            "a file, not an app"
+                                                     "data_apps/alpha/data_app.yaml"  "name: Alpha\n"
+                                                     "data_apps/alpha/index.js"       "ALPHA"
+                                                     "data_apps/beta/data_app.yaml"   "name: Beta\n"
+                                                     ;; \- sorts before \/, so git orders these as
+                                                     ;; ("d/a-b" "d/a") — the case the sort normalizes
+                                                     "d/a-b"                          "a sibling"
+                                                     "d/a/x"                          "inside a directory"})
+              snap (source.p/snapshot master)]
+          (testing (str "against " version)
+            (doseq [path ["" "bar" "baz" "foo" "foo/deeply" "foo/deeply/nested"
+                          "data_apps" "data_apps/alpha" "d" "nope"]]
+              (testing (str "list-dir " (pr-str path))
+                ;; same entries as real git, in lexicographic rather than git's tree order
+                (is (= (sort (ls-tree snap path)) (source.p/list-dir snap path))))))
+          (testing "the sort isn't a no-op — git's own order at a single level is not lexicographic"
+            (is (= ["d/a-b" "d/a"] (ls-tree snap "d"))))))
+      (log/warn "skipping list-dir-matches-git-ls-tree: no git CLI on PATH to compare against"))))
 
 (deftest read-file
   (mt/with-temp-dir [remote-dir nil]

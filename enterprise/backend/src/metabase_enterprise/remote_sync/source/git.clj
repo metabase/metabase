@@ -207,14 +207,19 @@
               files)))))
 
 (defn- tree-children
-  "Names of the entries at the walk's current depth, consuming the walk. `next` climbs back out of a
-  subtree once it's exhausted, so a drop in depth is what marks the end of the children."
+  "Paths of the entries at the walk's current depth, consuming the walk. `next` climbs back out of a
+  subtree once it's exhausted, so a drop in depth is what marks the end of the children.
+
+  Sorted rather than left in tree order: git orders a tree's entries as if directories ended in `/`, so
+  raw order puts a sibling `a-b` before the directory `a` (`\\-` < `\\/`). Sorting gives plain
+  lexicographic order instead — the one rule the flat snapshots can honour too, since they have no tree
+  order to inherit."
   [^TreeWalk tree-walk]
   (let [depth (.getDepth tree-walk)]
-    (loop [names []]
+    (loop [paths []]
       (if (and (.next tree-walk) (= depth (.getDepth tree-walk)))
-        (recur (conj names (.getNameString tree-walk)))
-        (vec (sort names))))))
+        (recur (conj paths (.getPathString tree-walk)))
+        (vec (sort paths))))))
 
 (defn list-dir
   "Lists the immediate children of one directory in the git repository at the snapshot.
@@ -227,8 +232,11 @@
   it holds, not to the size of the repository. The clone is bare (git objects, no working tree), which is
   exactly what this walks.
 
-  Returns a sorted vector of child names (not paths), or an empty vector when the path doesn't exist or
-  isn't a directory."
+  Returns a vector of repo-root relative paths — the same shape `list-files` returns, and what
+  `read-file` takes — or an empty vector when the path doesn't exist or isn't a directory. Directories
+  are listed alongside files, which is how a caller finds a directory at all (a directory is a tree, so
+  it never appears in `list-files`). This is `git ls-tree <path>/` minus the metadata columns, as
+  `list-files` is `git ls-tree -r`, except for the ordering [[tree-children]] normalizes."
   [{:keys [^Git git ^String version]} ^String path]
   (let [repo (.getRepository git)]
     (with-open [rev-walk (RevWalk. repo)]

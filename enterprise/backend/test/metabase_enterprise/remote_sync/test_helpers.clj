@@ -185,7 +185,7 @@ width: fixed
 
   ;; Derived from `list-files` (which propagates this mock's failure modes), as the non-git snapshots do.
   (list-dir [this path]
-    (source/paths->child-names (source.p/list-files this) path))
+    (source/paths->children (source.p/list-files this) path))
 
   (read-file [_this path]
     (case fail-mode
@@ -315,7 +315,7 @@ width: fixed
                         source.p/SourceSnapshot
                         (list-files [_] (vec (keys (get-in @state [:trees version] {}))))
                         (list-dir [_ path]
-                          (source/paths->child-names (keys (get-in @state [:trees version] {})) path))
+                          (source/paths->children (keys (get-in @state [:trees version] {})) path))
                         (read-file [_ path] (get-in @state [:trees version path]))
                         (open-commit [_]
                           (let [staged-upserts (atom [])
