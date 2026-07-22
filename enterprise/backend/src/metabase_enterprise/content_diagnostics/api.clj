@@ -319,7 +319,8 @@
   rows are findings, not entities, and `total` counts findings.
   Each item is a flat identity + a top-level `content_count` + a nested `details` (collection,
   `description`, `owner`, `creator`, `threshold`, `unit`, and - card/transform `empty` only - `as_of`).
-  For a `collection` finding the breadcrumb is the **parent** collection (null at root), `creator` is
+  For a `collection` finding the breadcrumb is the **parent** collection (the root sentinel `{:id \"root\"}`
+  when the collection sits at root), `creator` is
   always null (collections have none - under the `created-by` sort they land in the null group, and a
   personal collection's owner is not a creator proxy), and `owner` is the owning user when the
   collection is personal. Paginated via `limit`/`offset`; `total` is the full valid count.

@@ -344,11 +344,11 @@
                            :type "user"}
                           (get-in row [:details :owner])))
                   (is (nil? (get-in row [:details :creator]))))
-                (testing "a root-level personal collection has no parent → breadcrumb null"
-                  (is (nil? (get-in row [:details :collection]))))))))))))
+                (testing "a root-level personal collection's parent is root → the root sentinel breadcrumb"
+                  (is (= "root" (get-in row [:details :collection :id]))))))))))))
 
 (deftest imbalanced-api-collection-breadcrumb-is-parent-test
-  (testing "a collection finding's breadcrumb is its PARENT collection; null at root; content_count stays top-level"
+  (testing "a collection finding's breadcrumb is its PARENT collection; the root sentinel at root; content_count stays top-level"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -370,8 +370,10 @@
                 (let [row (row-for child-fid)]
                   (is (= parent (get-in row [:details :collection :id])))
                   (is (= "Parent Coll" (get-in row [:details :collection :name])))))
-              (testing "root-level collection → collection null"
-                (is (nil? (get-in (row-for rooted-fid) [:details :collection]))))
+              (testing "root-level collection → the root sentinel (id \"root\", no ancestors), matching how the app links root"
+                (let [breadcrumb (get-in (row-for rooted-fid) [:details :collection])]
+                  (is (= "root" (:id breadcrumb)))
+                  (is (= [] (:effective_ancestors breadcrumb)))))
               (testing "content_count is hoisted top-level, never duplicated inside details"
                 (let [row (row-for child-fid)]
                   (is (= 2 (:content_count row)))
@@ -397,7 +399,8 @@
                                  first))]
               (testing "the finding itself is served - the subject collection is readable"
                 (is (some? (row-for :rasta))))
-              (testing "the unreadable parent degrades to a null breadcrumb, same as root"
+              (testing "the unreadable parent degrades to a null breadcrumb (distinct from a root-resident
+                        entity, which gets the root sentinel) - the parent's name never leaks"
                 (is (nil? (get-in (row-for :rasta) [:details :collection]))))
               (testing "an admin still gets the parent breadcrumb"
                 (is (= hidden-parent (get-in (row-for :crowberto) [:details :collection :id])))))))))))
