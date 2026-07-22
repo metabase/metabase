@@ -509,8 +509,12 @@
 (defn first-valid-user-message
   "Return the first non-blank user message from a live replayable turn.
 
-  `messages` must be in reader order. Soft-deleted rows are ignored. Returns
-  `{:content <text> :profile-id <profile-id>}`, or nil when no turn qualifies."
+  `messages` must be in reader order. Soft-deleted rows are ignored, as are
+  messages cloned from a source conversation when this one was forked
+  (`forked_from_message_id` set), so a fork's title is generated from the first
+  message the user actually sends after forking rather than the inherited prefix.
+  Returns `{:content <text> :profile-id <profile-id>}`, or nil when no turn
+  qualifies."
   [messages]
   (some (fn [turn-rows]
           (when-let [{:keys [rows]} (replayable-turn turn-rows)]
@@ -518,7 +522,7 @@
               (let [content (message-text user-row)]
                 (when-not (str/blank? content)
                   {:content content :profile-id (:profile_id user-row)})))))
-        (rows->turns messages)))
+        (rows->turns (remove :forked_from_message_id messages))))
 
 (defn- turn->llm-messages
   [turn-rows]
@@ -813,25 +817,6 @@
 
 ;;; ---------------------------------------- Forking ----------------------------------------
 
-(def ^:private max-title-length
-  "Cap the forked conversation's title. `metabot_conversation.title` is a `text`
-  column, so this is a readability guard against an unbounded title, not a storage
-  limit."
-  200)
-
-(def ^:private fork-title-suffix " (forked)")
-
-(defn- forked-title
-  "The forked conversation's title: the source `title` truncated to fit, with the
-  fork suffix appended. Nil when the source has no title yet, matching a fresh
-  conversation whose title is generated later."
-  [title]
-  (when-not (str/blank? title)
-    (let [room (- max-title-length (count fork-title-suffix))
-          base (str/trim title)]
-      (str (cond-> base (> (count base) room) (subs 0 room))
-           fork-title-suffix))))
-
 (defn- forked-message-row
   "Build the insert map for a cloned message: a fresh `external_id`, `user-id`
   attribution, and no timestamps so `created_at` is stamped anew by the DB
@@ -875,14 +860,12 @@
                (nil? (:error target))
                (true? (:finished target)))
       (let [to-clone            (conj (vec before) target)
-            new-conversation-id (str (random-uuid))
-            title               (t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
+            new-conversation-id (str (random-uuid))]
         (t2/with-transaction [_conn]
           (t2/insert! :model/MetabotConversation
-                      (cond-> {:id                          new-conversation-id
-                               :user_id                     user-id
-                               :forked_from_conversation_id conversation-id}
-                        (forked-title title) (assoc :title (forked-title title))))
+                      {:id                          new-conversation-id
+                       :user_id                     user-id
+                       :forked_from_conversation_id conversation-id})
           (t2/insert! :model/MetabotMessage
                       (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
         new-conversation-id))))

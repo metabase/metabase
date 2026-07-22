@@ -485,7 +485,8 @@
             (testing "a brand-new conversation is returned, owned by the current user"
               (is (some? new-id))
               (is (not= convo-id new-id))
-              (is (= "Original chat (forked)" (:title response)))
+              (testing "the fork starts without a title so one is generated from the user's first post-fork message"
+                (is (nil? (:title response))))
               (is (= user-id (:user_id response))))
             (testing "only the thread up to and including the target is copied"
               (is (= ["hi" "hello"] (mapv :message (:messages response)))))

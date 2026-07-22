@@ -489,6 +489,11 @@ describe("metabot > ui", () => {
             conversation_id: "22222222-2222-2222-2222-222222222222",
             title: null,
           }),
+          createMockMetabotConversation({
+            conversation_id: "33333333-3333-3333-3333-333333333333",
+            title: null,
+            forked_from_conversation_id: "11111111-1111-1111-1111-111111111111",
+          }),
         ],
       });
 
@@ -503,6 +508,7 @@ describe("metabot > ui", () => {
         await within(list).findByText("Orders by month"),
       ).toBeInTheDocument();
       expect(within(list).getByText("Untitled")).toBeInTheDocument();
+      expect(within(list).getByText("Forked conversation")).toBeInTheDocument();
     });
 
     it("shows an empty state when there are no past conversations", async () => {
