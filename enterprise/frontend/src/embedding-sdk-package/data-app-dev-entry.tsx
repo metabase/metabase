@@ -13,7 +13,7 @@ import {
   installDiagnosticsReporter,
   sdkCallCapture,
   devDiagnostics,
-  runInstanceConnectionCheck,
+  instanceConnectionCheck,
 } from "@metabase/embedding-sdk-react/data-app-dev";
 import {
   allowedHosts,
@@ -43,7 +43,7 @@ const authConfig = {
 
 devDiagnostics.install();
 
-runInstanceConnectionCheck({
+instanceConnectionCheck.install({
   metabaseUrl: authConfig.metabaseInstanceUrl,
   sdkVersion,
 });

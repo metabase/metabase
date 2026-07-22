@@ -1,13 +1,13 @@
 import { devDiagnostics } from "../components/DevToolbar/diagnostics";
 
-import { runInstanceConnectionCheck } from "./instance-connection-check";
+import { instanceConnectionCheck } from "./instance-connection-check";
 
 const METABASE_URL = "http://localhost:3000";
 
 const run = (fetchFn: jest.Mock, metabaseUrl: string | undefined) => {
   window.fetch = fetchFn;
 
-  return runInstanceConnectionCheck({ metabaseUrl, sdkVersion: "0.64.0" });
+  return instanceConnectionCheck.install({ metabaseUrl, sdkVersion: "0.64.0" });
 };
 
 const realFetch = window.fetch;
@@ -17,7 +17,7 @@ afterEach(() => {
   window.fetch = realFetch;
 });
 
-describe("runInstanceConnectionCheck", () => {
+describe("InstanceConnectionCheck", () => {
   it("reports the instance reachable when the ping resolves", async () => {
     await run(
       jest.fn(async () => new Response(null, { status: 200 })),
@@ -69,6 +69,22 @@ describe("runInstanceConnectionCheck", () => {
     expect(fetchFn).not.toHaveBeenCalled();
     expect(devDiagnostics.getConnectionStatus()?.error).toContain(
       "DATA_APP_MB_URL is not set",
+    );
+  });
+
+  it("rejects a URL without a scheme instead of probing the preview origin", async () => {
+    const fetchFn = jest.fn();
+
+    // The browser would resolve it against the dev server, which answers — and
+    // the instance would be reported reachable when nothing had been reached.
+    await run(fetchFn, "metabase.local");
+
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(devDiagnostics.getConnectionStatus()).toMatchObject({
+      reachable: false,
+    });
+    expect(devDiagnostics.getConnectionStatus()?.error).toContain(
+      "must be an absolute URL",
     );
   });
 });
