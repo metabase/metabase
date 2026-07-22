@@ -23,6 +23,7 @@
 (defmethod semantic.embedding/embedder-circuit-endpoint test-provider [_] test-endpoint)
 
 (def ^:private call-through* #'semantic.embedding/call-through-embedder-breaker)
+(def ^:private validate-embeddings!* #'semantic.embedding/validate-embeddings!)
 
 (defn- call-through [thunk & {:as opts}]
   (apply call-through* thunk (mapcat identity (merge {:endpoint test-endpoint} opts))))
@@ -68,6 +69,39 @@
         (is (thrown? Exception (call-through boom)))
         (is (= :open (circuit-state)))))))
 
+(deftest ^:sequential unexpected-dimensions-do-not-trip-breaker-test
+  (testing "dimensions are model-specific, so an otherwise valid response does not count as a service failure"
+    (with-redefs [semantic.embedding/embedder-circuit-breakers
+                  (atom {test-endpoint (dh.cb/circuit-breaker
+                                        {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})})]
+      (is (=? {:cause               :embedder/unexpected-dimensions
+               :expected-dimensions 1
+               :actual-dimensions   2}
+              (try
+                (call-through #(validate-embeddings!* [[0.0 1.0]] 1 1))
+                nil
+                (catch clojure.lang.ExceptionInfo e
+                  (ex-data e)))))
+      (is (= :closed (circuit-state))))))
+
+(deftest ^:sequential invalid-vector-values-trip-breaker-test
+  (testing "nonnumeric and non-finite values are invalid service responses"
+    (doseq [[label value] [["nonnumeric" ::not-a-number]
+                           ["NaN" Double/NaN]
+                           ["positive infinity" Double/POSITIVE_INFINITY]
+                           ["negative infinity" Double/NEGATIVE_INFINITY]]]
+      (testing label
+        (with-redefs [semantic.embedding/embedder-circuit-breakers
+                      (atom {test-endpoint (dh.cb/circuit-breaker
+                                            {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})})]
+          (is (instance? Exception
+                         (try
+                           (call-through #(validate-embeddings!* [[value]] 1 1))
+                           nil
+                           (catch Exception e
+                             e))))
+          (is (= :open (circuit-state))))))))
+
 (deftest ^:sequential opens-after-threshold-and-fast-fails-test
   (testing "consecutive failures trip the breaker; while open, calls fast-fail with the mapped 502 ex-info"
     ;; A fresh breaker (short threshold, stays open) so the test is isolated from the process-wide default.
@@ -88,6 +122,22 @@
       (with-redefs [semantic.embedding/embedder-circuit-breakers (atom {test-endpoint breaker})]
         (is (thrown? Exception (call-through boom)))
         (is (thrown? AssertionError (call-through #(throw (AssertionError. "fatal")))))
+        (is (= :ok (call-through (constantly :ok))))
+        (is (= :closed (circuit-state)))))))
+
+(deftest ^:sequential interruption-releases-half-open-permit-test
+  (testing "an interruption propagates unchanged and cannot strand the breaker's half-open trial permit"
+    (let [breaker     (dh.cb/circuit-breaker
+                       {:failure-threshold 1 :success-threshold 1 :delay-ms 0})
+          interrupted (InterruptedException. "cancelled")]
+      (with-redefs [semantic.embedding/embedder-circuit-breakers (atom {test-endpoint breaker})]
+        (is (thrown? Exception (call-through boom)))
+        (is (identical? interrupted
+                        (try
+                          (call-through #(throw interrupted))
+                          nil
+                          (catch InterruptedException e
+                            e))))
         (is (= :ok (call-through (constantly :ok))))
         (is (= :closed (circuit-state)))))))
 
