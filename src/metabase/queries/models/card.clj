@@ -1411,7 +1411,7 @@
           ;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
-          :view_count :last_used_at :initially_published_at
+          :view_count :initially_published_at
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
@@ -1428,6 +1428,8 @@
           :metabot_conversation_id :metabot_chart_id]
    :transform
    {:created_at             (serdes/date)
+    ;; exported so imported cards don't look freshly used to stale-content detection (GDGT-217)
+    :last_used_at           (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
@@ -1453,6 +1455,10 @@
               :archived_directly   false
               :collection_preview  true
               :enable_embedding    false}})
+
+(defmethod serdes/load-update! "Card" [_ ingested local]
+  ;; when the card already exists, its own usage history wins over the source's
+  (serdes/default-load-update! "Card" (dissoc ingested :last_used_at) local))
 
 (defn- card-deps
   "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for
