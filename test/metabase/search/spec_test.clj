@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.search.spec :as search.spec]
+   [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -169,6 +170,31 @@
             (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original)
             ;; Do not leave the private cache holding the temporary method table for later tests.
             (search.spec/model-hooks)))))))
+
+(deftest ^:synchronized model-hooks-cache-records-post-resolution-methods-test
+  (testing "methods loaded while computing model hooks belong to the cached result"
+    (let [original-specifications search.spec/specifications
+          spec-multifn            search.spec/spec*
+          calls                   (atom 0)
+          installed?              (atom false)
+          dispatch-value          "model-hooks-cache-probe"]
+      (try
+        (mt/with-dynamic-fn-redefs [search.spec/specifications
+                                    (fn []
+                                      (swap! calls inc)
+                                      (when (compare-and-set! installed? false true)
+                                        (.addMethod ^clojure.lang.MultiFn spec-multifn
+                                                    dispatch-value
+                                                    (constantly nil)))
+                                      (original-specifications))]
+          (reset! @#'search.spec/model-hooks-cache nil)
+          (let [hooks (search.spec/model-hooks)]
+            (is (identical? hooks (search.spec/model-hooks)))
+            (is (= 1 @calls))))
+        (finally
+          (.removeMethod ^clojure.lang.MultiFn spec-multifn dispatch-value)
+          (reset! @#'search.spec/model-hooks-cache nil)
+          (search.spec/model-hooks))))))
 
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"

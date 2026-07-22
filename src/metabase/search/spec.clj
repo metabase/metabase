@@ -442,7 +442,9 @@
                    vals
                    (map search-model-hooks)
                    merge-hooks)]
-        (reset! model-hooks-cache [spec-methods v])
+        ;; Resolving specifications can load model namespaces that register more spec* methods. Associate the
+        ;; result with the post-resolution method table so the next steady-state call is a cache hit.
+        (reset! model-hooks-cache [(methods spec*) v])
         v))))
 
 (defn- instance->db-values
