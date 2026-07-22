@@ -378,17 +378,18 @@
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
    (when-not *disable-updates*
-     ;; Counted at production rather than consumption, so the rate reflects what change capture generates
-     ;; whether or not a listener is processing the queue.
-     (analytics/inc! :metabase-search/index-messages-produced (count updates))
-     (if sync?
-       (bulk-ingest! updates)
-       (do
-         (doseq [update updates]
-           (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue message-delay-ms update))
-         (track-queue-size!)
-         true)))))
+     (let [updates (if (counted? updates) updates (vec updates))]
+       ;; Counted at production rather than consumption, so the rate reflects what change capture generates
+       ;; whether or not a listener is processing the queue.
+       (analytics/inc! :metabase-search/index-messages-produced (count updates))
+       (if sync?
+         (bulk-ingest! updates)
+         (do
+           (doseq [update updates]
+             (log/trace "Queuing update" update)
+             (queue/put-with-delay! queue message-delay-ms update))
+           (track-queue-size!)
+           true))))))
 
 (defn wait-for-idle!
   "Block until the ingestion queue has been drained and no more items arrive.
