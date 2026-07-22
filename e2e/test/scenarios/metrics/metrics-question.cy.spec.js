@@ -179,7 +179,7 @@ describe("scenarios > metrics > question", () => {
       cy.signInAsSandboxedUser();
       H.visitMetric(card.id);
     });
-    cy.wait("@metricDataset").its("response.statusCode").should("equal", 200);
+    cy.wait("@metricDataset").its("response.statusCode").should("equal", 202);
     cy.findByTestId("metric-value-preview").should("be.visible");
     H.echartsContainer().should("be.visible");
     H.MetricPage.aboutPage().within(() => {

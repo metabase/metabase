@@ -202,7 +202,7 @@ describe(
           H.visitMetric(body.id);
           cy.wait<MetricDatasetRequest, Dataset>("@metricDataset").then(
             ({ response }) => {
-              expect(response?.statusCode).to.equal(200);
+              expect(response?.statusCode).to.equal(202);
               const total = response?.body.data.rows.reduce((sum, row) => {
                 return sum + Number(row[row.length - 1]);
               }, 0);

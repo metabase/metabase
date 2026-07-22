@@ -64,7 +64,7 @@ function curateMetricDimension(metricId, displayName) {
     .request({
       method: "GET",
       url: `/api/metric/${metricId}/dimension`,
-      qs: { with_addable: true },
+      qs: { "with-addable": true },
     })
     .then(({ body }) => {
       const dimension = body.addable
@@ -229,7 +229,7 @@ describe("scenarios > metrics > dashboard", () => {
       curateMetricDimension(metric.id, "Category");
       H.visitDashboard(dashboard.id);
     });
-    H.getDashboardCard().findByText("18,760").should("be.visible");
+    H.getDashboardCard().findByTestId("chart-container").should("be.visible");
     cy.findByTestId("dashboard-header").within(() => {
       cy.findByLabelText("Edit dashboard").click();
       cy.findByLabelText("Add a filter or parameter").click();

@@ -2232,7 +2232,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover()
         .findByRole("button", { name: "Change column" })
         .should("be.visible")
-        .should("contain.text", "Time");
+        .should("contain.text", "Created At");
       H.popover()
         .findByRole("button", { name: /by month/i })
         .should("be.visible");

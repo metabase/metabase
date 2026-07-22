@@ -49,7 +49,7 @@ describe("scenarios > metrics > collection", () => {
         .findByText("18,760")
         .should("be.visible");
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-      H.echartsContainer().should("be.visible");
+      H.tableInteractive().should("be.visible");
     });
   });
 
