@@ -419,6 +419,38 @@
                    (run-query))
                 "just-expired results are fine to serve while the refresh is in flight")))))))
 
+(deftest stale-grace-setting-test
+  (testing "query-caching-stale-grace-seconds bounds stale serving independently of the refresh lease"
+    (with-mock-cache! [save-chan]
+      (let [t0 #t "2026-01-01T00:00:00Z[UTC]"]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (mt/with-temporary-setting-values [query-caching-stale-grace-seconds 0]
+          (testing "with a zero grace window, even a just-expired entry is not served stale during a refresh"
+            (mt/with-clock (t/plus t0 (t/seconds 61))
+              (let [entered   (promise)
+                    release   (promise)
+                    refresher (future (run-query-with-execute*
+                                       (fn [_driver _query respond]
+                                         (deliver entered true)
+                                         (u/deref-with-timeout release 10000)
+                                         (respond {} *rows*))))]
+                (u/deref-with-timeout entered 10000)
+                (let [loser (future (run-query-with-execute*
+                                     (fn [_driver _query respond]
+                                       (respond {} *rows*))))]
+                  (wait-until-done loser)
+                  (is (not (future-done? loser))
+                      "with no grace window the loser must wait for the refresh, not be served the expired entry")
+                  (deliver release true)
+                  (is (partial= {:status :completed} (u/deref-with-timeout refresher 10000)))
+                  (testing "the loser is served the refreshed results"
+                    (is (=? {:status        :completed
+                             :cache/details {:cached     true
+                                             :updated_at (t/plus t0 (t/seconds 61))}}
+                            (u/deref-with-timeout loser 10000)))))))))))))
+
 (deftest concurrent-cold-miss-runs-query-once-test
   (testing "concurrent identical requests on a cold cache should run the query exactly once; the loser should wait
             for the winner's result instead of independently hitting the warehouse"

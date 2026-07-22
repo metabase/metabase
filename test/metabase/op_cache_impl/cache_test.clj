@@ -107,6 +107,17 @@
                  (op-cache/fetch-or-compute! cache "k" (counting-op calls [1 2 3])
                                              {:invalidated-at (ttl-invalidated-at 60000)}))))))))
 
+(deftest ^:parallel nil-size-not-stored-test
+  (testing "a value whose size can't be determined (:size-fn returns nil) is never stored when :max-size is set"
+    (t/with-clock (t/mock-clock t0)
+      (let [storage (impl.tu/in-memory-storage)
+            cache   (make-cache storage :max-size 100 :size-fn (constantly nil))
+            calls   (atom 0)]
+        (is (= {:value :v1, :source :computed, :stored false}
+               (op-cache/fetch-or-compute! cache "k" (counting-op calls :v1)
+                                           {:invalidated-at (ttl-invalidated-at 60000)})))
+        (is (nil? (storage/read-entry storage "k")))))))
+
 (deftest ^:parallel evict-test
   (t/with-clock (t/mock-clock t0)
     (let [storage (impl.tu/in-memory-storage)

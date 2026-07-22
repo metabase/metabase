@@ -17,4 +17,6 @@
  [metabase.cache.settings
   enable-query-caching
   query-caching-max-kb
-  query-caching-max-ttl])
+  query-caching-max-ttl
+  query-caching-refresh-lease-seconds
+  query-caching-stale-grace-seconds])

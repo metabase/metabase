@@ -9,8 +9,10 @@
     * On a miss (or a stale value), one caller atomically claims the key and computes; when it finishes it stores the
       value and releases the claim.
     * While a claim is held, a caller that finds a *slightly* stale value -- one that went stale no more than
-      `:stale-grace-ms` ago -- is served it as-is, so a burst of requests doesn't stampede the underlying resource
-      while a refresh is already in flight.
+      `:stale-grace-ms` ago -- is served it as-is rather than waiting for the refresh. Without this grace window,
+      every expiry would make every concurrent caller block for the full duration of the recompute -- a latency
+      cliff at each freshness boundary. The grace window trades boundedly-stale data for flat serve latency while a
+      refresh is in flight; callers that want strict waiting instead can set `:stale-grace-ms` to 0.
     * Every other concurrent caller (a cold miss, or a value stale beyond the grace window) waits for the claim
       holder's result instead of computing its own.
 
@@ -66,9 +68,12 @@
                      (storage/release-claim! storage k)
                      (throw e)))
         duration-ms (/ (- (System/nanoTime) start-ns) 1e6)
+        size        (when max-size (size-fn value))
         storable?   (and (> duration-ms min-duration-ms)
                          (or (nil? max-size)
-                             (<= (size-fn value) max-size)))]
+                             ;; a nil size means the value's size can't be determined, so it can't be shown to fit
+                             ;; within the bound -- don't store it
+                             (and (some? size) (<= size max-size))))]
     (if storable?
       (storage/write-entry! storage k value)
       ;; a value we won't store makes any stored value outdated; delete it (also releasing the claim) so it is
@@ -81,7 +86,8 @@
 
     * `:min-duration-ms`  -- only store results of ops that took longer than this to run.
     * `:max-size`         -- only store values of size at most this, as measured by `:size-fn`; nil = no limit.
-    * `:size-fn`          -- measures a value for the `:max-size` check.
+    * `:size-fn`          -- measures a value for the `:max-size` check. May return nil when the value's size can't
+                             be determined; such a value is never stored when a `:max-size` bound is configured.
     * `:stale-grace-ms`   -- how long past `:invalidated-at` a stale value may still be served while another caller
                              holds the claim. Beyond this, callers wait for the claim holder's result instead.
     * `:claim-ttl-ms`     -- age at which a claim counts as abandoned and may be taken over. Should comfortably

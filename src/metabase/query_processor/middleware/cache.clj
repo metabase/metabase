@@ -188,12 +188,6 @@
         (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
           (log/trace "All cached rows reduced"))))))
 
-(def ^:dynamic *refresh-lease-duration-ms*
-  "How long a claimed refresh lease is honored before another process may take it over (e.g. if the claiming process
-  crashed mid-refresh). Also the bound on how long past its TTL an entry may be served stale while another process
-  refreshes it. Should comfortably exceed a normal query's run time."
-  (u/minutes->ms 5))
-
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (defn- run-and-serialize!
@@ -217,12 +211,11 @@
       @bytes-vol)))
 
 (defn- serialized-size
-  "Size of serialized results for the op cache's max-size check. Serialization aborts oversized results by yielding
-  nil bytes; treat nil as infinitely large so it is never stored."
+  "Size of serialized results for the op cache's max-size check, or nil when serialization failed or was aborted and
+  there is nothing storable."
   [^bytes v]
-  (if v
-    (alength v)
-    Long/MAX_VALUE))
+  (when v
+    (alength v)))
 
 (defn- query-op-cache
   "An op cache running [[*backend*]], configured for `cache-strategy`."
@@ -231,8 +224,8 @@
                        {:min-duration-ms (:min-duration-ms cache-strategy 0)
                         :max-size        (* (cache/query-caching-max-kb) 1024)
                         :size-fn         serialized-size
-                        :stale-grace-ms  *refresh-lease-duration-ms*
-                        :claim-ttl-ms    *refresh-lease-duration-ms*}))
+                        :stale-grace-ms  (* 1000 (cache/query-caching-stale-grace-seconds))
+                        :claim-ttl-ms    (* 1000 (cache/query-caching-refresh-lease-seconds))}))
 
 (defn- reduce-cached-bytes
   "Reduce cached serialized results `value` with `rff`. Returns the reduced result, or nil if the bytes are unusable

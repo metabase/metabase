@@ -47,3 +47,24 @@
   :type    :double
   :default (* 60.0 60.0 24.0 35.0) ; 35 days
   :audit   :getter)
+
+(defsetting query-caching-refresh-lease-seconds
+  (deferred-tru
+   (str "How long, in seconds, one process''s claim to refresh an expired cache entry is honored before another "
+        "process may take it over (e.g. if the claiming process crashed mid-refresh). Should comfortably exceed a "
+        "normal query''s run time."))
+  :type       :integer
+  :default    300
+  :visibility :internal
+  :export?    false
+  :audit      :getter)
+
+(defsetting query-caching-stale-grace-seconds
+  (deferred-tru
+   (str "How long, in seconds, past its expiry a cached query result may still be served while another process is "
+        "refreshing it. Beyond this, requests wait for the in-flight refresh instead of being served stale results."))
+  :type       :integer
+  :default    300
+  :visibility :internal
+  :export?    false
+  :audit      :getter)
