@@ -516,9 +516,13 @@
   [instance changes]
   (let [model           (t2/model instance)
         changed-keys    (set (keys changes))
-        db-changes      (delay (values->db-values model changes))
-        ;; Classify transformed DB values: a keyword-backed column turns :dashboard into the literal "dashboard",
-        ;; while untransformed :%now and other HoneySQL expressions still have no computable post-image value.
+        ;; Collections and symbols are expressions regardless of the column transform, so never pass them through
+        ;; scalar input transforms. Transform the remaining candidates so a keyword-backed column turns :dashboard
+        ;; into the literal "dashboard", while an untransformed :%now remains an expression.
+        db-changes      (delay (->> changes
+                                    (remove (comp (some-fn coll? symbol?) val))
+                                    (into {})
+                                    (values->db-values model)))
         literal-changes (delay (into {} (remove (comp honeysql-expression? val)) @db-changes))
         pre-vals        (delay (instance->db-values instance))
         post-vals       (delay (merge @pre-vals @literal-changes))]
