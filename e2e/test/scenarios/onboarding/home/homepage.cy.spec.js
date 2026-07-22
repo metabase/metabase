@@ -366,7 +366,18 @@ describe("scenarios > home > custom homepage", () => {
 
       H.entityPickerModal().findByText("Orders in a dashboard").click();
 
-      H.undoToast().findByText("Changes saved").should("be.visible");
+      // Toggling the "Dashboard" radio above and picking the dashboard here each
+      // save a setting, and each save fires its own "Changes saved" undo toast.
+      // When the first toast hasn't auto-dismissed yet, both are on screen at once,
+      // so the singular H.undoToast() query blows up with "multiple elements".
+      // Match the toast via the *AllBy* variant, which tolerates one or more stacked
+      // toasts, and assert on the toast card itself (the undo-list container is a
+      // zero-height flex wrapper whose absolutely-positioned toasts make it never
+      // "visible" to Cypress).
+      H.undoToastList()
+        .filter(':contains("Changes saved")')
+        .first()
+        .should("be.visible");
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
