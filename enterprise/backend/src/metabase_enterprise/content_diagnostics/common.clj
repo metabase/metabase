@@ -24,6 +24,39 @@
   keywords like `:model/Card`."
   (set/map-invert entity-type->model))
 
+;;; ----------------------------- entity-type multimethod dispatch (shared) -----------------------------
+;;; What the serve-layer per-entity-type multimethods dispatch on: a module-local `hierarchy` (keeping bare
+;;; entity-type keywords out of the global one - the driver.impl pattern) and a per-type column registry,
+;;; so the multimethods carry behavior, not column lists.
+
+(def hierarchy
+  "Dispatch hierarchy for the module's per-entity-type multimethods (module-local, mirroring
+  `metabase.driver.impl/hierarchy`). card/dashboard/document derive `::collection-item` and share one method
+  each (collection-gated read, no owner, column-resident display fields); transform and collection diverge
+  and carry explicit methods (transform has an owner and no collection_id column; collection is not *in* a
+  collection but *is* one). Add a type by deriving it here or giving it its own methods - an unregistered
+  type throws at dispatch."
+  (-> (make-hierarchy)
+      (derive :card      ::collection-item)
+      (derive :dashboard ::collection-item)
+      (derive :document  ::collection-item)))
+
+(def ^:private entity-spec
+  "Per-entity-type column lists the serve-layer multimethods read, so column choices stay out of `defmethod`
+  bodies. Per type `:context` = extra display cols `entity-context` selects beyond `[:id :collection_id]`.
+  `collection` is absent - it is not column-resident (its breadcrumb anchor is parsed from `location`), so it
+  carries its own `entity-context` method rather than going through the shared column path."
+  {:card      {:context [:description :view_count]}
+   :dashboard {:context [:description :view_count]}
+   :document  {:context [:view_count]}
+   :transform {:context [:description :owner_user_id :owner_email]}})
+
+(defn context-cols
+  "Extra display cols `entity-context` selects for `entity-type` beyond `[:id :collection_id]` (see
+  `entity-spec`)."
+  [entity-type]
+  (get-in entity-spec [entity-type :context]))
+
 (defn attach-entity-attrs
   "Stamp each finding with the denormalized display/sort columns - `:entity-name`, `:entity-created-at`,
   `:entity-creator-id`, `:entity-creator-name` - batch-resolved from each entity's own model (F ≪ N: one

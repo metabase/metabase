@@ -141,24 +141,39 @@
                          ;; so normalized-owner serves both
                          :owner (get owners personal_owner_id))))))
 
-(defn- entity-context
-  "For one entity-type's id set → `{entity-id → row}`. Live-hydrates only the non-denormalized display
-  fields: `description`, `collection_id`, `view_count` (card/dashboard/document), and the owner
-  (transform + personal collection). `document` has no description; `collection` derives its breadcrumb
-  anchor from `location` and carries no view_count (see [[collection-context]])."
+(defmulti ^:private hydrate-owner
+  "Batch-hydrate the per-type `owner` onto already-selected rows. card/dashboard/document have no owner, so
+  `::collection-item` returns rows unchanged; transform hydrates its `:owner` (a user row, or an `{:email …}`
+  external stand-in). Collection sets its owner in [[collection-context]], not here."
+  {:arglists '([entity-type rows])}
+  (fn [entity-type _rows] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod hydrate-owner ::common/collection-item [_ rows] rows)
+(defmethod hydrate-owner :transform [_ rows] (t2/hydrate rows :owner))
+
+(defn- context-rows
+  "Build `{entity-id → row}` for a column-resident type: select `common/context-cols` plus
+  `id`/`collection_id`, hydrate the owner (`hydrate-owner`), index by id."
   [entity-type ids]
-  (when-let [model (common/entity-type->model entity-type)]
-    (if (= entity-type :collection)
-      (collection-context ids)
-      (let [cols (cond-> [:id :collection_id]
-                   (not= entity-type :document)  (conj :description)
-                   ;; card/dashboard/document have a native view_count column; transform has none.
-                   (not= entity-type :transform) (conj :view_count)
-                   (= entity-type :transform)    (conj :owner_user_id :owner_email))
-            rows (cond-> (t2/select (into [model] cols) :id [:in (set ids)])
-                   ;; reuse the transform model's batched :owner hydrate (user row, or {:email …} external)
-                   (= entity-type :transform) (t2/hydrate :owner))]
-        (m/index-by :id rows)))))
+  (->> (t2/select (into [(common/entity-type->model entity-type) :id :collection_id]
+                        (common/context-cols entity-type))
+                  :id [:in (set ids)])
+       (hydrate-owner entity-type)
+       (m/index-by :id)))
+
+(defmulti ^:private entity-context
+  "For one entity-type's id set → `{entity-id → row}` of the live display fields (description, collection_id,
+  view_count, transform owner). card/dashboard/document (`::collection-item`) and transform share the
+  column-based [[context-rows]]; collection is not column-resident, so it derives its breadcrumb anchor from
+  `location` via [[collection-context]]. An unregistered type throws - fail-closed, no `:default`."
+  {:arglists '([entity-type ids])}
+  (fn [entity-type _ids] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod entity-context ::common/collection-item [entity-type ids] (context-rows entity-type ids))
+(defmethod entity-context :transform [entity-type ids] (context-rows entity-type ids))
+(defmethod entity-context :collection [_ ids] (collection-context ids))
 
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
