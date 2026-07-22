@@ -256,6 +256,16 @@
              (search.spec/search-models-to-update-with-changes
               (t2/instance :model/ModelIndexValue {:model_index_id 5 :model_pk 10 :name "foo"})
               {:model_pk expression})))))
+  (testing "a keyword transformed to a database string remains a literal post-image join key"
+    (let [updates (search.spec/search-models-to-update-with-changes
+                   (t2/instance :model/ModerationReview {:moderated_item_id   7
+                                                         :moderated_item_type :card
+                                                         :most_recent         true})
+                   {:moderated_item_type :dashboard})]
+      (is (contains? updates
+                     ["card" [:and [:= "card" "card"] [:= 7 :this.id] [:= true true]]]))
+      (is (contains? updates
+                     ["dashboard" [:and [:= "dashboard" "dashboard"] [:= 7 :this.id] [:= true true]]]))))
   (testing "a change to a join-topology column fires the hook even when no content field changed: flipping
             revision.most_recent emits pre- and post-image variants (the post-image [:= false true] and the
             cross-model [:= \"Card\" \"Dashboard\"] clauses re-derive nothing, harmlessly)"
