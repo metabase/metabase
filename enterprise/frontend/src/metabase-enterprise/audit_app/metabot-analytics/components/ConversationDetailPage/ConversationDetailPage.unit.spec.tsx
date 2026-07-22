@@ -159,7 +159,7 @@ describe("ConversationDetailPage", () => {
     );
   });
 
-  it("keeps the fork boundary on every attempt of a regenerated boundary turn", async () => {
+  it("shows the fork boundary only on the inherited attempt of a regenerated boundary turn", async () => {
     setupMetabotConversationEndpoint({
       ...createConversation([]),
       conversation_id: "convo-0",
@@ -176,7 +176,9 @@ describe("ConversationDetailPage", () => {
     });
 
     expect(await screen.findByText("regenerated answer")).toBeInTheDocument();
-    expect(screen.getByTestId("metabot-fork-boundary")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-fork-boundary"),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Previous version" }),
