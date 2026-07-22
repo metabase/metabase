@@ -1,5 +1,6 @@
 import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -9,6 +10,7 @@ import { Comments } from "metabase/comments/components/Comments";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import {
   Box,
   Ellipsified,
@@ -196,11 +198,21 @@ function ExplorationGroupVisualizationChart({
     };
   }, [queryIds, dispatch]);
 
-  const datasetQueries = useSelector((state) =>
-    queryIds.map((id) =>
-      explorationApi.endpoints.getExplorationQueryResult.select(id)(state),
-    ),
-  );
+  // Build the per-id selectors once per queryIds change — `select(id)` creates
+  // a fresh memoized selector on every call, which would defeat its caching if
+  // done inside the subscription below.
+  const selectDatasetQueries = useMemo(() => {
+    const selectors = queryIds.map((id) =>
+      explorationApi.endpoints.getExplorationQueryResult.select(id),
+    );
+    return (state: State) => selectors.map((select) => select(state));
+  }, [queryIds]);
+
+  // The mapped array is fresh on every store dispatch, but its entries are
+  // RTKQ cache objects with stable identity while their query state is
+  // unchanged — shallowEqual keeps unrelated dispatches (polling, toasts,
+  // metabot) from re-rendering the whole chart subtree.
+  const datasetQueries = useSelector(selectDatasetQueries, shallowEqual);
 
   const datasets = datasetQueries.map((q) => q.data);
   const datasetError = datasetQueries.find((q) => q.error)?.error;

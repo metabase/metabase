@@ -61,12 +61,14 @@ let mockComments: Comment[] = [
   createMockComment({ id: 1, context: { timeline_id: 42 } }),
 ];
 let lastVisualizationProps: Record<string, unknown> | undefined;
+let visualizationCommitCount = 0;
 
 // The real `Visualization` is heavy and pulls ECharts; we only care that
 // it receives the right props from explorations.
 jest.mock("metabase/visualizations/components/Visualization", () => {
   const Visualization = (props: any) => {
     lastVisualizationProps = props;
+    visualizationCommitCount += 1;
     const actionNames =
       props.mode
         ?.actionsForClick?.(sampleClickObject)
@@ -107,6 +109,13 @@ jest.mock("metabase/comments/components/Comments", () => ({
 
 const mockDatasetsByQueryId = new Map<number, Dataset | undefined>();
 const mockErrorsByQueryId = new Map<number, unknown>();
+// Real RTKQ selectors return identity-stable objects while the query state is
+// unchanged (the component's shallowEqual subscription relies on that), so the
+// mock memoizes per id on its inputs instead of building a fresh object per call.
+const mockSelectorResultCache = new Map<
+  number,
+  { data: Dataset | undefined; error: unknown; result: object }
+>();
 const mockMutationTrigger = () => jest.fn(() => ({ unwrap: jest.fn() }));
 jest.mock("metabase/api/exploration", () => ({
   __esModule: true,
@@ -114,12 +123,22 @@ jest.mock("metabase/api/exploration", () => ({
     endpoints: {
       getExplorationQueryResult: {
         initiate: () => () => ({ unsubscribe: jest.fn() }),
-        select: (id: number) => () => ({
-          data: mockDatasetsByQueryId.get(id),
-          error: mockErrorsByQueryId.get(id),
-          isLoading:
-            !mockDatasetsByQueryId.has(id) && !mockErrorsByQueryId.has(id),
-        }),
+        select: (id: number) => () => {
+          const data = mockDatasetsByQueryId.get(id);
+          const error = mockErrorsByQueryId.get(id);
+          const cached = mockSelectorResultCache.get(id);
+          if (cached && cached.data === data && cached.error === error) {
+            return cached.result;
+          }
+          const result = {
+            data,
+            error,
+            isLoading:
+              !mockDatasetsByQueryId.has(id) && !mockErrorsByQueryId.has(id),
+          };
+          mockSelectorResultCache.set(id, { data, error, result });
+          return result;
+        },
       },
     },
   },
@@ -235,6 +254,7 @@ function setup({
 }: SetupOpts) {
   mockDatasetsByQueryId.clear();
   mockErrorsByQueryId.clear();
+  mockSelectorResultCache.clear();
   if (datasets) {
     for (const [id, ds] of datasets) {
       mockDatasetsByQueryId.set(id, ds);
@@ -304,11 +324,30 @@ describe("ExplorationGroupVisualization", () => {
   beforeEach(() => {
     mockComments = [createMockComment({ id: 1, context: { timeline_id: 42 } })];
     lastVisualizationProps = undefined;
+    visualizationCommitCount = 0;
   });
 
   afterEach(() => {
     mockDatasetsByQueryId.clear();
     mockErrorsByQueryId.clear();
+    mockSelectorResultCache.clear();
+  });
+
+  it("does not re-render the chart when an unrelated action hits the store", () => {
+    const { store } = setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+    });
+    expect(screen.getByTestId("visualization-stub")).toBeInTheDocument();
+
+    const countBefore = visualizationCommitCount;
+    act(() => {
+      store.dispatch({ type: "unrelated/action" });
+    });
+
+    expect(visualizationCommitCount).toBe(countBefore);
   });
 
   it("shows a permission message (not the loading skeleton) when a settled query's result fetch is forbidden", () => {
