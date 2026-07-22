@@ -86,6 +86,14 @@
   :type       :boolean
   :default    true)
 
+(defsetting expand-worktrees-in-nav
+  (deferred-tru "User preference for whether the ''Worktrees'' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
 (defsetting browse-filter-only-verified-models
   (deferred-tru "User preference for whether the ''Browse models'' page should be filtered to show only verified models.")
   :user-local :only

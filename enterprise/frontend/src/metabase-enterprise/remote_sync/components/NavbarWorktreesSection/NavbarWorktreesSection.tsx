@@ -2,10 +2,11 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { getErrorMessage } from "metabase/api/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { useSetting, useUserSetting } from "metabase/common/hooks";
+import { useSetting, useToast, useUserSetting } from "metabase/common/hooks";
 import {
   SidebarHeading,
   SidebarSection,
@@ -67,6 +68,7 @@ export function NavbarWorktreesSection({
     "expand-worktrees-in-nav",
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [sendToast] = useToast();
 
   const { data: worktreesData } = useListWorktreesQuery(undefined, {
     skip: !isEnabled,
@@ -84,13 +86,24 @@ export function NavbarWorktreesSection({
   );
   const treeData = useMemo(() => worktrees.map(worktreeTreeNode), [worktrees]);
 
+  const notifyError = useCallback(
+    (error: unknown, fallback: string) => {
+      sendToast({ message: getErrorMessage(error, fallback), icon: "warning" });
+    },
+    [sendToast],
+  );
+
   const handleCreate = useCallback(
     async (branch: string) => {
-      const worktree = await createWorktree({ branch }).unwrap();
-      setIsCreateModalOpen(false);
-      pullWorktree({ worktree_id: worktree.id });
+      try {
+        const worktree = await createWorktree({ branch }).unwrap();
+        setIsCreateModalOpen(false);
+        await pullWorktree({ worktree_id: worktree.id }).unwrap();
+      } catch (error) {
+        notifyError(error, t`Failed to check out the branch`);
+      }
     },
-    [createWorktree, pullWorktree],
+    [createWorktree, notifyError, pullWorktree],
   );
 
   const worktreeMenu = useCallback(
@@ -114,13 +127,25 @@ export function NavbarWorktreesSection({
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="download" />}
-              onClick={() => pullWorktree({ worktree_id: worktreeId })}
+              onClick={() =>
+                pullWorktree({ worktree_id: worktreeId })
+                  .unwrap()
+                  .catch((error) =>
+                    notifyError(error, t`Failed to pull the worktree`),
+                  )
+              }
             >
               {t`Pull`}
             </Menu.Item>
             <Menu.Item
               leftSection={<Icon name="upload" />}
-              onClick={() => pushWorktree({ worktree_id: worktreeId })}
+              onClick={() =>
+                pushWorktree({ worktree_id: worktreeId })
+                  .unwrap()
+                  .catch((error) =>
+                    notifyError(error, t`Failed to push the worktree`),
+                  )
+              }
             >
               {t`Push`}
             </Menu.Item>
@@ -128,7 +153,13 @@ export function NavbarWorktreesSection({
             <Menu.Item
               c="danger"
               leftSection={<Icon name="trash" />}
-              onClick={() => deleteWorktree({ id: worktreeId })}
+              onClick={() =>
+                deleteWorktree({ id: worktreeId })
+                  .unwrap()
+                  .catch((error) =>
+                    notifyError(error, t`Failed to delete the worktree`),
+                  )
+              }
             >
               {t`Delete worktree`}
             </Menu.Item>
@@ -136,7 +167,7 @@ export function NavbarWorktreesSection({
         </Menu>
       );
     },
-    [deleteWorktree, pullWorktree, pushWorktree],
+    [deleteWorktree, notifyError, pullWorktree, pushWorktree],
   );
 
   if (!isEnabled || (treeData.length === 0 && !isAdmin)) {
