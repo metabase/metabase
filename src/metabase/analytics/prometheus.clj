@@ -337,6 +337,11 @@
    (prometheus/counter :metabase-search/index-updates
                        {:description "Number of updated search entries"
                         :labels      [:model]})
+   (prometheus/counter :metabase-search/index-deletes
+                       {:description "Number of search entries purged because their backing row no longer matches."
+                        :labels      [:model]})
+   (prometheus/counter :metabase-search/index-messages-produced
+                       {:description "Number of re-derivation messages produced by search change capture, whether queued or processed synchronously."})
    (prometheus/counter :metabase-search/index-error
                        {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/appdb-index-batches-skipped
