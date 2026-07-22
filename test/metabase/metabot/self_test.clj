@@ -88,6 +88,24 @@
                     (throw e))))
               (is (= expected (:tool_choice @captured))))))))))
 
+(deftest request-timeout-settings-test
+  (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
+    (let [captured (atom nil)]
+      (with-redefs [http/request (fn [opts] (reset! captured opts) {:status 200 :body ""})]
+        (testing "uses the current setting values as defaults"
+          (mt/with-temporary-setting-values [llm-connection-timeout-ms 3000
+                                             llm-request-timeout-ms    45000]
+            (self.core/request {:url "https://api.example.com" :headers {}} {})
+            (is (= 3000 (:connection-timeout @captured)))
+            (is (= 45000 (:socket-timeout @captured)))))
+        (testing "per-request overrides in req win over the settings"
+          (mt/with-temporary-setting-values [llm-connection-timeout-ms 3000
+                                             llm-request-timeout-ms    45000]
+            (self.core/request {:url "https://api.example.com" :headers {}}
+                               {:connection-timeout 100 :socket-timeout 200})
+            (is (= 100 (:connection-timeout @captured)))
+            (is (= 200 (:socket-timeout @captured)))))))))
+
 ;;; utils tests
 
 (deftest sse-reducible-test

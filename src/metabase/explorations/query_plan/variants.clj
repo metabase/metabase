@@ -18,10 +18,10 @@
                         `per-value-time-series`.
 
   Discovery queries (`run-top-k-discovery`) for the two variants that need
-  them are deduplicated in-process via `discovery-cache`. Both `query-name`
-  and `dataset-query` go through the cache, so the underlying QP call runs at
-  most once per cache key while the entry stays warm and fresh. The key
-  includes the user the discovery ran as — see `cached-discovery`."
+  them are deduplicated in-process via `discovery-cache`, a TTL cache. Both
+  `query-name` and `dataset-query` go through the cache, so the underlying QP
+  call runs at most once per cache key while the entry stays warm and fresh.
+  The key includes the user the discovery ran as — see `cached-discovery`."
   (:require
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
@@ -133,10 +133,6 @@
         (u/keepv #(nth % dim-idx nil) (:rows data))))
     (catch Throwable _ nil)))
 
-(def ^:private discovery-cache-threshold
-  "Max distinct entries kept in [[discovery-cache]] before the LRU starts evicting."
-  1024)
-
 (def ^:private discovery-cache-ttl-ms
   "How long a [[discovery-cache]] entry stays valid before the discovery query re-runs.
   Discovery results are top-K value sets over live warehouse data, so a process-lifetime
@@ -146,16 +142,14 @@
   (* 15 60 1000))
 
 (defonce ^:private discovery-cache
-  ;; TTL layered over LRU: the LRU bounds how many entries a long-lived JVM accumulates;
-  ;; the TTL bounds how stale any one entry can get. See `cached-discovery` for the key.
-  (atom (-> {}
-            (cache/lru-cache-factory :threshold discovery-cache-threshold)
-            (cache/ttl-cache-factory :ttl discovery-cache-ttl-ms))))
+  ;; A TTL cache: the TTL both freshens entries and bounds accumulation on a long-lived JVM —
+  ;; nothing survives past it. See `cached-discovery` for the key.
+  (atom (cache/ttl-cache-factory {} :ttl discovery-cache-ttl-ms)))
 
 (defn- cached-discovery
   "Memoized `run-top-k-discovery`. Returns the discovered vector (or `[]` on failure / no rows).
   Both `query-name` and `dataset-query` go through this so the underlying QP query runs at most
-  once per key while the entry stays in the cache.
+  once per key while the entry stays fresh (within the TTL).
 
   The key leads with the current user because discovery is a real warehouse query run under that
   user's lens: sandboxing, connection impersonation, and database routing can all give two users

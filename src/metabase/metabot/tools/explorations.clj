@@ -7,17 +7,73 @@
   `metabase.metabot.self.core/tool-output->wire-output`) — a bare map would reach the LLM but
   stream to the client as an empty string, and the plan would silently never update."
   (:require
+   [clojure.string :as str]
    [metabase.explorations.core :as explorations]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.tmpl :as te]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
+(defn- named-with-id
+  "Render a plan member as `Name (id)` so the agent can address it by id with the plan-editing
+  tools, even when the member was added directly by the user and never seen in a tool result."
+  [{:keys [id name]}]
+  (str name " (" id ")"))
+
+(defn- format-research-plan-group
+  "Format one group of the draft Research plan as a single line the LLM can act on. The
+  `block_id` is surfaced verbatim so the agent can echo it back to plan-editing tools, and each
+  member dimension/metric carries its id in parentheses."
+  [{:keys [block_id anchor metric dimensions dimension metrics]}]
+  (case anchor
+    "metric"
+    (str "- [" block_id "] " (:name metric)
+         ", broken out by: " (str/join ", " (map named-with-id dimensions)))
+    "dimension"
+    (str "- [" block_id "] by " (:name dimension)
+         ", slicing: " (str/join ", " (map named-with-id metrics)))
+    nil))
+
+(defn format-research-plan
+  "Format the user's in-progress draft Research plan for injection into the system message.
+
+  The plan lives only as front-end state until the Exploration is created, so the front-end
+  serializes it into context each turn. Returns a formatted string for template variable
+  {{research_plan}}, or nil when there is no plan to show (so the template's
+  `{% if research_plan %}` guard stays false)."
+  [context]
+  (when-let [plan (:research_plan context)]
+    (let [{:keys [name groups timelines]} plan]
+      (when (or (seq groups) (seq timelines) (not (str/blank? name)))
+        (te/lines
+         (str "The user is assembling a Research plan. Below is its current contents as of the "
+              "start of this turn — the user may edit it directly in the UI, so it can differ "
+              "from what your tool calls alone would produce. Once you've made plan edits this "
+              "turn, trust your tool results over this snapshot. Refer to a group by its "
+              "[block_id]. Each metric, dimension, and timeline is followed by its id in "
+              "parentheses — pass those ids to the plan-editing tools.")
+         ""
+         (te/field "Plan name" (not-empty name))
+         (when (seq groups)
+           (te/lines "Groups:" (keep format-research-plan-group groups)))
+         (when (seq timelines)
+           (te/field "Selected timelines" (str/join ", " (map named-with-id timelines)))))))))
+
+(defn research-plan-system-context
+  "System-prompt template vars contributed by the `:explorations` profile — the formatted draft
+  Research plan under `:research_plan` (nil when there is no plan, so the template guard stays
+  false). Wired as the profile's `:system-prompt-context` hook."
+  [context]
+  {:research_plan (format-research-plan context)})
+
 (def ^:private get-research-candidates-schema
   [:map {:closed true}
    [:q {:optional true} [:maybe :string]]])
 
-(mu/defn ^{:tool-name "get_research_candidates"}
+(mu/defn ^{:tool-name "get_research_candidates"
+           :scope     scope/agent-explorations-read}
   get-research-candidates-tool
   "List the metrics and dimensions available for research. Each metric lists its candidate
    dimensions (id, name, interestingness); each dimension group lists the dimension ids it bundles
@@ -38,7 +94,8 @@
       [:metric_ids {:optional true} [:sequential :int]]
       [:replace_default_dimensions {:optional true} :boolean]]]]])
 
-(mu/defn ^{:tool-name "add_research_groups"}
+(mu/defn ^{:tool-name "add_research_groups"
+           :scope     scope/agent-explorations-write}
   add-research-groups-tool
   "Add one or more groups to the research artifact. Each group is either:
    - metric-anchored: `{\"anchor\": \"metric\", \"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`
@@ -66,7 +123,8 @@
       [:dimension_ids {:optional true} [:sequential :string]]]]]
    [:timeline_ids {:optional true} [:sequential :int]]])
 
-(mu/defn ^{:tool-name "remove_from_research_plan"}
+(mu/defn ^{:tool-name "remove_from_research_plan"
+           :scope     scope/agent-explorations-write}
   remove-from-research-plan-tool
   "Remove groups, individual metrics/dimensions within a group, or timelines from the research
    plan. Address groups by the `block_id` shown in brackets for each group in the current research
@@ -93,7 +151,8 @@
   [:map {:closed true}
    [:name :string]])
 
-(mu/defn ^{:tool-name "set_research_name"}
+(mu/defn ^{:tool-name "set_research_name"
+           :scope     scope/agent-explorations-write}
   set-exploration-name-tool
   "Set the name of the research artifact."
   [{:keys [name]} :- set-exploration-name-schema]
@@ -103,7 +162,8 @@
   [:map {:closed true}
    [:timeline_ids [:sequential :int]]])
 
-(mu/defn ^{:tool-name "select_research_timelines"}
+(mu/defn ^{:tool-name "select_research_timelines"
+           :scope     scope/agent-explorations-write}
   select-exploration-timelines-tool
   "Select the timelines to include in the research. Populates the research artifact with the chosen timelines."
   [{:keys [timeline_ids]} :- select-exploration-timelines-schema]

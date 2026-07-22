@@ -157,17 +157,45 @@
               (is (= 1 (count queries)) "the query row is returned")
               (is leaks? "and its creator-derived name is visible to a same-lens viewer"))))))))
 
-(deftest creator-sees-own-derived-metadata-test
-  (testing "the creator always sees their own derived metadata, even against an incompatible stored token"
-    (with-done-exploration!
-      {:creator-id        (mt/user->id :rasta)
-       :data-access-token {:sandbox {(mt/id :venues) [1 "x" {"price" "999"}]}}}
-      (fn [{:keys [exploration]}]
-        (let [body (mt/user-http-request :rasta :get 200
-                                         (format "exploration/%d" (:id exploration)))
-              {:keys [queries leaks?]} (exploration-derived-data body)]
-          (is (= 1 (count queries)))
-          (is leaks? "the creator reads back the values their own lens produced"))))))
+(deftest creator-with-unchanged-lens-sees-own-derived-metadata-test
+  (testing "a creator whose lens is unchanged since the snapshot still sees their own derived
+            metadata — the re-gate must not lock the creator out of results they can still see"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
+          (fn [{:keys [exploration]}]
+            (let [body (mt/user-http-request :rasta :get 200
+                                             (format "exploration/%d" (:id exploration)))
+                  {:keys [queries leaks?]} (exploration-derived-data body)]
+              (is (= 1 (count queries)))
+              (is leaks? "the creator reads back the values their own lens produced"))))))))
+
+(deftest creator-with-changed-lens-is-denied-derived-metadata-test
+  (testing "being the snapshot's creator is not a permanent pass. A creator whose sandbox attribute
+            changed since the snapshot is re-gated against their *current* lens exactly like any
+            other viewer: they get the shell but none of the metadata derived from results computed
+            under a lens they no longer have (their permissions may have narrowed)."
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      ;; snapshot stored under rasta's own price=1 lens ...
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
+          (fn [{:keys [exploration]}]
+            ;; ... but rasta now resolves to price=2 -> a different lens
+            (sandbox.tu/with-user-attributes! :rasta {"price" "2"}
+              (let [body (mt/user-http-request :rasta :get 200
+                                               (format "exploration/%d" (:id exploration)))
+                    {:keys [queries blocks leaks?]} (exploration-derived-data body)]
+                (testing "the shell is still readable via collection perms"
+                  (is (= "shared" (:name body))))
+                (is (= [] queries)
+                    "no query rows — their :name and :dataset_query carry values from a now-incompatible lens")
+                (is (= [] blocks)
+                    "no block/page tree — its titles are built from those same query names")
+                (is (not leaks?)
+                    (str "the discovered value " (pr-str discovered-value)
+                         " must not appear anywhere in the response"))))))))))
 
 (deftest unsandboxed-viewer-with-perms-sees-cached-result-test
   (testing "an unsandboxed viewer with data perms may stream a sandboxed creator's result (superset)"
@@ -209,17 +237,33 @@
           (mt/user-http-request :rasta :get 200 (format "exploration/%d" (:id exploration)))
           (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))
 
-(deftest creator-bypasses-gate-test
-  (testing "the snapshot's creator always streams it, even against an incompatible stored token"
-    (with-done-exploration!
-      {:creator-id       (mt/user->id :rasta)
-       ;; a token rasta could never match, to prove the creator bypass overrides the gate
-       :data-access-token {:sandbox {(mt/id :venues) [1 "x" {"price" "999"}]}}}
-      (fn [{:keys [query]}]
-        (mt/user-http-request :rasta :get 202 (format "exploration/query/%d" (:id query)))))))
+(deftest creator-with-unchanged-lens-streams-own-result-test
+  (testing "a creator whose lens is unchanged since the snapshot still streams their own result"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
+          (fn [{:keys [query]}]
+            (mt/user-http-request :rasta :get 202 (format "exploration/query/%d" (:id query)))))))))
+
+(deftest creator-with-changed-lens-blocked-from-own-result-test
+  (testing "the snapshot's creator does NOT get a permanent pass to their own blob: a creator whose
+            sandbox attribute changed since the snapshot is re-gated against their *current* lens and
+            blocked (403), because the blob was computed under a lens they no longer have"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      ;; snapshot stored under rasta's own price=1 lens ...
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
+          (fn [{:keys [query]}]
+            ;; ... but rasta now resolves to price=2 -> a different lens
+            (sandbox.tu/with-user-attributes! :rasta {"price" "2"}
+              (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))))
 
 (deftest pending-query-status-is-not-gated-test
-  (testing "the pending/error path returns status only (409) and is not data-gated — even for a sandboxed viewer"
+  (testing "a pending query's 409 status payload is not data-gated — even for a sandboxed viewer — it
+            carries no result blob and no error_message to leak (the error_message case is gated; see
+            error-message-gated-to-viewers-without-data-perms-test)"
     (met/with-gtaps-for-user! :rasta (price-sandbox)
       (mt/with-temp [:model/Collection coll {}
                      :model/Card metric {:name "m" :type :metric :creator_id (mt/user->id :lucky)
@@ -238,6 +282,35 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
         (let [body (mt/user-http-request :rasta :get 409 (format "exploration/query/%d" (:id q)))]
           (is (= "pending" (:status body))))))))
+
+(deftest error-message-hidden-from-clients-test
+  (testing "a query's `error_message` is creator-run QP output that can embed table/column names and
+            SQL fragments, so the 409 error path NEVER returns it to the client — every viewer, admin
+            included, gets a generic notice. The real error is logged at ERROR when the query fails."
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card metric {:name "m" :type :metric :creator_id (mt/user->id :lucky)
+                                       :database_id (mt/id) :dataset_query (venues-count-query)}
+                   :model/Exploration e {:name "shared" :creator_id (mt/user->id :lucky) :collection_id (:id coll)}
+                   :model/ExplorationThread th {:exploration_id (:id e)}
+                   :model/ExplorationBlock g {:exploration_thread_id (:id th)}
+                   :model/ExplorationPage p {:exploration_block_id (:id g) :card_id (:id metric)
+                                             :dimension_id "d1" :query_type "default"}
+                   :model/ExplorationQuery q {:exploration_thread_id (:id th)
+                                              :page_id (:id p)
+                                              :card_id (:id metric)
+                                              :dimension_id "d1"
+                                              :status "error"
+                                              :error_message "Table \"SECRET_INTERNAL_TABLE\" does not exist; SELECT secret_col FROM ..."
+                                              :dataset_query (venues-count-query)}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      ;; :crowberto is a superuser; :rasta a plain collection-reader — neither may see the raw error.
+      (doseq [user [:rasta :crowberto]]
+        (testing (str user)
+          (let [body (mt/user-http-request user :get 409 (format "exploration/query/%d" (:id q)))]
+            (is (= "error" (:status body)))
+            (is (some? (:error_message body)) "the viewer is still told it failed")
+            (is (not (str/includes? (:error_message body) "SECRET_INTERNAL_TABLE"))
+                "the creator's raw error (table/column names, SQL) must never reach the client")))))))
 
 (deftest sandbox-token-fails-closed-when-attributes-missing-test
   (testing "when the enforcement guard says the user IS sandboxed but the attribute lookup returns nil,

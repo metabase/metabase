@@ -809,15 +809,34 @@ databaseChangeLog:
   - changeSet:
       id: v64.gjdases
       author: nvoxland
-      comment: Force re-analyze for any Field still missing a dimension_interestingness score.
+      comment: Force re-analyze for any Field with an out-of-date dimension_interestingness score.
       changes:
         - update:
             tableName: metabase_field
             columns:
               - column:
-                  name: last_analyzed
+                  name: dimension_interestingness
                   value: null
-            where: dimension_interestingness IS NULL
+            where: >-
+              dimension_interestingness IS NOT NULL
+              AND (semantic_type IS NULL OR semantic_type NOT IN (
+                'type/PK',
+                'type/Collection',
+                'type/Dictionary',
+                'type/Array',
+                'type/Structured',
+                'type/SerializedJSON',
+                'type/JSON',
+                'type/XML',
+                'type/UpdatedTemporal',
+                'type/UpdatedTimestamp',
+                'type/UpdatedDate',
+                'type/UpdatedTime',
+                'type/DeletionTemporal',
+                'type/DeletionTimestamp',
+                'type/DeletionDate',
+                'type/DeletionTime'
+              ))
       rollback:
 
   - changeSet:

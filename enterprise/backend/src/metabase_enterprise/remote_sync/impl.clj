@@ -398,10 +398,11 @@
                                      (vals (:by-path imported-data)))))
 
 (defn- fold-data-app-changes
-  "Fold the count of data apps changed by a pull into its `:outcome`. Data apps
-  live under `data_apps/` — outside serdes — and are materialized separately (see
-  [[materialize-data-apps!]]), so they're invisible to [[pulled-change-count]].
-  Without this, a pull whose only changes are data apps reports `pull-skipped` /
+  "Fold the count of data apps a pull changed — upserted *or* removed — into its
+  `:outcome`. Data apps live under `data_apps/` — outside serdes — and are
+  materialized separately (see [[materialize-data-apps!]]), so they're invisible
+  to [[pulled-change-count]]. Without this, a pull whose only changes are data
+  apps (including one that only deletes an app) reports `pull-skipped` /
   `count 0`. Caller guarantees `da-changed` is positive."
   [outcome da-changed]
   (case (:kind outcome)
@@ -681,10 +682,14 @@
         ;; Data apps ride the pull: re-materialize from the real source snapshot
         ;; (the repo file tree under `data_apps/`), not the synthetic merged
         ;; snapshot `load-snapshot!` sees. They're counted outside serdes, so fold
-        ;; their change count into the outcome — otherwise a data-app-only pull
-        ;; would report `pull-skipped` / `count 0`.
+        ;; how many they upserted or removed into the outcome — otherwise a
+        ;; data-app-only pull would report `pull-skipped` / `count 0`.
         (if (= :success (:status result))
-          (let [da-changed (:changed (materialize-data-apps! snapshot) 0)]
+          (let [da-result  (materialize-data-apps! snapshot)
+                ;; Removals count too: a pull whose only change is deleting an app
+                ;; directory upserts nothing (`:changed` 0) but still changed what
+                ;; this instance serves, so it must report as a pull, not skipped.
+                da-changed (+ (:changed da-result 0) (:removed da-result 0))]
             (cond-> result
               (pos? da-changed) (update :outcome fold-data-app-changes da-changed)))
           result))

@@ -442,9 +442,9 @@
 
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
-  so callers can inspect everything the model emitted — extended-thinking
-  reasoning blocks, any non-tool text, the structured tool call itself, and
-  usage. Useful for debugging *why* the model produced what it did.
+  so callers can inspect everything the model emitted — any non-tool text, the
+  structured tool call itself, and usage. Useful for debugging *why* the model
+  produced what it did.
 
   Before calling the provider, enforces global usage limits (via
   [[metabase.metabot.usage/check-usage-limits!]]) and the caller's metabot
@@ -456,14 +456,14 @@
   explicitly.
 
   `opts` extends `tracking-opts` and may include:
-    :thinking             - Provider-specific extended-thinking config. For
-                            Anthropic: `{:type \"enabled\" :budget_tokens <int>}`.
-                            Only the Claude adapter consumes this currently.
     :required-permission  - A `:permission/metabot-*` keyword that the current
                             user must hold (as `:yes`) in addition to the base
                             `:permission/metabot` (which is always checked).
                             When nil, only the base check runs and a log/warn
-                            fires pointing at the caller's source/tag."
+                            fires pointing at the caller's source/tag.
+
+  A leading {:role \"system\" ...} message in `messages` is forwarded as the
+  provider system prompt, keeping untrusted content in the user channel."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
   (when-let [limit-msg (usage/check-usage-limits!)]
@@ -473,25 +473,27 @@
                      :message    limit-msg})))
   (check-permission! (:required-permission opts))
   (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
+        [system-msg input] (if (= "system" (some-> messages first :role name))
+                             [(:content (first messages)) (vec (rest messages))]
+                             [nil messages])
         _ (log/info "Calling LLM (structured-with-trace)" {:provider provider
                                                            :model     model
-                                                           :msg-count (count messages)
-                                                           :ai-proxy? ai-proxy?
-                                                           :thinking? (some? (:thinking opts))})
+                                                           :msg-count (count input)
+                                                           :ai-proxy? ai-proxy?})
         tracking-opts  (-> opts
-                           (dissoc :thinking :required-permission)
+                           (dissoc :required-permission)
                            (assoc :model provider-and-model :ai-proxy? ai-proxy?))
         streaming-opts (cond-> {:model       model
-                                :input       messages
+                                :input       input
                                 :schema      json-schema
                                 :temperature temperature
                                 :max-tokens  max-tokens
                                 :ai-proxy?   ai-proxy?}
-                         (:thinking opts)         (assoc :thinking (:thinking opts))
+                         system-msg               (assoc :system system-msg)
                          (contains? opts :cache?) (assoc :cache? (:cache? opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
-                      :msg-count (count messages)}
+                      :msg-count (count input)}
       (with-retries
         tracking-opts
         (fn []
@@ -553,10 +555,10 @@
     max-tokens    - Maximum tokens in the response
     opts          - Tracking + gating options. See [[report-token-usage-xf]] for
                     tracking fields and [[call-llm-structured-with-trace]] for
-                    `:required-permission` and `:thinking`.
+                    `:required-permission`.
 
   Returns the parsed JSON map from the forced tool call. For access to the
-  full streamed trace (reasoning blocks, non-tool text), see
+  full streamed trace (non-tool text), see
   [[call-llm-structured-with-trace]]."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (:result (call-llm-structured-with-trace

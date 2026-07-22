@@ -13,7 +13,7 @@ import { t } from "ttag";
 import {
   explorationApi,
   useCancelExplorationThreadMutation,
-  useRestartExplorationMutation,
+  useRestartExplorationThreadMutation,
   useSetPagesHiddenMutation,
 } from "metabase/api/exploration";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -534,7 +534,7 @@ function ExplorationGroupMenu({
   getSelectedPageUrl: (pageId: ExplorationPageNodeId) => string;
 }) {
   const [cancelThread] = useCancelExplorationThreadMutation();
-  const [restartExploration] = useRestartExplorationMutation();
+  const [restartExplorationThread] = useRestartExplorationThreadMutation();
   const [setPagesHidden] = useSetPagesHiddenMutation();
   const [sendToast] = useToast();
   const copyLink = useCopyLink();
@@ -601,7 +601,10 @@ function ExplorationGroupMenu({
 
   const handleRestart = useCallback(
     async (explorationId: ExplorationId, threadId: ExplorationThreadId) => {
-      const { error } = await restartExploration({ explorationId, threadId });
+      const { error } = await restartExplorationThread({
+        explorationId,
+        threadId,
+      });
       if (error) {
         sendToast({
           message: t`Failed to restart`,
@@ -612,7 +615,7 @@ function ExplorationGroupMenu({
       }
       trackExplorationRestarted(explorationId);
     },
-    [restartExploration, sendToast],
+    [restartExplorationThread, sendToast],
   );
 
   const thread = item.data?.thread;
@@ -717,9 +720,6 @@ function ExplorationTreeItem({
 
   const pageData = item.data.type === "page" ? item.data : null;
   const isError = pageData?.status === "error";
-  const erroredQueryMessage = pageData?.queries.find(
-    (query) => query.status === "error" && query.error_message,
-  )?.error_message;
   const isHidden = pageData?.hidden === true;
   const isLoading = isLoadingStatus(item.data?.status);
   const isUnread = pageData != null && !readPageIds.has(pageData.page_id);
@@ -765,10 +765,7 @@ function ExplorationTreeItem({
       )}
       {isError && (
         <ExplorationErrorMarker
-          message={
-            erroredQueryMessage ??
-            t`We couldn't generate one or more of these charts.`
-          }
+          message={t`We couldn't generate one or more of these charts.`}
         />
       )}
     </ForwardRefLink>

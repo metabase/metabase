@@ -1,5 +1,7 @@
 import type { StaticResponse } from "cypress/types/net-stubbing";
 
+import type { GetExplorationDataResponse } from "metabase-types/api";
+
 import { updateSetting } from "./api";
 import { activateToken } from "./e2e-token-helpers";
 
@@ -213,7 +215,7 @@ export function createExplorationViaApi({
 
   return cy
     .request("GET", "/api/exploration/dimensions")
-    .then(({ body }: { body: ExplorationDimensionsResponse }) => {
+    .then(({ body }: { body: GetExplorationDataResponse }) => {
       if (body.metrics.length === 0) {
         throw new Error(
           "No metrics returned from /api/exploration/dimensions — " +
@@ -275,23 +277,6 @@ export function createExplorationViaApi({
       });
     })
     .then(({ body }: { body: { id: number } }) => cy.wrap(body.id));
-}
-
-interface ExplorationDimensionsResponse {
-  metrics: Array<{
-    id: number;
-    name: string;
-    dimension_ids: string[];
-    dimension_mappings: unknown;
-  }>;
-  dimension_groups: Array<{
-    dimensions: Array<{
-      id: string;
-      display_name: string;
-      effective_type: string | null;
-      semantic_type: string | null;
-    }>;
-  }>;
 }
 
 export function visitExploration(id: number): void {

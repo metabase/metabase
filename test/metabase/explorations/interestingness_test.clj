@@ -217,6 +217,45 @@
         (is (= [80 90] (:y_values eu)))
         (is (= "NA" (:display_name na)))))))
 
+(deftest numeric-dimension-not-transposed-2col-test
+  (testing "a numeric dimension (breakout) before a numeric metric (aggregation) must NOT transpose
+            the axes: the aggregation column is the metric even though it is not the *first* numeric
+            column (QP results order breakouts before aggregations)"
+    (let [cfg (explorations.interestingness/chart-config
+               (query "bar")
+               [(lib-col {:name "price_bin" :base-type :type/Integer :display-name "Price"
+                          :lib/source :source/breakouts})
+                (lib-col {:name "count" :base-type :type/Integer :display-name "Count"
+                          :lib/source :source/aggregations})]
+               [[10 5] [20 8] [30 3]])
+          s   (get (:series cfg) "Count")]
+      (is (some? s) "the aggregation column is the metric/series")
+      (is (= "number" (-> s :x :type)) "the numeric dimension is on x")
+      (is (= [10 20 30] (:x_values s)) "dimension values on x, not the metric")
+      (is (= [5 8 3] (:y_values s)) "metric values on y — axes not swapped"))))
+
+(deftest numeric-dimension-not-transposed-3col-test
+  (testing "a numeric dimension in a 3-col faceted result splits the series, with the aggregation on
+            y and the temporal breakout on x — the numeric dim must not be mistaken for the metric"
+    (let [cfg (explorations.interestingness/chart-config
+               (query "line")
+               [(lib-col {:name "bin" :base-type :type/Integer :display-name "Bin"
+                          :lib/source :source/breakouts})
+                (lib-col {:name "month" :base-type :type/DateTime :display-name "Month"
+                          :lib/source :source/breakouts})
+                (lib-col {:name "rev" :base-type :type/Integer :display-name "Revenue"
+                          :lib/source :source/aggregations})]
+               [[1 "2026-01-01" 100]
+                [1 "2026-02-01" 110]
+                [2 "2026-01-01" 80]])]
+      (is (= "line" (:display_type cfg)))
+      (is (= #{"1" "2"} (set (keys (:series cfg)))) "series split on the numeric dimension values")
+      (let [s1 (get (:series cfg) "1")]
+        (is (= "datetime" (-> s1 :x :type)) "temporal breakout on x")
+        (is (= "Revenue"  (-> s1 :y :name)) "aggregation on y")
+        (is (= ["2026-01-01" "2026-02-01"] (:x_values s1)))
+        (is (= [100 110] (:y_values s1)))))))
+
 (deftest three-col-nil-category-collapses-test
   (testing "nil categorical values collapse into a single \"(empty)\" series"
     (let [cfg (explorations.interestingness/chart-config

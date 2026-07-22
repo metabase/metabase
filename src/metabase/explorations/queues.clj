@@ -32,34 +32,51 @@
 
 ;;; --------------------------------------- Batch delivery ---------------------------------------
 
-(defn- fail-query-message!
-  "Terminal state for one query message: the row goes `error` with a message the UI renders, and the
-  thread's completion gate is re-checked so the client stops polling."
-  [{:keys [query-id]} error]
-  (let [thread-id (runner/fail-query! query-id (ex-message error))]
-    (runner/maybe-complete-thread! thread-id)))
-
 (defn- record-failure!
-  "Write one message's terminal-failure state via `fail!`, logging (never rethrowing) if that write
-  itself fails. Recording a message's failure must never throw past its batch-mates: a racing
-  duplicate insert or a transient db blip inside `fail!` would otherwise strand every message behind
-  it without the terminal state its thread's completion gate is waiting on."
+  "Write one message's terminal-failure state via `fail!`, returning whatever `fail!` returns (the
+  affected thread-id). Logs and swallows — returning nil — if that write itself throws: recording a
+  message's failure must never throw past its batch-mates, or a racing duplicate insert or transient
+  db blip inside `fail!` would strand every message behind it. The follow-up completion check is NOT
+  done here (see [[deliver-batch!]])."
   [fail! message error]
   (try
     (fail! message error)
     (catch Throwable e
       (log/error e "Recording a failed exploration message failed; its thread may hang until retried"
-                 {:message message}))))
+                 {:message message})
+      nil)))
 
 (defn- deliver-batch!
-  "Runs `handle!` on each message of a batch, isolating the messages from one another."
+  "Runs `handle!` on each message of a batch, isolating the messages from one another: a message that
+  fails every attempt is recorded terminally via `fail!` without aborting its batch-mates. Both
+  `handle!` and `fail!` return the affected thread-id (or nil). Returns the distinct non-nil
+  thread-ids the batch touched — the caller runs their completion checks separately, OUTSIDE this
+  per-message swallow, so a failing check can propagate to mq for retry rather than being lost."
   [messages handle! fail!]
-  (doseq [message messages]
-    (try
-      (u/auto-retry 1 (handle! message))
-      (catch Throwable e
-        (log/error e "Exploration message failed every attempt; recording it as failed" {:message message})
-        (record-failure! fail! message e)))))
+  (into #{}
+        (keep (fn [message]
+                (try
+                  (u/auto-retry 1 (handle! message))
+                  (catch Throwable e
+                    (log/error e "Exploration message failed every attempt; recording it as failed" {:message message})
+                    (record-failure! fail! message e)))))
+        messages))
+
+(defn- mark-query-errored!
+  "The query queue's `fail!`: terminally mark the message's query `error` (the state the UI renders)
+  and return its thread id. Deliberately does NOT run the completion check — that is run by the
+  listener, outside [[deliver-batch!]]'s swallow, so its failures reach mq."
+  [{:keys [query-id]} error]
+  (runner/fail-query! query-id (ex-message error)))
+
+(defn- try-complete-thread!
+  "Best-effort completion check for the `:on-error` give-up path: mq swallows an `:on-error` throw
+  and drops the batch regardless, so log-and-swallow here rather than abort the remaining threads."
+  [thread-id]
+  (try
+    (runner/maybe-complete-thread! thread-id)
+    (catch Throwable e
+      (log/error e "Completion check failed while giving up on an exploration batch" {:thread-id thread-id}))))
 
 ;;; ------------------------------------------- Queues -------------------------------------------
 
@@ -84,7 +101,10 @@
    :max-batch-messages 100
    :max-concurrent-batches #(explorations.settings/explorations-worker-count)
    :on-error (fn [{:keys [messages error]}]
-               (run! #(record-failure! fail-query-message! % error) messages))})
+               ;; Retries exhausted: mark each query `error` (isolated) and re-check its thread's
+               ;; completion. Best-effort — mq drops the batch on any `:on-error` throw anyway.
+               (run! try-complete-thread!
+                     (into #{} (keep #(record-failure! mark-query-errored! % error)) messages)))})
 
 ;;; ------------------------------------------ Publishing ------------------------------------------
 
@@ -121,8 +141,7 @@
     (runner/maybe-complete-thread! thread-id)))
 
 (mq/def-listener! :queue/exploration-query [messages]
-  (deliver-batch! messages
-                  (fn [{:keys [query-id]}]
-                    (when-let [thread-id (runner/run-query! query-id)]
-                      (runner/maybe-complete-thread! thread-id)))
-                  fail-query-message!))
+  (->> (deliver-batch! messages
+                       (fn [{:keys [query-id]}] (runner/run-query! query-id))
+                       mark-query-errored!)
+       (run! runner/maybe-complete-thread!)))

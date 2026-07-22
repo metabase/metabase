@@ -421,6 +421,22 @@
         (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
             "exactly one result row, despite three deliveries")))))
 
+(deftest run-query-returns-thread-id-for-a-terminally-errored-query-test
+  (testing "a redelivery (or duplicate) of a query a prior delivery already marked `error` returns
+            the thread id — not nil — so the caller re-runs the completion check the prior delivery's
+            failed attempt may have skipped. Matching only `done` here strands an error row's thread."
+    (mt/with-temp [:model/User u {:email "err-fallback@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
+        (runner/fail-query! (:id row) "boom")
+        (is (= "error" (:status (t2/select-one :model/ExplorationQuery :id (:id row)))))
+        (is (= (:id thread) (runner/run-query! (:id row)))
+            "run-query! returns the thread id for an already-terminal (error) query so completion re-runs")))))
+
 (deftest overlapping-runs-persist-exactly-one-result-test
   (testing "when two deliveries overlap, both run the warehouse query but only one persists: the
             loser is a benign no-op (same answer, wasted warehouse time), not an error, and no
@@ -471,6 +487,31 @@
             "CAS must not fire on a canceled thread")
         (is (nil? (:analysis_started_at (t2/select-one :model/ExplorationThread :id (:id thread))))
             "analysis_started_at must remain NULL")))))
+
+(deftest claim-analysis-stamps-completed-at-atomically-test
+  (testing "claiming the analysis run stamps completed_at in the SAME update as analysis_started_at.
+            A crash between a separate claim and a follow-up completed_at write used to leave the
+            thread with analysis_started_at set — so the claim CAS never fired again — but
+            completed_at nil, stranding the client on a spinner forever."
+    (mt/with-temp [:model/User u {:email "atomic-complete@example.com"}]
+      (let [thread (temp-thread! (:id u))]
+        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        ;; no pending queries → the claim fires
+        (is (true? (claim-analysis-if-ready! (:id thread))))
+        (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
+          (is (some? (:analysis_started_at after)))
+          (is (some? (:completed_at after))
+              "completed_at is stamped atomically with the claim, closing the crash window"))))))
+
+(deftest maybe-complete-thread-completes-synchronously-test
+  (testing "maybe-complete-thread! stamps completed_at inline (no fire-and-forget future), so the
+            write cannot be lost to a crash after the claim commits"
+    (mt/with-temp [:model/User u {:email "sync-complete@example.com"}]
+      (let [thread (temp-thread! (:id u))]
+        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (runner/maybe-complete-thread! (:id thread))
+        (is (some? (:completed_at (t2/select-one :model/ExplorationThread :id (:id thread))))
+            "completed_at is set by the time maybe-complete-thread! returns")))))
 
 (deftest canceled-mid-plan-cleanup-flips-pending-rows-test
   (testing "Planner-race repair: when the planner finishes for a thread the user canceled mid-plan,
