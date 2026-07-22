@@ -497,6 +497,10 @@
                [search-model (insert-values where :updated @raw-values)])))
           (get (model-hooks) (t2/model instance)))))
 
+(defn- honeysql-expression?
+  [x]
+  ((some-fn coll? keyword? symbol?) x))
+
 (defn search-models-to-update-with-changes
   "Statement-level variant of [[search-models-to-update]]: `instance` is one pre-image row of an update
   statement and `changes` is the changes map that statement applied to every row it matched.
@@ -506,10 +510,9 @@
   row's old and new join targets (e.g. both sides of a foreign-key move)."
   [instance changes]
   (let [changed-keys    (set (keys changes))
-        ;; A collection-valued change is a HoneySQL expression (or a payload column that never appears in a
-        ;; hook where-clause), so it has no computable post-image value. Join fields are FKs in practice and
-        ;; never expression-updated; the pre-image message and the periodic reindex cover that gap.
-        literal-changes (into {} (remove (comp coll? val)) changes)
+        ;; HoneySQL expressions can be collections, keywords such as :%now, or symbols. They have no computable
+        ;; post-image value; the pre-image message and the periodic reindex cover that gap without another query.
+        literal-changes (into {} (remove (comp honeysql-expression? val)) changes)
         pre-vals        (delay (instance->db-values instance))
         post-vals       (delay (instance->db-values (merge instance literal-changes)))]
     (into #{}

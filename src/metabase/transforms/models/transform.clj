@@ -12,7 +12,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -334,7 +333,6 @@
 (t2/define-before-delete :model/Transform [transform]
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
-  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (defn update-transform-tags!

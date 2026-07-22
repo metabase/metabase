@@ -250,6 +250,12 @@
            (search.spec/search-models-to-update-with-changes
             (t2/instance :model/Card {:id 42})
             {:view_count [:+ :view_count 1]}))))
+  (testing "bare keyword and symbol expressions are not mistaken for literal post-image join keys"
+    (doseq [expression [:%now 'next-model-pk]]
+      (is (= #{["indexed-entity" [:and [:= 5 :this.model_index_id] [:= 10 :this.model_pk]]]}
+             (search.spec/search-models-to-update-with-changes
+              (t2/instance :model/ModelIndexValue {:model_index_id 5 :model_pk 10 :name "foo"})
+              {:model_pk expression})))))
   (testing "a change to a join-topology column fires the hook even when no content field changed: flipping
             revision.most_recent emits pre- and post-image variants (the post-image [:= false true] and the
             cross-model [:= \"Card\" \"Dashboard\"] clauses re-derive nothing, harmlessly)"
