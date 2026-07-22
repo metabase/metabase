@@ -327,6 +327,8 @@ If your Metabase administrator has enabled [public sharing](../embedding/public-
 
 Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 
+Admins can also [create an account](../people-and-groups/managing.md#creating-an-account) for someone and point them to a specific dashboard or question. On a dashboard or question, click the **Sharing** icon and select **Invite someone to view this**.
+
 ## Exporting results from a dashboard
 
 You can export the entire dashboard as PDF, or export results of individual questions on the dashboard. See [Exporting results](../questions/exporting-results.md).
