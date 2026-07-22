@@ -1997,6 +1997,19 @@
            task
            util}}
 
+  sample-content
+  {:team "UX West"
+   :api  #{metabase.sample-content.core}
+   :uses #{config
+           models
+           settings
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Document}}
+
   sample-data
   {:team "UX West"
    :api  #{metabase.sample-data.core

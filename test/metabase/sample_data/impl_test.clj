@@ -276,7 +276,7 @@
 (deftest sample-database-upgrade-preserves-permissions-test
   (testing "The H2->SQLite sample-database swap re-applies each group's permissions to the new sample DB"
     (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+      (mdb/setup-db!)
       (mt/with-temp [:model/PermissionsGroup custom-group {}
                      :model/Database         old-sample {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}]
         ;; Put the old sample DB into a distinctive, non-default permission state, so we test that real custom
@@ -299,7 +299,7 @@
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
     (mt/with-temp-empty-app-db [_conn :h2]
       (api.database-test/with-db-scheduler-setup!
-        (mdb/setup-db! :create-sample-content? true)
+        (mdb/setup-db!)
         (sample-data/extract-and-sync-sample-database!)
         (testing "Sense check: a newly created database should have sync jobs scheduled"
           (mt/with-temp [:model/Database db {}]

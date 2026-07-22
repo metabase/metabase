@@ -254,15 +254,13 @@
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.app-db.setup-db!]] instead, which can be called more than once without issue and is thread-safe."
-  [db-type                :- :keyword
-   data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
-   auto-migrate?          :- :boolean
-   create-sample-content? :- :boolean]
+  [db-type       :- :keyword
+   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate? :- :boolean]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-      (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                config/*disable-setting-cache*            true
-                custom-migrations/*create-sample-content* create-sample-content?]
+      (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                config/*disable-setting-cache*  true]
         (verify-db-connection db-type data-source)
         (error-if-downgrade-required! data-source)
         (run-schema-migrations! data-source auto-migrate?)
