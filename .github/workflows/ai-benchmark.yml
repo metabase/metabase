@@ -94,7 +94,8 @@ jobs:
             -f "inputs[pr]=$PR" \
             -f "inputs[scope]=smoke" \
             -f "inputs[sample]=5" \
-            -f "inputs[evals_ref]=$EVALS_REF"
+            -f "inputs[evals_ref]=$EVALS_REF" \
+            -f "inputs[comment_id]=$COMMENT_ID"
 
       - name: Locate the dispatched eval-run
         id: evalrun
