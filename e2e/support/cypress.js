@@ -1,6 +1,5 @@
-import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/order
+import { register as registerCypressGrep } from "@cypress/grep";
 registerCypressGrep();
-
 import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
