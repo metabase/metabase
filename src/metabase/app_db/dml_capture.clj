@@ -2,9 +2,8 @@
   "Statement-level capture of DML executed through Toucan 2.
 
   A model opts in by deriving from [[hook]] and implementing [[capture-fields]] and [[captured!]].
-  Each captured `insert!`/`update!`/`delete!` *statement* then delivers exactly one event describing the
-  affected rows, however many there are — unlike the per-row `after-insert`/`after-update` tools, and unlike
-  `before-delete`, which realizes every matching row as a full instance.
+  Each captured `insert!`/`update!`/`delete!` *statement* delivers exactly one event describing the affected
+  rows, however many there are.
 
   Event shape (see [[captured!]]):
 
@@ -12,21 +11,21 @@
     {:op :update, :model model, :rows [pre-image, ...], :changes changes}
     {:op :insert, :model model, :rows [row-literal, ...], :pks [pk, ...]}
 
-  For updates and deletes the `:rows` are narrow pre-image snapshots — only the columns named by
-  [[capture-fields]], selected with the statement's own conditions immediately before it executes. They are
-  plain maps of RAW column values: the select is compiled through the model's pipeline (so conditions behave
-  exactly like the statement's) but executed without it, so `after-select` methods, type transforms and other
-  instance decorations never run — decorations routinely assume a full row and must not constrain what a
-  capture may snapshot. For updates, `:changes` is the statement's changes map: every affected row received
-  these same changes, so the post-image of a captured column is
-  `(merge pre-image (select-keys changes capture-fields))` whenever its changed value is a literal. Values
-  are HoneySQL expressions when the caller passed expressions; they are delivered as-is.
+  Update and delete `:rows` are narrow pre-image snapshots: plain maps of raw column values, only the
+  columns named by [[capture-fields]], selected with the statement's own conditions immediately before it
+  executes.
+  No instance decoration runs on them — no `after-select` methods, no type transforms.
+  `:changes` is the update statement's changes map; every affected row received these same changes, so the
+  post-image of a captured column is `(merge pre-image (select-keys changes capture-fields))` whenever its
+  changed value is a literal.
+  HoneySQL expression values are delivered as-is.
 
-  For inserts `:rows` are the row maps as passed to `insert!` with the generated primary key assoc'd on, and
-  `:pks` are the generated primary keys. When some requested capture field is absent from the literals —
-  the column is filled in by the database or a `before-insert` method (e.g. `revision.most_recent`) — the
-  rows are replaced by one narrow select of the capture fields by pk, so a captured field is always present
-  and authoritative either way. Other literal values are delivered as passed, before type transforms.
+  Insert `:rows` are the row maps as passed to `insert!` with the generated primary key assoc'd on, and
+  `:pks` are the generated primary keys.
+  A requested capture field absent from the literals — filled in by the database or a `before-insert`
+  method (e.g. `revision.most_recent`) — is recovered by one narrow select of the capture fields by pk, so
+  a captured field is always present and authoritative either way.
+  Other literal values are delivered as passed, before type transforms.
 
   Delivery guarantees, and non-guarantees:
 

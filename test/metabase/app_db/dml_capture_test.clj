@@ -47,9 +47,8 @@
 (t2/define-after-insert ::moody-bird [row] (swap! after-insert-count inc) row)
 
 ;;; `::decorated-bird` carries the decorations capture must bypass. Its after-select dereferences a column a
-;;; narrow snapshot doesn't fetch (the shape of :model/Revision's :object deserializer, which broke the
-;;; production capture path before selects went modelless), and its transforms rewrite :name on the way in
-;;; and out, so a decorated read is distinguishable from a raw one.
+;;; narrow snapshot doesn't fetch (the shape of :model/Revision's :object deserializer), and its transforms
+;;; rewrite :name on the way in and out, so a decorated read is distinguishable from a raw one.
 (methodical/defmethod t2.model/table-name ::decorated-bird [_] table-name)
 
 (t2/deftransforms ::decorated-bird
