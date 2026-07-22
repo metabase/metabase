@@ -289,3 +289,33 @@ export function applySdkVersionBump({
 
   return { previousVersion, newVersion, majorVersion, distTag, tagAsLatest };
 }
+
+type SdkReleaseMetadata = {
+  version: string;
+  majorVersion: string;
+  distTag: string;
+  tagAsLatest: boolean;
+};
+
+// Read the version + committed sdkRelease metadata (written by the bump PR) that
+// the release workflow publishes. Throws if the sdkRelease block is missing.
+export function readSdkReleaseMetadata({
+  packageTemplatePath,
+}: {
+  packageTemplatePath: string;
+}): SdkReleaseMetadata {
+  const packageTemplate = JSON.parse(readFileSync(packageTemplatePath, "utf8"));
+  const version: string = packageTemplate.version;
+  const distTag: string = packageTemplate.sdkRelease?.distTag ?? "";
+  if (!distTag) {
+    throw new Error(
+      `${packageTemplatePath} is missing sdkRelease.distTag - add it (via sdk-version-bump-pr.yml or by hand) before releasing.`,
+    );
+  }
+  return {
+    version,
+    majorVersion: getSdkMajorVersion(version),
+    distTag,
+    tagAsLatest: packageTemplate.sdkRelease?.tagAsLatest ?? false,
+  };
+}

@@ -7,9 +7,17 @@ import {
   computeNextSdkVersion,
   computeSdkDistTag,
   getSdkMajorVersion,
+  readSdkReleaseMetadata,
   shouldSdkTagAsLatest,
   validateBranchReleaseType,
 } from "./embedding-sdk-release-helpers";
+
+function writeJsonTemplate(content: object): string {
+  const directory = mkdtempSync(join(tmpdir(), "sdk-tpl-"));
+  const path = join(directory, "package.template.json");
+  writeFileSync(path, JSON.stringify(content, null, 2) + "\n");
+  return path;
+}
 
 describe("embedding-sdk-release-helpers", () => {
   describe("getSdkMajorVersion", () => {
@@ -482,6 +490,45 @@ describe("embedding-sdk-release-helpers", () => {
       expect(JSON.parse(readFileSync(path, "utf8")).version).toBe(
         "0.63.0-alpha.5",
       );
+    });
+  });
+
+  describe("readSdkReleaseMetadata", () => {
+    it("reads the committed version + sdkRelease metadata", () => {
+      const path = writeJsonTemplate({
+        name: "@metabase/embedding-sdk-react",
+        version: "0.63.0",
+        sdkRelease: { distTag: "63-stable", tagAsLatest: true },
+      });
+
+      expect(readSdkReleaseMetadata({ packageTemplatePath: path })).toEqual({
+        version: "0.63.0",
+        majorVersion: "63",
+        distTag: "63-stable",
+        tagAsLatest: true,
+      });
+    });
+
+    it("defaults tagAsLatest to false when it's absent", () => {
+      const path = writeJsonTemplate({
+        version: "0.63.0-alpha.6",
+        sdkRelease: { distTag: "alpha" },
+      });
+
+      expect(readSdkReleaseMetadata({ packageTemplatePath: path })).toEqual({
+        version: "0.63.0-alpha.6",
+        majorVersion: "63",
+        distTag: "alpha",
+        tagAsLatest: false,
+      });
+    });
+
+    it("throws when the sdkRelease distTag is missing", () => {
+      const path = writeJsonTemplate({ version: "0.63.0" });
+
+      expect(() =>
+        readSdkReleaseMetadata({ packageTemplatePath: path }),
+      ).toThrow(/missing sdkRelease\.distTag/);
     });
   });
 });

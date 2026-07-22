@@ -295,26 +295,31 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.branch }}
 
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
       - name: Read version and sdkRelease metadata
         id: metadata
-        run: |
-          FILE=enterprise/frontend/src/embedding-sdk-package/package.template.json
-          VERSION=$(jq -r '.version' "$FILE")
-          DIST_TAG=$(jq -r '.sdkRelease.distTag // empty' "$FILE")
-          TAG_AS_LATEST=$(jq -r '.sdkRelease.tagAsLatest // false' "$FILE")
-          MAJOR_VERSION=$(echo "$VERSION" | cut -d. -f2)
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const { readSdkReleaseMetadata } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-          if [ -z "$DIST_TAG" ]; then
-            echo "::error::$FILE is missing sdkRelease.distTag - this branch predates the sdkRelease metadata block (EMB-1518) and needs it added (via sdk-version-bump-pr.yml or manually) before it can be released."
-            exit 1
-          fi
+            let metadata;
+            try {
+              metadata = readSdkReleaseMetadata({
+                packageTemplatePath:
+                  'enterprise/frontend/src/embedding-sdk-package/package.template.json',
+              });
+            } catch (error) {
+              core.setFailed(error.message);
+              return;
+            }
 
-          {
-            echo "sdk_version=$VERSION"
-            echo "major_version=$MAJOR_VERSION"
-            echo "dist_tag=$DIST_TAG"
-            echo "tag_as_latest=$TAG_AS_LATEST"
-          } >> "$GITHUB_OUTPUT"
+            core.setOutput('sdk_version', metadata.version);
+            core.setOutput('major_version', metadata.majorVersion);
+            core.setOutput('dist_tag', metadata.distTag);
+            core.setOutput('tag_as_latest', String(metadata.tagAsLatest));
 
       - name: Append workflow summary
         run: |
