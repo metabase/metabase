@@ -121,7 +121,7 @@
 (deftest import-table-fk-cache-collision-test
   (testing "two real tables sharing a name across schemas: app-DB-backed resolver must not drop either"
     ;; Reproduces a production failure where `query` / `construct_query` returned
-    ;; `:unknown-table` for a portable FK that `entity_details` had just emitted, then
+    ;; `:unknown-table` for a portable FK that a metadata read had just emitted, then
     ;; verifies the fix.
     ;;
     ;; Production wraps every `application-database-metadata-provider` with
@@ -162,7 +162,7 @@
               (is (= :unknown-table (:error d)))
               (is (= 400 (:status-code d)))
               (is (true? (:agent-error? d)))
-              (is (re-find #"entity_details" msg) "message points the LLM at entity_details to re-list")
+              (is (re-find #"read_resource" msg) "message points the LLM at read_resource to re-list")
               (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
                 (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
                                          (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
@@ -228,8 +228,8 @@
             (testing "ex-data carries only the rejected path — no candidates / schemas"
               (is (nil? (:candidates d)))
               (is (nil? (:available-schemas d))))
-            (testing "message points the LLM at entity_details for self-correction"
-              (is (re-find #"entity_details" msg)))))))))
+            (testing "message points the LLM at read_resource for self-correction"
+              (is (re-find #"read_resource" msg)))))))))
 
 (deftest ^:parallel import-table-fk-error-test-2
   (testing "schema does not exist in DB → still :unknown-table, no schema enumeration"

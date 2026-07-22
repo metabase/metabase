@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -11,7 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { Outlet, push } from "metabase/router";
 import { Ellipsified, Flex, Stack } from "metabase/ui";
 import type { Job } from "metabase-types/api";
 
@@ -75,11 +74,7 @@ const JobsTable = ({ jobs }: JobsTableProps) => {
   );
 };
 
-interface JobInfoAppProps {
-  children?: ReactNode;
-}
-
-export const JobInfoApp = ({ children }: JobInfoAppProps) => {
+export const JobInfoApp = () => {
   const { data, error, isFetching } = useGetTasksInfoQuery();
 
   return (
@@ -93,8 +88,8 @@ export const JobInfoApp = ({ children }: JobInfoAppProps) => {
             <JobsTable jobs={data?.jobs} />
           </SettingsSection>
           {
-            // render 'children' so that the individual task modals show up
-            children
+            // render the outlet so that the individual task modals show up
+            <Outlet />
           }
         </Stack>
       </LoadingAndErrorWrapper>
