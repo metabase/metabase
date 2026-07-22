@@ -31,7 +31,7 @@
   - One event per statement, delivered on the calling thread after the statement executes but before any
     enclosing transaction commits. If the transaction rolls back, the event has already fired: consumers must
     treat events as \"look at these rows again\", never as facts about committed state.
-  - A statement matching zero rows delivers no event.
+  - An empty pre-image snapshot delivers no update/delete event.
   - DML that bypasses the model — `(t2/delete! (t2/table-name model) ...)`, raw `t2/query` — delivers no
     event, exactly as it bypasses every other Toucan 2 tool.
   - `update!` statements rewritten by a `before-update` method are captured after the rewrite: `:changes` is
