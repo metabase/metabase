@@ -93,6 +93,10 @@ export function monitorAiAuditing() {
   return `${ROOT_URL}/ai-auditing`;
 }
 
+export function monitorAiAuditingUsage() {
+  return `${monitorAiAuditing()}/usage`;
+}
+
 export function monitorAiAuditingConversations() {
   return `${monitorAiAuditing()}/conversations`;
 }

@@ -5,6 +5,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Outlet, Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { getMonitorRoutes } from "./routes";
@@ -167,7 +168,7 @@ const enableAiAuditingRoutes = () => {
   PLUGIN_AUDIT.isAiAuditingEnabled = true;
   PLUGIN_AUDIT.getAiAuditingRoutes = () => (
     <Route
-      index
+      path="usage"
       element={<div data-testid="ai-auditing-page">AI Auditing</div>}
     />
   );
@@ -283,7 +284,7 @@ describe("monitor routes", () => {
         enableAiAuditingRoutes();
 
         setupWithGuards({
-          initialRoute: "/monitor/ai-auditing",
+          initialRoute: Urls.monitorAiAuditingUsage(),
           CanAccessAiAuditing: DenyingGuard,
         });
 

@@ -419,7 +419,7 @@ describe("route-guards", () => {
         <>
           <Route element={<CanAccessAiAuditing />}>
             <Route
-              path="/monitor/ai-auditing"
+              path="/monitor/ai-auditing/usage"
               element={<div>ai auditing page</div>}
             />
           </Route>
@@ -431,7 +431,7 @@ describe("route-guards", () => {
             settings: createMockSettingsState({ "has-user-setup": true }),
           }),
           withRouter: true,
-          initialRoute: "/monitor/ai-auditing",
+          initialRoute: "/monitor/ai-auditing/usage",
         },
       );
     };

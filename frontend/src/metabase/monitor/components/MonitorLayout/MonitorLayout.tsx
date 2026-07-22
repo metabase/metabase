@@ -54,7 +54,7 @@ function getActiveSection(pathname: string): MonitorSection | null {
       () => "ai-auditing-conversations",
     )
     .with(
-      P.string.startsWith(Urls.monitorAiAuditing()),
+      P.string.startsWith(Urls.monitorAiAuditingUsage()),
       () => "ai-auditing-usage-stats",
     )
     .otherwise(() => null);
@@ -175,7 +175,7 @@ export function MonitorLayout() {
               <AreaTab
                 label={t`Usage stats`}
                 icon="lineandbar"
-                to={Urls.monitorAiAuditing()}
+                to={Urls.monitorAiAuditingUsage()}
                 isSelected={activeSection === "ai-auditing-usage-stats"}
                 showLabel={isNavbarOpened}
                 onClick={() =>
@@ -197,7 +197,7 @@ export function MonitorLayout() {
             <AreaTab
               label={t`Usage stats`}
               icon="lineandbar"
-              to={Urls.monitorAiAuditing()}
+              to={Urls.monitorAiAuditingUsage()}
               isSelected={activeSection === "ai-auditing-usage-stats"}
               showLabel={isNavbarOpened}
               isGated

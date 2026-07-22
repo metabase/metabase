@@ -53,6 +53,10 @@ jest.mock("metabase/AppComponent", () => {
   };
 });
 
+jest.mock("metabase/common/components/NotFoundFallbackPage", () => ({
+  NotFoundFallbackPage: () => null,
+}));
+
 let mockRenderMonitorOutlet = false;
 
 jest.mock("metabase/monitor/components/MonitorLayout", () => {
@@ -119,7 +123,7 @@ describe("application routes", () => {
 
   describe("legacy AI Auditing redirects", () => {
     it.each([
-      ["/admin/metabot/usage-auditing", "/monitor/ai-auditing"],
+      ["/admin/metabot/usage-auditing", "/monitor/ai-auditing/usage"],
       [
         "/admin/metabot/usage-auditing/conversations",
         "/monitor/ai-auditing/conversations",
@@ -141,7 +145,7 @@ describe("application routes", () => {
       mockRenderMonitorOutlet = true;
       PLUGIN_AUDIT.isAiAuditingEnabled = true;
       PLUGIN_AUDIT.getAiAuditingRoutes = () => (
-        <Route index element={<div>AI Auditing</div>} />
+        <Route path="usage" element={<div>AI Auditing</div>} />
       );
 
       const { history } = setupAppRoutes({

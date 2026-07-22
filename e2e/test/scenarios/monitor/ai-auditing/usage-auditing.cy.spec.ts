@@ -100,7 +100,7 @@ const MAIN_PROFILE_LABELS: string[] = [
   "Transforms codegen",
 ];
 
-function visitUsageStatsPage(path = "/monitor/ai-auditing"): void {
+function visitUsageStatsPage(path = "/monitor/ai-auditing/usage"): void {
   cy.intercept("GET", "/api/database/13371337/metadata*").as("auditMetadata");
   cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -564,7 +564,7 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
 
   it("drills through from the tenants chart to the conversations list", () => {
     setupUsageAuditingTenants().then(({ bobbyTenant, robertTenant }) => {
-      visitUsageStatsPage("/monitor/ai-auditing?date=past7days~");
+      visitUsageStatsPage("/monitor/ai-auditing/usage?date=past7days~");
       interceptConversationsApi();
 
       assertMetricChartsRendered("conversations");
@@ -603,7 +603,7 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
   });
 
   it("drills through from the groups chart to the conversations list", () => {
-    visitUsageStatsPage("/monitor/ai-auditing?date=past7days~");
+    visitUsageStatsPage("/monitor/ai-auditing/usage?date=past7days~");
     interceptConversationsApi();
 
     assertMetricChartsRendered("conversations");
@@ -687,7 +687,7 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
 
   it("drills through from the conversations by day chart to the conversations list", () => {
     getUsageAuditingSeed().then(({ body }) => {
-      visitUsageStatsPage("/monitor/ai-auditing?date=past7days~");
+      visitUsageStatsPage("/monitor/ai-auditing/usage?date=past7days~");
       interceptConversationsApi();
 
       clickLastTimeseriesChartDot("Conversations by day");
@@ -704,7 +704,7 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
 
   it("drills through from the conversations by hour chart to the conversations list", () => {
     getUsageAuditingSeed().then(({ body }) => {
-      visitUsageStatsPage(`/monitor/ai-auditing?date=${body.date}`);
+      visitUsageStatsPage(`/monitor/ai-auditing/usage?date=${body.date}`);
       interceptConversationsApi();
 
       clickLastTimeseriesChartDot("Conversations by hour");
@@ -791,7 +791,7 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
 
   it("uses hourly stats for a single-day date filter", () => {
     getUsageAuditingSeed().then(({ body }) => {
-      visitUsageStatsPage(`/monitor/ai-auditing?date=${body.date}`);
+      visitUsageStatsPage(`/monitor/ai-auditing/usage?date=${body.date}`);
 
       H.main().within(() => {
         cy.findByRole("heading", { name: "Usage stats" }).should("be.visible");

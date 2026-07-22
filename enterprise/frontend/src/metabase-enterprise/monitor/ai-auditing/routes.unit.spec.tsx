@@ -1,5 +1,5 @@
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -40,7 +40,7 @@ function setup({
   isConfigured = true,
   mcpEnabled = true,
 }: SetupOpts) {
-  renderWithProviders(
+  return renderWithProviders(
     <Route path="/monitor/ai-auditing">
       {upsell ? getAiAuditingUpsellRoutes() : getAiAuditingRoutes()}
     </Route>,
@@ -59,8 +59,25 @@ function setup({
 }
 
 describe("AI Auditing routes", () => {
+  it.each([false, true])(
+    "redirects the section root to Usage stats and preserves the query when upsell is %s",
+    async (upsell) => {
+      const { history } = setup({
+        route: `${Urls.monitorAiAuditing()}?date=past7days~`,
+        upsell,
+      });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation()).toMatchObject({
+          pathname: Urls.monitorAiAuditingUsage(),
+          search: "?date=past7days~",
+        });
+      });
+    },
+  );
+
   it.each([
-    ["/monitor/ai-auditing", "Usage stats page"],
+    [Urls.monitorAiAuditingUsage(), "Usage stats page"],
     ["/monitor/ai-auditing/conversations", "Conversations page"],
     ["/monitor/ai-auditing/conversations/42", "Conversation detail page"],
   ])("blocks %s when AI features are disabled", (route, pageText) => {
@@ -88,6 +105,12 @@ describe("AI Auditing routes", () => {
     },
   );
 
+  it("renders Usage stats at the canonical route", () => {
+    setup({ route: Urls.monitorAiAuditingUsage() });
+
+    expect(screen.getByText("Usage stats page")).toBeInTheDocument();
+  });
+
   it("renders full Metabot analytics when enabled and configured", () => {
     setup({ route: "/monitor/ai-auditing/conversations" });
 
@@ -103,7 +126,7 @@ describe("AI Auditing routes", () => {
 
   it("keeps the license upsell ahead of AI configuration", () => {
     setup({
-      route: "/monitor/ai-auditing",
+      route: Urls.monitorAiAuditingUsage(),
       upsell: true,
       aiFeaturesEnabled: false,
       isConfigured: false,

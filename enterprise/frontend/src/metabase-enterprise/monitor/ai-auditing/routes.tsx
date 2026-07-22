@@ -1,4 +1,4 @@
-import { Route, withRouteProps } from "metabase/router";
+import { Route, redirect, withRouteProps } from "metabase/router";
 
 import {
   McpAnalyticsAvailabilityLayout,
@@ -15,15 +15,12 @@ const RoutedConversationsPage = withRouteProps(ConversationsPage);
 const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
 const RoutedMcpAnalyticsPage = withRouteProps(McpAnalyticsPage);
 
-/**
- * MCP analytics is gated only on `audit_app` (same as the rest of this section), not on
- * `ai_controls` — it stays available in both the real and upsell variants below.
- */
 export function getAiAuditingRoutes() {
   return (
     <>
+      <Route index element={redirect("usage")} />
       <Route element={<MetabotAnalyticsAvailabilityLayout />}>
-        <Route index element={<RoutedConversationStatsPage />} />
+        <Route path="usage" element={<RoutedConversationStatsPage />} />
         <Route path="conversations" element={<RoutedConversationsPage />} />
         <Route
           path="conversations/:convoId"
@@ -40,7 +37,8 @@ export function getAiAuditingRoutes() {
 export function getAiAuditingUpsellRoutes() {
   return (
     <>
-      <Route index element={<MetabotAnalyticsUpsellPage />} />
+      <Route index element={redirect("usage")} />
+      <Route path="usage" element={<MetabotAnalyticsUpsellPage />} />
       <Route element={<McpAnalyticsAvailabilityLayout />}>
         <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
       </Route>

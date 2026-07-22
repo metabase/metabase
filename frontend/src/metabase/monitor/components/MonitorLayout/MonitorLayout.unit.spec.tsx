@@ -233,16 +233,10 @@ describe("MonitorLayout", () => {
     },
   );
 
-  // These sub-paths overlap: Urls.monitorAiAuditing() is a string prefix of
-  // both Urls.monitorAiAuditingConversations() and Urls.monitorAiAuditingMcp().
-  // getActiveSection() in MonitorLayout.tsx must check the more specific
-  // MCP/Conversations routes before the bare Usage stats route, or the
-  // ts-pattern P.string.startsWith(...) match would resolve the wrong section
-  // for every route in this group.
   const AI_AUDITING_SECTION_CASES = [
     {
       label: "Usage stats",
-      route: Urls.monitorAiAuditing(),
+      route: Urls.monitorAiAuditingUsage(),
       section: "ai-auditing-usage-stats",
     },
     {
@@ -476,7 +470,7 @@ describe("MonitorLayout", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Usage stats" })).toHaveAttribute(
       "href",
-      Urls.monitorAiAuditing(),
+      Urls.monitorAiAuditingUsage(),
     );
     expect(getTabGem("Usage stats")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Conversations" })).toHaveAttribute(
@@ -574,7 +568,7 @@ describe("MonitorLayout", () => {
 
       expect(screen.getByRole("link", { name: "Usage stats" })).toHaveAttribute(
         "href",
-        Urls.monitorAiAuditing(),
+        Urls.monitorAiAuditingUsage(),
       );
       expect(
         screen.getByRole("link", { name: "Conversations" }),
