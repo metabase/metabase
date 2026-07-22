@@ -129,7 +129,10 @@
 
   Parameters:
   - profile: Profile map with :prompt-template key
-  - context: Template context map; only :sql_dialect (or :sql-dialect) is read
+  - context: Template context map. Its keys are passed through to the template as-is; :sql_dialect
+    (or :sql-dialect) additionally drives the computed dialect/skill vars. Profiles contribute
+    feature-specific vars through this map via their :system-prompt-context hook — this fn does not
+    name any feature-specific key.
   - tools: Tool registry map (name -> tool def/var)
   - capabilities: Sequence of capability strings/keywords for the request, used to
     gate which skills appear in the manifest.
@@ -151,8 +154,6 @@
       (let [sql-dialect          (or (get context :sql_dialect)
                                      (get context :sql-dialect))
             {:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
-            research-plan        (or (get context :research_plan)
-                                     (get context :research-plan))
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
             ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
@@ -170,7 +171,6 @@
                                   ;; load, nudging the model into pointless `load_skill` calls.
                                   :skill_catalog            (not-empty catalog)
                                   :skill_always_on          (mapv :body always-on)
-                                  :research_plan            research-plan
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
@@ -186,7 +186,7 @@
                                                                (metabot.settings/metabot-sql-system-prompt)
                                                                ;; default: internal.selmer and any other templates
                                                                (metabot.settings/metabot-chat-system-prompt)))}]
-        (render-system-prompt template template-context))
+        (render-system-prompt template (merge context template-context)))
       ;; Fallback if template not found
       (do
         (log/error "System prompt template not found:" template-name)

@@ -357,52 +357,6 @@
                   (log/error e "Error formatting viewing context item:" (:type item))
                   "")))))
 
-;;; Research Plan Formatting
-
-(defn- named-with-id
-  "Render a plan member as `Name (id)` so the agent can address it by id with the plan-editing
-  tools, even when the member was added directly by the user and never seen in a tool result."
-  [{:keys [id name]}]
-  (str name " (" id ")"))
-
-(defn- format-research-plan-group
-  "Format one group of the draft Research plan as a single line the LLM can act on. The
-  `block_id` is surfaced verbatim so the agent can echo it back to plan-editing tools, and each
-  member dimension/metric carries its id in parentheses."
-  [{:keys [block_id anchor metric dimensions dimension metrics]}]
-  (case anchor
-    "metric"
-    (str "- [" block_id "] " (:name metric)
-         ", broken out by: " (str/join ", " (map named-with-id dimensions)))
-    "dimension"
-    (str "- [" block_id "] by " (:name dimension)
-         ", slicing: " (str/join ", " (map named-with-id metrics)))
-    nil))
-
-(defn format-research-plan
-  "Format the user's in-progress draft Research plan for injection into the system message.
-
-  The plan lives only as front-end state until the Exploration is created, so the front-end
-  serializes it into context each turn. Returns a formatted string for template variable
-  {{research_plan}}, or nil when there is no plan to show (so the template's
-  `{% if research_plan %}` guard stays false)."
-  [context]
-  (when-let [plan (:research_plan context)]
-    (let [{:keys [name groups timelines]} plan]
-      (when (or (seq groups) (seq timelines) (not (str/blank? name)))
-        (te/lines
-         (str "The user is assembling a Research plan. Below is its current contents — the user "
-              "may have added or removed items directly in addition to your tool calls, so treat "
-              "this as the source of truth. Refer to a group by its [block_id]. Each metric, "
-              "dimension, and timeline is followed by its id in parentheses — pass those ids to "
-              "the plan-editing tools.")
-         ""
-         (te/field "Plan name" (not-empty name))
-         (when (seq groups)
-           (te/lines "Groups:" (keep format-research-plan-group groups)))
-         (when (seq timelines)
-           (te/field "Selected timelines" (str/join ", " (map named-with-id timelines)))))))))
-
 ;;; Recent Views Formatting
 
 (defn format-recent-views
@@ -447,11 +401,13 @@
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
   - :recent_views - Formatted recent views
-  - :research_plan - Formatted draft Research plan (nil when absent)"
+
+  This is the user-message injection context only. Per-profile, feature-specific system-prompt
+  content is contributed separately, via a profile's `:system-prompt-context` hook (see
+  `metabase.metabot.agent.messages/build-system-message`)."
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")
    :current_user_info (format-current-user-info context)
    :viewing_context (format-viewing-context context)
-   :recent_views (format-recent-views context)
-   :research_plan (format-research-plan context)})
+   :recent_views (format-recent-views context)})

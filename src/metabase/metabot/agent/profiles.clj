@@ -15,6 +15,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -62,6 +63,10 @@
     turn for this profile. Lets a `:required-tool-call?` profile stop as soon as it produces its
     answer (e.g. `:sql` after `edit_sql_query`) instead of being forced to keep calling tools.
     Terminality is per-profile: the same tool is non-terminal in profiles that don't list it.
+  - :system-prompt-context - Optional fn of the request context returning a map of extra,
+    feature-specific system-prompt template vars (e.g. the explorations profile's formatted draft
+    Research plan). Keeps feature context out of the generic agent — only the profiles that need it
+    opt in.
 
   Tool vars are validated at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
@@ -73,7 +78,8 @@
                [:temperature :float]
                [:tools [:vector :any]]
                [:always-on-skills {:optional true} [:vector :keyword]]
-               [:terminal-tools {:optional true} [:set :string]]]]
+               [:terminal-tools {:optional true} [:set :string]]
+               [:system-prompt-context {:optional true} [:fn ifn?]]]]
   (let [tool-vars     (:tools profile)
         tool-name-seq (map #(:tool-name (meta %)) tool-vars)
         tool-names    (set tool-name-seq)]
@@ -233,6 +239,7 @@
   :prompt-template "explorations.selmer"
   :max-iterations  10
   :temperature     0.3
+  :system-prompt-context #'tools.explorations/research-plan-system-context
   :tools           [#'tools/search-tool
                     #'tools/read-resource-tool
                     #'tools/get-research-candidates-tool
