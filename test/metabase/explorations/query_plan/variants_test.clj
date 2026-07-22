@@ -316,3 +316,58 @@
             (is (= ["Widget"] (discover)) "second row is served from cache")
             (is (= 1 @runs)
                 "discovery ran once across both rebuilds — the key ignores the churning :lib/uuids")))))))
+
+(defn- discovery-ctx
+  [card-id]
+  {:mp              (mt/metadata-provider)
+   :card            (products-count-card card-id)
+   :target          (category-target)
+   :dim             category-dim
+   :segment         nil
+   :params          {:k 2}
+   :explore-filters nil})
+
+(deftest cached-discovery-does-not-cache-failures-test
+  (testing "a failed discovery query is not cached — the next row retries instead of being served [] for the whole TTL"
+    (let [ctx   (discovery-ctx 9000110)
+          runs  (atom 0)
+          ;; `run-top-k-discovery` signals a throw by returning nil; every other
+          ;; return (including `[]`) is a real answer.
+          results (atom [nil ["Widget" "Gadget"]])]
+      (with-redefs-fn {#'variants/run-top-k-discovery
+                       (fn [& _]
+                         (swap! runs inc)
+                         (let [[r & more] @results]
+                           (reset! results (vec more))
+                           r))}
+        (fn []
+          (is (= [] (#'variants/cached-discovery ctx))
+              "a failed discovery degrades to an empty result for this row")
+          (is (= ["Widget" "Gadget"] (#'variants/cached-discovery ctx))
+              "the next row re-runs discovery instead of reading the failure back out of the cache")
+          (is (= 2 @runs)))))))
+
+(deftest cached-discovery-caches-empty-results-test
+  (testing "a discovery query that legitimately finds nothing stays cached — no retry storm on an empty metric"
+    (let [ctx  (discovery-ctx 9000111)
+          runs (atom 0)]
+      (with-redefs-fn {#'variants/run-top-k-discovery (fn [& _] (swap! runs inc) [])}
+        (fn []
+          (is (= [] (#'variants/cached-discovery ctx)))
+          (is (= [] (#'variants/cached-discovery ctx)))
+          (is (= 1 @runs) "an empty answer is an answer — discovery ran once"))))))
+
+(deftest run-top-k-discovery-distinguishes-empty-from-failure-test
+  (testing "run-top-k-discovery returns [] when the query succeeds with no rows, so the caller can cache it"
+    (let [mp   (mt/metadata-provider)
+          card {:id            9000112
+                :dataset_query (lib/->legacy-MBQL
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                    (lib/aggregate (lib/count))
+                                    (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category))
+                                                       "No Such Category"))))}]
+      (is (= [] (#'variants/run-top-k-discovery mp card (category-target) category-dim 2)))))
+  (testing "and nil when the query throws, so the caller can skip caching it"
+    (is (nil? (#'variants/run-top-k-discovery (mt/metadata-provider)
+                                              {:id 9000113 :dataset_query {:not-a "query"}}
+                                              (category-target) category-dim 2)))))
