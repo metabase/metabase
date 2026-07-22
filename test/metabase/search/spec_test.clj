@@ -172,27 +172,37 @@
             (search.spec/model-hooks)))))))
 
 (deftest ^:synchronized model-hooks-cache-records-post-resolution-methods-test
-  (testing "methods loaded while computing model hooks belong to the cached result"
+  (testing "model hooks are cached only after collection sees one stable post-resolution method table"
     (let [original-specifications (mt/original-fn #'search.spec/specifications)
           spec-multifn            search.spec/spec*
+          original-card           (get-method spec-multifn "card")
           calls                   (atom 0)
-          installed?              (atom false)
-          dispatch-value          "model-hooks-cache-probe"]
+          redefined?              (atom false)]
       (try
         (mt/with-dynamic-fn-redefs [search.spec/specifications
                                     (fn []
                                       (swap! calls inc)
-                                      (when (compare-and-set! installed? false true)
-                                        (.addMethod ^clojure.lang.MultiFn spec-multifn
-                                                    dispatch-value
-                                                    (constantly nil)))
-                                      (original-specifications))]
+                                      (let [specs (original-specifications)]
+                                        ;; Simulate a reload after the old card specification was read but before
+                                        ;; the collection returns.
+                                        (when (compare-and-set! redefined? false true)
+                                          (.addMethod ^clojure.lang.MultiFn spec-multifn
+                                                      "card"
+                                                      (fn [_]
+                                                        (update (original-card "card")
+                                                                :render-terms assoc :cache-probe :cache_probe))))
+                                        specs))]
           (reset! @#'search.spec/model-hooks-cache nil)
           (let [hooks (search.spec/model-hooks)]
+            (is (contains? (->> (get hooks :model/Card)
+                                (filter #(= "card" (:search-model %)))
+                                first
+                                :fields)
+                           :cache_probe))
             (is (identical? hooks (search.spec/model-hooks)))
-            (is (= 1 @calls))))
+            (is (= 2 @calls))))
         (finally
-          (.removeMethod ^clojure.lang.MultiFn spec-multifn dispatch-value)
+          (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original-card)
           (reset! @#'search.spec/model-hooks-cache nil)
           (search.spec/model-hooks))))))
 
