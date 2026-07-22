@@ -400,10 +400,6 @@
     (Snowflake `db.schema.table`; SQL Server `db.schema.table`; BigQuery
     `project.dataset.table`).
 
-  Used by workspace table remapping to decide:
-  - which columns to populate when storing a `:model/TableRemapping` row
-  - which AST positions to match against during query rewriting
-
   Defaults to `[:schema]` (Postgres-style)."
   {:added "0.62.0" :arglists '([driver])}
   dispatch-on-initialized-driver

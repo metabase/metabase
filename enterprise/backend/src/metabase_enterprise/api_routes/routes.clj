@@ -157,8 +157,7 @@
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
-   "/workspace-instance"           (premium-handler metabase-enterprise.workspaces.api/instance-routes :workspaces)
-   "/workspace-manager"            (premium-handler metabase-enterprise.workspaces.api/manager-routes :workspaces)})
+   "/workspace"                    (premium-handler metabase-enterprise.workspaces.api/routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

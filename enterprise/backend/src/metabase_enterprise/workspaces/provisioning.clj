@@ -1,7 +1,6 @@
 (ns metabase-enterprise.workspaces.provisioning
   (:require
    [metabase-enterprise.workspaces.models.workspace-database]
-   [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -151,27 +150,7 @@
               workspace (assoc (wsd-iso-workspace workspace-database-id)
                                :schema           (:output_namespace wsd)
                                :database_details (:database_details wsd))]
-          (try
-            (destroy! provisioner driver db workspace)
-            (finally
-              ;; Clear `TableRemapping` rows whose `to_*` matches this workspace's
-              ;; iso namespace. Runs in `finally` so a partial warehouse teardown
-              ;; (e.g. BQ dataset deleted, SA delete throws) still leaves app-DB
-              ;; in a "workspace no longer routes queries" state. Without this,
-              ;; future queries against canonical tables would rewrite to an iso
-              ;; namespace that no longer exists and 500 in the QP. The unique
-              ;; constraint on `(database_id, from_*)` prevents two workspaces on
-              ;; the same DB from remapping the same canonical table, so scoping
-              ;; by iso namespace alone is correct.
-              ;;
-              ;; Rebind `*current-connectable*` to nil so the DELETE runs on a
-              ;; fresh autocommit connection outside the workspace-database lock's
-              ;; tx. Otherwise, when `destroy!` throws, the surrounding tx rolls
-              ;; back and undoes the DELETE.
-              (binding [t2.connection/*current-connectable* nil]
-                (ws.remapping-cleanup/clear-mappings-for-iso! db
-                                                              (:database_id wsd)
-                                                              (:output_namespace wsd)))))
+          (destroy! provisioner driver db workspace)
           (t2/update! :model/WorkspaceDatabase
                       {:id workspace-database-id}
                       {:output_namespace ""
@@ -241,15 +220,12 @@
   There is no partial outcome: the teardown either fully succeeds or the row
   stays. The row is the durable record that warehouse resources may exist — it
   must survive instance crashes and disappear only once the warehouse footprint
-  is confirmed gone. On success the WorkspaceDatabase row is DELETED and the
-  app-DB `TableRemapping` rows for the iso namespace are cleared — stale
-  remappings would rewrite queries to a dropped schema and 500 the QP.
+  is confirmed gone. On success the WorkspaceDatabase row is DELETED.
 
   Throws on failure. When the destroy itself fails, the row bookkeeping runs
-  first: the row is kept, forced `:unprovisioned`, and the remapping cleanup
-  still runs. Failures before the destroy — lock timeout, identifier
-  computation — throw without touching the row. Either way the teardown can be
-  retried. Returns nil."
+  first: the row is kept, forced `:unprovisioned`. Failures before the destroy —
+  lock timeout, identifier computation — throw without touching the row. Either
+  way the teardown can be retried. Returns nil."
   [wsd provisioner]
   (with-workspace-database-lock (:id wsd)
     (when-let [wsd (t2/select-one :model/WorkspaceDatabase :id (:id wsd))]
@@ -272,14 +248,7 @@
             (binding [t2.connection/*current-connectable* nil]
               (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
                           {:output_namespace "" :database_details {} :status :unprovisioned}))
-            (throw t))
-          (finally
-            ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
-            ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
-            ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
-            ;; (mirrors `deprovision-workspace-database!`).
-            (binding [t2.connection/*current-connectable* nil]
-              (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
+            (throw t)))
         (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
         nil))))
 

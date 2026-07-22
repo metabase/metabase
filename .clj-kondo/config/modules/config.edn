@@ -109,8 +109,7 @@
            search
            settings
            util
-           warehouses
-           workspaces}
+           warehouses}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
                     :model/Collection
@@ -878,10 +877,7 @@
            tracing
            util
            warehouse-schema
-           warehouses
-           ;; `metabase.driver.sync/include-schema?` skips workspace iso schemas
-           ;; on parent (non-workspace-mode) instances. See GHY-3489.
-           workspaces}
+           warehouses}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   driver-api
@@ -1418,8 +1414,7 @@
            task
            task-history
            tracing
-           util
-           workspaces}
+           util}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 
@@ -1869,7 +1864,8 @@
               parameters
               transforms-base
               warehouse-schema}
-   :api     #{metabase.query-processor.api
+   :api     #{metabase.query-processor
+              metabase.query-processor.api
               metabase.query-processor.card
               metabase.query-processor.compile
               metabase.query-processor.core
@@ -1879,7 +1875,6 @@
               metabase.query-processor.interface
               metabase.query-processor.metadata
               metabase.query-processor.middleware.constraints
-              metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
@@ -1928,8 +1923,7 @@
            system
            tracing
            users
-           util
-           workspaces}
+           util}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2299,8 +2293,7 @@
            tracing
            util
            warehouse-schema
-           warehouses
-           workspaces}
+           warehouses}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -2482,8 +2475,7 @@
            premium-features
            query-processor
            sync
-           util
-           workspaces}
+           util}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2558,8 +2550,7 @@
            settings
            sync
            util
-           warehouse-schema
-           workspaces}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2891,8 +2882,7 @@
            setup
            sync
            users
-           util
-           enterprise/workspaces}
+           util}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
@@ -3166,8 +3156,7 @@
            settings
            util
            warehouse-schema
-           warehouses
-           workspaces}
+           warehouses}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -3772,26 +3761,23 @@
 
   enterprise/workspaces
   {:team "Graphy"
-   :api  #{metabase-enterprise.workspaces.api
-           metabase-enterprise.workspaces.core
-           metabase-enterprise.workspaces.init}
+   :api  #{metabase-enterprise.workspaces.api metabase-enterprise.workspaces.init}
    :uses #{api
            app-db
-           cache
            driver
            lib
            models
-           permissions
            premium-features
+           queries
            query-processor
-           sample-data
            settings
-           sql-tools
-           util
-           workspaces}
+           transforms
+           util}
    :model-exports #{:model/Workspace}
-   :model-imports #{:model/Database
+   :model-imports #{:model/Card
+                    :model/Database
                     :model/Table
+                    :model/Transform
                     :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

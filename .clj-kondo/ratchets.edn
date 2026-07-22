@@ -9,7 +9,7 @@
                  :case-symbol-test                                                    1
                  :clojure-lsp/unused-public-var                                       9
                  :def-fn                                                              1
-                 :deprecated-namespace                                                97
+                 :deprecated-namespace                                                96
                  :deprecated-var                                                      81
                  :discouraged-java-method                                             3
                  :discouraged-namespace                                               81
@@ -19,7 +19,7 @@
                  :metabase/defsetting-namespace                                       7
                  :metabase/disallow-hardcoded-driver-names-in-tests                   34
                  :metabase/discourage-millis-duration                                 1
-                 :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 14
+                 :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
                  :metabase/modules                                                    8
                  :metabase/namespace-name                                             4
                  :metabase/prefer-with-dynamic-fn-redefs                              25

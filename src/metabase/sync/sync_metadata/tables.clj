@@ -21,7 +21,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -438,8 +437,7 @@
   (letfn [(reconcile! []
             (let [tables         (as-> batch <>
                                    (into #{} (comp (remove ignore-table?) (m/distinct-by table-name+schema)) <>)
-                                   (remove-tables-with-too-long-names database <>)
-                                   (ws.table-remapping/filter-workspace-side-tables <> (u/the-id database)))
+                                   (remove-tables-with-too-long-names database <>))
                   existing       (existing-tables-by-name+schema database tables)
                   existing-row   #(get existing (table-name+schema %))
                   already-active (into #{} (filter #(:active (existing-row %))) tables)
@@ -523,7 +521,6 @@
                                {:created 0, :updated 0, :complete? true
                                 :seen (transient #{}), :metabase-metadata []}
                                (:tables db-metadata))
-           context  (reconcile-batch context (ws.table-remapping/inject-workspace-canonical-tuples [] (u/the-id database)))
            {:keys [created updated complete?]} context]
        (when-let [holder (:metabase-metadata-tables db-metadata)]
          (vreset! holder (:metabase-metadata context)))
