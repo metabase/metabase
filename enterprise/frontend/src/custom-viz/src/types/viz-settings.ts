@@ -155,7 +155,8 @@ type CommonVisualizationSettings = {
 export type ReservedVisualizationSettingId = "column" | "column_settings";
 
 export type BaseVisualizationSettings = Record<string, unknown> & {
-  [K in ReservedVisualizationSettingId]?: never;
+  [K in ReservedVisualizationSettingId]?: `${K} is a reserved setting id added by Metabase; remove it
+  from your Settings type`;
 };
 
 export type CustomVisualizationSettings<
