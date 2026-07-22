@@ -191,7 +191,7 @@
    ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
    ;; tools (and its prompt instructs their use), so NLQ-only users must not have
    ;; them silently scope-filtered away.
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*"
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:metric:*"
                                         "agent:question:*" "agent:timelines:*" "agent:explorations:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
                                         "agent:timelines:*" "agent:collection:*"}})
