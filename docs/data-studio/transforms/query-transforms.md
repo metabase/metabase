@@ -148,8 +148,6 @@ In this query,`orders_var` is connected to the `orders` table in variable settin
 
 Once your query has table aliases, you can mark the transform as incremental using the `orders.id` column in the transform's settings.
 
-An incremental SQL transform has to keep its table variable. If you remove the variable from the query, Metabase will ask if you want to turn off incremental processing, as without the table variable, there's nowhere for Metabase to apply the filter that picks up new rows.
-
 #### Mark transform as incremental
 
 To make a query transform incremental:
