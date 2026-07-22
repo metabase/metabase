@@ -30,11 +30,16 @@ type V3To = RouterLinkProps["to"];
  * v3 resolved a bare path against the root, so call sites write `to="reference"`
  * meaning `/reference`. v7 resolves it against the current route instead, which
  * would nest it (that link sits on `/browse/databases`). Anchor it so the target
- * does not depend on where the link is rendered. A leading `?` or `#` keeps the
- * current path by design, so leave those alone.
+ * does not depend on where the link is rendered.
+ *
+ * Left alone: a leading `?` or `#`, which keeps the current path by design, and
+ * anything carrying a scheme (`https:`, `mailto:`) or a protocol-relative `//`,
+ * which is not a route at all.
  */
 function toRootRelative(pathname: string): string {
-  return pathname === "" || /^[/?#]/.test(pathname) ? pathname : `/${pathname}`;
+  const isAlreadyAnchored = pathname === "" || /^[/?#]/.test(pathname);
+  const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(pathname);
+  return isAlreadyAnchored || hasScheme ? pathname : `/${pathname}`;
 }
 
 function toV7Target(to: V3To): { to: V7LinkProps["to"]; state?: unknown } {

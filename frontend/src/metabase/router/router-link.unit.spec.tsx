@@ -27,6 +27,8 @@ function Home() {
       </Link>
       {/* v3 resolved a bare path against the root, not the current route. */}
       <Link to="other">bare</Link>
+      <Link to="https://www.metabase.com/docs">external</Link>
+      <Link to="mailto:help@metabase.com">mail</Link>
       <Outlet />
     </div>
   );
@@ -71,6 +73,25 @@ describe.each<RouterEngine>(["v3", "v7"])(
       await userEvent.click(screen.getByRole("link", { name: "bare" }));
 
       expect(await screen.findByTestId("other")).toBeInTheDocument();
+    });
+
+    // Anchoring bare paths must not touch absolute URLs, or a docs link becomes
+    // `/https:/www.metabase.com/...`.
+    it("leaves absolute urls untouched", async () => {
+      renderWithProviders(tree, {
+        withRouter: true,
+        routerEngine,
+        initialRoute: "/",
+      });
+
+      expect(screen.getByRole("link", { name: "external" })).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/docs",
+      );
+      expect(screen.getByRole("link", { name: "mail" })).toHaveAttribute(
+        "href",
+        "mailto:help@metabase.com",
+      );
     });
 
     it("applies activeClassName to the link that matches the route", async () => {

@@ -29,7 +29,7 @@ export function searchToQuery(
  * order has to stay stable rather than follow insertion.
  */
 export function queryToSearch(query: Record<string, unknown>): string {
-  const pairs: string[] = [];
+  const params = new URLSearchParams();
   const sortedEntries = Object.entries(query).sort(([a], [b]) =>
     a.localeCompare(b),
   );
@@ -39,19 +39,14 @@ export function queryToSearch(query: Record<string, unknown>): string {
     }
     const values = Array.isArray(value) ? value : [value];
     for (const item of values) {
-      pairs.push(`${encodeQueryPart(key)}=${encodeQueryPart(String(item))}`);
+      params.append(key, String(item));
     }
   }
-  return pairs.length > 0 ? `?${pairs.join("&")}` : "";
-}
-
-/**
- * `encodeURIComponent`, as history@3 used, rather than `URLSearchParams`. The
- * latter also escapes `~!*'()` and writes a space as `+`, which would change URLs
- * users see and share (a date filter reads `next30days~`, not `next30days%7E`).
- */
-function encodeQueryPart(value: string): string {
-  return encodeURIComponent(value);
+  // `URLSearchParams` matches history@3 apart from `~`, which it escapes and
+  // history@3 left alone. Both write a space as `+`. These URLs are user visible
+  // and asserted against, so a date filter has to read `next30days~`.
+  const search = params.toString().replace(/%7E/gi, "~");
+  return search ? `?${search}` : "";
 }
 
 /**

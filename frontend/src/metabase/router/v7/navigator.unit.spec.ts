@@ -74,12 +74,15 @@ describe("queryToSearch", () => {
     expect(queryToSearch({ city: "", state: "AK" })).toBe("?city=&state=AK");
   });
 
-  // `URLSearchParams` would write these as %7E and `+`, changing URLs users see.
-  it("leaves `encodeURIComponent`-safe characters alone", () => {
+  // history@3 wrote a space as `+` but left `~` literal, and both show up in URLs
+  // the app asserts on (a date filter reads `next30days~`).
+  it("writes a space as `+` and leaves `~` literal", () => {
     expect(queryToSearch({ date_filter: "next30days~" })).toBe(
       "?date_filter=next30days~",
     );
-    expect(queryToSearch({ q: "a b" })).toBe("?q=a%20b");
+    expect(queryToSearch({ task: "field values scanning" })).toBe(
+      "?task=field+values+scanning",
+    );
   });
 
   it("still escapes characters that would break the query string", () => {
