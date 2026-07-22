@@ -11,8 +11,11 @@ jobs:
   # — those are handled by the legacy escape hatch at the end of this file.
   prepare:
     if:
-      | # the PR must carry the `backport` label at merge, or be labeled `backport` after merge
-      github.event.pull_request.merged == true && (
+      | # the PR must carry the `backport` label at merge, or be labeled `backport` after merge.
+      # `backport` is master-only (backport-reminder.yml solicits it only on master).
+      # The base-ref guard stops a stray label on a release-branch PR from fanning out.
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'master' && (
         github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'backport') ||
         github.event.action == 'labeled' && github.event.label.name == 'backport'
       )
@@ -84,8 +87,10 @@ jobs:
   # create-backport simply errors on the duplicate.
   legacy-backport:
     if:
-      | # triggered only by the legacy depth labels, at merge or when added afterwards
-      github.event.pull_request.merged == true && (
+      | # triggered only by the legacy depth labels, at merge or when added afterwards.
+      # Master-only like the primary path; the base-ref guard blocks a stray label on a release-branch PR.
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'master' && (
         github.event.action == 'closed' && (
           contains(github.event.pull_request.labels.*.name, 'single-backport') ||
           contains(github.event.pull_request.labels.*.name, 'double-backport') ||
