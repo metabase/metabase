@@ -28,6 +28,33 @@
   transform: rotate(90deg);
 }
 
+/* background-clip:text can't reach an SVG, so the caret fakes the shimmer with a
+   color with %'s timed to shimmer animation */
+.chevronShimmer {
+  animation: chevron-pulse 1500ms linear infinite;
+}
+
+@keyframes chevron-pulse {
+  0%,
+  47% {
+    color: var(--mb-color-text-tertiary);
+  }
+
+  57% {
+    color: var(--mb-color-border-neutral);
+  }
+
+  100% {
+    color: var(--mb-color-text-tertiary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevronShimmer {
+    animation: none;
+  }
+}
+
 /* a highlight band sweeping over the text color while a step streams in */
 .shimmer {
   /* both colors stay in the text family (a lighter highlight over the resting

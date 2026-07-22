@@ -399,7 +399,7 @@ describe("MetabotChainOfThought", () => {
       false,
     );
     await userEvent.click(screen.getByRole("button"));
-    expect(screen.getByText("Reading resource")).toBeInTheDocument();
+    expect(screen.getByText("Read resource")).toBeInTheDocument();
     expect(screen.queryByText("Loading skill")).not.toBeInTheDocument();
     expect(screen.queryByText("Working")).not.toBeInTheDocument();
   });

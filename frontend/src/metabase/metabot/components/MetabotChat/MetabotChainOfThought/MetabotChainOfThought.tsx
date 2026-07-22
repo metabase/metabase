@@ -107,7 +107,12 @@ export const MetabotChainOfThought = ({
         <Icon
           name="chevronright"
           size={10}
-          className={cx(S.chevron, Animation.fadeIn, open && S.chevronOpen)}
+          className={cx(
+            S.chevron,
+            Animation.fadeIn,
+            isStreaming && S.chevronShimmer,
+            open && S.chevronOpen,
+          )}
         />
       </UnstyledButton>
       <Collapse in={open}>

@@ -144,14 +144,23 @@ export const TOOL_MESSAGES = {
   list_available_fields: { active: () => undefined, done: () => undefined },
   load_skill: { active: () => undefined, done: () => undefined },
   read_resource: {
-    active: (count = 1) =>
-      ngettext(
-        msgid`Reading ${count} resource`,
-        `Reading ${count} resources`,
-        count,
-      ),
-    done: (count = 1) =>
-      ngettext(msgid`Read ${count} resource`, `Read ${count} resources`, count),
+    // no count: a lone read (generic label). count: an aggregated burst.
+    active: (count) =>
+      count == null
+        ? t`Reading resource`
+        : ngettext(
+            msgid`Reading ${count} resource`,
+            `Reading ${count} resources`,
+            count,
+          ),
+    done: (count) =>
+      count == null
+        ? t`Read resource`
+        : ngettext(
+            msgid`Read ${count} resource`,
+            `Read ${count} resources`,
+            count,
+          ),
   },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   search: { active: () => t`Searching`, done: () => t`Searched` },

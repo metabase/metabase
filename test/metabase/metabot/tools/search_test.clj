@@ -38,7 +38,13 @@
   (testing "no collection -> no collection key"
     (is (= {:id 5 :type "dashboard" :name "Revenue"}
            (#'search/search-result->item
-            {:id 5 :type "dashboard" :name "Revenue" :collection nil})))))
+            {:id 5 :type "dashboard" :name "Revenue" :collection nil}))))
+  (testing "carries a question's display (as a string) + moderated_status for the exact icon"
+    (is (= {:id 7 :type "question" :name "Revenue" :display "line"
+            :moderated_status "verified"}
+           (#'search/search-result->item
+            {:id 7 :type "question" :name "Revenue" :display :line
+             :moderated_status "verified"})))))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
