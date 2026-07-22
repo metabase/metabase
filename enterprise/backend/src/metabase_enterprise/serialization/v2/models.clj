@@ -153,6 +153,7 @@
    "TaskHistory"
    "TaskRun"
    "Tenant"
+   "TransformDagRun"
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"

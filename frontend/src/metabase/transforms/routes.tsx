@@ -16,7 +16,9 @@ import {
   NewQueryTransformPage,
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
+import { RunsPage } from "./pages/RunsPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
+import { TransformGraphRunListPage } from "./pages/TransformGraphRunListPage";
 import { TransformIndexesPage } from "./pages/TransformIndexesPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
@@ -26,6 +28,9 @@ import { TransformsNotDisabled } from "./route-guards";
 
 const RoutedTransformListPage = withRouteProps(TransformListPage);
 const RoutedRunListPage = withRouteProps(RunListPage);
+const RoutedTransformGraphRunListPage = withRouteProps(
+  TransformGraphRunListPage,
+);
 const RoutedNewJobPage = withRouteProps(NewJobPage);
 const RoutedJobPage = withRouteProps(JobPage);
 const RoutedJobRunListPage = withRouteProps(JobRunListPage);
@@ -44,7 +49,10 @@ export function getDataStudioTransformRoutes() {
   return (
     <Route element={<TransformsNotDisabled />}>
       <Route index element={<RoutedTransformListPage />} />
-      <Route path="runs" element={<RoutedRunListPage />} />
+      <Route path="runs" element={<RunsPage />}>
+        <Route index element={<RoutedTransformGraphRunListPage />} />
+        <Route path="individual" element={<RoutedRunListPage />} />
+      </Route>
       <Route path="jobs" element={<JobSectionLayout />}>
         <Route index element={<JobListPage />} />
         <Route path="new" element={<RoutedNewJobPage />} />
