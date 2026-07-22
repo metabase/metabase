@@ -1,5 +1,5 @@
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
 describe("Security Center > Snowplow tracking", { tags: "@enterprise" }, () => {
   before(() => {
