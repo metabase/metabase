@@ -865,15 +865,16 @@
           (keep :id (:series dashcard))))
 
 (defn- assert-dashcards-are-not-internal-to-other-dashboards
-  "Reject `dashcards` that newly reference a question internal to another dashboard. Card ids the dashboard
-  already references (as a dashcard's card or series, per `dashboard`'s hydrated `:dashcards`) are
-  grandfathered so that pre-existing associations never block saving the dashboard (UXW-4870)."
-  [dashboard dashcards]
-  (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards dashboard))]
-    (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids dashcards)))]
+  "Reject `new-dashcards` that newly reference a question internal to another dashboard. Card ids the
+  dashboard already references (as a dashcard's card or series, per `existing-dashboard`'s hydrated
+  `:dashcards`) are grandfathered so that pre-existing associations never block saving the dashboard
+  (UXW-4870)."
+  [existing-dashboard new-dashcards]
+  (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
+    (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
       (api/check-400 (not (t2/exists? :model/Card
                                       {:where [:and
-                                               [:not= :dashboard_id (u/the-id dashboard)]
+                                               [:not= :dashboard_id (u/the-id existing-dashboard)]
                                                [:not= :dashboard_id nil]
                                                [:in :id (set card-ids)]]}))))))
 
