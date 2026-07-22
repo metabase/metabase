@@ -19,7 +19,23 @@
   A batch that exhausted its retries and vanished would strand the row in `pending` and the user on
   a spinner forever. The `:on-error` handlers write the terminal state the UI already knows how to
   render (`error` on a query, the planning-failed doc on a thread that never planned), so giving up
-  is something the user sees rather than something that hangs."
+  is something the user sees rather than something that hangs.
+
+  Most failures never reach those handlers, though, and that is deliberate — how long a failure is
+  retried, and who records it, depends on what the failure looks like:
+
+    - Planning failures are terminal on the first attempt. `generate-query-plan!` catches its own
+      throwables and writes the planning-failed state itself, so nothing propagates for mq to retry.
+      The plan queue's `:on-error` is the backstop for failures *around* the planner — app-db trouble
+      in the listener — not for the planner itself.
+
+    - A failing query is retried once immediately, inside the delivery. If it still fails while
+      others in its batch succeed, it is poison rather than infrastructure: it is stamped `error`
+      right there, so the user sees it promptly instead of after a full backoff ladder.
+
+    - When every message of a *multi-message* batch fails, no single query can be blamed — that is an
+      outage. The batch is rethrown so mq redelivers it with exponential backoff, and only an
+      exhausted budget hands it to `:on-error`. See [[deliver-batch!]]."
   (:require
    [metabase.explorations.runner :as runner]
    [metabase.explorations.settings :as explorations.settings]
@@ -46,21 +62,51 @@
                  {:message message})
       nil)))
 
+(defn- attempt-message!
+  "Runs `handle!` on one message, retrying it once within this delivery so a momentary blip on one
+  message does not cost its batch-mates a redelivery. Returns `{:message _ :thread-id _}` if it
+  succeeded, or `{:message _ :error throwable}` if both attempts failed."
+  [handle! message]
+  (try
+    {:message message :thread-id (u/auto-retry 1 (handle! message))}
+    (catch Throwable e
+      {:message message :error e})))
+
 (defn- deliver-batch!
-  "Runs `handle!` on each message of a batch, isolating the messages from one another: a message that
-  fails every attempt is recorded terminally via `fail!` without aborting its batch-mates. Both
-  `handle!` and `fail!` return the affected thread-id (or nil). Returns the distinct non-nil
+  "Runs `handle!` on every message of a batch and decides how the batch gives up.
+
+  A batch that failed only in part is read as poison messages: each failure is recorded terminally via
+  `fail!` without aborting its batch-mates, so a bad query surfaces promptly and on its own.
+
+  A batch in which every one of *several* messages failed is read as an outage instead — one poison
+  message cannot fail its batch-mates — so it is rethrown, handing it back to mq to redeliver on its
+  exponential backoff ladder (which also releases this worker in between) rather than burning a
+  transient blip into terminal, user-visible state milliseconds after the first attempt. Nothing is
+  recorded on the way out; if that retry budget runs out, the queue's `:on-error` writes the terminal
+  state after all.
+
+  A *lone* failing message stays on the recording path: with no batch-mates, nothing distinguishes an
+  outage from a query that was never going to work, and making the user wait out the whole ladder for
+  the latter is the worse of the two mistakes.
+
+  Both `handle!` and `fail!` return the affected thread-id (or nil). Returns the distinct non-nil
   thread-ids the batch touched — the caller runs their completion checks separately, OUTSIDE this
   per-message swallow, so a failing check can propagate to mq for retry rather than being lost."
   [messages handle! fail!]
-  (into #{}
-        (keep (fn [message]
-                (try
-                  (u/auto-retry 1 (handle! message))
-                  (catch Throwable e
-                    (log/error e "Exploration message failed every attempt; recording it as failed" {:message message})
-                    (record-failure! fail! message e)))))
-        messages))
+  (let [results (mapv #(attempt-message! handle! %) messages)]
+    (if (and (next results) (every? :error results))
+      (let [e (:error (first results))]
+        (log/warnf e "All %d messages of an exploration batch failed; letting mq retry it with backoff"
+                   (count results))
+        (throw e))
+      (into #{}
+            (keep (fn [{:keys [message thread-id error]}]
+                    (if error
+                      (do (log/error error "Exploration message failed every attempt; recording it as failed"
+                                     {:message message})
+                          (record-failure! fail! message error))
+                      thread-id)))
+            results))))
 
 (defn- mark-query-errored!
   "The query queue's `fail!`: terminally mark the message's query `error` (the state the UI renders)
