@@ -391,6 +391,21 @@
     (t2/delete! model-key {:where (cond-> [:and [:= :remote_sync_worktree_id worktree-id]]
                                     (seq kept) (conj [:not-in :entity_id kept]))})))
 
+(defn- copy-main-app-permissions!
+  "Give each of `worktree`'s collections the permission grants of its main-app counterpart (same
+  entity id, NULL worktree reference), so a checkout is exactly as visible as the content it mirrors —
+  never more. Collections that already have grants (an admin curated them, or an earlier pull copied
+  them) and collections without a counterpart keep what they have (admin-only for fresh ones)."
+  [worktree]
+  (doseq [{:keys [id entity_id]} (t2/select [:model/Collection :id :entity_id]
+                                            :remote_sync_worktree_id (:id worktree))
+          :let  [counterpart (t2/select-one-pk :model/Collection
+                                               :entity_id entity_id
+                                               :remote_sync_worktree_id nil)]
+          :when (and counterpart
+                     (not (t2/exists? :model/Permissions :object [:like (str "/collection/" id "/%")])))]
+    (collection/copy-collection-permissions! counterpart [id])))
+
 (defn worktree-pull!
   "Pull `worktree`'s branch into its materialized collection trees: load the snapshot with serdes
   matching and stamping scoped to the worktree (see [[serdes/*worktree-id*]]), reconcile the worktree's
@@ -420,6 +435,7 @@
                                    (source.ingestable/cached-file-paths base-ingestable)
                                    :worktree-id (:id worktree))
             (remote-sync.task/set-version! task-id snapshot-version))
+          (copy-main-app-permissions! worktree)
           (remote-sync.task/update-progress! task-id 0.95)
           {:status  :success
            :version snapshot-version
