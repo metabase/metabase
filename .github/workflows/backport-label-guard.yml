@@ -6,20 +6,23 @@ name: Backport label guard
 # (carried by auto-created backport PRs) is deliberately not matched — `contains` is an exact element match,
 # so it never fires for `was-backported` or `no-backport`.
 #
-# Keep this check non-required: it runs only on non-master PRs, so requiring it would block every master PR
-# on a check that never reports there.
+# The job is gated on base != master rather than a branch filter, so a PR retargeted master<->release
+# re-checks and clears any stale result; on a master PR the job just skips. GitHub runs pull_request
+# workflows from the PR head, so this only fires where the file is present in head — it guards a release
+# line's PRs once backported there. Keep the check non-required.
 on:
   pull_request:
     types: [opened, reopened, synchronize, labeled, unlabeled, edited]  # edited: re-check after base change
-    branches-ignore: [master]
 
 jobs:
   guard:
     if: >
-      contains(github.event.pull_request.labels.*.name, 'backport') ||
-      contains(github.event.pull_request.labels.*.name, 'single-backport') ||
-      contains(github.event.pull_request.labels.*.name, 'double-backport') ||
-      contains(github.event.pull_request.labels.*.name, 'triple-backport')
+      github.event.pull_request.base.ref != 'master' && (
+        contains(github.event.pull_request.labels.*.name, 'backport') ||
+        contains(github.event.pull_request.labels.*.name, 'single-backport') ||
+        contains(github.event.pull_request.labels.*.name, 'double-backport') ||
+        contains(github.event.pull_request.labels.*.name, 'triple-backport')
+      )
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Fail on a fan-out backport label
