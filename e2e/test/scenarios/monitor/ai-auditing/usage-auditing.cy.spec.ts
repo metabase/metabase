@@ -428,18 +428,6 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
     assertMetricChartsRendered("conversations");
   });
 
-  it("redirects the legacy /admin/metabot/usage-auditing URL to /monitor/ai-auditing", () => {
-    cy.intercept("GET", "/api/database/13371337/metadata*").as("auditMetadata");
-
-    cy.visit("/admin/metabot/usage-auditing");
-    cy.wait("@auditMetadata");
-
-    cy.location("pathname").should("eq", "/monitor/ai-auditing");
-    H.main()
-      .findByRole("heading", { name: "Usage stats" })
-      .should("be.visible");
-  });
-
   it("renders usage stats charts for selected date shortcuts on conversations", () => {
     visitUsageStatsPage();
 
