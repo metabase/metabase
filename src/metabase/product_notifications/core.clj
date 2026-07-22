@@ -21,23 +21,28 @@
   [v]
   (or (nil? v) (and (string? v) (str/blank? v))))
 
-(defn- parse-version
-  "Parse a Metabase version string into a vector of integers for comparison, dropping the leading edition digit
-  (0 = OSS, 1 = EE) when present so that e.g. `v0.52.3` and `v1.52.3` compare equal. Returns nil when the string
-  has no numeric segments."
+(def ^:private version-pattern
+  "Matches our standard version tags: an optional `v`, an optional edition digit (`0` = OSS, `1` = EE), then the
+  marketing `MAJOR.MINOR(.PATCH…)` — e.g. `v0.54.0`, `v1.54.3`, `0.54.0`, `54.0`. Capture group 1 is the marketing
+  part, which is all we compare on, so the `v0`/`v1` edition prefix is ignored. A trailing qualifier such as
+  `-RC1` is tolerated and ignored."
+  #"(?i)^v?(?:[01]\.)?(\d+(?:\.\d+)*)")
+
+(defn- comparable-version
+  "Parse one of our standard version strings into a vector of integers for comparison, ignoring the leading `v`
+  and the edition digit so that e.g. `v0.54.0` and `v1.54.0` compare equal. Returns nil for strings that aren't a
+  recognizable version (e.g. `vLOCAL_DEV`), which callers treat as not comparable."
   [s]
   (when (string? s)
-    (let [nums (into [] (keep parse-long) (re-seq #"\d+" s))]
-      (when (seq nums)
-        (if (and (>= (count nums) 2) (#{0 1} (first nums)))
-          (subvec nums 1)
-          nums)))))
+    (when-let [[_ marketing] (re-find version-pattern (str/trim s))]
+      (mapv parse-long (str/split marketing #"\.")))))
 
 (defn- compare-versions
-  "Compare two version strings ignoring the edition digit. Returns -1/0/1, or nil when either is unparseable."
+  "Compare two of our standard version strings by their marketing `MAJOR.MINOR…`, ignoring the `v0`/`v1` edition
+  prefix. Returns -1/0/1, or nil when either string isn't a recognizable version."
   [a b]
-  (let [a (parse-version a)
-        b (parse-version b)]
+  (let [a (comparable-version a)
+        b (comparable-version b)]
     (when (and a b)
       (let [n   (max (count a) (count b))
             pad #(into % (repeat (- n (count %)) 0))]

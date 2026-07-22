@@ -5,12 +5,25 @@ import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { Icon, isValidIconName } from "metabase/ui";
 
-export function ProductNotifications() {
-  const notifications = useSetting("notifications");
+export const useDismissNotification = () => {
   const [dismissedIds, setDismissedIds] = useUserSetting(
     "dismissed-notification-ids",
     { shouldRefresh: false, shouldDebounce: false },
   );
+
+  const dismiss = useCallback(
+    (notificationId: string) => {
+      setDismissedIds([...(dismissedIds ?? []), notificationId]);
+    },
+    [dismissedIds, setDismissedIds],
+  );
+
+  return { dismissedIds, dismiss };
+};
+
+export function ProductNotifications() {
+  const notifications = useSetting("notifications");
+  const { dismissedIds, dismiss } = useDismissNotification();
 
   // The backend already filters to relevant, undismissed notifications; we
   // additionally filter by the locally-known dismissals so a just-dismissed
@@ -19,12 +32,6 @@ export function ProductNotifications() {
   const notification = (notifications ?? []).find(
     (candidate) => !(dismissedIds ?? []).includes(candidate.id),
   );
-
-  const dismiss = useCallback(() => {
-    if (notification) {
-      setDismissedIds([...(dismissedIds ?? []), notification.id]);
-    }
-  }, [notification, dismissedIds, setDismissedIds]);
 
   if (!notification) {
     return null;
@@ -37,7 +44,7 @@ export function ProductNotifications() {
       }
       title={notification.title}
       body={<Markdown>{notification.content}</Markdown>}
-      onDismiss={dismiss}
+      onDismiss={() => dismiss(notification.id)}
     />
   );
 }

@@ -90,17 +90,35 @@
       (is (= [] (ids [(notif "a" :conditions {:admin false :start_date "not-a-date"})] :today today))))))
 
 (deftest version-window-test
-  (testing "min_version is an inclusive lower bound"
-    (is (= ["a"] (ids [(notif "a" :conditions {:admin false :min_version "0.52.3"})] :version "v0.52.3")))
-    (is (= []    (ids [(notif "a" :conditions {:admin false :min_version "0.52.4"})] :version "v0.52.3"))))
+  (testing "min_version is an inclusive lower bound (standard v-prefixed versions)"
+    (is (= ["a"] (ids [(notif "a" :conditions {:admin false :min_version "v0.54.0"})] :version "v0.54.0")))
+    (is (= []    (ids [(notif "a" :conditions {:admin false :min_version "v0.54.1"})] :version "v0.54.0"))))
   (testing "max_version is an inclusive upper bound"
-    (is (= ["a"] (ids [(notif "a" :conditions {:admin false :max_version "0.52.3"})] :version "v0.52.3")))
-    (is (= []    (ids [(notif "a" :conditions {:admin false :max_version "0.52.2"})] :version "v0.52.3"))))
-  (testing "the edition digit is ignored: 0.52.3 matches an EE (v1.52.3) instance"
-    (is (= ["a"] (ids [(notif "a" :conditions {:admin false :min_version "0.52.3" :max_version "0.52.3"})]
-                      :version "v1.52.3"))))
-  (testing "an unparseable running version hides version-targeted notifications"
-    (is (= [] (ids [(notif "a" :conditions {:admin false :min_version "0.52.0"})] :version nil)))))
+    (is (= ["a"] (ids [(notif "a" :conditions {:admin false :max_version "v0.54.0"})] :version "v0.54.0")))
+    (is (= []    (ids [(notif "a" :conditions {:admin false :max_version "v0.53.9"})] :version "v0.54.0"))))
+  (testing "the v0/v1 edition prefix is ignored: a v0 condition matches an EE (v1) instance"
+    (is (= ["a"] (ids [(notif "a" :conditions {:admin false :min_version "v0.54.0" :max_version "v0.54.0"})]
+                      :version "v1.54.0"))))
+  (testing "an unparseable running version (e.g. local dev) hides version-targeted notifications"
+    (is (= [] (ids [(notif "a" :conditions {:admin false :min_version "v0.54.0"})] :version "vLOCAL_DEV")))))
+
+(deftest compare-versions-test
+  (let [cmp @#'product-notifications/compare-versions]
+    (testing "compares by marketing MAJOR.MINOR, ignoring the v0/v1 edition prefix"
+      (is (zero? (cmp "v0.54.0" "v1.54.0")))
+      (is (pos?  (cmp "v0.54.1" "v0.54.0")))
+      (is (neg?  (cmp "v0.54.0" "v0.55.0")))
+      (is (pos?  (cmp "v1.55.0" "v0.54.9"))))
+    (testing "the v prefix and edition digit are both optional"
+      (is (zero? (cmp "v0.54.0" "0.54.0")))
+      (is (zero? (cmp "v0.54.0" "54.0"))))
+    (testing "shorter versions pad with zeros (v0.54 == v0.54.0)"
+      (is (zero? (cmp "v0.54" "v0.54.0"))))
+    (testing "a trailing qualifier is ignored"
+      (is (zero? (cmp "v0.54.0-RC1" "v0.54.0"))))
+    (testing "returns nil when either version is unrecognizable"
+      (is (nil? (cmp "vLOCAL_DEV" "v0.54.0")))
+      (is (nil? (cmp "v0.54.0" nil))))))
 
 (deftest blank-conditions-pass-test
   (testing "a condition that is missing or a blank string imposes no constraint"
