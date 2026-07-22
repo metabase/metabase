@@ -6,7 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [diehard.core :as dh]
    [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -25,7 +25,7 @@
           source (source/source-from-settings branch)
           snapshot (source.p/snapshot source)
           snapshot-version (source.p/version snapshot)
-          last-version (remote-sync.task/last-version)]
+          last-version (remote-sync.worktree/default-base-version)]
       (if (= last-version snapshot-version)
         (log/infof "Skipping auto-import: source version %s matches last imported version" snapshot-version)
         (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]

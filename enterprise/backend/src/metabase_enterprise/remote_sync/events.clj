@@ -17,6 +17,7 @@
    - NativeQuerySnippet, snippets-namespace Collections (when Library is remote-synced)"
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
@@ -28,21 +29,24 @@
 (defn enable-snippet-tracking!
   "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync."
   []
-  (let [timestamp (t/offset-date-time)
-        rows      (concat
-                   (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
-                     {:model_type        "Collection"
-                      :model_id          (:id coll)
-                      :model_name        (:name coll)
-                      :status            "create"
-                      :status_changed_at timestamp})
-                   (for [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
-                     {:model_type          "NativeQuerySnippet"
-                      :model_id            (:id snippet)
-                      :model_name          (:name snippet)
-                      :model_collection_id (:collection_id snippet)
-                      :status              "create"
-                      :status_changed_at   timestamp}))]
+  (let [timestamp   (t/offset-date-time)
+        worktree-id (remote-sync.worktree/default-worktree-id)
+        rows        (concat
+                     (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
+                       {:model_type        "Collection"
+                        :model_id          (:id coll)
+                        :model_name        (:name coll)
+                        :status            "create"
+                        :status_changed_at timestamp
+                        :worktree_id       worktree-id})
+                     (for [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
+                       {:model_type          "NativeQuerySnippet"
+                        :model_id            (:id snippet)
+                        :model_name          (:name snippet)
+                        :model_collection_id (:collection_id snippet)
+                        :status              "create"
+                        :status_changed_at   timestamp
+                        :worktree_id         worktree-id}))]
     (when (seq rows)
       (t2/insert! :model/RemoteSyncObject rows))))
 
@@ -99,7 +103,8 @@
                      :model_table_id (:table_id model-details)
                      :model_table_name (:table_name model-details)
                      :status status
-                     :status_changed_at (t/offset-date-time)}))
+                     :status_changed_at (t/offset-date-time)
+                     :worktree_id (remote-sync.worktree/default-worktree-id)}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
       (= "delete" (:status existing))
@@ -133,7 +138,8 @@
                     (merge {:model_type        model-type
                             :model_id          model-id
                             :status            status
-                            :status_changed_at (t/offset-date-time)}
+                            :status_changed_at (t/offset-date-time)
+                            :worktree_id       (remote-sync.worktree/default-worktree-id)}
                            fields)))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))

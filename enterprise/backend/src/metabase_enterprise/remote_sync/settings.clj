@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -127,7 +128,8 @@
                      :model_id          transforms-root-id
                      :model_name        "Transforms"
                      :status            "create"
-                     :status_changed_at timestamp}))
+                     :status_changed_at timestamp
+                     :worktree_id       (remote-sync.worktree/default-worktree-id)}))
       ;; When disabling and there's an existing RSO, update to 'delete' status
       existing-rso
       (do
@@ -139,7 +141,8 @@
                      :model_id          transforms-root-id
                      :model_name        "Transforms"
                      :status            "delete"
-                     :status_changed_at timestamp}))
+                     :status_changed_at timestamp
+                     :worktree_id       (remote-sync.worktree/default-worktree-id)}))
       ;; When disabling and there's no existing RSO, do nothing
       ;; (this avoids creating spurious 'delete' entries when going from default false to explicitly false)
       :else
@@ -239,7 +242,11 @@
           (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
             (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
                        (not (and (= k :remote-sync-token) obfuscated?)))
-              (setting/set! k (k settings)))))))))
+              ;; branch writes go through set-default-branch! so the setting and the worktree
+              ;; table (default worktree row + content bookkeeping) cannot drift
+              (if (and (= k :remote-sync-branch) (some? (k settings)))
+                (remote-sync.worktree/set-default-branch! (k settings))
+                (setting/set! k (k settings))))))))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.

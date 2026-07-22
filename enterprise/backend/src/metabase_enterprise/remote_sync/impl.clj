@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
@@ -299,9 +300,11 @@
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
   [rows repo-paths]
   (serdes/with-cache
-    (doseq [chunk (partition-all app-db-batch-size rows)]
-      (t2/insert! :model/RemoteSyncObject
-                  (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
+    (let [worktree-id (remote-sync.worktree/default-worktree-id)]
+      (doseq [chunk (partition-all app-db-batch-size rows)]
+        (t2/insert! :model/RemoteSyncObject
+                    (map #(assoc % :worktree_id worktree-id)
+                         (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
@@ -574,7 +577,7 @@
   (let [sync-timestamp (t/instant)]
     (try
       (let [snapshot-version      (source.p/version snapshot)
-            last-imported-version (remote-sync.task/last-version)
+            last-imported-version (remote-sync.worktree/default-base-version)
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
@@ -1203,7 +1206,7 @@
     (try
       (analytics/inc! :metabase-remote-sync/exports)
       (serdes/with-cache
-        (let [base-version   (remote-sync.task/last-version)
+        (let [base-version   (remote-sync.worktree/default-base-version)
               remote-version (source.p/version snapshot)
               diverged?      (and (some? base-version)
                                   (not= base-version remote-version))
@@ -1279,7 +1282,8 @@
       (assoc task :existing? true)
       (do
         (remote-sync.task/supersede-stale-tasks!)
-        (remote-sync.task/create-sync-task! task-type api/*current-user-id*)))))
+        (remote-sync.task/create-sync-task! task-type api/*current-user-id*
+                                            {:worktree_id (remote-sync.worktree/default-worktree-id)})))))
 
 ;;; ------------------------------------------- Remote Changes Check -------------------------------------------
 
@@ -1371,7 +1375,7 @@
          current-branch (settings/remote-sync-branch)]
      (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
-       (let [last-imported (remote-sync.task/last-version)
+       (let [last-imported (remote-sync.worktree/default-base-version)
              source (source/source-from-settings current-branch)
              snapshot (snapshot-or-missing-branch source)]
          (if (= ::missing-branch snapshot)
@@ -1413,12 +1417,23 @@
               :else
               (do
                 (case (:status result)
-                  :success (do
-                             (when branch
-                               (settings/remote-sync-branch! branch))
+                  :success (let [worktree (if branch
+                                            (remote-sync.worktree/set-default-branch! branch)
+                                            (remote-sync.worktree/ensure-default-worktree!))]
+                             (when worktree
+                               ;; the task may have been created under the previous default worktree
+                               ;; (branch switch): retag it onto the branch it actually synced
+                               (when (not= (:worktree_id task) (:id worktree))
+                                 (t2/update! :model/RemoteSyncTask task-id {:worktree_id (:id worktree)}))
+                               (remote-sync.worktree/set-base-version! (:id worktree) (:version task)))
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
+                              (when-let [worktree-id (or (:worktree_id task)
+                                                         (remote-sync.worktree/default-worktree-id))]
+                                ;; conflicted tasks still advance the sync base (they record the version
+                                ;; the conflict was computed against), matching `last-version` semantics
+                                (remote-sync.worktree/set-base-version! worktree-id (:version result)))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
                   :error (remote-sync.task/fail-sync-task! task-id (:message result))
                   (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
@@ -1490,7 +1505,7 @@
         ;; (base == theirs, so import-merged! no-ops and keeps local dirty). When the remote has advanced
         ;; it's the last-synced commit, which may be nil if orphaned by a force-push/rebase (→ conflict).
         ;; nil also when there's no prior sync. Resolved only for a merge.
-        last-task-version      (remote-sync.task/last-version)
+        last-task-version      (remote-sync.worktree/default-base-version)
         base-snapshot          (when (and merge? (some? last-task-version))
                                  (if (= last-task-version (source.p/version snapshot))
                                    snapshot
@@ -1541,7 +1556,7 @@
                     {:status-code 400})))
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
-        last-task-version      (remote-sync.task/last-version)
+        last-task-version      (remote-sync.worktree/default-base-version)
         snapshot               (source.p/snapshot source)
         current-source-version (source.p/version snapshot)
         ;; the merge base, resolved only when the remote has advanced; nil here means a 3-way merge isn't
@@ -1582,7 +1597,7 @@
         source         (source/source-from-settings branch)
         snapshot       (source.p/snapshot source)
         remote-version (source.p/version snapshot)
-        base-version   (remote-sync.task/last-version)]
+        base-version   (remote-sync.worktree/default-base-version)]
     (if (or (nil? base-version) (= base-version remote-version))
       no-changes
       (if-let [base-snapshot (source.p/snapshot-at source base-version)]
@@ -1607,7 +1622,7 @@
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source name base-branch)
-    (settings/remote-sync-branch! name)))
+    (remote-sync.worktree/set-default-branch! name)))
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
@@ -1628,7 +1643,7 @@
   (if (settings/remote-sync-enabled)
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
-        (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
+        (remote-sync.worktree/set-default-branch! (source.p/default-branch (source/source-from-settings))))
       (when (= :read-only (settings/remote-sync-type))
         ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).

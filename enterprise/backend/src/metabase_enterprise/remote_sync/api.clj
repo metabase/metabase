@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -328,7 +329,7 @@
    _query
    {:keys [name]} :- [:map [:name ms/NonBlankString]]]
   (api/check-superuser)
-  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
+  (let [base-branch (or (remote-sync.worktree/default-base-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
     (try

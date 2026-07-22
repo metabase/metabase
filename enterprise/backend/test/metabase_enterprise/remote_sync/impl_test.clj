@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -1429,7 +1430,7 @@ serdes/meta:
                                           :type "library"
                                           :entity_id collection/library-entity-id
                                           :location "/"}]
-        (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "previous-version")]
+        (mt/with-dynamic-fn-redefs [remote-sync.worktree/default-base-version (constantly "previous-version")]
           (let [test-files {"main" {"collections/main/lib/lib.yaml"
                                     (test-helpers/generate-collection-yaml collection/library-entity-id "Remote Library")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
@@ -1968,7 +1969,7 @@ serdes/meta:
 
 (deftest preview-export-merge-not-diverged-test
   (testing "preview reports no changes when the remote has not advanced"
-    (with-redefs [remote-sync.task/last-version (constantly "remote-R") ; == snapshot version
+    (with-redefs [remote-sync.worktree/default-base-version (constantly "remote-R") ; == snapshot version
                   source/source-from-settings   (constantly (export-test-source))]
       (is (= {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
               :force-push-casualties {:deleted [] :overwritten []}}

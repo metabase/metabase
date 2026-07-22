@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as source.git]
@@ -416,7 +417,7 @@
       (let [loaded (atom [])
             src    (test-helpers/versioned-source :current "v1" :trees {"v1" {}})]
         (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
-                                    remote-sync.task/last-version (constantly "v1")
+                                    remote-sync.worktree/default-base-version (constantly "v1")
                                     impl/load-snapshot!           (fn [snap & _] (swap! loaded conj (source.p/version snap)) nil)]
           (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id 9001 :model_name "Local Card"
                                                :model_collection_id 1 :status "update"
@@ -436,7 +437,7 @@
       (let [loaded (atom [])
             src    (test-helpers/versioned-source :current "v2" :trees {"v1" {} "v2" (card-yaml-fixture)})]
         (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
-                                    remote-sync.task/last-version (constantly "v1") ; != current -> diverged, base resolvable
+                                    remote-sync.worktree/default-base-version (constantly "v1") ; != current -> diverged, base resolvable
                                     ;; simulate load-snapshot!'s contract (run the in-txn finalize: restore-dirty +
                                     ;; set-version) without the slow app-DB reconcile
                                     impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
@@ -457,7 +458,7 @@
       (let [loaded (atom [])
             src    (test-helpers/versioned-source :current "v2" :trees {"v2" (card-yaml-fixture)})] ; "gone" absent
         (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
-                                    remote-sync.task/last-version (constantly "gone")
+                                    remote-sync.worktree/default-base-version (constantly "gone")
                                     impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                 task (wait-for-task-completion task_id)]
@@ -471,7 +472,7 @@
                                        remote-sync-branch "main"]
       (let [src (test-helpers/versioned-source :current "v2" :trees {"v2" (card-yaml-fixture)})]
         (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
-                                    remote-sync.task/last-version (constantly nil)
+                                    remote-sync.worktree/default-base-version (constantly nil)
                                     impl/load-snapshot!           (fn [_snap & _] nil)]
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                 task (wait-for-task-completion task_id)]
@@ -487,7 +488,7 @@
           (let [loaded (atom [])
                 src    (test-helpers/versioned-source :current "v2" :trees {"v1" {} "v2" {}})]
             (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
-                                        remote-sync.task/last-version (constantly "v1") ; diverged, base resolvable
+                                        remote-sync.worktree/default-base-version (constantly "v1") ; diverged, base resolvable
                                         impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
                                                                         (swap! loaded conj :loaded)
                                                                         (when finalize! (finalize!))
@@ -507,7 +508,7 @@
           (let [loaded (atom [])
                 src    (test-helpers/versioned-source :current "v2" :trees {"v2" {}})] ; "gone" absent
             (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
-                                        remote-sync.task/last-version (constantly "gone")
+                                        remote-sync.worktree/default-base-version (constantly "gone")
                                         impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
               (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main" :merge true})
                     task (wait-for-task-completion task_id)]
