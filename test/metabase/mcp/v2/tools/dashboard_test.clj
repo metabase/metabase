@@ -75,6 +75,19 @@
           (testing "the dashcard got a real id, not the temp one"
             (is (pos-int? (get-in result [:dashcards 0 :id])))))))))
 
+(deftest create-with-a-bad-op-writes-nothing-test
+  (testing "GHY-4147: a create whose ops fail leaves no dashboard behind — otherwise the agent sees
+            an error, retries, and ends up with a pile of empty dashboards"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Card card {}]
+        (let [before (t2/count :model/Dashboard)
+              err    (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                             (wire {:method "create" :name "Sales"
+                                                    :ops [{:op "add_card" :id -1 :card_id (:id card)}
+                                                          {:op "remove" :dashcard_id 999999}]})))]
+          (is (re-find #"op 1" err))
+          (is (= before (t2/count :model/Dashboard))))))))
+
 (deftest ops-are-atomic-test
   (testing "GHY-4147: a batch with a bad op writes nothing — the error names the op index"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}

@@ -432,9 +432,15 @@
              "`archived` applies to method \"update\" only — remove it from this create call."))
           (cond
             validate-only? (apply-ops! (blank-dashboard attrs) (or ops []) attrs true)
-            (seq ops)      (apply-ops! (t2/hydrate (dashboards.write/create-dashboard! attrs)
-                                                   [:dashcards :series :card] :tabs)
-                                       ops {} false)
+            (seq ops)      (do
+                             ;; Compile before creating anything, so a bad op can't leave an
+                             ;; orphaned empty dashboard behind for a retry to duplicate. A new
+                             ;; dashboard is empty by definition, so compiling against a blank
+                             ;; checks everything the post-create compile would.
+                             (apply-ops! (blank-dashboard attrs) ops attrs true)
+                             (apply-ops! (t2/hydrate (dashboards.write/create-dashboard! attrs)
+                                                     [:dashcards :series :card] :tabs)
+                                         ops {} false))
             :else          (saved-row (:id (dashboards.write/create-dashboard! attrs)))))
 
         :update
