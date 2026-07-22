@@ -36,23 +36,6 @@ import {
 
 import { buildAuthInfo } from "./utils";
 
-/**
- * Approximates the backend validator (metabase.util/url?), which unlike Yup's
- * .url() accepts bare hostnames such as http://webhook-tester:8080/
- */
-const isValidWebhookUrl = (value: string): boolean => {
-  if (value !== value.trim() || !value.includes("://")) {
-    return false;
-  }
-
-  try {
-    const { protocol } = new URL(value);
-    return protocol === "http:" || protocol === "https:";
-  } catch {
-    return false;
-  }
-};
-
 function getValidationSchema() {
   return Yup.object({
     url: Yup.string()
@@ -72,6 +55,23 @@ function getValidationSchema() {
       .equals(["none", "basic", "bearer", "api-key"]),
     "auth-info": Yup.object(),
   });
+}
+
+/**
+ * Approximates the backend validator (metabase.util/url?), which unlike Yup's
+ * .url() accepts bare hostnames such as http://webhook-tester:8080/
+ */
+function isValidWebhookUrl(value: string): boolean {
+  if (value !== value.trim() || !value.includes("://")) {
+    return false;
+  }
+
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 const styles = {
