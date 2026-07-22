@@ -52,9 +52,17 @@ export const DatabaseFormBody = ({
     .with("full-page", () => undefined)
     .exhaustive();
   const mah = location === "full-page" ? "100%" : "calc(100vh - 20rem)";
+  const overflowY = location === "admin" ? undefined : "auto";
 
   return (
-    <Box mah={mah} mb="md" px={px} flex={1} style={{ overflowY: "auto" }}>
+    <Box
+      data-testid="database-form-body"
+      mah={mah}
+      mb="md"
+      px={px}
+      flex={1}
+      style={{ overflowY }}
+    >
       {engineFieldConfig?.fieldState !== "hidden" && (
         <>
           <DatabaseEngineField
