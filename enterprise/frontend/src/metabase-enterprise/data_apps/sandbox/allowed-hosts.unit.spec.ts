@@ -179,3 +179,60 @@ describe("makeSandboxXhr", () => {
     );
   });
 });
+
+describe("onBlocked reporting", () => {
+  const base = "https://mb.example.com/embed/apps/sales";
+  const origin = "https://mb.example.com";
+  const fakeWindow = (fetch: typeof global.fetch): SandboxRealm => ({
+    fetch,
+    XMLHttpRequest,
+    location: { href: base, origin },
+  });
+
+  it("reports a blocked fetch, and stays silent when no listener is given", async () => {
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    const onBlocked = jest.fn();
+
+    const reporting = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
+      "sales",
+      onBlocked,
+    )!;
+    await expect(reporting("https://evil.example.org/x")).rejects.toThrow();
+
+    expect(onBlocked).toHaveBeenCalledWith(
+      // `type: "network"` is added a layer up, in `distortions.ts`.
+      expect.objectContaining({
+        api: "fetch",
+        url: "https://evil.example.org/x",
+        reason: expect.stringContaining("not in allowed_hosts"),
+      }),
+    );
+
+    // Production passes no listener; that path must be unchanged.
+    const silent = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
+      "sales",
+    )!;
+    await expect(silent("https://evil.example.org/x")).rejects.toThrow();
+    expect(realFetch).not.toHaveBeenCalled();
+  });
+
+  it("still blocks when the listener throws", async () => {
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    const sandboxFetch = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
+      "sales",
+      () => {
+        throw new Error("listener exploded");
+      },
+    )!;
+
+    // A broken reporter must not become a way through the allowlist.
+    await expect(sandboxFetch("https://evil.example.org/")).rejects.toThrow();
+    expect(realFetch).not.toHaveBeenCalled();
+  });
+});

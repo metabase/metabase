@@ -97,4 +97,78 @@ describe("makeDistortionCallback", () => {
     const other = { some: "object" };
     expect(callback(other)).toBe(other);
   });
+
+  describe("onBlocked", () => {
+    it("reports a blocked API instead of logging it", () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const onBlocked = jest.fn();
+      const callback = makeDistortionCallback(
+        "sales",
+        fakeWindow(),
+        [],
+        onBlocked,
+      );
+      // Same signature erasure as above.
+      const createElement = callback(
+        Document.prototype.createElement,
+      ) as typeof Document.prototype.createElement;
+
+      expect(() => createElement.call(document, "script")).toThrow();
+
+      expect(onBlocked).toHaveBeenCalledWith({
+        type: "api",
+        message: expect.stringContaining("blocked createElement: script"),
+      });
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("reports a blocked fetch with the resolved url and reason", async () => {
+      const onBlocked = jest.fn();
+      const win = fakeWindow();
+      const callback = makeDistortionCallback(
+        "sales",
+        win,
+        ["https://api.example.com"],
+        onBlocked,
+      );
+      // Same signature erasure as above.
+      const distorted = callback(win.fetch) as typeof fetch;
+
+      await expect(distorted("https://evil.example.org/")).rejects.toThrow();
+
+      expect(onBlocked).toHaveBeenCalledWith({
+        type: "network",
+        api: "fetch",
+        url: "https://evil.example.org/",
+        reason: "evil.example.org (not in allowed_hosts)",
+      });
+    });
+
+    it("reports a blocked XMLHttpRequest", () => {
+      const onBlocked = jest.fn();
+      const win = fakeWindow();
+      const callback = makeDistortionCallback(
+        "sales",
+        win,
+        ["https://api.example.com"],
+        onBlocked,
+      );
+      // Same signature erasure as above.
+      const Distorted = callback(win.XMLHttpRequest) as typeof XMLHttpRequest;
+
+      expect(() =>
+        new Distorted().open("GET", "https://evil.example.org/"),
+      ).toThrow();
+
+      expect(onBlocked).toHaveBeenCalledWith({
+        type: "network",
+        api: "xhr",
+        url: "https://evil.example.org/",
+        reason: "evil.example.org (not in allowed_hosts)",
+      });
+    });
+  });
 });
