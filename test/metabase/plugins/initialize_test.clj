@@ -1,6 +1,8 @@
 (ns metabase.plugins.initialize-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.plugins.core :as plugins]
    [metabase.plugins.dependencies :as deps]
    [metabase.plugins.init-steps :as init-steps]
    [metabase.plugins.initialize :as initialize]
@@ -8,19 +10,25 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest non-driver-plugin-initializes-eagerly-test
-  (let [calls       (atom [])
-        plugin-name (str "test non-driver plugin " (random-uuid))
-        plugin      {:metabase-plugin-api-version initialize/plugin-api-version
-                     :info                       {:name plugin-name :version "1.0.0"}
-                     :init                       [{:step "load-namespace" :namespace "example.plugin"}]
-                     :add-to-classpath!          #(swap! calls conj :classpath)}]
-    (with-redefs [deps/all-dependencies-satisfied?                    (constantly true)
-                  deps/update-unsatisfied-deps!                       (constantly [])
-                  init-steps/do-init-steps!                            #(swap! calls conj [:init %])
-                  lazy-loaded-driver/register-lazy-loaded-driver!     #(swap! calls conj [:driver %])]
-      (#'initialize/init! plugin))
-    (is (= [:classpath [:init (:init plugin)]] @calls))))
+(deftest non-driver-plugins-load-lazily-test
+  (doseq [driver-value [nil []]]
+    (testing (str "driver value " (pr-str driver-value))
+      (let [calls       (atom [])
+            plugin-name (str "test non-driver plugin " (random-uuid))
+            plugin      {:metabase-plugin-api-version initialize/plugin-api-version
+                         :info                       {:name plugin-name :version "1.0.0"}
+                         :driver                     driver-value
+                         :init                       [{:step "load-namespace" :namespace "example.plugin"}]
+                         :add-to-classpath!          #(swap! calls conj :classpath)}]
+        (with-redefs [deps/all-dependencies-satisfied?                (constantly true)
+                      deps/update-unsatisfied-deps!                   (constantly [])
+                      init-steps/do-init-steps!                        #(swap! calls conj [:init %])
+                      lazy-loaded-driver/register-lazy-loaded-driver! #(swap! calls conj [:driver %])]
+          (is (= :ok (initialize/register-plugin-with-info! plugin)))
+          (is (empty? @calls) "registration does not load plugin code")
+          (is (= :ok (plugins/load-plugin! plugin-name)))
+          (is (= :ok (plugins/load-plugin! plugin-name)) "loading is idempotent"))
+        (is (= [:classpath [:init (:init plugin)]] @calls))))))
 
 (deftest non-driver-plugin-must-declare-api-version-test
   (doseq [driver-value [nil []]]
@@ -29,7 +37,7 @@
                     :info   {:name (str "test unversioned plugin " (random-uuid)) :version "1.0.0"}}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"must declare Metabase plugin API version"
-                              (initialize/init-plugin-with-info! plugin)))))))
+                              (initialize/register-plugin-with-info! plugin)))))))
 
 (deftest incompatible-plugin-api-version-is-rejected-test
   (let [calls  (atom [])
@@ -41,19 +49,42 @@
     (with-redefs [init-steps/do-init-steps! #(swap! calls conj [:init %])]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"unsupported Metabase plugin API version"
-                            (initialize/init-plugin-with-info! plugin))))
+                            (initialize/register-plugin-with-info! plugin))))
     (is (empty? @calls) "an incompatible plugin is rejected before its code reaches the classpath")))
 
 (deftest lazy-driver-plugin-remains-lazy-test
   (let [calls       (atom [])
+        driver-name (str "test-lazy-driver-" (random-uuid))
         plugin-name (str "test lazy driver plugin " (random-uuid))
         plugin      {:info              {:name plugin-name :version "1.0.0"}
-                     :driver            {:name "example" :lazy-load true}
+                     :driver            {:name driver-name :abstract true :lazy-load true}
                      :init              [{:step "load-namespace" :namespace "example.driver"}]
                      :add-to-classpath! #(swap! calls conj :classpath)}]
     (with-redefs [deps/all-dependencies-satisfied?                (constantly true)
                   deps/update-unsatisfied-deps!                   (constantly [])
+                  init-steps/do-init-steps!                        #(swap! calls conj [:init %])]
+      (is (= :ok (initialize/register-plugin-with-info! plugin)))
+      (is (empty? @calls) "driver registration does not load plugin code")
+      (driver/initialize! (keyword driver-name))
+      (driver/initialize! (keyword driver-name)))
+    (is (= [:classpath [:init (:init plugin)]] @calls)
+        "the driver placeholder uses the shared idempotent plugin loader")))
+
+(deftest driver-plugin-can-opt-out-of-lazy-loading-test
+  (let [calls  (atom [])
+        plugin {:info              {:name (str "test eager driver plugin " (random-uuid)) :version "1.0.0"}
+                :driver            {:name "example" :lazy-load false}
+                :init              [{:step "load-namespace" :namespace "example.driver"}]
+                :add-to-classpath! #(swap! calls conj :classpath)}]
+    (with-redefs [deps/all-dependencies-satisfied?                (constantly true)
+                  deps/update-unsatisfied-deps!                   (constantly [])
                   init-steps/do-init-steps!                        #(swap! calls conj [:init %])
-                  lazy-loaded-driver/register-lazy-loaded-driver! #(swap! calls conj [:driver (:driver %)])]
-      (#'initialize/init! plugin))
-    (is (= [[:driver (:driver plugin)]] @calls))))
+                  lazy-loaded-driver/register-lazy-loaded-driver! #(swap! calls conj [:driver %])]
+      (is (= :ok (initialize/register-plugin-with-info! plugin))))
+    (is (= [:classpath [:init (:init plugin)]] @calls))))
+
+(deftest load-plugin-requires-registered-plugin-test
+  (let [plugin-name (str "test missing plugin " (random-uuid))]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"is not registered"
+                          (plugins/load-plugin! plugin-name)))))
