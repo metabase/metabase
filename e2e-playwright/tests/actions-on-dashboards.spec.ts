@@ -1522,10 +1522,11 @@ test.describe("Action Parameters Mapping", () => {
         idFilter: true,
       });
 
+      // Prefetch fires on filter apply, not on the button click — see the note
+      // in "adds an implicit update action to a dashboard and runs it".
+      const prefetchFirst = page.waitForResponse(isPrefetch);
       await filterWidget(page).first().click();
       await addWidgetStringFilter(page, "5");
-
-      const prefetchFirst = page.waitForResponse(isPrefetch);
       await page.getByRole("button", { name: actionName }).click();
       await prefetchFirst;
 
@@ -1535,14 +1536,15 @@ test.describe("Action Parameters Mapping", () => {
       await expect(modal(page).getByPlaceholder("Score")).toHaveValue("30");
       await icon(modal(page), "close").click();
 
+      // Same race: the id-change prefetch fires when "Update filter" applies
+      // the new value, not on the action button click.
+      const prefetchSecond = page.waitForResponse(isPrefetch);
       await filterWidget(page).first().click();
       const combobox = fieldValuesCombobox(dashboardParametersPopover(page));
       await combobox.click();
       await page.keyboard.press("Backspace");
       await page.keyboard.type("10");
       await page.getByRole("button", { name: "Update filter" }).click();
-
-      const prefetchSecond = page.waitForResponse(isPrefetch);
       await page.getByRole("button", { name: actionName }).click();
       await prefetchSecond;
 
