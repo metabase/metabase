@@ -427,6 +427,7 @@ export const createMockSettings = (
   },
   "user-visibility": null,
   "last-acknowledged-version": "v1",
+  notifications: [],
   "last-used-native-database-id": 1,
   "embedding-homepage": "hidden",
   "setup-embedding-autoenabled": false,

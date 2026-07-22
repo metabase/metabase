@@ -52,6 +52,7 @@
    [metabase.permissions.init]
    [metabase.premium-features.init]
    [metabase.product-feedback.init]
+   [metabase.product-notifications.init]
    [metabase.public-sharing.init]
    [metabase.pulse.init]
    [metabase.queries.init]
