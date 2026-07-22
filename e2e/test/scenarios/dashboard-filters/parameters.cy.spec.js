@@ -17,6 +17,16 @@ import {
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
+// Assert the dashboard URL's query params match `expected`, regardless of the
+// order in which the slugs are serialized. That order is not deterministic, so
+// asserting on the exact search string is flaky (metabase#17933). Comparing the
+// parsed params also sidesteps async-update timing, since `.should(callback)`
+// retries until the URL settles.
+const expectSearchParams = (expected) =>
+  cy.location("search").should((search) => {
+    expect(Object.fromEntries(new URLSearchParams(search))).to.deep.eq(expected);
+  });
+
 describe("scenarios > dashboard > parameters", () => {
   const cards = [
     {
@@ -135,10 +145,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Add filter").click();
 
-    cy.location("search").should(
-      "eq",
-      `?${endsWith.slug}=&${startsWith.slug}=G`,
-    );
+    expectSearchParams({ [endsWith.slug]: "", [startsWith.slug]: "G" });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
 
@@ -153,10 +160,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Add filter").click();
 
-    cy.location("search").should(
-      "eq",
-      `?${endsWith.slug}=zmo&${startsWith.slug}=G`,
-    );
+    expectSearchParams({ [endsWith.slug]: "zmo", [startsWith.slug]: "G" });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
 
@@ -166,7 +170,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Remove").click();
-    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
+    expectSearchParams({ [endsWith.slug]: "zmo" });
 
     H.saveDashboard();
 
@@ -176,7 +180,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     H.filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
 
-    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
+    expectSearchParams({ [endsWith.slug]: "zmo" });
   });
 
   it("should handle mismatch between filter types (metabase#9299, metabase#16181)", () => {
