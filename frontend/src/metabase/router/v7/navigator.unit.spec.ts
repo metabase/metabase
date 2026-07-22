@@ -13,7 +13,8 @@ describe("toNavigateArgs", () => {
 
     expect(to).toEqual({
       pathname: "/dashboard/1",
-      search: "?tab=2-tab-two&filter-date=2024-01-01",
+      // sorted, as history@3 stringified it
+      search: "?filter-date=2024-01-01&tab=2-tab-two",
       hash: undefined,
     });
   });
@@ -64,5 +65,12 @@ describe("queryToSearch", () => {
 
   it("returns an empty string for an empty query", () => {
     expect(queryToSearch({})).toBe("");
+  });
+
+  // history@3 stringified with `query-string`, which sorts keys. The URL is user
+  // visible and asserted against, so the order must not follow insertion.
+  it("sorts keys regardless of insertion order", () => {
+    expect(queryToSearch({ state: "AK", city: "" })).toBe("?city=&state=AK");
+    expect(queryToSearch({ city: "", state: "AK" })).toBe("?city=&state=AK");
   });
 });

@@ -22,10 +22,18 @@ export function searchToQuery(
  * Serialize v3's `location.query` object back into a search string, the only form
  * v7 understands. Repeated values become repeated keys, mirroring what
  * `searchToQuery` parses. Returns `""` for an empty query.
+ *
+ * Keys are sorted, because history@3 stringified the query with `query-string`,
+ * which sorts by default. Call sites build the query from an object whose key
+ * order is incidental, and the URL is user visible and asserted against, so the
+ * order has to stay stable rather than follow insertion.
  */
 export function queryToSearch(query: Record<string, unknown>): string {
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
+  const sortedEntries = Object.entries(query).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  for (const [key, value] of sortedEntries) {
     if (value == null) {
       continue;
     }
