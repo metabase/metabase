@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { PLUGIN_MONITOR, reinitialize } from "metabase/plugins";
+import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Outlet, Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -166,8 +166,8 @@ const setupWithGuards = ({
 };
 
 const enableAiAuditingRoutes = () => {
-  PLUGIN_MONITOR.isAiAuditingEnabled = true;
-  PLUGIN_MONITOR.getAiAuditingRoutes = () => (
+  PLUGIN_AUDIT.isAiAuditingEnabled = true;
+  PLUGIN_AUDIT.getAiAuditingRoutes = () => (
     <Route
       index
       element={<div data-testid="ai-auditing-page">AI Auditing</div>}

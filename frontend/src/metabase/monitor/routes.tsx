@@ -17,7 +17,11 @@ import {
   getNotificationsRoutes,
   getTasksRoutes,
 } from "metabase/monitor/tools/routes";
-import { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
+import {
+  PLUGIN_AUDIT,
+  PLUGIN_MONITOR,
+  PLUGIN_MONITOR_TOOLS,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
@@ -90,9 +94,9 @@ export function getMonitorRoutes(
         </Route>
 
         <Route element={<CanAccessAiAuditing />}>
-          {PLUGIN_MONITOR.isAiAuditingEnabled && (
+          {PLUGIN_AUDIT.isAiAuditingEnabled && (
             <Route path="ai-auditing">
-              {PLUGIN_MONITOR.getAiAuditingRoutes()}
+              {PLUGIN_AUDIT.getAiAuditingRoutes()}
             </Route>
           )}
         </Route>

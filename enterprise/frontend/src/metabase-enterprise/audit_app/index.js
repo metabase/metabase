@@ -9,6 +9,10 @@ import {
 import { Menu } from "metabase/ui";
 import { isInternalUser } from "metabase/urls";
 import { handleMetabotSlashCommand } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/slash-commands";
+import {
+  getAiAuditingRoutes,
+  getAiAuditingUpsellRoutes,
+} from "metabase-enterprise/monitor/ai-auditing/routes";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { InsightsLink } from "./components/InsightsLink";
@@ -42,6 +46,10 @@ export function initializePlugin() {
     PLUGIN_AUDIT.isAuditDb = isAuditDb;
     PLUGIN_AUDIT.InsightsLink = InsightsLink;
     PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
+    PLUGIN_AUDIT.isAiAuditingEnabled = true;
+    PLUGIN_AUDIT.getAiAuditingRoutes = hasPremiumFeature("ai_controls")
+      ? getAiAuditingRoutes
+      : getAiAuditingUpsellRoutes;
     PLUGIN_AUDIT.handleMetabotSlashCommand = handleMetabotSlashCommand;
   }
 }
