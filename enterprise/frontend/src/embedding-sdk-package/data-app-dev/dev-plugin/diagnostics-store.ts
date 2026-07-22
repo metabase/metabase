@@ -73,12 +73,9 @@ export class DiagnosticsStore {
       return false;
     }
 
-    // A new page: drop the previous one's events, but keep `nextEntryId`
-    // climbing so an existing poller's cursor stays valid.
-    if (this.sessionId !== null) {
-      this.entries = [];
-    }
-
+    // A reload does not empty the buffer: the errors that prompted it are the
+    // ones a reader most needs. Only the cap evicts. A reader that wants the new
+    // page alone starts from the `nextEventId` it saw before the reload.
     this.sessionId = sessionId;
 
     return true;

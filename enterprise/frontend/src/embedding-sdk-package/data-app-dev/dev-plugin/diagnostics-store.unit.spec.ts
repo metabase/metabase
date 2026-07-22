@@ -49,12 +49,12 @@ describe("DiagnosticsStore", () => {
 
     // Restarting at 1 would put the new page's events *behind* a cursor that
     // already advanced, and the toolbar would look healthy while going blank.
-    const [only] = store.getReport(0).entries;
-    expect(only.summary).toBe("new page");
-    expect(only.eventId).toBe(2);
+    const [, second] = store.getReport(0).entries;
+    expect(second.summary).toBe("new page");
+    expect(second.eventId).toBe(2);
   });
 
-  it("drops the previous page's events on a new session", () => {
+  it("keeps the previous page's events across a reload", () => {
     const store = new DiagnosticsStore();
 
     store.applyMessage(
@@ -62,10 +62,29 @@ describe("DiagnosticsStore", () => {
     );
     store.applyMessage(message([entry({ summary: "after reload" })], "page-2"));
 
+    // The errors that prompted the reload are the ones a reader most needs.
     expect(store.getReport(0).entries.map((e) => e.summary)).toEqual([
+      "before reload",
       "after reload",
     ]);
     expect(store.getReport(0).sessionId).toBe("page-2");
+  });
+
+  it("serves only the new page's events to a reader that carried its cursor", () => {
+    const store = new DiagnosticsStore();
+
+    store.applyMessage(
+      message([entry({ summary: "before reload" })], "page-1"),
+    );
+    const cursor = store.getReport(0).nextEventId;
+
+    store.applyMessage(message([entry({ summary: "after reload" })], "page-2"));
+
+    // How the toolbar shows post-reload entries only, without the buffer
+    // having to forget anything.
+    expect(store.getReport(cursor).entries.map((e) => e.summary)).toEqual([
+      "after reload",
+    ]);
   });
 
   it("keeps events reported under the same session", () => {

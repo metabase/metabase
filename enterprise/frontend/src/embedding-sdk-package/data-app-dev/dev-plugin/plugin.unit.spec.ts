@@ -255,7 +255,11 @@ describe("dataAppSandboxDevPlugin", () => {
           .find((handler) => {
             const probe = { setHeader: jest.fn(), end: jest.fn() };
             const next = jest.fn();
-            handler({ url: DATA_APP_DIAGNOSTICS_URL, method: "GET" }, probe, next);
+            handler(
+              { url: DATA_APP_DIAGNOSTICS_URL, method: "GET" },
+              probe,
+              next,
+            );
             return !next.mock.calls.length;
           });
         const res = { setHeader: jest.fn(), end: jest.fn() };
@@ -356,7 +360,11 @@ describe("dataAppSandboxDevPlugin", () => {
           .find((handler) => {
             const res = { setHeader: jest.fn(), end: jest.fn() };
             const next = jest.fn();
-            handler({ url: DATA_APP_DIAGNOSTICS_URL, method: "GET" }, res, next);
+            handler(
+              { url: DATA_APP_DIAGNOSTICS_URL, method: "GET" },
+              res,
+              next,
+            );
             return !next.mock.calls.length;
           });
 
@@ -475,20 +483,30 @@ describe("dataAppSandboxDevPlugin", () => {
         expect(body.entries[0].summary).toContain("truncated");
       });
 
-      it("drops the previous page's events when a new page loads", async () => {
+      it("serves both pages after a reload, and only the new one from a cursor", async () => {
         const { server } = await setup();
 
         report(server, [{ eventId: 1, summary: "before reload" }], "page-1");
+        const cursor = request(server, DATA_APP_DIAGNOSTICS_URL).body
+          .nextEventId;
+
         report(server, [{ eventId: 2, summary: "after reload" }], "page-2");
 
+        // A reader with no cursor gets the whole buffer, including what the
+        // page was reloaded over; one that kept its cursor gets only the rest.
         const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
-
-        // Only the current page's event survives, but ids keep climbing so an
-        // existing poller's cursor stays valid.
         expect(body.entries.map((e: { summary: string }) => e.summary)).toEqual(
-          ["after reload"],
+          ["before reload", "after reload"],
         );
         expect(body.sessionId).toBe("page-2");
+
+        const fromCursor = request(
+          server,
+          `${DATA_APP_DIAGNOSTICS_URL}?startEventId=${cursor}`,
+        ).body;
+        expect(
+          fromCursor.entries.map((e: { summary: string }) => e.summary),
+        ).toEqual(["after reload"]);
       });
 
       it("keeps events across a soft reload (same sessionId)", async () => {
