@@ -14,6 +14,10 @@
 (defonce ^:private registered-plugins (atom {}))
 (defonce ^:private loaded-plugin-names (atom #{}))
 
+;; `:info :name` predates generic plugins and is currently both the human-readable name and the identifier used by
+;; `load-plugin!` and `dependencies: [{plugin: ...}]`. Plugin authors must therefore treat it as unique and stable.
+;; If we eventually need a separately editable display name, add a new manifest field rather than changing this key.
+
 (def plugin-api-version
   "Current version of the generic Metabase plugin initialization contract."
   1)
@@ -41,6 +45,12 @@
 (defn- load-plugin-info!
   [{:keys [add-to-classpath!], init-steps :init, {plugin-name :name} :info}]
   (when-not (loaded? plugin-name)
+    ;; Adding a JAR to the shared JVM classpath cannot be undone or isolated per plugin. Keep it delayed until this
+    ;; point, but assume plugin classes and their transitive dependencies remain visible for the life of the process.
+    ;;
+    ;; We mark a plugin loaded only after every init step succeeds. A failed activation can therefore be retried, so
+    ;; initialization steps should tolerate retry after a partially completed attempt. We deliberately keep that
+    ;; existing best-effort behavior here rather than adding rollback or lifecycle machinery.
     (locking loaded-plugin-names
       (when-not (loaded? plugin-name)
         (when add-to-classpath!
@@ -51,7 +61,10 @@
 
 (defn load-plugin!
   "Load a registered plugin by name, adding its JAR to the classpath and running its manifest initialization steps.
-  Loading is idempotent."
+  Loading is idempotent.
+
+  Discovery does not call this automatically. The code that owns a plugin type is responsible for calling it at the
+  point where a configured plugin is first needed; calling it during startup would defeat lazy loading."
   [plugin-name]
   {:pre [(string? plugin-name)]}
   (if-let [info (@registered-plugins plugin-name)]
