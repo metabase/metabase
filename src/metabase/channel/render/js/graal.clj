@@ -280,6 +280,13 @@
 
 ;;; ------------------------------------------- untrusted context pool ------------------------------------
 
+(defn- destroy-untrusted-context!
+  "Close an untrusted isolate context reaped or disposed by the pool. The shared untrusted engine is a
+  process-lifetime singleton, so unlike [[destroy-context!]] there is no engine ref to drop."
+  [^Context context]
+  (log/debug "custom-viz: disposing untrusted static-viz isolate context")
+  (try (.close context true) (catch Exception _)))
+
 (defn- generate-untrusted-context!
   "Cold-parse the slim custom-viz bundle into a fresh isolate context; logged with timing because this is the
   dominant per-context cost and explains slow first/regenerated renders."
@@ -294,15 +301,8 @@
                  (/ (- (System/nanoTime) start) 1e6))
       context
       (catch Throwable t
-        (try (.close context true) (catch Throwable _))
+        (destroy-untrusted-context! context)
         (throw t)))))
-
-(defn- destroy-untrusted-context!
-  "Close an untrusted isolate context reaped or disposed by the pool. The shared untrusted engine is a
-  process-lifetime singleton, so unlike [[destroy-context!]] there is no engine ref to drop."
-  [^Context context]
-  (log/debug "custom-viz: disposing untrusted static-viz isolate context")
-  (try (.close context true) (catch Exception _)))
 
 (def ^:private ^Pool untrusted-static-viz-context-pool
   "Pool of `SandboxPolicy/UNTRUSTED` isolate contexts for rendering untrusted custom-viz plugin JS. Mirrors
@@ -319,7 +319,7 @@
         (load-resource context common/custom-viz-bundle-resource-path)
         (f context)
         (finally
-          (try (.close context true) (catch Throwable _)))))
+          (destroy-untrusted-context! context))))
     (let [^Context context (.acquire untrusted-static-viz-context-pool pool-key)
           disposed?        (volatile! false)]
       (try
