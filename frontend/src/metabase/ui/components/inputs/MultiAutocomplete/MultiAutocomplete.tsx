@@ -142,6 +142,7 @@ export function MultiAutocomplete({
   } = useMultiAutocomplete({
     values: value,
     data: sortedData,
+    selectFirstOptionOnChange,
     parseValue,
     onChange,
     onSearchChange,

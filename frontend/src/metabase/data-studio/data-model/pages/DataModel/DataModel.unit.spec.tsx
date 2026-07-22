@@ -24,7 +24,7 @@ import {
   within,
 } from "__support__/ui";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Link, Route, redirect } from "metabase/router";
+import { Link, Route, redirect, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -60,6 +60,8 @@ import {
 
 import { DataModel } from "./DataModel";
 import type { ParsedRouteParams } from "./types";
+
+const RoutedDataModel = withRouteProps(DataModel);
 
 registerVisualizations();
 
@@ -254,28 +256,28 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notData" component={OtherComponent} />
+      <Route path="notData" element={<OtherComponent />} />
       <Route path="data-studio/data">
-        <Route index component={redirect("database")} />
-        <Route path="database" component={DataModel} />
-        <Route path="database/:databaseId" component={DataModel} />
+        <Route index element={redirect("database")} />
+        <Route path="database" element={<RoutedDataModel />} />
+        <Route path="database/:databaseId" element={<RoutedDataModel />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          component={DataModel}
+          element={<RoutedDataModel />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
-          component={redirect(
+          element={redirect(
             "database/:databaseId/schema/:schemaId/table/:tableId/details",
           )}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-          component={DataModel}
+          element={<RoutedDataModel />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-          component={DataModel}
+          element={<RoutedDataModel />}
         />
       </Route>
       <Route path="data-studio/library/segments/new" />

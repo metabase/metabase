@@ -1,5 +1,6 @@
 import {
   AIToolKey,
+  type MetabotConversation,
   type MetabotGroupPermission,
   type MetabotInfo,
   type UserMetabotPermissions,
@@ -17,6 +18,19 @@ export const createMockMetabotInfo = (
   collection_id: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+  ...opts,
+});
+
+export const createMockMetabotConversation = (
+  opts?: Partial<MetabotConversation>,
+): MetabotConversation => ({
+  conversation_id: "00000000-0000-0000-0000-000000000000",
+  created_at: new Date().toISOString(),
+  title: null,
+  user_id: 1,
+  profile_id: null,
+  message_count: 1,
+  last_message_at: new Date().toISOString(),
   ...opts,
 });
 

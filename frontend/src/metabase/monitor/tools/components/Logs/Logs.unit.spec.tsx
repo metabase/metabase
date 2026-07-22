@@ -35,7 +35,7 @@ function setup({
   }),
 }: SetupOpts = {}) {
   return renderWithProviders(
-    <Route path={location.pathname} component={() => <Logs />} />,
+    <Route path={location.pathname} element={<Logs />} />,
     {
       initialRoute: `${location.pathname}${location.search}`,
       storeInitialState: {

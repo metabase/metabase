@@ -245,6 +245,60 @@ describe("compileFormatter with extreme ranges", () => {
 });
 
 describe("makeCellBackgroundGetter", () => {
+  it("saturates values outside custom bounds when there is one range rule (#77957)", () => {
+    const getter = makeCellBackgroundGetter(
+      [[-0.1], [0], [0.6], [0.8]],
+      [createMockNumericColumn({ name: "score" })],
+      [
+        createMockColumnRangeFormattingSetting({
+          columns: ["score"],
+          colors: ["#ff0000", "#00ff00"],
+          min_type: "custom",
+          min_value: 0,
+          max_type: "custom",
+          max_value: 0.6,
+        }),
+      ],
+      false,
+    );
+
+    expect(getter(-0.1, 0, "score")).toBe(getter(0, 1, "score"));
+    expect(getter(0.8, 3, "score")).toBe(getter(0.6, 2, "score"));
+  });
+
+  it("saturates values when range rules target different columns (#77957)", () => {
+    const getter = makeCellBackgroundGetter(
+      [
+        [0.6, 0.6],
+        [0.8, 0.8],
+      ],
+      [
+        createMockNumericColumn({ name: "score" }),
+        createMockNumericColumn({ name: "total" }),
+      ],
+      [
+        createMockColumnRangeFormattingSetting({
+          columns: ["score"],
+          min_type: "custom",
+          min_value: 0,
+          max_type: "custom",
+          max_value: 0.6,
+        }),
+        createMockColumnRangeFormattingSetting({
+          columns: ["total"],
+          min_type: "custom",
+          min_value: 0,
+          max_type: "custom",
+          max_value: 0.6,
+        }),
+      ],
+      false,
+    );
+
+    expect(getter(0.8, 1, "score")).toBe(getter(0.6, 0, "score"));
+    expect(getter(0.8, 1, "total")).toBe(getter(0.6, 0, "total"));
+  });
+
   it("applies each range rule to values in its own range when ranges do not overlap (#75933)", () => {
     const getter = makeCellBackgroundGetter(
       [[-1000], [1000]],
