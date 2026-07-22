@@ -314,8 +314,8 @@
         (analytics/observe! :metabase-search/index-update-duration-ms duration)
         (doseq [[model cnt] update-report]
           (analytics/inc! :metabase-search/index-updates {:model model} cnt))
-        ;; Deletes get their own counter (not folded into index-updates): purge volume is the signal that
-        ;; incremental deletion handling is working, and a spike is the anomaly worth alerting on.
+        ;; Purge volume is its own signal: steady means deletion capture is working, a spike is the anomaly
+        ;; worth alerting on.
         (doseq [[model cnt] delete-report]
           (analytics/inc! :metabase-search/index-deletes {:model model} cnt))))))
 
