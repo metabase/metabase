@@ -44,6 +44,14 @@ export const getDiagnosticsEndpointMiddleware =
       return;
     }
 
+    if (req.method !== "GET") {
+      res.statusCode = 405;
+      res.setHeader("Allow", "GET, DELETE");
+      res.end();
+
+      return;
+    }
+
     const startEventId = Number(
       new URLSearchParams(query).get(START_EVENT_ID_PARAM),
     );

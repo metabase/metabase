@@ -171,7 +171,9 @@ export class SdkCallCapture {
         }
       }
     } finally {
-      await reader.cancel();
+      // Not awaited: cancelling one branch of a teed body settles only once the
+      // other is read, which cannot happen while `fetch` waits here.
+      reader.cancel().catch(() => undefined);
     }
   }
 

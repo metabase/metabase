@@ -58,9 +58,7 @@ const CSP_DIRECTIVE_HINTS: Record<string, string> = {
 const CSP_FALLBACK_HINT =
   "Instance restricts what a data app may load or contact, and the dev server applies the same rules. Anything the app needs to reach must be listed under allowed_hosts in data_app.yaml.";
 
-const getDevDiagnosticHint = (
-  entry: DevDiagnosticEntry,
-): string | null => {
+const getDevDiagnosticHint = (entry: DevDiagnosticEntry): string | null => {
   if (
     entry.kind === "blocked-network" &&
     entry.reason.includes("not in allowed_hosts")

@@ -58,7 +58,9 @@ describe("dev diagnostics collector", () => {
   it("formats Error arguments using their message", () => {
     console.error(new Error("kaboom"));
 
-    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toContain("kaboom");
+    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toContain(
+      "kaboom",
+    );
   });
 
   it("captures uncaught window errors", () => {
@@ -280,7 +282,9 @@ describe("connection status", () => {
       sdkVersion: "0.63.1",
     });
 
-    expect(devDiagnostics.getConnectionStatus()).toMatchObject({ reachable: true });
+    expect(devDiagnostics.getConnectionStatus()).toMatchObject({
+      reachable: true,
+    });
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
   });

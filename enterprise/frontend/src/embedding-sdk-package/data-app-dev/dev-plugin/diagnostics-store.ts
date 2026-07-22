@@ -99,7 +99,9 @@ export class DiagnosticsStore {
     return true;
   }
 
-  private toStoredEntry(entry: DataAppDiagnosticEntry): DataAppDiagnosticPayload {
+  private toStoredEntry(
+    entry: DataAppDiagnosticEntry,
+  ): DataAppDiagnosticPayload {
     return {
       ...entry,
       summary: truncateDiagnosticText(entry.summary ?? ""),

@@ -78,8 +78,6 @@ describe("toPayload for requests", () => {
   });
 
   it("offers no hint for a request — the reason is already the answer", () => {
-    expect(
-      toPayload(sdkCall({ status: 400, error: "boom" })).hint,
-    ).toBeNull();
+    expect(toPayload(sdkCall({ status: 400, error: "boom" })).hint).toBeNull();
   });
 });

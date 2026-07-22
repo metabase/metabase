@@ -9,6 +9,9 @@ export interface DiagnosticsReporterHot {
   send: (event: string, data: DataAppDiagnosticsMessage) => void;
 }
 
+const getNextSessionId = (): string =>
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 /**
  * Mirrors the page's collector to the dev server over the HMR socket, so the
  * feed shows what the preview captured. Sends once on install to announce the
@@ -17,7 +20,7 @@ export interface DiagnosticsReporterHot {
 export const installDiagnosticsReporter = (
   hot: DiagnosticsReporterHot,
 ): (() => void) => {
-  const sessionId = String(Date.now());
+  const sessionId = getNextSessionId();
 
   let lastSentId = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;

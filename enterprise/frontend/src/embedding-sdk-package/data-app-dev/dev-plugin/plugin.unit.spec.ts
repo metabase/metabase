@@ -255,11 +255,15 @@ describe("dataAppSandboxDevPlugin", () => {
           .find((handler) => {
             const probe = { setHeader: jest.fn(), end: jest.fn() };
             const next = jest.fn();
-            handler({ url: DATA_APP_DIAGNOSTICS_URL }, probe, next);
+            handler({ url: DATA_APP_DIAGNOSTICS_URL, method: "GET" }, probe, next);
             return !next.mock.calls.length;
           });
         const res = { setHeader: jest.fn(), end: jest.fn() };
-        middleware?.({ url: DATA_APP_DIAGNOSTICS_URL }, res, jest.fn());
+        middleware?.(
+          { url: DATA_APP_DIAGNOSTICS_URL, method: "GET" },
+          res,
+          jest.fn(),
+        );
 
         expect(JSON.parse(res.end.mock.calls[0][0]).manifest).toMatchObject({
           name: "Renamed",
@@ -346,25 +350,26 @@ describe("dataAppSandboxDevPlugin", () => {
 
     describe("diagnostics feed", () => {
       /** Drive the JSON endpoint the way connect would, and parse the response. */
-      const request = (server: FakeServer, url: string) => {
+      const request = (server: FakeServer, url: string, method = "GET") => {
         const middleware = server.middlewares.use.mock.calls
           .map((call) => call[0])
           .find((handler) => {
             const res = { setHeader: jest.fn(), end: jest.fn() };
             const next = jest.fn();
-            handler({ url: DATA_APP_DIAGNOSTICS_URL }, res, next);
+            handler({ url: DATA_APP_DIAGNOSTICS_URL, method: "GET" }, res, next);
             return !next.mock.calls.length;
           });
 
-        const res = { setHeader: jest.fn(), end: jest.fn() };
+        const res = { statusCode: 0, setHeader: jest.fn(), end: jest.fn() };
         const next = jest.fn();
-        middleware?.({ url }, res, next);
+        middleware?.({ url, method }, res, next);
+
+        const [payload] = res.end.mock.calls[0] ?? [];
 
         return {
           next,
-          body: res.end.mock.calls[0]
-            ? JSON.parse(res.end.mock.calls[0][0])
-            : null,
+          res,
+          body: typeof payload === "string" ? JSON.parse(payload) : null,
         };
       };
 
@@ -378,6 +383,16 @@ describe("dataAppSandboxDevPlugin", () => {
         )?.[1];
         handler({ sessionId, entries, connection: { reachable: true } });
       };
+
+      it("refuses a method it does not serve", async () => {
+        const { server } = await setup();
+
+        const { res, next } = request(server, DATA_APP_DIAGNOSTICS_URL, "POST");
+
+        expect(res.statusCode).toBe(405);
+        expect(res.setHeader).toHaveBeenCalledWith("Allow", "GET, DELETE");
+        expect(next).not.toHaveBeenCalled();
+      });
 
       it("serves what the page reported, and passes other URLs through", async () => {
         const { server } = await setup();

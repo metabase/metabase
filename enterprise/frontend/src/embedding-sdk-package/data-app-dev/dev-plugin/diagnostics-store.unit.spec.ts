@@ -32,7 +32,9 @@ describe("DiagnosticsStore", () => {
     store.applyMessage(message([entry({ summary: "first" })]));
     store.applyMessage(message([entry({ summary: "second" })]));
 
-    expect(store.getReport(0).entries.map((e) => [e.eventId, e.summary])).toEqual([
+    expect(
+      store.getReport(0).entries.map((e) => [e.eventId, e.summary]),
+    ).toEqual([
       [1, "first"],
       [2, "second"],
     ]);
@@ -55,10 +57,14 @@ describe("DiagnosticsStore", () => {
   it("drops the previous page's events on a new session", () => {
     const store = new DiagnosticsStore();
 
-    store.applyMessage(message([entry({ summary: "before reload" })], "page-1"));
+    store.applyMessage(
+      message([entry({ summary: "before reload" })], "page-1"),
+    );
     store.applyMessage(message([entry({ summary: "after reload" })], "page-2"));
 
-    expect(store.getReport(0).entries.map((e) => e.summary)).toEqual(["after reload"]);
+    expect(store.getReport(0).entries.map((e) => e.summary)).toEqual([
+      "after reload",
+    ]);
     expect(store.getReport(0).sessionId).toBe("page-2");
   });
 
@@ -149,7 +155,9 @@ describe("DiagnosticsStore", () => {
   it("does not let a flood of requests evict the errors that explain them", () => {
     const store = new DiagnosticsStore();
 
-    store.applyMessage(message([entry({ summary: "the error worth keeping" })]));
+    store.applyMessage(
+      message([entry({ summary: "the error worth keeping" })]),
+    );
     store.applyMessage(
       message(
         Array.from({ length: DATA_APP_DIAGNOSTICS_LIMIT * 3 }, () =>
@@ -201,7 +209,11 @@ describe("DiagnosticsStore", () => {
 
     it("is false for a flush that carries nothing new", () => {
       const store = new DiagnosticsStore();
-      store.applyMessage({ sessionId: "page-1", entries: [entry()], connection });
+      store.applyMessage({
+        sessionId: "page-1",
+        entries: [entry()],
+        connection,
+      });
 
       // The reporter flushes on a timer whether or not anything happened, and
       // the connection arrives as a fresh object every time — comparing it by

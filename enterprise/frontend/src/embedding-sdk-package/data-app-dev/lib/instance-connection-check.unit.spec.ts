@@ -53,8 +53,12 @@ describe("runInstanceConnectionCheck", () => {
       METABASE_URL,
     );
 
-    expect(devDiagnostics.getConnectionStatus()).toMatchObject({ reachable: false });
-    expect(devDiagnostics.getConnectionStatus()?.error).toContain("Failed to fetch");
+    expect(devDiagnostics.getConnectionStatus()).toMatchObject({
+      reachable: false,
+    });
+    expect(devDiagnostics.getConnectionStatus()?.error).toContain(
+      "Failed to fetch",
+    );
   });
 
   it("reports an unset URL without probing anything", async () => {
