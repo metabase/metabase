@@ -7,10 +7,57 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.tracing.core :as tracing]
+   [metabase.tracing.test-util :as tracing.tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel bounded-pmap-conveys-bindings-test
+  (testing "GHY-4137: bounded-pmap runs f on virtual threads with the caller's dynamic bindings
+            conveyed (like future did), so each per-query subsearch keeps the current user's
+            permission bindings — without this, permission filtering would silently break"
+    (binding [api/*current-user-id* 4242]
+      (is (= [4242 4242 4242]
+             (#'search/bounded-pmap 10000 (fn [_] api/*current-user-id*) [:a :b :c]))))))
+
+(deftest ^:parallel bounded-pmap-bounds-concurrency-test
+  (testing "GHY-4137: the server-wide semaphore caps how many subsearches run at once across all
+            callers, so fan-out can't saturate the DB / embedding provider"
+    (let [limit   @#'search/max-parallel-searches
+          running (atom 0)
+          peak    (atom 0)
+          f       (fn [_]
+                    (let [n (swap! running inc)]
+                      (swap! peak max n)
+                      (Thread/sleep 50)
+                      (swap! running dec)
+                      n))]
+      ;; submit more than the limit; the shared semaphore must keep the running count from exceeding it
+      (#'search/bounded-pmap 10000 f (range (+ limit 5)))
+      (is (<= @peak limit) "never exceeds the server-wide concurrency limit"))))
+
+(deftest ^:parallel bounded-pmap-times-out-test
+  (testing "GHY-4137: a task exceeding the timeout is cancelled and surfaces a timeout error rather
+            than hanging the request thread"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"timed out"
+                          (#'search/bounded-pmap 50 (fn [_] (Thread/sleep 5000) :done) [:a :b]))))
+  (testing "tasks that finish within the timeout return normally"
+    (is (= [:done :done] (#'search/bounded-pmap 10000 (fn [_] :done) [:a :b])))))
+
+(deftest ^:parallel bounded-pmap-propagates-task-exceptions-unwrapped-test
+  (testing "GHY-4137: a subsearch's exception propagates as itself with ex-data intact, not wrapped
+            in ExecutionException — otherwise a 403 or teaching error from a subsearch would be
+            redacted to a generic internal error by the tool layer"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (#'search/bounded-pmap 10000
+                                                (fn [_] (throw (ex-info "boom" {:status-code 403})))
+                                                [:a])))]
+      (is (= 403 (:status-code (ex-data e)))))))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
@@ -227,6 +274,7 @@
                   :name "Main Dashboard"
                   :description "Dashboard desc"
                   :verified false
+                  :can_write false
                   :collection {:id 10 :name "Finance" :authority_level "official"}
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
@@ -235,10 +283,31 @@
                     :name "Main Dashboard"
                     :description "Dashboard desc"
                     :verified false
+                    :can_write false
                     :official true
                     :collection {:id 10 :name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-document-search-result-test
+  (testing "document result postprocessing"
+    (let [result   {:model      "document"
+                    :id         8
+                    :name       "Quarterly plan"
+                    :can_write  false
+                    :collection {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at "2024-01-03"
+                    :created_at "2024-01-02"}
+          expected {:id          8
+                    :type        "document"
+                    :name        "Quarterly plan"
+                    :description nil
+                    :can_write   false
+                    :official    true
+                    :collection  {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at  "2024-01-03"
+                    :created_at  "2024-01-02"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
 (deftest ^:parallel postprocess-search-result-test-5
@@ -346,13 +415,28 @@
                                                                      [])]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
+        (testing "general search includes documents in its default entity types"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
+              (search/search-tool {:keyword_queries ["x"]}))
+            (is (contains? @captured "document"))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                      (reset! captured (:models context))
                                                                      [])]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
-            (is (= #{"metric"} @captured))))))))
+            (is (= #{"metric"} @captured))))
+        (testing "NLQ search accepts document and dashboard destination types"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
+              (search/nlq-search-tool {:keyword_queries ["plan"]
+                                       :entity_types    ["document" "dashboard"]}))
+            (is (= #{"document" "dashboard"} @captured))))))))
 
 (deftest tool-limit-test
   (testing "tool variants apply the :limit arg with default 10 and cap 50"
@@ -382,6 +466,27 @@
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
+
+(deftest search-emits-execute-span-test
+  (testing "GHY-4137: agent search must still emit the search.execute span so its traffic shows up
+            in search traces — the span used to live inside search/search, which the tool no longer
+            calls, so it has to be re-established around the ranked-results/search-results pair."
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/disjunction (fn [_ terms] terms)]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                    search-core/search-results (fn [_ _ _] {:data [] :total 0})]
+          (try
+            (tracing/init-enabled-groups! "search" "INFO")
+            (tracing.tu/with-span-exporter [exporter]
+              (search/search {:term-queries ["orders"] :entity-types ["table"]})
+              (is (some #(= "search.execute" (:name %))
+                        (tracing.tu/finished-spans exporter))
+                  "a search.execute span is emitted for an agent search"))
+            (finally
+              (tracing/shutdown-groups!))))))))
 
 (deftest metabot-search-collection-scoping-test
   (testing "GHY-4137: `search` scopes by whatever collection-id it is handed and never overrides it
@@ -465,6 +570,30 @@
                           (map :name)
                           (set)))))))))))
 
+(deftest document-search-test
+  (testing "search can discover documents by name"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Document {document-id :id}
+                       {:name "Quarterly planning sh1b0le#doc"}]
+          (let [result (->> (search/search {:term-queries ["sh1b0le#doc"]
+                                            :entity-types ["document"]})
+                            (filter #(= document-id (:id %)))
+                            first)]
+            (is (= "document" (:type result)))
+            (is (= "Quarterly planning sh1b0le#doc" (:name result)))))))))
+
+(deftest validate-and-enrich-documents-test
+  (testing "stale document search hits are removed using the live model"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Document {document-id :id} {:name "Existing document"}]
+        (let [results [{:id document-id :type "document" :name "Existing document"}
+                       {:id Integer/MAX_VALUE :type "document" :name "Deleted document"}
+                       {:id 1 :type "dashboard" :name "Unrelated dashboard"}]]
+          (is (= [{:id document-id :type "document" :name "Existing document" :can_write true}
+                  {:id 1 :type "dashboard" :name "Unrelated dashboard"}]
+                 (#'search/validate-and-enrich-documents results))))))))
+
 (deftest enrich-with-collection-descriptions-test
   (mt/with-premium-features #{:content-verification}
     (mt/with-test-user :crowberto
@@ -498,7 +627,7 @@
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
 
 (deftest enrich-with-portable-entity-ids-test
-  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
+  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Card {q-id :id q-eid :entity_id} {:name "PortableEID Sample Question"
@@ -594,7 +723,7 @@
 
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
-                "`source-table:` without a separate entity_details call. We look up\n"
+                "`source-table:` without a separate read_resource call. We look up\n"
                 "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
                 "portable FK `[database_name, schema, table_name]`. This closes the failure\n"
                 "mode where the LLM saw a metric in search, had its portable_entity_id, but\n"

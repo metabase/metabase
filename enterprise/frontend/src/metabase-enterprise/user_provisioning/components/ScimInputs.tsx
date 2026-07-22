@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
+import type { CopyTextInputProps } from "metabase/common/components/CopyTextInput";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import type { TextInputProps } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 
 // Unjustified type cast. FIXME
@@ -30,7 +30,7 @@ export const getTextInputStyles = (params: {
 export const CopyScimInput = ({
   disabled = true,
   ...props
-}: TextInputProps & {
+}: CopyTextInputProps & {
   label: string;
   value: string;
   disabled?: boolean;

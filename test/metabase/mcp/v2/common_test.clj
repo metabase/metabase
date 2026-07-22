@@ -26,7 +26,55 @@
       (is (str/includes? line "`search`"))
       (is (str/includes? line "offset: 50"))))
   (testing "the final page gets no steering line"
-    (is (nil? (common/truncation-line {:param "search" :offset 200 :limit 50 :total 214})))))
+    (is (nil? (common/truncation-line {:param "search" :offset 200 :limit 50 :total 214}))))
+  (testing "a list with nothing to narrow by still steers to the next offset — without a line the
+            caller reads a truncated page as the whole set"
+    (is (= "Returned 50 of 214 — continue with `offset: 50`."
+           (common/truncation-line {:offset 0 :limit 50 :total 214})))
+    (testing "and still goes quiet on the final page"
+      (is (nil? (common/truncation-line {:offset 200 :limit 50 :total 214})))))
+  (testing "an unknown total cannot be reasoned about, so no line either way"
+    (is (nil? (common/truncation-line {:param "search" :offset 0 :limit 50})))
+    (is (nil? (common/truncation-line {:offset 0 :limit 50}))))
+  (testing "GHY-4137: an exact total reads as a plain count"
+    (let [line (common/truncation-line {:param "type" :offset 0 :limit 50 :total 214})]
+      (is (str/includes? line "of 214"))
+      (is (not (str/includes? line "at least")))))
+  (testing "GHY-4137: a floor total (a ranking-capped search count) reads as \"at least N\", so the
+            agent doesn't take a capped total for the full match count"
+    (let [line (common/truncation-line {:param "type" :offset 0 :limit 50 :total 1000 :total-floor? true})]
+      (is (str/includes? line "at least 1000")))))
+
+(deftest ^:parallel list-content-test
+  (testing "a truncated page carries the envelope and the steering line, newline-separated"
+    (let [text (-> (common/list-content [{:id 1}] 214 {:param :type :offset 0 :limit 1})
+                   :content first :text)
+          [body line] (str/split-lines text)]
+      (is (= {:data [{:id 1}] :returned 1 :total 214} (json/decode+kw body)))
+      (is (= "Returned 1 of 214 — narrow with `type`, or continue with `offset: 1`." line))))
+  (testing "a list with no narrowing param still steers to the next offset"
+    (let [text (-> (common/list-content [{:id 1}] 214 {:offset 0 :limit 1})
+                   :content first :text)
+          [_ line] (str/split-lines text)]
+      (is (= "Returned 1 of 214 — continue with `offset: 1`." line))))
+  (testing "an untruncated page is the envelope alone"
+    (let [text (-> (common/list-content [{:id 1}] 1 {:offset 0 :limit 50})
+                   :content first :text)]
+      (is (= {:data [{:id 1}] :returned 1 :total 1} (json/decode+kw text)))
+      (is (not (str/includes? text "\n")))))
+  (testing "empty-hint replaces the steering line when nothing matched at all"
+    (let [text (-> (common/list-content [] 0 {:offset 0 :limit 50 :empty-hint "Nothing here."})
+                   :content first :text)]
+      (is (= "{\"data\":[],\"returned\":0,\"total\":0}\nNothing here." text))))
+  (testing "empty-hint stays quiet when rows exist — an empty page past the end is a paging
+            result, not an empty set, and the hint would be a lie"
+    (let [text (-> (common/list-content [] 214 {:offset 500 :limit 50 :empty-hint "Nothing here."})
+                   :content first :text)]
+      (is (not (str/includes? text "Nothing here.")))))
+  (testing "empty-hint is opt-in — an empty list without one stays bare"
+    (let [text (-> (common/list-content [] 0 {:offset 0 :limit 50})
+                   :content first :text)]
+      (is (not (str/includes? text "\n"))))))
 
 (deftest ^:parallel teaching-error-test
   (testing "teaching errors surface their message as MCP error content"
@@ -46,6 +94,16 @@
                                   ["not-found 404" (ex-info "card 7 not found." {:status-code 404})                    "card 7 not found."]
                                   ["scope 403"     (ex-info "Insufficient scope." {:status-code 403
                                                                                    ::common/error-code common/error-code-invalid-request}) "Insufficient scope."]]]
+        (testing label
+          (is (= expected (text (common/->mcp-error-content e)))))))
+    (testing "GHY-4137: 402 (missing premium feature) and 409 (conflict) are deliberate
+              caller-facing errors too — a premium-feature check names the missing feature, a
+              conflict names the clashing state, and neither may be redacted to a generic error"
+      (doseq [[label e expected]
+              [["premium-feature 402" (ex-info "Transforms is a paid feature not available on this instance."
+                                               {:status-code 402}) "Transforms is a paid feature not available on this instance."]
+               ["conflict 409"        (ex-info "A snippet named \"totals\" already exists in this collection."
+                                               {:status-code 409}) "A snippet named \"totals\" already exists in this collection."]]]
         (testing label
           (is (= expected (text (common/->mcp-error-content e)))))))
     (testing "internal failures are redacted to a generic message — their real text may embed SQL,

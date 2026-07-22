@@ -11,7 +11,10 @@
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.tools.browse]
+   [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.definitions]
+   [metabase.mcp.v2.tools.query]
    [metabase.mcp.v2.tools.search]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util.i18n :refer [tru]]))

@@ -14,8 +14,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";
@@ -25,6 +24,8 @@ import {
   createMockImpersonation,
   createMockTable,
 } from "metabase-types/api/mocks";
+
+const RoutedImpersonationModal = withRouteProps(ImpersonationModal);
 
 const groupId = 2;
 const databaseId = 1;
@@ -67,9 +68,7 @@ const setup = async ({
       <Route path="/" />
       <Route
         path="database/:databaseId/impersonated/group/:groupId"
-        component={(props: ModalComponentProps) => (
-          <ImpersonationModal {...props} onClose={onClose} />
-        )}
+        element={<RoutedImpersonationModal onClose={onClose} />}
       />
     </>,
     {

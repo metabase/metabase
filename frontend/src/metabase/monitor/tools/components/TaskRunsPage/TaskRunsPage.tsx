@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useListTaskRunsQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { type WithRouterProps, withRouter } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Flex } from "metabase/ui";
 
 import { toBackendStartedAt } from "../../utils";
@@ -17,7 +17,8 @@ import { TaskRunsTable } from "./TaskRunsTable";
 import { PAGE_SIZE } from "./constants";
 import { urlStateConfig } from "./utils";
 
-const TaskRunsPageBase = ({ location }: WithRouterProps) => {
+export const TaskRunsPage = () => {
+  const { location } = useRouter();
   const [
     {
       page,
@@ -122,5 +123,3 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
     </TasksTabs>
   );
 };
-
-export const TaskRunsPage = withRouter(TaskRunsPageBase);

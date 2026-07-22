@@ -34,11 +34,23 @@
 
 (defn supported-scopes
   "All OAuth scopes advertised in the server's discovery metadata (`scopes-supported`):
-   the agent/MCP scopes plus the top-level first-party scopes (e.g. `mb:full`). This is a
-   superset of [[all-agent-scopes]] — the extra scopes are not part of the default grant a
-   client receives at registration, so a client must explicitly request them."
+   the agent/MCP scopes, the opt-in MCP scopes (e.g. `agent:snippets:read`), plus the top-level
+   first-party scopes (e.g. `mb:full`). This is a superset of [[all-agent-scopes]] — the extra
+   scopes are not part of the default grant a client receives at registration, so a client must
+   explicitly request them."
   []
-  (conj (vec (all-agent-scopes)) full-access-scope))
+  (-> (vec (all-agent-scopes))
+      (into (mcp/opt-in-scopes))
+      (conj full-access-scope)))
+
+(defn protected-resource-scopes
+  "The scopes advertised in the MCP resource's RFC 9728 protected-resource metadata: the agent/MCP
+   scopes plus the opt-in MCP scopes (e.g. `agent:snippets:read`), so a client discovering scopes
+   via the resource doc can still learn about and request them. `mb:full` is intentionally omitted
+   — it is a first-party full-access scope, not specific to the MCP resource, and remains in
+   [[supported-scopes]] for the authorization-server metadata."
+  []
+  (into (vec (all-agent-scopes)) (mcp/opt-in-scopes)))
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."

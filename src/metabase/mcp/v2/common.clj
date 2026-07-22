@@ -77,15 +77,16 @@
 (defn- status-code->error-code
   [status-code]
   (cond
-    (contains? #{401 403} status-code) error-code-invalid-request
-    (contains? #{400 404} status-code) error-code-invalid-params
-    :else                              error-code-internal))
+    (contains? #{401 402 403 409} status-code) error-code-invalid-request
+    (contains? #{400 404} status-code)         error-code-invalid-params
+    :else                                      error-code-internal))
 
 (def ^:private client-error-status-codes
   "Status codes that mark an exception as deliberately caller-facing — its message is safe to
    return. Everything else is an internal failure whose message may embed SQL, schema, or
-   connection detail."
-  #{400 401 403 404})
+   connection detail. 402 (missing premium feature) and 409 (conflict) are included because their
+   messages name the missing feature or clashing state — information the agent needs to recover."
+  #{400 401 402 403 404 409})
 
 (defn ->mcp-error-content
   "Convert a caught exception into MCP error content, and the single point where an exception
@@ -109,13 +110,23 @@
 ;;; ------------------------------------------------ List envelope -------------------------------------------------
 
 (defn truncation-line
-  "The steering sentence appended to a truncated list response: names the narrowing parameter
-   and the next offset. Returns nil when the page isn't truncated (or `total` is unknown)."
-  [{:keys [param offset limit total]}]
+  "The steering sentence appended to a truncated list response: names the narrowing `param` when
+   one narrows this list, and always the next offset. Returns nil when the page isn't truncated
+   (or `total` is unknown). `:total-floor?` marks `total` as a lower bound rather than an exact
+   count — e.g. a search total capped at the ranking limit — so the sentence reads \"at least N\"."
+  ;; A list with nothing to narrow by still has to say more exists — without a line the caller
+  ;; reads a truncated page as the whole set.
+  [{:keys [param offset limit total total-floor?]}]
   (let [offset (or offset 0)]
     (when (and total limit (< (+ offset limit) total))
-      (format "Returned %d of %d — narrow with `%s`, or continue with `offset: %d`."
-              (min limit (- total offset)) total (name param) (+ offset limit)))))
+      (let [returned  (min limit (- total offset))
+            total-str (str (when total-floor? "at least ") total)
+            next      (+ offset limit)]
+        (if param
+          (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
+                  returned total-str (name param) next)
+          (format "Returned %d of %s — continue with `offset: %d`."
+                  returned total-str next))))))
 
 (defn list-envelope
   "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included
@@ -127,11 +138,15 @@
 
 (defn list-content
   "Build the MCP success content for a list response: the envelope (compact JSON) in the text
-   block, with the truncation steering line appended when the page is truncated. Text-only —
+   block, with a steering line appended. `data` is already the page; `opts` carries
+   `:offset`/`:limit`, an optional `:param` naming what narrows this list, and an optional
+   `:empty-hint` used in place of the truncation line when nothing matched at all. Text-only —
    list data never rides `structuredContent` by reflex."
-  [data total {:keys [param] :as opts}]
+  [data total {:keys [empty-hint] :as opts}]
   (let [envelope (list-envelope data total)
-        line     (when param (truncation-line (assoc opts :total total)))]
+        line     (if (and empty-hint (= 0 total))
+                   empty-hint
+                   (truncation-line (assoc opts :total total)))]
     (success-content (cond-> (json/encode envelope)
                        line (str "\n" line)))))
 

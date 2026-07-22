@@ -118,17 +118,36 @@
   :detailed #(select-keys % table-detailed-keys)
   :sample   (zipmap table-detailed-keys (repeat "x"))})
 
-(def ^:private question-concise-keys
-  [:id :name :type :description :display :collection_id :database_id :table_id :archived])
+(defn- compact
+  "Drop nil-valued keys, so a concise card projection omits what it doesn't carry rather than
+   emitting explicit nulls."
+  [m]
+  (into {} (remove (comp nil? val)) m))
 
-(def ^:private question-detailed-keys
+;; The one canonical card projection. Shared by browse_collection's model list and get_content's
+;; question/model reads — registered here (the namespace both load) so it has a single definition
+;; rather than one tool silently overwriting another's at load time. `query_summary`/`template_tags`
+;; are enrichments get_content computes; browse rows lack them and `compact` drops them.
+(def ^:private question-concise-keys
+  [:id :name :type :description :display :collection_id :database_id :table_id :source_card_id
+   :archived :query_summary :template_tags :parameters])
+
+(def question-detailed-keys
+  "Keys of the `:question` detailed projection. All are Card columns except
+   [[question-enrichment-keys]], which `get_content` computes at read time."
   (into question-concise-keys
-        [:entity_id :dashboard_id :collection_position :creator_id :cache_ttl
-         :created_at :updated_at :parameters]))
+        [:entity_id :dashboard_id :query_type :collection_position :creator_id :cache_ttl
+         :created_at :updated_at]))
+
+(def question-enrichment-keys
+  "Projection keys `get_content` computes at read time — not Card columns. Column-select paths
+   (`list_models`, browse rows) can't fetch them, so they drop these before selecting."
+  #{:query_summary :template_tags})
 
 (register-projection!
  :question
- {:concise  #(select-keys % question-concise-keys)
-  :detailed #(select-keys % question-detailed-keys)
+ {:concise  #(compact (select-keys % question-concise-keys))
+  :detailed #(compact (select-keys % question-detailed-keys))
   :sample   (-> (zipmap question-detailed-keys (repeat "x"))
-                (assoc :parameters [{:id "p1" :name "Category" :type "category"}]))})
+                (assoc :template_tags {}
+                       :parameters [{:id "x" :name "x" :type "x" :target ["x"] :slug "x"}]))})

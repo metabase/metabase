@@ -15,19 +15,22 @@
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Callable ExecutionException ExecutorService Executors Future Semaphore TimeUnit TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
-  (sorted-set "card" "dashboard" "database" "dataset" "metric" "table" "transform"))
+  (sorted-set "card" "dashboard" "database" "dataset" "document" "metric" "table" "transform"))
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection data_authority curated data_layer] :as result}]
+  [{:keys [verified moderated_status collection data_authority curated data_layer can_write] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:id :name :authority_level])
@@ -66,16 +69,19 @@
           (merge {:verified   verified?
                   :official   official?
                   :collection collection-info})
-          (m/assoc-some :curated curated))
+          (m/assoc-some :curated curated
+                        :can_write can_write))
+
+      "document"
+      (-> common-fields
+          (merge {:official   official?
+                  :collection collection-info})
+          (m/assoc-some :curated curated
+                        :can_write can_write))
 
       "transform"
       (merge common-fields
              {:database_id (:database_id result)})
-
-      "document"
-      (merge common-fields
-             {:official   official?
-              :collection collection-info})
 
       ;; Measures and segments live on a table, not in a collection.
       ("measure" "segment")
@@ -114,7 +120,7 @@
   "Fetch and merge database engine + name info for search results that have database IDs.
   `:database_name` is the human-readable name the LLM needs as the first slot of every
   portable FK in `construct_notebook_query`; surfacing it on every table/model search
-  result means the LLM doesn't need a separate `entity_details` round-trip just to learn
+  result means the LLM doesn't need a separate `read_resource` round-trip just to learn
   the DB name."
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
@@ -131,7 +137,7 @@
   "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question, model,
   and metric search results so the LLM can use it verbatim as `source-card:` (for
   questions/models) or inside a `[metric, {}, <entity_id>]` aggregation clause (for
-  metrics) without a follow-up `entity_details` / `read_resource` round-trip."
+  metrics) without a follow-up `read_resource` round-trip."
   [results]
   (let [carded-types #{"question" "model" "metric"}
         card-ids (->> results
@@ -155,7 +161,7 @@
   table's portable FK as the `source-table:` when it wants to use the metric. Without this
   enrichment the LLM sees the metric's `portable_entity_id` in search but has to either
   hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
-  extra `entity_details` round-trip. We read the two columns directly from
+  extra `read_resource` round-trip. We read the two columns directly from
   `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
   query per search call, regardless of number of metrics in the result set.
 
@@ -183,6 +189,31 @@
                       (assoc :base_table_portable_fk [db-name schema table-name])))
                   r)
                 r))))))
+
+(defn- validate-and-enrich-documents
+  "Remove stale or unreadable document hits and attach live write permission.
+
+  Search indexes are updated asynchronously, so a deleted document can briefly remain
+  searchable. Destination discovery must validate hits against the live model before the
+  agent attempts to save into them."
+  [results]
+  (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
+        id->document (when (seq document-ids)
+                       (->> (t2/select :model/Document
+                                       :id [:in document-ids]
+                                       :archived false)
+                            (filter mi/can-read?)
+                            (map (juxt :id identity))
+                            (into {})))]
+    (if (seq document-ids)
+      (into []
+            (keep (fn [result]
+                    (if (= "document" (:type result))
+                      (when-let [document (get id->document (:id result))]
+                        (assoc result :can_write (boolean (mi/can-write? document))))
+                      result)))
+            results)
+      results)))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -224,17 +255,69 @@
               (sort-by :rrf >)
               (map :search-result)))))))
 
+(def ^:private max-parallel-searches
+  "Ceiling on subsearches running at once across the whole server — a shared budget, so neither one
+   call's fan-out nor many callers at once can saturate the DB / embedding provider. Enforced by the
+   server-wide [[search-semaphore]]."
+  20)
+
+(def ^:private search-timeout-ms
+  "Per-subsearch deadline. A subsearch that overruns — including time spent waiting for a permit
+   under load — is cancelled and surfaces a timeout, rather than pinning a thread and a DB
+   connection indefinitely."
+  10000)
+
+(defonce ^:private ^Semaphore search-semaphore
+  ;; Server-wide permit pool bounding total concurrent subsearches to max-parallel-searches. Shared
+  ;; across every caller so the limit is a property of the server, not of one request.
+  (Semaphore. max-parallel-searches))
+
+(defonce ^:private ^ExecutorService search-executor
+  ;; Server-lifetime virtual-thread executor — created once, never shut down. Virtual threads are
+  ;; created per task and cost nothing while idle; concurrency is bounded by search-semaphore, not by
+  ;; the pool.
+  (Executors/newVirtualThreadPerTaskExecutor))
+
+(defn- bounded-pmap
+  "Map `f` over `coll` on the shared virtual-thread executor, each task gated by the server-wide
+   [[search-semaphore]] (at most [[max-parallel-searches]] running at once across all callers), the
+   whole call bounded to `timeout-ms`, returning results in order. Conveys the caller's dynamic
+   bindings to each task (like `future`), so work that reads dynamic vars — e.g. the current user's
+   permission set — sees them. On timeout the call throws a teaching error; on any exit — timeout,
+   error, or success — tasks still running are cancelled so an abandoned subsearch is interrupted."
+  [timeout-ms f coll]
+  (let [tasks    (mapv (fn [x]
+                         (.submit search-executor
+                                  ^Callable (bound-fn* (fn []
+                                                         (.acquire search-semaphore)
+                                                         (try (f x) (finally (.release search-semaphore)))))))
+                       coll)
+        deadline (+ (System/nanoTime) (* (long timeout-ms) 1000000))]
+    (try
+      (mapv (fn [^Future fut]
+              (.get fut (max 0 (- deadline (System/nanoTime))) TimeUnit/NANOSECONDS))
+            tasks)
+      (catch TimeoutException _
+        (throw (ex-info (format "Search timed out after %ds — send fewer or narrower queries, then retry."
+                                (quot timeout-ms 1000))
+                        {:status-code 400})))
+      ;; Unwrap so a subsearch's exception propagates as itself (with its ex-data/status-code), the
+      ;; way a synchronous call would — not buried in an ExecutionException the caller can't read.
+      (catch ExecutionException e
+        (throw (or (ex-cause e) e)))
+      (finally
+        (run! (fn [^Future fut] (.cancel fut true)) tasks)))))
+
 (defn- join-results-by-rrf
-  "Execute multiple search queries in parallel and combine results using Reciprocal Rank Fusion.
-   Items appearing in multiple result lists are boosted in the final ranking.
-   May return more results than requested limit."
+  "Run each search query in parallel on the shared bounded executor, then combine them with
+   Reciprocal Rank Fusion. Every query — even a lone one — goes through the executor so it counts
+   against the server-wide concurrency budget and gets the timeout; a single result list keeps its
+   raw ranked order (RRF would only re-score one list), while zero or many are fused. Items appearing
+   in multiple lists are boosted. May return more results than the requested limit."
   [search-fn search-engine all-queries]
-  ;; Zero queries case is handled nicely by the >1 branch
-  (if (= 1 (count all-queries))
-    (search-fn (first all-queries) search-engine)
-    ;; Create futures for parallel execution
-    (let [futures      (mapv #(future (search-fn % search-engine)) all-queries)
-          result-lists (mapv deref futures)]
+  (let [result-lists (bounded-pmap search-timeout-ms #(search-fn % search-engine) all-queries)]
+    (if (= 1 (count result-lists))
+      (first result-lists)
       (reciprocal-rank-fusion result-lists))))
 
 (defn search
@@ -324,44 +407,55 @@
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
-                          (search.engine/fallback-engine semantic-engine))
-        fused-ranked    (cond
-                          ;; A pure listing over the filters: one search with no search string.
-                          (and filters-only?
-                               (empty? term-queries)
-                               (empty? semantic-queries))
-                          (ranked-fn nil nil)
+                          (search.engine/fallback-engine semantic-engine))]
+    ;; Trace the whole search — the per-query ranked-results fetches and the one-time
+    ;; paginate/hydrate — under one span, as search/search did before the tool drove the two
+    ;; steps directly, so agent search traffic keeps showing up in search traces.
+    (tracing/with-span :search "search.execute"
+      {:search/model-count (count search-models)
+       :search/query-count (+ (count term-queries) (count semantic-queries))
+       :search/engine      (if semantic-engine (name semantic-engine) "default")}
+      (let [fused-ranked (cond
+                           ;; A pure listing over the filters: one search with no search string.
+                           (and filters-only?
+                                (empty? term-queries)
+                                (empty? semantic-queries))
+                           (ranked-fn nil nil)
 
-                          ;; Perform semantic and non-semantic search respectively, then fuse results.
-                          semantic-engine
-                          (reciprocal-rank-fusion
-                           (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
-                                {semantic-engine semantic-queries
-                                 fallback-engine term-queries}))
+                           ;; Perform semantic and non-semantic search respectively, then fuse results.
+                           semantic-engine
+                           (reciprocal-rank-fusion
+                            (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
+                                 {semantic-engine semantic-queries
+                                  fallback-engine term-queries}))
 
-                          ;; Search for all the terms on equal footing, using the default engine.
-                          :else
-                          (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
-        ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
-        ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
-        ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
-        {:keys [data total]} (search/search-results
-                              (search/search-context {:search-string      nil
-                                                      :models             search-models
-                                                      :current-user-id    api/*current-user-id*
-                                                      :current-user-perms @api/*current-user-permissions-set*
-                                                      :is-superuser?      api/*is-superuser?*
-                                                      :offset             (or offset 0)
-                                                      :limit              limit})
-                              search/model-set
-                              (vec fused-ranked))
-        results         (->> data
-                             (map postprocess-search-result)
-                             enrich-with-collection-descriptions
-                             enrich-with-database-engines
-                             enrich-with-portable-entity-ids
-                             enrich-with-metric-base-tables)]
-    (vary-meta results assoc :total total)))
+                           ;; Search for all the terms on equal footing, using the default engine.
+                           :else
+                           (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
+            ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
+            ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
+            ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
+            {:keys [data total]} (search/search-results
+                                  (search/search-context {:search-string      nil
+                                                          :models             search-models
+                                                          :current-user-id    api/*current-user-id*
+                                                          :current-user-perms @api/*current-user-permissions-set*
+                                                          :is-superuser?      api/*is-superuser?*
+                                                          :offset             (or offset 0)
+                                                          :limit              limit})
+                                  search/model-set
+                                  (vec fused-ranked))
+            ;; validate-and-enrich-documents drops stale/unreadable document hits and attaches live
+            ;; write permission. Transforms need no such post-filter: they are :visibility :superuser
+            ;; in search, so a non-superuser never has one in results to begin with.
+            results         (->> data
+                                 (map postprocess-search-result)
+                                 enrich-with-collection-descriptions
+                                 enrich-with-database-engines
+                                 enrich-with-portable-entity-ids
+                                 enrich-with-metric-base-tables
+                                 validate-and-enrich-documents)]
+        (vary-meta results assoc :total total)))))
 
 (defn- table-refs->results
   [ids]
@@ -560,15 +654,15 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
    [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "question"]]]]
+    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "document" "question"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :scope     scope/agent-search}
   search-tool
-  "Find tables, models, metrics, dashboards, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
+  "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
-  (do-search "search" (sorted-set "dashboard" "metric" "model" "question" "table") {} args))
+  (do-search "search" (sorted-set "dashboard" "document" "metric" "model" "question" "table") {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -591,15 +685,20 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
    [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "question"]]]]
+    [:maybe [:sequential [:enum {:description entity-types-desc}
+                          "table" "model" "metric" "question" "dashboard" "document"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :scope     scope/agent-search}
   nlq-search-tool
-  "Find NLQ-queryable data sources (tables, models, metrics, saved questions) by topic, to build a visualization from."
-  [args :- nlq-search-schema]
-  (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
+  "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
+  [{:keys [entity_types] :as args} :- nlq-search-schema]
+  (let [allowed-types (sorted-set "dashboard" "document" "metric" "model" "question" "table")
+        args          (cond-> args
+                        (not (seq entity_types))
+                        (assoc :entity_types ["metric" "model" "question" "table"]))]
+    (do-search "NLQ search" allowed-types {:profile-id "nlq"} args)))
 
 (def ^:private transform-search-schema
   [:map {:closed true}

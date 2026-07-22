@@ -4,7 +4,8 @@
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,6 +14,9 @@
 
 (def ^:private validate-filters!
   #'tools.search/validate-filters!)
+
+(def ^:private validate-modes!
+  #'tools.search/validate-modes!)
 
 (def ^:private resolve-collection-filter
   #'tools.search/resolve-collection-filter)
@@ -122,6 +126,126 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (is (= coll-id (resolve-collection-filter coll-id))))))))
 
+;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
+(deftest transform-collection-id-is-teaching-error-test
+  (testing "GHY-4137: the search index doesn't record a transform's collection, so type:[transform]
+            with a collection_id can only ever return an empty page — a teaching error instead of a
+            silent empty result the agent would read as \"no transforms here\""
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"collection_id cannot filter transforms"
+                          (validate-filters! {:type ["transform"] :collection_id "someEntityId01234567_"})))
+    (testing "transform without a collection_id is fine"
+      (is (some? (validate-filters! {:type ["transform"]}))))
+    (testing "\"root\" collection_id stays inert for transforms"
+      (is (some? (validate-filters! {:type ["transform"] :collection_id "root"}))))))
+
+;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
+(deftest archived-non-archivable-type-is-teaching-error-test
+  (testing "GHY-4137: table, database, and transform have no archived state, so archived: true with
+            any of them guarantees an empty page — the engine silently drops the type. Teach instead."
+    (doseq [t ["table" "database" "transform"]]
+      (testing t
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no archived state"
+                              (validate-filters! {:type [t] :archived true})))))
+    (testing "archivable types are unaffected"
+      (is (some? (validate-filters! {:type ["question" "dashboard"] :archived true}))))
+    (testing "archived: false is fine even for the non-archivable types"
+      (is (some? (validate-filters! {:type ["table"] :archived false}))))
+    (testing "no archived filter at all is fine"
+      (is (some? (validate-filters! {:type ["table"]}))))))
+
+(deftest snippet-rows-does-not-load-content-test
+  (testing "GHY-4137: snippet-rows must not pull the SQL body (:content) into the heap — it needs
+            only id/name/description for output and :collection_id for the can-read? check"
+    (let [captured (atom nil)]
+      (with-redefs [t2/select (fn [model & _] (reset! captured model) [])]
+        (#'tools.search/snippet-rows [] false))
+      (is (vector? @captured)
+          "the select is column-scoped (a [model & cols] vector), not the bare model keyword")
+      (let [cols (set (rest @captured))]
+        (is (contains? cols :collection_id) "collection_id is selected — can-read? consults it")
+        (is (not (contains? cols :content)) "the SQL body column is not selected")))))
+
+;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
+(deftest query-limits-test
+  (testing "GHY-4137: each query list is length-capped and each query is char-bounded, so one call
+            can't fan out into hundreds of concurrent searches — the MCP throttler counts requests,
+            not the queries inside one"
+    (testing "more than 10 term_queries is a teaching error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10"
+                            (validate-modes! {:term_queries (vec (repeat 11 "x"))} true false))))
+    (testing "more than 10 semantic_queries is a teaching error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10"
+                            (validate-modes! {:semantic_queries (vec (repeat 11 "x"))} true false))))
+    (testing "exactly 10 per list is allowed"
+      (is (some? (validate-modes! {:term_queries (vec (repeat 10 "x"))
+                                   :semantic_queries (vec (repeat 10 "y"))} true false))))
+    (testing "a query longer than 500 characters is a teaching error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 500 characters"
+                            (validate-modes! {:term_queries [(apply str (repeat 501 "a"))]} true false))))
+    (testing "a 500-character query is allowed"
+      (is (some? (validate-modes! {:term_queries [(apply str (repeat 500 "a"))]} true false))))))
+
+;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
+(deftest blank-query-is-rejected-test
+  (testing "GHY-4137: a whitespace-only query passes the {:min 1} schema, but Postgres treats a
+            blank search string as match-all — so a blank query silently becomes an unscoped
+            listing. It is a teaching error instead."
+    (testing "a whitespace-only term query is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:term_queries [" "]} true false))))
+    (testing "a whitespace-only semantic query is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:semantic_queries ["\t"]} true false))))
+    (testing "a blank query mixed with a real one is still rejected — it would broaden the whole call"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:term_queries ["sales" "  "]} true false))))
+    (testing "a real query with incidental surrounding whitespace is fine"
+      (is (some? (validate-modes! {:term_queries [" sales "]} true false))))
+    (testing "the teaching error is a 400"
+      (is (= 400 (:status-code (ex-data (try (validate-modes! {:term_queries [" "]} true false)
+                                             (catch clojure.lang.ExceptionInfo e e)))))))))
+
+(deftest resolve-collection-filter-delegates-sentinels-test
+  (testing "GHY-4137: resolve-collection-filter delegates sentinel handling to
+            common/resolve-collection-id instead of a local set — so \"trash\" gets its specific
+            teaching error rather than a generic invalid-id, and nil/\"root\" still mean no scoping"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "\"trash\" is the specific teaching error"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not a valid collection here"
+                              (resolve-collection-filter "trash"))))
+      (testing "nil and \"root\" resolve to nil (no scoping)"
+        (is (nil? (resolve-collection-filter nil)))
+        (is (nil? (resolve-collection-filter "root")))))))
+
+;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
+(deftest filters-only-redirects-to-browse-test
+  (testing "GHY-4137: a call with filters but no query is a listing, not a search — the search tool
+            now redirects it to the browse_* tools rather than running a query-less engine search
+            (whose order is arbitrary without a relevance anchor and whose total is ranking-capped)"
+    (testing "a collection listing routes to browse_collection with that id"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"browse_collection\(id: "
+                            (validate-modes! {:type ["dashboard"] :collection_id "someEntityId01234567_"} false true))))
+    (testing "a snippet listing routes to the snippets namespace"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace: \"snippets\""
+                            (validate-modes! {:type ["snippet"]} false true))))
+    (testing "a transform listing routes to the transforms namespace"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace: \"transforms\""
+                            (validate-modes! {:type ["transform"]} false true))))
+    (testing "a created_by listing routes to browse_collection with created_by"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"created_by"
+                            (validate-modes! {:created_by "me"} false true))))
+    (testing "an archived listing routes to the trash"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"trash"
+                            (validate-modes! {:archived true} false true))))
+    (testing "a data-source listing routes to browse_data"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"browse_data"
+                            (validate-modes! {:type ["table"]} false true))))
+    (testing "a search that carries a query plus filters is not redirected"
+      (is (some? (validate-modes! {:term_queries ["sales"] :type ["dashboard"]} true true))))
+    (testing "the redirect is a 400 teaching error"
+      (is (= 400 (:status-code (ex-data (try (validate-modes! {:type ["dashboard"]} false true)
+                                             (catch clojure.lang.ExceptionInfo e e)))))))))
+
 (defn- nothing-to-search?
   "True when the search handler rejects `args` with the \"Nothing to search for\" teaching error.
    A non-matching failure (e.g. the engine's \"No current user\") means validation was passed."
@@ -138,9 +262,12 @@
             listing the entire instance"
     (is (nothing-to-search? {:collection_id "root"}))
     (is (nothing-to-search? {}) "sanity: a truly empty request is also rejected"))
-  (testing "\"root\" combined with a real query or filter is a valid search — it passes validation"
-    (is (not (nothing-to-search? {:collection_id "root" :type ["dashboard"]})))
-    (is (not (nothing-to-search? {:collection_id "root" :term_queries ["sales"]})))))
+  (testing "\"root\" combined with a real query is a valid search — it passes validation"
+    (is (not (nothing-to-search? {:collection_id "root" :term_queries ["sales"]}))))
+  (testing "\"root\" with only a filter is a browse redirect, not a query-less search"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"browse_"
+                          (tools.search/search-tool {:collection_id "root" :type ["dashboard"]}
+                                                    {:token-scopes #{"agent:search"}})))))
 
 (deftest engine-results-reports-total-test
   (testing "GHY-4137: engine-results reports the engine's total for every search, including a

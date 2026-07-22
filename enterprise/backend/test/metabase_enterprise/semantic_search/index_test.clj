@@ -938,3 +938,22 @@
         (let [flat (conds {:archived? false})]
           (is (not-any? #(and (vector? %) (= [:in :model] (subvec % 0 (min 2 (count %))))) flat))
           (is (not-any? #{[:= [:inline 1] [:inline 0]]} flat)))))))
+
+(deftest filter-by-collection-id-scopes-to-whole-subtree-test
+  (testing "GHY-4137: collection_id scopes to the target collection and its entire subtree, even
+            when the target is itself nested. A descendant's :location is the ancestor path, so it
+            names the target somewhere in the middle rather than at the front — the filter must not
+            require the target to be the top-level ancestor."
+    (mt/with-temp [:model/Collection root   {:name "Root"}
+                   :model/Collection target {:name "Target" :location (format "/%d/" (:id root))}
+                   :model/Collection sub    {:name "Sub"    :location (format "/%d/%d/" (:id root) (:id target))}
+                   :model/Collection other  {:name "Other"}]
+      (let [filter-by (fn [coll-id docs] (#'semantic.index/filter-by-collection-id docs coll-id))
+            docs      [{:id 1 :collection_id (:id target)}
+                       {:id 2 :collection_id (:id sub)}
+                       {:id 3 :collection_id (:id other)}
+                       {:id 4 :collection_id nil}]]
+        (testing "the nested target keeps its own docs and its descendants', dropping unrelated ones"
+          (is (= #{1 2} (set (map :id (filter-by (:id target) docs))))))
+        (testing "the top-level ancestor keeps everything under it too"
+          (is (= #{1 2} (set (map :id (filter-by (:id root) docs))))))))))
