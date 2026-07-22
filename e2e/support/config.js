@@ -8,6 +8,11 @@ import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
+import {
+  extractFailedTests,
+  recordFailedTestsForQuarantine,
+  reportFailedTestsToConductor,
+} from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
@@ -178,9 +183,33 @@ const defaultConfig = {
       collectFailingTests(on, config);
     }
 
-    // this is an official workaround to keep recordings of the failed specs only
-    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    on("after:spec", (spec, results) => {
+    // Surface the resolved Cypress retry ceiling so the ci-conductor reporter
+    // can include it in the payload (CYPRESS_RETRIES isn't otherwise set in CI;
+    // the value lives in mainConfig.retries.runMode). DEV-1999.
+    const resolvedRetries =
+      typeof config.retries === "number"
+        ? config.retries
+        : (config.retries?.runMode ?? 0);
+    process.env.CYPRESS_RETRIES = String(resolvedRetries);
+
+    on("after:spec", async (spec, results) => {
+      // Report failures to ci-conductor mid-run (no-ops unless configured).
+      if (isCI) {
+        // Reporting to ci-conductor must NEVER break the test run, so this is
+        // a hard backstop around everything — extraction, payload build, and
+        // the request. The reporter also handles its own errors internally.
+        try {
+          const failedTests = extractFailedTests(spec, results);
+          // Persist ultimate failures for the post-run quarantine gate (DEV-2082).
+          recordFailedTestsForQuarantine(failedTests);
+          await reportFailedTestsToConductor(failedTests);
+        } catch (error) {
+          console.error("[ci-conductor] reporting failed (ignored)", error);
+        }
+      }
+
+      // this is an official workaround to keep recordings of the failed specs only
+      // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
       if (results && results.video) {
         // Do we have test failures?
         if (results && results.video && results.stats.failures === 0) {
