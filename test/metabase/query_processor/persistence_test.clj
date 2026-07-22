@@ -298,10 +298,9 @@
                                               :dataset_query model-query}]
               (persist-models!)
               (let [card-mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                    model-id (:id model)
-                    query (-> (lib/query card-mp (lib.metadata/card card-mp model-id))
-                              (lib/limit 3))
-                    results          (qp/process-query query)
+                    results (-> (lib/query card-mp (lib.metadata/card card-mp (:id model)))
+                                (lib/limit 3)
+                                (qp/process-query))
                     persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
                 (testing "Was persisted"
                   (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
