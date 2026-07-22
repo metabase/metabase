@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 
 import type { Column, RowValue, Series } from "./data";
 import type {
+  BaseVisualizationSettings,
   CreateDefineSetting,
   CustomVisualizationSettingDefinition,
   CustomVisualizationSettings,
@@ -11,13 +12,13 @@ import type {
  * Export this function to define a custom visualization.
  */
 export type CreateCustomVisualization<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = (
   props: CreateCustomVisualizationProps<TSettings>,
 ) => CustomVisualization<TSettings>;
 
 export type CreateCustomVisualizationProps<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = {
   defineSetting: ReturnType<CreateDefineSetting<TSettings>>;
 
@@ -27,7 +28,7 @@ export type CreateCustomVisualizationProps<
   locale: string;
 };
 
-export type CustomVisualization<TSettings extends Record<string, unknown>> = {
+export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   /**
    * A unique visualization identifier. It's not shown in the UI.
    */
@@ -102,7 +103,7 @@ export type VisualizationGridSize = {
 };
 
 export type CustomVisualizationProps<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = {
   width: number | null;
 
@@ -141,7 +142,7 @@ export type CustomVisualizationMount = <P extends object>(
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
 
-export type ClickObject<TSettings extends Record<string, unknown>> = {
+export type ClickObject<TSettings extends BaseVisualizationSettings> = {
   /** The raw value of the clicked cell. */
   value?: RowValue;
 
@@ -268,7 +269,7 @@ export type ClickBehavior = {
 
 export type BaseWidgetProps<
   TValue,
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = {
   id: string;
   value: TValue | undefined;

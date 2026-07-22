@@ -3,15 +3,17 @@ import { Component } from "react";
 import { createRoot } from "react-dom/client";
 
 import type {
+  BaseVisualizationSettings,
   CustomVisualization,
   CustomVisualizationMountHandle,
   CustomVisualizationProps,
 } from "./types";
 
-export type CustomVisualizationOpts<TSettings extends Record<string, unknown>> =
-  Omit<CustomVisualization<TSettings>, "mount"> & {
-    VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
-  };
+export type CustomVisualizationOpts<
+  TSettings extends BaseVisualizationSettings,
+> = Omit<CustomVisualization<TSettings>, "mount"> & {
+  VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
+};
 
 class PluginErrorBoundary extends Component<
   { children: ReactNode; label: string },
@@ -38,7 +40,7 @@ class PluginErrorBoundary extends Component<
   }
 }
 
-export function defineConfig<TSettings extends Record<string, unknown>>(
+export function defineConfig<TSettings extends BaseVisualizationSettings>(
   opts: CustomVisualizationOpts<TSettings>,
 ): CustomVisualization<TSettings> {
   return {

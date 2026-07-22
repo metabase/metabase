@@ -1,5 +1,6 @@
 import type { CustomVisualization } from "custom-viz";
 
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { Visualization } from "metabase/visualizations/types/visualization";
 import type { CustomVizPluginId } from "metabase-types/api";
 
@@ -29,12 +30,14 @@ export function applyDefaultVisualizationProps(
   },
 ) {
   Object.assign(Component, {
-    settings:
-      sanitizePluginSettings(
+    settings: {
+      ...columnSettings({ getHidden: () => true }),
+      ...sanitizePluginSettings(
         vizDef.settings,
         vizDef.mount,
         settings.pluginId,
-      ) ?? {},
+      ),
+    },
     checkRenderable: vizDef.checkRenderable,
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,

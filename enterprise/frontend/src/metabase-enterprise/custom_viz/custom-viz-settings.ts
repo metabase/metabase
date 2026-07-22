@@ -2,6 +2,7 @@ import type {
   CustomVisualization,
   CustomVisualizationMount,
   CustomVisualizationSettingDefinition,
+  ReservedVisualizationSettingId,
   Widgets,
 } from "custom-viz";
 import type { ComponentType } from "react";
@@ -11,6 +12,13 @@ import type { CustomVizPluginId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { wrapPluginWidget } from "./widget-mount";
+
+const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
+  Object.keys({
+    column: true,
+    column_settings: true,
+  } satisfies Record<ReservedVisualizationSettingId, true>),
+);
 
 /**
  * Walk a plugin's `vizDef.settings` and rewrite every Component-shaped
@@ -36,6 +44,13 @@ export function sanitizePluginSettings(
   >["settings"] = {};
 
   for (const [settingId, value] of Object.entries(settings)) {
+    if (RESERVED_SETTING_IDS.has(settingId)) {
+      console.warn(
+        `Custom viz setting "${settingId}" uses a reserved id and was ignored.`,
+      );
+      continue;
+    }
+
     if (!isObject(value)) {
       // settings definitions should be objects
       continue;
