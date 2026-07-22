@@ -250,9 +250,7 @@ To add a merge key:
 
 The merge key refers to columns in the _target_ table (the columns your transform outputs), not columns in the _source_ tables. If identifying a record requires a combination of columns, like an `id` plus a `region`, pick more than one column as merge keys.
 
-For merge keys to work, you'll need to pick a checkpoint field that increases every time a row is written, like an `updated_at` timestamp. Otherwise, the transform won't pick up the change, and a merge key won't matter.
-
-If a merge key names a column that isn't in the target table, the run will fail with an error telling you which columns are missing.
+Merge keys need a checkpoint field that increases every time a row is written, like an `updated_at` timestamp, otherwise the transform never sees the change.
 
 ### Reprocess all data to rebuild the target table
 
@@ -262,12 +260,9 @@ To clear that value and reprocess all rows, click **Reprocess all data**. The ne
 
 Changing the checkpoint field also resets the stored value, so a transform will rebuild from scratch on its next run after you pick a different field to use for checkpointing.
 
-### Differences between query and Python incremental transforms
+### Make a transform incremental
 
-Incremental transforms work differently for query-based transforms and Python transforms, see:
-
-- [Incremental query transforms](query-transforms.md#incremental-query-transforms)
-- [Incremental Python transforms](./python-transforms.md#incremental-python-transforms)
+Incremental transforms work differently for query-based transforms and Python transforms, so see [incremental query transforms](query-transforms.md#incremental-query-transforms) and [incremental Python transforms](./python-transforms.md#incremental-python-transforms) for more information.
 
 ## Versioning transforms
 
