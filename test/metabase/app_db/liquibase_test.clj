@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations.impl]
@@ -42,17 +43,21 @@
          (doseq [statement ["DROP DATABASE IF EXISTS liquibase_test;"
                             "CREATE DATABASE liquibase_test;"]]
            (next.jdbc/execute! conn [statement]))))
-      (liquibase/with-liquibase [liquibase (->> (mt/dbdef->connection-details :mysql :db {:database-name "liquibase_test"})
-                                                (sql-jdbc.conn/connection-details->spec :mysql)
-                                                mdb.test-util/->ClojureJDBCSpecDataSource)]
-        (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
-          (doseq [line  (split-migrations-sqls (liquibase/migrations-sql liquibase))
-                  :when (str/starts-with? line "CREATE TABLE")]
-            (is (true?
-                 (or
-                  (str/includes? line "ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-                  (str/includes? line "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")))
-                (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line)))))))))
+      (let [data-source (->> (mt/dbdef->connection-details :mysql :db {:database-name "liquibase_test"})
+                             (sql-jdbc.conn/connection-details->spec :mysql)
+                             mdb.test-util/->ClojureJDBCSpecDataSource)]
+        ;; the version-tracking tail of the printed SQL uses the application-db dialect, so the application db must
+        ;; BE this MySQL database (as it is on every real path that prints migration SQL)
+        (binding [mdb.connection/*application-db* (mdb.connection/application-db :mysql data-source)]
+          (liquibase/with-liquibase [liquibase data-source]
+            (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
+              (doseq [line  (split-migrations-sqls (liquibase/migrations-sql liquibase))
+                      :when (str/starts-with? line "CREATE TABLE")]
+                (is (true?
+                     (or
+                      (str/includes? line "ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+                      (str/includes? line "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")))
+                    (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line)))))))))))
 
 (deftest consolidate-liquibase-changesets-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -497,11 +502,13 @@
                 stop-id (nth all-ids (- (count all-ids) 2))]
             ;; install everything except the last changeset, as a pre-version-tracking binary would have left it
             (schema-migrations.impl/run-migrations-in-range! conn ["v00.00-000" stop-id])
-            ;; ... which had no version rows at all
-            (jdbc/execute! {:connection conn} [(format "DELETE FROM %s" vt)])
+            ;; ... which had no version rows at all. The DELETE and all later reads use fresh autocommit connections:
+            ;; on MySQL the shared non-autocommit `conn` would leave the DELETE invisible to the migration's own
+            ;; connection and serve later reads from a stale REPEATABLE READ snapshot.
+            (jdbc/execute! {:datasource (mdb/data-source)} [(format "DELETE FROM %s" vt)])
             (let [pre-major (liquibase/latest-applied-major-version conn db)
                   versions  (fn [] (set (map :metabase_version
-                                             (jdbc/query {:connection conn}
+                                             (jdbc/query {:datasource (mdb/data-source)}
                                                          [(format "SELECT metabase_version FROM %s" vt)]))))]
               (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" (inc pre-major)))]
                 (testing "migrate up records both the backfilled pre-upgrade version and the upgrade's own version"
@@ -512,7 +519,7 @@
                       "the upgrade recorded its own version"))
                 (testing "migrate down (default) rolls the upgrade back"
                   (mdb/migrate! (mdb/data-source) :down)
-                  (is (empty? (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = ?" ct) last-id]))
+                  (is (empty? (jdbc/query {:datasource (mdb/data-source)} [(format "SELECT 1 FROM %s WHERE id = ?" ct) last-id]))
                       "the upgrade's changeset was rolled back")
                   (is (not (contains? (versions) (format "x.%d.0" (inc pre-major))))
                       "the upgrade's version row was removed"))))))))))
@@ -807,12 +814,15 @@
                 deps (fn [] (set (map :deployment_id
                                       (jdbc/query {:connection conn} [(format "SELECT DISTINCT deployment_id FROM %s" ct)]))))]
             (liquibase/ensure-databasechangelog-versions-table! conn)
-            ;; three upgrades, each its own deployment, each tagging itself
+            ;; three upgrades, each its own deployment, each tagging itself. All six rows (three changesets + the
+            ;; three auto-ordered markers, which land at 2/4/6) get GLOBALLY increasing orderexecuted: on MySQL the
+            ;; second-precision dateexecuted ties across these fabricated same-instant deployments, so the
+            ;; [dateexecuted orderexecuted] execution order degenerates to orderexecuted alone
             (insert-changelog-row! conn ct "c63" "d63" 1)
             (liquibase/record-legacy-version-tracking! db 63 "d63")
-            (insert-changelog-row! conn ct "c64" "d64" 2)
+            (insert-changelog-row! conn ct "c64" "d64" 3)
             (liquibase/record-legacy-version-tracking! db 64 "d64")
-            (insert-changelog-row! conn ct "c65" "d65" 3)
+            (insert-changelog-row! conn ct "c65" "d65" 5)
             (liquibase/record-legacy-version-tracking! db 65 "d65")
             (insert-version-row! conn vt "d63" "x.63.0.0" (ago 30))
             (insert-version-row! conn vt "d64" "x.64.0.0" (ago 20))
@@ -926,14 +936,16 @@
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+          ;; reads use fresh autocommit connections: on MySQL the shared non-autocommit `conn` would serve reads
+          ;; after the second migration from a stale REPEATABLE READ snapshot
           (let [ct       (liquibase/changelog-table-name conn)
-                applied? (fn [id] (boolean (seq (jdbc/query {:connection conn}
+                applied? (fn [id] (boolean (seq (jdbc/query {:datasource (mdb/data-source)}
                                                             [(format "SELECT 1 FROM %s WHERE id = ?" ct) id]))))
                 versions (fn [] (mapv :metabase_version
-                                      (jdbc/query {:connection conn}
+                                      (jdbc/query {:datasource (mdb/data-source)}
                                                   [(format "SELECT metabase_version FROM %s ORDER BY id"
                                                            liquibase/databasechangelog-versions-table)])))
-                dep-of   (fn [id] (:deployment_id (first (jdbc/query {:connection conn}
+                dep-of   (fn [id] (:deployment_id (first (jdbc/query {:datasource (mdb/data-source)}
                                                                      [(format "SELECT deployment_id FROM %s WHERE id = ?" ct) id]))))]
             (with-redefs [liquibase/changelog-file "versionless-dev-run1.yaml"]
               (mdb/migrate! (mdb/data-source) :up))
@@ -1025,12 +1037,14 @@
     ;; be retained and reassigned to the boundary deployment, so the deployment bookkeeping stays consistent.
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
+        ;; all reads go through a fresh autocommit connection: a read on the shared non-autocommit `conn` leaves an
+        ;; open transaction whose lock on v_roc deadlocks the next migration's CREATE OR REPLACE VIEW on Postgres
         (let [ct       (liquibase/changelog-table-name conn)
-              row-of   (fn [id] (first (jdbc/query {:connection conn}
+              row-of   (fn [id] (first (jdbc/query {:datasource (mdb/data-source)}
                                                    [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
-              view-x   (fn [] (:x (first (jdbc/query {:connection conn} ["SELECT x FROM v_roc"]))))
+              view-x   (fn [] (:x (first (jdbc/query {:datasource (mdb/data-source)} ["SELECT x FROM v_roc"]))))
               versions (fn [] (mapv :metabase_version
-                                    (jdbc/query {:connection conn}
+                                    (jdbc/query {:datasource (mdb/data-source)}
                                                 [(format "SELECT metabase_version FROM %s ORDER BY id"
                                                          liquibase/databasechangelog-versions-table)])))]
           (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")
@@ -1048,7 +1062,7 @@
             (mdb/migrate! (mdb/data-source) :down)
             (testing "the newer release's own changeset is reversed"
               (is (nil? (row-of "roc_new")))
-              (is (thrown? Exception (jdbc/query {:connection conn} ["SELECT 1 FROM roc_new_table"]))))
+              (is (thrown? Exception (jdbc/query {:datasource (mdb/data-source)} ["SELECT 1 FROM roc_new_table"]))))
             (testing "the re-run changeset is NOT reversed"
               (is (= 2 (view-x))
                   "the view survives (the rollback-target binary's own runOnChange update will restore its content)")
@@ -1069,12 +1083,13 @@
     ;; The dev flow that produces this: edit just a runOnChange changeset (no new changesets) and re-run migrate up.
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
+        ;; reads use fresh autocommit connections -- see rollback-does-not-reverse-reran-changesets-test
         (let [ct       (liquibase/changelog-table-name conn)
-              row-of   (fn [id] (first (jdbc/query {:connection conn}
+              row-of   (fn [id] (first (jdbc/query {:datasource (mdb/data-source)}
                                                    [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
-              view-x   (fn [] (:x (first (jdbc/query {:connection conn} ["SELECT x FROM v_roc"]))))
+              view-x   (fn [] (:x (first (jdbc/query {:datasource (mdb/data-source)} ["SELECT x FROM v_roc"]))))
               versions (fn [] (mapv :metabase_version
-                                    (jdbc/query {:connection conn}
+                                    (jdbc/query {:datasource (mdb/data-source)}
                                                 [(format "SELECT metabase_version FROM %s ORDER BY id"
                                                          liquibase/databasechangelog-versions-table)])))]
           (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
@@ -1105,7 +1120,7 @@
                       liquibase/changelog-file "versionless-dev-run1.yaml"]
           (mdb/migrate! (mdb/data-source) :force))
         (let [ct     (liquibase/changelog-table-name conn)
-              row    (fn [id] (first (jdbc/query {:connection conn}
+              row    (fn [id] (first (jdbc/query {:datasource (mdb/data-source)}
                                                  [(format "SELECT deployment_id, orderexecuted FROM %s WHERE id = ?" ct) id])))
               marker (row "v65.legacy-version-tracking")]
           (is (some? marker) "force must leave the same old-binary downgrade signal as a normal upgrade")
