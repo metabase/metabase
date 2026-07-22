@@ -68,16 +68,26 @@ export type BreakingNode = {
  * GET /api/ee/dependencies/graph/breaking until `filter` is satisfied. The
  * dependency graph is recomputed asynchronously after a transform breaks its
  * target table, so this must settle before the list page fires its load query.
+ *
+ * `includePersonalCollections` mirrors the broken-list page's own default query
+ * (the "Include items in personal collections" toggle is ON by default, so the
+ * page requests `include-personal-collections=true`). Without it the endpoint
+ * omits entities living in personal collections — e.g. `Test Table-based
+ * question` in Bobby Tables's personal collection — so a readiness check that
+ * expects them would never settle.
  */
 export async function waitForBreakingDependencies(
   api: MetabaseApi,
   filter: (nodes: BreakingNode[]) => boolean,
-  timeout = 30_000,
+  { timeout = 30_000, includePersonalCollections = false } = {},
 ): Promise<void> {
+  const url = includePersonalCollections
+    ? "/api/ee/dependencies/graph/breaking?include-personal-collections=true"
+    : "/api/ee/dependencies/graph/breaking";
   const interval = 100;
   const deadline = Date.now() + timeout;
   for (;;) {
-    const response = await api.get("/api/ee/dependencies/graph/breaking");
+    const response = await api.get(url);
     const body = (await response.json()) as { data: BreakingNode[] };
     if (filter(body.data)) {
       return;
@@ -94,7 +104,13 @@ export async function runTransform(
   api: MetabaseApi,
   transformId: number,
 ): Promise<void> {
-  await api.post(`/api/transform/${transformId}/run`);
+  // Generous timeout: the first transform run on a freshly booted backend can
+  // pay a cold sqlglot/GraalPy parse (FINDINGS #222), which on a loaded CI shard
+  // exceeds the 30s default fetch timeout. This is fixture setup, not a timed
+  // assertion, so absorb the cold cost — same rationale as the `restore` helper.
+  await api.post(`/api/transform/${transformId}/run`, undefined, {
+    timeout: 120_000,
+  });
 }
 
 export type TransformRun = { id: number; status: string };

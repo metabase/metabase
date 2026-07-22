@@ -34,7 +34,10 @@ import {
   waitForBreakingDependencies,
   waitForTransformRuns,
 } from "../support/dependency-broken-list";
-import { createTransform } from "../support/dependency-graph";
+import {
+  createTransform,
+  waitForBackfillComplete,
+} from "../support/dependency-graph";
 import { DependencyDiagnostics } from "../support/dependency-unreferenced-list";
 import { createQuestion } from "../support/factories";
 import { test, expect } from "../support/fixtures";
@@ -431,18 +434,29 @@ async function breakTransform(api: MetabaseApi) {
   if (transformId == null) {
     throw new Error("transformId was never set");
   }
-  await api.put(`/api/transform/${transformId}`, {
-    source: {
-      type: "query",
-      query: {
-        type: "native",
-        database: WRITABLE_DB_ID,
-        native: {
-          query: "SELECT 1 as score_new, 'active' as status_new",
+  await api.put(
+    `/api/transform/${transformId}`,
+    {
+      source: {
+        type: "query",
+        query: {
+          type: "native",
+          database: WRITABLE_DB_ID,
+          native: {
+            query: "SELECT 1 as score_new, 'active' as status_new",
+          },
         },
       },
     },
-  });
+    // Updating a transform's query runs a synchronous sqlglot/GraalPy parse to
+    // recompute dependencies. That context pool has `min-size 0`, so the first
+    // parse after a fresh backend boots pays a ~24s cold context generation
+    // (FINDINGS #222) — which, on a loaded CI shard, blew the 30s default fetch
+    // timeout and failed this spec's beforeEach on whichever test ran first on a
+    // fresh worker (CI run 29895522166 s20, both workers). A generous timeout
+    // absorbs the cold cost in setup, same as the `restore` helper.
+    { timeout: 120_000 },
+  );
   await runTransform(api, transformId);
   await waitForTransformRuns(
     api,
@@ -568,9 +582,28 @@ async function createModelContent(api: MetabaseApi) {
 }
 
 async function waitForBreakingDependenciesFixture(api: MetabaseApi) {
+  // The dependency graph is recomputed asynchronously after a transform breaks
+  // its target table (metabase#71037). Upstream's `nodes.length >= N` predicate
+  // does NOT actually gate on that recomputation: the breaking set is padded by
+  // several always-broken internal audit cards (Alerts, Query log, System tasks,
+  // View log, Dashboard subscriptions), so it already exceeds N before ANY of
+  // the test entities have been classified. The fixture therefore returns while
+  // the transform's *output table* is still absent, and every list-rendering
+  // test then times out on a `Test Transform Table` row that never arrives (CI
+  // run 29895522166 s20; reproduced locally at workers=1, warm). Wait on real
+  // readiness instead: global backfill done, then every expected dependency
+  // actually present *by name* — the same shape as the sibling
+  // dependency-unreferenced-list `waitForUnreferencedAnalysis`.
+  await waitForBackfillComplete(api);
   await waitForBreakingDependencies(
     api,
-    (nodes) => nodes.length >= BROKEN_DEPENDENCIES.length,
+    (nodes) => {
+      const present = new Set(
+        nodes.map((node) => node.data.display_name ?? node.data.name),
+      );
+      return BROKEN_DEPENDENCIES.every((name) => present.has(name));
+    },
+    { includePersonalCollections: true },
   );
 }
 
