@@ -655,7 +655,7 @@ describe("scenarios > metrics > explorer", () => {
       H.miniPicker().should("contain.text", "Test Measure");
     });
 
-    it("should not show me measures that live in tables I do not have permissions to see", () => {
+    it("should hide measures without data permissions and run readable metrics", () => {
       cy.signIn("nodata");
       H.MetricsViewer.goToViewer();
       H.MetricsViewer.searchInput().type("Test Measure", {
@@ -664,12 +664,7 @@ describe("scenarios > metrics > explorer", () => {
       H.miniPicker().should("contain.text", "No search results");
 
       addMetric("Count of orders", { clearInput: true });
-      cy.log(
-        "even though we can see the metric, we don't have permissions to run the query",
-      );
-      cy.findByRole("heading", {
-        name: /You do not have permissions to run this query/i,
-      }).should("be.visible");
+      H.cartesianChartCircle().should("have.length.at.least", 1);
     });
   });
 
