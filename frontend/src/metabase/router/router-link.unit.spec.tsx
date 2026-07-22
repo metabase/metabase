@@ -7,11 +7,12 @@ import { Link, Outlet, Route, push, useLocation } from "metabase/router";
 import type { RouterEngine } from "./engine";
 
 function Home() {
-  const { pathname } = useLocation();
+  const { pathname, key } = useLocation();
   const dispatch = useDispatch();
   return (
     <div>
       <span data-testid="location">{pathname}</span>
+      <span data-testid="location-key">{key}</span>
       <Link to="/other">go</Link>
       {/* A `<Link>` used as a button: it navigates through its own onClick. */}
       <Link onClick={() => dispatch(push("/other"))}>act</Link>
@@ -91,6 +92,26 @@ describe.each<RouterEngine>(["v3", "v7"])(
       expect(screen.getByRole("link", { name: "mail" })).toHaveAttribute(
         "href",
         "mailto:help@metabase.com",
+      );
+    });
+
+    // v7's `<Link>` downgrades a click to a `replace` when the target equals the
+    // current URL, which leaves the location key untouched. v3 always pushed, and
+    // the documents page shows its unsaved-changes prompt when the key changes.
+    it("pushes a new entry when linking to the current url", async () => {
+      renderWithProviders(tree, {
+        withRouter: true,
+        routerEngine,
+        initialRoute: "/other",
+      });
+
+      await screen.findByTestId("other");
+      const keyBefore = screen.getByTestId("location-key").textContent;
+
+      await userEvent.click(screen.getByRole("link", { name: "go" }));
+
+      expect(screen.getByTestId("location-key")).not.toHaveTextContent(
+        String(keyBefore),
       );
     });
 
