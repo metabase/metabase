@@ -14,6 +14,26 @@ timed path. NOT in worker-backend `warmUp` (that path never hits sqlglot and
 resolution note. Verified cold on a fresh slot-5 backend: 6036ms cold → 37ms
 warm, 2/2 cold + 4/4 repeat-each=2, tsc clean. `models.ts:64` untouched.
 
+## Tokens — SETTLED 2026-07-22, do not re-chase
+
+Tokens live in repo-root `.env` now (support/env.ts loads it first;
+cypress.env.json is legacy fallback). Probed against the live registry (60
+features):
+- **all-features ("bleeding-edge") = 54/60, transforms-basic and
+  writable-connection PRESENT** — the real local workhorse, freshly rotated.
+- **pro-self-hosted = 42/60, both ABSENT — and this is THE LATEST dev token
+  (confirmed by Fraser).** It is not a stale copy; the token's server-side
+  feature grants lag the registry. CI's STAGING_MB_PRO_SELF_HOSTED_TOKEN is a
+  different token that has them. Consequence: python-transform creation and
+  database-writable-connection cannot run locally on pro-self-hosted BY
+  DESIGN of the current dev token — the all-features fallback
+  (activatePythonTransformToken) and the local skip are correct and permanent
+  until someone updates the dev token's flags in the store. FINDINGS #180's
+  42-vs-52 dispute: measured 42.
+- A trailing paste-comma on every `.env` token line once broke activation
+  (400, "length 65") — fixed; the parser tolerates `KEY = value` spacing but
+  not garbage suffixes.
+
 ## 2026-07-22 (latest): queue re-emptied at 422 — data-apps tier ported
 
 Upstream drift had silently added 7 specs (6 data-apps + browse-slash-schema,
