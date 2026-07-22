@@ -314,10 +314,10 @@
   (reset-capture!)
   (swap! bird-capture-fields assoc :insert [:id :group_id :n])
   (testing "insert backfill shares the outer transaction while delivery retains the generic pre-commit contract"
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (t2/with-transaction [_conn]
-                   (t2/insert! ::bird {:name "rollback" :group_id 101})
-                   (throw (ex-info "boom" {})))))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                          (t2/with-transaction [_conn]
+                            (t2/insert! ::bird {:name "rollback" :group_id 101})
+                            (throw (ex-info "boom" {})))))
     (is (=? [{:op :insert, :model ::bird, :rows [{:group_id 101, :n 0}]}] (events)))
     (is (= 0 (t2/count ::bird :group_id 101)))))
 
