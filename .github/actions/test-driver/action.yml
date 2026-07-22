@@ -14,8 +14,10 @@ inputs:
     description: Suffix to append to the test logs artifact name to avoid conflicts in matrix jobs
   edition:
     required: false
-    default: 'ee'
+    default: "ee"
     description: Edition to test (oss or ee)
+  quarantine-engine:
+    required: false
 
 outputs:
   test-outcome:
@@ -27,6 +29,10 @@ runs:
   steps:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+    - name: Resolve current job id
+      # Resolve JOB_ID early (before the long test step) so the ci-conductor
+      # reporter below can link failures to this exact job. Best-effort.
+      uses: ./.github/actions/resolve-job-id
     - name: Prepare front-end environment
       if: ${{ inputs.build-static-viz == 'true' }}
       uses: ./.github/actions/prepare-frontend
@@ -36,14 +42,23 @@ runs:
       shell: bash
       env:
         MB_EDITION: ee
+
     - name: Test database driver
       run: clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
       id: run-test
-      # Trunk Quarantine controls the final state of the run in the CI!
-      # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
-      # whether to fail or to pass the whole job, based on the quarantine list.
+      # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
       continue-on-error: true
+
+    - name: Report failed tests to ci-conductor
+      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      # This step should NEVER fail the job!
+      continue-on-error: true
+      uses: ./.github/actions/report-failures-to-ci-conductor
+      with:
+        test-suite: ${{ inputs.junit-name }}
+        adapter: backend
+
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
@@ -57,6 +72,7 @@ runs:
         list-suites: failed
         list-tests: failed
         fail-on-error: false
+
     - name: Upload Logs on Failure
       if: always() && steps.run-test.outcome != 'success'
       uses: actions/upload-artifact@v7
@@ -66,3 +82,14 @@ runs:
         retention-days: 1
       # Failing to upload the artifact should never affect the outcome of the whole test run.
       continue-on-error: true
+
+    # Last, because this is the only step allowed to fail the job: everything above it reports the
+    # failure (JUnit report, logs, ci-conductor) and must run regardless of the verdict below.
+    - name: Quarantine gate
+      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      continue-on-error: ${{ inputs.quarantine-engine != 'ci-conductor' }}
+      uses: ./.github/actions/quarantine-gate
+      with:
+        adapter: backend
+        test-suite: ${{ inputs.junit-name }}
+        enforce-quarantine: ${{ inputs.quarantine-engine == 'ci-conductor' }}
