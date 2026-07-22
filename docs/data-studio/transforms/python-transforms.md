@@ -108,7 +108,7 @@ To use functions or classes from your Python library:
 
 ## Incremental Python transforms
 
-By default, Metabase will process all the data in all input tables, drop the existing target table (if one exists), and create a new table with the processed data. You can tell Metabase to only write **new** data to your target table by marking your transform as incremental.
+By default, Metabase will process all the data in all input tables, drop the existing target table (if one exists), and create a new table with the processed data. You can tell Metabase to only process **new** data by marking your transform as incremental.
 
 ### Prerequisites for incremental transforms
 
@@ -120,7 +120,8 @@ To make a Python transform incremental:
 
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
-3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. Only some columns are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+3. In **Field to check for new values**, select the field in one of the source tables that Metabase should scan to determine which records are new or changed. Only some fields are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+4. Optionally, in **Merge key**, pick the target columns that identify a record. Metabase will update matching rows instead of appending new ones. See [Merge key](./transforms-overview.md#merge-key).
 
 ## Current limitations of Python transforms
 
