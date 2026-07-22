@@ -1,7 +1,7 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
-import type { IconName } from "metabase-types/api";
+import { tmap } from "metabase/utils/i18n";
 
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
@@ -111,83 +111,71 @@ export const METABOT_ERR_MSG = {
   },
 };
 
-export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
-  get analyze_chart() {
-    return t`Inspecting the visualization`;
+export const TOOL_CALL_MESSAGES = tmap({
+  analyze_chart: () => t`Inspecting the visualization`,
+  analyze_data: () => t`Analyzing the data`,
+  construct_notebook_query: () => t`Creating a query`,
+  get_field_values: () => t`Retrieving table metadata`,
+  get_transform_details: () => t`Getting transform details`,
+  list_available_fields: () => undefined,
+  load_skill: () => undefined,
+  read_resource: () => t`Reading resource`,
+  save_entity: () => t`Saving`,
+  search: () => t`Searching`,
+  search_data_sources: () => t`Checking available data sources`,
+  search_metabase_documentation: () => t`Consulting the docs`,
+  search_tables: () => t`Searching database tables`,
+  search_transforms: () => t`Searching transforms`,
+  todo_read: () => t`Planning`,
+  todo_write: () => t`Planning`,
+  write_transform_python: () => t`Writing Python`,
+  write_transform_sql: () => t`Writing SQL`,
+});
+
+// Past-tense counterparts shown once a tool call finishes. Tools without an
+// entry fall back to their present-tense label.
+export const TOOL_CALL_DONE_MESSAGES = tmap({
+  analyze_chart: () => t`Inspected the visualization`,
+  analyze_data: () => t`Analyzed the data`,
+  construct_notebook_query: () => t`Created a query`,
+  get_field_values: () => t`Retrieved table metadata`,
+  get_transform_details: () => t`Got transform details`,
+  search_data_sources: () => t`Checked available data sources`,
+  search_metabase_documentation: () => t`Consulted the docs`,
+  search_tables: () => t`Searched database tables`,
+  search_transforms: () => t`Searched transforms`,
+  todo_read: () => t`Planned`,
+  todo_write: () => t`Planned`,
+  write_transform_python: () => t`Wrote Python`,
+  write_transform_sql: () => t`Wrote SQL`,
+});
+
+// read_resource calls come in bursts and each is near-instant, so they collapse
+// into a single aggregated row instead of flashing one line each.
+export const RESOURCE_TOOL_NAME = "read_resource";
+
+export const RESOURCE_TOOL_MESSAGES = {
+  active(count: number) {
+    return ngettext(
+      msgid`Reading ${count} resource`,
+      `Reading ${count} resources`,
+      count,
+    );
   },
-  get analyze_data() {
-    return t`Analyzing the data`;
-  },
-  get construct_notebook_query() {
-    return t`Creating a query`;
-  },
-  get get_field_values() {
-    return t`Retrieving table metadata`;
-  },
-  get get_transform_details() {
-    return t`Getting transform details`;
-  },
-  get save_entity() {
-    return t`Saving`;
-  },
-  get list_available_fields() {
-    return undefined;
-  },
-  get load_skill() {
-    return t`Loading skill`;
-  },
-  get read_resource() {
-    return t`Reading resource`;
-  },
-  get search() {
-    return t`Searching`;
-  },
-  get search_data_sources() {
-    return t`Checking available data sources`;
-  },
-  get search_metabase_documentation() {
-    return t`Consulting the docs`;
-  },
-  get search_tables() {
-    return t`Searching database tables`;
-  },
-  get search_transforms() {
-    return t`Searching transforms`;
-  },
-  get todo_read() {
-    return t`Planning`;
-  },
-  get todo_write() {
-    return t`Planning`;
-  },
-  get write_transform_python() {
-    return t`Writing Python`;
-  },
-  get write_transform_sql() {
-    return t`Writing SQL`;
+  done(count: number) {
+    return ngettext(
+      msgid`Read ${count} resource`,
+      `Read ${count} resources`,
+      count,
+    );
   },
 };
 
-// Per-tool icon for the chain-of-thought timeline; unmapped tools get
-// DEFAULT_TOOL_CALL_ICON.
-export const TOOL_CALL_ICONS: Record<string, IconName> = {
-  analyze_chart: "bar",
-  analyze_data: "insight",
-  construct_notebook_query: "notebook",
-  get_field_values: "list",
-  get_transform_details: "info",
-  list_available_fields: "list",
-  load_skill: "book_open",
-  read_resource: "document",
-  search: "search",
-  search_data_sources: "database",
-  search_metabase_documentation: "reference",
-  search_tables: "database",
-  search_transforms: "search",
-  todo_read: "ordered_list",
-  todo_write: "ordered_list",
-  write_transform_python: "function",
-  write_transform_sql: "database",
-};
+// reasoning under this reads as "Thought briefly"; at or above it we show the
+// real elapsed seconds instead
+export const REASONING_EXACT_THRESHOLD_MS = 5000;
 
-export const DEFAULT_TOOL_CALL_ICON: IconName = "bolt";
+// the collapsed header previews the latest step; each label is held on screen at
+// least this long before the next replaces it, so a burst of fast tool calls
+// doesn't flash by unreadably
+export const PREVIEW_MIN_MS = 600;

@@ -10,6 +10,20 @@ export type LocaleDataWithLanguage = LocaleData & {
   headers: { language: string };
 };
 
+// Turns a map of thunks into an object whose keys are lazy getters, so `t`-tagged strings stay
+// deferred to access time (locale-correct) without a hand-written getter per entry. Keys are
+// preserved literally in the type.
+export function tmap<T extends Record<string, () => unknown>>(
+  thunks: T,
+): { readonly [K in keyof T]: ReturnType<T[K]> };
+export function tmap(thunks: Record<string, () => unknown>) {
+  const result: Record<string, unknown> = {};
+  for (const [key, thunk] of Object.entries(thunks)) {
+    Object.defineProperty(result, key, { get: thunk, enumerable: true });
+  }
+  return result;
+}
+
 // Tell dayjs to use the value of the start-of-week Setting for its current locale
 // range Sunday (0) - Saturday (6)
 export function updateStartOfWeek(

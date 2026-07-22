@@ -18,7 +18,6 @@
    [metabase.search.engine :as search.engine]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -566,7 +565,9 @@
   [{:keys [keyword_queries semantic_queries]}]
   (let [queries (distinct (concat keyword_queries semantic_queries))]
     (when (seq queries)
-      (tru "Searching {0}" (str/join ", " queries)))))
+      ;; just the object (the queries) — the client wraps it in the verb + tense
+      ;; ("Searching for …" while active, "Searched for …" once finished)
+      (str/join ", " queries))))
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search

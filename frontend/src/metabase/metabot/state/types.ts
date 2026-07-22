@@ -140,7 +140,9 @@ export type MetabotToolCall = {
 };
 
 export type MetabotChainStep =
-  | { kind: "reasoning"; text: string }
+  // startedAtMs: wall-clock when the step began, used to time labels and guard
+  // against flashing. Absent on persisted/legacy chains — treat as "show now".
+  | { kind: "reasoning"; text: string; startedAtMs?: number }
   | {
       kind: "tool";
       id: string;
@@ -148,6 +150,7 @@ export type MetabotChainStep =
       title?: string;
       searchResults?: MetabotSearchResults;
       status: "started" | "ended";
+      startedAtMs?: number;
     };
 
 export type MetabotReactionsState = {

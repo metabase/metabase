@@ -46,6 +46,7 @@ describe("metabot > tool calls", () => {
 
     await enterChatMessage("Analyze this query");
 
+    // the current step always reads in the present tense while the turn is live
     expect(
       (await screen.findAllByText("Analyzing the data")).length,
     ).toBeGreaterThan(0);
@@ -61,12 +62,12 @@ describe("metabot > tool calls", () => {
 
     pause2.resolve();
 
-    // the chain settles into a collapsed summary; the labels are no longer shown
-    expect(await screen.findByText(/Thought (for|about)/)).toBeInTheDocument();
+    // once settled the chain collapses and every label flips to the past tense
+    expect(await screen.findByText(/Worked (for|on)/)).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText("Analyzing the data")).not.toBeVisible();
+      expect(screen.getByText("Analyzed the data")).not.toBeVisible();
     });
-    expect(screen.getByText("Inspecting the visualization")).not.toBeVisible();
+    expect(screen.getByText("Inspected the visualization")).not.toBeVisible();
   });
 
   it("should settle the chain when answer text arrives and start a fresh one for later tools", async () => {
@@ -111,10 +112,11 @@ describe("metabot > tool calls", () => {
     pause1.resolve();
     pause2.resolve();
 
-    // answer text settles the first chain; a fresh one previews the next tool
+    // answer text settles the first chain (its label flips to past tense); a
+    // fresh chain previews the next tool in the present tense
     expect(await screen.findByText("Hey.")).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText("Analyzing the data")).not.toBeVisible();
+      expect(screen.getByText("Analyzed the data")).not.toBeVisible();
     });
     expect(
       (await screen.findAllByText("Inspecting the visualization")).length,

@@ -1035,7 +1035,9 @@
   [{:keys [uris]}]
   (let [labels (keep #(try (uri-label %) (catch Throwable _ nil)) uris)]
     (when (seq labels)
-      (tru "Reading {0}" (str/join ", " labels)))))
+      ;; just the object (the entities/aspects) — the client wraps it in the verb
+      ;; + tense ("Reading …" while active, "Read …" once finished)
+      (str/join ", " labels))))
 
 (mu/defn ^{:tool-name  "read_resource"
            :scope      scope/agent-resource-read

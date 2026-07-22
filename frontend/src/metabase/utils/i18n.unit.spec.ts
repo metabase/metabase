@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import { type LocaleDataWithLanguage, setLocalization } from "./i18n";
+import { type LocaleDataWithLanguage, setLocalization, tmap } from "./i18n";
 
 function setup(language: string) {
   setLocalization({
@@ -59,5 +59,36 @@ describe("setLocalization", () => {
     expect(() => setLocalization(localeData)).not.toThrow();
     expect(translations[""].Year.msgid).toBe("Year");
     expect(translations[context].Year.msgid).toBe("Year");
+  });
+});
+
+describe("tmap", () => {
+  it("defers each thunk until the key is read", () => {
+    let calls = 0;
+    const messages = tmap({
+      greeting: () => {
+        calls += 1;
+        return "hi";
+      },
+    });
+
+    expect(calls).toBe(0);
+    expect(messages.greeting).toBe("hi");
+    expect(messages.greeting).toBe("hi");
+    expect(calls).toBe(2);
+  });
+
+  it("supports the `in` operator for known keys", () => {
+    const messages = tmap({ known: () => "value" });
+
+    expect("known" in messages).toBe(true);
+    expect("missing" in messages).toBe(false);
+  });
+
+  it("returns undefined for a thunk that yields undefined", () => {
+    const messages = tmap({ silent: () => undefined });
+
+    expect("silent" in messages).toBe(true);
+    expect(messages.silent).toBeUndefined();
   });
 });

@@ -16,11 +16,11 @@
    [toucan2.core :as t2]))
 
 (deftest ^:parallel search-display-test
-  (testing "joins keyword and semantic queries into a Searching label"
-    (is (= "Searching revenue, orders"
+  (testing "joins keyword and semantic queries into the search object (client owns the verb/tense)"
+    (is (= "revenue, orders"
            (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["orders"]}))))
   (testing "dedupes overlapping queries"
-    (is (= "Searching revenue"
+    (is (= "revenue"
            (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["revenue"]}))))
   (testing "no queries -> nil"
     (is (nil? (#'search/search-display {})))))

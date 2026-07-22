@@ -42,6 +42,7 @@ export const pushNewToolCall = (
     args,
   }: { toolCallId: string; toolName: string; args?: string },
 ) => {
+  const toolMessages: Record<string, string | undefined> = TOOL_CALL_MESSAGES;
   convo.messages.push({
     id: toolCallId,
     role: "agent",
@@ -53,7 +54,7 @@ export const pushNewToolCall = (
   convo.activeToolCalls.push({
     id: toolCallId,
     name: toolName,
-    message: TOOL_CALL_MESSAGES[toolName],
+    message: toolMessages[toolName],
     status: "started",
   });
 };
@@ -110,7 +111,11 @@ export const startChainReasoning = (
   convo: WritableDraft<MetabotConverstationState>,
   nowMs?: number,
 ) => {
-  ensureChain(convo, nowMs).steps.push({ kind: "reasoning", text: "" });
+  ensureChain(convo, nowMs).steps.push({
+    kind: "reasoning",
+    text: "",
+    startedAtMs: nowMs,
+  });
 };
 
 export const appendChainReasoning = (
@@ -123,7 +128,7 @@ export const appendChainReasoning = (
   if (last?.kind === "reasoning") {
     last.text += text;
   } else {
-    chain.steps.push({ kind: "reasoning", text });
+    chain.steps.push({ kind: "reasoning", text, startedAtMs: nowMs });
   }
 };
 
@@ -139,7 +144,14 @@ export const addChainTool = (
   const chain = ensureChain(convo, nowMs);
   const existing = chain.steps.find((s) => s.kind === "tool" && s.id === id);
   if (!existing) {
-    chain.steps.push({ kind: "tool", id, name, title, status: "started" });
+    chain.steps.push({
+      kind: "tool",
+      id,
+      name,
+      title,
+      status: "started",
+      startedAtMs: nowMs,
+    });
   } else if (title && existing.kind === "tool") {
     // tool-input-start may arrive without a title; tool-input-available fills it in
     existing.title = title;
