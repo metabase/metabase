@@ -566,6 +566,31 @@ databaseChangeLog:
                   name: status
 
   - changeSet:
+      id: v64.expqdbidx
+      author: nvoxland
+      comment: Index on exploration_query.database_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_database_id
+            columns:
+              - column:
+                  name: database_id
+
+  - changeSet:
+      id: v64.expqdbfk
+      author: nvoxland
+      comment: FK exploration_query.database_id -> metabase_database.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_database_id
+            onDelete: CASCADE
+
+  - changeSet:
       id: v64.storedresult
       author: nvoxland
       comment: Create stored_result table
@@ -657,6 +682,35 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_stored_result_creator_id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v64.storedresultdbidx
+      author: nvoxland
+      comment: Index on stored_result.database_id
+      changes:
+        - createIndex:
+            tableName: stored_result
+            indexName: idx_stored_result_database_id
+            columns:
+              - column:
+                  name: database_id
+
+  - changeSet:
+      id: v64.storedresultdbfk
+      author: nvoxland
+      comment: >-
+        FK stored_result.database_id -> metabase_database.id. CASCADE rather than SET NULL: the
+        read-side gate recomputes the viewer's data-access lens from this column, so nulling it
+        would silently compare the stored token against a lens computed for "no database" instead
+        of denying. The snapshot is unreadable once its Database is gone, so drop the row.
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: stored_result
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_stored_result_database_id
+            onDelete: CASCADE
 
   - changeSet:
       id: v64.qrescreate
@@ -1275,6 +1329,34 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_query_page_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v64.expthreadsrcpageidx
+      author: nvoxland
+      comment: Index on exploration_thread.source_page_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread
+            indexName: idx_exploration_thread_source_page_id
+            columns:
+              - column:
+                  name: source_page_id
+
+  - changeSet:
+      id: v64.expthreadsrcpagefk
+      author: nvoxland
+      comment: >-
+        FK exploration_thread.source_page_id -> exploration_page.id. SET NULL: the column is already
+        nullable and null means "top-level thread", which stays truthful for a thread whose source
+        page was deleted.
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread
+            baseColumnNames: source_page_id
+            referencedTableName: exploration_page
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_source_page_id
+            onDelete: SET NULL
 
   - changeSet:
       id: v64.guiswezd
