@@ -75,6 +75,10 @@ jobs:
       - name: Compute version and sdkRelease metadata
         id: metadata
         uses: actions/github-script@v9
+        # Pass inputs via env, not inlined `${{ }}` in the script: github-script
+        # interpolates expressions into the JS source before running it, so a
+        # free-form input like prerelease_id could inject code. env values are
+        # read at runtime and can't escape into the code.
         env:
           BRANCH: ${{ github.ref_name }}
           RELEASE_TYPE: ${{ inputs.release_type }}
