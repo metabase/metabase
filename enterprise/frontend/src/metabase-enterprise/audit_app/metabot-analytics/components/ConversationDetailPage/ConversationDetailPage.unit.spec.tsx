@@ -1,21 +1,22 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupMetabotConversationEndpoint } from "__support__/server-mocks";
+import {
+  setupGroupsEndpoint,
+  setupMetabotConversationEndpoint,
+  setupPermissionMembershipEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { ConversationDetail, ConversationFeedback } from "../../types";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 
+const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
+
 jest.mock("metabase/admin/ai/MetabotAdminLayout", () => ({
   MetabotAdminLayout: ({ children }: { children: React.ReactNode }) => children,
-}));
-
-// Avoid unrelated permission and tenant requests.
-jest.mock("./ConversationHeader", () => ({
-  ConversationHeader: () => null,
 }));
 
 type ConversationMessage = ConversationDetail["messages"][number];
@@ -66,7 +67,7 @@ function createConversation(
   return {
     conversation_id: "convo-1",
     created_at: "2026-01-01T00:00:00Z",
-    summary: "A conversation",
+    title: "A conversation",
     user: null,
     message_count: 2,
     total_tokens: 30,
@@ -87,8 +88,13 @@ function createConversation(
 
 function setup(conversation: ConversationDetail) {
   setupMetabotConversationEndpoint(conversation);
+  setupGroupsEndpoint([]);
+  setupPermissionMembershipEndpoint({});
   return renderWithProviders(
-    <Route path="/conversations/:convoId" component={ConversationDetailPage} />,
+    <Route
+      path="/conversations/:convoId"
+      element={<RoutedConversationDetailPage />}
+    />,
     {
       withRouter: true,
       initialRoute: "/conversations/convo-1",
@@ -100,6 +106,19 @@ function setup(conversation: ConversationDetail) {
 }
 
 describe("ConversationDetailPage", () => {
+  it("shows the conversation title in the header", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "an answer"),
+      ]),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "A conversation" }),
+    ).toBeInTheDocument();
+  });
+
   it("defaults a regenerated turn to the latest attempt and pages between attempts", async () => {
     setup(
       createConversation([
@@ -135,7 +154,7 @@ describe("ConversationDetailPage", () => {
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
   });
 
-  it("shows an in-progress row with a reachable pager while a regeneration streams", async () => {
+  it("shows the loading state with a reachable pager while a regeneration streams", async () => {
     setup(
       createConversation([
         userMessage("u1", null, "count orders"),
@@ -145,9 +164,8 @@ describe("ConversationDetailPage", () => {
     );
 
     expect(
-      await screen.findByTestId("metabot-response-in-progress"),
+      await screen.findByTestId("metabot-response-loader"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Response in progress/)).toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
     expect(screen.queryByText("first try")).not.toBeInTheDocument();
     const [, inProgressElement] = screen.getAllByTestId("metabot-chat-message");
@@ -161,7 +179,7 @@ describe("ConversationDetailPage", () => {
 
     expect(screen.getByText("first try")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("metabot-response-in-progress"),
+      screen.queryByTestId("metabot-response-loader"),
     ).not.toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
   });
