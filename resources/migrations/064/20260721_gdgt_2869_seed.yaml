@@ -1,10 +1,11 @@
 ## Create the `seed` table for Data Studio seeds.
 ##
-## A seed is a stably-named CSV that owns a derived warehouse table. The CSV is the
-## source of truth (it's what git versions via remote-sync); the warehouse table is a
-## reproducible materialization. `csv` holds the raw payload, `table_id` links the
-## table materialized on THIS instance (nullable: re-derived on pull), and the
-## sync bookkeeping columns mirror `data_app`.
+## A seed is a stably-named reference CSV that lives in the remote-sync git repo
+## (`seeds/<name>.csv`); the repo is the source of truth. This row is instance-local
+## tracking, NOT storage: `table_id` links the table this instance materialized the CSV
+## into (nullable: re-derived on pull), and `csv_hash`/`last_synced_sha` are the
+## reconciliation keys used to skip no-op re-materializations. The bytes are never
+## stored here.
 
 databaseChangeLog:
   - changeSet:
@@ -14,7 +15,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: seed
-            remarks: A stably-named CSV (source of truth) and the warehouse table it materializes into.
+            remarks: Instance-local tracking for a git-versioned reference CSV and the warehouse table it materializes into.
             columns:
               - column:
                   name: id
@@ -32,15 +33,9 @@ databaseChangeLog:
                     unique: true
                     uniqueConstraintName: unique_seed_name
               - column:
-                  name: csv
-                  type: ${text.type}
-                  remarks: Raw CSV payload. The source of truth; the warehouse table is derived from it.
-                  constraints:
-                    nullable: false
-              - column:
                   name: csv_hash
                   type: varchar(64)
-                  remarks: SHA-256 hex of the CSV bytes, used to skip no-op re-pushes.
+                  remarks: SHA-256 hex of the repo CSV last materialized here; a pull skips re-materializing when it matches.
                   constraints:
                     nullable: true
               - column:

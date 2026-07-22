@@ -32,8 +32,8 @@ const getEmptyStateConfig = (
       actionLabel: t`New snippet`,
     },
     seeds: {
-      description: t`Version-controlled reference tables loaded from CSV`,
-      actionLabel: t`New seed`,
+      description: t`Reference tables synced from CSVs in your Git repo`,
+      actionLabel: "",
     },
   };
 
@@ -52,10 +52,8 @@ export const createEmptyStateItem = (
     actionUrl = Urls.newDataStudioMetric({ collectionId: collectionId });
   } else if (sectionType === "snippets" && !hideAction) {
     actionUrl = Urls.newDataStudioSnippet();
-  } else if (sectionType === "seeds" && !hideAction) {
-    actionUrl = Urls.dataStudioSeeds();
   }
-  // "data" section opens a modal, so no actionUrl
+  // "data" section opens a modal, so no actionUrl; "seeds" is read-only (git-authored)
 
   return {
     id: `empty-state:${sectionType}`,

@@ -8,7 +8,7 @@ import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collect
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
-import { TableActionsMenu } from "./TableActionsMenu";
+import { TableMoreMenu } from "./TableMoreMenu";
 import { TableNameInput } from "./TableNameInput";
 import { TableTabs } from "./TableTabs";
 
@@ -25,7 +25,7 @@ export function TableHeader({ table, ...rest }: TableHeaderProps) {
       data-testid="table-pane-header"
       title={<TableNameInput table={table} />}
       icon="table"
-      menu={<TableActionsMenu table={table} />}
+      menu={<TableMoreMenu table={table} />}
       tabs={<TableTabs table={table} />}
       {...rest}
       breadcrumbs={

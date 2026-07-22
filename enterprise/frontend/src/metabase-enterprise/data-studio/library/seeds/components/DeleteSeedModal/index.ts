@@ -1,1 +1,0 @@
-export { DeleteSeedModal } from "./DeleteSeedModal";

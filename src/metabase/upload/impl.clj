@@ -406,10 +406,24 @@
                   pos))
               normalized positional (derive-display-names driver header))))))
 
+(defn- apply-column-type-overrides
+  "Force explicit upload types for named columns, bypassing inference (dbt `column_types`).
+  `overrides` maps original CSV header -> upload-type keyword; unknown headers are ignored.
+  Applied to the whole schema map so DDL and row parsing stay in agreement."
+  [cols->upload-type header column-names overrides]
+  (if (empty? overrides)
+    cols->upload-type
+    (let [header->col (zipmap header column-names)
+          by-col      (into {} (keep (fn [[h t]] (when-let [c (header->col h)] [c t])) overrides))]
+      (reduce-kv (fn [m col t] (cond-> m (contains? m col) (assoc col t)))
+                 cols->upload-type by-col))))
+
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
+   `column-types` optionally forces explicit upload types for named columns (see
+   [[apply-column-type-overrides]]); nil means infer everything as before.
    Returns the file size, number of rows, and number of columns."
-  [driver db table-name filename ^File csv-file]
+  [driver db table-name filename ^File csv-file & [column-types]]
   (let [parse (infer-parser filename csv-file)]
     (with-open [reader (->reader csv-file)]
       (let [auto-pk?          (auto-pk-column? driver db)
@@ -419,7 +433,8 @@
             settings          (upload-parsing/get-settings)
             display-names     (derive-display-names driver header)
             column-names      (derive-column-names driver header)
-            cols->upload-type (detect-schema settings column-names rows)
+            cols->upload-type (-> (detect-schema settings column-names rows)
+                                  (apply-column-type-overrides header column-names column-types))
             col-definitions   (column-definitions driver (cond-> cols->upload-type
                                                            auto-pk?
                                                            columns-with-auto-pk))
@@ -563,14 +578,14 @@
 (defn- create-from-csv-and-sync!
   "This is separated from `create-csv-upload!` for testing.
   `data-source` tags the resulting table (`:upload` for uploads, `:seed` for seeds); defaults to `:upload`."
-  [{:keys [db filename file schema table-name display-name data-source]
+  [{:keys [db filename file schema table-name display-name data-source column-types]
     :or   {data-source :upload}}]
   (driver.conn/with-write-connection
     (let [driver                  (driver.u/database->driver db)
           schema                  (some->> schema (ddl.i/format-name driver))
           table-name              (some->> table-name (ddl.i/format-name driver))
           schema+table-name       (table-identifier {:schema schema :name table-name})
-          {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
+          {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file column-types)
           ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
           table                   (sync/create-table! db {:name         table-name
                                                           :schema       (not-empty schema)
@@ -700,7 +715,7 @@
   This is the seed path: same engine as [[create-csv-upload!]], but the table keeps its given name (uploads suffix a
   timestamp) and nothing wraps it. Tags the table with `data-source` (`:seed`). Throws 400 if the name is already
   taken. Returns the synced Table. Placing the table in the Library is the caller's job (enterprise-only)."
-  [{:keys [filename ^File file db-id schema-name table-name display-name data-source]
+  [{:keys [filename ^File file db-id schema-name table-name display-name data-source column-types]
     :or   {data-source :seed}}
    :- [:map
        [:filename :string]
@@ -709,7 +724,8 @@
        [:table-name :string]
        [:schema-name {:optional true} [:maybe :string]]
        [:display-name {:optional true} [:maybe :string]]
-       [:data-source {:optional true} :keyword]]]
+       [:data-source {:optional true} :keyword]
+       [:column-types {:optional true} [:maybe [:map-of :string (into [:enum] upload-types/column-types)]]]]]
   (check-workspace-mode!)
   (let [database (or (t2/select-one :model/Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
@@ -727,18 +743,20 @@
                                                         :schema       schema-name
                                                         :table-name   normalized
                                                         :display-name (or (not-empty display-name) table-name)
-                                                        :data-source  data-source})]
+                                                        :data-source  data-source
+                                                        :column-types column-types})]
         table))))
 
 (mu/defn replace-csv-table!
   "Full-refresh a CSV-backed table: drop the physical table and rebuild it from `file`, keeping the app-db Table row.
   Any schema change is allowed since the table is recreated from scratch. Used by seeds (enterprise).
   Not transactional: if rebuild fails after the drop, the physical table is gone but the Table row remains, and the caller owns recovery."
-  [{:keys [table filename ^File file]}
+  [{:keys [table filename ^File file column-types]}
    :- [:map
        [:table :map]
        [:filename :string]
-       [:file (ms/InstanceOfClass File)]]]
+       [:file (ms/InstanceOfClass File)]
+       [:column-types {:optional true} [:maybe [:map-of :string (into [:enum] upload-types/column-types)]]]]]
   (check-workspace-mode!)
   (let [database   (table/database table)
         driver     (driver.u/database->driver database)
@@ -746,7 +764,7 @@
     (check-filetype filename file)
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name)
-      (let [{:keys [columns]} (create-from-csv! driver database table-name filename file)]
+      (let [{:keys [columns]} (create-from-csv! driver database table-name filename file column-types)]
         (scan-and-sync-table! database table)
         (set-display-names! (:id table) columns))))
   (t2/select-one :model/Table :id (:id table)))

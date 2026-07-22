@@ -24,7 +24,7 @@
   ([_instance] (api/is-data-analyst?))
   ([_model _pk] (api/is-data-analyst?)))
 
-(def non-csv-columns
-  "Columns for seed list/detail reads, excluding the raw CSV payload."
+(def columns
+  "Columns for seed list/detail reads."
   [:id :name :table_id :collection_id :csv_hash :last_synced_sha :sync_error
-   :created_at :updated_at])
+   :entity_id :created_at :updated_at])

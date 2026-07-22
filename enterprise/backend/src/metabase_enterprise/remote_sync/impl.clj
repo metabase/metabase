@@ -336,34 +336,6 @@
     :list-files (fn [] (source.p/list-files snapshot))
     :sha        (source.p/version snapshot)}))
 
-(def ^:private seed-repo-file-re #"^seeds/[a-z][a-z0-9_]*\.csv$")
-
-(defn- stage-seeds!
-  "Stage every seed's CSV into the export commit as `seeds/<name>.csv`, and delete
-   repo seed files whose seed no longer exists. Seeds sit outside the managed dirs,
-   so `replace-all!` never touches them — this owns their writes and stale cleanup."
-  [commit snapshot]
-  (let [rows       (seeds/sync-export-rows)
-        keep-paths (set (map #(str "seeds/" (:name %) ".csv") rows))]
-    (doseq [{:keys [name csv]} rows]
-      (source.p/stage-upsert! commit {:path (str "seeds/" name ".csv") :content csv}))
-    (doseq [path (filter #(re-matches seed-repo-file-re %) (source.p/list-files snapshot))
-            :when (not (contains? keep-paths path))]
-      (source.p/stage-delete! commit path))))
-
-(defn- seeds-dirty?
-  "True if the local seeds differ from what's committed under `seeds/` in the snapshot,
-   so a seed-only change still triggers an export (seeds don't touch RemoteSyncObject)."
-  [^SourceSnapshot snapshot]
-  (let [repo (into {} (for [path  (source.p/list-files snapshot)
-                            :when (re-matches seed-repo-file-re path)]
-                        [path (source.p/read-file snapshot path)]))
-        rows (seeds/sync-export-rows)]
-    (or (not= (count repo) (count rows))
-        (boolean (some (fn [{:keys [name csv]}]
-                         (not= csv (get repo (str "seeds/" name ".csv"))))
-                       rows)))))
-
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -729,7 +701,8 @@
                 ;; directory upserts nothing (`:changed` 0) but still changed what
                 ;; this instance serves, so it must report as a pull, not skipped.
                 da-changed   (+ (:changed da-result 0) (:removed da-result 0))
-                seed-changed (:changed (materialize-seeds! snapshot) 0)]
+                seed-result  (materialize-seeds! snapshot)
+                seed-changed (+ (:changed seed-result 0) (:removed seed-result 0))]
             (cond-> result
               (pos? (+ da-changed seed-changed))
               (update :outcome fold-data-app-changes (+ da-changed seed-changed))))
@@ -1173,7 +1146,6 @@
                                                                           (fn [staged]
                                                                             (report (+ export-progress-plan-done
                                                                                        (* span (/ staged total))))))]
-                                                 (stage-seeds! commit snapshot)
                                                  (report export-progress-serialize {:force? true})
                                                  synced))
                                              report)]
@@ -1206,7 +1178,6 @@
                                                                           (report (+ export-progress-plan-done
                                                                                      (* span (/ staged total))))))]
                                                (stage-deletes commit delete-paths)
-                                               (stage-seeds! commit snapshot)
                                                (report export-progress-serialize {:force? true})
                                                synced))
                                            report)]
@@ -1279,8 +1250,8 @@
              :conflicts []
              :message   "The remote branch has changed since your last sync. Choose how to proceed."}
 
-            ;; There's nothing to export: no dirty rows, no stale files, no seed changes.
-            (and (empty? @dirty-rows) (empty? @disabled-files) (not (seeds-dirty? snapshot)))
+            ;; There's nothing to export: no dirty rows, no stale files.
+            (and (empty? @dirty-rows) (empty? @disabled-files))
             (do
               (log/info "Remote sync export: no changes to export")
               {:status :success
