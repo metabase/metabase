@@ -109,6 +109,9 @@ function activeThreadStaleDeadlines(
 export function ExplorationPage({ params, location }: ExplorationPageProps) {
   const dispatch = useDispatch();
 
+  const isCommentsSidebarOpen = location.query?.comments === "true";
+  const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
+
   const selectedSidebarTab = useMemo<ExplorationSidebarTab>(() => {
     const tab = location.query?.tab;
     if (isExplorationSidebarTab(tab)) {
@@ -125,6 +128,16 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     },
     [location.pathname, location.search],
   );
+
+  const closeCommentsSidebar = useCallback(() => {
+    if (!isCommentsSidebarOpen) {
+      return;
+    }
+    const search = new URLSearchParams(location.search);
+    search.delete("comments");
+    const query = search.toString();
+    dispatch(push(`${location.pathname}${query ? `?${query}` : ""}`));
+  }, [isCommentsSidebarOpen, location.search, location.pathname, dispatch]);
 
   const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
 
@@ -460,9 +473,6 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     [dispatch, location.pathname, location.search],
   );
 
-  const isCommentsSidebarOpen = location.query?.comments === "true";
-  const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
-
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -525,6 +535,7 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}
               wasCommentsSidebarOpen={wasCommentsSidebarOpen ?? false}
+              onCloseCommentsSidebar={closeCommentsSidebar}
               onPreviousPage={
                 previousPageId != null ? goToPreviousPage : undefined
               }

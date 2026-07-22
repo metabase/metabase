@@ -73,6 +73,7 @@ interface ExplorationGroupVisualizationProps {
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
   wasCommentsSidebarOpen: boolean;
+  onCloseCommentsSidebar: () => void;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
 }
@@ -125,17 +126,11 @@ function ExplorationGroupVisualizationBody(
     );
   }
 
-  const erroredQueryMessage = queries.find(
-    (q) => q.status === "error" && q.error_message,
-  )?.error_message;
   if (queries.some((q) => q.status === "error")) {
     return (
       <Message
         groupName={groupName}
-        message={
-          erroredQueryMessage ??
-          t`We couldn't generate one or more of these charts.`
-        }
+        message={t`We couldn't generate one or more of these charts.`}
         iconProps={{ name: "warning", c: "error" }}
       />
     );
@@ -175,6 +170,7 @@ function ExplorationGroupVisualizationChart({
   setCommentDrafts,
   isCommentsSidebarOpen,
   wasCommentsSidebarOpen,
+  onCloseCommentsSidebar,
   onPreviousPage,
   onNextPage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
@@ -252,11 +248,25 @@ function ExplorationGroupVisualizationChart({
   useEffect(() => {
     setSeeAllEvents([]);
   }, [selectedTimelineId]);
+
+  useEffect(() => {
+    if (isCommentsSidebarOpen) {
+      setSeeAllEvents([]);
+    }
+  }, [isCommentsSidebarOpen]);
   const seeAllEventIds = useMemo(
     () => seeAllEvents.map((event) => event.id),
     [seeAllEvents],
   );
   const closeSeeAllEvents = useCallback(() => setSeeAllEvents([]), []);
+
+  const handleSeeAllEvents = useCallback(
+    (events: TimelineEvent[]) => {
+      setSeeAllEvents(events);
+      onCloseCommentsSidebar();
+    },
+    [onCloseCommentsSidebar],
+  );
 
   const renderCommentExtra = useCallback(
     (comment: Comment) => {
@@ -380,7 +390,7 @@ function ExplorationGroupVisualizationChart({
               mode={clickActionsMode}
               highlighted={highlighted}
               selectedTimelineEventIds={seeAllEventIds}
-              onSeeAllEvents={setSeeAllEvents}
+              onSeeAllEvents={handleSeeAllEvents}
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
@@ -419,7 +429,7 @@ function ExplorationGroupVisualizationChart({
           onClose={closeSeeAllEvents}
         />
       )}
-      {isCommentsSidebarOpen && (
+      {isCommentsSidebarOpen && seeAllEvents.length === 0 && (
         <Box w="23rem" h="100%" className={S.commentsSidebar}>
           <Comments
             // since ExplorationGroupVisualization is keyed on the page, Comments remounts whenever the page changes

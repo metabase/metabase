@@ -95,26 +95,34 @@
     (when (and temporal-idx series-idx)
       {:dim-idx temporal-idx :metric-idx metric-idx :series-idx series-idx})))
 
+(defn- metric-col-idx
+  "Index of the column to treat as the metric: the aggregation column (`:lib/source
+  :source/aggregations`), or — when the columns carry no source metadata — the *last* numeric column.
+
+  Not the *first* numeric column: QP results order breakouts (dimensions) before aggregations, so a
+  numeric dimension (a binned or plain-numeric breakout, or an integer extraction like day-of-week)
+  sits at a lower index than the measure. Picking the first numeric column would mistake that
+  dimension for the metric and transpose the chart's axes. The aggregation is always last, so
+  last-numeric is the right fallback. Returns nil when there is no numeric/aggregation column."
+  [lib-cols]
+  (or (first (keep-indexed (fn [i c] (when (= :source/aggregations (:lib/source c)) i)) lib-cols))
+      (last (keep-indexed (fn [i c] (when (lib.types.isa/numeric? c) i)) lib-cols))))
+
 (defn- pick-indices
   "Pick column roles given 2 or 3 result columns.
 
     - 2 cols → `{:dim-idx <i> :metric-idx <i>}`
-    - 3 cols → `{:dim-idx <temporal-idx> :metric-idx <numeric-idx> :series-idx <remaining-idx>}`
+    - 3 cols → `{:dim-idx <temporal-idx> :metric-idx <aggregation-idx> :series-idx <remaining-idx>}`
 
-  Returns nil when no numeric column exists, or — for 3 cols — when no temporal column exists."
+  The metric is chosen by [[metric-col-idx]] (aggregation column, else last numeric) so a numeric
+  dimension is never mistaken for the measure. Returns nil when no metric column exists, or — for 3
+  cols — when no temporal column exists."
   [lib-cols]
-  (let [metric-idx (first (keep-indexed (fn [i c] (when (lib.types.isa/numeric? c) i)) lib-cols))]
-    (when metric-idx
-      (case (count lib-cols)
-        ;; An extraction-unit column (day-of-week, hour-of-day, …) is an integer position, so
-        ;; it's numeric too — pin it as the dimension so the real measure stays the metric and
-        ;; the axes don't swap. Otherwise the lone numeric column is the metric.
-        2 (let [extr-idx (first (keep-indexed (fn [i c] (when (col-extraction-unit c) i)) lib-cols))]
-            (if (and extr-idx (lib.types.isa/numeric? (nth lib-cols (- 1 extr-idx))))
-              {:dim-idx extr-idx :metric-idx (- 1 extr-idx)}
-              {:dim-idx (- 1 metric-idx) :metric-idx metric-idx}))
-        3 (pick-3-col-indices lib-cols metric-idx)
-        nil))))
+  (when-let [metric-idx (metric-col-idx lib-cols)]
+    (case (count lib-cols)
+      2 {:dim-idx (- 1 metric-idx) :metric-idx metric-idx}
+      3 (pick-3-col-indices lib-cols metric-idx)
+      nil)))
 
 (defn- pair-filter
   "Drop rows whose metric value isn't a number; preserve x/y alignment."
