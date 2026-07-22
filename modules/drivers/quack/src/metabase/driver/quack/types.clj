@@ -114,6 +114,16 @@
 
 (def ^:private uint64-mask (BigInteger. "18446744073709551615"))
 
+(defn- unsigned-long
+  "Interpret a signed Java `long` as its unsigned 64-bit value."
+  ^BigInteger [^long value]
+  (.and (BigInteger/valueOf value) uint64-mask))
+
+(defn- uint64-at
+  "Decode a UINT64 value from `buf` at byte offset `off`."
+  ^clojure.lang.BigInt [^ByteBuffer buf off]
+  (clojure.lang.BigInt/fromBigInteger (unsigned-long (.getLong buf off))))
+
 (defn- hugeint-at
   "Decode an INT128/HUGEINT 16-byte LE value {uint64 lower@off, int64 upper@(+off 8)}
   read straight from `buf` at byte offset `off` into a clojure BigInt =
@@ -121,11 +131,17 @@
   avoids the per-row 16-byte array copy the old whole-array decoder needed.
   Confirmed live — PROTOCOL.md §6."
   ^clojure.lang.BigInt [^ByteBuffer buf off]
-  (let [lower (.getLong buf off)                       ; uint64 read as signed long
-        upper (.getLong buf (+ off 8))
-        lower-unsigned (.and (BigInteger/valueOf lower) uint64-mask)]
+  (let [lower (unsigned-long (.getLong buf off))
+        upper (.getLong buf (+ off 8))]
     (clojure.lang.BigInt/fromBigInteger
-     (.add (.shiftLeft (BigInteger/valueOf upper) 64) lower-unsigned))))
+     (.add (.shiftLeft (BigInteger/valueOf upper) 64) lower))))
+
+(defn- uhugeint-at
+  "Decode a UINT128/UHUGEINT value from `buf` at byte offset `off`."
+  ^clojure.lang.BigInt [^ByteBuffer buf off]
+  (let [^BigInteger lower (unsigned-long (.getLong buf off))
+        ^BigInteger upper (unsigned-long (.getLong buf (+ off 8)))]
+    (clojure.lang.BigInt/fromBigInteger (.add (.shiftLeft upper 64) lower))))
 
 (defn- uuid-at
   "Decode the 16-byte INT128 layout at `buf:off` as a java.util.UUID. The
@@ -179,12 +195,13 @@
                    (.getInt buf off))
         :UINT32  (Integer/toUnsignedLong (.getInt buf off))
         :INT64   (decode-int64-logical (.getLong buf off) lt)
-        :UINT64  (.getLong buf off)
+        :UINT64  (uint64-at buf off)
         :FLOAT32 (.getFloat buf off)
         :FLOAT64 (.getDouble buf off)
         :INT128  (if (= id 54)
                    (uuid-at buf off)
                    (hugeint-at buf off))
+        :UINT128 (uhugeint-at buf off)
         :INTERVAL {:months (.getInt buf off)
                    :days   (.getInt buf (+ off 4))
                    :micros (.getLong buf (+ off 8))}

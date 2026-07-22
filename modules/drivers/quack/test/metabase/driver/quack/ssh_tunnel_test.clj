@@ -36,10 +36,10 @@
 ;;; ===========================================================================
 
 (deftest s1-details->conn-spec-normalizes-metabase-details-test
-  (testing "Metabase details (:use-ssl / :max-temporal-export-lag) → flat conn-spec"
+  (testing "unrelated temporal settings do not override the HTTP timeout"
     (let [cs (details->conn-spec {:host "h" :port 9494 :token "t"
                                   :use-ssl true :max-temporal-export-lag 30})]
-      (is (= {:host "h" :port 9494 :ssl true :token "t" :timeout-seconds 30}
+      (is (= {:host "h" :port 9494 :ssl true :token "t" :timeout-seconds 60}
              cs))))
   (testing "defaults applied when port/ssl/timeout are omitted"
     (let [cs (details->conn-spec {:host "h" :token "t"})]

@@ -73,6 +73,21 @@
 ;;; Query execution
 ;;; ---------------------------------------------------------------------------
 
+(defn- assert-no-parameters!
+  "Reject SQL parameters that cannot be sent separately by the Quack protocol."
+  [params]
+  (when (seq params)
+    (throw (ex-info "The Quack protocol does not support separate parameters"
+                    {:type driver-api/qp.error-type.driver
+                     :parameter-count (count params)}))))
+
+(defmethod sql.qp/format-honeysql :quack
+  [driver honeysql-form]
+  ;; Quack sends only SQL text, so use HoneySQL's escaping instead of dropping
+  ;; the separate parameter vector at execution time.
+  (binding [driver/*compile-with-inline-parameters* true]
+    ((get-method sql.qp/format-honeysql :sql) driver honeysql-form)))
+
 (defmethod driver/execute-reducible-query :quack
   ;; Run native SQL over Quack and hand Metabase a reducible row stream. `respond`
   ;; MUST be called synchronously with (respond cols rows); the database is taken
@@ -82,7 +97,8 @@
   ;; the call AND realize all rows before it closes — Metabase reduces `rows`
   ;; *after* `respond` returns, so a lazy reducible would outlive the tunnel.
   ;; Without a tunnel the client's lazy multi-batch reducible is preserved.
-  [_driver {{sql :query} :native, :as _outer-query} _context respond]
+  [_driver {{sql :query params :params} :native, :as _outer-query} _context respond]
+  (assert-no-parameters! params)
   (let [database (driver-api/database (driver-api/metadata-provider))
         details  (database->details database)
         tunnel?  (boolean (:tunnel-enabled details))
@@ -631,7 +647,8 @@
     (with-ssh-tunnel-conn-spec details
       (fn [cs]
         (doseq [query queries]
-          (let [[sql] (if (string? query) [query] query)]
+          (let [[sql params] (if (string? query) [query nil] query)]
+            (assert-no-parameters! params)
             (when (seq sql)
               ;; execute-sql! drains the result so the pooled connection is
               ;; released; execute-query would leak it (the reducible is never
@@ -742,12 +759,9 @@
 ;; implement the three ddl.i multimethods below, each sending generated SQL over
 ;; the Quack HTTP client, tunnel-aware, exactly like the transforms methods.
 ;;
-;; Atomicity note: each Quack request runs on its own connection (connect →
-;; prepare → disconnect), so we cannot wrap multi-statement DDL in a single
-;; transaction the way the Postgres driver does. refresh! therefore uses a
-;; temp-table + rename swap so the existing cache stays queryable while the new
-;; one materializes; the only unavailability window is the final DROP + RENAME
-;; (both metadata-only operations).
+;; Quack transactions are connection-scoped. [[ddl.i/refresh!]] materializes a
+;; replacement table first, then holds one connection for the transactional
+;; DROP + RENAME swap so readers see either the old or new table.
 
 (defn- persist-exec!
   "Run a DDL/DML `sql` string over the Quack client and discard the (empty)
@@ -874,10 +888,14 @@
         (persist-exec! cs (format "CREATE TABLE %s AS %s" (ident temp) model-sql))
         ;; Atomic drop + rename: a held-connection DuckDB transaction. On any
         ;;        failure ROLLBACK restores the pre-swap state (old cache intact).
-        (quack.client/with-transaction [_ cs]
-          (persist-exec! cs (format "DROP TABLE IF EXISTS %s" (ident table)))
-          (persist-exec! cs (format "ALTER TABLE %s RENAME TO %s"
-                                    (ident temp) (quote-ident table))))))
+        (quack.client/do-with-transaction
+         cs
+         (fn [conn-id]
+           (quack.client/exec-on-connection
+            cs conn-id (format "DROP TABLE IF EXISTS %s" (ident table)))
+           (quack.client/exec-on-connection
+            cs conn-id (format "ALTER TABLE %s RENAME TO %s"
+                               (ident temp) (quote-ident table)))))))
     {:state :success}))
 
 (defmethod ddl.i/unpersist! :quack
@@ -1049,9 +1067,11 @@
                            (quote-ident (name to))))]
     (with-ssh-tunnel-conn-spec details
       (fn [cs]
-        (quack.client/with-transaction [_ cs]
-          (doseq [s sqls]
-            (persist-exec! cs s)))))))
+        (quack.client/do-with-transaction
+         cs
+         (fn [conn-id]
+           (doseq [sql sqls]
+             (quack.client/exec-on-connection cs conn-id sql))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Custom writeback actions (:actions/custom)

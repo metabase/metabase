@@ -271,7 +271,10 @@
           result (bit-or result (bit-shift-left (bit-and byte 0x7F) shift))
           shift  (+ shift 7)]
       (if (zero? (bit-and byte 0x80))
-        (if (not (zero? (bit-and byte 0x40)))
+        ;; A 10-byte int64 has already supplied all 64 bits; shifting by the
+        ;; resulting 70 would wrap on the JVM and corrupt negative values.
+        (if (and (< shift Long/SIZE)
+                 (not (zero? (bit-and byte 0x40))))
           (bit-or result (bit-shift-left -1 shift))   ; sign-extend
           result)
         (recur result shift)))))

@@ -250,31 +250,19 @@
 
 (defn- fetch
   "FETCH_REQUEST → rows. Returns {:rows [...] :more? bool} (more? = had rows).
-  Shares the PREPARE's query-id so the whole result stream is log-correlatable.
-
-  Tolerance: the (beta) Quack extension intermittently closes a result between
-  PREPARE and FETCH — the FETCH then returns an ERROR_RESPONSE with
-  'Result has been closed'. The protocol's termination signal is 'empty results
-  list', and a closed result is effectively the server saying 'no more', so we
-  treat that specific message as end-of-stream (returning an empty batch) rather
-  than throwing. Other errors still propagate. Logged at debug so a suspicious
-  pattern is still visible."
+  Shares the PREPARE's query-id so the whole result stream is log-correlatable."
   [details connection-id result-uuid query-id]
   (let [resp (-> (wire/fetch-request connection-id result-uuid query-id)
                  (http-post details)
                  wire/decode-response)]
-    (cond
-      (and (wire/error? resp)
-           (re-find #"(?i)result has been closed"
-                    (str (get-in resp [:body :message]))))
-      (do (log/debug "Quack FETCH returned 'Result has been closed' — treating as end-of-stream")
-          {:rows [] :more? false})
-
-      (wire/error? resp)
-      (throw (ex-info (str "Quack fetch failed: " (get-in resp [:body :message]))
-                      {:type ::query-error}))
-
-      :else
+    (if (wire/error? resp)
+      (let [server-message (get-in resp [:body :message])]
+        (throw (ex-info (str "Quack fetch failed: " server-message)
+                        {:type           ::query-error
+                         :server-message server-message
+                         :connection-id  connection-id
+                         :result-uuid    result-uuid
+                         :query-id       query-id})))
       {:rows  (types/chunks->rows (:body resp))
        :more? (pos? (reduce + 0 (map :rows (get-in resp [:body :chunks]))))})))
 
@@ -426,25 +414,35 @@
      {:cols (:cols first-batch)
       :rows (into [] (reducible-rows conn-spec connection-id first-batch))})))
 
-(defmacro with-connection
-  "Bind `conn-id-sym` to a (pooled when allowed) Quack connection for `body`;
-  the connection is always released on exit (returned on success, discarded on
-  exception). `conn-spec` must already be tunnel-resolved when used over a
-  bastion — wrap the call in `with-ssh-tunnel-conn-spec`."
-  {:style/indent 1}
-  [[conn-id-sym conn-spec] & body]
-  `(let [conn-spec# ~conn-spec
-         conn-id#  (borrow-conn! conn-spec#)
-         ok?#      (volatile! false)]
+(defn- do-with-connection
+  "Call `f` with a borrowed connection id, returning it on success and discarding it on error."
+  [conn-spec f]
+  (let [conn-id (borrow-conn! conn-spec)
+        ok?     (volatile! false)]
+    (try
+      (let [result (f conn-id)]
+        (vreset! ok? true)
+        result)
+      (finally
+        (if @ok?
+          (return-conn! conn-spec conn-id)
+          (discard-conn! conn-spec conn-id))))))
+
+(defn do-with-transaction
+  "Call `f` with a held connection id inside `BEGIN`/`COMMIT`, rolling back on error."
+  [conn-spec f]
+  (do-with-connection
+   conn-spec
+   (fn [conn-id]
+     (exec-on-connection conn-spec conn-id "BEGIN")
      (try
-       (let [~conn-id-sym conn-id#
-             ret# (do ~@body)]
-         (vreset! ok?# true)
-         ret#)
-       (finally
-         (if @ok?#
-           (return-conn! conn-spec# conn-id#)
-           (discard-conn! conn-spec# conn-id#))))))
+       (let [result (f conn-id)]
+         (exec-on-connection conn-spec conn-id "COMMIT")
+         result)
+       (catch Throwable e
+         (try (exec-on-connection conn-spec conn-id "ROLLBACK")
+              (catch Throwable _))
+         (throw e))))))
 
 (defmacro with-transaction
   "Run `body` on a held Quack connection inside `BEGIN`/`COMMIT`, rolling back
@@ -453,17 +451,7 @@
   transaction persists across them). `conn-spec` must be tunnel-resolved."
   {:style/indent 1}
   [[conn-id-sym conn-spec] & body]
-  `(with-connection [conn-id# ~conn-spec]
-     (exec-on-connection ~conn-spec conn-id# "BEGIN")
-     (try
-       (let [~conn-id-sym conn-id#
-             ret# (do ~@body)]
-         (exec-on-connection ~conn-spec conn-id# "COMMIT")
-         ret#)
-       (catch Throwable e#
-         (try (exec-on-connection ~conn-spec conn-id# "ROLLBACK")
-              (catch Throwable _#))
-         (throw e#)))))
+  `(do-with-transaction ~conn-spec (fn [~conn-id-sym] ~@body)))
 
 (defn can-connect?
   "Return true iff we can CONNECT and run a trivial query.

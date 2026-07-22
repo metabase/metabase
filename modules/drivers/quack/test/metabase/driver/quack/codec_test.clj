@@ -8,8 +8,11 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.driver.quack.codec :as c]
+   [metabase.driver.quack.types :as types]
    [metabase.driver.quack.wire :as wire])
-  (:import [java.nio.file Files Paths]))
+  (:import
+   [java.nio ByteBuffer]
+   [java.nio.file Files Paths]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,7 +33,8 @@
 (deftest ^:parallel a1-sleb128-round-trip-test
   (testing "signed LEB128 encode/decode incl. negatives"
     (doseq [v [0 1 -1 63 -64 64 -65 8191 -8192
-               (dec (bit-shift-left 1 62)) (- (bit-shift-left 1 62))]]
+               (dec (bit-shift-left 1 62)) (- (bit-shift-left 1 62))
+               Long/MAX_VALUE Long/MIN_VALUE]]
       (let [r (c/reader (c/varint v))]
         (is (= v (c/read-sleb128 r)) (str "value " v))))))
 
@@ -158,6 +162,27 @@
       ;; NEW: INTERVAL → structured map (months/days/micros)
       (is (= [{:months 0 :days 1 :micros 0}]       (:v_interval by-name)))
       (is (= ["hello quack"]                         (:v_varchar by-name))))))
+
+(defn- little-endian-longs [& values]
+  (let [buffer (doto (ByteBuffer/allocate (* Long/BYTES (count values)))
+                 (.order java.nio.ByteOrder/LITTLE_ENDIAN))]
+    (doseq [value values]
+      (.putLong buffer value))
+    (.array buffer)))
+
+(deftest a4-unsigned-integer-boundaries-test
+  (testing "UBIGINT decodes across the full unsigned 64-bit range"
+    (let [decode #(#'types/decode-scalar-at % 0 :UINT64 {:id 31 :name :UBIGINT})]
+      (is (= 0N (decode (little-endian-longs 0))))
+      (is (= 9223372036854775808N (decode (little-endian-longs Long/MIN_VALUE))))
+      (is (= 18446744073709551615N (decode (little-endian-longs -1))))))
+  (testing "UHUGEINT decodes across the full unsigned 128-bit range"
+    (let [decode #(#'types/decode-scalar-at % 0 :UINT128 {:id 49 :name :UHUGEINT})]
+      (is (= 0N (decode (little-endian-longs 0 0))))
+      (is (= 170141183460469231731687303715884105728N
+             (decode (little-endian-longs 0 Long/MIN_VALUE))))
+      (is (= 340282366920938463463374607431768211455N
+             (decode (little-endian-longs -1 -1)))))))
 
 (deftest a4-uuid-decode-test
   (testing "UUID decodes to a java.util.UUID with the correct sign-bit-XOR'd value

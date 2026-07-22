@@ -5,9 +5,13 @@
   transforms. Also verifies the feature flags are enabled and table-exists?
   works."
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.quack.client :as client]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.test :as mt]
    [metabase.test.data.quack :as qtd])
   (:import [java.net Socket]))
 
@@ -15,7 +19,7 @@
 (driver/initialize! :quack)
 
 (def details qtd/default-details)
-(def fake-db {:lib/type :metadata/database :details details})
+(def fake-db {:lib/type :metadata/database :id 99999 :details details})
 
 (defn- reachable? []
   (try (with-open [_ (Socket. ^String (:host details) ^int (:port details))] true)
@@ -25,8 +29,6 @@
   (let [{:keys [rows]} (client/execute-query details sql)]
     (reduce conj [] rows)))
 
-(use-fixtures :once (fn [t] (when (reachable?) (t))))
-
 ;;; ===========================================================================
 ;;; Feature flags
 ;;; ===========================================================================
@@ -35,6 +37,56 @@
   (testing "transform-related features are enabled"
     (is (true? (driver/database-supports? :quack :transforms/table fake-db)))
     (is (true? (driver/database-supports? :quack :create-or-replace-table fake-db)))))
+
+;;; ===========================================================================
+;;; Parameter handling and transaction routing
+;;; ===========================================================================
+
+(deftest inline-query-parameters-test
+  (testing "Quack SQL compilation safely inlines values because the protocol has no bind channel"
+    (let [[sql & params] (binding [driver/*compile-with-inline-parameters* false]
+                           (sql.qp/format-honeysql :quack
+                                                   {:select [[[:lift "O'Reilly"] :author]]}))]
+      (is (empty? params))
+      (is (re-find #"O''Reilly" sql))))
+  (testing "execution rejects any parameterized SQL that bypassed compilation"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"does not support separate parameters"
+                          (driver/execute-raw-queries! :quack details [["SELECT ?" [42]]])))))
+
+(defn- record-client-calls! [calls f]
+  (let [result {:cols [] :rows []}]
+    (mt/with-dynamic-fn-redefs [client/borrow-conn!       (constantly :held)
+                                client/return-conn!       (constantly nil)
+                                client/discard-conn!      (constantly nil)
+                                client/exec-on-connection (fn [_ conn-id sql]
+                                                            (swap! calls conj [conn-id sql])
+                                                            result)
+                                client/execute-sql!       (fn [_ sql]
+                                                            (swap! calls conj [:separate sql])
+                                                            result)]
+      (f))))
+
+(deftest rename-tables-uses-held-transaction-connection-test
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [driver-api/cached-database (constantly fake-db)]
+      (record-client-calls! calls
+                            #(driver/rename-tables!* :quack 1 (array-map :main/old :main/new))))
+    (is (= [[:held "BEGIN"]
+            [:held "ALTER TABLE \"main\".\"old\" RENAME TO \"new\""]
+            [:held "COMMIT"]]
+           @calls))))
+
+(deftest persistence-swap-uses-held-transaction-connection-test
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [driver-api/compile   (constantly {:query "SELECT 1"})
+                                driver-api/site-uuid (constantly "12345678-test")]
+      (record-client-calls! calls
+                            #(ddl.i/refresh! :quack fake-db {:table-name "model_1"} {})))
+    (is (= [:separate :separate :held :held :held :held]
+           (mapv first @calls)))
+    (is (= ["BEGIN" "COMMIT"]
+           (mapv second [(nth @calls 2) (last @calls)])))))
 
 ;;; ===========================================================================
 ;;; execute-raw-queries! (DDL/DML through the Quack protocol)

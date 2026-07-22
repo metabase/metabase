@@ -121,7 +121,7 @@
     (is (true?  (driver/database-supports? :quack :rename fake-db)))
     (is (true?  (driver/database-supports? :quack :atomic-renames fake-db)))
     (is (true?  (driver/database-supports? :quack :describe-is-nullable fake-db)))
-    (is (true?  (driver/database-supports? :quack :describe-is-generated fake-db)))
+    (is (false? (driver/database-supports? :quack :describe-is-generated fake-db)))
     (is (true?  (driver/database-supports? :quack :describe-default-expr fake-db)))
     ;; Group A one-liners
     (is (true?  (driver/database-supports? :quack :metadata/table-existence-check fake-db)))
@@ -130,7 +130,7 @@
     (is (true?  (driver/database-supports? :quack :expression-literals fake-db)))
     ;; Uploads + actions
     (is (true?  (driver/database-supports? :quack :uploads fake-db)))
-    (is (true?  (driver/database-supports? :quack :upload-with-auto-pk fake-db)))
+    (is (false? (driver/database-supports? :quack :upload-with-auto-pk fake-db)))
     (is (true?  (driver/database-supports? :quack :actions fake-db)))
     (is (true?  (driver/database-supports? :quack :actions/data-editing fake-db)))
     (is (true?  (driver/database-supports? :quack :actions/custom fake-db)))))

@@ -23,9 +23,10 @@
 (use-fixtures :once
   (fn [t]
     (if (reachable?)
-      (do (reset! live? true) (t))
+      (reset! live? true)
       (do (reset! live? false)
-          (log/infof "[client-test] SKIP: no Quack server at %s:%s" host port)))))
+          (log/infof "[client-test] SKIP: no Quack server at %s:%s" host port)))
+    (t)))
 
 (defn- when-live [& body] (when @live? (dorun body)))
 
@@ -135,23 +136,10 @@
 
 (deftest b8-multi-batch-fetch-holds-connection-test
   (when-live
-   (testing "range(60000) is served via the held-connection FETCH path — this
-            exceeds the default batch (12 chunks * 2048 = 24576 rows), so the
-            reducible MUST hold the pooled connection across FETCH rounds. (The
-            old connect-per-query code disconnected before FETCH and could not
-            serve this at all.)
-
-            We assert (>= 24576) rather than exactly 60000 because the beta Quack
-            extension intermittently closes a result between PREPARE and FETCH
-            ('Result has been closed') — the driver treats that as end-of-stream
-            (see client.clj/fetch), so the count is the prepare batch plus
-            whatever FETCH rounds succeeded before that. The lower bound proves
-            the FETCH path works on a held conn; the tolerance absorbs the
-            server's flakiness without flapping the test."
+   (testing "range(60000) returns every row through held-connection FETCH rounds"
      (let [{:keys [rows]} (client/execute-query details "SELECT i FROM range(60000) t(i)")
            n (reduce (fn [c _] (inc c)) 0 rows)]
-       (is (>= n 24576)
-           (str "expected >= 24576 rows (one prepare batch); got " n))))))
+       (is (= 60000 n))))))
 
 ;;; ===========================================================================
 ;;; B9. :session-sql applies to pooled connections (workload tuning over Quack)

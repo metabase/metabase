@@ -24,14 +24,14 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private source-files
-  ["src/metabase/driver/quack.clj"
-   "src/metabase/driver/quack/codec.clj"
-   "src/metabase/driver/quack/wire.clj"
-   "src/metabase/driver/quack/types.clj"
-   "src/metabase/driver/quack/client.clj"
-   "src/metabase/driver/quack/actions.clj"
-   "src/metabase/driver/quack/pool.clj"
-   "src/metabase/driver/quack/conn.clj"])
+  ["modules/drivers/quack/src/metabase/driver/quack.clj"
+   "modules/drivers/quack/src/metabase/driver/quack/codec.clj"
+   "modules/drivers/quack/src/metabase/driver/quack/wire.clj"
+   "modules/drivers/quack/src/metabase/driver/quack/types.clj"
+   "modules/drivers/quack/src/metabase/driver/quack/client.clj"
+   "modules/drivers/quack/src/metabase/driver/quack/actions.clj"
+   "modules/drivers/quack/src/metabase/driver/quack/pool.clj"
+   "modules/drivers/quack/src/metabase/driver/quack/conn.clj"])
 
 (defn- line-of
   "1-based line number of char offset idx in src."
