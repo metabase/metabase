@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.dml-capture :as dml-capture]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
@@ -264,3 +265,13 @@
             (is (< enqueued-before (value :metabase-search/index-messages-produced)))
             (testing "the purge is not double-counted as an update"
               (is (= updates-before (value :metabase-search/index-updates {:model "card"}))))))))))
+
+(deftest ^:synchronized explicit-delete-metrics-test
+  (testing "explicit search.core/delete! purges are counted in index-deletes too (appdb engine)"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Card {id :id} {:name "Explicit Purge Metrics Card"}]
+          (let [before (or (mt/metric-value system :metabase-search/index-deletes {:model "card"}) 0.0)]
+            (search/delete! :model/Card [(str id)])
+            (is (< before (or (mt/metric-value system :metabase-search/index-deletes {:model "card"}) 0.0)))
+            (is (= 0 (t2/count (search.index/active-table) :model "card" :model_id (str id))))))))))
