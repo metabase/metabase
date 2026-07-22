@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import {
+  type HistoryRouterProps,
   useNavigationType,
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
@@ -21,10 +22,20 @@ import { notifyLocationListeners, setV7Navigate } from "./navigator";
  * - mirrors every location into `state.routing` via LOCATION_CHANGE, so
  *   `getLocation` / `isNavbarOpen` / `errorPage` keep working.
  *
- * Rendered inside the router but outside `<Routes>`, so it tracks the location
- * regardless of which route matches. Deleted with the v3 engine in Phase 4.
+ * The mirror subscribes to the history when one is passed, because v3 dispatched
+ * LOCATION_CHANGE as part of the transition rather than after a render. Thunks
+ * read the store synchronously right after navigating (`setEditingDashboard`
+ * pushes `{ ...getLocation(getState()) }`), so a store that lags a render makes
+ * them push a stale location and clobber query params that were just set.
+ * Falls back to the rendered location when no history is available, which is how
+ * tests mount the tree under a plain `<MemoryRouter>`. Deleted with the v3 engine
+ * in Phase 4.
  */
-export function V7ReduxBridge(): null {
+export function V7ReduxBridge({
+  history,
+}: {
+  history?: HistoryRouterProps["history"];
+}): null {
   const navigate = useV7Navigate();
   const location = useV7Location();
   const action = useNavigationType();
@@ -35,13 +46,16 @@ export function V7ReduxBridge(): null {
     return () => setV7Navigate(null);
   }, [navigate]);
 
+  // When a history is provided the mirroring happens synchronously in
+  // `SyncHistoryRouter`'s subscription instead, so nothing to do here.
   useEffect(() => {
+    if (history) {
+      return;
+    }
     const v3Location = toV3Location(location, action);
     dispatch({ type: LOCATION_CHANGE, payload: v3Location });
-    // Fan out to the imperative router's `listen` subscribers (v3's
-    // `router.listen`), which have no other source of location changes on v7.
     notifyLocationListeners(v3Location);
-  }, [dispatch, location, action]);
+  }, [dispatch, history, location, action]);
 
   return null;
 }
