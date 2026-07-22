@@ -36,7 +36,8 @@
    [:user_id         [:maybe ms/PositiveInt]]
    [:profile_id      [:maybe :string]]
    [:message_count   ms/IntGreaterThanOrEqualToZero]
-   [:last_message_at [:maybe ms/TemporalInstant]]])
+   [:last_message_at [:maybe ms/TemporalInstant]]
+   [:forked_from_conversation_id [:maybe ms/UUIDString]]])
 
 (def ^:private ListConversationsResponse
   [:map
@@ -186,7 +187,7 @@
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
         rows    (t2/select :model/MetabotConversation
-                           {:select   [:c.id :c.created_at :c.title :c.user_id
+                           {:select   [:c.id :c.created_at :c.title :c.user_id :c.forked_from_conversation_id
                                        [(live-message-count-subquery) :message_count]
                                        [(last-live-message-at-subquery) :last_message_at]
                                        [(last-live-message-profile-id-subquery) :profile_id]]
@@ -196,7 +197,8 @@
                             :limit    limit
                             :offset   offset})]
     {:data   (mapv #(-> %
-                        (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at])
+                        (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at
+                                      :forked_from_conversation_id])
                         (assoc :conversation_id (:id %)))
                    rows)
      :total  total

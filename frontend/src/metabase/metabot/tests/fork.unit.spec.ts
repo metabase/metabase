@@ -20,7 +20,7 @@ import {
 
 const forkedConversation = createMockMetabotConversationDetail({
   conversation_id: "forked-convo-id",
-  title: "Who is your favorite? (forked)",
+  title: null,
   messages: [
     {
       id: "m1",
