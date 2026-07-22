@@ -46,7 +46,7 @@ driver:
         advanced-options: true
     - name: universe-domain
       display-name: Universe Domain
-      helper-text: The Google Cloud Universe Domain to use.
+      helper-text: The Google Cloud Universe Domain to use (e.g. googleapis.com or s3nsapis.fr).
       placeholder: googleapis.com
       required: false
       type: string
