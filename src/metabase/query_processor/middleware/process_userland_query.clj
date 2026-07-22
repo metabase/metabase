@@ -240,7 +240,7 @@
 
   3. Add extra info like `running_time` and `started_at` to the results
 
-  4. Submit a background job to analyze field usages"
+  4. Submit a background job to save execution info"
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
