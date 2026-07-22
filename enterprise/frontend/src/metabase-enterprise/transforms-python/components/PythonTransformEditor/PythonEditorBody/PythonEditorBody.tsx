@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
-import { push } from "react-router-redux";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
 import { clickableTokens } from "metabase/common/components/CodeMirror";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

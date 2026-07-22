@@ -12,14 +12,18 @@
 (def ^:private stub-query
   {:database 1 :type "query" :query {:source-table 1}})
 
-(defn- run-create-chart [profile-id]
-  (let [memory (atom {:state   {:queries {"q-1" stub-query}}
-                      :context {}})]
-    (binding [shared/*memory-atom* memory
-              shared/*profile-id* profile-id]
-      (charts/create-chart-tool {:data_source  {:query_id "q-1"}
-                                 :viz_settings {:chart_type "bar"}
-                                 :title        "Orders by month"}))))
+(defn- run-create-chart
+  ([profile-id]
+   (run-create-chart profile-id "bar"))
+  ([profile-id chart-type]
+   (let [memory (atom {:state   {:queries {"q-1" stub-query}}
+                       :context {}})]
+     (binding [shared/*memory-atom* memory
+               shared/*profile-id* profile-id]
+       (charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                  :viz_settings {:chart_type chart-type}
+                                  :title        "Orders by month"
+                                  :description  "Monthly count of orders."})))))
 
 (deftest create-chart-inline-viz-test
   (testing "emits a single generated_entity card part in the NLQ profile"
@@ -31,6 +35,7 @@
       (is (= "card" (:type entity)))
       (is (string? (:id entity)))
       (is (= "Orders by month" (:title entity)))
+      (is (= "Monthly count of orders." (:description entity)))
       (is (= "bar" (:display entity)))
       (testing "embeds the query so the FE can run it"
         (is (= "q-1" (get-in entity [:query :id])))
@@ -45,6 +50,12 @@
       (is (str/starts-with? (:data (first parts)) "/question#"))
       (is (not-any? #(= "generated_entity" (:data-type %)) parts)))))
 
+(deftest create-chart-treemap-test
+  (testing "the tool schema accepts treemap as a chart type"
+    (let [result (run-create-chart :nlq "treemap")]
+      (is (= :treemap (get-in result [:structured-output :chart-type])))
+      (is (= "treemap" (get-in result [:data-parts 0 :data :display]))))))
+
 (deftest edit-chart-query-fallback-test
   (testing "edit_chart resolves the query from queries-state when chart memory has no query"
     (let [memory (atom {:state   {:queries {"q-1" stub-query}
@@ -57,7 +68,8 @@
                            shared/*profile-id* :nlq]
                    (charts/edit-chart-tool {:chart_id         "c-1"
                                             :new_viz_settings {:chart_type "pie"}
-                                            :title            "Orders by month"}))
+                                            :title            "Orders by month"
+                                            :description      "Monthly count of orders."}))
           parts  (:data-parts result)
           entity (:data (first parts))]
       (is (= 1 (count parts)))

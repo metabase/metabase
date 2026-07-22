@@ -18,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.index-test-util :as index-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [next.jdbc :as next.jdbc]
@@ -185,16 +186,32 @@
   "Insert new products into the transforms_products table."
   [products]
   (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
-        values-list (str/join ", "
-                              (map (fn [{:keys [name category price created-at]}]
-                                     (format "('%s', '%s', %s, '%s')" name category price created-at))
-                                   products))
-        insert-sql (format "INSERT INTO %s (%s) VALUES %s"
-                           (sql.u/quote-name driver/*driver* :table schema source-table-name)
-                           (str/join "," (map #(sql.u/quote-name driver/*driver* :field %) ["name" "category" "price" "created_at"]))
-                           values-list)]
-    (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])))
+        spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+        table-sql (sql.u/quote-name driver/*driver* :table schema source-table-name)
+        field-sql #(sql.u/quote-name driver/*driver* :field %)]
+    (if (#{:clickhouse :snowflake} driver/*driver*)
+      ;; ClickHouse has no auto-increment: a plain INSERT leaves `id` at the column default (0), which
+      ;; falls below any existing integer checkpoint. Snowflake has AUTOINCREMENT, but the sequence does
+      ;; not advance when rows are inserted with explicit ids (as the dataset loader does), so a plain
+      ;; INSERT gets `id` 1, again below the checkpoint. Assign explicit ids continuing from the current max.
+      (driver/execute-raw-queries!
+       driver/*driver* spec
+       (vec (for [{:keys [name category price created-at]} products]
+              [(format "INSERT INTO %s (%s) SELECT max(%s) + 1, '%s', '%s', %s, '%s' FROM %s"
+                       table-sql
+                       (str/join "," (map field-sql ["id" "name" "category" "price" "created_at"]))
+                       (field-sql "id")
+                       name category price created-at
+                       table-sql)])))
+      (let [values-list (str/join ", "
+                                  (map (fn [{:keys [name category price created-at]}]
+                                         (format "('%s', '%s', %s, '%s')" name category price created-at))
+                                       products))
+            insert-sql (format "INSERT INTO %s (%s) VALUES %s"
+                               table-sql
+                               (str/join "," (map field-sql ["name" "category" "price" "created_at"]))
+                               values-list)]
+        (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])))))
 
 (defn- delete-test-products!
   [products]
@@ -289,9 +306,7 @@
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data")
                           (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc)
-                               (not= driver/*driver* :clickhouse)
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc)
                       (testing "After inserting new data, incremental run appends only new rows"
                         (with-insert-test-products!
                           [{:name "Incremental Twice Product"
@@ -439,10 +454,7 @@
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data")
                           (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
-                               (not= driver/*driver* :clickhouse)
-                               ;; this *should* work see #68965 for context, will plan follow-up task
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
                       (testing "Add new data and run incrementally"
                         (with-insert-test-products!
                           [{:name "After Switch Product"
@@ -688,9 +700,7 @@
                         (transforms.execute/execute! transform {:run-method :manual})
                         (let [row-count (get-table-row-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc)
-                               (not= driver/*driver* :clickhouse)
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc)
                       (testing "After inserting new data, incremental run appends only new rows"
                         (with-insert-test-products!
                           [{:name "New Table Tag Product"
@@ -703,3 +713,79 @@
                                   checkpoint (get-checkpoint-value (:id transform))]
                               (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                               (is (some? checkpoint) "Checkpoint should be updated"))))))))))))))))
+
+(defn- incremental-index-test-drivers
+  "Index-supporting drivers that also run incremental transforms"
+  []
+  (into #{} (filter (index-util/index-test-drivers)) (test-drivers)))
+
+(deftest ^:synchronized ^:mb/transforms-python-test declared-indexes-on-incremental-transform-test
+  (testing "incremental: the first (full) run creates the target's declared indexes; an append run preserves them"
+    ;; The first run has no watermark, so it's a full rebuild that creates the indexes. The append run keeps the
+    ;; live table, so `apply-target-indexes!`'s full-rebuild gate skips it (a broken gate would re-create them).
+    (mt/test-drivers (incremental-index-test-drivers)
+      (mt/with-premium-features #{:transforms-basic :transforms-python}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [{:keys [indexes expected physical-indexes]} (index-util/driver-cases driver/*driver*)
+                checkpoint-config (:integer checkpoint-configs)
+                checkpoint-field  (:field-name checkpoint-config)]
+            (doseq [transform-type [:mbql :python]]
+              (testing (str "transform-type " transform-type)
+                (with-transform-cleanup! [{table-name :name :as target} (target-table-gen "incremental_index")]
+                  (let [payload (make-incremental-transform-payload "Incremental Index Transform"
+                                                                    target transform-type checkpoint-config)
+                        schema  (:schema target)]
+                    (mt/with-temp [:model/Transform transform payload]
+                      (t2/insert! :model/TableIndex (for [index indexes]
+                                                      {:transform_id (:id transform)
+                                                       :index_name   (or (:name index) (name (:kind index)))
+                                                       :structured   index}))
+                      (testing "first (full) run creates the declared indexes"
+                        (execute-transform-with-ordering! transform transform-type checkpoint-field
+                                                          {:run-method :manual})
+                        (transforms.tu/wait-for-table table-name 10000)
+                        (is (= expected (physical-indexes (mt/db) schema table-name))))
+                      (testing "append run preserves the indexes"
+                        (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
+                                                      :price 379.99 :created-at "2024-01-20T10:00:00"}]
+                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                            (execute-transform-with-ordering! transform transform-type checkpoint-field
+                                                              {:run-method :manual})
+                            (is (= expected (physical-indexes (mt/db) schema table-name)))))))))))))))))
+
+(deftest ^:synchronized index-added-mid-lifecycle-forces-rebuild-test
+  (testing "an index request created after the watermark is set forces the next run to rebuild and apply it"
+    ;; Nothing resets the watermark here: the pending TableIndex row alone must flip `full-incremental-run?`, so a
+    ;; broken pending-changes gate would leave this run an append and the index would never reach the warehouse.
+    (mt/test-drivers (incremental-index-test-drivers)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [{:keys [expected physical-indexes indexes]} (index-util/driver-cases driver/*driver*)
+                checkpoint-config (:integer checkpoint-configs)
+                checkpoint-field  (:field-name checkpoint-config)]
+            ;; name-set catalogs only; other drivers report shapes this test can't extend generically
+            (when (set? expected)
+              (with-transform-cleanup! [{table-name :name :as target} (target-table-gen "incremental_midrun_idx")]
+                (mt/with-temp [:model/Transform transform (make-incremental-transform-payload
+                                                           "Mid-lifecycle Index Transform"
+                                                           target :mbql checkpoint-config)]
+                  (testing "a first run establishes the watermark"
+                    (execute-transform-with-ordering! transform :mbql checkpoint-field {:run-method :manual})
+                    (transforms.tu/wait-for-table table-name 10000)
+                    (is (some? (get-checkpoint-value (:id transform)))))
+                  ;; the driver's own first index kind: a kind it doesn't advertise is dropped before any DDL runs.
+                  (t2/insert! :model/TableIndex {:transform_id (:id transform)
+                                                 :index_name   "mid_run_idx"
+                                                 :structured   (assoc (first indexes) :name "mid_run_idx")})
+                  (testing "the watermark survives the request untouched"
+                    (is (some? (get-checkpoint-value (:id transform)))))
+                  (testing "the next run rebuilds and the index lands in the warehouse"
+                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (execute-transform-with-ordering! transform :mbql checkpoint-field {:run-method :manual})
+                      (is (contains? (physical-indexes (mt/db) (:schema target) table-name) "mid_run_idx"))
+                      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex
+                                                          :transform_id (:id transform)
+                                                          :index_name "mid_run_idx")))))
+                  (testing "once settled, the run after that appends again"
+                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (is (not (transforms-base.u/full-incremental-run? transform))))))))))))))

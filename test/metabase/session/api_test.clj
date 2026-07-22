@@ -33,9 +33,7 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn- reset-throttlers []
-  (doseq [throttler (vals @#'api.session/login-throttlers)]
-    (reset! (:attempts throttler) nil))
-  (reset! (:attempts (var-get #'api.session/reset-password-throttler)) nil))
+  (api.session/reset-throttlers-for-testing!))
 
 (use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
@@ -594,7 +592,6 @@
         (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
         (testing "Google auth works with remember me and rasta"
           ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
-          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","

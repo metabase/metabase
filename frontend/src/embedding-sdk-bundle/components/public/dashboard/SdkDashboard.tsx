@@ -22,6 +22,7 @@ import {
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { DashboardSubscriptionsButton } from "embedding-sdk-bundle/components/public/notifications/DashboardSubscriptionsButton";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
@@ -37,6 +38,7 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
   getIsGuestEmbed,
+  getPlugins,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
@@ -325,8 +327,15 @@ const SdkDashboardInner = ({
     dashboardId,
   });
 
+  // `dashboardCardMenu` can be supplied either directly on the dashboard via
+  // `plugins`, or globally through `MetabaseProvider` (stored in the SDK Redux
+  // state). The local prop takes precedence, then the global plugin, and
+  // finally the component's built-in default menu.
+  const globalPlugins = useSdkSelector(getPlugins);
   const finalDashcardMenu =
-    plugins?.dashboard?.dashboardCardMenu ?? dashcardMenu;
+    plugins?.dashboard?.dashboardCardMenu ??
+    globalPlugins?.dashboard?.dashboardCardMenu ??
+    dashcardMenu;
 
   const [renderModeState, setRenderMode] = useState<
     "dashboard" | "queryBuilder"
@@ -538,6 +547,7 @@ const SdkDashboardInner = ({
             ? navigateToNewCardFromDashboard
             : onNavigateToNewCardFromDashboard
         }
+        onEditQuestion={onEditQuestionWithNav}
         onNewQuestion={() => {
           if (isDashboardDirty) {
             show({
@@ -613,10 +623,7 @@ const SdkDashboardInner = ({
             </MaybeStyledWrapper>
           ))
           .with({ finalRenderMode: "dashboard" }, () => (
-            <SdkDashboardProvider
-              plugins={plugins}
-              onEditQuestion={onEditQuestionWithNav}
-            >
+            <SdkDashboardProvider plugins={plugins}>
               {children ?? (
                 <MaybeStyledWrapper
                   skip={skipStyledWrapper}
@@ -641,18 +648,24 @@ const SdkDashboardInner = ({
                 />
               </MaybeStyledWrapper>
             ) : (
-              <DashboardQueryBuilder
-                onCreate={(question) => {
-                  setNewDashboardQuestionId(question.id);
-                  sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
-                  dashboardContextProviderRef.current?.refetchDashboard();
-                }}
-                onNavigateBack={() => {
-                  sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
-                }}
-                dataPickerProps={dataPickerProps}
-                onVisualizationChange={onVisualizationChange}
-              />
+              <MaybeStyledWrapper
+                skip={skipStyledWrapper}
+                className={className}
+                style={style}
+              >
+                <DashboardQueryBuilder
+                  onCreate={(question) => {
+                    setNewDashboardQuestionId(question.id);
+                    sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
+                    dashboardContextProviderRef.current?.refetchDashboard();
+                  }}
+                  onNavigateBack={() => {
+                    sdkNavigation?.pop(); // onPop handles setRenderMode("dashboard")
+                  }}
+                  dataPickerProps={dataPickerProps}
+                  onVisualizationChange={onVisualizationChange}
+                />
+              </MaybeStyledWrapper>
             ),
           )
           .exhaustive()}
@@ -662,6 +675,7 @@ const SdkDashboardInner = ({
   );
 };
 
+// Unjustified type cast. FIXME
 export const SdkDashboard = withPublicComponentWrapper(SdkDashboardInner, {
   supportsGuestEmbed: true,
 }) as typeof SdkDashboardInner &
@@ -674,10 +688,11 @@ export const SdkDashboard = withPublicComponentWrapper(SdkDashboardInner, {
     | "ParametersList"
     | "FullscreenButton"
     | "ExportAsPdfButton"
-    | "SubscriptionsButton"
     | "InfoButton"
     | "RefreshPeriod"
-  >;
+  > & {
+    SubscriptionsButton: typeof DashboardSubscriptionsButton;
+  };
 
 SdkDashboard.Grid = Dashboard.Grid;
 SdkDashboard.Header = Dashboard.Header;
@@ -686,7 +701,7 @@ SdkDashboard.Tabs = Dashboard.Tabs;
 SdkDashboard.ParametersList = Dashboard.ParametersList;
 SdkDashboard.FullscreenButton = Dashboard.FullscreenButton;
 SdkDashboard.ExportAsPdfButton = Dashboard.ExportAsPdfButton;
-SdkDashboard.SubscriptionsButton = Dashboard.SubscriptionsButton;
+SdkDashboard.SubscriptionsButton = DashboardSubscriptionsButton;
 SdkDashboard.InfoButton = Dashboard.InfoButton;
 SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 
@@ -739,8 +754,9 @@ function DashboardQueryBuilder({
       }}
       entityTypes={dataPickerProps?.entityTypes}
       withChartTypeSelector
-      // The default value is 600px and it cuts off the "Visualize" button.
-      height="700px"
+      // Fill the available space so the query builder matches the dashboard's
+      // sizing instead of a fixed height that leaves whitespace / scrolls.
+      height="100%"
       onVisualizationChange={onVisualizationChange}
     />
   );

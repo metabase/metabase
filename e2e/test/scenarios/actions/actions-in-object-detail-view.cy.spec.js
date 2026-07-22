@@ -217,10 +217,8 @@ describe(
 
         cy.wait("@executeAction");
 
-        cy.findByLabelText("Team Name").should("not.exist");
-        cy.findByLabelText(
-          "Team Name: This Team_name value already exists.",
-        ).should("exist");
+        cy.findByLabelText("Team Name").should("exist");
+        cy.findByText("This Team_name value already exists.").should("exist");
 
         cy.findByText("Team_name already exists.").should("exist");
       });

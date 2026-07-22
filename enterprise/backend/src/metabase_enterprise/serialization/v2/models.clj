@@ -54,6 +54,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
+   "TableIndex"
    "TimelineEvent"
    "TransformJobTransformTag"
    "TransformTransformTag"])
@@ -79,6 +80,7 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
+   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
@@ -88,6 +90,7 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "McpFeedback"
    "McpQueryHandle"
    "McpSessionLog"
    "McpToolCallLog"

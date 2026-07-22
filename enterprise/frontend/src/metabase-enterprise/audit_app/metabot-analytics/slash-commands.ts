@@ -1,8 +1,7 @@
-import { push } from "react-router-redux";
-
 import { getMetabotConversation } from "metabase/metabot/state";
 import type { MetabotSlashCommandHandler } from "metabase/plugins/oss/audit";
 import { addUndo } from "metabase/redux/undo";
+import { push } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as EnterpriseUrls from "../../urls";

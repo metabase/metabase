@@ -63,6 +63,7 @@ function convertActionToQuestionCard(
     dataset_query: action.dataset_query,
     display: "action",
     visualization_settings:
+      // Unjustified type cast. FIXME
       action.visualization_settings as VisualizationSettings,
     type: "question",
     can_write: true,
@@ -109,10 +110,14 @@ function convertQuestionToAction(
 
   return {
     id: question.id(),
+    // Unjustified type cast. FIXME
     name: question.displayName() as string,
     description: question.description(),
+    // Unjustified type cast. FIXME
     dataset_query: cleanQuestion.datasetQuery() as NativeDatasetQuery,
+    // Unjustified type cast. FIXME
     database_id: question.databaseId() as DatabaseId,
+    // Unjustified type cast. FIXME
     parameters: parameters as WritebackParameter[],
     visualization_settings: formSettings,
   };
@@ -144,6 +149,7 @@ function QueryActionContextProvider({
   const [question, setQuestion] = useState(initialQuestion);
 
   const query = useMemo(
+    // Unjustified type cast. FIXME
     () => question.legacyNativeQuery() as NativeQuery,
     [question],
   );

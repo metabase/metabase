@@ -1,6 +1,6 @@
 {
   "name": "@metabase/embedding-sdk-react",
-  "version": "0.63.0-alpha",
+  "version": "0.64.0-alpha",
   "sdkRelease": {
     "distTag": "alpha",
     "tagAsLatest": false
@@ -22,6 +22,19 @@
       "types": "./dist/nextjs.d.ts",
       "require": "./dist/nextjs.cjs",
       "import": "./dist/nextjs.js"
+    },
+    "./data-app": {
+      "types": "./dist/data-app.d.ts",
+      "require": "./dist/data-app.cjs",
+      "import": "./dist/data-app.js"
+    },
+    "./data-app-dev": {
+      "types": "./dist/data-app-dev.d.ts",
+      "import": "./dist/data-app-dev.js"
+    },
+    "./data-app-dev/config": {
+      "types": "./dist/data-app-dev.config.d.ts",
+      "import": "./dist/data-app-dev.config.js"
     },
     "./package.json": "./package.json"
   },

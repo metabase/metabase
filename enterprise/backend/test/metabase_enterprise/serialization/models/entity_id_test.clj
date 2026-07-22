@@ -54,6 +54,7 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataApp
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
@@ -63,6 +64,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpFeedback
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
@@ -124,6 +126,7 @@
     :model/SourceSegmentDaily
     :model/SsoRelayState
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     :model/Tenant

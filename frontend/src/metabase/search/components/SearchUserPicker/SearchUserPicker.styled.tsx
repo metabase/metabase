@@ -29,6 +29,7 @@ export const SearchUserSelectBox = styled(Stack)`
   border-radius: ${({ theme }) => theme.radius.md};
 `;
 
+// Unjustified type cast. FIXME
 export const SelectedUserButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`

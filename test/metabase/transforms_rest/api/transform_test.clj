@@ -182,7 +182,8 @@
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a required param"
                 (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                      tag          (get (lib/template-tags base-query) "id")
+                      tag          (m/find-first #(= (:name %) "id")
+                                                 (lib/template-tags base-query))
                       query        (lib/with-template-tags base-query
                                      {"id" (assoc tag :required true)})
                       schema       (get-test-schema)
@@ -349,7 +350,8 @@
                                                                :name table-name}})
                   transform-id (:id created)
                   base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                  tag          (get (lib/template-tags base-query) "id")
+                  tag          (m/find-first #(= (:name %) "id")
+                                             (lib/template-tags base-query))
                   new-query        (lib/with-template-tags base-query
                                      {"id" (assoc tag :required true)})
                   response     (mt/user-http-request :crowberto :put 400
@@ -634,6 +636,33 @@
                 (testing "GET response hydrates creator"
                   (is (map? (:creator get-resp)))
                   (is (= lucky-id (get-in get-resp [:creator :id]))))))))))))
+
+(deftest requestable-indexes-field-test
+  ;; `#{}` keeps this on the OSS path: query transforms need no token off-cloud, just the `transforms-enabled` setting.
+  (mt/with-premium-features #{}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (testing "GET /transform/:id surfaces the target driver's requestable index methods"
+        (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+          (mt/dataset transforms-dataset/transforms-test
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+                (with-transform-cleanup! [table-name "reqidx_products"]
+                  (let [body     {:name   "Reqidx Products"
+                                  :source {:type "query" :query (make-query "Gadget")}
+                                  :target {:type "table" :schema (get-test-schema) :name table-name}}
+                        created  (mt/user-http-request :lucky :post 200 "transform" body)
+                        get-resp (mt/user-http-request :lucky :get 200 (format "transform/%s" (:id created)))
+                        kinds    (set (keys (driver/supported-index-methods driver/*driver* (mt/db))))]
+                    (testing "the key is always present"
+                      (is (contains? get-resp :requestable_indexes)))
+                    (if (seq kinds)
+                      (testing "each advertised kind appears with a lifecycle and non-empty fields"
+                        (is (= kinds (set (keys (:requestable_indexes get-resp)))))
+                        (doseq [[_kind v] (:requestable_indexes get-resp)]
+                          (is (contains? #{"standalone" "inline"} (:lifecycle v)))
+                          (is (seq (:fields v)))))
+                      (testing "drivers with no index support report nil"
+                        (is (nil? (:requestable_indexes get-resp)))))))))))))))
 
 (deftest source-readable-field-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -1849,7 +1878,7 @@
                                                                     :schema   (get-test-schema)
                                                                     :name     (str "target_" (u/generate-nano-id))
                                                                     :database (mt/id)}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (let [transform-ids (search-transform-ids search-term)]
                 (is (contains? transform-ids query-id))
                 (is (not (contains? transform-ids python-id)))))))))))
@@ -1867,7 +1896,7 @@
                                                               :target {:type   "table"
                                                                        :schema (get-test-schema)
                                                                        :name   (str "target_" (u/generate-nano-id))}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (let [results (mt/user-http-request :rasta :get 200 "search" :q search-term :models "transform")
                     ids     (set (map :id (:data results)))]
                 (is (empty? ids))
@@ -1894,7 +1923,7 @@
                                                          :target {:type   "table"
                                                                   :schema (get-test-schema)
                                                                   :name   (str "target_" (u/generate-nano-id))}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (is (= #{native-id mbql-id}
                      (search-transform-ids search-term))))))))))
 

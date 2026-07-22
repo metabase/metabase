@@ -1,9 +1,8 @@
-import type { ReactNode } from "react";
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { useDispatch } from "metabase/redux";
+import { Outlet, replace } from "metabase/router";
 import { extractCollectionId } from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 
@@ -11,17 +10,13 @@ import { CollectionContent } from "../CollectionContent";
 
 export interface CollectionLandingProps {
   params: CollectionLandingParams;
-  children?: ReactNode;
 }
 
 export interface CollectionLandingParams {
   slug: string;
 }
 
-const CollectionLanding = ({
-  params: { slug },
-  children,
-}: CollectionLandingProps) => {
+const CollectionLanding = ({ params: { slug } }: CollectionLandingProps) => {
   const dispatch = useDispatch();
   const { data: trashCollection } = useGetCollectionQuery({ id: "trash" });
 
@@ -50,7 +45,7 @@ const CollectionLanding = ({
   return (
     <>
       <CollectionContent collectionId={collectionId} />
-      {children}
+      <Outlet />
     </>
   );
 };

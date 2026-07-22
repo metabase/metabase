@@ -126,8 +126,10 @@
       (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
           (synthesize-table! db-id schema table-name))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
-                      {:table-id table-id
-                       :database-names (sort (t2/select-fn-vec :name :model/Table))})))))
+                      {:table-id       table-id
+                       :db-name        db-name
+                       :database-names (sort (t2/select-fn-vec :name :model/Database))
+                       :error          ::database-not-found})))))
 
 (defn import-field-fk
   "Given [db-name schema table-name field-name ...], return numeric field_id. If part of the parent

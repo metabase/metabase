@@ -1301,7 +1301,7 @@ The Anthropic API Key.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4-5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -1393,6 +1393,21 @@ Whether the user's recently viewed items are included in the Metabot system prom
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_MFA_CHALLENGE_SIGNING_KEY`
+
+- Type: string
+- Default: `null`
+
+Key used to sign MFA challenge tokens. Generated automatically on first use.
+
+### `MB_MFA_ENFORCEMENT`
+
+- Type: keyword
+- Default: `off`
+- [Configuration file name](./config-file.md): `mfa-enforcement`
+
+Controls whether two-factor authentication is available to users. :off disables it entirely; :optional allows users to enroll voluntarily.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
@@ -1580,6 +1595,27 @@ The maximum size of the cache, per saved question, in kilobytes.
 - [Configuration file name](./config-file.md): `query-caching-max-ttl`
 
 The absolute maximum time to keep any cached query results, in seconds.
+
+### `MB_QUEUE_BACKEND`
+
+- Type: string
+- Default: `quartz`
+
+Which queue backend to use. Valid values: `quartz`, `memory`.
+
+### `MB_QUEUE_MAX_RETRIES`
+
+- Type: integer
+- Default: `5`
+
+Maximum number of times a failed queue message will be retried before being dropped.
+
+### `MB_QUEUE_NO_LISTENER_MAX_AGE_MS`
+
+- Type: integer
+- Default: `86400000`
+
+How long (in milliseconds) a Quartz queue message with no listener anywhere in the cluster is kept before the reaper drops it. With node-affinity, such a message is never acquired and just waits in the store; this bounds that wait so a message for a queue no node handles (e.g. a new queue whose node was rolled back) does not linger forever. Generous by default (1 day) so a node can restart or be re-upgraded and still deliver it.
 
 ### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
 
@@ -1845,8 +1881,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 - Default: `null`
 - [Configuration file name](./config-file.md): `saml-identity-provider-slo-uri`
 
-This is the URL where your users go to logout of your identity provider. Depending on which IdP you're
-using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`.
+If SAML single logout (SLO) is enabled, Metabase will make an HTTP-Redirect SLO request to this endpoint when a user logs out of Metabase.
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
@@ -1897,7 +1932,7 @@ Absolute path to the Keystore file to use for signing SAML requests.
 - Default: `false`
 - [Configuration file name](./config-file.md): `saml-slo-enabled`
 
-Is SAML Single Log Out enabled?
+If enabled, Metabase will redirect users to your configured SAML Single Logout endpoint when they log out of Metabase.
 
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 
@@ -2327,10 +2362,14 @@ Controls the timeout for transform runs, including the queries they execute. Thi
 ### `MB_TRANSFORMS_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `transforms-enabled`.
 - [Configuration file name](./config-file.md): `transforms-enabled`
 
-Enable transforms for instances that have not explicitly purchased the transform add-on.
+Whether transforms are enabled.
+
+When enabled, data analysts and admins can write, schedule and run transforms.
+  Disabling this feature will hide all transform features, prevent transform editing or creation, and prevent any new runs.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 

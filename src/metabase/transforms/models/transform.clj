@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -40,6 +41,13 @@
            (and (api/is-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
 
+(defn- native-transform-write-allowed?
+  [instance source-db-id]
+  (or (not (transforms-base.u/native-query-transform? instance))
+      (and source-db-id
+           (= :query-builder-and-native
+              (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
+
 (defn- transform-writable?
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
@@ -48,7 +56,8 @@
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
-                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))))))
+                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
+                (native-transform-write-allowed? instance (:source_database_id instance))))))
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
@@ -82,7 +91,8 @@
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
                   (transforms.u/source-tables-readable? instance)
-                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id))))))
+                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
+                  (native-transform-write-allowed? instance source-db-id))))))
 
 (defn- orphan-query?
   "True when the query map has its `:database` key explicitly set to nil — the
@@ -175,6 +185,10 @@
                           ;; No database existence check added here, unlike for insert.
                           ;; Just allow updates for an invalid target to fail.
                           (transforms-base.i/target-db-id transform))]
+    ;; A source or target edit may change the output columns, and we can't cheaply tell, so invalidate conservatively:
+    ;; the next run re-applies the managed indexes against the new schema and fails if a column is gone.
+    (when (and target-changed? (not mi/*deserializing?*))
+      (table-index/mark-for-revalidation! (:id transform)))
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
@@ -394,6 +408,20 @@
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
+(mi/define-batched-hydration-method indexes
+  :indexes
+  "Fetch the table indexes that belong to each transform"
+  [transforms]
+  (when (seq transforms)
+    (let [transform-ids (into #{} (map u/the-id) transforms)
+          idx-mappings  (group-by :transform_id
+                                  (filter table-index/applicable?
+                                          (t2/select :model/TableIndex
+                                                     :transform_id [:in transform-ids]
+                                                     {:order-by [[:index_name :asc]]})))]
+      (for [transform transforms]
+        (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
+
 (mi/define-batched-hydration-method table-with-db-and-fields
   :table-with-db-and-fields
   "Fetch tables with their fields. The tables show up under the `:table` property."
@@ -468,7 +496,8 @@
                                                                                   (m/update-existing :database_id import-maybe-int-database-fk))))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))}})
+               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))
+               :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
 (defmethod serdes/deserialization-dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]

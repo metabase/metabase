@@ -1,16 +1,19 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
-import { goBack, push, replace } from "react-router-redux";
 import { match } from "ts-pattern";
 
 import { useDispatch } from "metabase/redux";
-import type { InjectedRouter, Route } from "metabase/router";
+import type { InjectedRouter, PlainRoute, Route } from "metabase/router";
+import { goBack, push, replace } from "metabase/router";
 
 import { useBeforeUnload } from "./use-before-unload";
 
 interface UseConfirmLeaveModalInput {
   router: InjectedRouter;
-  route: Route;
+  // The matched route handed to `setRouteLeaveHook` (typed `any`). Accepts the
+  // route object in either representation the app threads it as: the config
+  // object from `useRouter().routes` (`PlainRoute`) or the `Route` prop type.
+  route: Route | PlainRoute;
   isEnabled: boolean;
   isLocationAllowed?: (location: Location | undefined) => boolean;
 }

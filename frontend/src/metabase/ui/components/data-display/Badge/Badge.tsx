@@ -35,6 +35,8 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(function Badge(
 ) {
   return (
     <MantineBadge
+      // we're overloading `color` prop with custom values, based on which
+      // proper color tokens will be used (see Badge.config.tsx)
       color={color as MantineBadgeProps["color"]}
       ref={ref}
       size={size}

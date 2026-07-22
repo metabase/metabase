@@ -25,7 +25,6 @@
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
 ;; and re-enable H2 in the extract (production keeps it filtered).
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
@@ -1246,10 +1245,58 @@
                                                  :entity_id     "0123456789abcdef_0123"
                                                  :name          "Some card"
                                                  :table_id      ["bad-db" nil "CUSTOMERS"]
-                                                 :visualization_settings {}}])]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"was not found"
-                                  (serdes.load/load-metabase! ingestion)))))))))
+                                                 :visualization_settings {}}])
+                e         (try
+                            (serdes.load/load-metabase! ingestion)
+                            nil
+                            (catch clojure.lang.ExceptionInfo e e))]
+            (is (some? e))
+            (is (re-find #"was not found" (ex-message e)))
+            (testing "the not-found error names the entity holding the dangling reference (GHY-3992)"
+              (is (= {:model "Database" :id "bad-db"}
+                     (select-keys (ex-data e) [:model :id])))
+              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+                     (:referrer (ex-data e)))))
+            ;; attaching the referrer must not nest the original beneath itself: error reporting renders the
+            ;; whole cause chain, and a self-nested exception prints the same message twice
+            (testing "attaching the referrer does not duplicate the error through the cause chain"
+              (is (nil? (ex-cause e))))))
+        ;; `result-metadata-deps` derives deps only from each entry's `:field_ref`, never from its `:table_id`.
+        ;; So a result_metadata `:table_id` naming an absent database gets past dependency resolution and only
+        ;; fails inside `serdes/load-one!`, where `import-table-fk` raises ::database-not-found. (The Card's own
+        ;; top-level `table_id` cannot be used here: `populate-query-fields` recomputes it from `dataset_query`.)
+        (testing "a result_metadata table_id naming an absent database names the database and the card (GHY-3992)"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta     [{:model "Card" :id "0123456789abcdef_0123"}]
+                                                 :created_at      (t/instant)
+                                                 :creator_id      "glee@rush.yyz"
+                                                 :database_id     "my-db"
+                                                 :dataset_query   {:database "my-db"
+                                                                   :type     :query
+                                                                   :query    {:source-table ["my-db" nil "CUSTOMERS"]}}
+                                                 :display         :table
+                                                 :entity_id       "0123456789abcdef_0123"
+                                                 :name            "Some card"
+                                                 :result_metadata [{:name      "STATE"
+                                                                    :base_type :type/Text
+                                                                    :table_id  ["absent-db" nil "CUSTOMERS"]}]
+                                                 :table_id        ["my-db" nil "CUSTOMERS"]
+                                                 :visualization_settings {}}])
+                e         (try
+                            (serdes.load/load-metabase! ingestion)
+                            nil
+                            (catch clojure.lang.ExceptionInfo e e))
+                root      (->> (iterate ex-cause e)
+                               (take-while some?)
+                               (some #(when (= :metabase.models.serialization.resolve.db/database-not-found
+                                               (:error (ex-data %)))
+                                        %)))]
+            (is (some? e))
+            (testing "the root cause carries the missing database name"
+              (is (some? root))
+              (is (= "absent-db" (:db-name (ex-data root)))))
+            (testing "the outer load-failure names the card that failed to load"
+              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+                     (:entity (ex-data e)))))))))))
 
 (deftest card-with-snippet-test
   (let [db1s      (atom nil)
@@ -1278,7 +1325,7 @@
         (testing "on extraction"
           (reset! extracted (serdes/extract-one "Card" {} @card1s))
           (is (=? {:stages [{:lib/type      :mbql.stage/native
-                             :template-tags {"snippet: things" {:snippet-id (:entity_id @snippet1s)}}}]}
+                             :template-tags [{:name "snippet: things", :snippet-id (:entity_id @snippet1s)}]}]}
                   (:dataset_query @extracted))))
         (testing "when loading"
           (let [new-eid   (u/generate-nano-id)

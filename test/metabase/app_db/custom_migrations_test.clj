@@ -2909,6 +2909,34 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
+
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]

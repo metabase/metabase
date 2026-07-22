@@ -23,6 +23,7 @@ const groupedShortcuts = _.groupBy(
   "shortcutGroup",
 );
 
+// Unjustified type cast. FIXME
 const shortcutGroups = Object.keys(groupedShortcuts).filter(
   (val) => !!val,
 ) as ShortcutGroup[];

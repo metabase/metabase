@@ -1,4 +1,4 @@
-import type { Middleware } from "@reduxjs/toolkit";
+import type { Action, Middleware, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
@@ -67,7 +67,12 @@ export const PLUGIN_HOMEPAGE_SETTING: {
   CustomUrlOption: { label: string; Control: ComponentType } | null;
 } = getDefaultHomepageSetting();
 
-const getDefaultReduxMiddlewares = (): Middleware[] => [];
+// dispatch is typed as thunk-capable so EE middlewares can dispatch async thunks
+const getDefaultReduxMiddlewares = (): Middleware<
+  Record<string, never>,
+  State,
+  ThunkDispatch<State, unknown, Action>
+>[] => [];
 
 export const PLUGIN_REDUX_MIDDLEWARES = getDefaultReduxMiddlewares();
 
@@ -145,6 +150,7 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE =
   getDefaultDashboardSubscriptionParametersSectionOverride();
 
 const getDefaultReducers = () => ({
+  advancedPermissionsPlugin: () => null,
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
@@ -153,6 +159,7 @@ const getDefaultReducers = () => ({
 });
 
 export const PLUGIN_REDUCERS: {
+  advancedPermissionsPlugin: any;
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;

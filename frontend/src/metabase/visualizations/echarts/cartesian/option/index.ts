@@ -91,6 +91,7 @@ export const buildEChartsDataset = (
 
   const dataset: Array<{ source: OptionSourceData; dimensions: string[] }> = [
     {
+      // Unjustified type cast. FIXME
       source: chartModel.transformedDataset as OptionSourceData,
       dimensions,
     },
@@ -98,6 +99,7 @@ export const buildEChartsDataset = (
 
   if (chartModel.trendLinesModel) {
     dataset.push({
+      // Unjustified type cast. FIXME
       source: chartModel.trendLinesModel.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
@@ -276,6 +278,7 @@ export const getCartesianChartOption = (
       (series) => seriesSettingsByDataKey[series.dataKey]?.display === "bar",
     );
     if (hasAnyBarSeries) {
+      // Unjustified type cast. FIXME
       (baseXAxis as Record<string, unknown>).boundaryGap = true;
     }
 

@@ -65,7 +65,9 @@
     (log/warn "DLQ table does not exist. Index may not have been initialized.")))
 
 (defn- collect-metrics! []
-  (when (semantic.u/semantic-search-available?)
+  ;; Active, not merely available: on an available-but-inactive instance the index tables never exist,
+  ;; and the collectors would warn about them on every run.
+  (when (semantic.u/semantic-search-active?)
     (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.env/get-index-metadata)]
       (collect-gate-size! pgvector)
@@ -80,7 +82,7 @@
 
 (defmethod task/init! ::SemanticMetricCollector
   [_]
-  (when (semantic.u/semantic-search-available?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
                (jobs/of-type SemanticMetricCollector)
                (jobs/with-identity collector-job-key))

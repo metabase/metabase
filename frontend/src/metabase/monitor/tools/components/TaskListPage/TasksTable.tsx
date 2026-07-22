@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";

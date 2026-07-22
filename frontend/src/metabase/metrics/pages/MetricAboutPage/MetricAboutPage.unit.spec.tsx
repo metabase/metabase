@@ -9,7 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { PERMISSION_ERROR } from "__support__/server-mocks/constants";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -23,6 +23,8 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { MetricAboutPage } from "./MetricAboutPage";
+
+const RoutedMetricAboutPage = withRouteProps(MetricAboutPage);
 
 const SAMPLE_DB = createSampleDatabase();
 const CARD_ID = 42;
@@ -58,10 +60,7 @@ function setupBaseEndpoints(card: Card) {
 
 function renderPage() {
   renderWithProviders(
-    <Route
-      path="/metric/:cardId"
-      component={(props: any) => <MetricAboutPage params={props.params} />}
-    />,
+    <Route path="/metric/:cardId" element={<RoutedMetricAboutPage />} />,
     {
       withRouter: true,
       initialRoute: `/metric/${CARD_ID}`,

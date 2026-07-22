@@ -31,7 +31,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlite, :parent :sql-jdbc)
+(driver/register! :sqlite, :parent #{:sql-mbql5 :sql-jdbc})
 
 (defmethod driver/display-name :sqlite
   [_driver]
@@ -402,28 +402,29 @@
   (if bool 1 0))
 
 (defmethod sql.qp/->honeysql [:sqlite :substring]
-  [driver [_ arg start length]]
+  [driver [_ _opts arg start length]]
   (if length
     [:substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length)]
     [:substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start)]))
 
 (defmethod sql.qp/->honeysql [:sqlite :concat]
-  [driver [_ & args]]
+  [driver [_ _opts & args]]
   (into
    [:||]
    (mapv (partial sql.qp/->honeysql driver) args)))
 
 (defmethod sql.qp/->honeysql [:sqlite :floor]
-  [_driver [_ arg]]
-  [:round (h2x/- arg 0.5)])
+  [driver [_ _opts arg]]
+  [:round (h2x/- (sql.qp/->honeysql driver arg) 0.5)])
 
 (defmethod sql.qp/->honeysql [:sqlite :ceil]
-  [_driver [_ arg]]
-  [:case
-   ;; if we're ceiling a whole number, just cast it to an integer
-   ;; [:ceil 1.0] should returns 1
-   [:= [:round arg] arg] (h2x/->integer arg)
-   :else                 [:round (h2x/+ arg 0.5)]])
+  [driver [_ _opts arg]]
+  (let [arg (sql.qp/->honeysql driver arg)]
+    [:case
+     ;; if we're ceiling a whole number, just cast it to an integer
+     ;; [:ceil 1.0] should returns 1
+     [:= [:round arg] arg] (h2x/->integer arg)
+     :else                 [:round (h2x/+ arg 0.5)]]))
 
 ;; See https://sqlite.org/lang_datefunc.html
 

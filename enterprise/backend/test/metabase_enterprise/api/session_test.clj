@@ -25,6 +25,7 @@
                               :config-text-file
                               :content-translation
                               :content-verification
+                              :data-apps
                               :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login
@@ -41,6 +42,7 @@
                               :hosting
                               :metabase-ai-managed
                               :metabot-v3
+                              :multi-factor-auth
                               :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
@@ -78,6 +80,7 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
+            :data-apps                      true
             :data-complexity-score          true
             :dashboard_subscription_filters true
             :disable_password_login         true
@@ -93,6 +96,7 @@
             :hosting                        true
             :metabase-ai-managed            true
             :metabot-v3                     true
+            :multi-factor-auth              true
             :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true

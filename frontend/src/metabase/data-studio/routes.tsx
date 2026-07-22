@@ -1,5 +1,3 @@
-import type { Store } from "@reduxjs/toolkit";
-
 import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
 import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import {
@@ -9,8 +7,14 @@ import {
   PLUGIN_SCHEMA_VIEWER,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { IndexRoute, Route, type RouteComponent } from "metabase/router";
+import {
+  Navigate,
+  Route,
+  type RouteComponent,
+  withRouteProps,
+} from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
@@ -30,29 +34,26 @@ import {
   SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
+const RoutedTransformsSectionLayout = withRouteProps(TransformsSectionLayout);
+
 export function getDataStudioRoutes(
-  store: Store<State>,
   CanAccessDataStudio: RouteComponent,
   CanAccessDataModel: RouteComponent,
   IsAdmin: RouteComponent,
 ) {
   return (
-    <Route component={CanAccessDataStudio}>
-      <Route path="data-studio" component={DataStudioLayout}>
-        <IndexRoute
-          onEnter={(_state, replace) => {
-            replace(getIndexPath(store.getState()));
-          }}
-        />
-        <Route path="data" component={CanAccessDataModel}>
-          <Route component={DataSectionLayout}>
+    <Route element={<CanAccessDataStudio />}>
+      <Route path="data-studio" element={<DataStudioLayout />}>
+        <Route index element={<DataStudioIndexRedirect />} />
+        <Route path="data" element={<CanAccessDataModel />}>
+          <Route element={<DataSectionLayout />}>
             {getDataStudioMetadataRoutes(IsAdmin)}
           </Route>
         </Route>
-        <Route path="transforms" component={TransformsSectionLayout}>
+        <Route path="transforms" element={<RoutedTransformsSectionLayout />}>
           {getDataStudioTransformRoutes()}
         </Route>
-        <Route component={WorkspacesSectionLayout}>
+        <Route element={<WorkspacesSectionLayout />}>
           {PLUGIN_WORKSPACES.getDataStudioRoutes()}
         </Route>
         {getDataStudioGlossaryRoutes()}
@@ -60,26 +61,26 @@ export function getDataStudioRoutes(
         {PLUGIN_LIBRARY.isEnabled ? (
           PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
         ) : (
-          <Route path="library" component={LibraryUpsellPage} />
+          <Route path="library" element={<LibraryUpsellPage />} />
         )}
         {PLUGIN_DEPENDENCIES.isEnabled ? (
-          <Route path="dependencies" component={DependenciesSectionLayout}>
+          <Route path="dependencies" element={<DependenciesSectionLayout />}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
         ) : (
-          <Route path="dependencies" component={DependenciesUpsellPage} />
+          <Route path="dependencies" element={<DependenciesUpsellPage />} />
         )}
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
-            component={DependencyDiagnosticsSectionLayout}
+            element={<DependencyDiagnosticsSectionLayout />}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
         ) : (
           <Route
             path="dependency-diagnostics"
-            component={DependencyDiagnosticsUpsellPage}
+            element={<DependencyDiagnosticsUpsellPage />}
           />
         )}
         {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
@@ -87,12 +88,17 @@ export function getDataStudioRoutes(
             {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
           </Route>
         ) : (
-          <Route path="schema-viewer" component={SchemaViewerUpsellPage} />
+          <Route path="schema-viewer" element={<SchemaViewerUpsellPage />} />
         )}
-        <Route path="git-sync" component={GitSyncSectionLayout} />
+        <Route path="git-sync" element={<GitSyncSectionLayout />} />
       </Route>
     </Route>
   );
+}
+
+function DataStudioIndexRedirect() {
+  const indexPath = useSelector(getIndexPath);
+  return <Navigate to={indexPath} replace />;
 }
 
 function getIndexPath(state: State) {

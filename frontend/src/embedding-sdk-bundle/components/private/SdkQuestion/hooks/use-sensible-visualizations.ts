@@ -49,7 +49,9 @@ export const useSensibleVisualizations = () => {
   );
 
   return {
+    // Unjustified type cast. FIXME
     sensibleVisualizations: sensibleVisualizations as CardDisplayType[],
+    // Unjustified type cast. FIXME
     nonSensibleVisualizations: nonSensibleVisualizations as CardDisplayType[],
   };
 };

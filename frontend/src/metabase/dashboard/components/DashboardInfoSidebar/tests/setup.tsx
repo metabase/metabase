@@ -65,15 +65,16 @@ export async function setup({
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <MockDashboardContext
           dashboard={dashboard}
+          // Unjustified type cast. FIXME
           setDashboardAttributes={setDashboardAttribute as any}
           closeSidebar={onClose}
         >
           <DashboardInfoSidebar />
         </MockDashboardContext>
-      )}
+      }
     />,
     { storeInitialState: state, withRouter: true },
   );

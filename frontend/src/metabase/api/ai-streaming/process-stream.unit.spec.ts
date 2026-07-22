@@ -100,6 +100,7 @@ describe("processChatResponse", () => {
 
   it("should ignore unhandled event types", async () => {
     const mockStream = createMockSSEStream([
+      // Unjustified type cast. FIXME
       { type: "reasoning-start", id: "r1" } as unknown as SSEEvent,
     ]);
     const config = getMockedCallbacks();
@@ -143,11 +144,6 @@ describe("processChatResponse", () => {
         error: "boom",
       },
     ]);
-    expect(result.history).toContainEqual({
-      role: "tool",
-      content: "boom",
-      tool_call_id: "x",
-    });
   });
 
   it("should call onToolInputStart for tool-input-start events", async () => {
@@ -190,17 +186,23 @@ describe("processChatResponse", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("should stitch text deltas into a single history entry", async () => {
-    const mockStream = createMockSSEStream([
-      { type: "text-start", id: "t1" },
-      { type: "text-delta", id: "t1", delta: "You, but " },
-      { type: "text-delta", id: "t1", delta: "don't tell anyone." },
-      { type: "text-end", id: "t1" },
-    ]);
+  it("should smooth text deltas word by word", async () => {
+    const config = getMockedCallbacks();
+    await processChatResponse(
+      createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+        { type: "text-end", id: "t1" },
+      ]),
+      config,
+    );
 
-    const result = await processChatResponse(mockStream, expectNoStreamedError);
-    expect(result.history).toEqual([
-      { content: "You, but don't tell anyone.", role: "assistant" },
+    expect(config.onTextPart.mock.calls.map(([delta]) => delta)).toEqual([
+      "You, ",
+      "but ",
+      "don't ",
+      "tell ",
+      "anyone.",
     ]);
   });
 

@@ -20,12 +20,13 @@ const ELIGIBLE_DATABASE = createMockDatabase({
   settings: { "database-enable-workspaces": true },
 });
 
+// Unjustified type cast. FIXME
 function setup({ workspaces = [] as Workspace[] } = {}) {
   setupListWorkspacesEndpoint(workspaces);
   setupDatabasesEndpoints([ELIGIBLE_DATABASE]);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));
 
-  renderWithProviders(<Route path="*" component={WorkspaceListPage} />, {
+  renderWithProviders(<Route path="*" element={<WorkspaceListPage />} />, {
     withRouter: true,
   });
 }

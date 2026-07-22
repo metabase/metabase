@@ -15,6 +15,7 @@ import NativeQuery, {
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
+  CardCreationType,
   CardDashboardInfo,
   CardDisplayType,
   CardType,
@@ -324,7 +325,7 @@ class Question {
     return this.setSettings({ ...this.settings(), ...settings });
   }
 
-  creationType(): string | undefined {
+  creationType(): CardCreationType | undefined {
     return this.card().creationType;
   }
 

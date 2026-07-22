@@ -40,9 +40,9 @@ type Page = "ai-features" | "mcp";
 function getPageRoute(page: Page) {
   switch (page) {
     case "mcp":
-      return <Route path="/admin/metabot/mcp" component={McpSettingsPage} />;
+      return <Route path="/admin/metabot/mcp" element={<McpSettingsPage />} />;
     case "ai-features":
-      return <Route path="/admin/metabot*" component={AISettingsPage} />;
+      return <Route path="/admin/metabot*" element={<AISettingsPage />} />;
   }
 }
 
@@ -118,6 +118,7 @@ const setup = async ({
   setupCollectionByIdEndpoint({ collections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });
+  // Unjustified type cast. FIXME
   setupRecentViewsAndSelectionsEndpoints(defaultSeedCollections as any);
   setupMetabotsEndpoints(metabots);
 

@@ -63,14 +63,15 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
   const { history } = renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <NewSegmentPage
+          // Unjustified type cast. FIXME
           route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
           getSuccessUrl={getSuccessUrl}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

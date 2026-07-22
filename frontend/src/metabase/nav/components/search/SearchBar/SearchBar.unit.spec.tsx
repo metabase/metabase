@@ -69,7 +69,7 @@ const setup = ({
   setupCollectionsEndpoints({ collections: [] });
 
   const { history } = renderWithProviders(
-    <Route path="*" component={SearchBar} />,
+    <Route path="*" element={<SearchBar />} />,
     {
       withRouter: true,
       initialRoute,
@@ -154,6 +154,7 @@ describe("SearchBar", () => {
         await userEvent.tab();
 
         expect(
+          // Unjustified type cast. FIXME
           within(filteredElement as HTMLElement).getByText("Our analytics"),
         ).toHaveFocus();
       }

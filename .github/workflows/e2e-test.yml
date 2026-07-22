@@ -123,9 +123,20 @@ jobs:
 
       - name: Get failed specs
         if: github.run_attempt != '1'
-        run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
+        run: echo "specs=$(cat failed-specs)" >> "$GITHUB_ENV"
+
+      # run-tests.yml compiles this in parallel with the uberjar build. Downloading it is ~10x faster than compiling it here.
+      # Callers without that job (stress tests, coverage shards, cross-run re-runs) fall through to compiling as before.
+      - name: Download pre-built CLJS
+        id: prebuilt-cljs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
 
       - name: Compile CLJS
+        if: steps.prebuilt-cljs.outcome != 'success'
         run: bun run build-pure:cljs
 
       - name: Run Metabase
@@ -164,7 +175,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js e2e \
             --expose grepTags="-@mongo+-@python+-@OSS+-@skip" \
             --spec "$SPEC_PATH"
-        # Keep this step continue-on-error because the quarantine gate controls whether it ultimately fails.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
@@ -179,7 +190,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js e2e \
           --expose grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@mongo+-@python+-@OSS+-@skip'}}" \
           --spec "$SPEC_PATH"
-        # Keep this step continue-on-error because the quarantine gate controls whether it ultimately fails.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Rewrite JUnit hook failures

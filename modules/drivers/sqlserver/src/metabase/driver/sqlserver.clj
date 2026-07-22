@@ -1,6 +1,6 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:refer-clojure :exclude [mapv get-in])
+  (:refer-clojure :exclude [mapv get-in not-empty])
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -29,15 +30,15 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [mapv get-in]]
+   [metabase.util.performance :as perf :refer [mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
-   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Statement Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)))
@@ -56,6 +57,8 @@
                               :expression-literals                    true
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                             false
+                              :index/fetch                            true
+                              :index/standalone-create                true
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false
@@ -1162,74 +1165,87 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/init-workspace-isolation! :sqlserver
-  [_driver database workspace]
-  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
-        username         (driver.u/workspace-isolation-user-name workspace)
-        password         (driver.u/random-workspace-password)
+  [driver database workspace]
+  (let [schema-name      (:schema workspace)
+        {:keys [user password]} (:database_details workspace)
+        username         user
         escaped-password (sql.u/escape-sql password :ansi)
         escaped-username (sql.u/escape-sql username :ansi)
         escaped-schema   (sql.u/escape-sql schema-name :ansi)
         quoted-user      (quote-field username)
-        quoted-schema    (quote-schema schema-name)
-        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        quoted-schema    (quote-schema schema-name)]
     ;; SQL Server: create login (server level), then user (database level), then schema
     (try
-      (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
-                                "CREATE LOGIN %s WITH PASSWORD = N'%s'")
-                           escaped-username quoted-user escaped-password)
-                   (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER %s FOR LOGIN %s"
-                           escaped-username quoted-user quoted-user)
-                   (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"
-                           escaped-schema quoted-schema)
-                   ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
-                   ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
-                   ;;   ALTER  - create/drop/sp_rename objects in the schema
-                   ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
-                   ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
-                   (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s"
-                           quoted-schema quoted-user)
-                   ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
-                   (format "GRANT CREATE TABLE TO %s" quoted-user)]]
-        (jdbc/execute! conn-spec [sql]))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver database {:write? true}
+       (fn [^Connection conn]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
+                                     "CREATE LOGIN %s WITH PASSWORD = N'%s'")
+                                escaped-username quoted-user escaped-password)
+                        ;; the login may survive a failed teardown; without this it would keep
+                        ;; its old password while the new one gets persisted
+                        (format "ALTER LOGIN %s WITH PASSWORD = N'%s'" quoted-user escaped-password)
+                        (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER %s FOR LOGIN %s"
+                                escaped-username quoted-user quoted-user)
+                        (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"
+                                escaped-schema quoted-schema)
+                        ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
+                        ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
+                        ;;   ALTER  - create/drop/sp_rename objects in the schema
+                        ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
+                        ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
+                        (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s"
+                                quoted-schema quoted-user)
+                        ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
+                        (format "GRANT CREATE TABLE TO %s" quoted-user)]]
+             (.addBatch ^Statement stmt ^String sql))
+           (.executeBatch ^Statement stmt))))
       (catch Throwable t
-        (throw (driver.u/scrub-exceptions t [password escaped-password]))))
-    {:schema           schema-name
-     :database_details {:user     username
-                        :password password}}))
+        (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :sqlserver
-  [_driver database workspace]
-  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
-        username         (driver.u/workspace-isolation-user-name workspace)
+  [driver database workspace]
+  (let [schema-name      (:schema workspace)
+        username         (-> workspace :database_details :user)
         escaped-schema   (sql.u/escape-sql schema-name :ansi)
         escaped-username (sql.u/escape-sql username :ansi)
         quoted-schema    (quote-schema schema-name)
-        quoted-user      (quote-field username)
-        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    (doseq [sql [(format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
-                              "SELECT @sql += 'DROP TABLE %s.[' + name + ']; ' "
-                              "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
-                              "EXEC sp_executesql @sql")
-                         quoted-schema escaped-schema)
-                 (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
-                         escaped-schema quoted-schema)
-                 (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
-                         escaped-username quoted-user)
-                 ;; Kill all sessions using this login before dropping it
-                 (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
-                              "SELECT @sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
-                              "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
-                              "EXEC sp_executesql @sql")
-                         escaped-username)
-                 (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
-                         escaped-username quoted-user)]]
-      (jdbc/execute! conn-spec [sql]))))
+        quoted-user      (quote-field username)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
+         ;; variable names must be unique across the batch entries.
+         (doseq [sql [(format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                                   "SELECT @drop_tables_sql += 'DROP TABLE %s.[' + name + ']; ' "
+                                   "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                                   "EXEC sp_executesql @drop_tables_sql")
+                              quoted-schema escaped-schema)
+                      (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
+                              escaped-schema quoted-schema)
+                      (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
+                              escaped-username quoted-user)
+                      ;; Kill all sessions using this login before dropping it
+                      (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                                   "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                                   "EXEC sp_executesql @kill_sessions_sql")
+                              escaped-username)
+                      (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
+                              escaped-username quoted-user)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/grant-workspace-read-access! :sqlserver
-  [_driver database workspace schemas]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        username  (-> workspace :database_details :user)
-        db-name   (:db (:details database))]
+  [driver database workspace schemas]
+  (let [username (-> workspace :database_details :user)
+        db-name  (:db (:details database))]
     (when-not username
       (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no read user — initialization may have failed. Re-run workspace initialization and retry.")
                       {:workspace-id (:id workspace) :step :grant})))
@@ -1242,11 +1258,112 @@
       (doseq [schema schemas]
         (when (str/blank? schema)
           (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
-                          {:database-id (:id database) :step :grant})))
-        (jdbc/execute! conn-spec
-                       [(format "GRANT SELECT ON SCHEMA::%s TO %s"
-                                (quote-schema schema)
-                                quoted-user)])))))
+                          {:database-id (:id database) :step :grant}))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver database {:write? true}
+       (fn [^Connection conn]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (doseq [schema schemas]
+             (.addBatch ^Statement stmt
+                        ^String (format "GRANT SELECT ON SCHEMA::%s TO %s"
+                                        (quote-schema schema)
+                                        quoted-user)))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :sqlserver
+  [_driver _database]
+  ;; Both rowstore kinds are B-tree, so both take UNIQUE and per-column ASC/DESC. Columnstore/XML/spatial are niche
+  ;; and left out.
+  (let [fields [driver.common/index-name-field
+                (assoc driver.common/index-columns-field :directions true)
+                driver.common/index-unique-field]]
+    {:nonclustered {:lifecycle    :standalone
+                    :display-name (deferred-tru "Nonclustered")
+                    :fields       fields}
+     :clustered    {:lifecycle    :standalone
+                    :display-name (deferred-tru "Clustered")
+                    :fields       fields}}))
+
+(defn- index-column-sql
+  "Quote one indexed column, appending its `ASC`/`DESC` direction when set."
+  [{col-name :name :keys [direction]}]
+  (cond-> (quote-field col-name)
+    direction (str " " (u/upper-case-en (name direction)))))
+
+(defn- create-index-sql
+  [schema table {index-name :name, :keys [kind columns unique]}]
+  (let [target (apply sql.u/quote-name :sqlserver :table (if (not-empty schema) [schema table] [table]))
+        cols   (str/join ", " (map index-column-sql columns))]
+    (format "CREATE %s%s INDEX %s ON %s (%s)"
+            (if unique "UNIQUE " "")
+            (if (= kind :clustered) "CLUSTERED" "NONCLUSTERED")
+            (quote-field index-name)
+            target
+            cols)))
+
+(defn- sql-string-literal
+  "A SQL Server `N'...'` string literal for trusted `s`, escaping embedded quotes."
+  [s]
+  (str "N'" (sql.u/escape-sql s :ansi) \'))
+
+(defmethod driver/compile-create-index :sqlserver
+  [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]
+  (let [create (create-index-sql schema table structured)]
+    (if-not if-not-exists
+      [[create]]
+      ;; SQL Server has no `CREATE INDEX IF NOT EXISTS`, so guard the create with a T-SQL `IF NOT EXISTS (...)` that
+      ;; runs it only when no index of this name exists on the table.
+      (let [target (apply sql.u/quote-name :sqlserver :table (if (not-empty schema) [schema table] [table]))]
+        [[(format "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = %s AND object_id = OBJECT_ID(%s)) %s"
+                  (sql-string-literal index-name)
+                  (sql-string-literal target)
+                  create)]]))))
+
+(defn- bit->bool
+  "JDBC may hand back a SQL Server `bit` as a Boolean or a 0/1 number; normalize either to a boolean."
+  [v]
+  (if (number? v) (not (zero? v)) (boolean v)))
+
+(defn- index-rows->index
+  "Collapse one index's per-column `sys.index_columns` rows (key columns first, then INCLUDE columns) into an index map."
+  [rows]
+  (let [{:keys [index_name index_type is_unique is_primary is_disabled filter_definition]} (first rows)]
+    {:name              index_name
+     :kind              (if (= index_type "CLUSTERED") :clustered :nonclustered)
+     :access-method     (some-> index_type u/lower-case-en)
+     :is-unique         (bit->bool is_unique)
+     :is-primary        (bit->bool is_primary)
+     :is-valid          (not (bit->bool is_disabled))
+     :key-columns       (->> rows (remove (comp bit->bool :is_included)) (mapv :column_name))
+     :include-columns   (->> rows (filter (comp bit->bool :is_included)) (mapv :column_name))
+     :partial-predicate filter_definition
+     :definition        nil}))
+
+;; Only rowstore clustered (`type` 1) and nonclustered (2) indexes are reported; heaps, columnstore, XML, and spatial
+;; are skipped. A missing table makes `OBJECT_ID` return NULL, so the predicate matches nothing and fetch returns [].
+(defmethod driver/fetch-table-indexes :sqlserver
+  [_driver database schema table]
+  (let [qualified (apply sql.u/quote-name :sqlserver :table (if (not-empty schema) [schema table] [table]))]
+    (->> (jdbc/query
+          (sql-jdbc.conn/db->pooled-connection-spec database)
+          ["SELECT i.name AS index_name, i.type_desc AS index_type, i.is_unique, i.is_primary_key AS is_primary,
+                   i.is_disabled, i.filter_definition, c.name AS column_name,
+                   ic.is_included_column AS is_included, ic.key_ordinal, ic.index_column_id
+            FROM sys.indexes i
+            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+            JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+            WHERE i.object_id = OBJECT_ID(?) AND i.type IN (1, 2)
+            ORDER BY i.index_id, ic.is_included_column, ic.key_ordinal, ic.index_column_id"
+           qualified])
+         (partition-by :index_name)
+         (mapv index-rows->index))))
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "metabot/prompts/dialects/sqlserver.md")
