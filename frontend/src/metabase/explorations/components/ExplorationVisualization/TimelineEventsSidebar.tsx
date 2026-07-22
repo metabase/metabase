@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { ActionIcon, Group, Icon, ScrollArea, Stack, Text } from "metabase/ui";
-import { TimelineEventsList } from "metabase/visualizations/visualizations/CartesianChart/TimelineEventsBand/TimelineEventsList";
 import type { TimelineEvent } from "metabase-types/api";
 
+import { TimelineEventCard } from "./TimelineEventCard";
 import S from "./TimelineEventsSidebar.module.css";
 
 interface TimelineEventsSidebarProps {
@@ -35,8 +35,12 @@ export function TimelineEventsSidebar({
           <Icon name="close" />
         </ActionIcon>
       </Group>
-      <ScrollArea flex={1} px="lg" pb="lg">
-        <TimelineEventsList events={events} />
+      <ScrollArea flex={1} pb="lg">
+        <Stack gap="sm" data-testid="timeline-events-list">
+          {events.map((event) => (
+            <TimelineEventCard key={event.id} event={event} />
+          ))}
+        </Stack>
       </ScrollArea>
     </Stack>
   );

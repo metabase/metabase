@@ -2,23 +2,16 @@ import type { ChangeEvent, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
 
+import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import { ActionIcon, Checkbox, Icon, Menu } from "metabase/ui";
-import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {
   CardAside,
   CardBody,
   CardCheckboxContainer,
-  CardCreatorInfo,
-  CardDateInfo,
-  CardDescription,
-  CardIcon,
-  CardIconAndDateContainer,
   CardRoot,
-  CardTitle,
 } from "./EventCard.styled";
 
 export interface EventCardProps {
@@ -48,8 +41,6 @@ const EventCard = ({
 }: EventCardProps): JSX.Element => {
   const selectedRef = useScrollOnMount<HTMLDivElement>();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
-  const dateMessage = getDateMessage(event);
-  const creatorMessage = getCreatorMessage(event);
 
   const handleToggleSelected = useCallback(() => {
     if (isVisible) {
@@ -88,15 +79,7 @@ const EventCard = ({
         />
       </CardCheckboxContainer>
       <CardBody>
-        <CardIconAndDateContainer>
-          <CardIcon name={event.icon} />
-          <CardDateInfo>{dateMessage}</CardDateInfo>
-        </CardIconAndDateContainer>
-        <CardTitle>{event.name}</CardTitle>
-        {event.description && (
-          <CardDescription>{event.description}</CardDescription>
-        )}
-        <CardCreatorInfo data-server-date>{creatorMessage}</CardCreatorInfo>
+        <TimelineEventInfo event={event} />
       </CardBody>
       {menuItems.length > 0 && (
         <CardAside onClick={handleAsideClick}>
@@ -136,28 +119,6 @@ const getMenuItems = (
       {t`Archive event`}
     </Menu.Item>,
   ];
-};
-
-const getDateMessage = (event: TimelineEvent) => {
-  const date = event.timestamp;
-  const options = Settings.formattingOptions();
-
-  if (event.time_matters) {
-    return formatDateTimeWithUnit(date, "default", options);
-  } else {
-    return formatDateTimeWithUnit(date, "day", options);
-  }
-};
-
-const getCreatorMessage = (event: TimelineEvent) => {
-  const options = Settings.formattingOptions();
-  const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
-
-  if (event.creator) {
-    return t`${event.creator.common_name} added this on ${createdAt}`;
-  } else {
-    return t`Added on ${createdAt}`;
-  }
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
