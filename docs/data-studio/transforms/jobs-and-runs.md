@@ -135,7 +135,7 @@ The "Tags" column in the **Runs** table will only show the transform's specific 
 
 If your Metabase is [set up to send email](../../configuring-metabase/email.md), Metabase will let people know when transforms fail.
 
-- **Individual transform failures**: when a transform fails during a job, Metabase emails the person who created or last edited that transform.
+- **Individual transform failures**: when transforms fail during a job run, Metabase emails the last person to edit each failed transform. Each email covers a single job run.
 - **Daily digest of job failures**: each morning, Metabase emails all admins a summary of the scheduled job runs that failed or timed out the previous day. For each job, the digest lists how many runs failed, when the failures started, and the most recent error. Manual runs aren't included in the digest, and Metabase skips the email entirely if no scheduled runs failed.
 
-To dig into a failure, click through to the job from the digest, or go to **Data Studio > Runs** and open the run to see its error logs.
+To dig into a failure, go to **Data Studio > Runs** and open the run to see its error logs.
