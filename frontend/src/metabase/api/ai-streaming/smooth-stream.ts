@@ -4,7 +4,7 @@ import type {
   TextDeltaEvent,
 } from "./sse-types";
 
-// Whitespace-terminated, so a word only emits once it's complete.
+// whitespace-terminated, so a word only emits once it's complete
 const WORD_PATTERN = /\S+\s+/m;
 
 const DEFAULT_SMOOTHING_DELAY_MS = 10;
@@ -17,8 +17,6 @@ const takeWord = (buffer: string) => {
   return match ? buffer.slice(0, match.index + match[0].length) : null;
 };
 
-// text and reasoning deltas share the same {id, delta} shape and both benefit
-// from steady word-pacing — provider reasoning summaries arrive especially bursty
 type SmoothableDelta = TextDeltaEvent | ReasoningDeltaEvent;
 
 const isSmoothable = (event: SSEEvent): event is SmoothableDelta =>
@@ -27,10 +25,8 @@ const isSmoothable = (event: SSEEvent): event is SmoothableDelta =>
 export type SmoothTextOptions = { delayInMs?: number };
 
 // Re-emits text/reasoning deltas one word at a time on a fixed cadence, so they
-// render at a steady pace however unevenly the server chunks them. Awaiting
-// between words backpressures the stream, which is what paces it. Any other event
-// (including switching between text and reasoning, or a new block id) flushes the
-// buffered tail first to preserve ordering.
+// render steadily however unevenly the server chunks them. Awaiting between words
+// backpressures the stream, which is what paces it.
 export async function* smoothStreamEvents(
   events: AsyncIterable<SSEEvent>,
   { delayInMs = DEFAULT_SMOOTHING_DELAY_MS }: SmoothTextOptions = {},
@@ -46,14 +42,14 @@ export async function* smoothStreamEvents(
   }
 
   for await (const event of events) {
+    // any other event flushes the buffered tail first, to preserve ordering
     if (!isSmoothable(event)) {
       yield* flush();
       yield event;
       continue;
     }
 
-    // a different block — or switching between text and reasoning — can't share
-    // this buffer
+    // a different block — or switching between text and reasoning — can't share this buffer
     if (pending && (pending.type !== event.type || pending.id !== event.id)) {
       yield* flush();
     }

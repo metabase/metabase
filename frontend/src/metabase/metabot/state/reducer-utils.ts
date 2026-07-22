@@ -5,7 +5,8 @@ import { match } from "ts-pattern";
 
 import {
   METABOT_PROFILE_OVERRIDES,
-  TOOL_CALL_MESSAGES,
+  TOOL_MESSAGES,
+  type ToolMessage,
 } from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
 
@@ -42,7 +43,7 @@ export const pushNewToolCall = (
     args,
   }: { toolCallId: string; toolName: string; args?: string },
 ) => {
-  const toolMessages: Record<string, string | undefined> = TOOL_CALL_MESSAGES;
+  const toolMessages: Record<string, ToolMessage | undefined> = TOOL_MESSAGES;
   convo.messages.push({
     id: toolCallId,
     role: "agent",
@@ -54,7 +55,7 @@ export const pushNewToolCall = (
   convo.activeToolCalls.push({
     id: toolCallId,
     name: toolName,
-    message: toolMessages[toolName],
+    message: toolMessages[toolName]?.active(),
     status: "started",
   });
 };

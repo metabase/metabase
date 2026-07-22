@@ -53,6 +53,10 @@ export type SearchResultItem = {
   type: string;
   name: string;
   display_name?: string;
+  // a question's visualization type (line/bar/table/…), so the chain-of-thought
+  // row can show its real icon; verified models get a badge from moderated_status
+  display?: CardDisplayType;
+  moderated_status?: string;
   database_id?: number;
   database_schema?: string;
   database_name?: string;

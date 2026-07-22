@@ -28,22 +28,16 @@
   transform: rotate(90deg);
 }
 
-/* the tool-call shimmer: a highlight band sweeping over the text color while a
-   step streams in (same effect as MetabotEmbed's .toolCallStarted) */
+/* a highlight band sweeping over the text color while a step streams in */
 .shimmer {
-  /* an opaque two-color sweep: every pixel is a convex blend of exactly these
-     two, so it can never dip darker than either — no transparent-black fringe.
-     both stay in the text family (a lighter highlight riding over the resting
-     tone) so it reads as a sheen rather than a spotlight. */
+  /* both colors stay in the text family (a lighter highlight over the resting
+     tone) so the sweep reads as a sheen rather than a spotlight */
   --base-color: var(--mb-color-text-tertiary);
   --highlight-color: var(--mb-color-border-neutral);
 
   color: transparent !important;
   background-clip: text;
   -webkit-background-clip: text;
-  /* 200% + a one-tile (200%) position travel makes the loop pixel-identical at
-     the seam, so there's no visible snap-back; linear keeps a constant conveyor
-     speed instead of easing to a near-stop right where the loop resets */
   background-size: 200% 100%;
   background-image: linear-gradient(
     135deg,
@@ -55,13 +49,12 @@
   animation: rotate-background 1500ms linear infinite;
 }
 
+/* 200% of travel = one full tile, so the loop is pixel-identical at the seam */
 @keyframes rotate-background {
   0% {
     background-position: 110% 0;
   }
 
-  /* exactly 200% of travel = one full tile, so the loop is pixel-identical at
-     the seam (no snap-back flicker); keep this span at 200% when retuning */
   100% {
     background-position: -90% 0;
   }
@@ -75,35 +68,12 @@
   }
 }
 
-.timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
 .step {
   display: flex;
   flex-direction: column;
   color: var(--mb-color-text-secondary);
   font-size: 0.875rem;
-  line-height: 1.57em;
-}
-
-/* reasoning is left out so its word-by-word stream is the only animation;
-   stable keys mean only newly-appended steps fade in */
-.stepIn {
-  animation: chain-step-in 140ms ease both;
-}
-
-@keyframes chain-step-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  line-height: 1.57;
 }
 
 /* reasoning summaries use bold section headers; keep them at body weight */
@@ -122,7 +92,7 @@
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  line-height: 1.57em;
+  line-height: 1.57;
   color: var(--mb-color-text-tertiary);
 }
 
@@ -130,9 +100,8 @@
   cursor: default;
 }
 
-/* entity links in a step/header label follow the muted palette, brand on hover
-   (overrides the brand-colored .smartLink used in full message markdown). the
-   whole item carries the underline (border-bottom), so the text itself has none */
+/* entity links follow the muted palette, brand on hover; the whole item carries
+   the underline (border-bottom), so the text itself has none */
 .toolRow a,
 .headerLabel a {
   color: var(--mb-color-text-tertiary);
@@ -154,7 +123,6 @@
 .toolRow a:hover,
 .headerLabel a:hover {
   color: var(--mb-color-brand);
-  /* beat Link's .brand:hover underline; the border-bottom is the only underline */
   text-decoration: none;
 }
 
@@ -163,7 +131,7 @@
   border-bottom-color: var(--mb-color-brand);
 }
 
-/* nested-collapse carets stay out of the way until the step is hovered/focused */
+/* carets stay out of the way until the step is hovered/focused */
 .toolRow .chevron {
   opacity: 0;
   transition:
@@ -181,7 +149,6 @@
   color: var(--mb-color-text-secondary);
 }
 
-/* the search result count sits just after the query, de-emphasized */
 .resultCount {
   margin-left: 0.375rem;
   font-variant-numeric: tabular-nums;
@@ -205,21 +172,6 @@
   min-width: 0;
   color: var(--mb-color-text-secondary);
   text-decoration: none;
-}
-
-/* streaming only, so opening a settled chain doesn't re-fade */
-.resultRowIn {
-  animation: result-row-in 140ms ease-in both;
-}
-
-@keyframes result-row-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
 }
 
 .resultRow:hover {

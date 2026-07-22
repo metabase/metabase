@@ -1,7 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
-import { tmap } from "metabase/utils/i18n";
 
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
@@ -111,72 +110,75 @@ export const METABOT_ERR_MSG = {
   },
 };
 
-export const TOOL_CALL_MESSAGES = tmap({
-  analyze_chart: () => t`Inspecting the visualization`,
-  analyze_data: () => t`Analyzing the data`,
-  construct_notebook_query: () => t`Creating a query`,
-  get_field_values: () => t`Retrieving table metadata`,
-  get_transform_details: () => t`Getting transform details`,
-  list_available_fields: () => undefined,
-  load_skill: () => undefined,
-  read_resource: () => t`Reading resource`,
-  save_entity: () => t`Saving`,
-  search: () => t`Searching`,
-  search_data_sources: () => t`Checking available data sources`,
-  search_metabase_documentation: () => t`Consulting the docs`,
-  search_tables: () => t`Searching database tables`,
-  search_transforms: () => t`Searching transforms`,
-  todo_read: () => t`Planning`,
-  todo_write: () => t`Planning`,
-  write_transform_python: () => t`Writing Python`,
-  write_transform_sql: () => t`Writing SQL`,
-});
-
-// Past-tense counterparts shown once a tool call finishes. Tools without an
-// entry fall back to their present-tense label.
-export const TOOL_CALL_DONE_MESSAGES = tmap({
-  analyze_chart: () => t`Inspected the visualization`,
-  analyze_data: () => t`Analyzed the data`,
-  construct_notebook_query: () => t`Created a query`,
-  get_field_values: () => t`Retrieved table metadata`,
-  get_transform_details: () => t`Got transform details`,
-  save_entity: () => t`Saved`,
-  search_data_sources: () => t`Checked available data sources`,
-  search_metabase_documentation: () => t`Consulted the docs`,
-  search_tables: () => t`Searched database tables`,
-  search_transforms: () => t`Searched transforms`,
-  todo_read: () => t`Planned`,
-  todo_write: () => t`Planned`,
-  write_transform_python: () => t`Wrote Python`,
-  write_transform_sql: () => t`Wrote SQL`,
-});
-
-// read_resource calls come in bursts and each is near-instant, so they collapse
-// into a single aggregated row instead of flashing one line each.
-export const RESOURCE_TOOL_NAME = "read_resource";
-
-export const RESOURCE_TOOL_MESSAGES = {
-  active(count: number) {
-    return ngettext(
-      msgid`Reading ${count} resource`,
-      `Reading ${count} resources`,
-      count,
-    );
-  },
-  done(count: number) {
-    return ngettext(
-      msgid`Read ${count} resource`,
-      `Read ${count} resources`,
-      count,
-    );
-  },
+export type ToolMessage = {
+  active: (count?: number) => string | undefined;
+  done: (count?: number) => string | undefined;
 };
 
-// reasoning under this reads as "Thought briefly"; at or above it we show the
-// real elapsed seconds instead
-export const REASONING_EXACT_THRESHOLD_MS = 5000;
-
-// the collapsed header previews the latest step; each label is held on screen at
-// least this long before the next replaces it, so a burst of fast tool calls
-// doesn't flash by unreadably
-export const PREVIEW_MIN_MS = 600;
+// One entry per tool: `active` while it runs, `done` once it settles. A tool that
+// runs silently (no user-facing label) maps both to `undefined`. read_resource is
+// count-aware (its calls come in near-instant bursts that the chain of thought
+// collapses into a single aggregated row).
+export const TOOL_MESSAGES = {
+  analyze_chart: {
+    active: () => t`Inspecting the visualization`,
+    done: () => t`Inspected the visualization`,
+  },
+  analyze_data: {
+    active: () => t`Analyzing the data`,
+    done: () => t`Analyzed the data`,
+  },
+  construct_notebook_query: {
+    active: () => t`Creating a query`,
+    done: () => t`Created a query`,
+  },
+  get_field_values: {
+    active: () => t`Retrieving table metadata`,
+    done: () => t`Retrieved table metadata`,
+  },
+  get_transform_details: {
+    active: () => t`Getting transform details`,
+    done: () => t`Got transform details`,
+  },
+  // silent tools — no user-facing label, previewed as "Thinking"
+  list_available_fields: { active: () => undefined, done: () => undefined },
+  load_skill: { active: () => undefined, done: () => undefined },
+  read_resource: {
+    active: (count = 1) =>
+      ngettext(
+        msgid`Reading ${count} resource`,
+        `Reading ${count} resources`,
+        count,
+      ),
+    done: (count = 1) =>
+      ngettext(msgid`Read ${count} resource`, `Read ${count} resources`, count),
+  },
+  save_entity: { active: () => t`Saving`, done: () => t`Saved` },
+  search: { active: () => t`Searching`, done: () => t`Searched` },
+  search_data_sources: {
+    active: () => t`Checking available data sources`,
+    done: () => t`Checked available data sources`,
+  },
+  search_metabase_documentation: {
+    active: () => t`Consulting the docs`,
+    done: () => t`Consulted the docs`,
+  },
+  search_tables: {
+    active: () => t`Searching database tables`,
+    done: () => t`Searched database tables`,
+  },
+  search_transforms: {
+    active: () => t`Searching transforms`,
+    done: () => t`Searched transforms`,
+  },
+  todo_read: { active: () => t`Planning`, done: () => t`Planned` },
+  todo_write: { active: () => t`Planning`, done: () => t`Planned` },
+  write_transform_python: {
+    active: () => t`Writing Python`,
+    done: () => t`Wrote Python`,
+  },
+  write_transform_sql: {
+    active: () => t`Writing SQL`,
+    done: () => t`Wrote SQL`,
+  },
+} satisfies Record<string, ToolMessage>;

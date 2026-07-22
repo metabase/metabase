@@ -88,7 +88,11 @@
                   :verified    verified?
                   :official    official?
                   :collection  collection-info})
-          (m/assoc-some :curated curated)))))
+          ;; :display (a question's viz type) + :moderated_status drive the exact
+          ;; entity icon in the chain-of-thought search results on the client
+          (m/assoc-some :curated curated
+                        :display (:display result)
+                        :moderated_status moderated_status)))))
 
 (defn- enrich-with-collection-descriptions
   "Fetch and merge collection descriptions for all search results that have collection IDs."
@@ -524,10 +528,14 @@
        "Use a larger value (20–50) for broad or generic queries; keep the default for narrow, specific ones."))
 
 (defn- search-result->item
-  "Trim a search result to the fields the chain-of-thought results card renders."
+  "Trim a search result to the fields the chain-of-thought results card renders.
+  `:display` (a question's viz type) and `:moderated_status` let the client pick the
+  exact entity icon, matching the app's search/command-palette icons."
   [r]
   (-> (select-keys r [:id :type :name :display_name :database_id :database_schema :database_name])
-      (m/assoc-some :collection (some-> (:collection r) (select-keys [:id :name])))))
+      (m/assoc-some :display (some-> (:display r) name)
+                    :moderated_status (:moderated_status r)
+                    :collection (some-> (:collection r) (select-keys [:id :name])))))
 
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
