@@ -1,7 +1,7 @@
 (ns metabase.mcp.v2.dashboard-ops
   "The pure core of the `dashboard_write` tool: fold an ordered list of editor operations over a
    hydrated dashboard and return the payload
-   [[metabase.dashboards-rest.api/update-dashboard!]] saves — `{:dashcards :tabs :parameters}`.
+   [[metabase.dashboards.write/update-dashboard!]] saves — `{:dashcards :tabs :parameters}`.
 
    No I/O. Everything the ops need about cards, tables, or fields is resolved by the caller and
    passed in, which is what lets `validate_only` reuse this untouched and lets the whole op

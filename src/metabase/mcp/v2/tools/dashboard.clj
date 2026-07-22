@@ -5,13 +5,13 @@
    A whole dashboard's JSON cannot survive a round trip through model context, so callers send
    *ops*. This namespace reads current state, hands it to the pure compiler in
    [[metabase.mcp.v2.dashboard-ops]], and passes the compiled payload to the same domain fns the
-   REST endpoints use ([[metabase.dashboards-rest.api/create-dashboard!]] and
-   [[metabase.dashboards-rest.api/update-dashboard!]]) — so write permission enforcement,
+   REST endpoints use ([[metabase.dashboards.write/create-dashboard!]] and
+   [[metabase.dashboards.write/update-dashboard!]]) — so write permission enforcement,
    transactionality, and event publishing are inherited, never reimplemented."
   (:require
    [malli.error :as me]
    [metabase.api.common :as api]
-   [metabase.dashboards-rest.api :as dashboards-rest.api]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
    [metabase.mcp.v2.projections :as projections]
@@ -104,7 +104,7 @@
 (defn- validate-payload!
   "Reject a payload the real save would reject, so a dry run is worth trusting."
   [payload]
-  (when-let [explanation (mr/explain dashboards-rest.api/DashUpdates payload)]
+  (when-let [explanation (mr/explain dashboards.write/DashUpdates payload)]
     (common/throw-teaching-error
      (format "The requested ops produce an invalid dashboard: %s"
              (pr-str (me/humanize explanation))))))
@@ -388,7 +388,7 @@
     (validate-payload! (merge attrs payload))
     (if validate-only?
       (dry-run-row dash attrs payload cards)
-      (saved-row (:id (dashboards-rest.api/update-dashboard! (u/the-id dash) (merge attrs payload)))))))
+      (saved-row (:id (dashboards.write/update-dashboard! (u/the-id dash) (merge attrs payload)))))))
 
 (defn- blank-dashboard
   "The empty dashboard a `validate_only` create compiles against, so a dry run writes nothing at
@@ -432,10 +432,10 @@
              "`archived` applies to method \"update\" only — remove it from this create call."))
           (cond
             validate-only? (apply-ops! (blank-dashboard attrs) (or ops []) attrs true)
-            (seq ops)      (apply-ops! (t2/hydrate (dashboards-rest.api/create-dashboard! attrs)
+            (seq ops)      (apply-ops! (t2/hydrate (dashboards.write/create-dashboard! attrs)
                                                    [:dashcards :series :card] :tabs)
                                        ops {} false)
-            :else          (saved-row (:id (dashboards-rest.api/create-dashboard! attrs)))))
+            :else          (saved-row (:id (dashboards.write/create-dashboard! attrs)))))
 
         :update
         (let [[_ id body]    dispatched
@@ -447,4 +447,4 @@
             (seq ops)      (apply-ops! dash ops attrs validate-only?)
             validate-only? (do (validate-payload! attrs)
                                (dry-run-row dash attrs nil nil))
-            :else          (saved-row (:id (dashboards-rest.api/update-dashboard! (:id dash) attrs))))))))))
+            :else          (saved-row (:id (dashboards.write/update-dashboard! (:id dash) attrs))))))))))
