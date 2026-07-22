@@ -182,17 +182,43 @@
 (deftest null-attributes-are-dropped-at-the-boundary-test
   (testing "GHY-4147: strict clients fill every declared property with null, and
             `registry/drop-nil-args` strips those before the handler — so a null attribute leaves
-            the stored value alone rather than reaching a NOT NULL column like `width`.
-            The flip side, pinned here so it is a decision and not a surprise: null cannot be used
-            to *clear* an attribute either."
-    (mt/with-temp [:model/Dashboard dash {:name "Sales" :width "full" :description "old"}]
+            the stored value alone rather than reaching a NOT NULL column like `width`."
+    (mt/with-temp [:model/Dashboard dash {:name "Sales" :width "full" :auto_apply_filters false}]
       (let [result (tool-result (call-tool! :crowberto nil "dashboard_write"
                                             (wire {:method "update" :id (:id dash)
-                                                   :width nil :auto_apply_filters nil
-                                                   :name nil :description nil})))]
+                                                   :name nil :width nil
+                                                   :auto_apply_filters nil :archived nil})))]
         (is (= "Sales" (:name result)))
-        (is (= {:name "Sales" :width "full" :description "old"}
-               (t2/select-one [:model/Dashboard :name :width :description] :id (:id dash))))))))
+        (is (= {:name "Sales" :width "full" :auto_apply_filters false :archived false}
+               (t2/select-one [:model/Dashboard :name :width :auto_apply_filters :archived]
+                              :id (:id dash))))))))
+
+(deftest clearable-attributes-cannot-be-cleared-with-null-test
+  (testing "GHY-4147: the flip side of the boundary strip, pinned so it stays a decision rather
+            than a surprise. These four columns are nullable and clearing them is meaningful, but
+            null is already spoken for as \"I did not set this\", so it cannot express it."
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Dashboard  dash {:name                "Sales"
+                                           :description         "old"
+                                           :collection_id       (:id coll)
+                                           :collection_position 1
+                                           :cache_ttl           10}]
+      (tool-result (call-tool! :crowberto nil "dashboard_write"
+                               (wire {:method "update" :id (:id dash)
+                                      :description nil :collection_id nil
+                                      :collection_position nil :cache_ttl nil})))
+      (is (= {:description "old" :collection_id (:id coll) :collection_position 1 :cache_ttl 10}
+             (t2/select-one [:model/Dashboard :description :collection_id :collection_position :cache_ttl]
+                            :id (:id dash)))))))
+
+(deftest collection-id-root-sentinel-clears-test
+  (testing "GHY-4147: `collection_id` is the one clearable attribute with an escape hatch — the
+            \"root\" sentinel resolves to nil, so a dashboard can be moved back to the top level"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Dashboard  dash {:name "Sales" :collection_id (:id coll)}]
+      (tool-result (call-tool! :crowberto nil "dashboard_write"
+                               (wire {:method "update" :id (:id dash) :collection_id "root"})))
+      (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id (:id dash)))))))
 
 (deftest add-card-with-series-test
   (testing "GHY-4147: add_card's series cards are fetched like card_id is — the response projects
