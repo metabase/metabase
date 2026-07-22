@@ -152,6 +152,20 @@ describe("DiagnosticsStore", () => {
     ]);
   });
 
+  it("keeps the cursor moving forward while the buffer empties", () => {
+    const store = new DiagnosticsStore();
+
+    store.applyMessage(message([entry(), entry()]));
+    expect(store.getReport(0).nextEventId).toBe(3);
+
+    store.clear();
+
+    // Derived from the last retained entry it would fall back to 1 here, and a
+    // poller that had already read up to 3 would re-read everything after.
+    expect(store.getReport(0).entries).toEqual([]);
+    expect(store.getReport(0).nextEventId).toBe(3);
+  });
+
   it("does not let a flood of requests evict the errors that explain them", () => {
     const store = new DiagnosticsStore();
 

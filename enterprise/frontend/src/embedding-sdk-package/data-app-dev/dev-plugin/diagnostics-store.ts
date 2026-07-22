@@ -49,7 +49,7 @@ export class DiagnosticsStore {
       connection: this.connection,
       lastReportAt: this.lastReportAt,
       sessionId: this.sessionId,
-      nextEventId: (this.entries.at(-1)?.eventId ?? 0) + 1,
+      nextEventId: this.nextEntryId,
     };
   }
 
