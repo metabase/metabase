@@ -10,6 +10,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -164,12 +165,20 @@
    [:row_count ms/IntGreaterThanOrEqualToZero]])
 
 (defn- check-expression-permissions
-  "Collect all metric/measure leaves from the expression and verify query permissions for each."
+  "Verify permissions for each expression leaf and return metric card IDs keyed by UUID."
   [expression]
-  (doseq [[source-type source-id] (collect-expression-leaves expression)]
-    (case source-type
-      :metric  (api/query-check (t2/select-one :model/Card :id source-id :type "metric"))
-      :measure (api/query-check (t2/select-one :model/Measure :id source-id)))))
+  (into {}
+        (keep (fn [leaf]
+                (let [source-type (lib-metric/expression-leaf-type leaf)
+                      source-id   (lib-metric/expression-leaf-id leaf)]
+                  (case source-type
+                    :metric  (do
+                               (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
+                               [(lib-metric/expression-leaf-uuid leaf) source-id])
+                    :measure (do
+                               (api/query-check (t2/select-one :model/Measure :id source-id))
+                               nil))))
+              (lib-metric/expression-leaves expression))))
 
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
@@ -177,12 +186,9 @@
    The definition map is passed through directly as the internal MetricDefinition,
    since the API format and internal format now match.
 
-   Permission checks are performed on all referenced entities in the expression."
+   Referenced entities must be permission-checked before calling this function."
   [provider definition]
   (let [{:keys [expression filters projections]} definition]
-    ;; Permission check all expression leaves
-    (check-expression-permissions expression)
-    ;; Build MetricDefinition — format matches directly
     {:lib/type          :metric/definition
      :expression        expression
      :filters           (or filters [])
@@ -198,14 +204,23 @@
   (update query :info merge {:executed-by api/*current-user-id*
                              :context     :metric}))
 
+(defn- process-leaf-query
+  ([query metric-card-id]
+   (binding [qp.perms/*card-id* metric-card-id]
+     (qp/process-query (qp/userland-query (with-metric-exec-info query)))))
+  ([query metric-card-id rff]
+   (binding [qp.perms/*card-id* metric-card-id]
+     (qp/process-query (qp/userland-query (with-metric-exec-info query)) rff))))
+
 (defn- execute-leaf-queries
   "Execute all leaf queries in parallel, collecting results eagerly.
    Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
-   Returns {uuid -> qp-result}."
-  [leaves]
+  Returns {uuid -> qp-result}."
+  [leaves metric-card-ids]
   (let [uuid->future (into {}
                            (map (fn [[uuid leaf-plan]]
-                                  [uuid (future (qp/process-query (qp/userland-query (with-metric-exec-info (:leaf/mbql leaf-plan)))))]))
+                                  [uuid (future (process-leaf-query (:leaf/mbql leaf-plan)
+                                                                    (get metric-card-ids uuid)))]))
                            leaves)]
     (into {}
           (map (fn [[uuid f]] [uuid @f]))
@@ -233,13 +248,14 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
-        plan       (lib-metric/->query-plan definition {:limit 10000})]
+  (let [metric-card-ids (check-expression-permissions (:expression definition))
+        definition      (from-api-definition (lib-metric/metadata-provider) definition)
+        plan            (lib-metric/->query-plan definition {:limit 10000})]
     (if (= :leaf (:plan/type plan))
       (qp.streaming/streaming-response [rff :api]
-        (qp/process-query (qp/userland-query (with-metric-exec-info (:plan/mbql plan))) rff))
+        (process-leaf-query (:plan/mbql plan) (some-> metric-card-ids vals first) rff))
       ;; Arithmetic: execute leaf queries BEFORE streaming to avoid JSON writer conflicts
-      (let [uuid->result (execute-leaf-queries (:plan/leaves plan))]
+      (let [uuid->result (execute-leaf-queries (:plan/leaves plan) metric-card-ids)]
         (qp.streaming/streaming-response [rff :api]
           (stream-arithmetic-results plan uuid->result rff))))))
 
@@ -259,9 +275,10 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
-        plan       (lib-metric/->query-plan definition {:limit 100 :values-only true})
-        result     (qp/process-query (qp/userland-query (with-metric-exec-info (:plan/mbql plan))))
+  (let [metric-card-ids (check-expression-permissions (:expression definition))
+        definition      (from-api-definition (lib-metric/metadata-provider) definition)
+        plan            (lib-metric/->query-plan definition {:limit 100 :values-only true})
+        result          (process-leaf-query (:plan/mbql plan) (some-> metric-card-ids vals first))
         col        (first (get-in result [:data :cols]))
         values     (mapv first (get-in result [:data :rows]))]
     {:values values
