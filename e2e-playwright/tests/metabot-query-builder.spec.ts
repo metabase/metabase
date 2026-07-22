@@ -125,8 +125,8 @@ test.describe("Metabot Query Builder", () => {
     // the reply renders inline in the full-page conversation...
     await expect(lastChatMessage(page)).toHaveText("Here's what I found.");
 
-    // ...and we stay on the /ask page
-    await expect(page).toHaveURL(/\/question\/ask/);
+    // ...and we move to the conversation's permalink
+    await expect(page).toHaveURL(/\/metabot\/conversation\//);
   });
 
   test("should render a generated chart inline without leaving the page", async ({
@@ -142,10 +142,11 @@ test.describe("Metabot Query Builder", () => {
     await sendMetabotMessage(page, "Show me all orders");
     await agentRequest;
 
-    // the chart renders inline and we stay on the /ask page
+    // the chart renders inline rather than in the query builder, and we move to
+    // the conversation's permalink
     await expect(page.getByTestId("metabot-inline-chart")).toBeVisible();
     await expect(queryBuilderHeader(page)).toHaveCount(0);
-    await expect(page).toHaveURL(/\/question\/ask/);
+    await expect(page).toHaveURL(/\/metabot\/conversation\//);
   });
 
   test("should navigate to a question when the agent returns a navigate_to", async ({

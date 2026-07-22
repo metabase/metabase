@@ -126,6 +126,9 @@ export type DateFilterLabel =
 
 export const DATE_FILTER_CASES: DateFilterLabel[] = ["Today", "Last 7 days"];
 
+// must match the title seeded by testing_api/api.clj
+const SEEDED_CONVERSATION_TITLE = "E2E usage auditing conversation";
+
 export const MAIN_PROFILE_LABELS: string[] = [
   "Internal",
   "Slackbot",
@@ -541,7 +544,7 @@ export async function assertConversationDetailProfile(
 ): Promise<void> {
   const scope = main(page);
   await expect(
-    scope.getByRole("heading", { name: /Conversation with/ }),
+    scope.getByRole("heading", { name: SEEDED_CONVERSATION_TITLE, exact: true }),
   ).toBeVisible();
   await expect(scope.getByText(profileLabel, { exact: true }).first()).toBeVisible();
   await expect(scope.getByText("Total tokens", { exact: true })).toBeVisible();

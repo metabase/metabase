@@ -975,7 +975,7 @@ test.describe("scenarios > question > object details", () => {
       const detail = objectDetail(page);
       // Upstream hardcodes http://localhost:4000 (Cypress's baseUrl); slot
       // backends run on :410N, so build it from the harness origin.
-      const expectedUrl = `${mb.baseUrl}/table/${PEOPLE_ID}/detail/1`;
+      const expectedUrl = `${mb.baseUrl}/table/${PEOPLE_ID}-people/detail/1`;
 
       await detail
         .getByLabel("Copy link to this record", { exact: true })

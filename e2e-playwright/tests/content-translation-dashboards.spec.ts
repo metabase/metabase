@@ -802,17 +802,31 @@ test.describe("content translation > static embeds > dashboards", () => {
 
         await page.getByTestId("parameter-widget").click();
         // Search matches against untranslated text, hence "Fran" matching these
-        // names. (No searchQuery wait here — upstream doesn't; the "Fran"
-        // results are already cached from the first search.)
+        // names. (No searchQuery wait here — this second "Fran" search is served
+        // from the client-side cache of the first search and fires no network
+        // request.)
         await page
           .getByPlaceholder("Recherche dans la liste")
           .pressSequentially("Fran");
         await page
           .getByRole("option", { name: "Hammera Francite", exact: true })
           .click();
+        // Selecting the option leaves "Fran" in the search box, so the combobox
+        // keeps re-rendering its remaining matches and re-opening the option list
+        // over the "Mettre à jour le filtre" button. A single Escape only closes
+        // it transiently — the lingering search text re-opens it — and clicking
+        // the submit button while the combobox is open registers as a
+        // click-outside that just closes the combobox instead of applying the
+        // filter, so the update no-ops (Cypress's slower command pacing lets it
+        // settle and dodges this). Clear the search text first so the dropdown
+        // has nothing to re-filter and stays closed after Escape.
+        await page.getByPlaceholder("Recherche dans la liste").clear();
         // Park the mouse so a tooltip under the cursor can't eat the Escape.
         await page.mouse.move(0, 0);
         await page.keyboard.press("Escape");
+        await expect(
+          page.getByTestId("parameter-value-dropdown").getByRole("option"),
+        ).toHaveCount(0);
         await page
           .getByTestId("parameter-value-dropdown")
           .getByRole("button", { name: /Mettre à jour le filtre/ })
