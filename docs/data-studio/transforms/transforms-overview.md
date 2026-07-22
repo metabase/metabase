@@ -228,7 +228,7 @@ _Data Studio > Transforms > Settings_
 
 Incremental transforms only process the data that's new since the previous transform run. For example, you might have new transaction data coming in every day, and run the transform nightly. With each run, the incremental transform would only handle the rows added after the previous run the night before.
 
-By default, Metabase appends those rows to the target table. If your source tables track changes to a record over time, you can set a [merge key](#add-merge-keys-to-upsert-rows) so that Metabase updates the existing rows instead of adding duplicate rows.
+By default, Metabase appends those rows to the target table. If your source tables track changes to a record over time, you can set a [merge key](#to-upsert-rows-add-a-merge-key) so that Metabase updates the existing rows instead of adding duplicate rows.
 
 ### Prerequisites for incremental transforms
 
@@ -236,13 +236,13 @@ By default, Metabase appends those rows to the target table. If your source tabl
 - The checkpoint column has to have increasing values, like a sequential ID or timestamp column. Metabase will determine what "new" data is by looking for values that are _greater than_ already-written checkpoint values.
 - Your schema is stable, meaning that the structure of the tables is not going to change from run to run.
 
-### Add merge keys to upsert rows
+### To upsert rows, add a merge key
 
 By default, Metabase will append rows when outputting a transform. You can add a merge key to upsert (update or append) instead.
 
 Why'd you'd want to add a merge key: some source tables get a new row each time a record changes. So for example the same order shows up once as `created`, again as `paid`, and again as `shipped`. If you append those rows, you end up with three rows for the same order. That may be what you want. But if instead you want to update these records in place, you can select one or more columns as merge keys, like an order ID column. If a merge key is set, Metabase will first check update existing records that match the key. If no match is found, Metabase will append a new record.
 
-To set a merge key:
+To add a merge key:
 
 1. Go to the transform's page in **Data Studio > Transforms**.
 2. Switch to the **Settings** tab and turn on **Only process new data**.
@@ -258,11 +258,9 @@ If a merge key names a column that isn't in the target table, the run will fail 
 
 Once an incremental transform has run, its **Settings** tab shows **Last processed**: the highest checkpoint value Metabase has written so far. That value is how Metabase knows where to pick up, since each run only handles rows past it.
 
-Click **Reprocess all data** to clear that value. The next run will then rebuild the target table from scratch, processing every row instead of only the new ones. The run doesn't start right away; Metabase waits for the transform's next scheduled or manual run.
+To clear that value and reprocess all rows, click **Reprocess all data**. The next run will then rebuild the target table from scratch, processing every row instead of only the new ones. The run doesn't start right away; you'll need to run the transform manually, or wait for the transform's next scheduled run.
 
-Reprocess all data when the target table no longer matches what your transform should produce. That usually means you changed the query in a way that affects rows Metabase already wrote, or a run wrote rows you don't want to keep. Since the rebuild recreates the table, rows that your query no longer returns will disappear from the target.
-
-Changing the checkpoint field resets the stored value too, so a transform will rebuild from scratch on its next run after you pick a different field.
+Changing the checkpoint field also resets the stored value, so a transform will rebuild from scratch on its next run after you pick a different field to use for checkpointing.
 
 ### Differences between query and python incremental transforms
 
@@ -270,7 +268,6 @@ Incremental transforms work differently for query-based transforms and Python tr
 
 - [Incremental query transforms](query-transforms.md#incremental-query-transforms)
 - [Incremental Python transforms](./python-transforms.md#incremental-python-transforms).
-
 
 ## Versioning transforms
 

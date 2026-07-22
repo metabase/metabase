@@ -102,7 +102,7 @@ Your data has to have certain structure for incremental transforms to work. See 
 
 For a transform to run incrementally, you'll need to pick a column ("checkpoint") that Metabase needs to check for new values. Then, behind the scenes, Metabase will add a filter around your transform query that will filter the results of the query for values greater than the last written checkpoint value.
 
-Metabase adds those filtered rows to the target table. If you set a [merge key](transforms-overview.md#add-merge-keys-to-update-rows-in-place), Metabase updates the target rows that match the key instead of adding new ones.
+Metabase adds those filtered rows to the target table. If you set a [merge key](transforms-overview.md#to-upsert-rows-add-a-merge-key), Metabase updates the target rows that match the key instead of adding new ones.
 
 ### Make a query transform incremental
 
@@ -155,7 +155,7 @@ To make a query transform incremental:
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
 3. In **Field to check for new values**, select the field in one of the source tables that Metabase should scan to determine which records are new or changed. Only some fields are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
-4. Optionally, in **Merge key**, pick the target columns that identify a record. Metabase will update matching rows instead of appending new ones. See [Add merge keys to upsert rows](./transforms-overview.md#add-merge-keys-to-upsert-rows).
+4. (Optional) To upsert rows [add a merge key](./transforms-overview.md#to-upsert-rows-add-a-merge-key).
 
 ## Convert models to transforms
 
