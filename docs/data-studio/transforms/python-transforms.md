@@ -121,7 +121,7 @@ To make a Python transform incremental:
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
 3. In **Field to check for new values**, select the field in one of the source tables that Metabase should scan to determine which records are new or changed. Only some fields are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
-4. Optionally, in **Merge key**, pick the target columns that identify a record. Metabase will update matching rows instead of appending new ones. See [Merge key](./transforms-overview.md#merge-key).
+4. Optionally, in **Merge key**, pick the target columns that identify a record. Metabase will update matching rows instead of appending new ones. See [Add merge keys to update rows in place](./transforms-overview.md#add-merge-keys-to-upsert-rows).
 
 ## Current limitations of Python transforms
 
