@@ -1,5 +1,5 @@
 import type { FormikHelpers } from "formik";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
@@ -53,28 +53,26 @@ const isValidWebhookUrl = (value: string): boolean => {
   }
 };
 
-const validationSchema = Yup.object({
-  url: Yup.string()
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .required(t`Please enter a correctly formatted URL`)
-    .test(
-      "is-http-url",
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      t`Please enter a correctly formatted URL`,
-      (value) => value != null && isValidWebhookUrl(value),
-    ),
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  name: Yup.string().required(t`Please add a name`),
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  description: Yup.string().required(t`Please add a description`),
-  "auth-method": Yup.string()
-    .required()
-    .equals(["none", "header", "query-param", "request-body"]),
-  "fe-form-type": Yup.string()
-    .required()
-    .equals(["none", "basic", "bearer", "api-key"]),
-  "auth-info": Yup.object(),
-});
+function getValidationSchema() {
+  return Yup.object({
+    url: Yup.string()
+      .required(t`Please enter a correctly formatted URL`)
+      .test(
+        "is-http-url",
+        t`Please enter a correctly formatted URL`,
+        (value) => value != null && isValidWebhookUrl(value),
+      ),
+    name: Yup.string().required(t`Please add a name`),
+    description: Yup.string().required(t`Please add a description`),
+    "auth-method": Yup.string()
+      .required()
+      .equals(["none", "header", "query-param", "request-body"]),
+    "fe-form-type": Yup.string()
+      .required()
+      .equals(["none", "basic", "bearer", "api-key"]),
+    "auth-info": Yup.object(),
+  });
+}
 
 const styles = {
   wrapperProps: {
@@ -199,6 +197,7 @@ export const WebhookForm = ({
   const { label: testButtonLabel, setLabel: setTestButtonLabel } =
     useActionButtonLabel({ defaultLabel: t`Send a test` });
   const [testChannel, { error }] = useTestChannelMutation();
+  const [validationSchema] = useState(getValidationSchema());
 
   const errorData = useMemo(() => {
     if (isNotificationChannelTestErrorResponse(error)) {
