@@ -1392,21 +1392,20 @@
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/execute"
-  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+(api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/execute/values" :- [:map-of :string :any]
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
+
+  Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
   [{:keys [dashboard-id dashcard-id]} :- [:map
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
+   _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} ms/JSONString]]]
+                            [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
    (api/check-404 (actions/dashcard->action dashcard-id))
-   (json/decode parameters)))
+   parameters))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

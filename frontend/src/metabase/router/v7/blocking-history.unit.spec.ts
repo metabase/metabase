@@ -48,6 +48,18 @@ describe("withBlocking", () => {
     expect(history.location.pathname).toBe("/b");
   });
 
+  it("does not notify listeners when replacing to the current URL", () => {
+    const history = setup(["/a?x=1"]);
+    const listener = jest.fn();
+    history.listen(listener);
+
+    history.replace("/a?x=1");
+    expect(listener).not.toHaveBeenCalled();
+
+    history.replace("/b");
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
   it("blocks a replace while a hook returns false", () => {
     const history = setup();
     register(() => false);
