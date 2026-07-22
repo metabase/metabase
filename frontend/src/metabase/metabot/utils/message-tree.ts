@@ -26,6 +26,45 @@ type ActiveResponse = {
   branch: ResponseBranch | null;
 };
 
+function externalIdOf(message: ParentedChatMessage): string | undefined {
+  return "externalId" in message ? message.externalId : undefined;
+}
+
+export function forkBoundaryAttemptIds(
+  messages: ParentedChatMessage[],
+  boundaryExternalId: string,
+): Set<string> {
+  const boundary = messages.find(
+    (message) => externalIdOf(message) === boundaryExternalId,
+  );
+  if (!boundary) {
+    return new Set([boundaryExternalId]);
+  }
+
+  const byId = new Map(messages.map((message) => [message.id, message]));
+  let head = boundary;
+  while (head.parent_message_id != null) {
+    const parent = byId.get(head.parent_message_id);
+    if (!parent || parent.role !== "agent") {
+      break;
+    }
+    head = parent;
+  }
+
+  const attemptIds = messages
+    .filter(
+      (message) =>
+        message.role === "agent" &&
+        message.parent_message_id === head.parent_message_id,
+    )
+    .map(externalIdOf)
+    .filter((id): id is string => id != null);
+
+  return attemptIds.length > 0
+    ? new Set(attemptIds)
+    : new Set([boundaryExternalId]);
+}
+
 function indexChildrenByParent(messages: ParentedChatMessage[]): BranchIndex {
   const index: BranchIndex = new Map();
   for (const message of messages) {

@@ -83,7 +83,6 @@ function createConversation(
     user_agent: null,
     sanitized_user_agent: null,
     forked_from_conversation_id: null,
-    forked_from_title: null,
     fork_boundary_message_id: null,
     feedback,
   };
@@ -123,6 +122,11 @@ describe("ConversationDetailPage", () => {
   });
 
   it("marks the fork boundary and links to the original conversation", async () => {
+    setupMetabotConversationEndpoint({
+      ...createConversation([]),
+      conversation_id: "convo-0",
+      title: "Original chat",
+    });
     setup({
       ...createConversation([
         userMessage("u1", null, "hi"),
@@ -131,7 +135,6 @@ describe("ConversationDetailPage", () => {
         agentMessage("a2", "u2", "new answer"),
       ]),
       forked_from_conversation_id: "convo-0",
-      forked_from_title: "Original conversation",
       fork_boundary_message_id: "a1",
     });
 
@@ -140,20 +143,47 @@ describe("ConversationDetailPage", () => {
     expect(forkBoundary).toBeInTheDocument();
 
     const forkBoundaryLink = within(forkBoundary).getByRole("link", {
-      name: "Forked from a previous conversation",
+      name: "a previous conversation",
     });
     expect(forkBoundaryLink).toHaveAttribute(
       "href",
       "/admin/metabot/usage-auditing/conversations/convo-0",
     );
 
-    const forkedLink = screen.getByRole("link", {
-      name: "Forked from Original conversation",
+    const forkedLink = await screen.findByRole("link", {
+      name: "Forked from Original chat",
     });
     expect(forkedLink).toHaveAttribute(
       "href",
       "/admin/metabot/usage-auditing/conversations/convo-0",
     );
+  });
+
+  it("keeps the fork boundary on every attempt of a regenerated boundary turn", async () => {
+    setupMetabotConversationEndpoint({
+      ...createConversation([]),
+      conversation_id: "convo-0",
+      title: "Original chat",
+    });
+    setup({
+      ...createConversation([
+        userMessage("u1", null, "count orders"),
+        agentMessage("a1", "u1", "inherited answer"),
+        agentMessage("a2", "u1", "regenerated answer"),
+      ]),
+      forked_from_conversation_id: "convo-0",
+      fork_boundary_message_id: "a1",
+    });
+
+    expect(await screen.findByText("regenerated answer")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-fork-boundary")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Previous version" }),
+    );
+
+    expect(screen.getByText("inherited answer")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-fork-boundary")).toBeInTheDocument();
   });
 
   it("does not render a fork boundary for a non-forked conversation", async () => {

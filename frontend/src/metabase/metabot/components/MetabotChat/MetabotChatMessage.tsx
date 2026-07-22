@@ -3,7 +3,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -495,7 +495,7 @@ export const Messages = ({
   conversationId,
   onInternalLinkClick,
   getExtraActions,
-  forkBoundaryMessageId,
+  forkBoundaryMessageIds,
   forkBoundaryHref,
 }: {
   messages: MetabotChatMessage[];
@@ -508,7 +508,7 @@ export const Messages = ({
   conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
-  forkBoundaryMessageId?: string | null;
+  forkBoundaryMessageIds?: ReadonlySet<string> | null;
   forkBoundaryHref?: string | null;
 }) => {
   const dispatch = useDispatch();
@@ -522,12 +522,15 @@ export const Messages = ({
   );
   const forkBoundaryIndex = useMemo(
     () =>
-      forkBoundaryMessageId
+      forkBoundaryMessageIds
         ? visibleMessages.findLastIndex(
-            (m) => "externalId" in m && m.externalId === forkBoundaryMessageId,
+            (m) =>
+              "externalId" in m &&
+              m.externalId != null &&
+              forkBoundaryMessageIds.has(m.externalId),
           )
         : -1,
-    [visibleMessages, forkBoundaryMessageId],
+    [visibleMessages, forkBoundaryMessageIds],
   );
   const [sendToast] = useToast();
   const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
@@ -647,17 +650,21 @@ export const Messages = ({
               <Divider
                 my="md"
                 label={
-                  forkBoundaryHref ? (
-                    <Anchor
-                      component={ForwardRefLink}
-                      to={forkBoundaryHref}
-                      underline="hover"
-                    >
-                      {t`Forked from a previous conversation`}
-                    </Anchor>
-                  ) : (
-                    t`Forked from a previous conversation`
-                  )
+                  <Text span fz="sm" px="md">
+                    {forkBoundaryHref
+                      ? jt`Forked from ${(
+                          <Anchor
+                            key="fork-boundary-link"
+                            component={ForwardRefLink}
+                            to={forkBoundaryHref}
+                            underline="hover"
+                            fz="sm"
+                          >
+                            {t`a previous conversation`}
+                          </Anchor>
+                        )}`
+                      : t`Forked from a previous conversation`}
+                  </Text>
                 }
                 labelPosition="center"
                 data-testid="metabot-fork-boundary"
