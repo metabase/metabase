@@ -13,7 +13,7 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -120,7 +120,7 @@
    name. Optionally restricted to `metric-ids` (when non-nil), preserving access checks but
    filtering to that subset."
   [metric-ids library-ids]
-  (let [base-where  (card/visible-metric-cards-where-clause)
+  (let [base-where  (queries/visible-metric-cards-where-clause)
         where       (if (seq metric-ids)
                       [:and base-where [:in :id (vec metric-ids)]]
                       base-where)]

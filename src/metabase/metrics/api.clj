@@ -7,7 +7,7 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
    [metabase.metrics.permissions :as metrics.perms]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -43,11 +43,11 @@
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
 (defn- count-metrics []
-  (t2/count :model/Card {:where (card/visible-metric-cards-where-clause)}))
+  (t2/count :model/Card {:where (queries/visible-metric-cards-where-clause)}))
 
 (defn- select-metrics [limit offset]
   (-> (t2/select [:model/Card :id :name :description :collection_id]
-                 {:where    (card/visible-metric-cards-where-clause)
+                 {:where    (queries/visible-metric-cards-where-clause)
                   :order-by [[:name :asc]]
                   :limit    limit
                   :offset   offset})
