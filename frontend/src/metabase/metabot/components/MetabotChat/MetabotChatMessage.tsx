@@ -216,9 +216,12 @@ export const AgentMessage = ({
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
   const isInProgress = message.type === "turn_in_progress";
+  const isFailedTurn =
+    message.type === "turn_errored" || message.type === "turn_aborted";
   const canGiveFeedback =
     !readonly && !isInProgress && !!setFeedbackMessage && !!messageId;
-  const canFork = !readonly && !isInProgress && !!onFork && !!messageId;
+  const canFork =
+    !readonly && !isInProgress && !isFailedTurn && !!onFork && !!messageId;
   const clipboard = useClipboard({ timeout: 2000 });
 
   return (

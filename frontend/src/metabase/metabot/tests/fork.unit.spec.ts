@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { waitFor } from "__support__/ui";
+import { waitFor, within } from "__support__/ui";
+import { forkConversation } from "metabase/metabot/state";
+import * as Urls from "metabase/urls";
 
 import {
   enterChatMessage,
@@ -9,6 +11,7 @@ import {
   mockAgentEndpoint,
   mockForkEndpoint,
   setup,
+  startedThenErroredResponse,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
@@ -57,12 +60,11 @@ describe("metabot > fork", () => {
 
     await userEvent.click(await forkButton(lastMessage));
 
-    await waitFor(() => expect(forkEndpoint.calls()).toHaveLength(1));
-    const call = forkEndpoint.calls()[0];
-    expect(call.url).toMatch(/\/api\/metabot\/conversations\/.+\/fork$/);
-    expect(await call.request?.json()).toEqual({
-      message_id: "msg_test_favorite",
-    });
+    await waitFor(() =>
+      expect(
+        forkEndpoint.calls({ body: { message_id: "msg_test_favorite" } }),
+      ).toHaveLength(1),
+    );
 
     await waitFor(() =>
       expect(
@@ -86,5 +88,40 @@ describe("metabot > fork", () => {
     expect(store.getState().metabot.conversations.omnibot?.conversationId).toBe(
       originalConversationId,
     );
+  });
+
+  it("navigates to the forked conversation when forking on the ask page", async () => {
+    const { store, history } = setup({
+      withRouter: true,
+      initialRoute: "/metabot",
+    });
+    mockForkEndpoint(forkedConversation);
+
+    await store.dispatch(
+      forkConversation({
+        agentId: "ask",
+        conversationId: "original-convo-id",
+        messageId: "msg_test_favorite",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(history?.getCurrentLocation().pathname).toBe(
+        Urls.metabotConversation("forked-convo-id"),
+      ),
+    );
+  });
+
+  it("does not offer to fork an errored response", async () => {
+    setup();
+    mockAgentEndpoint({ events: startedThenErroredResponse });
+
+    await enterChatMessage("Who is your favorite?");
+
+    const lastMessage = (await lastChatMessage())!;
+    expect(lastMessage).toHaveTextContent(/Something went wrong/);
+    expect(
+      within(lastMessage).queryByTestId("metabot-chat-message-fork"),
+    ).not.toBeInTheDocument();
   });
 });

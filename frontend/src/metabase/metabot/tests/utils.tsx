@@ -1,3 +1,4 @@
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
@@ -133,7 +134,8 @@ export const mockForkEndpoint = (
     { name: "metabot-fork" },
   );
   return {
-    calls: () => fetchMock.callHistory.calls("metabot-fork"),
+    calls: (matcher?: Parameters<typeof fetchMock.callHistory.calls>[1]) =>
+      fetchMock.callHistory.calls("metabot-fork", matcher),
   };
 };
 
@@ -203,6 +205,11 @@ export const whoIsYourFavoriteResponse: SSEEvent[] = [
 ];
 
 export const erroredResponse: SSEEvent[] = [
+  { type: "error", errorText: "Anthropic API key expired or invalid" },
+];
+
+export const startedThenErroredResponse: SSEEvent[] = [
+  { type: "start", messageId: "msg_errored" },
   { type: "error", errorText: "Anthropic API key expired or invalid" },
 ];
 
@@ -347,8 +354,9 @@ export function setup(
     history,
     conversationIds: Object.keys(metabotState.conversations),
     // Unjustified type cast. FIXME
-    store: store as Omit<typeof store, "getState"> & {
+    store: store as Omit<typeof store, "getState" | "dispatch"> & {
       getState: () => State;
+      dispatch: ThunkDispatch<State, unknown, UnknownAction>;
     },
   };
 }
