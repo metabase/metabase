@@ -62,11 +62,20 @@
   [s]
   (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
 
+(defn worktree-entity-id?
+  "Checks if the given string is a remote-sync-worktree-local entity id: `<worktree-id>/<NanoID>`.
+  Worktree checkouts materialize entities under prefixed entity ids so they can coexist with the
+  default worktree's rows; refs among them must resolve like any other entity-id ref."
+  [id-str]
+  (boolean (and (string? id-str)
+                (re-matches #"^\d+/[A-Za-z0-9_-]{21}$" id-str))))
+
 (defn- portable-id?
-  "True if the provided string is either an Entity ID or identity-hash string."
+  "True if the provided string is an Entity ID, a worktree-local entity id, or an identity-hash string."
   [s]
   (and (string? s)
        (or (entity-id? s)
+           (worktree-entity-id? s)
            (identity-hash? s))))
 
 (defn serialized-query-source-table

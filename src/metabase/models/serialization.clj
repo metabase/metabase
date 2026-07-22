@@ -1323,10 +1323,11 @@
         :else           x))))
 
 (defn- portable-id?
-  "True if the provided string is either an Entity ID or identity-hash string."
+  "True if the provided string is an Entity ID, a worktree-local entity id, or an identity-hash string."
   [s]
   (and (string? s)
        (or (entity-id? s)
+           (resolve/worktree-entity-id? s)
            (identity-hash? s))))
 
 (declare import-mbql*)
