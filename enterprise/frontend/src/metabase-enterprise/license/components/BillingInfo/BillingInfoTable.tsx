@@ -4,7 +4,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useSetting } from "metabase/common/hooks";
-import { Icon, Text } from "metabase/ui";
+import { Box, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
@@ -33,7 +33,7 @@ const BillingInfoValue = ({
 
   if (lineItem.display === "value") {
     return (
-      <Text fw="bold" color="currentColor" {...props}>
+      <Text fw="bold" color="currentColor" ta="right" {...props}>
         {formattedValue}
       </Text>
     );
@@ -71,11 +71,9 @@ const BillingInfoValue = ({
 
 function BillingInfoRow({
   lineItem,
-  extraPadding,
   ...props
 }: {
   lineItem: BillingInfoLineItem;
-  extraPadding: boolean;
 }) {
   // avoid rendering the entire row if we can't format/display the value
   if (!isSupportedLineItem(lineItem)) {
@@ -95,10 +93,10 @@ function BillingInfoRow({
   // changes in a way the current application doesn't expect
   return (
     <ErrorBoundary errorComponent={EmptyErrorComponent}>
-      <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
+      <BillingInfoRowContainer {...props}>
         <Text
           c="text-secondary"
-          maw="15rem"
+          style={{ flex: "1 1 auto", minWidth: 0 }}
           data-testid={`billing-info-key-${id}`}
         >
           {lineItem.name}
@@ -119,19 +117,15 @@ export const BillingInfoTable = ({
 }) => {
   const airgap_enabled = useSetting("airgap-enabled");
   return (
-    <>
+    <Box>
       <SettingHeader id="billing" title={t`Billing`} />
       <BillingInfoCard flat>
-        {billingInfo.content?.map((lineItem, index, arr) => (
-          <BillingInfoRow
-            key={lineItem.name}
-            lineItem={lineItem}
-            extraPadding={arr.length === index + 1}
-          />
+        {billingInfo.content?.map((lineItem) => (
+          <BillingInfoRow key={lineItem.name} lineItem={lineItem} />
         ))}
       </BillingInfoCard>
       {airgap_enabled && <StillNeedHelp />}
-    </>
+    </Box>
   );
 };
 
