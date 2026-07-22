@@ -2,9 +2,12 @@
   "Direct contract tests for the shared module core both checkers and the read layer depend on: the
   entity-type <-> model mapping and `attach-entity-attrs`, the scan-time denormalization helper. These
   pin the helper's semantics (batched per-type stamping, checker-set values win, missing entity is nil)
-  independently of the full scan/serve pipeline that exercises them end to end."
+  independently of the full scan/serve pipeline that exercises them end to end, plus the fail-closed
+  dispatch contract of the per-entity-type multimethods keyed off `common/hierarchy` and of the
+  per-finding-type `finalize-finding` multimethod in the read layer."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase.test :as mt]))
 
@@ -15,6 +18,60 @@
       (is (= model (common/entity-type->model etype)))))
   (testing "it covers exactly the five content-diagnostics entity types"
     (is (= #{:card :collection :dashboard :document :transform} (set (keys common/entity-type->model))))))
+
+(deftest entity-type-hierarchy-and-registry-test
+  (testing "card/dashboard/document derive ::collection-item; transform and collection are explicit outliers"
+    (doseq [etype [:card :dashboard :document]]
+      (is (isa? common/hierarchy etype ::common/collection-item)
+          (str etype " should derive ::collection-item")))
+    (is (not (isa? common/hierarchy :transform ::common/collection-item))
+        "transform must not derive ::collection-item - it carries an explicit method")
+    (is (not (isa? common/hierarchy :collection ::common/collection-item))
+        "collection must not derive ::collection-item - it is a distinct, non-column-resident outlier"))
+  (testing "the context-cols registry covers every column-resident type entity-context feeds through it"
+    (doseq [etype [:card :dashboard :document :transform]]
+      (is (vector? (common/context-cols etype)) (str etype " should have context-cols")))
+    (testing "collection has no context-cols entry - its breadcrumb anchor comes from location, not a column"
+      (is (nil? (common/context-cols :collection))))))
+
+(deftest entity-type-multimethods-are-fail-closed-test
+  ;; The per-entity-type multimethods dispatch through `common/hierarchy` with NO permissive :default, so
+  ;; (1) every type each one serves must resolve a method - a new type left unregistered fails here, not in
+  ;; prod - and (2) an unregistered type throws at dispatch rather than silently inheriting the
+  ;; collection_id/owner assumptions it violates.
+  (testing "entity-context covers all five imbalanced entity-types (card/dashboard/document via
+            ::collection-item, transform + collection explicit)"
+    (doseq [etype #{:card :dashboard :document :transform :collection}]
+      (is (some? (get-method @#'api.common/entity-context etype))
+          (format "entity-context has no method for %s" etype))))
+  (testing "hydrate-owner covers the four column-resident types; collection sets its owner inside
+            collection-context, so it is deliberately NOT a hydrate-owner subject"
+    (doseq [etype #{:card :dashboard :document :transform}]
+      (is (some? (get-method @#'api.common/hydrate-owner etype))
+          (format "hydrate-owner has no method for %s" etype)))
+    (is (nil? (get-method @#'api.common/hydrate-owner :collection))
+        "collection must not resolve a hydrate-owner method - its owner is baked into collection-context"))
+  (testing "no permissive :default - an unregistered entity-type resolves no method"
+    (is (nil? (get-method @#'api.common/entity-context :not-an-entity-type)))
+    (is (nil? (get-method @#'api.common/hydrate-owner :not-an-entity-type))))
+  (testing "invoking a multimethod with an unregistered entity-type throws at dispatch"
+    (is (thrown? IllegalArgumentException (@#'api.common/hydrate-owner :not-an-entity-type [])))
+    (is (thrown? IllegalArgumentException (@#'api.common/entity-context :not-an-entity-type #{})))))
+
+(deftest finding-type-multimethod-is-fail-closed-test
+  ;; `finalize-finding` dispatches per row on the stored `finding_type` with NO permissive :default, so a
+  ;; new finding type left unregistered fails here (and at dispatch), not by silently serving an unfinalized
+  ;; row missing its native top-level column / details rewrite.
+  (let [served-finding-types #{:stale :slow :empty :sparse :crowded}]
+    (testing "every finding-type this branch serves resolves a method (registry completeness)"
+      (doseq [ftype served-finding-types]
+        (is (some? (get-method @#'api.common/finalize-finding ftype))
+            (format "finalize-finding has no method for finding-type %s" ftype))))
+    (testing "an unregistered finding-type resolves no method (no catch-all :default)"
+      (is (nil? (get-method @#'api.common/finalize-finding :not-a-finding-type))))
+    (testing "invoking with an unregistered finding-type throws at dispatch"
+      (is (thrown? IllegalArgumentException
+                   (@#'api.common/finalize-finding :not-a-finding-type {} {} {}))))))
 
 (deftest attach-entity-attrs-stamps-denormalized-columns-test
   (testing "each finding is stamped with its entity's name/created_at/creator across multiple entity types"
