@@ -188,10 +188,9 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  // settings isn't in the store anymore. Pull it out and seed the settings bootstrap
   let {
     routing,
-    settings: seededSettings,
+    settings, // pull settings out because they aren't in the store
     ...initialState
   }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
@@ -221,14 +220,6 @@ export function getTestStoreAndWrapper({
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
-  }
-
-  // Seed `window.MetabaseBootstrap` so `getSettings` resolves the test's
-  // settings synchronously (it's the fallback before the on-mount fetch).
-  // Seeding the bootstrap leaves the on-mount fetch intact, so components fetch
-  // as they do in the app. Reset between tests in jest-setup-env.
-  if (seededSettings?.values) {
-    window.MetabaseBootstrap = seededSettings.values;
   }
 
   const routerNavigator = withRouter ? createV7Navigator() : undefined;

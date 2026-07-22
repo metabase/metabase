@@ -14,6 +14,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
@@ -104,8 +105,13 @@ describe("FormCollectionAndDashboardPicker", () => {
     );
     await waitForLoaderToBeRemoved();
 
-    // Wait for picker content to load
-    expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+    // Wait for picker content to load. Scope to the modal: the picker button
+    // behind it also renders "Our analytics" once the root collection resolves.
+    expect(
+      await within(screen.getByTestId("entity-picker-modal")).findByText(
+        "Our analytics",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /new dashboard/i }),
     ).not.toBeInTheDocument();
