@@ -262,6 +262,6 @@
             search-model (->> (vals (search.spec/specifications))
                               (filter (comp #{model} :model))
                               (map :name))]
-      ;; Counted here as well as in ingestion's purge path, so index-deletes covers explicit deletions too.
+      ;; Explicit deletions count toward index-deletes; ingestion's purge path counts capture-driven ones.
       (doseq [[m cnt] (search.engine/delete! e search-model ids)]
         (analytics/inc! :metabase-search/index-deletes {:model m} cnt)))))
