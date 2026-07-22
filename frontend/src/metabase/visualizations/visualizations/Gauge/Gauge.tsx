@@ -1,11 +1,13 @@
 import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { addUndo } from "metabase/redux/undo";
+import { resolveGoalSegments } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { GaugeArc } from "./GaugeArc";
@@ -27,26 +29,24 @@ import {
   getSegmentLabelColor,
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
-import { isGaugeRange, isGaugeSegmentsArray } from "./types";
+import { isGaugeRange } from "./types";
 import { getValue, radians } from "./utils";
 
 Object.assign(Gauge, GAUGE_CHART_DEFINITION);
 
 export function Gauge({
   className,
+  dispatch,
   isSettings,
   height: heightProp,
-  series: [
-    {
-      data: { rows, cols },
-    },
-  ],
+  series: [{ data }],
   settings,
   visualizationIsClickable,
   width,
   onVisualizationClick,
   onHoverChange,
 }: VisualizationProps) {
+  const { rows, cols } = data;
   const labelRef = useRef<SVGTextElement>(null);
   const isMounted = useMounted();
 
@@ -71,10 +71,26 @@ export function Gauge({
 
   const gaugeRange = settings["gauge.range"];
   const range: number[] = isGaugeRange(gaugeRange) ? gaugeRange : [];
-  const gaugeSegments = settings["gauge.segments"];
-  const segments = isGaugeSegmentsArray(gaugeSegments)
-    ? gaugeSegments.filter((segment) => segmentIsValid(segment))
-    : [];
+  const { segments, errors } = useMemo(
+    () => resolveGoalSegments(settings["gauge.segments"], data),
+    [settings, data],
+  );
+
+  const errorsKey = errors
+    .map((error) => `${error.card_id}:${error.column}:${error.reason}`)
+    .join("|");
+
+  useEffect(() => {
+    if (errorsKey) {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Some gauge ranges couldn't be loaded from the referenced questions.`,
+        }),
+      );
+    }
+  }, [dispatch, errorsKey]);
 
   // value to angle in radians, clamped
   const angle = d3

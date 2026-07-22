@@ -6,7 +6,7 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card, ColumnSettings } from "./card";
+import type { Card, CardId, ColumnSettings } from "./card";
 import type { DatabaseId } from "./database";
 import type {
   Field,
@@ -100,6 +100,7 @@ export interface ResultsMetadata {
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
+  referenced_cards?: ReferencedCardsResults | null;
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
@@ -289,3 +290,19 @@ export type GetRemappedParameterValueRequest = {
 };
 
 export type Point = [number, number];
+
+export type ReferencedCard = {
+  card_id: CardId;
+  columns?: string[];
+};
+
+export type ReferencedCardsResults = Record<CardId, ReferencedCardResult>;
+
+export interface ReferencedCardResult {
+  status: string;
+  error?: string;
+  data?: {
+    cols: DatasetColumn[];
+    rows: RowValues[];
+  };
+}

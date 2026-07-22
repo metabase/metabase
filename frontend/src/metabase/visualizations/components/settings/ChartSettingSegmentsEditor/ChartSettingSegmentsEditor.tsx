@@ -3,31 +3,45 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
-import CS from "metabase/css/core/index.css";
-import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Card,
+  Group,
+  Icon,
+  SimpleGrid,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import type { ScalarSegment } from "metabase-types/api";
+import type { DatasetColumn, GoalSegment, GoalValue } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
+import { SegmentBoundInput } from "./SegmentBoundInput";
 
 export type ChartSettingSegmentsEditorProps = {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
+  allowQuestionReference?: boolean;
+  columns?: DatasetColumn[];
+  value: GoalSegment[];
+  onChange: (value: GoalSegment[]) => void;
   canRemoveAll?: boolean;
 };
 
 export const ChartSettingSegmentsEditor = ({
+  allowQuestionReference = false,
+  columns,
   value: segments,
   onChange,
   canRemoveAll = false,
 }: ChartSettingSegmentsEditorProps) => {
   const onChangeProperty = (
     index: number,
-    property: keyof ScalarSegment,
-    value: number | string | null,
+    property: keyof GoalSegment,
+    value: GoalValue | null,
   ) =>
     onChange([
       ...segments.slice(0, index),
@@ -35,22 +49,16 @@ export const ChartSettingSegmentsEditor = ({
       ...segments.slice(index + 1),
     ]);
 
+  const canRemove = segments.length > 1 || canRemoveAll;
+
   return (
-    <Box px="1.5rem">
+    <Stack px="lg">
       {segments.length > 0 ? (
-        <table className={S.Table}>
-          <thead>
-            <tr>
-              <th />
-              <th>{t`Label`}</th>
-              <th>{t`Min`}</th>
-              <th>{t`Max`}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {segments.map((segment, index) => (
-              <tr key={index}>
-                <td>
+        <Stack>
+          {segments.map((segment, index) => (
+            <Card key={index} shadow="none" withBorder>
+              <Stack>
+                <Group align="center" gap="sm" wrap="nowrap">
                   <ColorSelector
                     pillSize="large"
                     className={S.ColorPill}
@@ -60,60 +68,51 @@ export const ChartSettingSegmentsEditor = ({
                       onChangeProperty(index, "color", color)
                     }
                   />
-                </td>
-                <td>
-                  <ChartSettingInput
-                    value={segment.label}
-                    placeholder={t`Label for this range (optional)`}
-                    onChange={(val) => onChangeProperty(index, "label", val)}
-                  />
-                </td>
-                <td>
-                  <NumberInput
-                    className={CS.full}
-                    value={segment.min ?? ""}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value;
-                      const newValue =
-                        rawValue === "" ? null : parseFloat(rawValue);
-                      if (newValue !== segment.min) {
-                        onChangeProperty(index, "min", newValue);
-                      }
-                    }}
-                    placeholder={t`Min`}
-                    w="4rem"
-                  />
-                </td>
-                <td>
-                  <NumberInput
-                    className={CS.full}
-                    value={segment.max ?? ""}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value;
-                      const newValue =
-                        rawValue === "" ? null : parseFloat(rawValue);
-                      if (newValue !== segment.max) {
-                        onChangeProperty(index, "max", newValue);
-                      }
-                    }}
-                    placeholder={t`Max`}
-                    w="4rem"
-                  />
-                </td>
-                <td>
-                  {(segments.length > 1 || canRemoveAll) && (
-                    <Button
-                      leftSection={<Icon name="trash" c="text-disabled" />}
-                      onClick={() =>
-                        onChange(segments.filter((v, i) => i !== index))
-                      }
+
+                  <Box flex={1} miw={0}>
+                    <ChartSettingInput
+                      placeholder={t`Label for this range (optional)`}
+                      value={segment.label}
+                      onChange={(val) => onChangeProperty(index, "label", val)}
                     />
+                  </Box>
+
+                  {canRemove && (
+                    <Tooltip label={t`Remove range`}>
+                      <Button
+                        aria-label={t`Remove range`}
+                        leftSection={<Icon name="trash" c="text-disabled" />}
+                        onClick={() =>
+                          onChange(segments.filter((v, i) => i !== index))
+                        }
+                      />
+                    </Tooltip>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </Group>
+
+                <SimpleGrid cols={2} spacing="sm">
+                  <SegmentBoundInput
+                    id={`segment-min-${index}`}
+                    label={t`Min`}
+                    value={segment.min}
+                    onChange={(value) => onChangeProperty(index, "min", value)}
+                    columns={columns}
+                    allowQuestionReference={allowQuestionReference}
+                  />
+
+                  <SegmentBoundInput
+                    id={`segment-max-${index}`}
+                    label={t`Max`}
+                    value={segment.max}
+                    onChange={(value) => onChangeProperty(index, "max", value)}
+                    columns={columns}
+                    allowQuestionReference={allowQuestionReference}
+                  />
+                </SimpleGrid>
+              </Stack>
+            </Card>
+          ))}
+        </Stack>
       ) : (
         <Text
           ta="center"
@@ -131,7 +130,7 @@ export const ChartSettingSegmentsEditor = ({
       >
         {t`Add a range`}
       </Button>
-    </Box>
+    </Stack>
   );
 };
 
@@ -145,7 +144,7 @@ function getColorPalette() {
   ];
 }
 
-function newSegment(segments: ScalarSegment[]) {
+function newSegment(segments: GoalSegment[]): GoalSegment {
   const palette = getColorPalette();
   const lastSegment = segments[segments.length - 1];
   const lastMax =

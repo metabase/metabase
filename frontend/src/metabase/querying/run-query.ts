@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { datasetApi } from "metabase/api/dataset";
@@ -7,6 +9,7 @@ import {
   shouldUsePivotEndpoint,
 } from "metabase/api/query-endpoints";
 import type { Dispatch } from "metabase/redux/store";
+import { getReferencedCardsFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -17,6 +20,7 @@ import type {
   DashboardCardQueryRequest,
   Dataset,
   DatasetQuery,
+  ReferencedCard,
 } from "metabase-types/api";
 
 type RunQuestionQueryOptions = {
@@ -87,7 +91,11 @@ export function runAdhocDatasetQuery(
   dispatch: Dispatch,
   card: Card,
   metadata: Metadata,
-  body: DatasetQuery & { parameters?: unknown[]; ignore_cache?: boolean },
+  body: DatasetQuery & {
+    parameters?: unknown[];
+    ignore_cache?: boolean;
+    referenced_cards?: ReferencedCard[];
+  },
   signal?: AbortSignal,
 ): Promise<Dataset> {
   const isPivot = shouldUsePivotEndpoint(card, metadata);
@@ -98,7 +106,10 @@ export function runAdhocDatasetQuery(
   // before it hits the server.
   const requestBody = {
     ...(isPivot
-      ? { ...body, ...getPivotOptions(new Question(card, metadata)) }
+      ? {
+          ..._.omit(body, "referenced_cards"),
+          ...getPivotOptions(new Question(card, metadata)),
+        }
       : body),
     _refetchDeps: ++adhocDatasetQueryCounter,
   };
@@ -213,13 +224,23 @@ export async function runQuestionQuery(
     ];
   }
 
+  const referencedCards = getReferencedCardsFromVizSettings(
+    card.visualization_settings ?? {},
+  );
+
   return [
     await handleQueryApiError(
       runAdhocDatasetQuery(
         dispatch,
         card,
         question.metadata(),
-        { ...question.datasetQuery(), parameters },
+        {
+          ...question.datasetQuery(),
+          parameters,
+          ...(referencedCards.length > 0
+            ? { referenced_cards: referencedCards }
+            : {}),
+        },
         signal,
       ),
     ),

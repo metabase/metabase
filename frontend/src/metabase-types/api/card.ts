@@ -33,6 +33,7 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
   PieRow,
+  ScalarSegment,
   SmartScalarComparison,
   TreemapRow,
 } from "./visualization-settings";
@@ -688,11 +689,4 @@ export type ListViewColumns = {
   left: string[];
   right: string[];
   image?: string;
-};
-
-export type ScalarSegment = {
-  min: number | null;
-  max: number | null;
-  color: string;
-  label?: string;
 };
