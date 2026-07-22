@@ -9,6 +9,7 @@
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.execute :as t2.execute]
    [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
@@ -82,6 +83,14 @@
 
 (defn- events [] @captured)
 
+(defn- rows-by-id [rows]
+  (into {} (map (juxt :id (fn [row] (into {} row)))) rows))
+
+(defn- is-same-rows-by-pk
+  [pks expected actual]
+  (is (= (set pks) (set (map :id expected)) (set (map :id actual))))
+  (is (= (rows-by-id expected) (rows-by-id actual))))
+
 (defn- create-table-sql []
   (case (mdb/db-type)
     :postgres (str "CREATE TABLE " table-name
@@ -118,20 +127,19 @@
 
 (deftest insert-multi-row-single-event-test
   (reset-capture!)
+  (swap! bird-capture-fields assoc :insert [:id :group_id :n])
   (testing "a multi-row insert returns the count and delivers exactly one :insert event"
-    (let [rows [(bird 10 0 "a") (bird 10 0 "b") (bird 10 0 "c")]]
+    (let [rows [(bird 10 1 "a") (bird 10 2 "b") (bird 10 3 "c")]]
       (is (= 3 (t2/insert! ::bird rows)))
       (is (= 1 (count (events))))
       (let [{:keys [pks] :as event} (first (events))]
-        (is (=? {:op    :insert
-                 :model ::bird
-                 :rows  [(assoc (bird 10 0 "a") :id pos-int?)
-                         (assoc (bird 10 0 "b") :id pos-int?)
-                         (assoc (bird 10 0 "c") :id pos-int?)]
-                 :pks   [pos-int? pos-int? pos-int?]}
-                event))
-        (testing "the pks are the ids assoc'd onto the row literals, in order"
-          (is (= pks (mapv :id (:rows event)))))))))
+        (is (=? {:op :insert, :model ::bird, :pks [pos-int? pos-int? pos-int?]} event))
+        (is (= 3 (count (:rows event))))
+        (is (every? #(= #{:id :group_id :n} (set (keys %))) (:rows event)))
+        (testing "returned PKs and event rows are the same exact persisted row set, matched by PK"
+          (is-same-rows-by-pk pks
+                              (t2/select [::bird :id :group_id :n] :id [:in pks])
+                              (:rows event)))))))
 
 (deftest insert-adds-no-queries-test
   (reset-capture!)
@@ -139,7 +147,27 @@
     (t2/with-call-count [call-count]
       (is (= 1 (t2/insert! ::bird (bird 20 0 "x"))))
       (is (= 1 (call-count))))
-    (is (= 1 (count (events))))))
+    (is (= 1 (count (events)))))
+  (testing "a PK-only multi-row capture also runs exactly one SQL statement"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :insert [:id])
+    (t2/with-call-count [call-count]
+      (is (= 3 (t2/insert! ::bird [(bird 21 0 "a") (bird 21 0 "b") (bird 21 0 "c")])))
+      (is (= 1 (call-count))))
+    (let [{:keys [pks rows]} (first (events))]
+      (is (= (set pks) (set (map :id rows))))
+      (is (every? #(= #{:id} (set (keys %))) rows))))
+  (testing "complete rows with explicit PKs need no backfill and are matched by PK, not order"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :insert [:id :group_id :n])
+    (let [rows [{:id 22001, :name "explicit-a", :group_id 22, :n 1}
+                {:id 22002, :name "explicit-b", :group_id 23, :n 2}]]
+      (t2/with-call-count [call-count]
+        (is (= 2 (t2/insert! ::bird rows)))
+        (is (= 1 (call-count))))
+      (is-same-rows-by-pk [22002 22001]
+                          (mapv #(select-keys % [:id :group_id :n]) (reverse rows))
+                          (:rows (first (events)))))))
 
 (deftest insert-returning-pks-passthrough-test
   (reset-capture!)
@@ -147,12 +175,11 @@
     (let [pks (t2/insert-returning-pks! ::bird [(bird 30 0 "a") (bird 30 0 "b")])]
       (is (= 2 (count pks)))
       (is (= 1 (count (events))))
-      (is (=? {:op    :insert
-               :model ::bird
-               :pks   pks
-               :rows  [(assoc (bird 30 0 "a") :id (first pks))
-                       (assoc (bird 30 0 "b") :id (second pks))]}
-              (first (events)))))))
+      (let [{event-pks :pks, rows :rows} (first (events))]
+        (is (= pks event-pks))
+        (is-same-rows-by-pk pks
+                            (t2/select [::bird :id :group_id] :id [:in pks])
+                            rows)))))
 
 (deftest insert-returning-instances-passthrough-test
   (reset-capture!)
@@ -161,14 +188,10 @@
       (is (= 2 (count instances)))
       (is (= #{"a" "b"} (set (map :name instances))))
       (is (= 1 (count (events))))
-      (testing "the event's pks are the instance ids, and rows are the literals with those pks zipped on"
-        (is (=? {:op    :insert
-                 :model ::bird
-                 :pks   (mapv :id instances)
-                 :rows  (mapv (fn [instance literal] (assoc literal :id (:id instance)))
-                              instances
-                              [(bird 31 0 "a") (bird 31 0 "b")])}
-                (first (events))))))))
+      (testing "the event and returned instances identify the same rows without assuming result order"
+        (let [{:keys [pks rows]} (first (events))]
+          (is (= (set (map :id instances)) (set pks) (set (map :id rows))))
+          (is (= #{31} (set (map :group_id rows)))))))))
 
 (deftest bulk-update-statement-level-changes-test
   (reset-capture!)
@@ -228,6 +251,18 @@
       (t2/update! ::bird :group_id 70 {})
       (testing "at most the update itself runs, never an extra capture select"
         (is (>= 1 (call-count)))))
+    (is (empty? (events)))))
+
+(deftest pre-image-sql-error-propagates-test
+  (reset-capture!)
+  (let [id (t2/insert-returning-pk! ::bird (bird 71 0 "sql-error"))]
+    (reset! captured [])
+    (testing "an executed snapshot query failure is not suppressed inside the caller's transaction"
+      (with-redefs [t2.execute/query (fn [_sql-args]
+                                       (throw (java.sql.SQLException. "snapshot failed")))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"snapshot failed"
+                              (t2/update! ::bird id {:n 1})))))
+    (is (= 0 (t2/select-one-fn :n ::bird id)))
     (is (empty? (events)))))
 
 (deftest delete-by-pk-and-by-honeysql-test
@@ -293,16 +328,16 @@
     (is (= 3 (t2/insert! ::moody-bird [(bird 200 0 "a") (bird 200 0 "b") (bird 200 0 "c")])))
     (is (= 3 @after-insert-count))
     (is (= 1 (count (events))))
-    (testing "the re-dispatched (instances-upgraded) path still delivers full rows with pks zipped in order"
+    (testing "the re-dispatched (instances-upgraded) path captures the exact returned PK set"
       (let [{:keys [pks] :as event} (first (events))]
         (is (=? {:op    :insert
                  :model ::moody-bird
-                 :rows  [(assoc (bird 200 0 "a") :id pos-int?)
-                         (assoc (bird 200 0 "b") :id pos-int?)
-                         (assoc (bird 200 0 "c") :id pos-int?)]
+                 :rows  [{:id pos-int?, :group_id 200}
+                         {:id pos-int?, :group_id 200}
+                         {:id pos-int?, :group_id 200}]
                  :pks   [pos-int? pos-int? pos-int?]}
                 event))
-        (is (= pks (mapv :id (:rows event))))))))
+        (is (= (set pks) (set (map :id (:rows event)))))))))
 
 (deftest composition-before-update-rewrite-test
   (reset-capture!)
@@ -355,6 +390,32 @@
       (is (= 1 (count rows)))
       (is (= #{:id :group_id :n} (set (keys (first rows)))))
       (is (=? [{:group_id 240, :n 0, :id (first pks)}] rows))))
+  (testing "multiple rows are back-filled and correlated by PK, not input/result position"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :insert [:id :group_id :n])
+    (let [pks (t2/insert-returning-pks! ::bird [{:name "multi-a", :group_id 242}
+                                                {:name "multi-b", :group_id 243}])
+          {event-pks :pks, rows :rows} (first (events))
+          persisted (t2/select [::bird :id :group_id :n] :id [:in pks])]
+      (is (= pks event-pks))
+      (is-same-rows-by-pk pks persisted rows)))
+  (testing "an explicit PK does not bypass backfill when a captured value is a SQL expression"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :insert [:id :group_id :n])
+    (t2/with-call-count [call-count]
+      (t2/insert! ::bird {:id 24001, :name "expression", :group_id 244, :n [:+ 1 2]})
+      (is (= 2 (call-count))))
+    (is (= [{:id 24001, :group_id 244, :n 3}]
+           (:rows (first (events))))))
+  (testing "a failed insert backfill rolls the insert back"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :insert [:id :group_id :n])
+    (with-redefs [t2.execute/query (fn [_sql-args]
+                                     (throw (java.sql.SQLException. "backfill failed")))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"backfill failed"
+                            (t2/insert! ::bird {:id 24002, :name "rollback", :group_id 244, :n [:+ 1 2]}))))
+    (is (false? (t2/exists? ::bird :id 24002)))
+    (is (empty? (events))))
   (testing "complete literals keep the zip path: no extra select"
     (reset-capture!)
     (swap! bird-capture-fields assoc :insert [:id :group_id :n])
