@@ -93,10 +93,13 @@
       s)))
 
 (defn- wrap-mbql4-fragment
-  "Wrap a bare MBQL 4 fragment (a map with no recognizable full-query shape, e.g.
-   `{:filter [...]}`) into a legacy full query on `table` — a shape the segments domain layer
-   converts to MBQL 5. Full queries, MBQL 5 or legacy, pass through unchanged. A fragment's own
-   `:source-table` wins over the wrapping table, matching the model layer's merge semantics."
+  "Inject the tool's `table` into a bare MBQL 4 fragment (a map with no full-query shape, e.g.
+   `{:filter [...]}`) by wrapping it in a legacy full query, so `create-segment!` can derive a
+   source table from a fragment that names none — the segment REST endpoint takes no `table_id`
+   and 400s on such a fragment. Full queries (MBQL 5 or legacy) pass through unchanged. This is
+   not what converts MBQL 4 to MBQL 5: the segment model's before-insert normalizes any MBQL 4
+   definition on store, and would convert an unwrapped fragment identically. A fragment's own
+   `:source-table` wins over `table`, matching that same model merge."
   [definition {table-id :id, db-id :db_id}]
   (case (lib/normalized-mbql-version definition)
     (:mbql-version/mbql5 :mbql-version/legacy) definition
@@ -130,6 +133,10 @@
        (format "`definition` is not a valid MBQL query: %s %s"
                (ellipsize (ex-message e) 300) (accepted-shapes kind))))))
 
+;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint
+;; auto-converts MBQL 4 via measures.api/normalize-input-definition, but MBQL 4 is a Cypress-e2e
+;; affordance, not an agent path (agents author MBQL 5 from execute_query / get_content). Keeping
+;; the narrower contract here teaches the model the one dialect it should speak.
 (defn- require-mbql5-definition!
   [definition]
   (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
