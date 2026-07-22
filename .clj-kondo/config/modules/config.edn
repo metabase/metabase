@@ -3597,6 +3597,7 @@
            config
            connection-pool
            events
+           health-inspector
            lib-be
            llm
            metabot

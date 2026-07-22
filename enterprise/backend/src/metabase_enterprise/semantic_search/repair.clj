@@ -37,31 +37,25 @@
       (log/debugf "Populated repair table with %d document records" (count repair-records)))))
 
 (defn find-lost-deletes
-  "Performs an anti-join to find documents that exist in the gate table
-  but are not in the repair table. These represent lost deletes."
+  "Return gate documents absent from the repair table, representing lost deletes.
+
+  Throws when the anti-join fails so the repair cannot publish a snapshot from incomplete evidence."
   [pgvector gate-table-name repair-table-name]
-  (try
-    (let [column        semantic.util/column-keyword
-          anti-join-sql (-> (sql.helpers/select :model :model_id)
-                            (sql.helpers/from (keyword gate-table-name))
-                            (sql.helpers/where [:not [:exists
-                                                      (-> (sql.helpers/select 1)
-                                                          (sql.helpers/from (keyword repair-table-name))
-                                                          (sql.helpers/where [:and
-                                                                              [:= (column repair-table-name "model")
-                                                                               (column gate-table-name "model")]
-                                                                              [:= (column repair-table-name "model_id")
-                                                                               (column gate-table-name "model_id")]]))]])
-                            (sql/format :quoted true))
-          results (jdbc/execute! pgvector anti-join-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-      (log/infof "Found %d documents in gate table that should be deleted" (count results))
-      results)
-    ;; TODO (Chris 2026-07-13) -- swallowing the error reads as "no lost deletes", so a transient anti-join
-    ;; failure silently skips tombstoning that run. Tolerated because the next repair pass retries; revisit
-    ;; if lost deletes start slipping through.
-    (catch Exception e
-      (log/errorf e "Error finding lost deletes between gate table %s and repair table %s"
-                  gate-table-name repair-table-name))))
+  (let [column        semantic.util/column-keyword
+        anti-join-sql (-> (sql.helpers/select :model :model_id)
+                          (sql.helpers/from (keyword gate-table-name))
+                          (sql.helpers/where [:not [:exists
+                                                    (-> (sql.helpers/select 1)
+                                                        (sql.helpers/from (keyword repair-table-name))
+                                                        (sql.helpers/where [:and
+                                                                            [:= (column repair-table-name "model")
+                                                                             (column gate-table-name "model")]
+                                                                            [:= (column repair-table-name "model_id")
+                                                                             (column gate-table-name "model_id")]]))]])
+                          (sql/format :quoted true))
+        results (jdbc/execute! pgvector anti-join-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (log/infof "Found %d documents in gate table that should be deleted" (count results))
+    results))
 
 (defn find-lost-deletes-by-model
   "Finds lost deletes and groups them by model for easier processing.
@@ -72,6 +66,65 @@
     (->> lost-deletes
          (group-by :model)
          (m/map-vals #(map :model_id %)))))
+
+(defn count-stale-orphans
+  "Count rows in the active index table whose `(model, model_id)` is absent from the repair table (the current
+  candidate set) AND has no live or pending gate row -- garbage whose gated delete the indexer has already
+  consumed yet whose index row still stands. `metadata-row` supplies the indexer's composite
+  `(indexer_last_seen, indexer_last_seen_id)` consumption watermark; only tombstones at/behind it count, so
+  in-flight deletes and current DLQ retries (the staleness metric's backlog) don't read as garbage.
+  Callers run this BEFORE the current repair's own gate-deletes, for the same reason: a freshly found lost
+  delete would otherwise push a garbage spike that stands until the next hourly repair.
+  Returns nil if the count query fails: this feeds only the garbage health metric, so a metric-read blip
+  must not fail the repair run whose real work already committed."
+  [pgvector index-table-name gate-table-name repair-table-name dlq-table-name metadata-row]
+  ;; Unlike find-lost-deletes' gate-based anti-join, measuring on the index table excludes retained
+  ;; tombstones for rows the indexer already removed, which would keep the count inflated until tombstone
+  ;; cleanup runs.
+  (try
+    (let [{:keys [indexer_last_seen indexer_last_seen_id]} metadata-row
+          count-sql (-> (sql.helpers/select [:%count.* :n])
+                        (sql.helpers/from [(keyword index-table-name) :i])
+                        (sql.helpers/where
+                         [:not [:exists (-> (sql.helpers/select 1)
+                                            (sql.helpers/from [(keyword repair-table-name) :r])
+                                            (sql.helpers/where [:= :r.model :i.model]
+                                                               [:= :r.model_id :i.model_id]))]]
+                         ;; no live gate row (document_hash NULL or row gone) and no pending tombstone the
+                         ;; indexer hasn't consumed yet ((gated_at, id) past the watermark). A nil watermark
+                         ;; (indexer never ran) reads all tombstones as pending; a nil watermark id treats
+                         ;; same-timestamp tombstones as pending ('' sorts before every real gate id) --
+                         ;; conservative in both cases, no false spike.
+                         [:not [:exists (-> (sql.helpers/select 1)
+                                            (sql.helpers/from [(keyword gate-table-name) :g])
+                                            (sql.helpers/where [:= :g.model :i.model]
+                                                               [:= :g.model_id :i.model_id]
+                                                               [:or
+                                                                [:!= :g.document_hash nil]
+                                                                [:> [:composite :g.gated_at :g.id]
+                                                                 [:composite
+                                                                  [:coalesce [:lift indexer_last_seen]
+                                                                   [:raw "'-infinity'::timestamptz"]]
+                                                                  [:coalesce [:lift indexer_last_seen_id] ""]]]]))]]
+                         ;; A failed delete may sit behind the watermark: stalled-mode advances it after
+                         ;; moving the failure to the DLQ. The current gate generation still owns that retry,
+                         ;; so it is pending work rather than garbage.
+                         [:not [:exists (-> (sql.helpers/select 1)
+                                            (sql.helpers/from [(keyword dlq-table-name) :d])
+                                            (sql.helpers/join [(keyword gate-table-name) :dg]
+                                                              [:and
+                                                               [:= :dg.id :d.gate_id]
+                                                               [:= :dg.gated_at :d.error_gated_at]])
+                                            (sql.helpers/where [:= :dg.model :i.model]
+                                                               [:= :dg.model_id :i.model_id]))]])
+                        (sql/format :quoted true))]
+      (or (:n (jdbc/execute-one! pgvector count-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})) 0))
+    (catch InterruptedException e
+      (throw e))
+    (catch Exception e
+      (log/errorf e "Error counting stale orphans in index table %s against repair table %s"
+                  index-table-name repair-table-name)
+      nil)))
 
 (defn- create-repair-table!
   "Creates an empty temporary table for tracking documents during index repair."

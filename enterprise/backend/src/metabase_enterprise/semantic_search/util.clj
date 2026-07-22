@@ -25,6 +25,15 @@
   [table-name]
   (second (qualified-table-parts table-name)))
 
+(defn quote-table
+  "Quote a possibly schema-qualified `table-name` for raw SQL, quoting schema and table separately so it
+  renders as \"schema\".\"table\" rather than one identifier with a literal dot."
+  [table-name]
+  (let [[schema table] (qualified-table-parts table-name)]
+    (if schema
+      (str (quote-ident schema) "." (quote-ident table))
+      (quote-ident table))))
+
 (defn column-keyword
   "A `table.column` reference as a dotted-name keyword, not a namespaced one.
   HoneySQL quotes a keyword's namespace as one identifier, so a schema-qualified table there renders as a
@@ -55,19 +64,44 @@
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})
         (:table_exists false))))
 
-(defn index-exists?
-  "Does an index named `index-name` exist in the pgvector DB's pg_indexes?
-  A schema-qualified (dotted) name matches only within its schema; an unqualified name matches any schema."
+(defn index-state
+  "Return the catalog state of `index-name`: `:ready`, `:building`, `:invalid`, or `nil` when absent.
+  A schema-qualified name matches only within its schema; an unqualified name matches any schema."
   [pgvector index-name]
   (let [[schema index] (qualified-table-parts index-name)]
-    (-> (jdbc/execute-one! pgvector
-                           (if schema
-                             ["SELECT exists (select 1 FROM pg_indexes WHERE schemaname = ? AND indexname = ?) index_exists"
-                              schema index]
-                             ["SELECT exists (select 1 FROM pg_indexes WHERE indexname = ?) index_exists"
-                              index])
-                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-        (:index_exists false))))
+    (when-some [{:keys [is_ready is_valid is_building]}
+                (jdbc/execute-one! pgvector
+                                   (if schema
+                                     [(str "SELECT x.indisready AS is_ready, x.indisvalid AS is_valid, "
+                                           "EXISTS (SELECT 1 FROM pg_stat_progress_create_index p "
+                                           "        WHERE p.index_relid = i.oid) AS is_building "
+                                           "FROM pg_class i "
+                                           "JOIN pg_namespace n ON n.oid = i.relnamespace "
+                                           "JOIN pg_index x ON x.indexrelid = i.oid "
+                                           "WHERE n.nspname = ? AND i.relname = ?")
+                                      schema index]
+                                     [(str "SELECT x.indisready AS is_ready, x.indisvalid AS is_valid, "
+                                           "EXISTS (SELECT 1 FROM pg_stat_progress_create_index p "
+                                           "        WHERE p.index_relid = i.oid) AS is_building "
+                                           "FROM pg_class i "
+                                           "JOIN pg_index x ON x.indexrelid = i.oid "
+                                           "WHERE i.relname = ?")
+                                      index])
+                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (cond
+        (and is_ready is_valid) :ready
+        is_building             :building
+        :else                   :invalid))))
+
+(defn index-exists?
+  "Whether `index-name` is ready and valid. See [[index-state]]."
+  [pgvector index-name]
+  (= :ready (index-state pgvector index-name)))
+
+(defn index-needs-build?
+  "Whether `index-name` is absent or invalid with no concurrent build in progress."
+  [pgvector index-name]
+  (contains? #{nil :invalid} (index-state pgvector index-name)))
 
 (defn semantic-search-configured?
   "Whether to schedule the semantic-search Quartz jobs at startup.

@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.semantic-search.embedding-health]
    [metabase-enterprise.semantic-search.events]
+   [metabase-enterprise.semantic-search.health]
    [metabase-enterprise.semantic-search.settings]
    [metabase-enterprise.semantic-search.task.index-cleanup]
    [metabase-enterprise.semantic-search.task.index-repair]
