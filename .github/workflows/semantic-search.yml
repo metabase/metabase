@@ -11,6 +11,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-semantic-search
   cancel-in-progress: true
 
+# Exposed to every job so the test-driver action can report failures to
+# ci-conductor (secrets: inherit is already set on the semantic-search call in
+# run-tests.yml). See DEV-2224.
+env:
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+
 jobs:
   semantic-search-tests-h2:
     if: ${{ !inputs.skip }}
@@ -54,6 +61,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -65,6 +73,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip }}
@@ -127,6 +136,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -138,6 +148,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -200,6 +211,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -211,6 +223,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -274,6 +287,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -285,6 +299,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-result:
     needs:
