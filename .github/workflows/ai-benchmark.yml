@@ -35,7 +35,31 @@ on:
         default: ci-milestone-3
 
 jobs:
+  announce:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.label.name == 'evals/smoke'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      comment_id: ${{ steps.post.outputs.comment_id }}
+    steps:
+      - name: Comment (building)
+        id: post
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `🤖 **Evals smoke** — ⏳ building the image… ([logs](${runUrl}))`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            core.setOutput('comment_id', String(data.id));
+
   uberjar:
+    needs: [announce]
     if: >-
       github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
@@ -44,13 +68,15 @@ jobs:
     secrets: inherit
 
   smoke:
-    needs: [uberjar]
+    needs: [announce, uberjar]
     if: >-
       github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
     steps:
       - name: Dispatch smoke eval-run
         env:
@@ -64,14 +90,35 @@ jobs:
             -f "inputs[sample]=5" \
             -f "inputs[evals_ref]=ci-milestone-3"
 
-      - name: Remove label
+      - name: Locate the dispatched eval-run
+        id: evalrun
         env:
           GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          gh api -X DELETE \
-            "repos/${{ github.repository }}/issues/$PR/labels/evals%2Fsmoke" \
-            || echo "label already gone"
+          url=""
+          for _ in $(seq 1 20); do
+            url=$(gh api "repos/metabase/evals/actions/workflows/eval-run.yml/runs?event=workflow_dispatch&per_page=20" \
+              --jq "[.workflow_runs[] | select(.display_title | contains(\"PR#$PR\"))] | sort_by(.created_at) | last | .html_url" \
+              2>/dev/null || true)
+            [ -n "$url" ] && [ "$url" != "null" ] && break
+            sleep 5
+          done
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment (running evals)
+        uses: actions/github-script@v9
+        env:
+          EVALS_RUN_URL: ${{ steps.evalrun.outputs.url }}
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            // Fall back to the workflow's runs page if polling didn't catch the run in time.
+            const evalsUrl = process.env.EVALS_RUN_URL || 'https://github.com/metabase/evals/actions/workflows/eval-run.yml';
+            const body = `🤖 **Evals smoke** — ⏳ running evals… ([logs](${evalsUrl}), internal to metabase/evals)`;
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              comment_id: Number(process.env.COMMENT_ID), body });
 
   dispatch:
     if: github.event_name == 'workflow_dispatch'
