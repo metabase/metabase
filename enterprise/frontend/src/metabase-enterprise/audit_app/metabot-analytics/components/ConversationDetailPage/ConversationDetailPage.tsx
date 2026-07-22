@@ -38,6 +38,7 @@ import {
 import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
@@ -148,7 +149,9 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               forkBoundaryMessageId={conversation.fork_boundary_message_id}
               forkBoundaryHref={
                 conversation.forked_from_conversation_id
-                  ? `/admin/metabot/usage-auditing/conversations/${conversation.forked_from_conversation_id}`
+                  ? EnterpriseUrls.adminMetabotUsageAuditingConversation(
+                      conversation.forked_from_conversation_id,
+                    )
                   : undefined
               }
             />

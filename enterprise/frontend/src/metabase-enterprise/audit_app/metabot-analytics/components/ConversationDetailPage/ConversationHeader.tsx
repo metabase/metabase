@@ -146,7 +146,9 @@ export function ConversationHeader({
                 <Icon name="git_branch" size={16} c="text-disabled" />
                 <Anchor
                   component={ForwardRefLink}
-                  to={`/admin/metabot/usage-auditing/conversations/${conversation.forked_from_conversation_id}`}
+                  to={EnterpriseUrls.adminMetabotUsageAuditingConversation(
+                    conversation.forked_from_conversation_id,
+                  )}
                   c="text-secondary"
                   size="md"
                   underline="hover"

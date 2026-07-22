@@ -5,7 +5,7 @@
 databaseChangeLog:
   - changeSet:
       id: v64.73dw0q
-      author: maksymyakubych
+      author: undrfined
       comment: Add metabot_conversation.forked_from_conversation_id
       changes:
         - addColumn:
@@ -24,7 +24,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.ssqh1b
-      author: maksymyakubych
+      author: undrfined
       comment: Add metabot_message.forked_from_message_id
       changes:
         - addColumn:
@@ -43,7 +43,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.hjnh9v
-      author: maksymyakubych
+      author: undrfined
       comment: Recreate v_ai_usage_log with forked_from_conversation_id
       changes:
         - sqlFile:
@@ -74,7 +74,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.46zooz
-      author: maksymyakubych
+      author: undrfined
       comment: Recreate v_metabot_conversations with forked_from_conversation_id
       changes:
         - sqlFile:
