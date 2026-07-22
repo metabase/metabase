@@ -13,6 +13,7 @@ import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 import type {
   AuditTableSorting,
   ComputedVisualizationSettings,
+  VisualizationDefinition,
 } from "metabase/visualizations/types";
 import { TABLE_DEFINITION } from "metabase/visualizations/visualizations/Table/definition";
 import type { ClickObject } from "metabase-lib";
@@ -206,21 +207,23 @@ function AuditTableVisualizationInner({
   );
 }
 
+const AuditTableVisualizationDef: VisualizationDefinition = {
+  getUiName: () => "Audit Table",
+  identifier: "audit-table",
+  iconName: "table2",
+  noHeader: true,
+  hidden: true,
+  // reuse Table's settings and columnSettings
+  settings: TABLE_DEFINITION.settings,
+  columnSettings: TABLE_DEFINITION.columnSettings,
+  checkRenderable: () => {
+    // audit table can always be rendered
+  },
+};
+
 export const AuditTableVisualization = Object.assign(
   AuditTableVisualizationInner,
-  {
-    getUiName: () => "Audit Table",
-    identifier: "audit-table" as const,
-    iconName: "table2" as const,
-    noHeader: true,
-    hidden: true,
-    // reuse Table's settings and columnSettings
-    settings: TABLE_DEFINITION.settings,
-    columnSettings: TABLE_DEFINITION.columnSettings,
-    checkRenderable: () => {
-      // audit table can always be rendered
-    },
-  },
+  AuditTableVisualizationDef,
 );
 
 registerVisualization(AuditTableVisualization);

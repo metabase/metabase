@@ -5,7 +5,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { CardDisplayType, RowValues, Series } from "metabase-types/api";
+import type { RowValues, Series } from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
@@ -168,8 +168,7 @@ describe("AuditTableVisualization", () => {
       const onSortingChange = jest.fn();
       const rawSeries = [
         createMockSingleSeries(
-          // the Erroring Questions page stamps this non-saveable display onto its runtime card
-          { display: "audit-table" as CardDisplayType },
+          { display: "audit-table" },
           { data: { cols: [CARD_ID_COLUMN, NAME_COLUMN], rows: DEFAULT_ROWS } },
         ),
       ];
