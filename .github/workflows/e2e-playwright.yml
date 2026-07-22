@@ -213,9 +213,20 @@ jobs:
 
       - name: Install Playwright dependencies
         working-directory: e2e-playwright
-        # Retry once: registry tarball extraction can fail transiently
-        # (observed: "Fail extracting tarball for xlsx").
-        run: bun install || (sleep 10 && bun install)
+        # Retried: registry tarball extraction fails transiently ("Fail
+        # extracting tarball for xlsx"). A single sleep-10 retry lost on
+        # run 29882602874 s46 (both attempts, ~10s apart — too close for a
+        # registry blip), costing the whole shard. Clearing bun's cache
+        # between attempts matters: a truncated cached tarball makes a plain
+        # retry fail identically.
+        run: |
+          for i in 1 2 3 4; do
+            bun install && exit 0
+            echo "bun install failed (attempt $i) — clearing cache, backing off"
+            bun pm cache rm || true
+            sleep $((i * 20))
+          done
+          bun install
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
