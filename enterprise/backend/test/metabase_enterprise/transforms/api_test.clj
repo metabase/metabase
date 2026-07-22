@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [get-test-schema
                                                      parse-instant
+                                                     transform-run-timeout-seconds
                                                      utc-timestamp
                                                      with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
@@ -408,7 +409,7 @@
 (defn- test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
-        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
+        timeout-s transform-run-timeout-seconds
         limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
     (is (=? {:message "Transform run started"}
             resp))
