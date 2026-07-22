@@ -1,9 +1,10 @@
 (ns metabase.mcp.v2.tools.question-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.mcp.v2.tools.question-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.question :as v2.question]
    [metabase.permissions.core :as perms]
@@ -14,6 +15,13 @@
 (set! *warn-on-reflection* true)
 
 (comment v2.question/keep-me)
+
+(defn- orders-query
+  "A Lib query over ORDERS — a runnable `:dataset_query` for fixtures that only need the card to
+   have one."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
 
 (deftest resolve-query-source-exactly-one-test
   (mt/with-current-user (mt/user->id :rasta)
@@ -50,6 +58,13 @@
                          :sql "SELECT * FROM orders WHERE total > {{min_total}}"
                          :template_tags {"min_total" {:type "number"}}}} nil)]
         (is (= :number (:type (tag-by-name q "min_total"))))))
+    (testing "a dimension tag without a widget_type is a teaching error"
+      (is (thrown-with-msg? Exception #"dimension template tag requires a widget_type"
+                            (#'v2.question/resolve-query-source
+                             {:native {:database_id (mt/id)
+                                       :sql "SELECT * FROM orders WHERE {{d}}"
+                                       :template_tags {"d" {:type "dimension"
+                                                            :field_id (mt/id :orders :total)}}}} nil))))
     (testing "a dimension tag with a field_id and widget type is applied"
       (let [field-id (mt/id :orders :total)
             q (#'v2.question/resolve-query-source
@@ -208,7 +223,7 @@
 
 (deftest update-question-rename-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Card card {:name "Before" :dataset_query (mt/mbql-query orders)}]
+    (mt/with-temp [:model/Card card {:name "Before" :dataset_query (orders-query)}]
       (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                        {:method "update" :id (:id card) :description "new desc"})]
         (is (not (:isError result)) (-> result :content first :text))
@@ -216,7 +231,7 @@
 
 (deftest update-archive-restore-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Card card {:archived false :dataset_query (mt/mbql-query orders)}]
+    (mt/with-temp [:model/Card card {:archived false :dataset_query (orders-query)}]
       (let [archive-result (registry/call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived true})]
         (is (not (:isError archive-result)) (-> archive-result :content first :text)))
       (is (true? (t2/select-one-fn :archived :model/Card :id (:id card))))
@@ -240,7 +255,7 @@
 
 (deftest update-question-swap-query-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders)}]
+    (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
       (let [new-query {:database (mt/id) :stages [{:source-table (mt/id :products)}]}
             result    (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                           {:method "update" :id (:id card) :query new-query})]
@@ -301,7 +316,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Collection dash-coll {}
                      :model/Dashboard dash {:collection_id (:id dash-coll)}
-                     :model/Card card {:dataset_query (mt/mbql-query orders) :collection_id nil}]
+                     :model/Card card {:dataset_query (orders-query) :collection_id nil}]
         (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                          {:method "update" :id (:id card) :dashboard_id (:id dash)})]
           (is (not (:isError result)) (-> result :content first :text))
@@ -313,7 +328,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard dash {:collection_id nil}
                    :model/Collection coll {}
-                   :model/Card card {:dataset_query (mt/mbql-query orders)}]
+                   :model/Card card {:dataset_query (orders-query)}]
       (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                        {:method "update" :id (:id card)
                                         :dashboard_id (:id dash) :collection_id (:id coll)})]
@@ -328,7 +343,7 @@
     (mt/with-temp [:model/Collection coll-a {}
                    :model/Collection coll-b {}
                    :model/Dashboard dash-b {:collection_id (:id coll-b)}
-                   :model/Card card {:dataset_query (mt/mbql-query orders) :collection_id (:id coll-a)}]
+                   :model/Card card {:dataset_query (orders-query) :collection_id (:id coll-a)}]
       ;; the default "All Users" group has write access to freshly created root collections in
       ;; tests; revoke it on the destination only, to prove the collection-move check (and thus
       ;; the write requirement on the dashboard's collection) still runs for a dashboard move.

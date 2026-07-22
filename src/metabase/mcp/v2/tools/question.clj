@@ -33,6 +33,9 @@
               (common/throw-teaching-error
                (format "Invalid template tag type %s — use \"text\", \"number\", \"date\", or \"dimension\"."
                        (pr-str tag-type))))]
+    (when (and (= t :dimension) (str/blank? widget_type))
+      (common/throw-teaching-error
+       "A dimension template tag requires a widget_type, e.g. \"number/=\", \"string/=\", or \"date/all-options\"."))
     (cond-> (assoc existing-tag :type t)
       display_name (assoc :display-name display_name)
       (some? required) (assoc :required (boolean required))
@@ -264,7 +267,7 @@
                       (fn [cid] (api/write-check :model/Card cid)))
         dashboard-id (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))
         new-query    (when (or (:query_handle args) (:query args) (:native args))
-                       (lib-be/normalize-query (resolve-query-source args session-id)))
+                       (resolve-query-source args session-id))
         raw-updates  (cond-> {}
                        (contains? args :name)                   (assoc :name name)
                        (contains? args :description)            (assoc :description description)
