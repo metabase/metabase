@@ -69,6 +69,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-athena-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-bigquery-cloud-sdk-ee:
@@ -91,6 +92,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-druid-ee:
@@ -113,6 +115,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mariadb-10-6-ee:
@@ -142,6 +145,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-10-6-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mariadb-latest-ee:
@@ -171,6 +175,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-4-4-ee:
@@ -193,6 +198,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-4-4-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-4-4-ssl-ee:
@@ -227,6 +233,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-mongo-4-4-ee'
+          granular-rerun: 'false'
           test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-5-0-ee:
@@ -249,6 +256,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-5-0-ssl-ee:
@@ -283,6 +291,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-latest-ee:
@@ -308,6 +317,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-latest-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-8-0-ee:
@@ -337,6 +347,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-9-ee:
@@ -404,6 +415,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-latest-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-oracle-18-4-ee:
@@ -430,6 +442,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-18-4-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-oracle-21-3-ee:
@@ -465,6 +478,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-21-3-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-postgres-ee:
@@ -495,6 +509,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-postgres-latest-ee:
@@ -528,6 +543,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-latest-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-presto-jdbc-ee:
@@ -577,6 +593,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-redshift-ee:
@@ -596,6 +613,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-snowflake-ee:
@@ -627,6 +645,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-sparksql-ee:
@@ -647,6 +666,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sparksql-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-sqlite-ee:
@@ -662,6 +682,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlite-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-sqlserver-2017-ee:
@@ -689,6 +710,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-sqlserver-2022-ee:
@@ -716,6 +738,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-2022-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-starburst-ee:
@@ -741,6 +764,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-starburst-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   login-to-ecr:
@@ -796,4 +820,5 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-vertica-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
