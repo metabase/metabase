@@ -111,8 +111,13 @@
                             (if (or (nil? held) (t/before? held now))
                               (do (vreset! won true)
                                   (assoc ls hex-hash (t/plus now (t/millis lease-ms))))
-                              ls))))
-          @won)))))
+                              (do (vreset! won false)
+                                  ls)))))
+          @won))
+
+      i/LeaseControl
+      (release-refresh-lease! [_this query-hash]
+        (swap! leases dissoc (codecs/bytes->hex query-hash))))))
 
 (defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
@@ -341,20 +346,61 @@
         (is (= :cached
                (run-query :cache-strategy strategy)))))))
 
+(defn- run-query-with-execute*
+  "Like [[run-query*]] but with an explicit `execute-fn` bound as [[qp.pipeline/*execute*]], so tests can gate query
+  execution on latches to force a deterministic interleaving of concurrent requests."
+  [execute-fn & {:as query-kvs}]
+  (let [qp    (cache/maybe-return-cached-results qp.pipeline/*run*)
+        query (test-query query-kvs)]
+    (binding [driver.settings/*query-timeout-ms* 20000
+              qp.pipeline/*execute*              execute-fn]
+      (driver/with-driver :h2
+        (-> (qp query qp.reducible/default-rff)
+            (assoc :data {}))))))
+
+(defn- wait-until-done
+  "Give future `fut` up to ~1 second to complete on its own. Returns immediately once it does."
+  [fut]
+  (loop [attempts-remaining 100]
+    (when (and (pos? attempts-remaining)
+               (not (future-done? fut)))
+      (Thread/sleep 10)
+      (recur (dec attempts-remaining)))))
+
 (deftest stale-while-revalidate-staleness-is-bounded-test
-  (testing "a lease loser may be served a slightly stale entry, but not an arbitrarily old one (#78339)"
+  (testing "a lease loser may be served a slightly stale entry, but not an arbitrarily old one; beyond the grace
+            window it waits for the in-flight refresh instead (#78339)"
     (with-mock-cache! [save-chan]
-      (let [t0         #t "2026-01-01T00:00:00Z[UTC]"
-            query-hash (qp.util/query-hash (test-query nil))]
+      (let [t0 #t "2026-01-01T00:00:00Z[UTC]"]
         (mt/with-clock t0
           (run-query)
           (mt/wait-for-result save-chan))
-        (testing "the entry expired 30 days ago and another process holds the refresh lease"
+        (testing "the entry expired 30 days ago and another process is refreshing it"
           (mt/with-clock (t/plus t0 (t/days 30))
-            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
-            (is (= :not-cached
-                   (run-query))
-                "an entry this far past its TTL must be recomputed, not served stale")))))))
+            (let [entered   (promise)
+                  release   (promise)
+                  refresher (future (run-query-with-execute*
+                                     (fn [_driver _query respond]
+                                       (deliver entered true)
+                                       (u/deref-with-timeout release 10000)
+                                       (respond {} *rows*))))]
+              ;; the refresher provably holds the refresh lease, blocked mid-query
+              (u/deref-with-timeout entered 10000)
+              (let [loser (future (run-query-with-execute*
+                                   (fn [_driver _query respond]
+                                     (respond {} *rows*))))]
+                (wait-until-done loser)
+                (is (not (future-done? loser))
+                    "the loser must wait for the in-flight refresh, not be served the 30-day-old entry")
+                (deliver release true)
+                (is (=? {:status        :completed
+                         :cache/details {:stored true}}
+                        (u/deref-with-timeout refresher 10000)))
+                (testing "the loser is served the refreshed results, not the ancient entry"
+                  (is (=? {:status        :completed
+                           :cache/details {:cached     true
+                                           :updated_at (t/plus t0 (t/days 30))}}
+                          (u/deref-with-timeout loser 10000))))))))))))
 
 (deftest stale-while-revalidate-within-grace-window-test
   (testing "a lease loser is served the stale entry when it is only slightly past its TTL, so concurrent requests
@@ -372,18 +418,6 @@
             (is (= :cached
                    (run-query))
                 "just-expired results are fine to serve while the refresh is in flight")))))))
-
-(defn- run-query-with-execute*
-  "Like [[run-query*]] but with an explicit `execute-fn` bound as [[qp.pipeline/*execute*]], so tests can gate query
-  execution on latches to force a deterministic interleaving of concurrent requests."
-  [execute-fn & {:as query-kvs}]
-  (let [qp    (cache/maybe-return-cached-results qp.pipeline/*run*)
-        query (test-query query-kvs)]
-    (binding [driver.settings/*query-timeout-ms* 20000
-              qp.pipeline/*execute*              execute-fn]
-      (driver/with-driver :h2
-        (-> (qp query qp.reducible/default-rff)
-            (assoc :data {}))))))
 
 (deftest concurrent-cold-miss-runs-query-once-test
   (testing "concurrent identical requests on a cold cache should run the query exactly once; the loser should wait
@@ -921,16 +955,12 @@
   (binding [cache/*backend* stub-no-op-cache-backend]
     (testing "Make sure we can save large result sets without tripping over internal async buffers"
       (is (= 10000 (count (transduce identity
-                                     (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                     (repeat 10000 [1]))))))
-    (testing "Make sure we don't block somewhere if we decide not to save results"
-      (is (= 10000 (count (transduce identity
-                                     (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
+                                     (#'cache/serialize-tee-xform {} (byte-array 0) conj)
                                      (repeat 10000 [1]))))))
     (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
       (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
         (is (= max-bytes (count (transduce identity
-                                           (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
+                                           (#'cache/serialize-tee-xform {} (byte-array 0) conj)
                                            (repeat max-bytes [1])))))))))
 
 (deftest perms-checks-should-still-apply-test

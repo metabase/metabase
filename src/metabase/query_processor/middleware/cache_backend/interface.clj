@@ -48,6 +48,14 @@
   abandoned and may be taken over. Backends that can't coordinate across processes should return `true` (degrading to
   the no-stampede-protection behavior)."))
 
+(p.types/defprotocol+ LeaseControl
+  "Optional extension to [[CacheBackend]] for releasing a held refresh lease without writing results. Callers must
+  check `satisfies?` before use; backends that don't implement it degrade to leases only expiring via the caller's
+  `lease-ms` tolerance."
+  (release-refresh-lease! [this ^bytes query-hash]
+    "Release the refresh lease on `query-hash`, if held, without touching any stored results. Called when a recompute
+  fails, so another caller can take over immediately instead of waiting out the lease."))
+
 (defmacro with-cached-results
   "Macro version for consuming `cached-results` from a `backend`.
 

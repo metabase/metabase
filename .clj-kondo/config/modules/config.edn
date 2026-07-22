@@ -1550,7 +1550,7 @@
 
   op-cache-impl
   {:team "Querying Platform"
-   :api  #{}
+   :api  #{metabase.op-cache-impl.cache metabase.op-cache-impl.storage}
    :uses #{op-cache
            util}}
 
@@ -1927,6 +1927,8 @@
            lib-be
            model-persistence
            models
+           op-cache
+           op-cache-impl
            parameters
            permissions
            pivot
