@@ -114,7 +114,7 @@
       (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
                                   (fn [updates] (swap! calls conj updates))]
         (mt/with-temp [:model/Card {id :id} {}]
-          ;; the temp card's own creation enqueues an unrelated message via the after-insert hook; only the
+          ;; the temp card's own creation enqueues an unrelated insert-capture message; only the
           ;; update's message is under test.
           (reset! calls [])
           (t2/update! :model/Card id {:description "a new description"})
@@ -122,6 +122,20 @@
                      ["dataset" [:= id :this.id]]
                      ["metric" [:= id :this.id]]}]
                   (mapv set @calls))))))))
+
+(deftest ^:synchronized transform-delete-purges-once-test
+  (testing "capture replaces Transform's redundant explicit delete"
+    (let [delete-calls (atom [])]
+      (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/test])]
+        (with-redefs [search.engine/update! (fn [_engine documents]
+                                              {"transform" (count documents)})
+                      search.engine/delete! (fn [_engine model ids]
+                                              (swap! delete-calls conj [model (vec ids)])
+                                              {model (count ids)})]
+          (mt/with-temp [:model/Transform {id :id} {:name "Single Purge Transform"}]
+            (reset! delete-calls [])
+            (t2/delete! :model/Transform id)
+            (is (= [["transform" [(str id)]]] @delete-calls))))))))
 
 (deftest update-filters-on-changed-fields-test
   (testing "changes to fields no hook cares about don't reach the action/indexed-entity joins, which key off
