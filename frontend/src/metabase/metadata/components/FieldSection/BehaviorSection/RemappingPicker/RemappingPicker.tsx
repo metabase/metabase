@@ -25,6 +25,8 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
+import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
+import type MetadataTable from "metabase-lib/v1/metadata/Table";
 import type { Database, Field, FieldId } from "metabase-types/api";
 
 import {
@@ -274,16 +276,19 @@ export const RemappingPicker = ({
            */}
           {fkTargetTable && (
             <FieldDataSelector
-              databases={[database]}
+              // DataSelector is typed against metabase-lib entities; here we
+              // feed it plain API entities, which carry the fields it reads.
+              // TODO(dataselector-api-vs-metabase-lib-casts): remove these casts
+              // once DataSelector's entity props use structural interfaces.
+              databases={[database] as unknown as MetadataDatabase[]}
               isInitiallyOpen={isChoosingInitialFkTarget}
-              selectedDatabase={database}
               selectedDatabaseId={database.id}
-              selectedField={fkRemappingField}
               selectedFieldId={fkRemappingField?.id}
-              selectedTable={fkTargetTable}
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
-              tables={tables}
+              // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast
+              // once DataSelector's entity props use structural interfaces.
+              tables={tables as unknown as MetadataTable[]}
               triggerElement={
                 <Select
                   data={[

@@ -154,11 +154,22 @@ describe("SCIM User Provisioning Settings", () => {
       settings: {
         "scim-enabled": true,
       },
+      settingDefinitions: [
+        {
+          key: "scim-base-url",
+          is_env_setting: false,
+          env_name: "",
+          value: "https://example.com/api/ee/scim/v2",
+        },
+      ],
     });
 
-    await userEvent.click(screen.getByLabelText("copy icon"));
+    await userEvent.click(await screen.findByLabelText("copy icon"));
 
     expect(await screen.findByText("Copied!")).toBeInTheDocument();
+    expect(window.navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "https://example.com/api/ee/scim/v2",
+    );
   });
 
   it("should call the regenerate token endpoint", async () => {

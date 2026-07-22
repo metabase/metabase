@@ -24,8 +24,9 @@ const isEngineVisible = (
   const isSelected = engineKey === selectedEngineKey;
   const isSuperseded = engine["superseded-by"] != null;
   const isSuperseding = engine["superseded-by"] === selectedEngineKey;
+  const isCreatable = engine["creatable?"] !== false;
 
-  return isSelected || !isSuperseded || isSuperseding;
+  return isSelected || ((!isSuperseded || isSuperseding) && isCreatable);
 };
 
 const getEngineOption = (engineKey: string, engine: Engine) => {
@@ -58,6 +59,7 @@ export function getEngineNativeType(engine?: string): "sql" | "json" {
 }
 
 export function getNativeQueryLanguage(engine?: string) {
+  // Unjustified type cast. FIXME
   return getEngineNativeType(engine).toUpperCase() as "SQL" | "JSON";
 }
 

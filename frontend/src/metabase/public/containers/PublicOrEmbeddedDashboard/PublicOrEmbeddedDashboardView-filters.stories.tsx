@@ -3,18 +3,16 @@ import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockDashboardState,
@@ -83,7 +81,9 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  // Unjustified type cast. FIXME
   const dashboard = context.args.dashboard as Dashboard;
+  // Unjustified type cast. FIXME
   const parameterType = context.args.parameterType as ParameterType;
   const initialState = createMockState({
     settings: createMockSettingsState({
@@ -147,7 +147,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     }),
   });
 
-  const store = getStore(publicReducers, initialState, [Api.middleware]);
+  const store = getPublicStore(initialState);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -396,6 +396,7 @@ const createDefaultArgs = ({
 };
 
 function getLastPopover() {
+  // Unjustified type cast. FIXME
   const lastPopover = Array.from(
     document.documentElement.querySelectorAll(
       '[data-element-id="mantine-popover"]',
@@ -406,6 +407,7 @@ function getLastPopover() {
 }
 
 function getLastPopoverElement() {
+  // Unjustified type cast. FIXME
   const lastPopover = Array.from(
     document.documentElement.querySelectorAll(
       '[data-element-id="mantine-popover"]',
@@ -476,6 +478,7 @@ export const LightThemeParameterSearchWithValue = {
     await userEvent.type(searchInput, "g");
 
     const dropdown = getLastPopover();
+    // Unjustified type cast. FIXME
     (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
       "data-hovered",
       "true",
@@ -546,9 +549,9 @@ export const LightThemeParameterListWithValue = {
     const popover = getLastPopover();
     await userEvent.type(popover.getByPlaceholderText("Search the list"), "g");
     await userEvent.click(popover.getByText("Widget"));
-    const gizmo = popover.getByRole("checkbox", {
+    const gizmo = popover.getByRole<HTMLInputElement>("checkbox", {
       name: "Gizmo",
-    }) as HTMLInputElement;
+    });
     gizmo.disabled = true;
   },
 };
@@ -594,6 +597,7 @@ export const LightThemeParameterListSingleWithValue = {
     );
     await userEvent.click(documentElement.getByText("Widget"));
     const popover = getLastPopover();
+    // Unjustified type cast. FIXME
     (popover.getByText("Gadget").parentNode as HTMLElement).classList.add(
       "pseudo-hover",
     );
@@ -882,6 +886,7 @@ export const LightThemeUnitOfTime = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
+    // Unjustified type cast. FIXME
     (popover.getByText("Hour").parentNode as HTMLElement).classList.add(
       "pseudo-hover",
     );

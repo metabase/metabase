@@ -198,6 +198,13 @@ export const getEventTarget = (
   if (!target) {
     target = document.createElement("div");
     target.id = "popover-event-target";
+    // This node is the virtual anchor a Mantine Popover attaches to. Position it
+    // as a tiny, click-through box at the cursor (left/top set below from the
+    // event's viewport coords) so the popover opens at the pointer location.
+    target.style.position = "fixed";
+    target.style.width = "6px";
+    target.style.height = "6px";
+    target.style.pointerEvents = "none";
     document.body.appendChild(target);
   }
 
@@ -209,7 +216,9 @@ export const getEventTarget = (
     clientX = event.changedTouches[0].clientX;
     clientY = event.changedTouches[0].clientY;
   } else {
+    // Unjustified type cast. FIXME
     clientX = (event as MouseEvent).clientX;
+    // Unjustified type cast. FIXME
     clientY = (event as MouseEvent).clientY;
   }
 
@@ -233,6 +242,14 @@ export function reload(): void {
  */
 export function redirect(url: string): void {
   window.location.href = url;
+}
+
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function replaceLocation(url: string): void {
+  window.location.replace(url);
 }
 
 export function openSaveDialog(fileName: string, fileContent: Blob): void {

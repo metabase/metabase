@@ -5,15 +5,10 @@ import ReactMarkdown from "react-markdown";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import {
-  clickBehaviorIsValid,
-  getDataFromClicked,
-} from "metabase/parameters/utils/click-behavior";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting/numbers";
 import { removeNewLines } from "metabase/utils/formatting/strings";
 import { formatTime } from "metabase/utils/formatting/time";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { parseNumber } from "metabase/utils/number";
 import {
   isBoolean,
@@ -24,8 +19,9 @@ import {
   isTime,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
+import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
+import { clickBehaviorIsValid, getDataFromClicked } from "./click-data";
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
@@ -39,7 +35,7 @@ const MARKDOWN_RENDERERS = {
   ),
 };
 
-export function formatValue(value: unknown, _options: OptionsType = {}) {
+export function formatValue(value: unknown, _options: ColumnSettings = {}) {
   let { prefix, suffix, ...options } = _options;
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (
@@ -55,6 +51,7 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
   const formatted = formatValueRaw(value, options);
   let maybeJson = {};
   try {
+    // Unjustified type cast. FIXME
     maybeJson = JSON.parse(value as string);
   } catch {
     // do nothing
@@ -99,7 +96,7 @@ export function formatValue(value: unknown, _options: OptionsType = {}) {
 
 export function getRemappedValue(
   value: string | number,
-  { remap, column }: OptionsType = {},
+  { remap, column }: ColumnSettings = {},
 ) {
   if (remap && column) {
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
@@ -114,7 +111,7 @@ export function getRemappedValue(
 }
 
 // fallback for formatting a string without a column semantic_type
-function formatStringFallback(value: any, options: OptionsType = {}) {
+function formatStringFallback(value: any, options: ColumnSettings = {}) {
   if (options.view_as !== null) {
     value = formatUrl(value, options);
     if (typeof value === "string") {
@@ -132,7 +129,7 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
 
 export function formatValueRaw(
   value: unknown,
-  options: OptionsType = {},
+  options: ColumnSettings = {},
 ): React.ReactElement | string | number | null {
   options = {
     jsx: false,
@@ -142,6 +139,7 @@ export function formatValueRaw(
 
   const { column } = options;
 
+  // Unjustified type cast. FIXME
   const remapped = getRemappedValue(value as string | number, options);
   if (remapped !== undefined && options.view_as !== "link") {
     value = remapped;
@@ -167,23 +165,28 @@ export function formatValueRaw(
     );
   } else if (
     options.click_behavior &&
+    "linkTextTemplate" in options.click_behavior &&
     options.click_behavior.linkTextTemplate
   ) {
     return renderLinkTextForClick(
       options.click_behavior.linkTextTemplate,
-      getDataFromClicked(options.clicked) as any,
+      getDataFromClicked(options.clicked),
     );
   } else if (
     (isURL(column) && options.view_as == null) ||
     options.view_as === "link"
   ) {
+    // Unjustified type cast. FIXME
     return formatUrl(value as string, options);
   } else if (isEmail(column)) {
+    // Unjustified type cast. FIXME
     return formatEmail(value as string, options);
   } else if (isTime(column)) {
+    // Unjustified type cast. FIXME
     return formatTime(value as Dayjs, column.unit, options);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(
+      // Unjustified type cast. FIXME
       value as string | number,
       column.unit,
       options,
@@ -192,8 +195,10 @@ export function formatValueRaw(
     isDate(column) ||
     isDateValue(value) ||
     dayjs.isDayjs(value) ||
+    // Unjustified type cast. FIXME
     dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
+    // Unjustified type cast. FIXME
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
     // Check if we're looking for a number isNumber(column) and

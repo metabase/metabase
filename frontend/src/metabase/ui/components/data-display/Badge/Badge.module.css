@@ -1,3 +1,16 @@
 .root {
-  background-color: var(--mb-color-background-brand);
+  --badge-radius: 1rem; /* 16px */
+
+  text-transform: none;
+  font-weight: 600;
+  line-height: 0.9375rem; /* 15px */
+  letter-spacing: 0;
+}
+
+.root[data-indicator] {
+  width: 0.5rem; /* 8px */
+  height: 0.5rem;
+  min-width: 0.5rem;
+  padding: 0;
+  border-radius: 50%;
 }

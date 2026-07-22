@@ -1,6 +1,7 @@
 import { type ComponentType, useEffect } from "react";
 import { t } from "ttag";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import {
   CollectionNotFoundError,
   SdkLoader,
@@ -20,7 +21,7 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { CollectionId, CollectionItemModel } from "metabase-types/api";
+import type { CollectionItemModel } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
@@ -81,6 +82,11 @@ export type CollectionBrowserProps = {
   visibleEntityTypes?: UserFacingEntityName[];
 
   /**
+   * Whether to show questions that belong to a dashboard alongside collection saved questions. Set to true to show them. Defaults to false, keeping the list focused on collection content.
+   */
+  showDashboardQuestions?: boolean;
+
+  /**
    * The columns to display in the collection items table. If not provided, all columns will be shown.
    */
   visibleColumns?: CollectionBrowserListColumns[];
@@ -101,11 +107,14 @@ export const CollectionBrowserInner = ({
   onClick,
   pageSize = COLLECTION_PAGE_SIZE,
   visibleEntityTypes = [...USER_FACING_ENTITY_NAMES],
+  showDashboardQuestions = false,
   EmptyContentComponent = null,
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
   style,
 }: CollectionBrowserProps) => {
+  useTrackSdkComponentMount("CollectionBrowser", null, {});
+
   const {
     baseCollectionId,
     internalCollectionId,
@@ -163,7 +172,7 @@ export const CollectionBrowserInner = ({
         return;
       }
 
-      setInternalCollectionId(item.id as CollectionId);
+      setInternalCollectionId(item.id);
     }
   };
 
@@ -186,6 +195,7 @@ export const CollectionBrowserInner = ({
         onClick={onClickItem}
         pageSize={pageSize}
         models={collectionTypes}
+        showDashboardQuestions={showDashboardQuestions}
         visibleColumns={visibleColumns}
         EmptyContentComponent={EmptyContentComponent ?? undefined}
       />

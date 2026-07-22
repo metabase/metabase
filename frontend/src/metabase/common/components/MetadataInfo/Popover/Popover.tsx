@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import Animation from "metabase/css/core/animation.module.css";
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
-import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
 
 // Initially, the user will have to hover for this long to open the popover
 const POPOVER_SLOW_OPEN_DELAY = 250;
@@ -44,19 +43,15 @@ export function Popover({
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const { setupCloseHandler, removeCloseHandler } =
-    useSequencedContentCloseHandler();
-
   const handleOpen = useCallback(() => {
     group.onOpen();
     setIsOpen(true);
   }, [group]);
 
   const handleClose = useCallback(() => {
-    removeCloseHandler();
     group.onClose();
     setIsOpen(false);
-  }, [removeCloseHandler, group]);
+  }, [group]);
 
   return (
     <HoverCard
@@ -79,14 +74,7 @@ export function Popover({
         onMouseUp={stopPropagation}
         className={group.shouldDelay ? Animation.fadeIn : undefined}
       >
-        <WidthBound
-          width={width}
-          ref={(node) => {
-            setupCloseHandler(node, () => setIsOpen(false));
-          }}
-        >
-          {isOpen && content}
-        </WidthBound>
+        <WidthBound width={width}>{isOpen && content}</WidthBound>
       </Dropdown>
     </HoverCard>
   );

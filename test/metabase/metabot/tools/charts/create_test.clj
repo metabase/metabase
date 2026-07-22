@@ -20,12 +20,17 @@
       (is (str/includes? (:chart-content result) "<chart"))
       (is (str/includes? (:chart-content result) "bar"))
       (is (str/starts-with? (:chart-link result) "metabase://chart/"))
-      (is (contains? result :instructions))))
+      (is (contains? result :instructions))
+      (testing "exposes the question link + query for the viz data part (no redirect reaction)"
+        (is (string? (:results-url result)))
+        (is (str/starts-with? (:results-url result) "/question#"))
+        (is (contains? result :query))
+        (is (not (contains? result :reactions))))))
   (testing "creates chart with different types"
     (let [queries-state {"q-456" {:query-id "q-456"
                                   :sql "SELECT COUNT(*) FROM users"
                                   :database 1}}]
-      (doseq [chart-type [:line :pie :table :scatter :area]]
+      (doseq [chart-type [:line :pie :table :scatter :area :treemap]]
         (let [result (create-chart/create-chart
                       {:query-id "q-456"
                        :chart-type chart-type

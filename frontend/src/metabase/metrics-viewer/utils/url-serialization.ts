@@ -1,13 +1,15 @@
-import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
+import type {
+  SerializedDefinitionInfo,
+  SerializedDimensionBreakout,
+  SerializedExpressionSubToken,
+  SerializedFormulaEntity,
+  SerializedMetricsViewerPageState,
+  SerializedSource,
+} from "metabase/common/metrics-viewer";
 import { getObjectEntries } from "metabase/utils/objects";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type {
-  MathOperator,
-  SegmentId,
-  TemporalUnit,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { SegmentId } from "metabase-types/api";
 
 import type {
   ExpressionSubToken,
@@ -15,8 +17,6 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDimensionBreakoutState,
-  MetricsViewerDimensionBreakoutType,
-  MetricsViewerDisplayType,
   MetricsViewerFormulaEntity,
   MetricsViewerPageState,
 } from "../types/viewer-state";
@@ -30,13 +30,11 @@ import {
   extractDefinitionFilters,
 } from "../utils/dimension-filters";
 
-import { defineCompactSchema } from "./compact-schema";
 import {
   getEffectiveDefinitionEntry,
   getEffectiveTokenDefinitionEntry,
   getEntryBreakout,
 } from "./definition-entries";
-import type { DimensionFilterValue } from "./dimension-filters";
 import {
   findBinningStrategy,
   findDimensionById,
@@ -45,36 +43,11 @@ import {
 } from "./dimension-lookup";
 import { stampMetricCounts } from "./expression";
 
-function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
-  if (filter.type === "specific-date" || filter.type === "time") {
-    return {
-      ...filter,
-      values: filter.values.map((value) =>
-        typeof value === "string" ? new Date(value) : value,
-      ),
-    };
-  } else if (filter.type === "number" || filter.type === "coordinate") {
-    return {
-      ...filter,
-      values: filter.values.map((value) =>
-        typeof value === "string" ? BigInt(value) : value,
-      ),
-    };
-  }
-  return filter;
-}
-
-/**
- * When we deserialize an entity, we can't apply breakouts or filters until the definition has loaded.
- * So we store them and apply them lazily after the definition has loaded.
- */
-export interface SerializedDefinitionInfo {
-  breakout?: string;
-  breakoutTemporalUnit?: TemporalUnit;
-  breakoutBinning?: string;
-  filters?: SerializedUrlFilter[];
-  segments?: SegmentId[];
-}
+export { decodeState, encodeState } from "metabase/common/metrics-viewer";
+export type {
+  SerializedDefinitionInfo,
+  SerializedMetricsViewerPageState,
+} from "metabase/common/metrics-viewer";
 
 export function applySerializedDefinitionInfo(
   definition: MetricDefinition,
@@ -148,70 +121,6 @@ export function applySerializedDefinitionInfo(
   return result;
 }
 
-// ── Serialized types (internal, URL-facing) ──
-
-interface SerializedExpressionSubToken {
-  type: "metric" | "constant" | "operator" | "open-paren" | "close-paren";
-  sourceId?: string;
-  op?: MathOperator;
-  value?: number;
-  filters?: SerializedUrlFilter[];
-  segments?: SegmentId[];
-}
-
-interface SerializedExpressionEntry {
-  type: "expression";
-  id: string;
-  name: string;
-  tokens: SerializedExpressionSubToken[];
-}
-
-interface SerializedUrlFilter {
-  dimensionId: string;
-  value: DimensionFilterValue;
-}
-
-interface SerializedSource {
-  type: "metric" | "measure";
-  id: number;
-  breakout?: string;
-  breakoutTemporalUnit?: TemporalUnit;
-  breakoutBinning?: string;
-  filters?: SerializedUrlFilter[];
-  segments?: SegmentId[];
-}
-
-type SerializedFormulaEntity = SerializedExpressionEntry | SerializedSource;
-
-interface SerializedDimensionBreakoutDef {
-  slotIndex: number;
-  dimensionId?: string;
-}
-
-interface SerializedProjectionConfig {
-  dimensionFilter?: DimensionFilterValue;
-  temporalUnit?: TemporalUnit;
-  binning?: string;
-}
-
-interface SerializedDimensionBreakout {
-  id: string;
-  type: MetricsViewerDimensionBreakoutType;
-  label: string | null;
-  display: MetricsViewerDisplayType;
-  showColumnLabels?: boolean;
-  visualizationSettings?: Partial<VisualizationSettings>;
-  definitions: SerializedDimensionBreakoutDef[];
-  projectionConfig?: SerializedProjectionConfig;
-}
-
-export interface SerializedMetricsViewerPageState {
-  formulaEntities: SerializedFormulaEntity[];
-  dimensionBreakouts: SerializedDimensionBreakout[];
-  selectedDimensionBreakoutId: string | null;
-  showColumnLabels?: boolean;
-}
-
 // ── Expression sub-token helpers ──
 
 function serializeSubToken(
@@ -251,6 +160,7 @@ function deserializeSubToken(
     const hasInfo = token.filters || token.segments;
     return {
       type: "metric",
+      // Unjustified type cast. FIXME
       sourceId: token.sourceId as MetricSourceId,
       occurrenceCount: 0,
       serializedDefinitionInfo: hasInfo
@@ -304,6 +214,7 @@ export function deserializeFormulaEntities(
     }
     if (entity.type === "expression") {
       entities.push({
+        // Unjustified type cast. FIXME
         id: entity.id as MetricExpressionId,
         type: "expression" as const,
         name: entity.name,
@@ -535,168 +446,4 @@ export function stateToSerializedState(
     selectedDimensionBreakoutId,
     ...(state.showColumnLabels ? { showColumnLabels: true } : {}),
   };
-}
-
-// ── Compact schemas ──
-
-const sourceFilterSchema = defineCompactSchema<SerializedUrlFilter>({
-  dimensionId: "d",
-  value: { key: "v" },
-});
-
-const expressionSubTokenSchema =
-  defineCompactSchema<SerializedExpressionSubToken>({
-    type: "t",
-    sourceId: { key: "s", optional: true },
-    op: { key: "o", optional: true },
-    value: { key: "v", optional: true },
-    filters: { key: "F", schema: sourceFilterSchema, optional: true },
-    segments: { key: "S", optional: true },
-  });
-
-const formulaEntitySchema = defineCompactSchema<SerializedFormulaEntity>({
-  type: "t",
-  id: "i",
-  breakout: { key: "b", optional: true },
-  breakoutTemporalUnit: { key: "u", optional: true },
-  breakoutBinning: { key: "B", optional: true },
-  filters: { key: "F", schema: sourceFilterSchema, optional: true },
-  segments: { key: "s", optional: true },
-  name: { key: "n", optional: true },
-  tokens: { key: "T", schema: expressionSubTokenSchema, optional: true },
-});
-
-const dimensionBreakoutDefSchema =
-  defineCompactSchema<SerializedDimensionBreakoutDef>({
-    slotIndex: "i",
-    dimensionId: { key: "d", optional: true },
-  });
-
-const projectionConfigSchema = defineCompactSchema<SerializedProjectionConfig>({
-  dimensionFilter: { key: "f", optional: true },
-  temporalUnit: { key: "u", optional: true },
-  binning: { key: "b", optional: true },
-});
-
-const dimensionBreakoutSchema =
-  defineCompactSchema<SerializedDimensionBreakout>({
-    id: "i",
-    type: "t",
-    label: { key: "l", default: null },
-    display: { key: "d", default: "line" },
-    showColumnLabels: { key: "c", optional: true },
-    visualizationSettings: { key: "V", optional: true },
-    definitions: {
-      key: "D",
-      schema: dimensionBreakoutDefSchema,
-      default: [],
-    },
-    projectionConfig: {
-      key: "p",
-      schema: projectionConfigSchema,
-      optional: true,
-    },
-  });
-
-const rootSchema = defineCompactSchema<SerializedMetricsViewerPageState>({
-  formulaEntities: { key: "f", schema: formulaEntitySchema, default: [] },
-  dimensionBreakouts: {
-    key: "t",
-    schema: dimensionBreakoutSchema,
-    default: [],
-  },
-  selectedDimensionBreakoutId: { key: "a", default: null },
-  showColumnLabels: { key: "c", optional: true },
-});
-
-// ── Encode / decode ──
-
-function emptyState(): SerializedMetricsViewerPageState {
-  return {
-    formulaEntities: [],
-    dimensionBreakouts: [],
-    selectedDimensionBreakoutId: null,
-    showColumnLabels: false,
-  };
-}
-
-// After JSON.parse, Date values are ISO strings. Walk the decoded state and revive them.
-function reviveStateDates(
-  state: SerializedMetricsViewerPageState,
-): SerializedMetricsViewerPageState {
-  return {
-    ...state,
-    formulaEntities: state.formulaEntities.map((entity) => {
-      if ("filters" in entity && entity.filters) {
-        return {
-          ...entity,
-          filters: entity.filters.map((filter) => ({
-            ...filter,
-            value: reviveFilter(filter.value),
-          })),
-        };
-      }
-      if ("tokens" in entity && entity.tokens) {
-        return {
-          ...entity,
-          tokens: entity.tokens.map((token) => {
-            if ("filters" in token && token.filters) {
-              return {
-                ...token,
-                filters: token.filters.map((filter) => ({
-                  ...filter,
-                  value: reviveFilter(filter.value),
-                })),
-              };
-            }
-            return token;
-          }),
-        };
-      }
-      return entity;
-    }),
-    dimensionBreakouts: state.dimensionBreakouts.map((dimensionBreakout) =>
-      dimensionBreakout.projectionConfig?.dimensionFilter
-        ? {
-            ...dimensionBreakout,
-            projectionConfig: {
-              ...dimensionBreakout.projectionConfig,
-              dimensionFilter: reviveFilter(
-                dimensionBreakout.projectionConfig.dimensionFilter,
-              ),
-            },
-          }
-        : dimensionBreakout,
-    ),
-  };
-}
-
-export function encodeState(
-  state: SerializedMetricsViewerPageState,
-): string | undefined {
-  try {
-    return utf8_to_b64url(
-      JSON.stringify(rootSchema.compact(state), (_, value) =>
-        typeof value === "bigint" ? String(value) : value,
-      ),
-    );
-  } catch (err) {
-    console.error("Failed to encode metrics viewer URL state:", err);
-    return undefined;
-  }
-}
-
-export function decodeState(hash: string): SerializedMetricsViewerPageState {
-  if (!hash) {
-    return emptyState();
-  }
-
-  try {
-    const state =
-      rootSchema.expand(JSON.parse(b64url_to_utf8(hash))) ?? emptyState();
-    return reviveStateDates(state);
-  } catch (err) {
-    console.warn("Failed to decode metrics viewer URL state:", err);
-    return emptyState();
-  }
 }

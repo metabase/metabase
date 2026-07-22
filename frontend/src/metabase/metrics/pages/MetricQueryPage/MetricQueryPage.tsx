@@ -1,16 +1,20 @@
 import { useLayoutEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { getResultMetadata } from "metabase/data-studio/common/utils";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
+import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
+import type {
+  MetricPageProps,
+  MetricUrls,
+} from "metabase/common/metrics/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -20,7 +24,6 @@ import type { Card as CardApiType } from "metabase-types/api";
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
-import type { MetricPageProps, MetricUrls } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";
 
@@ -100,9 +103,9 @@ function MetricQueryPageBody({
   };
 
   const handleSave = async () => {
-    const questionWithMetadata = question.setResultsMetadata({
-      columns: resultMetadata,
-    });
+    const questionWithMetadata = question.setResultsMetadata(
+      resultMetadata ? { columns: resultMetadata } : null,
+    );
     const { display, settings } = Lib.defaultDisplay(
       questionWithMetadata.query(),
     );

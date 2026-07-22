@@ -486,8 +486,20 @@
     (testing "includes sqlite in non-hosted environment"
       (is (contains? (driver.u/available-drivers) :sqlite)))
     (mt/with-premium-features #{:hosting}
-      (testing "does not include sqlite in hosted environment"
-        (is (not (contains? (driver.u/available-drivers) :sqlite)))))))
+      (testing "include sqlite in hosted environment"
+        (is (contains? (driver.u/available-drivers) :sqlite))))))
+
+(deftest sqlite-creatable-engine-test
+  (testing "sqlite is always present in the engines info (the FE needs its metadata for the bundled Sample Database)"
+    (testing "and is creatable off hosted Metabase"
+      (mt/with-premium-features #{}
+        (is (true? (get-in (driver.u/available-drivers-info) [:sqlite :creatable?])))))
+    (testing "but is marked not creatable on hosted Metabase, while staying in the map"
+      (mt/with-premium-features #{:hosting}
+        (is (contains? (driver.u/available-drivers-info) :sqlite))
+        (is (false? (get-in (driver.u/available-drivers-info) [:sqlite :creatable?])))
+        (testing "other warehouse engines stay creatable"
+          (is (true? (get-in (driver.u/available-drivers-info) [:postgres :creatable?]))))))))
 
 (deftest ^:parallel process-connection-prop-test
   (testing "process-connection-prop handles different property types"
@@ -642,3 +654,33 @@
           trace    (.getStackTrace original)
           e        (driver.u/scrub-exceptions original ["s3cret"])]
       (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))
+
+(deftest batch-exception-scrub-test
+  (testing "unwrapping the batch envelope composes with password scrubbing (the init-workspace-isolation! shape)"
+    (let [inner    (java.sql.SQLException. "ERROR: syntax error in CREATE USER \"u\" PASSWORD 's3cret'")
+          batch    (doto (java.sql.BatchUpdateException. "Batch entry 0 CREATE USER ... PASSWORD 's3cret' was aborted" (int-array 0))
+                     (.setNextException inner))
+          scrubbed (driver.u/scrub-exceptions (driver.u/batch-exception batch) ["s3cret"])]
+      (is (not (instance? java.sql.BatchUpdateException scrubbed))
+          "the batch envelope is gone")
+      (is (not (str/includes? (ex-message scrubbed) "s3cret"))
+          "the password is gone from the message")
+      (is (str/includes? (ex-message scrubbed) "****")
+          "the password is redacted, not silently dropped"))))
+
+(deftest batch-exception-test
+  (testing "unwraps the underlying per-statement exception of a BatchUpdateException"
+    (let [inner (java.sql.SQLException. "user cannot be dropped")
+          batch (doto (java.sql.BatchUpdateException. "Batch entry 18 ..." (int-array 0))
+                  (.setNextException inner))]
+      (is (identical? inner (driver.u/batch-exception batch)))))
+  (testing "the MariaDB-connector shape chains the real exception via the cause"
+    (let [inner (java.sql.SQLException. "You are not allowed to create a user with GRANT")
+          batch (java.sql.BatchUpdateException. "envelope" nil 0 (int-array 0) inner)]
+      (is (identical? inner (driver.u/batch-exception batch)))))
+  (testing "the mssql-jdbc shape (no next exception, no cause) passes through — its message is already the plain server error"
+    (let [batch (java.sql.BatchUpdateException. "Cannot find the schema 'x'" "S0001" 208 (int-array 0))]
+      (is (identical? batch (driver.u/batch-exception batch)))))
+  (testing "non-batch throwables pass through"
+    (let [e (ex-info "boom" {})]
+      (is (identical? e (driver.u/batch-exception e))))))

@@ -1,5 +1,6 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
@@ -18,6 +19,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
+   (com.google.api.client.googleapis.json
+    GoogleJsonResponseException)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetDeleteOption
@@ -60,9 +63,13 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
+        :else
+        (str "sha__" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
   (if tx/*use-routing-details*
@@ -93,6 +100,9 @@
          :dataset-filters-type "inclusion"
          :dataset-filters-patterns (test-dataset-id db-def)
          :include-user-id-and-hash true))
+
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
@@ -146,7 +156,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Deleting dataset: " dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
-    (.printStackTrace (Exception. "This should not happen")))
+    (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
@@ -339,20 +349,20 @@
               (recur (dec num-retries))
               (throw e))))))))
 
-(defn delete-old-datasets!
-  []
+(defn delete-old-datasets! []
   (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))"
+                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
                            " UNION ALL "
                            "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
                              where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))")
+                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
                       (project-id)
                       (project-id)
                       (project-id))]
     (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset more than two days old: %s`." outdated))
+      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
       (destroy-dataset! outdated))))
 
 ;;; ---------------------- Workspace isolation orphan cleanup ----------------------
@@ -506,15 +516,20 @@
     [(test-dataset-id db-def)])
    ffirst))
 
+(defn- get-existing-tables [dataset-id]
+  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
+                    (project-id) dataset-id)]
+    (set (map first (execute! sql)))))
+
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  (and
-   (dataset-tracked?! db-def)
-   (database-exists?! db-def)))
+  (and (database-exists?! db-def)
+       (set/subset? (set (map :table-name (:table-definitions db-def)))
+                    (set (get-existing-tables (test-dataset-id db-def))))))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
+  (setup-tracking-dataset!)
   ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
   (u/ignore-exceptions
     (execute-params!
@@ -529,23 +544,27 @@
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  (delete-old-datasets-if-needed!)
+  ;; re-enable this again once things are stable; for now let's just completely
+  ;; excise this potential source of unreliability
+  (comment (delete-old-datasets-if-needed!))
   (let [dataset-id (test-dataset-id db-def)]
-    (if (database-exists?! db-def)
-      (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
-      (try
-        (log/infof "Creating dataset %s..." (pr-str dataset-id))
-        (create-dataset! dataset-id)
-        ;; now create tables and load data.
-        (doseq [tabledef table-definitions]
-          (load-tabledef! dataset-id tabledef))
-        (doseq [native-ddl (:native-ddl options)]
-          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
-        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-        (catch Throwable e
-          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-          (log/error (u/pprint-to-str 'red (Throwable->map e)))
-          (throw e))))))
+    (when-not (database-exists?! db-def)
+      (create-dataset! dataset-id))
+    ;; now create tables and load data.
+    (let [existing-tables (get-existing-tables dataset-id)]
+      (doseq [tabledef table-definitions
+              :when (not (existing-tables (:table-name tabledef)))]
+        (try
+          (load-tabledef! dataset-id tabledef)
+          (catch BigQueryException e
+            (when-not (= 409 (.getCode e))
+              (throw e)))
+          (catch GoogleJsonResponseException e
+            (when-not (= 409 (.getCode (.getDetails e)))
+              (throw e))))))
+    (doseq [native-ddl (:native-ddl options)]
+      (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
+    (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]

@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
@@ -17,11 +15,13 @@ import NativeQuery, {
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
+  CardCreationType,
+  CardDashboardInfo,
   CardDisplayType,
   CardType,
+  Collection,
   CollectionId,
   DashCardId,
-  Dashboard,
   DashboardId,
   DatabaseId,
   DatasetData,
@@ -31,6 +31,7 @@ import type {
   ParameterId,
   Parameter as ParameterObject,
   ParameterValuesMap,
+  ResultsMetadata,
   TableId,
   UserInfo,
   VisualizationDisplay,
@@ -90,21 +91,16 @@ class Question {
    * Question constructor
    */
   constructor(
+    // This deprecated wrapper is constructed from ~200 call sites with a mix of
+    // saved cards, unsaved/draft cards, and (in tests) partial card mocks, so the
+    // card boundary stays loosely typed. Internally it is treated as a `Card`,
+    // guarding the saved-only fields (id, name, type, ...) where they are read.
     card: any,
     metadata?: Metadata,
     parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
-    this._metadata =
-      metadata ||
-      new Metadata({
-        databases: {},
-        tables: {},
-        fields: {},
-        metrics: {},
-        segments: {},
-        questions: {},
-      });
+    this._metadata = metadata || new Metadata();
     this._parameterValues = parameterValues || {};
   }
 
@@ -167,7 +163,11 @@ class Question {
     const isVirtualDashcard = !this._card.id;
     // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
     if (!isVirtualDashcard) {
-      console.warn("Unknown query type: " + datasetQuery?.type);
+      const queryType =
+        datasetQuery != null && "type" in datasetQuery
+          ? datasetQuery.type
+          : undefined;
+      console.warn("Unknown query type: " + queryType);
     }
   });
 
@@ -213,7 +213,10 @@ class Question {
    * The visualization type of the question
    */
   display(): CardDisplayType {
-    return this._card && this._card.display;
+    // `_card.display` is typed `VisualizationDisplay` because `Card` reuses
+    // `UnsavedCard`, but a Question is never a virtual dashcard, so its display
+    // is always a renderable `CardDisplayType`.
+    return (this._card && this._card.display) as CardDisplayType;
   }
 
   setDisplay(display: VisualizationDisplay) {
@@ -232,7 +235,7 @@ class Question {
     return this._card && this._card.persisted;
   }
 
-  setPersisted(isPersisted) {
+  setPersisted(isPersisted: boolean) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
 
@@ -256,7 +259,7 @@ class Question {
   }
 
   displayIsLocked(): boolean {
-    return this._card && this._card.displayIsLocked;
+    return this._card?.displayIsLocked ?? false;
   }
 
   maybeResetDisplay(
@@ -285,7 +288,7 @@ class Question {
   }
 
   // Switches display to scalar if the data is 1 row x 1 column
-  private _maybeSwitchToScalar({ rows, cols }): Question {
+  private _maybeSwitchToScalar({ rows, cols }: DatasetData): Question {
     const isScalar = ["scalar", "progress", "gauge"].includes(this.display());
     const isOneByOne = rows.length === 1 && cols.length === 1;
     if (!isScalar && isOneByOne && !this.displayIsLocked()) {
@@ -309,7 +312,7 @@ class Question {
     return (this._card && this._card.visualization_settings) || {};
   }
 
-  setting(settingName, defaultValue = undefined) {
+  setting(settingName: keyof VisualizationSettings, defaultValue = undefined) {
     const value = this.settings()[settingName];
     return value === undefined ? defaultValue : value;
   }
@@ -322,7 +325,7 @@ class Question {
     return this.setSettings({ ...this.settings(), ...settings });
   }
 
-  creationType(): string {
+  creationType(): CardCreationType | undefined {
     return this.card().creationType;
   }
 
@@ -339,7 +342,7 @@ class Question {
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
     return isNative
-      ? this.legacyNativeQuery().canRun()
+      ? (this.legacyNativeQuery()?.canRun() ?? false)
       : Lib.canRun(this.query(), this.type());
   }
 
@@ -428,7 +431,7 @@ class Question {
   }
 
   collection(): Collection | null | undefined {
-    return this?._card?.collection;
+    return this._card?.collection;
   }
 
   collectionId(): CollectionId | null | undefined {
@@ -439,7 +442,7 @@ class Question {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
-  dashboard(): Dashboard | undefined {
+  dashboard(): CardDashboardInfo | null {
     return this._card.dashboard;
   }
 
@@ -451,7 +454,7 @@ class Question {
     return this._card?.dashboard?.name ?? undefined;
   }
 
-  dashboardCount(): number {
+  dashboardCount(): number | null {
     return this._card.dashboard_count;
   }
 
@@ -494,11 +497,11 @@ class Question {
     return this._card && this._card.description;
   }
 
-  setDescription(description) {
+  setDescription(description: string | null) {
     return this.setCard(assoc(this.card(), "description", description));
   }
 
-  lastEditInfo(): LastEditInfo {
+  lastEditInfo(): LastEditInfo | undefined {
     return this._card && this._card["last-edit-info"];
   }
 
@@ -510,7 +513,7 @@ class Question {
     return !!this.id();
   }
 
-  publicUUID(): string {
+  publicUUID(): string | null {
     return this._card && this._card.public_uuid;
   }
 
@@ -534,7 +537,7 @@ class Question {
     return this.card().result_metadata ?? [];
   }
 
-  setResultsMetadata(resultsMetadata) {
+  setResultsMetadata(resultsMetadata: ResultsMetadata | null) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
     return this.setCard({
       ...this.card(),
@@ -554,7 +557,10 @@ class Question {
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */
-  isEqual(other, { compareResultsMetadata = true } = {}) {
+  isEqual(
+    other: Question | null | undefined,
+    { compareResultsMetadata = true } = {},
+  ) {
     if (!other) {
       return false;
     }
@@ -590,17 +596,17 @@ class Question {
     return this.setParameters(newParameters);
   }
 
-  setParameters(parameters) {
+  setParameters(parameters: ParameterObject[] | undefined) {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
 
-  setParameterValues(parameterValues) {
+  setParameterValues(parameterValues: ParameterValuesMap = {}) {
     const question = this.clone();
     question._parameterValues = parameterValues;
     return question;
   }
 
-  private _getParameters = _.memoize((collectionPreview: boolean) => {
+  private _getParameters = _.memoize((collectionPreview?: boolean) => {
     return getCardUiParameters(
       this.card(),
       this.metadata(),
@@ -610,7 +616,9 @@ class Question {
     );
   });
 
-  parameters({ collectionPreview } = {}): ParameterObject[] {
+  parameters({
+    collectionPreview,
+  }: { collectionPreview?: boolean } = {}): ParameterObject[] {
     return this._getParameters(collectionPreview);
   }
 
@@ -661,8 +669,8 @@ class Question {
   }
 
   // Internal methods
-  _getValueForComparison() {
-    const value = {
+  _getValueForComparison(): Record<string, unknown> {
+    const value: Record<string, unknown> = {
       ...this._card,
       ...this._parameterValues,
     };
@@ -681,12 +689,9 @@ class Question {
       "visualization_settings",
     ];
 
-    const res = {};
-    for (const key of keys) {
-      res[key] = value[key] ?? undefined;
-    }
-
-    return res;
+    return Object.fromEntries(
+      keys.map((key) => [key, value[key] ?? undefined]),
+    );
   }
 
   query(): Query {
@@ -775,7 +780,10 @@ class Question {
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
   }: QuestionCreatorOpts = {}) {
-    let card: Card = {
+    // `create` builds an unsaved draft that lacks the fields a saved Card has
+    // (id, entity_id, name, type, ...). The Question class nevertheless treats
+    // `_card` as a full Card, so we assert the draft shape here.
+    let card = {
       name,
       collection_id: collectionId,
       dashboard_id: dashboardId,
@@ -783,7 +791,7 @@ class Question {
       visualization_settings,
       dataset_query,
       type: cardType,
-    };
+    } as Card;
 
     if (type === "native") {
       card = assocIn(card, ["parameters"], []);

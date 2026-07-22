@@ -22,6 +22,7 @@ const MCP_CHART_TYPE_ICONS: Record<CardDisplayType, IconName> = {
   scatter: "bubble",
   smartscalar: "smartscalar",
   table: "table2",
+  treemap: "treemap",
   waterfall: "waterfall",
   list: "table2",
 };
@@ -56,15 +57,15 @@ export function getMcpChartTypes({
   );
 
   const chartTypes: Array<CardDisplayType | null> = [
-    // Slot 1: the original visualization
-    // Lets them go back the original viz even if it's not bar/line/area.
+    // Slot 1: the default visualization
+    // Lets them go back to the default viz even if it's not bar/line/area.
     defaultDisplay,
 
-    // Slot 2: sensible visualization that isn't already the default
+    // Slot 2: sensible visualization that isn't already the default display
     candidates.find((type) => sensibleVisualizations.includes(type)) ?? null,
 
-    // Slot 3: show table if we can, otherwise show area as the fallback
-    canShowTable ? "table" : "area",
+    // Slot 3: show table when it has enough data to be useful.
+    canShowTable ? "table" : null,
   ];
 
   return Array.from(new Set(chartTypes))

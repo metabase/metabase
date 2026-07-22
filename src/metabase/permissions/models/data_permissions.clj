@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -668,9 +669,26 @@
     (throw (ex-info (str/join (mu/explain ::permissions.schema/data-permission-type perm_type)) permission)))
   (assert-value-matches-perm-type perm_type perm_value))
 
+;; Memoized per application DB. Destination status is immutable after creation, so the cache can't go stale.
+(def ^:private destination-db-id?
+  "Whether `db-id` is a destination database — one with `router_database_id` set."
+  (mdb/memoize-for-application-db
+   (fn [db-id]
+     (t2/exists? :model/Database :id db-id :router_database_id [:not= nil]))))
+
+(defn assert-no-destination-db-permissions!
+  "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
+  set. Destinations are reachable only through their router and must never carry `data_permissions`
+  rows."
+  [perm-rows]
+  (when-let [dest-ids (seq (into #{} (comp (keep :db_id) (filter destination-db-id?)) perm-rows))]
+    (throw (ex-info (tru "Cannot grant permissions on a destination database.")
+                    {:status-code 400 :destination-db-ids dest-ids}))))
+
 (t2/define-before-insert :model/DataPermissions
   [permission]
   (assert-valid-permission permission)
+  (assert-no-destination-db-permissions! [permission])
   permission)
 
 (t2/define-before-update :model/DataPermissions
@@ -728,6 +746,9 @@
   hitting database limits for the number of parameters in a prepared statement. This is only really applicable when a DB
   has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions."
   [new-perms]
+  ;; The before-insert hook already runs this per row, so this call is dormant. Un-comment it if perms
+  ;; are ever inserted by a path that bypasses the hook (e.g. t2/query).
+  #_(assert-no-destination-db-permissions! new-perms)
   (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
     (t2/insert! :model/DataPermissions batched-new-perms)))
 
@@ -1019,7 +1040,9 @@
         ;; Regular groups: compute based on All Users group
         (let [au-id    (t2/select-one-pk :model/PermissionsGroup
                                          :magic_group_type "all-internal-users")
-              au-perms (t2/select :model/DataPermissions :group_id au-id)
+              au-perms (t2/select :model/DataPermissions
+                                  {:select-distinct [:db_id :perm_type :perm_value]
+                                   :where [:= :group_id au-id]})
               au-by-db (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
                                  (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
                                {}
@@ -1066,7 +1089,10 @@
                                     :from   [[(t2/table-name :model/DataPermissions)]]
                                     :where  [:and
                                              [:in :group_id group-ids]
-                                             [:in :perm_type ["perms/create-queries" "perms/download-results"]]]}))
+                                             [:in :perm_type ["perms/create-queries" "perms/download-results"]]
+                                             [:not-in :db_id {:select [:id]
+                                                              :from [(t2/table-name :model/Database)]
+                                                              :where [:= :is_audit true]}]]}))
           ;; Group by (group_id, perm_type) → set of values
           perms-by-grp (when all-perms
                          (reduce (fn [acc {:keys [group_id perm_type perm_value]}]
@@ -1136,8 +1162,14 @@
         db-level    (t2/select :model/DataPermissions
                                {:where [:and [:= :db_id db-id] [:= :table_id nil]
                                         [:in :group_id group-ids] [:in :perm_type qn]]})
+        ;; `schema-vals-idx` only needs the set of distinct perm-values per
+        ;; (group, perm-type, schema). Selecting DISTINCT on those four columns
+        ;; keeps the result bounded by groups × perm-types × schemas × values
+        ;; instead of growing with the table count, which can be millions of
+        ;; rows on databases with very many tables (see #76077).
         table-level (t2/select :model/DataPermissions
-                               {:where [:and [:= :db_id db-id] [:not= :table_id nil]
+                               {:select-distinct [:group_id :perm_type :schema_name :perm_value]
+                                :where [:and [:= :db_id db-id] [:not= :table_id nil]
                                         [:in :group_id group-ids] [:in :perm_type qn]]})]
     {:db-id            db-id
      :db-level-idx     (into {} (map (juxt (juxt :group_id :perm_type) identity)) db-level)
@@ -1165,14 +1197,19 @@
   [{:keys [db-id db-level-idx all-db-tables batch-table-ids]}
    [[group-id perm-type] entries]]
   (let [db-perm      (get db-level-idx [group-id perm-type])
-        any-blocked? (and db-perm (some #(= :blocked (:actual-value %)) entries))
+        ;; Only go granular when a batch table needs `:blocked` and the DB-level row has some *other*
+        ;; value: a `:blocked` DB-level row already covers the new tables, and expanding it would write
+        ;; one redundant row per table (see #76077, where this ballooned data_permissions to 46M rows).
+        go-granular? (and db-perm
+                          (not= :blocked (:perm_value db-perm))
+                          (some #(= :blocked (:actual-value %)) entries))
         mk           (fn [v table-id schema]
                        (mk-perm-row group-id perm-type v db-id table-id schema))]
     (cond
       ;; Going-granular fires once for the whole `(group, perm-type)`:
       ;; delete the DB-level row, expand non-batch tables to the old value,
       ;; then write each batch table at its actual-value.
-      any-blocked?
+      go-granular?
       (let [expansion-value (case (:perm_value db-perm)
                               :query-builder-and-native :query-builder
                               (:perm_value db-perm))]
@@ -1218,8 +1255,8 @@
 (defn set-default-table-permissions!
   "Set default permissions for a newly-created table across all relevant
   groups. Handles three cases per `(group, perm-type)`:
-   - Group has DB-level perm matching default → no-op
-   - Group has DB-level perm but new table needs `:blocked` → going-granular
+   - Group has DB-level perm covering the default (including `:blocked` covering `:blocked`) → no-op
+   - Group has non-`:blocked` DB-level perm but new table needs `:blocked` → going-granular
    - Group has no DB-level perm → simple insert
 
    `group-perm-defaults` is a seq of `{:group-id :perm-type :default-value}`
@@ -1238,13 +1275,17 @@
   :full)
 
 (defn has-db-transforms-permission?
-  "Returns true if the given user has the transforms permission for the given source db."
+  "Returns true if the given user has the transforms permission for the given source db.
+  Superusers always pass. A nil `database-id` (an orphaned transform whose source database
+  was deleted) only grants permission to superusers."
   [user-id database-id]
   (and (not= database-id audit/audit-db-id)
-       (user-has-permission-for-database? user-id
-                                          :perms/transforms
-                                          :yes
-                                          database-id)))
+       (or (is-superuser? user-id)
+           (and (some? database-id)
+                (user-has-permission-for-database? user-id
+                                                   :perms/transforms
+                                                   :yes
+                                                   database-id)))))
 
 (defn has-any-transforms-permission?
   "Returns true if the current user has the transforms permission for _any_ source db."

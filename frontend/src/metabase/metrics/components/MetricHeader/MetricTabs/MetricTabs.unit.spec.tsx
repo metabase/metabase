@@ -3,6 +3,7 @@ import { setupMetricEndpoint } from "__support__/server-mocks/metric";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Card } from "metabase-types/api";
 import {
@@ -16,8 +17,6 @@ import {
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-import type { MetricUrls } from "../../../types";
 
 import { MetricTabs } from "./MetricTabs";
 
@@ -84,7 +83,7 @@ describe("MetricTabs", () => {
 
   function getTabLabels() {
     return Array.from(
-      document.querySelectorAll(".mb-mantine-Button-label"),
+      document.querySelectorAll(".mb-mantine-Tabs-tabLabel"),
     ).map((element) => element.textContent);
   }
 

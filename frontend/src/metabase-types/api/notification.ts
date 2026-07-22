@@ -239,3 +239,18 @@ export type BulkNotificationPayload = {
   action: BulkNotificationAction;
   creator_id?: UserId;
 };
+
+// Unauthenticated, hash-based email unsubscribe (pulse subscriptions and
+// notifications). The two endpoints accept mutually-exclusive id keys, so both
+// are optional here.
+export type UnsubscribeRequest = {
+  hash: string;
+  email: string;
+  "pulse-id"?: string;
+  "notification-handler-id"?: string;
+};
+
+export type UnsubscribeResponse = {
+  status?: string;
+  title: string;
+};

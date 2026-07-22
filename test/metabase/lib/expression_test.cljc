@@ -1,6 +1,7 @@
 (ns metabase.lib.expression-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.string :as str]
    [clojure.test :refer [deftest is are testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
@@ -232,18 +233,18 @@
 (deftest ^:parallel arithmetic-expression-type-of-test
   (testing "Make sure we can calculate correct type information for arithmetic expression"
     (let [field [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
-      (testing "+, -, and * should return common ancestor type of all args")
-      (doseq [tag   [:+ :- :*]
-              arg-2 [1 1.0]
-              :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
-        (testing (str \newline (pr-str clause))
-          (testing "assume :type/Number for refs with unknown types (#29946)"
-            (is (= :type/Number
-                   (lib.schema.expression/type-of clause))))
-          (is (= (condp = arg-2
-                   1   :type/Integer
-                   1.0 :type/Float)
-                 (lib/type-of (lib.tu/venues-query) clause)))))
+      (testing "+, -, and * should return common ancestor type of all args"
+        (doseq [tag   [:+ :- :*]
+                arg-2 [1 1.0]
+                :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
+          (testing (str \newline (pr-str clause))
+            (testing "assume :type/Number for refs with unknown types (#29946)"
+              (is (= :type/Number
+                     (lib.schema.expression/type-of clause))))
+            (is (= (condp = arg-2
+                     1   :type/Integer
+                     1.0 :type/Float)
+                   (lib/type-of (lib.tu/venues-query) clause))))))
       (testing "/ should always return type/Float"
         (doseq [arg-2 [1 1.0]
                 :let  [clause [:/ {:lib/uuid (str (random-uuid))} field arg-2]]]
@@ -543,7 +544,8 @@
                (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
             :expression  (get exprs "non-circular-c")
             :aggregation (-> (get exprs "circular-c")
-                             (assoc 3 (lib/count)))
+                             (update 2 lib/sum)
+                             (assoc 4 (lib/count)))
             :filter      (assoc (get exprs "circular-c") 0 :=)))
         (testing "circular definition"
           (is (=? {:message "Cycle detected: c → x → b → c"}
@@ -658,6 +660,34 @@
       [:+ 1 [:- 1 true] true] "Types are incompatible: - expects a number as the 2nd parameter."
       [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "Types are incompatible: / expects a number as the 2nd parameter."
       [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "Types are incompatible: * expects a number as the 1st parameter.")))
+
+(deftest ^:parallel diagnose-expression-unaggregated-fields-test
+  (let [query         (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        created-at    [:field (meta/id :orders :created-at)]
+        total         [:field (meta/id :orders :total)]
+        subtotal      [:field (meta/id :orders :subtotal)]
+        diagnose-expr (fn [expr]
+                        (lib.expression/diagnose-expression query 0 :aggregation (lib/->mbql5 expr) nil))]
+    (testing "aggregations without an aggregation function are rejected with an understandable error message"
+      (are [expr] (= {:message  "Aggregations should contain at least one aggregation function."
+                      :friendly true}
+                     (diagnose-expr expr))
+        [:datetime-diff created-at created-at :hour]
+        total
+        [:+ total subtotal]))
+    (testing "aggregations with unaggregated refs are rejected with an understandable error message"
+      (are [expr] (= {:message  "Fields in custom aggregations must be wrapped with a function like Sum."
+                      :friendly true}
+                     (diagnose-expr expr))
+        [:+ [:sum total] subtotal]
+        [:+ [:sum total] [:floor subtotal]]))
+    (testing "aggregations that contain an aggregation function are accepted"
+      (are [expr] (nil? (diagnose-expr expr))
+        [:sum total]
+        [:+ [:sum total] [:sum subtotal]]
+        [:+ [:sum total] 4]
+        [:+ [:sum total] [:floor [:sum subtotal]]]
+        [:+ [:sum total] [:count]]))))
 
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
@@ -814,3 +844,56 @@
 (deftest ^:parallel absolute-datetime-raw-temporal-bucket-test
   (is (= :day
          (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))
+
+(deftest ^:parallel temporal-functions-require-temporal-args-test
+  (testing "#26512 temporal-extraction / datetime-arithmetic functions reject non-temporal first args"
+    (are [expr] (=? {:message #"(?i).*incompatible.*" :friendly true}
+                    (lib.expression/diagnose-expression
+                     (lib.tu/venues-query) 0 :expression (lib.convert/->mbql5 expr)
+                     #?(:clj nil :cljs js/undefined)))
+      [:get-year "a string"]
+      [:datetime-add 42 1 :day]
+      [:datetime-diff true 1 :day])))
+
+(deftest ^:parallel expression-self-reference-rejected-test
+  (testing "#61010 an expression referencing itself at its own position is rejected"
+    (let [q   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "Foo" (lib/+ 1 1)))
+          pos (dec (count (lib/expressions q)))]
+      (is (some? (lib.expression/diagnose-expression
+                  q 0 :expression (lib/+ (lib/expression-ref q "Foo") 1) pos))))))
+
+(deftest ^:parallel unknown-field-ref-in-expression-degrades-gracefully-test
+  (testing "#48562 an expression over a non-existent field ref renders a non-blank display name without throwing"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/expression "CC" (lib.convert/->mbql5 [:contains [:field 10000 nil] "abc"])))
+          expr  (first (lib/expressions query))]
+      (is (string? (lib/display-name query expr)))
+      (is (not (str/blank? (lib/display-name query expr))))
+      (is (some? (lib/visible-columns query))))))
+
+(deftest ^:parallel post-aggregation-expression-keeps-filterable-columns-test
+  (testing "#19744 a post-aggregation expression must not drop first-stage temporal columns from filterable columns"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                    lib/append-stage
+                    (lib/expression "CC" (lib/+ 1 1)))]
+      (is (some #(= "CREATED_AT" (:name %)) (lib/filterable-columns query))))))
+
+(deftest ^:parallel same-name-expression-and-inherited-column-test
+  (testing "#39150 an expression named like an inherited source-card column yields two distinct resolvable columns"
+    (let [mp     (lib.tu/metadata-provider-with-card-from-query
+                  1 (lib/query meta/metadata-provider (meta/table-metadata :reviews)))
+          nested (-> (lib/query mp (lib.metadata/card mp 1))
+                     (lib/expression "Rating" (lib/+ 1 1)))
+          cols   (lib/returned-columns nested)]
+      (is (= 2 (count (filter #(= "Rating" (:display-name %)) cols)))))))
+
+(deftest ^:parallel expression-with-unresolvable-field-ref-does-not-throw-test
+  (testing "#28221 an expression whose inner field id no longer exists must not crash visible-columns / display-info"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/expression "Non-existing field" (lib.options/ensure-uuid [:field {} 9999])))]
+      (is (some? (lib/visible-columns query)))
+      (is (= "Non-existing field"
+             (:display-name (m/find-first :lib/expression-name (lib/visible-columns query))))))))

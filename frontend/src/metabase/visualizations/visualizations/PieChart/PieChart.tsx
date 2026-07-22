@@ -20,7 +20,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
 import S from "./PieChart.module.css";
-import { PIE_CHART_DEFINITION } from "./chart-definition";
+import { PIE_CHART_DEFINITION } from "./definition";
 import { useChartEvents } from "./use-chart-events";
 
 Object.assign(PieChart, PIE_CHART_DEFINITION);
@@ -193,6 +193,7 @@ export function PieChart(props: VisualizationProps) {
     >
       <ResponsiveEChartsRenderer
         ref={containerRef}
+        display="pie"
         option={option}
         onInit={handleInit}
         onResize={handleResize}

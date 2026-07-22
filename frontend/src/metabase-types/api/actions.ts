@@ -213,7 +213,7 @@ export interface GetActionRequest {
 }
 
 export interface ExecuteActionRequest {
-  id: WritebackActionId;
+  id: WritebackActionId | BaseEntityId;
   parameters: ParametersForActionExecution;
 }
 
@@ -230,6 +230,12 @@ export interface ExecuteDashcardActionRequest {
 }
 
 export interface PrefetchDashcardValuesRequest {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  parameters: ParametersForActionExecution;
+}
+
+export interface PrefetchPublicDashcardValuesRequest {
   dashboardId: DashboardId;
   dashcardId: DashCardId;
   parameters: ParametersForActionExecution;

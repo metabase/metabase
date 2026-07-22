@@ -757,7 +757,6 @@ describe("scenarios > collections > trash", () => {
       cy.intercept("GET", `/api/dashboard/${dashboard.id}*`).as("getDashboard");
       H.visitDashboard(dashboard.id);
       cy.wait("@getDashboard");
-      H.openNavigationSidebar();
       assertTrashSelectedInNavigationSidebar();
     });
 
@@ -769,7 +768,6 @@ describe("scenarios > collections > trash", () => {
       );
       H.visitQuestion(question.id);
       cy.wait("@getQuestionResult");
-      H.openNavigationSidebar();
       assertTrashSelectedInNavigationSidebar();
     });
   });
@@ -852,14 +850,14 @@ describe("scenarios > collections > trash", () => {
     cy.visit("/trash");
 
     toggleEllipsisMenuFor("Orders");
-    cy.findAllByRole("dialog")
+    cy.findAllByRole("menu")
       .should("have.length", 1)
       .and("contain", "Move")
       .and("contain", "Restore")
       .and("contain", "Delete permanently");
 
     toggleEllipsisMenuFor("Orders, Count");
-    cy.findAllByRole("dialog")
+    cy.findAllByRole("menu")
       .should("have.length", 1)
       .and("contain", "Move")
       .and("contain", "Restore")
@@ -994,6 +992,10 @@ function assertChecked(name, checked = true) {
 }
 
 function assertTrashSelectedInNavigationSidebar() {
+  // Routes like a dashboard or question collapse the navbar, so ensure it's
+  // open before asserting. openNavigationSidebar is idempotent and self-heals
+  // against a pending collapse, so it's safe to call unconditionally here.
+  H.openNavigationSidebar();
   H.navigationSidebar().within(() => {
     cy.findByText("Trash")
       .parents("li")

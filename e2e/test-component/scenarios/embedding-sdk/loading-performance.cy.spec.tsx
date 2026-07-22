@@ -21,12 +21,16 @@ const { H } = cy;
 
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
+  // Unjustified type cast. FIXME
   delete (window as any).METABASE_EMBEDDING_SDK_BUNDLE;
+  // Unjustified type cast. FIXME
   delete (window as any).METABASE_PROVIDER_PROPS_STORE;
+  // Unjustified type cast. FIXME
   delete (window as any).METABASE_EMBEDDING_SDK_AUTH_STATE;
   // Clean up webpack chunk registries so stale runtimes from a previous test
   // don't interfere with chunks loaded by the next test.
   delete (window as any).webpackChunkembedding_sdk_bundle;
+  // Unjustified type cast. FIXME
   delete (window as any).webpackChunkembedding_sdk_legacy;
   deleteConflictingCljsGlobals();
 };
@@ -286,6 +290,7 @@ describe(
         // `window`, but its state should be back to initial (no props, no
         // redux store).
         cy.window().should((win) => {
+          // Unjustified type cast. FIXME
           const store = (win as any).METABASE_PROVIDER_PROPS_STORE;
           expect(store, "store singleton persists").to.exist;
           const state = store.getState();

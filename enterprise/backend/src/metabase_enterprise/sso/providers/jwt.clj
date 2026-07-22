@@ -108,7 +108,7 @@
           (throw (ex-info (tru "JWT token missing email claim")
                           {:status-code 400
                            :error :missing-email})))
-        (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
+        (log/debug "Successfully authenticated JWT token")
         {:success? true
          :tenant-slug (some-> tenant-slug str)
          :tenant-attributes tenant-attributes

@@ -1,19 +1,23 @@
-import { Route } from "react-router";
-
+import { Route, withRouteProps } from "metabase/router";
 import { TransformInspectorUpsellPage } from "metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/TransformInspectorUpsellPage";
 
 import { TransformInspectPage } from "./pages/TransformInspectPage";
+
+const RoutedTransformInspectorUpsellPage = withRouteProps(
+  TransformInspectorUpsellPage,
+);
+const RoutedTransformInspectPage = withRouteProps(TransformInspectPage);
 
 export function getInspectorUpsellRoutes() {
   return (
     <>
       <Route
         path=":transformId/inspect"
-        component={TransformInspectorUpsellPage}
+        element={<RoutedTransformInspectorUpsellPage />}
       />
       <Route
         path=":transformId/inspect/:lensId"
-        component={TransformInspectorUpsellPage}
+        element={<RoutedTransformInspectorUpsellPage />}
       />
     </>
   );
@@ -22,10 +26,13 @@ export function getInspectorUpsellRoutes() {
 export function getInspectorRoutes() {
   return (
     <>
-      <Route path=":transformId/inspect" component={TransformInspectPage} />
+      <Route
+        path=":transformId/inspect"
+        element={<RoutedTransformInspectPage />}
+      />
       <Route
         path=":transformId/inspect/:lensId"
-        component={TransformInspectPage}
+        element={<RoutedTransformInspectPage />}
       />
     </>
   );

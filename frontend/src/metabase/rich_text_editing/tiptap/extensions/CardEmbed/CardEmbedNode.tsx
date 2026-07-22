@@ -11,40 +11,20 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { navigateToCardFromDocument } from "metabase/documents/actions";
-import {
-  trackDocumentAddSupportingText,
-  trackDocumentReplaceCard,
-} from "metabase/documents/analytics";
-import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
-import { MAX_GROUP_SIZE } from "metabase/documents/constants";
-import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
-import {
-  loadMetadataForDocumentCard,
-  openVizSettingsSidebar,
-} from "metabase/documents/documents.slice";
-import { useCardData } from "metabase/documents/hooks/use-card-data";
-import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
-import {
-  useNodeInViewport,
-  useReportPrefetchLoading,
-} from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-  getHasUnsavedChanges,
-  getHoveredChildTargetId,
-} from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import {
+  EDITOR_STYLE_BOUNDARY_CLASS,
+  MAX_GROUP_SIZE,
+} from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
+import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
@@ -60,9 +40,9 @@ import { DocumentMode } from "metabase/visualizations/click-actions/modes/Docume
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { getDatasetError } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, Dataset } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -77,6 +57,7 @@ import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
+import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
@@ -89,15 +70,6 @@ function formatCardEmbed(attrs: CardEmbedAttributes): string {
     return `{% card id=${attrs.id} %}`;
   }
 }
-
-const getDatasetError = (dataset: Dataset) => {
-  if (dataset.error) {
-    return {
-      message: getGenericErrorMessage(),
-      icon: "warning" as const,
-    };
-  }
-};
 
 export interface CardEmbedAttributes {
   id?: number;
@@ -154,7 +126,7 @@ export const CardEmbed: Node<{
         },
         this.options.HTMLAttributes,
       ),
-      formatCardEmbed(node.attrs as CardEmbedAttributes),
+      formatCardEmbed(node.attrs),
     ];
   },
 
@@ -163,7 +135,7 @@ export const CardEmbed: Node<{
   },
 
   renderText({ node }) {
-    return formatCardEmbed(node.attrs as CardEmbedAttributes);
+    return formatCardEmbed(node.attrs);
   },
 
   addNodeView() {
@@ -180,21 +152,24 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
+    const host = useEditorHost();
     const { _id } = node.attrs;
     const {
       ref: viewportRef,
       isInViewport,
       shouldLoadData,
-    } = useNodeInViewport(_id);
-    const childTargetId = useSelector(getChildTargetId);
-    const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
-    const document = useSelector(getCurrentDocument);
+    } = host.useNodeInViewport(_id);
+    const childTargetId = useSelector(host.selectors.getChildTargetId);
+    const hoveredChildTargetId = useSelector(
+      host.selectors.getHoveredChildTargetId,
+    );
+    const document = useSelector(host.selectors.getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
       skip: !isInViewport,
     });
 
-    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
+    const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
     const commentsPath = document
@@ -216,8 +191,8 @@ export const CardEmbedComponent = memo(
 
     // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
     const isExternalDocument = externalCardData != null;
-    const regularCardData = useCardData({ id, skip: !shouldLoadData });
-    const externalCardDataResult = useExternalCardDataLoader(id, {
+    const regularCardData = host.useCardData({ id, skip: !shouldLoadData });
+    const externalCardDataResult = host.useExternalCardDataLoader(id, {
       skip: !shouldLoadData,
     });
 
@@ -225,7 +200,7 @@ export const CardEmbedComponent = memo(
       ? externalCardDataResult
       : regularCardData;
 
-    useReportPrefetchLoading(_id, isLoading);
+    host.useReportPrefetchLoading(_id, isLoading);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -285,7 +260,7 @@ export const CardEmbedComponent = memo(
             tr.insert(match.start, supportingText);
             editor.view.dispatch(tr);
             editor.commands.focus(match.start + 1);
-            trackDocumentAddSupportingText(document);
+            host.analytics.trackAddSupportingText(document);
             return;
           }
           const flexContainer =
@@ -303,7 +278,7 @@ export const CardEmbedComponent = memo(
 
           editor.view.dispatch(tr);
           editor.commands.focus(match.start + 2);
-          trackDocumentAddSupportingText(document);
+          host.analytics.trackAddSupportingText(document);
         };
 
     const displayName = name || card?.name;
@@ -363,13 +338,13 @@ export const CardEmbedComponent = memo(
     // Load metadata for the card
     useEffect(() => {
       if (card) {
-        dispatch(loadMetadataForDocumentCard(card));
+        dispatch(host.actions.loadMetadataForDocumentCard(card));
       }
-    }, [card, dispatch]);
+    }, [card, dispatch, host]);
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+        dispatch(host.actions.openVizSettingsSidebar({ embedIndex }));
       }
     };
 
@@ -382,7 +357,7 @@ export const CardEmbedComponent = memo(
             metadata,
           );
           const url = Urls.question(question);
-          dispatch(navigateToCardFromDocument(url, document));
+          dispatch(host.navigateToCard(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);
         }
@@ -400,12 +375,12 @@ export const CardEmbedComponent = memo(
           name: null,
         });
         if (document) {
-          trackDocumentReplaceCard(document);
+          host.analytics.trackReplaceCard(document);
         }
 
         setIsReplaceModalOpen(false);
       },
-      [updateAttributes, document],
+      [updateAttributes, document, host],
     );
 
     const handleRemoveNode = useCallback(() => {
@@ -547,9 +522,9 @@ export const CardEmbedComponent = memo(
                           lineHeight: 1.55,
                           backgroundColor: "transparent",
                           "&:focus": {
-                            border: "1px solid var(--mb-color-border)",
+                            border: "1px solid var(--mb-color-border-neutral)",
                             backgroundColor:
-                              "var(--mb-color-background-primary)",
+                              "var(--mb-color-background_page-primary)",
                             padding: "0 0.25rem",
                           },
                         },
@@ -694,6 +669,7 @@ export const CardEmbedComponent = memo(
             ) : (
               <Box className={styles.questionResults}>
                 <ChartSkeleton
+                  // Unjustified type cast. FIXME
                   display={(card?.display as CardDisplayType) || "table"}
                 />
               </Box>

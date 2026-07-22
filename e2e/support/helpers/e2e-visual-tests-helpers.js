@@ -1,21 +1,16 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/ui/colors";
-import { Icons } from "metabase/ui/components/icons/Icon/icons";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
 import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
-import {
-  setSvgColor,
-  svgToDataUri,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
 export function ensureChartIsActive() {
-  cy.findByTestId("debounced-frame-root").should(
-    "not.have.css",
-    "pointer-events",
-    "none",
-  );
+  cy.findAllByTestId("debounced-frame-root").each(($el) => {
+    cy.wrap($el).should("not.have.css", "pointer-events", "none");
+  });
+  cy.wait(500); // Let DebouncedFrame transitions settle
+  ensureEchartsContainerHasSvg();
 }
 
 export function echartsContainer() {
@@ -57,14 +52,8 @@ export function getXYTransform(element) {
   return { x, y };
 }
 
-export function echartsIcon(name, isSelected = false) {
-  const iconSvg = setSvgColor(
-    Icons[name].source,
-    getColor(isSelected ? "brand" : "text-tertiary"),
-  );
-  const dataUri = svgToDataUri(iconSvg);
-
-  return echartsContainer().find(`image[href="${dataUri}"]`);
+export function timelineEventChip(label) {
+  return cy.get(`[data-testid="timeline-event-chip"][aria-label="${label}"]`);
 }
 
 export function chartGridLines() {
@@ -92,10 +81,13 @@ export function chartPathsWithFillColors(colors) {
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
 const DIAMOND_PATH = "M0 -1L1 0L0 1L-1 0Z";
+
+export function cartesianChartCircles() {
+  return echartsContainer().find(`path[d="${CIRCLE_PATH}"]`);
+}
+
 export function cartesianChartCircle() {
-  return echartsContainer()
-    .find(`path[d="${CIRCLE_PATH}"]`)
-    .should("be.visible");
+  return cartesianChartCircles().should("be.visible");
 }
 
 export function cartesianChartCircleWithColor(color) {
@@ -285,6 +277,6 @@ export const BoxPlot = {
 export function applyBrush(left, right) {
   echartsContainer()
     .trigger("mousedown", left, 100)
-    .trigger("mousemove", left, 100)
+    .trigger("mousemove", right, 100)
     .trigger("mouseup", right, 100);
 }

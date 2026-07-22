@@ -3,7 +3,7 @@ import { memo } from "react";
 import { skipToken, useGetCardQuery, useGetDatabaseQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Box, Center, Stack } from "metabase/ui";
-import { SidebarResizableBox } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/SidebarResizableBox";
+import { SidebarResizableBox } from "metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/SidebarResizableBox";
 import type { CardId } from "metabase-types/api";
 
 import { ActionSection } from "./ActionSection";
@@ -54,7 +54,7 @@ export const ModelSidebar = memo(function ModelSidebar({
       <Box
         className={S.sidebar}
         p="lg"
-        bg="background-primary"
+        bg="background_page-primary"
         data-testid="model-sidebar"
       >
         {isLoading || error != null || card == null || database == null ? (

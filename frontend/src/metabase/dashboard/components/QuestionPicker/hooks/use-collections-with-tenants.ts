@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import getExpandedCollectionsById from "metabase/collections/getExpandedCollectionsById";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
 import { useSetting } from "metabase/common/hooks/use-setting";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -20,8 +20,10 @@ export type ExpandedCollectionNode = Collection & {
 };
 
 export const SHARED_TENANT_COLLECTIONS_ROOT_ID =
+  // Unjustified type cast. FIXME
   "shared-tenant-collections-root" as CollectionId;
 
+// Unjustified type cast. FIXME
 export const COLLECTIONS_TOP_LEVEL_ID = "collections-top-level" as CollectionId;
 
 /**
@@ -56,6 +58,7 @@ export function useCollectionsWithTenants(
       return collectionsById;
     }
 
+    // Unjustified type cast. FIXME
     const sharedCollectionsById = getExpandedCollectionsById(
       sharedTenantCollections,
       userPersonalCollectionId,
@@ -90,6 +93,7 @@ export function mergeSharedCollections(
   displayName: string,
 ): Record<CollectionId, Collection> {
   const sharedRoot = sharedCollectionsById[ROOT_COLLECTION.id];
+  // Unjustified type cast. FIXME
   const rootCollection = baseCollectionsById[
     ROOT_COLLECTION.id
   ] as ExpandedCollectionNode;
@@ -124,14 +128,14 @@ export function mergeSharedCollections(
     children: (sharedRoot?.children ?? []).map((child) => ({
       ...child,
       parent: null,
-    })) as ExpandedCollectionNode[],
+    })),
   };
 
   // Fix circular parent reference now that sharedSyntheticRoot exists
   sharedSyntheticRoot.children = sharedSyntheticRoot.children.map((child) => ({
     ...child,
     parent: sharedSyntheticRoot,
-  })) as ExpandedCollectionNode[];
+  }));
 
   // Wire up the top-level children
   syntheticTopLevel.children = [rootCollection, sharedSyntheticRoot];
@@ -151,6 +155,7 @@ export function mergeSharedCollections(
       continue;
     }
 
+    // Unjustified type cast. FIXME
     mergedCollectionsById[id as CollectionId] = {
       ...collection,
 
@@ -183,17 +188,19 @@ export function mergeSharedCollections(
       continue; // already rewritten above
     }
 
+    // Unjustified type cast. FIXME
     const collectionNode = collection as ExpandedCollectionNode;
 
     if (!collectionNode.path) {
       continue;
     }
 
+    // Unjustified type cast. FIXME
     mergedCollectionsById[id as CollectionId] = {
       ...collectionNode,
       // Rewrite path: Collections > Our Analytics > ...
       path: [COLLECTIONS_TOP_LEVEL_ID, ...collectionNode.path],
-    } as ExpandedCollectionNode;
+    };
   }
 
   mergedCollectionsById[SHARED_TENANT_COLLECTIONS_ROOT_ID] =

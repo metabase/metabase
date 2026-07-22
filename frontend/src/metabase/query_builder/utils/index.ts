@@ -58,6 +58,7 @@ export function getURLForCardState(
   const isAdHocQuestion = !card.id;
   if (objectId != null) {
     if (isAdHocQuestion) {
+      // Unjustified type cast. FIXME
       (options.query as QueryParams).objectId = objectId;
     } else {
       options.objectId = objectId;

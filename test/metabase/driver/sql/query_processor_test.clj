@@ -275,7 +275,7 @@
         (sql.qp/format-honeysql driver {:join join})))))
 
 ;;; Ok to hardcode driver names here because it's for general HoneySQL compilation behavior and not something that needs
-;;; to be run against all supported drivers
+;;; to be run against all supported drivers [kondo-keep]
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
@@ -1258,16 +1258,15 @@
       "(SELECT 'string with \n ; -- ends \n on new line')"
 
       ;; String containing semicolon followed by double dash followed by THE _comment or semicolon or end of input_.
-      ;; TODO: Enable when better sql parsing solution is found in the [[sql.qp/make-nestable-sql]]].
-      ;; Tech debt issue: #39401
-      #_#_"SELECT 'string with \n ; -- ending on the same line';"
-        "(SELECT 'string with \n ; -- ending on the same line')"
-      #_#_"SELECT 'string with \n ; -- ending on the same line';\n-- comment"
-        "(SELECT 'string with \n ; -- ending on the same line')"
+      "SELECT 'string with \n ; -- ending on the same line';"
+      "(SELECT 'string with \n ; -- ending on the same line')"
+
+      "SELECT 'string with \n ; -- ending on the same line';\n-- comment"
+      "(SELECT 'string with \n ; -- ending on the same line')"
 
       ;; String containing just `--` without `;` works
       "SELECT 'string with \n -- ending on the same line';"
-      "(SELECT 'string with \n -- ending on the same line'\n)"
+      "(SELECT 'string with \n -- ending on the same line')"
 
       ;; String with just `;`
       "SELECT 'string with ; ending on the same line';"
@@ -1278,7 +1277,27 @@
       --c1\n
       ; --c2\n
       -- c3"
-      "(SELECT ';')")))
+      "(SELECT ';')"
+
+      ;; Trailing block comment after a semicolon is stripped.
+      "SELECT 1; /* bye */"
+      "(SELECT 1)"
+
+      ;; Block comment with no trailing semicolon is preserved.
+      "SELECT 1 /* note */"
+      "(SELECT 1 /* note */)"
+
+      ;; Semicolon inside a double-quoted identifier is not a terminator.
+      "SELECT 1 AS \"a;b\";"
+      "(SELECT 1 AS \"a;b\")"
+
+      ;; Double dash inside a backtick-quoted identifier is not a comment.
+      "SELECT 1 AS `a--b`;"
+      "(SELECT 1 AS `a--b`)"
+
+      ;; Escaped single quote inside a string literal.
+      "SELECT 'it''s fine';"
+      "(SELECT 'it''s fine')")))
 
 (deftest ^:parallel make-nestable-sql-no-superlinear-backtracking-test
   (testing "Stripping trailing comments/semicolons completes in linear time, without catastrophic backtracking"

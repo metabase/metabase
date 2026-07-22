@@ -1,5 +1,5 @@
+import type { MetricPageParams } from "metabase/common/metrics/types";
 import { MetricHistoryPage } from "metabase/metrics/pages/MetricHistoryPage";
-import type { MetricPageParams } from "metabase/metrics/types";
 
 import { DataStudioMetricBreadcrumbs } from "../../components/DataStudioMetricBreadcrumbs";
 import { dataStudioMetricUrls } from "../../urls";

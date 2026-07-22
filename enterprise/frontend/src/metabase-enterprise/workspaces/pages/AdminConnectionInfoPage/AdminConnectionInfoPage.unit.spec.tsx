@@ -1,8 +1,7 @@
-import { Route } from "react-router";
-
 import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -17,12 +16,13 @@ function setup({ database }: { database: Database }) {
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <AdminConnectionInfoPage
           params={{ databaseId: String(database.id) }}
+          // Unjustified type cast. FIXME
           route={{ path: "/" } as unknown as Route}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

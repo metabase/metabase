@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
@@ -11,6 +10,7 @@ import {
   createMockDashboardState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { IconName } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -69,7 +69,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
     icon: "share",
-    tooltip: "Sharing",
+    tooltip: "Share",
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     icon: "clock",
@@ -152,7 +152,7 @@ const setup = ({
   return renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <MockDashboardContext
           refreshPeriod={null}
           onRefreshPeriodChange={jest.fn()}
@@ -169,7 +169,7 @@ const setup = ({
             isAnalyticsDashboard={isAnalyticsDashboard}
           />
         </MockDashboardContext>
-      )}
+      }
     ></Route>,
     {
       storeInitialState: {

@@ -122,6 +122,12 @@ export function isErrorStatus(status: TransformRunStatus | null) {
   return status === "failed" || status === "timeout";
 }
 
+export function isActiveRunStatus(
+  status: TransformRunStatus | null | undefined,
+) {
+  return status === "started" || status === "canceling";
+}
+
 export function isTransformRunning(transform: Transform) {
   const lastRun = transform.last_run;
   return lastRun?.status === "started";
@@ -273,6 +279,10 @@ export const getRootCollectionItem = ({
   }
   return null;
 };
+
+export function isMissingSourceDatabase(transform: Transform) {
+  return transform.source_database_id == null;
+}
 
 /**
  * Returns the duration in ms of a transform run, or null when it cannot be

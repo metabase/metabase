@@ -6,9 +6,10 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
+import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockModelResult,
@@ -25,12 +26,14 @@ export interface SetupOpts {
   readOnly?: boolean;
   isEmbeddingSdk?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  searchItems?: SearchResult[];
 }
 export const setup = async ({
   step = createMockNotebookStep(),
   readOnly = false,
   isEmbeddingSdk = false,
   enterprisePlugins,
+  searchItems = [],
 }: SetupOpts = {}) => {
   if (enterprisePlugins) {
     enterprisePlugins.forEach((plugin) => {
@@ -55,7 +58,7 @@ export const setup = async ({
       }),
     ]);
   } else {
-    setupSearchEndpoints([]);
+    setupSearchEndpoints(searchItems);
   }
 
   renderWithProviders(

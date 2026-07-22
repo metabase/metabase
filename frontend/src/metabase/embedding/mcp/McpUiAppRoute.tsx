@@ -51,6 +51,7 @@ export function McpUiAppRoute() {
   const { app, hostContext, prompt, query } = useMcpApp();
 
   const { instanceUrl = "", sessionToken = "" } =
+    // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const scheme: ResolvedColorScheme =
@@ -102,6 +103,7 @@ function McpUiAppRouteContent({
   const isHosted = useSelector(getIsHosted);
 
   const { mcpSessionId = "" } =
+    // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
@@ -150,7 +152,7 @@ function McpUiAppRouteContent({
 
   const footerStyle: CSSProperties = {
     boxSizing: "border-box",
-    borderTop: "1px solid var(--mb-color-border)",
+    borderTop: "1px solid var(--mb-color-border-neutral)",
     paddingRight: Math.max(safeAreaPadding.right, FOOTER_HORIZONTAL_PADDING),
     paddingTop: safeAreaPadding.bottom,
     paddingBottom: safeAreaPadding.bottom,
@@ -189,7 +191,10 @@ function McpUiAppRouteContent({
 
     return (
       <>
-        <McpQuestionView safeAreaPaddingTop={safeAreaPadding.top} />
+        <McpQuestionView
+          queryKey={query}
+          safeAreaPaddingTop={safeAreaPadding.top}
+        />
 
         <McpCardFooter
           app={app}

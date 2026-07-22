@@ -76,7 +76,7 @@ const NewEngineWarning = ({ engineName, onChange }: NewEngineWarningProps) => (
         <Anchor
           component="button"
           key="link"
-          c="brand"
+          c="core-brand"
           fw={700}
           onClick={onChange}
         >
@@ -101,7 +101,7 @@ const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
         <Anchor
           component="button"
           key="link"
-          c="brand"
+          c="core-brand"
           fw={700}
           onClick={onChange}
         >

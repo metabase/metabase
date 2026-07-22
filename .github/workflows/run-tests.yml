@@ -44,7 +44,6 @@ jobs:
       e2e_specs_to_run: ${{ steps.compute.outputs.e2e_specs_to_run }}
     steps:
       - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
@@ -55,23 +54,21 @@ jobs:
           filters: .github/file-paths.yaml
       - name: Create test plan
         id: compute
-        if: ${{ github.event_name == 'pull_request' }}
-        env:
-          CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
-          UNIT_INFRA_TOUCHED: ${{ steps.changes.outputs.frontend_unit_infra }}
-          LOKI_INFRA_TOUCHED: ${{ steps.changes.outputs.frontend_loki_infra }}
-        run: |
-          OUTPUT=$(bun .github/scripts/create-test-plan.ts)
-          echo "$OUTPUT" | jq '.stats'
-          echo "stats=$(echo "$OUTPUT" | jq -c '.stats')" >> $GITHUB_OUTPUT
-          echo "fe_unit_specs_to_run=$(echo "$OUTPUT" | jq -c '.fe_unit_specs_to_run')" >> $GITHUB_OUTPUT
-          echo "loki_stories_to_run=$(echo "$OUTPUT" | jq -c '.loki_stories_to_run')" >> $GITHUB_OUTPUT
-          echo "e2e_specs_to_run=$(echo "$OUTPUT" | jq -c '.e2e_specs_to_run')" >> $GITHUB_OUTPUT
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
+        uses: ./.github/actions/create-test-plan
+        with:
+          changed-files: ${{ steps.changes.outputs.all_changed_files }}
+          fe-changed-files: ${{ steps.changes.outputs.frontend_sources_files }}
+          be-changed-files: ${{ steps.changes.outputs.backend_sources_files }}
+          unit-infra-touched: ${{ steps.changes.outputs.frontend_unit_infra }}
+          loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
+          e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
+          shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
 
   upload-affected-tests-stats:
     needs: create-test-plan
     # Only land rows for the upstream repo so forks don't pollute the table.
-    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && (github.event.pull_request.head.repo.full_name == 'metabase/metabase' || (github.event_name == 'push' && github.repository == 'metabase/metabase')) }}
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -79,11 +76,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Upload affected tests stats
+        # On push (merge to master) there is no PR context, so fall back to the
+        # commit SHAs and a 0 PR number.
         env:
           STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TRIGGERED_BY: ${{ github.event_name == 'pull_request' && 'pr_update' || 'merge_to_master' }}
+          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           API_KEY: ${{ secrets.STATS_API_KEY }}
         run: node .github/scripts/upload-affected-tests-stats.js
 
@@ -93,13 +93,63 @@ jobs:
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
+  # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
+  # The compile is doesn't depend on MB_EDITION
+  e2e-cljs:
+    name: Compile CLJS for e2e
+    needs: [create-test-plan]
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.e2e_all == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+      - name: Upload compiled CLJS
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+          if-no-files-found: error
+          # Uploads fail when an artifact of this name already exists in the run
+          # replace it rather than fail on a re-run.
+          overwrite: true
+
+  static-viz-files-changed:
+    name: Check whether static-viz files changed
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    outputs:
+      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build static-viz frontend
+        run: bun run build-static-viz
+        env:
+          MB_EDITION: ee
+      - name: Check for static viz changes
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: static_viz
+        with:
+          token: ${{ github.token }}
+          filters: .github/static-viz-sources.yaml
+
   backend-tests:
     if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
-    needs: [create-test-plan]
+    needs: [create-test-plan, static-viz-files-changed]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
+      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
 
   semantic-search-tests:
     needs: create-test-plan
@@ -154,8 +204,11 @@ jobs:
       # here we pass the list of changed files
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
-      # list of changed specs files, then only specs are changed and we can run only those specs
-      specs: ${{ needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files && needs.create-test-plan.outputs.e2e_specs_files || '' }}
+      # list of changed specs files, then only specs are changed and we can run only those specs.
+      # Only narrow to changed specs on pull requests. On push to master/release branches (and the
+      # merge queue) the paths-filter still computes these file lists, so without this guard a push
+      # that touched only specs would silently run a narrowed suite — we always want the full suite there.
+      specs: ${{ github.event_name == 'pull_request' && needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files && needs.create-test-plan.outputs.e2e_specs_files || '' }}
 
   embedding-sdk-package:
     needs: [create-test-plan]
@@ -217,6 +270,18 @@ jobs:
     with:
       self_hosting: false
       analytics_dev_mode: true
+
+  pr-env-stats-dump:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+    with:
+      self_hosting: false
+      analytics_dev_mode: false
+      stats_dump: true
 
   containerize:
     needs: [uberjar]

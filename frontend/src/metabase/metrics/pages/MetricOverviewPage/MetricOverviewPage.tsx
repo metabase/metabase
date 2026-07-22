@@ -1,17 +1,20 @@
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import type {
+  MetricPageProps,
+  MetricUrls,
+} from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
+import { replace } from "metabase/router";
 import { Center } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
 import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
-import type { MetricPageProps, MetricUrls } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 
 export function MetricOverviewPage({

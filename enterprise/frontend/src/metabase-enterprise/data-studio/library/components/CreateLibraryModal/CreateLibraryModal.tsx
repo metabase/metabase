@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { trackDataStudioLibraryCreated } from "metabase/data-studio/analytics";
+import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
@@ -55,7 +55,13 @@ type ModalTitleProps = {
 function ModalTitle({ title }: ModalTitleProps) {
   return (
     <Group gap="sm">
-      <Center w="2rem" h="2rem" c="core-brand" bg="background-brand" bdrs="md">
+      <Center
+        w="2rem"
+        h="2rem"
+        c="core-brand"
+        bg="background_surface-brand-subtle"
+        bdrs="md"
+      >
         <FixedSizeIcon name="repository" />
       </Center>
       <Title order={3}>{title}</Title>

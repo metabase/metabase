@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getParameterValues } from "metabase/dashboard/selectors";
+import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { useSelector } from "metabase/redux";
+import { Popover, TextInput } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { getUrlTarget } from "metabase/visualizations/lib/open-url";
-import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   LinkCardSettings,
@@ -30,7 +30,6 @@ import {
   EditLinkCardWrapper,
   ExternalLink,
   SearchResultsContainer,
-  StyledInput,
   StyledRecentsList,
 } from "./LinkViz.styled";
 import { settings } from "./LinkVizSettings";
@@ -43,6 +42,7 @@ const MODELS_TO_SEARCH: SearchModel[] = [
   "collection",
   "database",
   "table",
+  "document",
 ];
 
 export interface LinkVizProps {
@@ -154,10 +154,30 @@ function LinkVizInner({
   if (isEditing) {
     return (
       <EditLinkCardWrapper data-testid="custom-edit-text-link">
-        <TippyPopover
-          visible={inputIsFocused && !isUrlString(url)}
-          content={
-            !interpolatedUrl?.trim?.().length && !entity ? (
+        <Popover opened={inputIsFocused && !isUrlString(url)} position="bottom">
+          <Popover.Target>
+            <TextInput
+              value={url ?? ""}
+              autoFocus={autoFocus}
+              placeholder={"https://example.com"}
+              onChange={(e) => handleLinkChange(e.target.value)}
+              onFocus={onFocusInput}
+              // we need to debounce this or it may close the popover before the click event can fire
+              onBlur={_.debounce(onBlurInput, 100)}
+              // the dashcard really wants to turn all mouse events into drag events
+              onMouseDown={(e) => e.stopPropagation()}
+              size="sm"
+              // DashEditing disables pointer-events on card content; the Input
+              // wrapper's `none` breaks inheritance, so re-enable on both root
+              // and input or the field can't be clicked/typed into.
+              styles={{
+                root: { pointerEvents: "all" },
+                input: { pointerEvents: "all" },
+              }}
+            />
+          </Popover.Target>
+          <Popover.Dropdown>
+            {!interpolatedUrl?.trim?.().length && !entity ? (
               <StyledRecentsList onClick={handleEntitySelect} />
             ) : (
               <SearchResultsContainer>
@@ -169,23 +189,9 @@ function LinkVizInner({
                   context="entity-picker"
                 />
               </SearchResultsContainer>
-            )
-          }
-          placement="bottom"
-        >
-          <StyledInput
-            fullWidth
-            value={url ?? ""}
-            autoFocus={autoFocus}
-            placeholder={"https://example.com"}
-            onChange={(e) => handleLinkChange(e.target.value)}
-            onFocus={onFocusInput}
-            // we need to debounce this or it may close the popover before the click event can fire
-            onBlur={_.debounce(onBlurInput, 100)}
-            // the dashcard really wants to turn all mouse events into drag events
-            onMouseDown={(e) => e.stopPropagation()}
-          />
-        </TippyPopover>
+            )}
+          </Popover.Dropdown>
+        </Popover>
       </EditLinkCardWrapper>
     );
   }

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
-import { getCollectionName } from "metabase/collections/utils";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";

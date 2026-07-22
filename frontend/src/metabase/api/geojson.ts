@@ -1,7 +1,7 @@
 import type { Feature, FeatureCollection } from "geojson";
 import { t } from "ttag";
 
-import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+import { computeMinimalBoundsCoordinates } from "metabase/visualizations/lib/mapping";
 import type { GeoJSONData } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -29,6 +29,7 @@ function assertsValidGeoJson(
     throw new Error(t`Invalid custom GeoJSON`);
   }
 
+  // Unjustified type cast. FIXME
   const validatedData = rawGeoJsonData as any; // We'll validate the structure step by step
 
   if (!validatedData.type) {
@@ -55,9 +56,9 @@ function assertsValidGeoJson(
       }
     }
 
-    const bounds = computeMinimalBounds(validatedData.features);
-    const northEast = bounds.getNorthEast();
-    const southWest = bounds.getSouthWest();
+    const { northEast, southWest } = computeMinimalBoundsCoordinates(
+      validatedData.features,
+    );
 
     if (
       [

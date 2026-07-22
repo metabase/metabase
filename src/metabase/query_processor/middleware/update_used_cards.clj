@@ -26,8 +26,10 @@
                                         (fn [xs] (apply t/max (map :timestamp xs))))]
     (log/debugf "Update last_used_at of %d cards" (count card-id->timestamp))
     (try
-      ;; need to use a shared lock for all updates to the card table
-      (cluster-lock/with-cluster-lock cluster-lock/card-statistics-lock
+      ;; need to use a shared lock for all updates to the card table.
+      ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+      ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+      (cluster-lock/with-cluster-lock {:lock cluster-lock/card-statistics-lock :retry-transient? true}
         (t2/query {:update [(t2/table-name :model/Card)]
                    :where  [:in :id (keys card-id->timestamp)]
                    :set    {:last_used_at (into [:case]

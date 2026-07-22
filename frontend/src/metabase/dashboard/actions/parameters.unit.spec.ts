@@ -1,6 +1,5 @@
-import { getStore } from "__support__/entities-store";
+import { getMainStore } from "__support__/entities-store";
 import { getParameters } from "metabase/dashboard/selectors";
-import { mainReducers } from "metabase/reducers-main";
 import type { State } from "metabase/redux/store";
 import {
   createMockDashboardState,
@@ -26,7 +25,7 @@ import {
 } from "./parameters";
 
 function setup(initialState: State) {
-  return getStore(mainReducers, initialState);
+  return getMainStore(initialState);
 }
 
 describe("setParameterType", () => {

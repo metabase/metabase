@@ -56,26 +56,8 @@
 
     Returns the file contents as a string, or nil if the file doesn't exist.")
 
-  (write-files! [snapshot message files]
-    "Writes multiple files to the source with a commit message.
-
-    Takes a SourceSnapshot instance implementing this protocol, a message (the commit message to use when writing files),
-    and files (a sequence of file specs). Each file spec is a map with :path and :content keys.
-
-    All existing files within managed directories that are not in the write set are removed.
-    Files outside managed directories are always preserved.
-
-    Returns the version of the written files.")
-
-  (apply-changes! [snapshot message upserts delete-paths]
-    "Incrementally updates the source: writes/overwrites `upserts`, removes `delete-paths`,
-    and PRESERVES every other existing file (unlike `write-files!`, which deletes managed-dir
-    files absent from the write set).
-
-    Takes a SourceSnapshot instance, a commit message, `upserts` (a sequence of file specs, each
-    a map with :path and :content), and `delete-paths` (a sequence of path strings to remove).
-
-    Returns the version of the written files.")
+  (open-commit [snapshot]
+    "Begin building one commit incrementally; returns a CommitBuilder.")
 
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.
@@ -83,6 +65,53 @@
     Takes a SourceSnapshot instance implementing this protocol.
 
     Returns a version identifier string (e.g., a git SHA)."))
+
+(defprotocol CommitBuilder
+  "A single commit being built incrementally — stage files one at a time, then finish (or abort). Lets the
+  caller stream files into a commit without holding them all at once.
+
+  Lifecycle / resources: a builder holds native resources open (for git, a JGit `ObjectInserter`,
+  `ObjectReader`, and `RevWalk`) from `open-commit` until they're released. The caller MUST eventually call
+  `finish-commit!` (on success) or `abort-commit!` (on failure) to release them — including when staging
+  throws, so callers should wrap staging in `try` and `abort-commit!` in the `catch`/`finally`. A builder
+  left open leaks those resources; the lifecycle is the caller's responsibility, not the builder's."
+  (stage-upsert! [commit file-spec]
+    "Stage one file (a `{:path :content}` map) into the commit. Returns nil.")
+  (stage-delete! [commit path]
+    "Stage removal of `path` from the commit. Returns nil.")
+  (replace-all! [commit]
+    "Clear the snapshot's managed dirs, so the staged files replace them wholesale. Returns nil.")
+  (empty-commit? [commit]
+    "True if the staged tree is identical to the parent's, i.e. finishing would introduce no changes. Always
+    false for a root commit (no parent).")
+  (finish-commit!
+    [commit message]
+    [commit message report-progress]
+    "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.
+
+    `report-progress`, when given, is an optional reporter fn accepting `(fraction)` or `(fraction opts)`;
+    nil to skip. It is called once, forced, at the commit checkpoint just after the local commit is durable
+    and before the network push begins, and then repeatedly (throttled) by the push's ProgressMonitor as
+    the push proceeds.")
+  (abort-commit! [commit]
+    "Release the commit's resources without committing or pushing. Returns nil."))
+
+(defprotocol Diffable
+  "Optional capability for snapshots that can cheaply report which files changed since a prior version.
+  Implemented by sources backed by real history (git, in-memory versioned test sources); snapshots that
+  can't diff simply don't implement it and `changed-files` returns nil for them."
+  (changed-files* [snapshot from-version]
+    "Returns `{:added #{} :modified #{} :deleted #{}}` path sets between `from-version` and this
+    snapshot's version, or nil when `from-version` can't be resolved. Prefer calling [[changed-files]]."))
+
+(defn changed-files
+  "Paths that changed between `from-version` and `snapshot`'s version, as
+  `{:added #{} :modified #{} :deleted #{}}`, or nil when an incremental diff isn't available — the base
+  can't be resolved (force-push/rebase), or the snapshot's source type doesn't support diffing. A nil
+  result means diffing is not possible."
+  [snapshot from-version]
+  (when (satisfies? Diffable snapshot)
+    (changed-files* snapshot from-version)))
 
 (methodical/defmulti ->ingestable
   "Creates an ingestable snapshot for remote sync operations.

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.impersonation.middleware
   (:require
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -26,7 +27,9 @@
         impersonation-enabled?
         (as-> q
               (do (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-                  (driver/validate-impersonated-query driver/*driver* q)))
+                  (driver/validate-impersonated-query
+                   driver/*driver*
+                   (cond-> q api/*is-superuser?* (assoc :impersonation/admin? true)))))
         ;; Only assign the role for non-admin impersonated users
         role
         (assoc :impersonation/role role)))))

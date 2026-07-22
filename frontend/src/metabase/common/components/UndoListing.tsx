@@ -100,7 +100,7 @@ function UndoToast({
       className={CS.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      bg={dark ? "background-primary-inverse" : "background-primary"}
+      bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
       c={dark ? "text-secondary-inverse" : "text-primary"}
       withBorder={!noBorder}
       radius="md"
@@ -116,7 +116,9 @@ function UndoToast({
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={undo.pausedAt ? "background-tertiary-inverse" : "core-brand"}
+          color={
+            undo.pausedAt ? "background_page-tertiary-inverse" : "core-brand"
+          }
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"

@@ -1,17 +1,28 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  getIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
+import { trackSearchClick } from "metabase/common/search/analytics";
+import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
 import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+
+jest.mock("metabase/common/search/analytics", () => ({
+  ...jest.requireActual("metabase/common/search/analytics"),
+  trackSearchClick: jest.fn(),
+}));
 
 const TEST_REGULAR_COLLECTION = createMockCollection({
   id: 1,
@@ -47,10 +58,7 @@ const setup = ({ result }: { result: ApiSearchResult }) => {
   setupUserRecipientsEndpoint({ users: [USER] });
 
   const { history } = renderWithProviders(
-    <Route
-      path="*"
-      component={() => <SearchResult result={result} index={0} />}
-    />,
+    <Route path="*" element={<SearchResult result={result} index={0} />} />,
     {
       withRouter: true,
       initialRoute: "/",
@@ -66,6 +74,7 @@ describe("SearchResult", () => {
 
     expect(screen.getByText(TEST_RESULT_QUESTION.name)).toBeInTheDocument();
     expect(
+      // Unjustified type cast. FIXME
       screen.getByText(TEST_RESULT_QUESTION.description as string),
     ).toBeInTheDocument();
     expect(getIcon("table2")).toBeInTheDocument();
@@ -92,14 +101,76 @@ describe("SearchResult", () => {
     expect(history?.getCurrentLocation().pathname).toEqual(expectedPath);
   });
 
+  it("renders the result as a link and lets the browser open a modified click in a new tab", () => {
+    const { history } = setup({ result: TEST_RESULT_QUESTION });
+
+    const title = screen.getByTestId("search-result-item-name");
+    expect(title).toHaveAttribute("href", modelToUrl(TEST_RESULT_QUESTION));
+
+    fireEvent.click(title, { metaKey: true });
+
+    // a ⌘/ctrl-click must not navigate in-app; the browser opens the new tab
+    // via the href instead
+    expect(history?.getCurrentLocation().pathname).toBe("/");
+  });
+
+  it("tracks a search click when a result is opened via a ⌘/ctrl-click", () => {
+    const trackSearchClickMock = jest.mocked(trackSearchClick);
+    trackSearchClickMock.mockClear();
+
+    setup({ result: TEST_RESULT_QUESTION });
+    fireEvent.click(screen.getByTestId("search-result-item-name"), {
+      metaKey: true,
+    });
+
+    expect(trackSearchClickMock).toHaveBeenCalledWith(
+      expect.objectContaining({ itemType: "item", position: 0 }),
+    );
+  });
+
+  it("tracks a search click when a result is opened via a middle-click", () => {
+    const trackSearchClickMock = jest.mocked(trackSearchClick);
+    trackSearchClickMock.mockClear();
+
+    setup({ result: TEST_RESULT_QUESTION });
+    fireEvent(
+      screen.getByTestId("search-result-item-name"),
+      new MouseEvent("auxclick", {
+        button: 1,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(trackSearchClickMock).toHaveBeenCalledWith(
+      expect.objectContaining({ itemType: "item", position: 0 }),
+    );
+  });
+
+  it("does not track a result open when a child control is middle-clicked", () => {
+    const trackSearchClickMock = jest.mocked(trackSearchClick);
+    trackSearchClickMock.mockClear();
+
+    setup({ result: TEST_RESULT_INDEXED_ENTITY });
+    // middle-clicking the x-ray button opens nothing for the result itself, so
+    // the bubbled auxclick must not record a result-open
+    fireEvent(
+      getIcon("bolt"),
+      new MouseEvent("auxclick", {
+        button: 1,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(trackSearchClickMock).not.toHaveBeenCalled();
+  });
+
   describe("indexed entities", () => {
     it("renders x-ray button for indexed entity search result", () => {
       setup({ result: TEST_RESULT_INDEXED_ENTITY });
 
-      expect(screen.getByTestId("search-result-item-icon")).toHaveAttribute(
-        "type",
-        "indexed-entity",
-      );
+      expect(screen.getByTestId("search-result-item-icon")).toBeInTheDocument();
 
       expect(getIcon("bolt")).toBeInTheDocument();
     });

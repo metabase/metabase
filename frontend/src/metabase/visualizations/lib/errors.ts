@@ -1,5 +1,8 @@
 import { msgid, ngettext, t } from "ttag";
 
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import type { Dataset, IconName } from "metabase-types/api";
+
 export class MinColumnsError extends Error {
   constructor(minColumns: number) {
     super(
@@ -62,4 +65,40 @@ export function getGenericErrorMessage() {
 
 export function getPermissionErrorMessage() {
   return t`Sorry, you don't have permission to see this card.`;
+}
+
+export function getDatasetPermissionError(
+  dataset: Pick<Dataset, "error" | "error_type">,
+): { message: string; icon: "key" } | undefined {
+  const isPermissionError =
+    dataset.error_type === SERVER_ERROR_TYPES.missingPermissions ||
+    (dataset.error != null &&
+      typeof dataset.error === "object" &&
+      dataset.error.status === 403);
+
+  return isPermissionError
+    ? { message: getPermissionErrorMessage(), icon: "key" }
+    : undefined;
+}
+
+export function getDatasetError(
+  dataset: Pick<Dataset, "error" | "error_type" | "error_is_curated">,
+): { message: string; icon: IconName } | undefined {
+  const { error } = dataset;
+  if (error == null) {
+    return undefined;
+  }
+
+  const permissionError = getDatasetPermissionError(dataset);
+  if (permissionError) {
+    return permissionError;
+  }
+
+  return {
+    message:
+      dataset.error_is_curated && typeof error === "string"
+        ? error
+        : getGenericErrorMessage(),
+    icon: "warning",
+  };
 }

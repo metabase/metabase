@@ -16,12 +16,14 @@ import { DatabaseDangerZoneSection } from "./DatabaseDangerZoneSection";
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 function getDiscardFieldValuesConfirmModal() {
+  // Unjustified type cast. FIXME
   return document.querySelector(
     "[data-testid=discard-field-values-confirm-modal]",
   ) as HTMLElement;
 }
 
 function getRemoveDatabaseConfirmModal() {
+  // Unjustified type cast. FIXME
   return document.querySelector(
     "[data-testid=remove-database-confirm-modal]",
   ) as HTMLElement;
@@ -47,6 +49,7 @@ function setup({
     dataset: 0,
     metric: 0,
     segment: 0,
+    transform: 0,
   });
 
   const deleteDatabase = jest.fn().mockResolvedValue({});
@@ -140,7 +143,9 @@ describe("DatabaseDangerZoneSection", () => {
         database.name,
       );
       await userEvent.click(
-        within(modal).getByRole("button", { name: "Delete" }),
+        within(modal).getByRole("button", {
+          name: "Delete this DB connection",
+        }),
       );
       await waitFor(() => {
         expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();

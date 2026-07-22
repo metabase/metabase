@@ -379,6 +379,10 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save").click();
+      cy.wait("@updateTransform");
+      // Saving returns to read-only view mode; the "Run" tab only exists there,
+      // so wait for the navigation off /edit before clicking it.
+      cy.url().should("not.include", "/edit");
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
@@ -1820,6 +1824,66 @@ LIMIT
     });
   });
 
+  describe("disconnected database", () => {
+    it("should warn about transforms when deleting a database and show disconnected banner on transform pages", () => {
+      cy.log("create a transform");
+      createMbqlTransform({ visitTransform: false });
+
+      cy.log("go to admin and delete the writable database");
+      cy.intercept("GET", "/api/database/*/usage_info").as("usageInfo");
+      cy.intercept("DELETE", "/api/database/*").as("deleteDb");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+      cy.button("Remove this database").click();
+      cy.wait("@usageInfo");
+
+      cy.log(
+        "verify the delete modal warns about transforms that will stop working",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText(/1 transform will stop working/)
+          .should("not.be.checked")
+          .click()
+          .should("be.checked");
+        cy.findByTestId("database-name-confirmation-input").type(DB_NAME);
+        cy.findByText("Delete this DB connection").click();
+        cy.wait("@deleteDb");
+      });
+
+      cy.log(
+        "visit the transform query page and verify the disconnected banner",
+      );
+      cy.visit("/data-studio/transforms/1");
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log("edit definition button should not be visible");
+      H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
+
+      cy.log(
+        "visit the run page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.runTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the settings page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.settingsTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the inspect page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.inspectTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the dependencies page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.dependenciesTab().click();
+      verifyDisconnectedDatabaseBanner();
+    });
+  });
+
   describe("cancelation", () => {
     function createSlowTransform(seconds: number = 100) {
       H.createTransform(
@@ -1855,7 +1919,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getCancelButton().click();
-      H.modal().button("Yes").click();
+      H.modal().button("Cancel run").click();
 
       getRunButton().should("have.text", "Canceling…");
       getRunStatus().should("have.text", "Canceling…");
@@ -1874,6 +1938,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getRunsNavLink().click();
+      getDetailedViewSwitch().click();
       getTransformRunTable().findByText("In progress").click();
       cy.findByTestId("run-list-sidebar").button("Cancel run").click();
       H.modal().button("Yes").click();
@@ -1892,7 +1957,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getCancelButton().click();
-      H.modal().button("Yes").click();
+      H.modal().button("Cancel run").click();
 
       getRunButton().should("have.text", "Canceling…");
       getRunStatus().should("have.text", "Canceling…");
@@ -2223,8 +2288,14 @@ LIMIT
       H.modal().findByRole("button", { name: "Create" }).click();
 
       getTransformsList().within(() => {
-        // Expand the collection to see the nested collection
-        cy.findByText("Marketing Transforms").click();
+        // The list refetches its collection tree after the create, and the
+        // parent row only renders an "Expand" control once the new child is
+        // present in the refetched tree. Clicking the row name to toggle it is
+        // a no-op until then (the row isn't yet expandable), which left the
+        // nested collection hidden. Wait for the Expand control to appear — its
+        // presence is the deterministic signal the child has landed — and click
+        // that instead; it only ever expands, never toggles a collapse.
+        cy.findByRole("button", { name: "Expand" }).click();
         cy.findByText("Q4 Reports").should("be.visible");
       });
 
@@ -3040,6 +3111,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("be.visible");
 
       getRunsNavLink().click();
+      getDetailedViewSwitch().click();
       getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
@@ -3581,6 +3653,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     createInitialData();
     getRunsNavLink().click();
+    getDetailedViewSwitch().click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
@@ -3630,6 +3703,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     createInitialData();
     getRunsNavLink().click();
+    getDetailedViewSwitch().click();
 
     // ascending: "MBQL transform" < "SQL transform"
     testSorting({
@@ -3805,6 +3879,16 @@ describe("scenarios > admin > transforms", () => {
   });
 });
 
+function verifyDisconnectedDatabaseBanner() {
+  return cy
+    .findByRole("alert")
+    .should("be.visible")
+    .and(
+      "contain.text",
+      "The database this transform depends on has been disconnected",
+    );
+}
+
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Transforms" });
 }
@@ -3953,7 +4037,11 @@ function openBulkActionsMenu() {
 }
 
 function visitRunListPage() {
-  return cy.visit("/data-studio/transforms/runs");
+  return cy.visit("/data-studio/transforms/runs/individual");
+}
+
+function getDetailedViewSwitch() {
+  return cy.findByTestId("detailed-view-switch");
 }
 
 function runTransformAndWaitForSuccess() {
@@ -3979,6 +4067,7 @@ function runJobAndWaitForFailure() {
 function createMbqlTransform(
   opts: {
     sourceTable?: string;
+    sourceSchema?: string | null;
     targetTable?: string;
     targetSchema?: string | null;
     tagIds?: TransformTagId[];
@@ -3990,6 +4079,11 @@ function createMbqlTransform(
 ) {
   return H.createMbqlTransform({
     sourceTable: SOURCE_TABLE,
+    // "Animals" exists in every schema of the many_schemas fixture, so pin the
+    // source schema to keep the resolved source table (and its compiled SQL)
+    // deterministic. Only for the default table: custom source tables (e.g.
+    // composite_pk_table, mysql ORDERS) don't live in "Schema A".
+    sourceSchema: opts.sourceTable == null ? TARGET_SCHEMA : undefined,
     targetTable: TARGET_TABLE,
     targetSchema: TARGET_SCHEMA,
     name: "MBQL transform",
@@ -4131,7 +4225,7 @@ describe("scenarios > data studio > transforms > permissions", () => {
       "Ensure that transform permissions are visible when instance is hosted and transform feature is present",
     );
 
-    cy.findByRole("radio", { name: "Data" }).click({ force: true });
+    cy.findByRole("tab", { name: "Data" }).click({ force: true });
     cy.findByRole("menuitem", { name: "All Users" }).click();
 
     cy.findByRole("columnheader", { name: /Transforms/ })
@@ -4228,9 +4322,7 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
         .should("not.exist");
 
       cy.log("transform permissions should still not");
-      H.goToAdmin();
-      H.appBar().findByRole("link", { name: "Permissions" }).click();
-      cy.findByRole("menuitem", { name: "All Users" }).click();
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
       //Check that a known header is present
       cy.findByRole("columnheader", { name: "Database name" }).should(
@@ -4293,9 +4385,7 @@ describe(
         cy.button("Create a transform").should("be.visible");
 
         cy.log("transform permissions should now be visible");
-        H.goToAdmin();
-        H.appBar().findByRole("link", { name: "Permissions" }).click();
-        cy.findByRole("menuitem", { name: "All Users" }).click();
+        cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
         //Check that a known header is present
         cy.findByRole("columnheader", { name: "Database name" }).should(

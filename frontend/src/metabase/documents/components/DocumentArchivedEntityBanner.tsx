@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Api, useDeleteDocumentMutation } from "metabase/api";
@@ -8,6 +7,7 @@ import { useSetArchive } from "metabase/archive/hooks";
 import { useSetCollection } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { push } from "metabase/router";
 
 import { getCurrentDocument } from "../selectors";
 

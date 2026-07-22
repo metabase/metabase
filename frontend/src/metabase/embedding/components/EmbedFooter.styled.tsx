@@ -17,7 +17,7 @@ export type FooterVariant = "default" | "large";
 
 const footerVariantStyles = {
   default: css`
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
   `,
   large: css`
     justify-content: center;

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
 
@@ -24,6 +24,7 @@ export type RemappedValueProps = {
   autoLoad?: boolean;
 };
 
+// Unjustified type cast. FIXME
 const defaultRenderNormal: RenderNormal = ({ value }) => (
   <span>{value as ReactNode}</span>
 );
@@ -34,6 +35,7 @@ const defaultRenderRemapped: RenderRemapped = ({
   column,
 }) => (
   <span>
+    {/* Unjustified type cast. FIXME */}
     <span className={CS.textBold}>{displayValue as ReactNode}</span>
     {/* Show the underlying ID for PK/FK */}
     {column?.isID() && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}

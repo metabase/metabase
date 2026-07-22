@@ -24,7 +24,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
   createMockActionDashboardCard,

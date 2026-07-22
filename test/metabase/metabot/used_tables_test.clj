@@ -447,7 +447,7 @@
 ;;; tests run the real parser end-to-end against the H2 test-data DB so we catch integration issues. They need the
 ;;; real application DB metadata provider, so they cannot be `^:parallel`.
 
-(deftest sql-real-tables-for-native-join-with-where-test
+(deftest ^:parallel sql-real-tables-for-native-join-with-where-test
   (testing "real tables-for-native against a plain JOIN + WHERE: both tables come through end-to-end"
     (let [sql   "SELECT o.id FROM orders o JOIN products p ON o.product_id = p.id WHERE p.category = 'Widget'"
           mp    (mt/metadata-provider)
@@ -723,18 +723,23 @@
         ;; slot; the third can be neither run nor queued, so the default AbortPolicy rejects it -> dropped.
         (let [release (CountDownLatch. 1)
               full    (ThreadPoolExecutor. 1 1 0 TimeUnit/MILLISECONDS (ArrayBlockingQueue. 1))]
-          (try
-            (with-redefs [used-tables/waiter-executor    (delay full)
-                          used-tables/extract-and-insert! (fn [_ _] (.await release))]
+          (with-redefs [used-tables/waiter-executor    (delay full)
+                        used-tables/extract-and-insert! (fn [_ _] (.await release))]
+            (try
               (log.capture/with-log-messages-for-level [messages [metabase.metabot.used-tables :warn]]
                 (used-tables/record-used-tables! 1 [])         ; accepted: runs, parks on `release`
                 (used-tables/record-used-tables! 2 [])         ; accepted: occupies the lone queue slot
                 (is (nil? (used-tables/record-used-tables! 3 []))) ; rejected: nowhere to run or queue
                 (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-dropped)))
-                (is (some #(re-find #"queue full" (:message %)) (messages)))))
-            (finally
-              (.countDown release)
-              (.shutdownNow full)))))
+                (is (some #(re-find #"queue full" (:message %)) (messages))))
+              (finally
+                ;; `shutdownNow` before releasing the latch, so the queued task 2 is drained without ever running.
+                ;; Await termination inside `with-redefs`: a task still in flight when the redefs unwind would hit
+                ;; the real `extract-and-insert!`, whose failure path can bump the errors counter after the next
+                ;; testing block has reset the metrics.
+                (.shutdownNow full)
+                (.countDown release)
+                (is (.awaitTermination full 2 TimeUnit/SECONDS)))))))
       (reset!)
       (testing "extract-used-tables-with-timing! counts a timeout, warns, and returns nil when extraction exceeds the cap"
         ;; Shrink extraction-timeout-ms and make extraction outlast it: the async path's `.get` times out, the worker

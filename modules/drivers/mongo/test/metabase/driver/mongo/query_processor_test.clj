@@ -24,11 +24,11 @@
 
 (deftest ^:parallel query->collection-name-test
   (testing "query->collection-name"
-    (testing "should be able to extract :collection from :source-query")
-    (is (= "checkins"
-           (#'mongo.qp/query->collection-name {:query {:source-query
-                                                       {:collection "checkins"
-                                                        :native     []}}})))
+    (testing "should be able to extract :collection from :source-query"
+      (is (= "checkins"
+             (#'mongo.qp/query->collection-name {:query {:source-query
+                                                         {:collection "checkins"
+                                                          :native     []}}}))))
     (testing "should work for nested-nested queries"
       (is (= "checkins"
              (#'mongo.qp/query->collection-name {:query {:source-query {:source-query
@@ -659,6 +659,31 @@
                   [2 "Felipinho Asklepios" "2015-03-06T00:00:00Z"]]
                  (mt/rows (qp/process-query query)))))))))
 
+(deftest ^:parallel join-alias-sanitized-in-let-variable-name-test
+  (mt/test-driver :mongo
+    (mt/dataset geographical-tips
+      (mt/with-metadata-provider (mt/id)
+        (testing (str "A join alias used in another join's condition is sanitized in the "
+                      "Mongo `$lookup` let variable name (#76722)")
+          (let [mp          (mt/metadata-provider)
+                tips        (lib.metadata/table mp (mt/id :tips))
+                tips-id     (lib.metadata/field mp (mt/id :tips :id))
+                first-alias "Has: Colon"
+                query       (-> (lib/query mp tips)
+                                (lib/join (-> (lib/join-clause
+                                               tips
+                                               [(lib/= tips-id (lib/with-join-alias tips-id first-alias))])
+                                              (lib/with-join-alias first-alias)))
+                                (lib/join (lib/join-clause
+                                           tips
+                                           [(lib/= (lib/with-join-alias tips-id first-alias)
+                                                   (lib/with-join-alias tips-id "Second"))])))
+                compiled    (mongo.qp/mbql->native query)
+                let-vars    (mapcat #(-> % (get "$lookup") :let keys)
+                                    (filter #(contains? % "$lookup") (:query compiled)))]
+            (is (seq let-vars))
+            (is (every? #(re-matches #"[A-Za-z0-9_]+" %) let-vars))))))))
+
 (deftest ^:parallel mongo-multiple-joins-test
   (testing "should be able to join multiple mongo collections"
     (mt/test-driver :mongo
@@ -771,3 +796,21 @@
                     :effective_type           :type/Integer}]
                   :rows [[14 37.65 0 1] [nil 37.65 1 1] [14 nil 2 1] [nil nil 3 1]]}}
                 (qp.pivot/run-pivot-query pivot-query)))))))
+
+(deftest ^:parallel nested-native-card-recompile-no-bson-wrappers-test
+  (mt/test-driver :mongo
+    (testing "a nested query over a converted-to-native Mongo card compiles to a Bson-wrapper-free pipeline (#38181, #40557)"
+      (let [mp     (mt/metadata-provider)
+            ;; compiled mongo pipelines are vectors; a real saved native mongo query stores the JSON text
+            native (json/encode
+                    (:query (qp.compile/compile
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                 (lib/with-fields [(lib.metadata/field mp (mt/id :venues :price))])))))]
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:dataset_query (-> (lib/native-query mp native)
+                                           (lib/with-native-extras {:collection "venues"}))}]
+          (let [compiled (qp.compile/compile (lib/query (mt/metadata-provider)
+                                                        (lib.metadata/card (mt/metadata-provider) card-id)))]
+            ;; match the entire `BsonXxx` wrapper-class family, not just a hand-picked subset.
+            (is (not (re-find #"Bson[A-Z]\w*"
+                              (pr-str (:query compiled)))))))))))

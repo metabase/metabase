@@ -18,6 +18,7 @@ import {
 } from "../../../utils/source-ids";
 import type { MetricSearchDropdownRef } from "../MetricSearchDropdown";
 import {
+  type MetricIdentityEntry,
   type MetricNameMap,
   applyTrackedDefinitions,
   buildFullTextWithIdentities,
@@ -130,6 +131,10 @@ export function useFormulaEditor({
   const [textAtFocus, setTextAtFocus] = useState("");
   const textAtFocusRef = useRef(textAtFocus);
   textAtFocusRef.current = textAtFocus;
+  const pendingMetricIdentitiesRef = useRef<MetricIdentityEntry[] | null>(null);
+  const [editingSessionIdentities, setEditingSessionIdentities] = useState<
+    MetricIdentityEntry[]
+  >([]);
   // Explicitly tracks whether the expression was modified during this editing
   // session (metric selected from dropdown, or text typed). Avoids timing
   // issues with comparing editText vs textAtFocus across async state updates.
@@ -182,6 +187,7 @@ export function useFormulaEditor({
         formulaEntitiesRef.current,
         metricNamesRef.current,
       );
+    setEditingSessionIdentities(initialIdentities);
 
     const requestedCaret = pendingCaretPositionRef.current;
     const shouldOpenDropdown = requestedCaret == null;
@@ -307,6 +313,7 @@ export function useFormulaEditor({
     setEditText("");
     setValidationError(null);
     setIsExpressionDirty(false);
+    setEditingSessionIdentities([]);
   }, [
     editorRef,
     metricNamesRef,
@@ -354,6 +361,10 @@ export function useFormulaEditor({
 
   const handleChange = useCallback(
     (newText: string) => {
+      const view = editorRef.current?.view;
+      if (view) {
+        pendingMetricIdentitiesRef.current = readMetricIdentities(view);
+      }
       editTextRef.current = newText;
       setEditText(newText);
       setValidationError(null);
@@ -365,7 +376,6 @@ export function useFormulaEditor({
       }
 
       // Extract the word at the cursor for the dropdown search
-      const view = editorRef.current?.view;
       const cursorPos = view?.state.selection.main.head ?? newText.length;
       const identities = view ? readMetricIdentities(view) : [];
       const { word, start: wordStart } = getWordAtCursor(
@@ -386,6 +396,59 @@ export function useFormulaEditor({
     },
     [editorRef, metricNamesRef],
   );
+
+  /**
+   * @uiw/react-codemirror can sync the controlled value with a full doc
+   * replacement, which drops our custom identity field. Restore identities that
+   * still point at the same metric text so validation does not reject them.
+   */
+  useEffect(() => {
+    const view = editorRef.current?.view;
+    const pendingIdentities = pendingMetricIdentitiesRef.current;
+
+    if (!view || pendingIdentities == null) {
+      return;
+    }
+
+    if (view.state.doc.toString() !== editText) {
+      return;
+    }
+
+    const currentIdentities = readMetricIdentities(view);
+    const identityByPosition = new Map<string, MetricIdentityEntry>(
+      currentIdentities.map((identity): [string, MetricIdentityEntry] => [
+        `${identity.from}:${identity.to}`,
+        identity,
+      ]),
+    );
+
+    const recoverableIdentities =
+      editText === textAtFocusRef.current
+        ? [...editingSessionIdentities, ...pendingIdentities]
+        : pendingIdentities;
+
+    for (const identity of recoverableIdentities) {
+      const positionKey = `${identity.from}:${identity.to}`;
+      const metricName = metricNamesRef.current[identity.sourceId];
+      if (
+        !identityByPosition.has(positionKey) &&
+        metricName != null &&
+        view.state.doc.sliceString(identity.from, identity.to) === metricName
+      ) {
+        identityByPosition.set(positionKey, identity);
+      }
+    }
+
+    const recoveredIdentities = Array.from(identityByPosition.values());
+    if (currentIdentities.length < recoveredIdentities.length) {
+      view.dispatch({
+        effects: setMetricIdentities.of(
+          identitiesFromEntries(recoveredIdentities),
+        ),
+      });
+    }
+    pendingMetricIdentitiesRef.current = null;
+  }, [editText, editingSessionIdentities, editorRef, metricNamesRef]);
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {

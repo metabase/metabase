@@ -72,13 +72,13 @@ Just like with data access permissions, collection permissions are _additive_, m
 
 - Changing access to a collection doesn't automatically change access to _existing_ subcollections, but all _new_ subcollections will inherit the access level.
 
-   For example, let's say you have a `Campaigns` collection with a `2025 reports` subcollection, and you change the "Data team" group's access to `Campaigns` from "View" to "Curate". Then by default, Data team will get Curate access to `Campaigns` but will retain only "View" access to `2025 reports`. However, if after these permissions are configured, someone adds a new subcollection `2026 reports`, then Data team will get Curate access to "2026 reports" because new subcollections inherit permissions from the parent collection.
+  For example, let's say you have a `Campaigns` collection with a `2025 reports` subcollection, and you change the "Data team" group's access to `Campaigns` from "View" to "Curate". Then by default, Data team will get Curate access to `Campaigns` but will retain only "View" access to `2025 reports`. However, if after these permissions are configured, someone adds a new subcollection `2026 reports`, then Data team will get Curate access to "2026 reports" because new subcollections inherit permissions from the parent collection.
 
 - To change access for existing subcollections as well, toggle **Also change sub-collections** when changing collection access.
 
-- A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. 
+- A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it.
 
-    For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
+  For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
 ## Deleting collections
 
@@ -114,7 +114,9 @@ A personal collection works just like any other collection except that its permi
 
 ### Library collection
 
-See [Data Studio > Library](../data-studio/library.md)
+See [Permissions for the Library and its subcollections](../data-studio/library.md#library-permissions).
+
+Do not use collection permissions for **Library > Data** to control access to data in published tables. Use [Data permissions](data.md) instead.
 
 ### External collections
 

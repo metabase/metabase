@@ -478,17 +478,22 @@
   "Convenience function for inviting a new `User` and sending them a welcome email.
   This function will create the user, which will trigger the built-in system event
   notification to send an invite via email."
-  [new-user :- users.schema/NewUser invitor :- Invitor setup? :- :boolean]
-  ;; create the new user
-  (u/prog1 (t2/insert-returning-instance! :model/User new-user)
-    ;; TODO make sure the email being sent synchronously.
-    (events/publish-event! :event/user-invited
-                           {:object
-                            (assoc <>
-                                   :is_from_setup setup?
-                                   :invite_method "email"
-                                   :sso_source    (:sso_source new-user))
-                            :details {:invitor (select-keys invitor [:email :first_name])}})))
+  ([new-user invitor setup?]
+   (create-and-invite-user! new-user invitor setup? nil))
+  ([new-user      :- users.schema/NewUser
+    invitor       :- Invitor
+    setup?        :- :boolean
+    invite-target :- [:maybe users.schema/InviteTarget]]
+   ;; create the new user
+   (u/prog1 (t2/insert-returning-instance! :model/User new-user)
+     (events/publish-event! :event/user-invited
+                            {:object
+                             (cond-> (assoc <>
+                                            :is_from_setup setup?
+                                            :invite_method "email"
+                                            :sso_source    (:sso_source new-user))
+                               invite-target (assoc :invite_target invite-target))
+                             :details {:invitor (select-keys invitor [:email :first_name])}}))))
 
 ;;; TODO -- this should probably be moved into [[metabase.sso.google]]
 (mu/defn create-new-google-auth-user!

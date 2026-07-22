@@ -81,7 +81,7 @@ export function DeleteSubscriptionAction({
   return (
     <>
       <Flex className={cx(CS.borderTop, CS.pt1, CS.pb3)} justify="flex-end">
-        <Button variant="subtle" c="text-tertiary" onClick={openModal}>
+        <Button variant="subtle" c="text-disabled" onClick={openModal}>
           {t`Delete this subscription`}
         </Button>
       </Flex>
@@ -121,7 +121,7 @@ export function DeleteSubscriptionAction({
           <Flex justify="flex-end" gap="sm">
             <Button onClick={closeModal}>{t`Cancel`}</Button>
             <Button
-              color={confirmed ? "danger" : undefined}
+              color={confirmed ? "feedback-negative" : undefined}
               variant="filled"
               onClick={handleDelete}
               disabled={!confirmed}

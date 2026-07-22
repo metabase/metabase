@@ -18,4 +18,10 @@ export interface DataSourceSelectorProps {
   canSelectQuestion: boolean;
   triggerElement: JSX.Element;
   setSourceTableFn: (tableId: TableId) => void;
+  /**
+   * Accessible name applied to the popover dropdown. Lets consumers that
+   * render more than one picker (e.g. the notebook's data and join steps)
+   * give each popover a distinct, queryable name.
+   */
+  popoverAriaLabel?: string;
 }

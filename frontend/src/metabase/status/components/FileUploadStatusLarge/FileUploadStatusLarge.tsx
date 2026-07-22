@@ -2,11 +2,10 @@ import { useState } from "react";
 import { useInterval } from "react-use";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { type FileUpload, UploadMode } from "metabase/redux/store/upload";
-import { Box, Stack } from "metabase/ui";
+import { Box, Button, Stack } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Collection } from "metabase-types/api";
 
@@ -143,7 +142,14 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
   }
   return (
     <>
-      <Button onClick={() => setShowErrorModal(true)} onlyText>
+      <Button
+        variant="subtle"
+        size="xs"
+        h="1rem"
+        p={0}
+        fz="sm"
+        onClick={() => setShowErrorModal(true)}
+      >
         {t`Show error details`}
       </Button>
       {showErrorModal && (

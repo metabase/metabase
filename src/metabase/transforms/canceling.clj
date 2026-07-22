@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
    [metabase.events.core :as events]
+   [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -47,13 +48,40 @@
     (a/put! cancel-chan :cancel!)
     true))
 
+(defn heartbeat-and-reconcile-runs!
+  "Per-node tick: heartbeat the runs this process is executing (those registered in `connections`),
+  then signal cancel for any that another path (timeout sweeper, reaper, force-cancel) already
+  terminated, so the local work stops promptly. Each node reconciles its own runs — only the
+  owning node holds a run's `cancel-chan`."
+  []
+  (rt/heartbeat-and-reconcile! {:model      :model/TransformRun
+                                :active     [:= :is_active true]
+                                :ids        (keys @connections)
+                                :heartbeat! transform-run/heartbeat-runs!
+                                :on-gone    chan-signal-cancel!}))
+
 (defn chan-start-timeout-vthread!
-  "Starts a thread that will signal a timeout after a given number of minutes."
+  "Starts a vthread that will signal a timeout after a given number of minutes."
   [run-id timeout-minutes]
   (u.jvm/in-virtual-thread*
-   (Thread/sleep (long (* timeout-minutes 60 1000))) ;; 4 hours
-   (chan-signal-cancel! run-id)
-   (transform-run/timeout-run! run-id)))
+   (try
+     (Thread/sleep (long (* timeout-minutes 60 1000)))
+     (chan-signal-cancel! run-id)
+     (transform-run/timeout-run! run-id)
+     (catch InterruptedException _ nil))))
+
+(defmacro with-cancelation
+  "Run `body` with cancellation wired up for `run-id`, tearing it down on exit (normal or throw)
+  Returns the value of `body`."
+  [[run-id cancel-chan timeout-minutes] & body]
+  `(let [run-id# ~run-id]
+     (chan-start-run! run-id# ~cancel-chan)
+     (let [timeout-handle# (chan-start-timeout-vthread! run-id# ~timeout-minutes)]
+       (try
+         ~@body
+         (finally
+           (some-> timeout-handle# future-cancel)
+           (chan-end-run! run-id#))))))
 
 (defn- request-latency-ms
   "Milliseconds elapsed since `request-time`, or nil when `request-time` is nil.
@@ -144,6 +172,16 @@
 (defmethod task/init! ::CancelOldTransformRuns [_]
   (log/info "Scheduling cancel transforms task.")
   (start-job!))
+
+(def ^:private transform-heartbeat-stale-minutes 5)
+
+(defmethod task/init! ::TransformRunHeartbeat [_]
+  (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
+
+(defmethod task/init! ::TransformRunReaper [_]
+  (rt/schedule-reaper! {:job-key "metabase.transforms.reaper"
+                        :label   "transform run"
+                        :reap-fn #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)}))
 
 (defmethod task/init! ::CancelRuns [_]
   (log/info "Scheduling the cancelation background task.")

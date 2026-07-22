@@ -1,7 +1,7 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
 // Path to the admin embedding setup guide. Inlined here (rather than

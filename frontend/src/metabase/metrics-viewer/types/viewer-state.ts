@@ -1,14 +1,15 @@
+import type { GeoSubtype } from "metabase/common/metrics/utils/dimension-types";
 import type {
-  DimensionType,
-  GeoSubtype,
-} from "metabase/metrics/common/utils/dimension-types";
+  MetricsViewerDimensionBreakoutType,
+  MetricsViewerDisplayType,
+  SerializedDefinitionInfo,
+} from "metabase/common/metrics-viewer";
 import type {
   DimensionGroup,
   MetricDefinition,
   ProjectionClause,
 } from "metabase-lib/metric";
 import type {
-  CardDisplayType,
   CardId,
   DimensionId,
   IconName,
@@ -20,19 +21,16 @@ import type {
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
 import type { MetricSlot } from "../utils/metric-slots";
-import type { SerializedDefinitionInfo } from "../utils/url-serialization";
+
+export type {
+  MetricsViewerDimensionBreakoutType,
+  MetricsViewerDisplayType,
+} from "metabase/common/metrics-viewer";
 
 // ── Core types ──
 
-export type MetricsViewerDisplayType = Extract<
-  CardDisplayType,
-  "line" | "area" | "bar" | "map" | "scatter" | "scalar"
->;
-
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
 export type MetricExpressionId = `expression:${string}`;
-
-export type MetricsViewerDimensionBreakoutType = DimensionType | "scalar";
 
 export interface StoredMetricsViewerDimensionBreakout {
   id: string;

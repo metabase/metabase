@@ -1,4 +1,6 @@
-import type { MetabotProvider } from "metabase-types/api";
+import { t } from "ttag";
+
+import type { MetabotProvider, SettingDefinition } from "metabase-types/api";
 
 type ApiKeylessProviders = "metabase";
 type ApiKeyProviders = Exclude<MetabotProvider, ApiKeylessProviders>;
@@ -41,6 +43,24 @@ export function getProviderOptions(
         addKeyUrl: "https://console.anthropic.com/settings/keys",
       },
     },
+    azure: {
+      value: "azure",
+      label: "Microsoft Azure",
+      apiKey: {
+        // Azure data-plane keys have no recognizable prefix
+        placeholder: t`Enter your Azure API key`,
+        addKeyUrl: "https://ai.azure.com",
+      },
+    },
+    bedrock: {
+      value: "bedrock",
+      label: "Amazon Bedrock",
+      apiKey: {
+        placeholder: "AKIA...",
+        addKeyUrl:
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
+      },
+    },
     openai: {
       value: "openai",
       label: "OpenAI",
@@ -62,7 +82,7 @@ export function getProviderOptions(
 
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
-  ApiKeylessProviders
+  "metabase" | "azure" | "bedrock"
 >;
 
 export function isMetabotProvider(
@@ -71,14 +91,15 @@ export function isMetabotProvider(
   return !!value && value in getProviderOptions(true);
 }
 
-export function isApiKeyMetabotProvider(
-  provider: MetabotProvider,
-): provider is MetabotApiKeyProvider {
-  return "apiKey" in (getProviderOptions(true)[provider] ?? {});
-}
-
 export function isAvailableProvider(provider: MetabotProvider): boolean {
-  return provider === "anthropic" || provider === "metabase";
+  return (
+    provider === "anthropic" ||
+    provider === "azure" ||
+    provider === "bedrock" ||
+    provider === "metabase" ||
+    provider === "openai" ||
+    provider === "openrouter"
+  );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
@@ -89,6 +110,16 @@ export const API_KEY_SETTING_BY_PROVIDER: Record<
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
 };
+
+export const AZURE_MODEL_FAMILIES = [
+  { value: "anthropic", label: "Anthropic" },
+  { value: "openai", label: "OpenAI" },
+] as const;
+
+export function parseAzureModel(model: string | undefined) {
+  const [family, deployment] = model?.split(/\/(.+)/, 2) ?? [];
+  return { family, deployment };
+}
 
 export function parseProviderAndModel(value: string | null | undefined) {
   if (!value) {
@@ -102,3 +133,7 @@ export function parseProviderAndModel(value: string | null | undefined) {
 
   return { provider, model };
 }
+
+export const hasConfiguredSettingValue = (
+  setting: SettingDefinition | undefined,
+) => Boolean(setting?.value || setting?.is_env_setting);

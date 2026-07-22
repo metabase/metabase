@@ -20,7 +20,7 @@ export type TreeNode = {
   transformId?: number;
   collection?: Collection;
   url?: string;
-  source_readable?: boolean;
+  can_read?: boolean;
   warningTooltip?: string;
 };
 

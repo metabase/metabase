@@ -40,6 +40,33 @@
                         :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel claude-text-id-from-content-block-index-test
+  (testing "text blocks (no provider id) take their id from the content-block index, matching @ai-sdk/anthropic"
+    (let [raw    [{:type "message_start" :message {:id "msg-1" :model "claude-haiku-4-5"}}
+                  {:type "content_block_start" :index 0 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "Hello"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "content_block_start" :index 1 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "world"}}
+                  {:type "content_block_stop" :index 1}
+                  {:type "message_stop"}]
+          chunks (into [] (claude/claude->aisdk-chunks-xf) raw)]
+      (is (= [["text-start" "0"] ["text-delta" "0"] ["text-end" "0"]
+              ["text-start" "1"] ["text-delta" "1"] ["text-end" "1"]]
+             (->> chunks
+                  (filter #(#{:text-start :text-delta :text-end} (:type %)))
+                  (mapv (juxt (comp name :type) :id))))))))
+
+(deftest ^:parallel claude-error-event-uses-canonical-error-shape-test
+  (testing "an `error` SSE event becomes an :error part keyed by :error (read by the wire serializer + persistence)"
+    (let [raw   [{:type "message_start" :message {:id "msg_1" :model "claude-haiku-4-5"}}
+                 {:type "error" :error {:type "overloaded_error" :message "Overloaded"}}]
+          parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
+          err   (m/find-first #(= :error (:type %)) parts)]
+      (is (=? {:message "Overloaded"} (:error err)))
+      (is (= (self.core/format-sse-event {:type "error" :errorText "Overloaded"})
+             (self.core/format-error-line err))))))
+
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
@@ -139,6 +166,46 @@
           usage  (first (filter #(= :usage (:type %)) chunks))]
       (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
              (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
+
+(deftest ^:parallel claude-thinking-blocks-ignored-test
+  (testing "thinking content blocks (extended/adaptive thinking, e.g. Claude Sonnet 5) are ignored"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-1" :model "claude-sonnet-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  ;; a thinking block arrives before the text
+                  {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "let me think"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "signature_delta" :signature "abc"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "content_block_start" :index 1 :content_block {:type "text" :id "text-1"}}
+                  {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "hi"}}
+                  {:type "content_block_stop" :index 1}
+                  {:type "message_delta" :delta {:stop_reason "end_turn"}
+                   :usage {:input_tokens 10 :output_tokens 5}}
+                  {:type "message_stop"}]]
+      (testing "no thinking/reasoning chunks are emitted; only text + usage survive"
+        (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+                (into []
+                      (comp (claude/claude->aisdk-chunks-xf)
+                            (m/distinct-by :type))
+                      events))))
+      (testing "through the full pipeline produces text + usage"
+        (is (=? [{:type :start} {:type :text :text "hi"} {:type :usage}]
+                (into []
+                      (comp (claude/claude->aisdk-chunks-xf)
+                            (self.core/aisdk-xf))
+                      events))))))
+  (testing "a stream that ends mid-thinking flushes usage without emitting a thinking part"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-2" :model "claude-sonnet-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "partial"}}]]
+      (is (=? [{:type :start} {:type :usage}]
+              (into []
+                    (comp (claude/claude->aisdk-chunks-xf)
+                          (m/distinct-by :type))
+                    events))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->claude-messages tests
@@ -340,6 +407,17 @@
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))
 
+(deftest claude-system-cache-breakpoint-blank-suffix-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (testing "a trailing sentinel with nothing after it produces a single cached block, not an empty text block (the API rejects empty text)"
+      (let [body (capture-claude-request-body!
+                  {:input  [{:role :user :content "hi"}]
+                   :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"})]
+        (is (= [{:type          "text"
+                 :text          "Stable prefix content."
+                 :cache_control {:type "ephemeral"}}]
+               (:system body)))))))
+
 (deftest system-templates-cache-breakpoint-presence-test
   (testing "every selmer template that contains per-request volatile content carries exactly one cache breakpoint sentinel"
     (let [system-dir (io/file (io/resource "metabot/prompts/system"))
@@ -399,3 +477,89 @@
                    clojure.lang.ExceptionInfo
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
+
+(deftest list-models-explicit-credentials-test
+  (testing "a passed-in api-key is used over the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
+                                                         req))
+                                                 {:body "{\"data\":[]}"})]
+        (is (= {:models []}
+               (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
+
+(deftest list-models-blank-credentials-fall-back-to-configured-key-test
+  (testing "a blank passed-in api-key falls back to the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"x-api-key" "sk-ant-setting"}}
+                                                         req))
+                                                 {:body "{\"data\":[]}"})]
+        (is (= {:models []}
+               (claude/list-models {:credentials {:api-key ""}})))))))
+
+(deftest list-models-blank-credentials-without-configured-key-test
+  (testing "throws when the passed-in api-key is blank and no key is configured"
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Anthropic API key is set"
+           (claude/list-models {:credentials {:api-key ""}}))))))
+
+(deftest ^:parallel supported-model?-test
+  (testing "whitelisted models are supported"
+    (doseq [id ["claude-fable-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
+      (is (true? (#'claude/supported-model? {:id id})) id)))
+  (testing "non-whitelisted models are not supported"
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
+      (is (false? (#'claude/supported-model? {:id id})) id))))
+
+(deftest list-models-filters-catalog-to-whitelist-test
+  (testing "list-models keeps only whitelisted models sorted by id, preserving display_name"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"]
+      (with-redefs [http/request (fn [_]
+                                   {:body (json/encode
+                                           {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
+                                                   {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
+                                                   {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
+                                                   {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]})})]
+        (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
+                {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
+                {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
+               (:models (claude/list-models))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; temperature support tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel model-supports-temperature?-test
+  (testing "models that accept an explicit temperature"
+    (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
+                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
+      (is (true? (#'claude/model-supports-temperature? model))
+          model)))
+  (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
+    (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
+                   "claude-opus-5" "claude-opus-5-0"
+                   "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-6"
+                   "claude-fable-5"]]
+      (is (false? (#'claude/model-supports-temperature? model))
+          model))))
+
+(deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test
+  (testing "Bedrock mantle ids carry an anthropic. vendor prefix that is stripped before the check"
+    (doseq [model ["anthropic.claude-opus-4-8" "anthropic.claude-opus-4-7" "anthropic.claude-fable-5"]]
+      (is (false? (#'claude/model-supports-temperature? model))
+          model))
+    (is (true? (#'claude/model-supports-temperature? "anthropic.claude-haiku-4-5")))))
+
+(deftest ^:parallel temperature-omitted-for-removed-sampling-models-test
+  (let [request-body #(claude/claude-request-body {:model       %
+                                                   :input       [{:role :user :content "hi"}]
+                                                   :temperature 0.3})]
+    (testing "temperature is sent for models that accept it"
+      (is (= 0.3 (:temperature (request-body "claude-haiku-4-5")))))
+    (testing "temperature is omitted for models that reject sampling parameters"
+      (is (not (contains? (request-body "claude-opus-4-8") :temperature)))
+      (is (not (contains? (request-body "claude-sonnet-5") :temperature)))
+      (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))))

@@ -546,9 +546,11 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
+    :data-apps
     :data-complexity-score
     :development-mode
     :library
+    :library-retrieval
     :embedding
     :embedding-sdk
     :embedding-simple
@@ -580,11 +582,11 @@
   (testing "query_executions"
     (let [{:keys [query_executions query_executions_24h]} (#'stats/->snowplow-grouped-metric-info)]
       (doseq [k (keys query_executions)]
-        (testing (str "> key " k))
-        (is (contains? query_executions_24h k))
-        (is (not (< (get query_executions k)
-                    (get query_executions_24h k)))
-            "There are never more query executions in the 24h version than all-of-time.")))))
+        (testing (str "> key " k)
+          (is (contains? query_executions_24h k))
+          (is (not (< (get query_executions k)
+                      (get query_executions_24h k)))
+              "There are never more query executions in the 24h version than all-of-time."))))))
 
 (deftest snowplow-setting-tests
   (testing "snowplow formated settings"

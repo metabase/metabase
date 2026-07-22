@@ -63,7 +63,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
           }}
           {...generateSecretButtonProps}
         />
-        {!!error && <Text c="error">{error}</Text>}
+        {!!error && <Text c="feedback-negative">{error}</Text>}
       </Stack>
       {showModal && (
         <SetupKeyModal

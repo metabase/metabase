@@ -23,35 +23,48 @@
   {"model"     "/model"
    "metric"    "/metric"
    "dashboard" "/dashboard"
+   "document"  "/document"
    "question"  "/question"
    "transform" "/data-studio/transforms"})
 
 ;;; Query/Chart URL Generation
 
+(defn ->legacy-mbql
+  "Normalize a pMBQL query (has `:lib/type`) to legacy MBQL. Frontend /question#
+  URLs require legacy MBQL format; non-pMBQL values pass through unchanged.
+
+  Agent state is JSON-persisted between turns, which preserves namespaced keys but
+  turns enum values such as `:mbql/query`, `:field`, and `:day` into strings.
+  Normalize before converting so rehydrated queries have their canonical enum
+  values restored."
+  [query]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (if (and (map? query) (:lib/type query))
+    (lib/->legacy-MBQL (lib/normalize query))
+    query))
+
 (defn- query->url-hash
   "Convert an MBQL query to a base64-encoded URL hash for /question# URLs."
   [query]
-  ;; Frontend /question# URLs require legacy MBQL format
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (let [dataset-query (if (and (map? query) (:lib/type query))
-                        (lib/->legacy-MBQL query)
-                        query)]
-    (-> {:dataset_query          dataset-query
-         :type                   "question"
-         :visualization_settings {}}
-        json/encode
-        (.getBytes "UTF-8")
-        codecs/bytes->b64-str)))
+  (-> {:dataset_query          (->legacy-mbql query)
+       :type                   "question"
+       :visualization_settings {}}
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
 
 (defn pseudo-card->link
   "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked.
-  `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from."
+  `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from.
+  A pMBQL `:dataset_query` is normalized to legacy MBQL (/question# URLs are legacy-only)."
   [pc]
-  (str "/question#"
-       (-> (merge {:visualization_settings {}} pc)
-           json/encode
-           (.getBytes "UTF-8")
-           codecs/bytes->b64-str)))
+  (let [pc (cond-> (merge {:visualization_settings {}} pc)
+             (:dataset_query pc) (update :dataset_query ->legacy-mbql))]
+    (str "/question#"
+         (-> pc
+             json/encode
+             (.getBytes "UTF-8")
+             codecs/bytes->b64-str))))
 
 (defn query-and-viz-link
   "Generate a question link for query and chart type. Chart type"
@@ -142,6 +155,7 @@
   - metabase://model/{id} - Links to models
   - metabase://metric/{id} - Links to metrics
   - metabase://dashboard/{id} - Links to dashboards
+  - metabase://document/{id} - Links to documents
   - metabase://table/{id} - Links to tables (as questions)
   - metabase://transform/{id} - Links to transforms
 

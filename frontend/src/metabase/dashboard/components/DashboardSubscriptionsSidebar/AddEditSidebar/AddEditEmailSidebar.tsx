@@ -3,23 +3,21 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  type ScheduleChangeProp,
-  SchedulePicker,
-} from "metabase/common/components/SchedulePicker";
+import { Schedule, toCronString } from "metabase/common/components/Schedule";
+import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
+import { getSetting } from "metabase/selectors/settings";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
-import { Icon, Title } from "metabase/ui";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -31,10 +29,12 @@ import {
   type User,
 } from "metabase-types/api";
 
+import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
-import { CHANNEL_NOUN_PLURAL } from "./constants";
+import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
+import { getSubscriptionScheduleDescription } from "./utils";
 
 interface AddEditEmailSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -83,9 +83,23 @@ export const AddEditEmailSidebar = ({
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getUser);
+  const applicationName = useSelector(getApplicationName);
+  const timezone = useSelector((state) =>
+    getSetting(state, "report-timezone-short"),
+  );
+
+  const renderScheduleDescription = (schedule: ScheduleSettings) => {
+    const description = getSubscriptionScheduleDescription({
+      schedule,
+      channelSpec,
+      applicationName,
+      timezone,
+    });
+    return description ? <Text c="text-secondary">{description}</Text> : null;
+  };
 
   // Return true if the results of all cards can be downloaded
-  const allowDownload = pulse.cards?.every(
+  const allowDownload = pulse.cards.every(
     (card) => card.download_perms !== DataPermissionValue.NONE,
   );
 
@@ -111,7 +125,7 @@ export const AddEditEmailSidebar = ({
       >
         {isEmbeddingSdk() ? null : (
           <div>
-            <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
+            <div className={CS.mb1}>{t`To:`}</div>
             <RecipientPicker
               autoFocus={false}
               recipients={channel.recipients}
@@ -127,22 +141,25 @@ export const AddEditEmailSidebar = ({
             />
           </div>
         )}
-        <SchedulePicker
-          schedule={_.pick(
-            channel,
-            "schedule_day",
-            "schedule_frame",
-            "schedule_hour",
-            "schedule_type",
+        <Schedule
+          mt="md"
+          cronString={toCronString(
+            _.pick(
+              channel,
+              "schedule_day",
+              "schedule_frame",
+              "schedule_hour",
+              "schedule_type",
+            ),
           )}
           scheduleOptions={channelSpec.schedules}
-          textBeforeInterval={t`Sent`}
-          textBeforeSendTime={t`${
-            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
-            t`Messages`
-          } will be sent at`}
-          onScheduleChange={(newSchedule, changedProp) =>
-            onChannelScheduleChange(newSchedule, changedProp)
+          verb={t`Sent`}
+          renderScheduleDescription={renderScheduleDescription}
+          onScheduleChange={(_cronString, newSchedule) =>
+            onChannelScheduleChange(newSchedule, {
+              name: "schedule_type",
+              value: newSchedule.schedule_type,
+            })
           }
         />
         <div className={cx(CS.py2)}>
@@ -171,37 +188,32 @@ export const AddEditEmailSidebar = ({
             parameters={parameters}
           />
         )}
-        <div
-          className={cx(
-            CS.textBold,
-            CS.py3,
-            CS.flex,
-            CS.justifyBetween,
-            CS.alignCenter,
-            CS.borderTop,
-          )}
-        >
-          <Title order={4}>{t`Don't send if there aren't results`}</Title>
-          <Toggle
-            value={pulse.skip_if_empty || false}
+        <Stack gap="md" py="lg" className={CS.borderTop}>
+          <Switch
+            checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
+            label={
+              <Text fw="bold">{t`Don't send if there aren't results`}</Text>
+            }
+            labelPosition="left"
+            classNames={{
+              body: S.SwitchBody,
+            }}
           />
-        </div>
-        <EmailAttachmentPicker
-          cards={pulse.cards}
-          pulse={pulse}
-          setPulse={setPulse}
-          allowDownload={allowDownload}
-        />
+          <EmailAttachmentPicker
+            cards={pulse.cards}
+            pulse={pulse}
+            setPulse={setPulse}
+            allowDownload={allowDownload}
+          />
+        </Stack>
+
         {pulse.id != null && (
           <DeleteSubscriptionAction
             pulse={pulse}
             handleArchive={handleArchive}
           />
         )}
-        <div className={cx(CS.p2, CS.mtAuto, CS.textSmall, CS.textMedium)}>
-          {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
-        </div>
       </div>
     </Sidebar>
   );

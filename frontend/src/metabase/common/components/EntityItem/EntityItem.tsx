@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
@@ -14,27 +14,35 @@ import type {
   OnToggleBookmark,
   OnTogglePreview,
   OnToggleSelected,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   isFullyParameterized,
   isItemModel,
   isItemPinned,
   isPreviewShown,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import { Link } from "metabase/router";
 import type { IconProps } from "metabase/ui";
-import { Checkbox, Ellipsified } from "metabase/ui";
+import {
+  ActionIcon,
+  Checkbox,
+  Ellipsified,
+  Icon,
+  Menu,
+  Tooltip,
+} from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
+import S from "./EntityItem.module.css";
 import {
   EntityIconWrapper,
   EntityItemActions,
-  EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
 } from "./EntityItem.styled";
@@ -122,6 +130,34 @@ function EntityItemName({
   );
 }
 
+type EntityItemMenuAction = {
+  title: string;
+  icon: IconName;
+  action?: () => void;
+  link?: string;
+  tooltip?: ReactNode;
+  disabled?: boolean;
+  danger?: boolean;
+};
+
+function getLeftSection(icon: IconName) {
+  return <Icon name={icon} aria-hidden />;
+}
+
+function MenuItemTooltip({
+  tooltip,
+  children,
+}: {
+  tooltip?: ReactNode;
+  children: ReactElement;
+}) {
+  return (
+    <Tooltip label={tooltip} disabled={tooltip == null} position="right">
+      {children}
+    </Tooltip>
+  );
+}
+
 function EntityItemMenu({
   item,
   isBookmarked,
@@ -156,7 +192,7 @@ function EntityItemMenu({
   const isXrayShown = isModel && isXrayEnabled;
 
   const actions = useMemo(() => {
-    const result = [];
+    const result: EntityItemMenuAction[] = [];
 
     if (onPin) {
       result.push({
@@ -200,7 +236,7 @@ function EntityItemMenu({
       result.push({
         title: c("Verb").t`Duplicate`,
         icon: "clone",
-        action: onCopy,
+        action: () => onCopy([item]),
       });
     }
 
@@ -208,7 +244,7 @@ function EntityItemMenu({
       result.push({
         title: t`Move`,
         icon: "move",
-        action: onMove,
+        action: () => onMove([item]),
       });
     }
 
@@ -239,16 +275,13 @@ function EntityItemMenu({
         title: t`Delete permanently`,
         icon: "trash",
         action: onDeletePermanently,
-        color: "danger" as const,
-        hoverColor: "danger" as const,
-        hoverBgColor: "background-error" as const,
+        danger: true,
       });
     }
 
     return result;
   }, [
-    item.id,
-    item.model,
+    item,
     isPinned,
     isXrayShown,
     isPreviewed,
@@ -268,12 +301,74 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer style={{ textAlign: "center" }}>
-      <EntityMenu
-        triggerAriaLabel={t`Actions`}
-        triggerIcon="ellipsis"
-        items={actions}
-        className={className}
-      />
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <ActionIcon
+            aria-label={t`Actions`}
+            className={className}
+            variant="subtle"
+          >
+            <Icon name="ellipsis" />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {actions.map((action) => {
+            const key = action.title;
+            const disabledProps = action.disabled
+              ? { "aria-disabled": true, "data-disabled": true }
+              : {};
+            const dangerColor: ColorName | undefined = action.danger
+              ? "danger"
+              : undefined;
+            const menuItemProps = {
+              ...disabledProps,
+              className: cx(S.menuItem, { [S.dangerItem]: action.danger }),
+              leftSection: getLeftSection(action.icon),
+              c: dangerColor,
+            };
+
+            if (action.link) {
+              return (
+                <MenuItemTooltip key={key} tooltip={action.tooltip}>
+                  <Menu.Item
+                    {...menuItemProps}
+                    component={Link}
+                    data-testid="entity-menu-link"
+                    to={action.link}
+                    onClick={(event) => {
+                      if (action.disabled) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }
+                    }}
+                  >
+                    {action.title}
+                  </Menu.Item>
+                </MenuItemTooltip>
+              );
+            }
+
+            return (
+              <MenuItemTooltip key={key} tooltip={action.tooltip}>
+                <Menu.Item
+                  {...menuItemProps}
+                  onClick={(event) => {
+                    if (action.disabled) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      return;
+                    }
+
+                    action.action?.();
+                  }}
+                >
+                  {action.title}
+                </Menu.Item>
+              </MenuItemTooltip>
+            );
+          })}
+        </Menu.Dropdown>
+      </Menu>
     </EntityMenuContainer>
   );
 }
@@ -293,7 +388,6 @@ export const EntityItem = ({
   buttons,
   extraInfo,
   pinned,
-  loading,
   disabled,
 }: {
   name: string;
@@ -310,7 +404,6 @@ export const EntityItem = ({
   buttons?: ReactNode;
   extraInfo?: ReactNode;
   pinned?: boolean;
-  loading?: boolean;
   disabled?: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
@@ -340,7 +433,6 @@ export const EntityItem = ({
 
       <EntityItemActions onClick={(e) => e.preventDefault()}>
         {buttons}
-        {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}
           onPin={onPin}

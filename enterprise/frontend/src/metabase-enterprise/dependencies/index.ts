@@ -1,4 +1,5 @@
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { withRouteProps } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
@@ -18,7 +19,8 @@ export function initializePlugin() {
       getDataStudioDependencyRoutes;
     PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes =
       getDataStudioDependencyDiagnosticsRoutes;
-    PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
+    PLUGIN_DEPENDENCIES.DependencyGraphPage =
+      withRouteProps(DependencyGraphPage);
     PLUGIN_DEPENDENCIES.useGetDependenciesCount = useGetDependenciesCount;
   }
 }

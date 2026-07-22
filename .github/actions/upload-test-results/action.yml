@@ -21,6 +21,23 @@ inputs:
     default: ""
   previous-step-outcome:
     required: true
+  driver-status:
+    required: false
+    default: ""
+    description: >-
+      Configured status for this driver ("info", "skip", "required", or empty). When
+      "info", the job is reported as passing regardless of the real test outcome, and
+      that outcome is surfaced via a job summary and (on PRs) a comment instead.
+  report-variant:
+    required: false
+    default: ""
+    description: >-
+      Optional label disambiguating matrix legs of the same job, so the info-driver
+      job summary and PR comment stay distinct per leg.
+  run-trunk:
+    required: false
+    default: "true"
+    description: Whether to run the Trunk step at all.
 
 runs:
   using: "composite"
@@ -47,10 +64,12 @@ runs:
         aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
 
     - name: Upload results to Trunk
+      if: ${{ always() && github.repository_owner == 'metabase' && inputs.run-trunk == 'true' }}
       # Important!
-      # 1. This step must always run because it controls job's exit code.
-      # 2. There's no point in running this outside the organization
-      if: always() && github.repository_owner == 'metabase'
+      # For "info" drivers off master/release branches, our own status takes precedence: we let this
+      # step pass so the job is reported as passing regardless of the real outcome (still uploaded).
+      # On master and release branches, info status is ignored and the real outcome gates the job.
+      continue-on-error: ${{ inputs.driver-status == 'info' && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')) }}
       uses: trunk-io/analytics-uploader@1198efcc0976501147b10a7e343c3fa069527526 # v2.0.9
       env:
         TRUNK_REPO_URL: git@github.com:metabase/metabase.git
@@ -62,3 +81,105 @@ runs:
         token: ${{ inputs.trunk-api-token }}
         use-cache: true
         previous-step-outcome: ${{ inputs.previous-step-outcome }}
+
+    # For "info" drivers the job is forced green above, so surface the real outcome here —
+    # but only when it did NOT pass, to avoid spamming summaries/comments for healthy runs.
+    # Never include logs or stack traces — only the real status and a link to the run.
+    - name: Report info-level driver result (job summary)
+      if: ${{ always() && inputs.driver-status == 'info' && inputs.previous-step-outcome == 'failure' }}
+      shell: bash
+      env:
+        OUTCOME: ${{ inputs.previous-step-outcome }}
+        LABEL: ${{ inputs.output-name }}
+        VARIANT: ${{ inputs.report-variant }}
+      run: | # sh
+        if [ "$OUTCOME" = "success" ]; then EMOJI="✅"; else EMOJI="❌"; fi
+        TITLE="$LABEL"
+        [ -n "$VARIANT" ] && TITLE="$LABEL ($VARIANT)"
+        RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+        {
+          echo "### ℹ️ Info-level driver: $TITLE"
+          echo ""
+          echo "Reported as passing (non-blocking). Real result: $EMOJI \`$OUTCOME\`"
+          echo ""
+          echo "[View run]($RUN_URL)"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    # Maintain ONE PR comment per commit for all info drivers. Each leg upserts its own line
+    # (keyed by a hidden tag); a passing leg removes its line, and the comment is deleted once
+    # no failing legs remain. Comments from older commits are cleaned up. Runs on pass and fail
+    # so recoveries self-heal. Never includes logs or stack traces — only status and a run link.
+    - name: Sync info-level driver result into the PR comment
+      if: ${{ always() && inputs.driver-status == 'info' && github.event_name == 'pull_request' }}
+      uses: actions/github-script@v9
+      continue-on-error: true
+      env:
+        OUTCOME: ${{ inputs.previous-step-outcome }}
+        LABEL: ${{ inputs.output-name }}
+        VARIANT: ${{ inputs.report-variant }}
+      with:
+        script: | # js
+          const { OUTCOME, LABEL, VARIANT, GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+          const pr = context.payload.pull_request;
+          if (!pr) return;
+          const { owner, repo } = context.repo;
+          const sha = pr.head.sha;
+          // PREFIX matches the current per-commit marker AND the older per-leg one, so legacy
+          // comments from a previous version get cleaned up on the next sync.
+          const PREFIX = "<!-- info-driver-result";
+          const marker = `<!-- info-driver-results:${sha} -->`;
+          const header = `${marker}\nℹ️ **Info-level drivers** failed (non-blocking) on \`${sha.slice(0, 7)}\` — these do not gate:`;
+          const lineKey = `${LABEL}:${VARIANT}`;
+          const title = VARIANT ? `${LABEL} (${VARIANT})` : LABEL;
+          const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+          // Only real failures are reported; cancelled/skipped/success remove this leg's line.
+          // List-item line with the hidden key tag at the END so markdown (links) renders.
+          const ourLine = OUTCOME === "failure"
+            ? `- **${title}** — ❌ \`${OUTCOME}\` ([Logs](${runUrl})) <!--l:${lineKey}-->`
+            : null;
+          const linesOf = (body) => body.split("\n").filter((l) => l.includes("<!--l:"));
+
+          const sync = async () => {
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: pr.number, per_page: 100,
+            });
+            const tagged = comments.filter((c) => c.body.includes(PREFIX));
+            // Drop comments left over from older commits.
+            for (const c of tagged.filter((c) => !c.body.includes(marker))) {
+              await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {});
+            }
+            const mine = tagged
+              .filter((c) => c.body.includes(marker))
+              .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            // Merge any duplicates raced into existence; latest write of each line wins.
+            const byKey = new Map();
+            for (const c of mine) {
+              for (const l of linesOf(c.body)) {
+                const m = l.match(/<!--l:(.*?)-->/);
+                if (m) byKey.set(m[1], l);
+              }
+            }
+            if (ourLine) byKey.set(lineKey, ourLine);
+            else byKey.delete(lineKey);
+            const lines = [...byKey.values()].sort();
+            const target = mine[0];
+            for (const c of mine.slice(1)) {
+              await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {});
+            }
+            if (lines.length === 0) {
+              if (target) await github.rest.issues.deleteComment({ owner, repo, comment_id: target.id }).catch(() => {});
+              return;
+            }
+            const body = [header, "", ...lines].join("\n");
+            if (target) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: target.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+            }
+          };
+
+          // Retry to shrink the window where parallel legs clobber each other's update.
+          for (let i = 0; i < 4; i++) {
+            try { await sync(); break; }
+            catch (e) { if (i === 3) throw e; await new Promise((r) => setTimeout(r, 400 * (i + 1))); }
+          }

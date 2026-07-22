@@ -1,4 +1,4 @@
-import type { MetricUrls } from "metabase/metrics/types";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import * as Urls from "metabase/urls";
 
 export const dataStudioMetricUrls: MetricUrls = {

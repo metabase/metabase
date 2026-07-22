@@ -96,11 +96,11 @@ export const DataGrid = function DataGrid<TData>({
 
   const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
-    theme?.cell?.backgroundColor ?? "var(--mb-color-background-primary)";
+    theme?.cell?.backgroundColor ?? "var(--mb-color-background_page-primary)";
   const stickyElementsBackgroundColor =
     theme?.stickyBackgroundColor ??
     (backgroundColor == null || backgroundColor === "transparent"
-      ? "var(--mb-color-background-primary)"
+      ? "var(--mb-color-background_page-primary)"
       : backgroundColor);
 
   const centerRows = getCenterRows();

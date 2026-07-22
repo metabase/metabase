@@ -1,20 +1,8 @@
-import {
-  type ChangeEvent,
-  type MutableRefObject,
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { P, match } from "ts-pattern";
-import { c, t } from "ttag";
-import _ from "underscore";
+import { t } from "ttag";
 
 import {
-  useGetMetabotSettingsQuery,
   useUpdateMetabotSettingsMutation,
   useUpdateSettingsMutation,
 } from "metabase/api";
@@ -24,108 +12,22 @@ import {
   useAdminSettings,
 } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import {
-  Button,
-  type ComboboxItem,
-  Flex,
-  Group,
-  Select,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
-import type {
-  MetabotProvider,
-  MetabotSettingsResponse,
-  SettingDefinition,
-} from "metabase-types/api";
+import { Button, Flex, Group, Select, Stack, Text } from "metabase/ui";
+import type { MetabotProvider } from "metabase-types/api";
 
+import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
+import { ApiKeyProviderFields } from "./ApiKeyProviderFields";
+import { AzureProviderFields } from "./AzureProviderFields";
+import { BedrockProviderFields } from "./BedrockProviderFields";
 import {
   API_KEY_SETTING_BY_PROVIDER,
   getProviderOptions,
   isAvailableProvider,
   parseProviderAndModel,
 } from "./utils";
-
-type MetabotModelOption = ComboboxItem & {
-  group?: string | null;
-};
-
-function getModelDescription(provider: MetabotProvider | undefined) {
-  if (provider === "metabase") {
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- "Metabase" is the product name for the managed AI provider option, only shown to admins configuring AI.
-    return t`Available models are provided by Metabase.`;
-  }
-
-  return t`Available models are fetched from the selected provider using its configured API key.`;
-}
-
-const AIProviderConfigurationContext = createContext<{
-  connectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
-  disconnectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
-  isMutating: boolean;
-  isConnectButtonEnabled: boolean;
-  setIsConnectButtonEnabled: (enabled: boolean) => void;
-  resetProvider: VoidFunction;
-  handleDisconnect: VoidFunction;
-  isModal: boolean;
-}>({
-  isMutating: false,
-  connectHandlerRef: null,
-  disconnectHandlerRef: null,
-  isConnectButtonEnabled: false,
-  setIsConnectButtonEnabled: () => {},
-  resetProvider: () => {},
-  handleDisconnect: () => {},
-  isModal: false,
-});
-
-export function useAIProviderConfigurationContext(
-  onConnect: (() => Promise<void>) | null,
-  onDisconnect: (() => Promise<void>) | null = null,
-) {
-  const {
-    connectHandlerRef,
-    disconnectHandlerRef,
-    isMutating,
-    setIsConnectButtonEnabled,
-    resetProvider,
-    handleDisconnect,
-    isModal,
-  } = useContext(AIProviderConfigurationContext);
-
-  useEffect(() => {
-    if (!connectHandlerRef) {
-      return;
-    }
-
-    connectHandlerRef.current = onConnect;
-    setIsConnectButtonEnabled(!!onConnect);
-
-    return () => {
-      setIsConnectButtonEnabled(false);
-      connectHandlerRef.current = null;
-    };
-  }, [connectHandlerRef, onConnect, setIsConnectButtonEnabled]);
-
-  useEffect(() => {
-    if (!disconnectHandlerRef) {
-      return;
-    }
-
-    disconnectHandlerRef.current = onDisconnect;
-
-    return () => {
-      disconnectHandlerRef.current = null;
-    };
-  }, [disconnectHandlerRef, onDisconnect]);
-
-  return { isMutating, resetProvider, handleDisconnect, isModal };
-}
 
 export function AIProviderConfigurationForm({
   isModal = false,
@@ -162,13 +64,14 @@ export function AIProviderConfigurationForm({
   const isCurrentConfigured = connectedProvider === provider && isConfigured;
 
   useEffect(() => {
-    if (isModal) {
+    if (isModal || !connectedProvider) {
       return;
     }
     setProvider(connectedProvider);
   }, [isModal, connectedProvider]);
 
   const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
+  const [updateMetabotSettings] = useUpdateMetabotSettingsMutation();
   const disconnectHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
   const { details: providerApiKeyDetails } = useAdminSettings([
@@ -192,7 +95,11 @@ export function AIProviderConfigurationForm({
       "llm-metabot-provider": null,
     };
 
-    if (connectedProvider !== "metabase") {
+    if (
+      connectedProvider !== "metabase" &&
+      connectedProvider !== "bedrock" &&
+      connectedProvider !== "azure"
+    ) {
       const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[connectedProvider];
       const apiKeySetting = providerApiKeyDetails[apiKeySettingKey];
 
@@ -202,6 +109,16 @@ export function AIProviderConfigurationForm({
     }
 
     try {
+      if (connectedProvider === "bedrock" || connectedProvider === "azure") {
+        // Bedrock and Azure key material spans several settings; an explicit
+        // `credentials: null` clears them all in one call. It runs before the provider
+        // is deselected so a failure can't leave saved keys behind.
+        await updateMetabotSettings({
+          provider: connectedProvider,
+          credentials: null,
+        }).unwrap();
+      }
+
       const response = await updateSettings(settingsToClear);
 
       if (response.error) {
@@ -213,8 +130,10 @@ export function AIProviderConfigurationForm({
         sendToast({
           message,
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
         });
+      } else {
+        setProvider(undefined);
       }
     } catch (error) {
       const message = getErrorMessage(
@@ -225,13 +144,14 @@ export function AIProviderConfigurationForm({
       sendToast({
         message,
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
       });
     }
   }, [
     connectedProvider,
     disconnectHandlerRef,
     providerApiKeyDetails,
+    updateMetabotSettings,
     updateSettings,
     sendToast,
   ]);
@@ -316,12 +236,13 @@ export function AIProviderConfigurationForm({
               >
                 <Text
                   lh="1rem"
-                  c={option.disabled ? "text-tertiary" : undefined}
+                  c={option.disabled ? "text-disabled" : undefined}
                 >
                   {option.label}
                 </Text>
+                {/* Unjustified type cast. FIXME */}
                 {!isAvailableProvider(option.value as MetabotProvider) && (
-                  <Text c="text-tertiary" lh="1rem" size="sm">
+                  <Text c="text-disabled" lh="1rem" size="sm">
                     {t`Coming soon`}
                   </Text>
                 )}
@@ -334,8 +255,23 @@ export function AIProviderConfigurationForm({
           .with("metabase", () => (
             <MetabaseAIProviderSetup onConnect={onClose} />
           ))
-          .with(P.nonNullable, (selectedProvider) => (
-            <ProviderCredentialsFields
+          .with("azure", () => (
+            <AzureProviderFields
+              connectedModel={connectedModel}
+              isCurrentConfigured={isCurrentConfigured}
+              isEnvSetting={isEnvSetting}
+            />
+          ))
+          .with("bedrock", () => (
+            <BedrockProviderFields
+              connectedModel={connectedModel}
+              isCurrentConfigured={isCurrentConfigured}
+              isEnvSetting={isEnvSetting}
+            />
+          ))
+          .with("anthropic", "openai", "openrouter", (selectedProvider) => (
+            <ApiKeyProviderFields
+              key={selectedProvider}
               selectedProvider={selectedProvider}
               connectedModel={connectedModel}
               isCurrentConfigured={isCurrentConfigured}
@@ -363,7 +299,7 @@ export function AIProviderConfigurationForm({
               { isCurrentConfigured: true, isConnectButtonEnabled: false },
               () => (
                 <Button
-                  c="danger"
+                  c="feedback-negative"
                   loading={isMutating}
                   disabled={isMutating}
                   onClick={handleDisconnect}
@@ -400,189 +336,3 @@ export function AIProviderConfigurationForm({
     </AIProviderConfigurationContext.Provider>
   );
 }
-
-const ProviderCredentialsFields = ({
-  selectedProvider,
-  connectedModel,
-  isCurrentConfigured,
-  isEnvSetting,
-}: {
-  selectedProvider: Exclude<MetabotProvider, "metabase">;
-  connectedModel: string | undefined;
-  isCurrentConfigured: boolean;
-  isEnvSetting: boolean;
-}) => {
-  const [model, setModel] = useState<string | undefined>(connectedModel);
-  const [apiKeyLocalValue, setApiKeyLocalValue] = useState<string | null>(null);
-  const [sendToast] = useToast();
-
-  useEffect(() => {
-    setModel(connectedModel);
-  }, [connectedModel]);
-
-  const [updateMetabotSettings, updateMetabotSettingsResult] =
-    useUpdateMetabotSettingsMutation();
-
-  const onConnect = async () => {
-    await updateMetabotSettings({
-      provider: selectedProvider,
-      "api-key": apiKeyLocalValue || null,
-    }).unwrap();
-
-    setApiKeyLocalValue(null);
-  };
-
-  const hasDirtyApiKey = apiKeyLocalValue !== null;
-  const connectHandler =
-    !isCurrentConfigured || hasDirtyApiKey ? onConnect : null;
-
-  const { isMutating } = useAIProviderConfigurationContext(connectHandler);
-
-  const { details: providerApiKeyDetails } = useAdminSettings([
-    "llm-anthropic-api-key",
-    "llm-openai-api-key",
-    "llm-openrouter-api-key",
-  ] as const);
-
-  const selectedApiKeySetting =
-    providerApiKeyDetails[API_KEY_SETTING_BY_PROVIDER[selectedProvider]];
-  const selectedApiKeyValue = String(selectedApiKeySetting?.value ?? "");
-  const apiKeyEnvSettingName = selectedApiKeySetting?.is_env_setting
-    ? selectedApiKeySetting.env_name
-    : undefined;
-  const needsApiKey = !hasConfiguredSettingValue(selectedApiKeySetting);
-
-  const metabotSettingsQuery = useGetMetabotSettingsQuery(
-    {
-      provider: selectedProvider,
-    },
-    { skip: needsApiKey },
-  );
-
-  const modelOptions = useMemo(
-    () => getLlmModelOptions(metabotSettingsQuery.currentData?.models ?? []),
-    [metabotSettingsQuery.currentData?.models],
-  );
-
-  const modelError = getModelError(
-    metabotSettingsQuery.error,
-    selectedProvider,
-  );
-  const apiKeyError = hasDirtyApiKey
-    ? undefined
-    : (metabotSettingsQuery.currentData?.["api-key-error"] ?? undefined);
-
-  const displayApiKeyValue = apiKeyLocalValue ?? selectedApiKeyValue;
-
-  useEffect(() => {
-    setApiKeyLocalValue(null);
-  }, [selectedProvider, selectedApiKeySetting?.value]);
-
-  const handleApiKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setApiKeyLocalValue(event.target.value);
-  };
-
-  const handleModelChange = async (value: string) => {
-    setModel(value);
-
-    if (!value) {
-      return;
-    }
-
-    await updateMetabotSettings({
-      provider: selectedProvider,
-      model: value,
-    }).unwrap();
-
-    sendToast({
-      message: t`Settings saved successfully`,
-      icon: "check",
-    });
-  };
-
-  const selectedProviderDetails = getProviderOptions(true)[selectedProvider];
-
-  return (
-    <>
-      <TextInput
-        key={selectedProvider}
-        label={t`API key`}
-        type="password"
-        description={
-          <ExternalLink
-            key={selectedProviderDetails.value}
-            href={selectedProviderDetails.apiKey.addKeyUrl}
-          >
-            {c("{0} is the name of an AI provider")
-              .t`Get or manage keys in ${selectedProviderDetails.label}`}
-          </ExternalLink>
-        }
-        placeholder={
-          selectedProviderDetails.apiKey?.placeholder ?? t`Enter your API key`
-        }
-        value={displayApiKeyValue}
-        error={apiKeyError}
-        onChange={handleApiKeyChange}
-        disabled={isMutating || isEnvSetting || !!apiKeyEnvSettingName}
-        w="100%"
-      />
-
-      {apiKeyEnvSettingName ? (
-        <SetByEnvVar varName={apiKeyEnvSettingName} />
-      ) : null}
-
-      {!needsApiKey && !apiKeyError && (
-        <Select
-          label={t`Model`}
-          placeholder={
-            metabotSettingsQuery.isLoading
-              ? t`Loading models...`
-              : t`Select a model`
-          }
-          description={getModelDescription(selectedProvider)}
-          error={modelError}
-          data={modelOptions}
-          value={model}
-          onChange={handleModelChange}
-          disabled={isEnvSetting || needsApiKey || isMutating}
-          searchable
-          nothingFoundMessage={t`No models found`}
-        />
-      )}
-
-      {updateMetabotSettingsResult.error && (
-        <Text size="sm" c="error">
-          {getErrorMessage(
-            updateMetabotSettingsResult.error,
-            t`Unable to save provider settings.`,
-          )}
-        </Text>
-      )}
-    </>
-  );
-};
-
-const getLlmModelOptions = (models: MetabotSettingsResponse["models"]) => {
-  const modelOptions = models.map((m) => ({
-    value: m.id,
-    label: m.display_name,
-    group: m.group,
-  }));
-
-  const sel = (o: MetabotModelOption) => _.pick(o, ["value", "label"]);
-  // group model options if needed
-  return _.every(modelOptions, (o) => !o.group)
-    ? modelOptions.map(sel)
-    : _.map(
-        _.groupBy(modelOptions, (o) => o.group ?? t`Other`),
-        (items, group) => ({ group, items: items.map(sel) }),
-      );
-};
-
-const hasConfiguredSettingValue = (setting: SettingDefinition | undefined) =>
-  Boolean(setting?.value || setting?.is_env_setting);
-
-const getModelError = (error: unknown, provider?: MetabotProvider) =>
-  !provider || !error
-    ? undefined
-    : getErrorMessage(error, t`Unable to load models.`);

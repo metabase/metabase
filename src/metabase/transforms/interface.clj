@@ -18,9 +18,9 @@
   For base execution without database tracking, use [[metabase.transforms-base.interface/execute-base!]] instead.
 
   Options:
-  - `:start-promise`
-     Will have a `transform_run.run_id` value delivered once the execution is registered with the database.
-     Callers can await this promise to identify the transform_run record, which enables progress / status monitoring.
+  - `:on-start`
+     Called with the `transform_run` id once the execution is registered with the database, which
+     enables progress / status monitoring.
 
   - `:run-method`
      Expected to be either `:cron` (for scheduled runs) or `:manual` (for ad-hoc or test runs)

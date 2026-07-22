@@ -542,7 +542,7 @@
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment]) ; TODO -- rename `:dataset` to `:model`?
+  [:question :dataset :metric :segment :transform]) ; TODO -- rename `:dataset` to `:model`?
 
 (defmulti ^:private database-usage-query
   "Query that will returns the number of `model` that use the database with id `database-id`.
@@ -577,6 +577,14 @@
    :where  [:in :table_id {:select [:id]
                            :from   [:metabase_table]
                            :where  [:= :db_id db-id]}]})
+
+(defmethod database-usage-query :transform
+  [_ db-id]
+  {:select [[:%count.* :transform]]
+   :from   [:transform]
+   :where  [:or
+            [:= :source_database_id db-id]
+            [:= :target_db_id db-id]]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -1103,6 +1111,12 @@
     (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
+        ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
+        ;; table editing), so the guard is lifted when test endpoints are enabled
+        _                               (when (and (:is_sample existing-database)
+                                                   (not (config/config-bool :mb-enable-test-endpoints)))
+                                          (throw (ex-info (tru "The sample database cannot be edited.")
+                                                          {:status-code 400})))
         _                               (when write_data_details
                                           (validate-write-data-details! existing-database write_data_details))
         _                               (when admin_details
@@ -1158,8 +1172,6 @@
                                 {:name               name
                                  :engine             engine
                                  :details            details-with-secrets
-                                 :write_data_details write-data-details-with-secrets
-                                 :admin_details      admin-details-with-secrets
                                  :refingerprint      refingerprint
                                  :is_full_sync       full-sync?
                                  :is_on_demand       on-demand?
@@ -1170,12 +1182,16 @@
                                  :caveats            caveats
                                  :points_of_interest points_of_interest
                                  :auto_run_queries   auto_run_queries
-                                 :settings           (when (seq settings) pending-settings)
-                                 :provider_name      provider_name}
+                                 :settings           (when (seq settings) pending-settings)}
                                 :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand :is_stub
-                                           :description :caveats :points_of_interest :auto_run_queries :settings}
-                                :present #{:provider_name :write_data_details :admin_details})
-                               ;; cache_field_values_schedule can be nil
+                                           :description :caveats :points_of_interest :auto_run_queries :settings})
+                               ;; these fields can be nil
+                               (when (contains? body :provider_name)
+                                 {:provider_name provider_name})
+                               (when (contains? body :write_data_details)
+                                 {:write_data_details write-data-details-with-secrets})
+                               (when (contains? body :admin_details)
+                                 {:admin_details admin-details-with-secrets})
                                (when schedules
                                  (sync.schedules/schedule-map->cron-strings schedules)))
             pending-db        (merge existing-database updates)]
@@ -1258,7 +1274,8 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true
+                            driver.settings/*allow-testing-sqlite-connections* true]
                     (driver.u/can-connect-with-details? (:engine db) (driver.conn/default-details db) :throw-exceptions))
                   nil
                   (catch Throwable e
@@ -1542,6 +1559,10 @@
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`.
 
+  Schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when
+  percent-encoded in the URL path; pass those as the `schema` query parameter of `GET /:id/schema/`
+  instead (#77353).
+
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
@@ -1572,26 +1593,32 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/schema/"
-  "Return a list of Tables for a Database whose `schema` is `nil` or an empty string.
+  "Return a list of Tables for a Database whose schema is the `schema` query parameter, or `nil` or an
+  empty string when no `schema` is given. Unlike the `/:id/schema/:schema` route, the query parameter
+  supports schema names containing slashes, which are rejected at the HTTP layer when percent-encoded in
+  the URL path (#77353).
 
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
-                                                                                                          [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                                          [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                                          [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                                          [:can-write-metadata          {:optional true} [:maybe :boolean]]
-                                                                                                          [:include_measures            {:optional true} [:maybe :boolean]]]]
+   {:keys [schema include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
+                                                                                                                 [:schema                      {:optional true} [:maybe :string]]
+                                                                                                                 [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                                                 [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                                                 [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                                                 [:can-write-metadata          {:optional true} [:maybe :boolean]]
+                                                                                                                 [:include_measures            {:optional true} [:maybe :boolean]]]]
   (let [opts {:include-hidden?              include_hidden
               :include-editable-data-model? include_editable_data_model
               :can-query?                   can-query
               :can-write-metadata?          can-write-metadata
               :include-measures?            include_measures}]
-    (api/check-404 (seq (concat (schema-tables-list id nil opts)
-                                (schema-tables-list id "" opts))))))
+    (api/check-404 (seq (if (str/blank? schema)
+                          (concat (schema-tables-list id nil opts)
+                                  (schema-tables-list id "" opts))
+                          (schema-tables-list id schema opts))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1622,7 +1649,8 @@
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
-    (binding [driver.settings/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true
+              driver.settings/*allow-testing-sqlite-connections* true]
       (if-let [err-map (warehouses/test-database-connection engine connection-details)]
         (merge err-map {:status "error"})
         {:status "ok"}))))

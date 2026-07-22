@@ -83,7 +83,7 @@ const ConnectionDetails = ({
       <Stack gap="sm" mt="sm">
         <Button
           variant="filled"
-          color="danger"
+          color="feedback-negative"
           loading={isDeleteInProgress}
           onClick={onDelete}
           w={INNER_WIDTH}
@@ -100,7 +100,7 @@ const ConnectionDetails = ({
         </Button>
       </Stack>
       {deleteError && (
-        <Text fz="sm" c="danger">
+        <Text fz="sm" c="feedback-negative">
           {deleteError}
         </Text>
       )}
@@ -294,14 +294,14 @@ const ErrorAlert = ({
 
   return (
     <Alert
-      icon={<Icon name="warning" c="danger" />}
+      icon={<Icon name="warning" c="feedback-negative" />}
       variant="outline"
       title={t`Couldn't sync Google Sheets`}
       w="100%"
       styles={{
         root: {
           backgroundColor: "transparent",
-          border: "1px solid var(--mb-color-border)",
+          border: "1px solid var(--mb-color-border-neutral)",
         },
         wrapper: {
           alignItems: "flex-start",

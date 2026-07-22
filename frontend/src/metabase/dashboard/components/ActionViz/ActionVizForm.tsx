@@ -7,11 +7,10 @@ import ActionParametersInputForm, {
 } from "metabase/actions/containers/ActionParametersInputForm";
 import { useActionInitialValues } from "metabase/actions/hooks/use-action-initial-values";
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
-import { actionApi } from "metabase/api";
+import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { Modal } from "metabase/common/components/Modal";
 import { useDispatch } from "metabase/redux";
-import { PublicApi } from "metabase/services";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -96,13 +95,7 @@ function ActionVizForm({
       return {};
     }
 
-    if (getDashboardType(dashboard.id) === "public") {
-      return PublicApi.prefetchDashcardValues({
-        dashboardId: dashboard.id,
-        dashcardId: dashcard.id,
-        parameters: JSON.stringify(dashcardParamValues),
-      });
-    }
+    const isPublic = getDashboardType(dashboard.id) === "public";
 
     return runRtkEndpoint(
       {
@@ -111,7 +104,9 @@ function ActionVizForm({
         parameters: dashcardParamValues,
       },
       dispatch,
-      actionApi.endpoints.prefetchDashcardValues,
+      isPublic
+        ? publicApi.endpoints.prefetchPublicDashcardValues
+        : actionApi.endpoints.prefetchDashcardValues,
     );
   }, [dashboard.id, dashcard.id, dashcardParamValues, dispatch]);
 
@@ -144,38 +139,39 @@ function ActionVizForm({
           focus={isEditingDashcard}
           onClick={onClick}
         />
-        {showFormModal && (
-          <ActionParametersInputModal
+        <ActionParametersInputModal
+          opened={showFormModal}
+          action={action}
+          mappedParameters={mappedParameters}
+          initialValues={initialValues}
+          title={title}
+          showEmptyState={shouldPrefetch && !hasPrefetchedValues}
+          showConfirmMessage={showConfirmMessage}
+          confirmMessage={action.visualization_settings?.confirmMessage}
+          onEdit={canEditAction ? handleActionEdit : undefined}
+          onSubmit={onModalSubmit}
+          onSubmitSuccess={handleSubmitSuccess}
+          onClose={() => setShowFormModal(false)}
+          onCancel={() => setShowFormModal(false)}
+        />
+        <Modal
+          {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
+          opened={showEditModal}
+          data-testid="action-editor-modal"
+          onClose={closeEditModal}
+          size="95%"
+          withCloseButton={false}
+          padding={0}
+        >
+          <ActionCreator
             action={action}
-            mappedParameters={mappedParameters}
-            initialValues={initialValues}
-            title={title}
-            showEmptyState={shouldPrefetch && !hasPrefetchedValues}
-            showConfirmMessage={showConfirmMessage}
-            confirmMessage={action.visualization_settings?.confirmMessage}
-            onEdit={canEditAction ? handleActionEdit : undefined}
-            onSubmit={onModalSubmit}
-            onSubmitSuccess={handleSubmitSuccess}
-            onClose={() => setShowFormModal(false)}
-            onCancel={() => setShowFormModal(false)}
-          />
-        )}
-        {showEditModal && (
-          <Modal
-            wide
-            data-testid="action-editor-modal"
+            modelId={action.model_id}
+            databaseId={action.database_id}
+            actionId={action.id}
+            onSubmit={onActionEdit}
             onClose={closeEditModal}
-          >
-            <ActionCreator
-              action={action}
-              modelId={action.model_id}
-              databaseId={action.database_id}
-              actionId={action.id}
-              onSubmit={onActionEdit}
-              onClose={closeEditModal}
-            />
-          </Modal>
-        )}
+          />
+        </Modal>
       </>
     );
   }

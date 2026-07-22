@@ -1,5 +1,5 @@
-import type { Middleware } from "@reduxjs/toolkit";
-import type { ComponentType } from "react";
+import type { Action, Middleware, ThunkDispatch } from "@reduxjs/toolkit";
+import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -10,6 +10,12 @@ import type {
 } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Dashboard } from "metabase-types/api";
+
+import type {
+  SnippetSidebarContext,
+  SnippetSidebarMenuOption,
+  SnippetSidebarRowRenderers,
+} from "./snippets";
 
 // Types
 export type IllustrationValue = {
@@ -61,7 +67,12 @@ export const PLUGIN_HOMEPAGE_SETTING: {
   CustomUrlOption: { label: string; Control: ComponentType } | null;
 } = getDefaultHomepageSetting();
 
-const getDefaultReduxMiddlewares = (): Middleware[] => [];
+// dispatch is typed as thunk-capable so EE middlewares can dispatch async thunks
+const getDefaultReduxMiddlewares = (): Middleware<
+  Record<string, never>,
+  State,
+  ThunkDispatch<State, unknown, Action>
+>[] => [];
 
 export const PLUGIN_REDUX_MIDDLEWARES = getDefaultReduxMiddlewares();
 
@@ -111,9 +122,17 @@ const getDefaultFormWidgets = (): Record<string, ComponentType<any>> => ({});
 
 export const PLUGIN_FORM_WIDGETS = getDefaultFormWidgets();
 
-const getDefaultSnippetSidebarPlusMenuOptions = () => [];
-const getDefaultSnippetSidebarRowRenderers = () => ({});
-const getDefaultSnippetSidebarHeaderButtons = () => [];
+const getDefaultSnippetSidebarPlusMenuOptions = (): ((
+  snippetSidebar: SnippetSidebarContext,
+) => SnippetSidebarMenuOption)[] => [];
+const getDefaultSnippetSidebarRowRenderers =
+  (): SnippetSidebarRowRenderers => ({
+    collection: null,
+  });
+const getDefaultSnippetSidebarHeaderButtons = (): ((
+  snippetSidebar: SnippetSidebarContext,
+  opts: { className?: string },
+) => ReactNode)[] => [];
 
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS =
   getDefaultSnippetSidebarPlusMenuOptions();
@@ -131,6 +150,7 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE =
   getDefaultDashboardSubscriptionParametersSectionOverride();
 
 const getDefaultReducers = () => ({
+  advancedPermissionsPlugin: () => null,
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
@@ -139,6 +159,7 @@ const getDefaultReducers = () => ({
 });
 
 export const PLUGIN_REDUCERS: {
+  advancedPermissionsPlugin: any;
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;

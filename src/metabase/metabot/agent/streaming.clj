@@ -18,15 +18,18 @@
 (def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
+(def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
+(def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
-  skipped because their value is salvaged separately into MetabotConversation.state;
-  duplicating the blob in every message would bloat storage. Non-data parts are
-  always persistable here; the caller is responsible for filtering stream-level
-  metadata (`:start`, `:usage`, `:finish`) separately."
+  skipped because their value is diffed separately into MetabotMessage.state;
+  duplicating the full blob in the message data would bloat storage. Non-data
+  parts are always persistable here; the caller is responsible for filtering
+  stream-level metadata
+  (`:start`, `:usage`, `:finish`) separately."
   [part]
   (not (and (= :data (:type part))
             (= state-type (:data-type part)))))
@@ -84,7 +87,6 @@
   [todos]
   {:type :data
    :data-type todo-list-type
-   :version 1
    :data todos})
 
 (defn code-edit-part
@@ -96,7 +98,6 @@
   [edit-data]
   {:type :data
    :data-type code-edit-type
-   :version 1
    :data edit-data})
 
 (defn transform-suggestion-part
@@ -108,7 +109,6 @@
   [suggestion]
   {:type :data
    :data-type transform-suggestion-type
-   :version 1
    :data suggestion})
 
 (defn adhoc-viz-part
@@ -121,7 +121,6 @@
   [value]
   {:type :data
    :data-type adhoc-viz-type
-   :version 1
    :data value})
 
 (defn static-viz-part
@@ -133,8 +132,47 @@
   [value]
   {:type :data
    :data-type static-viz-type
-   :version 1
    :data value})
+
+(defn generated-entity-part
+  "Create a GENERATED_ENTITY data part for streaming. `entity` is a map describing
+  a generated card (see the FE `GeneratedEntity` type): a titled visualization over
+  a referenced query, with that query embedded so the FE can run and render it."
+  [entity]
+  {:type :data
+   :data-type generated-entity-type
+   :data entity})
+
+(defn entity-saved-part
+  "Create an ENTITY_SAVED data part for streaming. `value` is a map describing where a
+  previously-generated inline chart was persisted: `{:chart_id <generated chart id>,
+  :card_id <saved card id>, :destination {:type :id}}`. The FE resolves the card's
+  and the destination's display names at render time."
+  [value]
+  {:type :data
+   :data-type entity-saved-type
+   :data value})
+
+(defn viz-part
+  "Return the data part used to surface a query/chart result to the frontend.
+
+  When `inline?` is true (the surface declared it can render visualizations
+  inline) returns a `generated_entity` card part that embeds the (legacy)
+  dataset_query so the FE runs and renders it in the conversation; otherwise
+  returns a `navigate_to` part that sends the user to the question. Pure: the
+  caller passes `inline?` (typically `(shared/inline-viz-capable?)`) and a legacy
+  `query`. The caller must supply a distinct `entity-id` (card id), `query-id`,
+  and `title`; `display` and `description` are included when present."
+  [{:keys [inline? entity-id query-id query display title description link]}]
+  (if inline?
+    (generated-entity-part
+     (cond-> {:type  "card"
+              :id    entity-id
+              :title title
+              :query {:id query-id :query query}}
+       display     (assoc :display (some-> display name))
+       description (assoc :description description)))
+    (navigate-to-part link)))
 
 ;;; Reaction Conversion
 

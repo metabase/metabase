@@ -14,15 +14,18 @@
    cache entry key. `results` are passed as a compressed byte array.
 
   The implementation is responsible for purging old cache entries when appropriate."
-  (cached-results [this ^bytes query-hash strategy respond]
-    "Call `respond` with cached results for the query (as an `InputStream` to the raw bytes) if present and not
-  expired; otherwise, call `respond` with `nil.
+  (cached-results [this ^bytes query-hash respond]
+    "Call `(respond is updated-at)` with the most recent cache entry for `query-hash` *regardless of TTL* -- the results
+  as an `InputStream` to the raw bytes, plus the entry's `updated-at` timestamp -- or `(respond nil nil)` if there's no
+  entry at all. The caller compares `updated-at` against the strategy's freshness boundary to decide whether to serve
+  the entry, serve it stale while a single process refreshes, or recompute. This method *must* return the result of
+  `respond`.
 
-    (cached-results [_ hash _ respond]
-      (with-open [is (...)]
-        (respond is)))
-
-  `strategy` should be a map with cache configuration. This method *must* return the result of `respond`.")
+    (cached-results [_ hash respond]
+      (if-let [entry (...)]
+        (with-open [is (...)]
+          (respond is (:updated-at entry)))
+        (respond nil nil)))")
 
   (save-results! [this ^bytes query-hash ^bytes results]
     "Add a cache entry with the `results` of running query with byte array `query-hash`. This should replace any prior
@@ -30,19 +33,34 @@
 
   (purge-old-entries! [this max-age-seconds]
     "Purge all cache entries older than `max-age-seconds`. Will be called periodically when this backend is in use.
-  `max-age-seconds` may be floating-point."))
+  `max-age-seconds` may be floating-point.")
+
+  (delete-entry! [this ^bytes query-hash]
+    "Delete the cache entry for `query-hash`, if one exists, releasing any held refresh lease. Called when a query ran
+  but its results could not be saved to the cache (e.g. they exceed `query-caching-max-kb`), so the outdated entry
+  doesn't keep being served to other callers. Implementations must not throw: this is called during query result
+  reduction, and a failed cleanup shouldn't fail a query that already ran successfully.")
+
+  (try-acquire-refresh-lease! [this ^bytes query-hash lease-ms]
+    "Atomically claim, across processes, the right to recompute the expired entry for `query-hash`. Returns true iff
+  this caller won the lease (and should recompute + [[save-results!]]); false means another process is already
+  refreshing it, so this caller should serve stale results instead. A lease held longer than `lease-ms` is considered
+  abandoned and may be taken over. Backends that can't coordinate across processes should return `true` (degrading to
+  the no-stampede-protection behavior)."))
 
 (defmacro with-cached-results
   "Macro version for consuming `cached-results` from a `backend`.
 
-    (with-cached-results backend query-hash strategy [is]
+    (with-cached-results backend query-hash [is updated-at]
       ...)
 
-  InputStream `is` will be `nil` if no cached results were available."
-  {:style/indent 4}
-  [backend query-hash strategy [is-binding] & body]
-  `(cached-results ~backend ~query-hash ~strategy (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
-                                                    ~@body)))
+  InputStream `is` (and `updated-at`) will be `nil` if there is no cache entry at all. `is` is only valid within
+  `body`."
+  {:style/indent 3}
+  [backend query-hash [is-binding updated-at-binding] & body]
+  `(cached-results ~backend ~query-hash
+                   (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream) ~updated-at-binding]
+                     ~@body)))
 
 (defmulti cache-backend
   "Return an instance of a cache backend, which is any object that implements `QueryProcessorCacheBackend`.

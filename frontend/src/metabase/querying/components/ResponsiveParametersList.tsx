@@ -2,9 +2,8 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { Box, Flex } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon } from "metabase/ui";
 import type { CardId, DashboardId, Parameter } from "metabase-types/api";
 
 import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
@@ -54,10 +53,9 @@ export const ResponsiveParametersList = ({
     >
       {parameters.length > 0 && isSmallScreen && (
         <Button
-          className={ResponsiveParametersListS.filterButton}
-          borderless
-          primary
-          icon="filter"
+          m="sm"
+          variant="subtle"
+          leftSection={<Icon name="filter" />}
           onClick={handleFilterButtonClick}
         >
           {activeFilters > 0
@@ -84,12 +82,13 @@ export const ResponsiveParametersList = ({
         {parameters.length > 0 && isSmallScreen && (
           <Flex p="0.75rem 1rem" align="center" justify="space-between">
             <h3>{t`Filters`}</h3>
-            <Button
-              onlyIcon
-              borderless
-              icon="close"
+            <ActionIcon
+              variant="viewHeader"
+              aria-label={t`Close`}
               onClick={handleFilterButtonClick}
-            />
+            >
+              <Icon name="close" />
+            </ActionIcon>
           </Flex>
         )}
         <SyncedParametersList

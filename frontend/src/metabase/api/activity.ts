@@ -1,5 +1,6 @@
 import type {
   CreateRecentRequest,
+  Dashboard,
   Field,
   PopularItem,
   PopularItemsResponse,
@@ -10,7 +11,12 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { invalidateTags, listTag, provideActivityItemListTags } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideActivityItemListTags,
+} from "./tags";
 
 export const activityApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -67,11 +73,22 @@ export const activityApi = Api.injectEndpoints({
           invalidateTags(error, [listTag("activity")]),
       },
     ),
+    getMostRecentlyViewedDashboard: builder.query<Dashboard | null, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/activity/most_recently_viewed_dashboard",
+      }),
+      providesTags: (dashboard) =>
+        dashboard ? [idTag("dashboard", dashboard.id)] : [],
+    }),
   }),
 });
 
-export const { useListPopularItemsQuery, useLogRecentItemMutation } =
-  activityApi;
+export const {
+  useGetMostRecentlyViewedDashboardQuery,
+  useListPopularItemsQuery,
+  useLogRecentItemMutation,
+} = activityApi;
 
 type GetRecentsQueryOptions = Parameters<
   typeof activityApi.useListRecentsQuery
@@ -91,6 +108,7 @@ export function useListRecentsQuery<T extends boolean | undefined = undefined>(
   options?: GetRecentsQueryOptions,
 ) {
   type ResultType = T extends true ? RecentItemWithMetadata : RecentItem;
+  // Unjustified type cast. FIXME
   return activityApi.endpoints.listRecents.useQuery(
     params,
     options,

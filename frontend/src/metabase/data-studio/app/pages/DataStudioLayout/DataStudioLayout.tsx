@@ -5,8 +5,9 @@ import { t } from "ttag";
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -14,6 +15,7 @@ import {
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import {
@@ -35,11 +37,7 @@ import type { IconName } from "metabase-types/api";
 import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
 
-type DataStudioLayoutProps = {
-  children?: ReactNode;
-};
-
-export function DataStudioLayout({ children }: DataStudioLayoutProps) {
+export function DataStudioLayout() {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
@@ -71,7 +69,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         onNavbarToggle={setIsNavbarOpened}
       />
       <Box h="100%" flex={1} miw={0}>
-        {children}
+        <Outlet />
       </Box>
     </Flex>
   );
@@ -100,6 +98,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
+
+  const isTransformsSetupComplete = useSetting("transforms-setup-complete");
+  const areTransformsEnabled = useSetting("transforms-enabled");
+
+  const canUseTransforms = canAccessTransforms && areTransformsEnabled;
+  // if transform setup isn't complete, we still show transforms - that's where the upsell/enable pages are
+  const shouldShowTransforms = canUseTransforms || !isTransformsSetupComplete;
+
+  const settings = useDataStudioSettings();
 
   const currentTab = getCurrentTab(pathname);
 
@@ -165,7 +172,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
             isGated={!hasDependenciesFeature}
           />
-          {canAccessTransforms && (
+          {shouldShowTransforms && (
             <DataStudioTab
               label={t`Transforms`}
               icon="transform"
@@ -213,7 +220,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          {canAccessTransforms && (
+          {canUseTransforms && (
             <DataStudioTab
               label={t`Jobs`}
               icon="clock"
@@ -222,12 +229,21 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          {canAccessTransforms && (
+          {canUseTransforms && (
             <DataStudioTab
               label={t`Runs`}
               icon="play_outlined"
-              to={Urls.transformRunList()}
+              to={Urls.transformGraphRunList()}
               isSelected={currentTab === "runs"}
+              showLabel={isNavbarOpened}
+            />
+          )}
+          {settings.length > 0 && (
+            <DataStudioTab
+              label={t`Settings`}
+              icon="gear"
+              to={Urls.dataStudioSettings()}
+              isSelected={currentTab === "settings"}
               showLabel={isNavbarOpened}
             />
           )}

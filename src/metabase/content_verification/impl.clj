@@ -31,10 +31,14 @@
   ;; item that comes into this comes out. The nested hydration is positional, not by an id so everything that comes in
   ;; must go out in the same order
   (when (seq items)
-    (let [item-ids    (not-empty (keep :id items))
+    (let [items*      (keep identity items)
+          item-ids    (not-empty (keep :id items*))
+          ;; constrain on `:moderated_item_type` too so the `(moderated_item_type, moderated_item_id)` index is used
+          item-types  (not-empty (into #{} (map (comp keyword object->type)) items*))
           all-reviews (when item-ids
                         (group-by (juxt :moderated_item_type :moderated_item_id)
                                   (t2/select :model/ModerationReview
+                                             :moderated_item_type [:in item-types]
                                              :moderated_item_id [:in item-ids]
                                              {:order-by [[:id :desc]]})))]
       (for [item items]
@@ -58,9 +62,13 @@
   "Hydrate moderation status onto a seq of items"
   [items]
   (when (seq items)
-    (let [item-ids (seq (keep :id items))
+    (let [items*     (keep identity items)
+          item-ids   (seq (keep :id items*))
+          ;; constrain on `:moderated_item_type` too so the `(moderated_item_type, moderated_item_id)` index is used
+          item-types (not-empty (into #{} (map (comp keyword object->type)) items*))
           type+id->status (when item-ids
                             (->> (t2/select [:model/ModerationReview :moderated_item_id :moderated_item_type :status]
+                                            :moderated_item_type [:in item-types]
                                             :moderated_item_id [:in item-ids]
                                             :most_recent true
                                             {:order-by [[:id :desc]]})

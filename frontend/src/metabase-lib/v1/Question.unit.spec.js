@@ -1,6 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { convertParametersToMbql } from "metabase/querying/parameters/utils/query";
-import * as Lib from "metabase-lib";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -742,46 +740,6 @@ describe("Question", () => {
           value: null,
         },
       ]);
-    });
-  });
-
-  describe("convertParametersToMbql", () => {
-    it("should do nothing to a native question", () => {
-      expect(
-        convertParametersToMbql(native_orders_count_question, {
-          isComposed: false,
-        }),
-      ).toBe(native_orders_count_question);
-    });
-
-    it("should convert a question with parameters into a new question with filters", () => {
-      const parameters = [
-        {
-          type: "string/starts-with",
-          name: "foo",
-          id: "foo_id",
-          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-        },
-        {
-          type: "string/=",
-          name: "bar",
-          id: "bar_id",
-          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-        },
-      ];
-
-      const question = base_question
-        .setParameters(parameters)
-        .setParameterValues({
-          foo_id: "abc",
-        });
-
-      const questionWithFilters = convertParametersToMbql(question, {
-        isComposed: false,
-      });
-
-      expect(Lib.stageCount(questionWithFilters.query())).toBe(1);
-      expect(Lib.filters(questionWithFilters.query())).toHaveLength(1);
     });
   });
 

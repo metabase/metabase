@@ -1,7 +1,7 @@
 import type { History } from "history";
-import { Route } from "react-router";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";
@@ -27,8 +27,8 @@ describe("useConfirmOnRouteLeave", () => {
 
     const { history, ...rest } = renderWithProviders(
       <div>
-        <Route path="/a" component={PageA} />
-        <Route path="/b" component={PageB} />
+        <Route path="/a" element={<PageA />} />
+        <Route path="/b" element={<PageB />} />
       </div>,
       { withRouter: true, initialRoute: "/a" },
     );

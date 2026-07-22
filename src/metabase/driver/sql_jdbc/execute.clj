@@ -30,6 +30,8 @@
    [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
+   (com.mchange.v2.c3p0 PooledDataSource)
+   (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
@@ -50,8 +52,8 @@
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
     [:write? {:optional true, :default false} [:maybe :boolean]]
     [:download? {:optional true} [:maybe :boolean]]
-    ;; true if called from table-rows-sample-query
-    [:sample? {:optional true} [:maybe :boolean]]
+    ;; true for large results we want to *stream* (a server-side cursor) rather than buffer in memory
+    [:stream? {:optional true} [:maybe :boolean]]
     ;; don't autoclose the connection
     [:keep-open? {:optional true} [:maybe :boolean]]]])
 
@@ -288,7 +290,6 @@
       ;; use the deprecated impl for `connection-with-timezone` if one exists.
       (do
         (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
-                   #_{:clj-kondo/ignore [:deprecated-var]}
                    'connection-with-timezone
                    'do-with-connection-with-options)
         ;; for compatibility, make sure we pass it an actual Database instance.
@@ -320,6 +321,33 @@
   []
   (pos? *connection-recursion-depth*))
 
+(defn- connection-checkout-timeout?
+  "True if `e` (or anything in its cause chain) is a c3p0 pool-checkout timeout, i.e. the data-warehouse connection
+  pool was exhausted and the wait exceeded [[driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms]].
+  c3p0 signals this by throwing a `SQLException` caused by a `com.mchange.v2.resourcepool.TimeoutException`."
+  [^Throwable e]
+  (loop [cause e]
+    (cond
+      (nil? cause)                        false
+      (instance? TimeoutException cause)  true
+      :else                               (recur (.getCause cause)))))
+
+(defn- checkout-queue-full?
+  "True if `data-source` already has at least
+  [[driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts]] queries waiting for a free connection.
+  Used to shed load: rather than letting the checkout queue grow without bound when the pool is saturated, additional
+  queries are rejected immediately. A limit of `0` (the default) disables the check. Only c3p0 `PooledDataSource`s
+  expose the waiting-thread count; any other data source is never considered full."
+  [data-source]
+  (let [max-pending (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts)]
+    (and (pos? max-pending)
+         (instance? PooledDataSource data-source)
+         (try
+           (>= (.getNumThreadsAwaitingCheckoutDefaultUser ^PooledDataSource data-source) max-pending)
+           (catch Throwable _
+             ;; if we can't read the stat for some reason, fail open rather than blocking queries
+             false)))))
+
 (mu/defn do-with-resolved-connection
   "Execute
 
@@ -338,13 +366,22 @@
       (f conn)
       (let [get-conn (^:once fn* []
                        (let [conn-data-source (do-with-resolved-connection-data-source driver db-or-id-or-spec options)]
+                         (when (checkout-queue-full? conn-data-source)
+                           (throw (ex-info (tru "Too many queries are running. Please try again in a moment.")
+                                           {:type   driver-api/qp.error-type.connection-pool-checkout-queue-full
+                                            :driver driver})))
                          (try
                            (.getConnection conn-data-source)
                            (catch Throwable e
-                             (throw (ex-info (tru "Unable to connect to the database: {0}" (ex-message e))
-                                             {:type   driver-api/qp.error-type.unable-to-acquire-connection
-                                              :driver driver}
-                                             e))))))]
+                             (let [timed-out? (connection-checkout-timeout? e)]
+                               (throw (ex-info (if timed-out?
+                                                 (tru "Too many queries are running. Please try again in a moment.")
+                                                 (tru "Unable to connect to the database: {0}" (ex-message e)))
+                                               {:type   (if timed-out?
+                                                          driver-api/qp.error-type.connection-pool-checkout-timeout
+                                                          driver-api/qp.error-type.unable-to-acquire-connection)
+                                                :driver driver}
+                                               e)))))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]
@@ -396,17 +433,17 @@
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
     ;; manually. (metabase#40014)
     (cond (not (or write?
-                   (and (-> options :download?) (= driver :postgres))))
+                   (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))))
           (try
             (log/trace (pr-str '(.setAutoCommit conn true)))
             (.setAutoCommit conn true)
             (catch Throwable e
               (log/debug e "Error enabling connection autoCommit")))
 
-          ;; todo (dan 7/11/25): fixing straightforward postgres oom on downloads in #60733, but seems like write? is
-          ;; not set here. Note this is explicitly silent when `write?`. Lots of tests fail with autocommit false
-          ;; there.
-          (and (or (-> options :download?) (-> options :sample?)) (isa? driver/hierarchy driver :postgres))
+          ;; Postgres/Redshift buffer the *entire* ResultSet unless autoCommit is false (then they use a server-side
+          ;; cursor honoring the statement fetch size). So for streamed reads (`:stream?` -- sync metadata reads,
+          ;; table-rows-sample, downloads) flip autoCommit off, else a huge result OOMs.
+          (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))
           (try
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
@@ -802,7 +839,8 @@
        (driver-api/database (driver-api/metadata-provider))
        {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
         :download? (download? (-> outer-query :info :context))
-        :sample?   (= :table-rows-sample (-> outer-query :info :context))}
+        :stream?   (or (download? (-> outer-query :info :context))
+                       (= :table-rows-sample (-> outer-query :info :context)))}
        (fn [^Connection conn]
          (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                      ^ResultSet rs (try
@@ -848,7 +886,7 @@
         (do-with-connection-with-options
          driver
          db
-         nil
+         {:stream? true}
          (fn [^Connection conn]
            (with-open [stmt          (statement-or-prepared-statement driver conn sql params nil)
                        ^ResultSet rs (try

@@ -12,7 +12,7 @@ import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Icon } from "metabase/ui";
+import { ActionIcon, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -21,7 +21,7 @@ import {
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type { Card, WritebackAction } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 
 import {
   EmptyStateActionContainer,
@@ -33,7 +33,6 @@ import {
 import {
   ActionAlert,
   ActionList,
-  ActionMenu,
   ActionsHeader,
   Root,
 } from "./ModelActionDetails.styled";
@@ -95,35 +94,12 @@ function ModelActionDetails({ model }: Props) {
     });
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
-  const menuItems = useMemo(() => {
-    const items = [];
-    const hasImplicitActions = implicitActions.length > 0;
-
-    if (hasImplicitActions) {
-      items.push({
-        title: t`Disable basic actions`,
-        icon: "bolt",
-        action: onDeleteImplicitActions,
-      });
-    } else if (supportsImplicitActions) {
-      items.push({
-        title: t`Create basic actions`,
-        icon: "bolt",
-        action: onEnableImplicitActions,
-      });
-    }
-
-    return items;
-  }, [
-    implicitActions,
-    supportsImplicitActions,
-    onEnableImplicitActions,
-    onDeleteImplicitActions,
-  ]);
+  const hasImplicitActions = implicitActions.length > 0;
+  const hasActionsMenu = hasImplicitActions || supportsImplicitActions;
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
-      const actionUrl = Urls.action(model.card() as Card, action.id);
+      const actionUrl = Urls.action(model.card(), action.id);
 
       return (
         <li key={action.id} aria-label={action.name}>
@@ -141,19 +117,38 @@ function ModelActionDetails({ model }: Props) {
     [model, databases, onArchiveAction],
   );
 
-  const newActionUrl = Urls.newAction(model.card() as Card);
+  const newActionUrl = Urls.newAction(model.card());
 
   return (
     <Root data-testid="model-action-details">
       {canWrite && (
         <ActionsHeader data-testid="model-actions-header">
           <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
-          {menuItems.length > 0 && (
-            <ActionMenu
-              triggerIcon="ellipsis"
-              items={menuItems}
-              triggerProps={{ "aria-label": t`Actions menu` }}
-            />
+          {hasActionsMenu && (
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <ActionIcon aria-label={t`Actions`} variant="subtle" ml="sm">
+                  <Icon name="ellipsis" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {hasImplicitActions ? (
+                  <Menu.Item
+                    leftSection={<Icon name="bolt" aria-hidden />}
+                    onClick={onDeleteImplicitActions}
+                  >
+                    {t`Disable basic actions`}
+                  </Menu.Item>
+                ) : (
+                  <Menu.Item
+                    leftSection={<Icon name="bolt" aria-hidden />}
+                    onClick={onEnableImplicitActions}
+                  >
+                    {t`Create basic actions`}
+                  </Menu.Item>
+                )}
+              </Menu.Dropdown>
+            </Menu>
           )}
         </ActionsHeader>
       )}

@@ -11,10 +11,10 @@
 }
 
 .code {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-radius: var(--mantine-radius-md);
   overflow: hidden;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .copyButton {

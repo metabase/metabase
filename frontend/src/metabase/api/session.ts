@@ -1,3 +1,4 @@
+import type { LoginData } from "metabase/redux/auth";
 import { loadSettings } from "metabase/redux/settings";
 import {
   isValidColorScheme,
@@ -6,6 +7,7 @@ import {
 import MetabaseSettings from "metabase/utils/settings";
 import type {
   EnterpriseSettings,
+  MfaMethod,
   PasswordResetTokenStatus,
 } from "metabase-types/api";
 
@@ -14,8 +16,75 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const sessionPropertiesPath = "/api/session/properties";
 
+export interface SessionResponse {
+  id: string;
+}
+
+export interface MfaChallengeResponse {
+  mfa_required: true;
+  methods: MfaMethod[];
+  challenge_token: string;
+}
+
+export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;
+
+export const isMfaChallenge = (
+  response: CreateSessionResponse,
+): response is MfaChallengeResponse =>
+  "mfa_required" in response && response.mfa_required === true;
+
+export interface GoogleAuthData {
+  token: string;
+  remember?: boolean;
+}
+
+export interface ResetPasswordData {
+  token: string;
+  password: string;
+}
+
+export interface SsoLogoutResponse {
+  "saml-logout-url"?: string;
+}
+
 export const sessionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    createSession: builder.mutation<CreateSessionResponse, LoginData>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session",
+        body,
+      }),
+    }),
+    createSessionWithGoogleAuth: builder.mutation<
+      SessionResponse,
+      GoogleAuthData
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/google_auth",
+        body,
+      }),
+    }),
+    deleteSession: builder.mutation<void, void>({
+      query: () => ({
+        method: "DELETE",
+        url: "/api/session",
+      }),
+    }),
+    logoutSso: builder.mutation<SsoLogoutResponse, void>({
+      query: () => ({
+        method: "POST",
+        url: "/auth/sso/logout",
+      }),
+    }),
+    resetPassword: builder.mutation<void, ResetPasswordData>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/reset_password",
+        body,
+      }),
+    }),
     getPasswordResetTokenStatus: builder.query<
       PasswordResetTokenStatus,
       string
@@ -65,6 +134,11 @@ export const sessionApi = Api.injectEndpoints({
 });
 
 export const {
+  useCreateSessionMutation,
+  useCreateSessionWithGoogleAuthMutation,
+  useDeleteSessionMutation,
+  useLogoutSsoMutation,
+  useResetPasswordMutation,
   useGetPasswordResetTokenStatusQuery,
   useForgotPasswordMutation,
   useCheckPasswordMutation,

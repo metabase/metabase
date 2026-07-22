@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   pr-env:
-    if: ${{ (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'PR-Env') && !contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting') && !contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')) || github.event.label.name == 'PR-Env' }}
+    if: ${{ (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'PR-Env') && !contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting') && !contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev') && !contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')) || github.event.label.name == 'PR-Env' }}
     uses: ./.github/workflows/pr-env-destroy.yml
     secrets: inherit
     with:
@@ -25,6 +25,13 @@ jobs:
 
   pr-env-analytics-dev:
     if: ${{ (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')) || github.event.label.name == 'PR-Env-analytics-dev' }}
+    uses: ./.github/workflows/pr-env-destroy.yml
+    secrets: inherit
+    with:
+      self_hosting: false
+
+  pr-env-stats-dump:
+    if: ${{ (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')) || github.event.label.name == 'PR-Env-Stats-Dump' }}
     uses: ./.github/workflows/pr-env-destroy.yml
     secrets: inherit
     with:

@@ -1,5 +1,3 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useDeleteTimelineEventMutation,
@@ -7,13 +5,14 @@ import {
   useGetTimelineQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-function DeleteEventModalContainer({ params }: ModalComponentProps) {
+function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
   const timelineId = Urls.extractEntityId(params.timelineId);
   const eventId = Urls.extractEntityId(params.timelineEventId);
@@ -44,7 +43,12 @@ function DeleteEventModalContainer({ params }: ModalComponentProps) {
   }
 
   return (
-    <DeleteEventModal event={event} timeline={timeline} onSubmit={onSubmit} />
+    <DeleteEventModal
+      event={event}
+      timeline={timeline}
+      onSubmit={onSubmit}
+      onClose={onClose}
+    />
   );
 }
 

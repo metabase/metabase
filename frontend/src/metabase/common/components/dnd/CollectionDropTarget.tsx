@@ -4,7 +4,7 @@ import { DropTarget } from "react-dnd";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";
@@ -23,6 +23,7 @@ export const CollectionDropTarget = DropTarget(
     },
     canDrop(props: CollectionDropTargetOwnProps, monitor: DropTargetMonitor) {
       const { collection } = props;
+      // Unjustified type cast. FIXME
       const { item } = monitor.getItem() as { item: CollectionItem };
       if (
         !isRootTrashCollection(collection) &&

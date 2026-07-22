@@ -1,8 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
-import _ from "underscore";
 
-import { getStore } from "__support__/entities-store";
+import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -10,9 +9,7 @@ import {
   VisualizationWrapper,
   createWaitForResizeToStopDecorator,
 } from "__support__/storybook";
-import { Api } from "metabase/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
@@ -21,16 +18,14 @@ import {
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { RawSeries } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import * as data from "./stories-data";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
-registerVisualization(Table);
+registerVisualizations();
 
 const settings = mockSettings();
 
@@ -38,16 +33,8 @@ const storeInitialState = createMockState({
   settings,
   entities: createMockEntitiesState({}),
 });
-const publicReducerNames = Object.keys(commonReducers);
-const initialState = _.pick(storeInitialState, ...publicReducerNames) as State;
-
-const storeMiddleware = [Api.middleware];
-
-const store = getStore(
-  commonReducers,
-  initialState,
-  storeMiddleware,
-) as unknown as Store<State>;
+// Unjustified type cast. FIXME
+const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 export default {
   title: "viz/Table",
@@ -60,7 +47,7 @@ const DefaultTemplate: StoryFn<{
 }> = ({
   series,
   isDashboard,
-  bgColor = "white",
+  bgColor = "core-white",
   theme,
   hasDevWatermark,
 }: {

@@ -12,7 +12,18 @@
   padding: 1.25rem 1.5rem 1rem;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.headerTitle {
+  min-width: 0;
+  flex: 1;
+  line-height: 1.25;
+}
+
+.headerActions {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .inputContainer {
@@ -23,7 +34,7 @@
   border-radius: 0.5rem;
   box-shadow: 0 3px 6px 0 #0000000d;
   min-height: 3rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 
   &:focus-within {
     border-color: var(--mb-color-core-brand);
@@ -31,7 +42,7 @@
 }
 
 .inputContainerLoading {
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
 }
 
 .messagesScrollArea {
@@ -68,7 +79,7 @@
 .messageContainerUser {
   align-items: flex-end;
   align-self: flex-end;
-  max-width: 90%;
+  max-width: min(100%, 46.5rem);
   min-width: 6rem;
   width: fit-content;
 }
@@ -88,7 +99,7 @@
 .messageUser {
   padding: 0.5rem 1rem;
   border-radius: 1rem;
-  background: var(--mb-color-background-tertiary);
+  background: var(--mb-color-background_page-secondary);
   max-width: 100%;
   overflow: hidden;
 }
@@ -113,7 +124,7 @@
 }
 
 .agentPartClickable:hover {
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
 }
 
 .agentPartActions {
@@ -122,7 +133,7 @@
 }
 
 .agentPartActionIcon:hover {
-  background-color: var(--mb-color-background-tertiary) !important;
+  background-color: var(--mb-color-background_page-tertiary) !important;
 }
 
 .agentPartCard:hover .agentPartActions,

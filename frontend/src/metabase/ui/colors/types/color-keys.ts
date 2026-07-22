@@ -8,6 +8,11 @@ import type { ALL_ACCENT_COLOR_NAMES } from "../constants/accents";
  *
  * Both the light and dark theme must define all of these colors.
  *
+ * Token names follow `[category]-[property]-[variant?]-[state?]`. Parts are
+ * joined with `-`; when a single part is two words we join those words
+ * with `_` so it reads as one unit. E.g. background_surface-brand-strong`
+ * is category `background_surface`, property `brand`, variant `strong`.
+ *
  * @inline
  * @category Theming
  */
@@ -41,8 +46,6 @@ export type MetabaseColorKey =
   | "border-subtle"
   | "brand"
   | "brand-hover"
-  | "bronze"
-  | "copper"
   | "danger"
   | "error"
   | "filter"
@@ -62,7 +65,6 @@ export type MetabaseColorKey =
   | "saturated-red"
   | "saturated-yellow"
   | "shadow"
-  | "silver"
   | "success"
   | "success-secondary"
   | "summarize"
@@ -117,14 +119,19 @@ export type MetabaseColorKey =
   | "border-neutral-strong"
   | "border-neutral-strongest"
   | "border-neutral-subtle"
+  | "core-blue-saturated"
   | "core-brand"
   | "core-brand-hover"
   | "core-filter"
   | "core-gold"
+  | "core-green-saturated"
   | "core-info"
+  | "core-purple-saturated"
+  | "core-red-saturated"
   | "core-summarize"
   | "core-white"
   | "core-white_constant"
+  | "core-yellow-saturated"
   | "feedback-negative"
   | "feedback-negative-strong"
   | "feedback-neutral-strong"
@@ -151,13 +158,8 @@ export type MetabaseColorKey =
   | "text-secondary"
   | "text-secondary-inverse"
   | "text-selected"
-  | "text-syntax-constant"
-  | "text-syntax-keyword"
   | "text-syntax-parameter"
   | "text-syntax-parameter-active"
-  | "text-syntax-string"
-  | "text-syntax-variable"
-  | "text-syntax-yellow"
   | "tooltip-background"
   | "tooltip-background-focused"
   | "tooltip-text"

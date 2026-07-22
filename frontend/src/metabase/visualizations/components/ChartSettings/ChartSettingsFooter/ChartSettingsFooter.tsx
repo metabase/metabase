@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-
-import { ChartSettingsFooterRoot } from "./ChartSettingsFooter.styled";
+import { Button, Flex, Icon } from "metabase/ui";
 
 export type ChartSettingsFooterProps = {
   onDone: () => void;
@@ -15,15 +13,16 @@ export const ChartSettingsFooter = ({
   onCancel,
   onReset,
 }: ChartSettingsFooterProps) => (
-  <ChartSettingsFooterRoot>
+  <Flex justify="flex-end" gap="md" py="md" px="xl">
     {onReset && (
       <Button
-        borderless
-        icon="refresh"
+        variant="subtle"
+        color="text-secondary"
+        leftSection={<Icon name="refresh" />}
         onClick={onReset}
       >{t`Reset to defaults`}</Button>
     )}
     <Button onClick={onCancel}>{t`Cancel`}</Button>
-    <Button primary onClick={onDone}>{t`Done`}</Button>
-  </ChartSettingsFooterRoot>
+    <Button variant="filled" onClick={onDone}>{t`Done`}</Button>
+  </Flex>
 );

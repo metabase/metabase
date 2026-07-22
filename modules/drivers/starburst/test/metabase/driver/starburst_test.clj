@@ -82,11 +82,11 @@
                       {:name "checkins" :schema "default"}
                       {:name "users" :schema "default"}}}
            (-> (driver/describe-database :starburst (mt/db))
-               (update :tables (comp set (partial filter (comp #{"categories"
-                                                                 "venues"
-                                                                 "checkins"
-                                                                 "users"}
-                                                               :name)))))))))
+               (update :tables #(into #{} (filter (comp #{"categories"
+                                                          "venues"
+                                                          "checkins"
+                                                          "users"}
+                                                        :name)) %)))))))
 
 (deftest describe-table-test
   (mt/test-driver :starburst

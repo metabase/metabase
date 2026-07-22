@@ -346,6 +346,28 @@
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
               (lib.drill-thru/drill-thru query drill))))))
 
+(deftest ^:parallel chart-other-slice-click-test
+  (testing "chart clicks with grouped breakout values use an in filter (#5334)"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (meta/field-metadata :products :category)))
+          cols     (lib/returned-columns query)
+          category (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Category"})
+          context  {:column     nil
+                    :column-ref nil
+                    :value      nil
+                    :dimensions [{:column     category
+                                  :column-ref (lib/ref category)
+                                  :value      ["Gadget" "Doohickey"]}]}
+          drill    (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                 (lib.drill-thru/available-drill-thrus query context))]
+      (is (=? {:lib/type :mbql/query
+               :stages [{:filters     [[:in {} [:field {} (meta/id :products :category)] "Gadget" "Doohickey"]]
+                         :aggregation (symbol "nil #_\"key is not present.\"")
+                         :breakout    (symbol "nil #_\"key is not present.\"")
+                         :fields      (symbol "nil #_\"key is not present.\"")}]}
+              (lib.drill-thru/drill-thru query drill))))))
+
 (deftest ^:parallel preserve-temporal-bucket-test
   (testing "preserve the temporal bucket on a breakout column in the previous stage (#13504 #36582)"
     (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -956,3 +978,91 @@
                              :breakout    (symbol "nil #_\"key is not present.\"")
                              :fields      (symbol "nil #_\"key is not present.\"")}]}
                   second-result)))))))
+
+(deftest ^:parallel partial-dimensions-fill-from-row-test
+  (testing "underlying-records drill fills in missing breakout-sourced row entries when the
+            FE provides only some of the dimensions (#73803)"
+    ;; Models a card where stage 1 has agg+breakouts (count by created-at:month, state); stage 2
+    ;; adds a filter `state = "AK"`. On the FE the scatter only puts CREATED_AT in graph.dimensions,
+    ;; so the click context's :dimensions has just CREATED_AT — STATE is present in :row but, at
+    ;; the last stage, its column metadata shows :source/previous-stage / :source :fields rather
+    ;; than a breakout. The drill must still apply STATE = clicked-value to the underlying records.
+    (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (-> (meta/field-metadata :people :created-at)
+                                           (lib/with-temporal-bucket :month)))
+                         (lib/breakout (meta/field-metadata :people :state))
+                         lib/append-stage)
+          base-cols  (lib/returned-columns base)
+          created-at (lib.tu.notebook/find-col-with-spec
+                      base base-cols {} {:display-name "Created At: Month"})
+          state-col  (lib.tu.notebook/find-col-with-spec
+                      base base-cols {} {:display-name "State"})
+          count-col  (lib.tu.notebook/find-col-with-spec
+                      base base-cols {} {:display-name "Count"})
+          query      (lib/filter base (lib/= state-col "AK"))
+          context    {:column     count-col
+                      :column-ref (lib/ref count-col)
+                      :value      4
+                      :row        [{:column     created-at
+                                    :column-ref (lib/ref created-at)
+                                    :value      "2026-07-01T00:00:00Z"}
+                                   {:column     state-col
+                                    :column-ref (lib/ref state-col)
+                                    :value      "AK"}
+                                   {:column     count-col
+                                    :column-ref (lib/ref count-col)
+                                    :value      4}]
+                      :dimensions [{:column     created-at
+                                    :column-ref (lib/ref created-at)
+                                    :value      "2026-07-01T00:00:00Z"}]}
+          drill      (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                   (lib/available-drill-thrus query context))
+          _          (is (some? drill))
+          result     (lib/drill-thru query drill)]
+      (is (=? {:stages [{:source-table (meta/id :people)
+                         :filters      [[:between {}
+                                         [:field {:temporal-unit :month} (meta/id :people :created-at)]
+                                         string?
+                                         string?]
+                                        [:= {}
+                                         [:field {} (meta/id :people :state)]
+                                         "AK"]]
+                         :aggregation  (symbol "nil #_\"key is not present.\"")
+                         :breakout     (symbol "nil #_\"key is not present.\"")
+                         :fields       (symbol "nil #_\"key is not present.\"")}]}
+              result)))))
+
+(deftest ^:parallel native-card-day-breakout-drill-test
+  ;; The day bucket produces a single-day `:between` (identical bounds) - not a multi-day range - which the
+  ;; filters panel renders as "CREATED_AT is Oct 11, 2026". This is the regression #54108 guarded.
+  (testing "underlying-records drill on a day-bucketed breakout over a native card keeps the model as
+            source-card and filters the single clicked day (#54108)"
+    (let [mp         (lib.tu/metadata-provider-with-mock-cards)
+          card       (:orders/native (lib.tu/mock-cards))
+          query      (as-> (lib/query mp card) q
+                       (lib/aggregate q (lib/count))
+                       (lib/breakout q (lib/with-temporal-bucket
+                                         (m/find-first #(= (:name %) "CREATED_AT")
+                                                       (lib/breakoutable-columns q))
+                                         :day)))
+          cols       (lib/returned-columns query)
+          count-col  (m/find-first #(= (:name %) "count") cols)
+          _          (is (some? count-col))
+          created-at (m/find-first #(= (:name %) "CREATED_AT") cols)
+          _          (is (some? created-at))
+          context    {:column     count-col
+                      :column-ref (lib/ref count-col)
+                      :value      6
+                      :dimensions [{:column     created-at
+                                    :column-ref (lib/ref created-at)
+                                    :value      "2026-10-11T00:00:00Z"}]}
+          drill      (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                   (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? [{:source-card (:id card)
+                :filters     [[:between {}
+                               [:field {:temporal-unit :day} "CREATED_AT"]
+                               "2026-10-11"
+                               "2026-10-11"]]}]
+              (:stages (lib/drill-thru query drill)))))))

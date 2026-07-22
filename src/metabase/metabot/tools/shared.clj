@@ -14,11 +14,23 @@
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
+(def ^:dynamic *profile-id*
+  "The profile keyword for the current agent session, e.g. `:nlq`. Bound during the
+   agent loop so that tools can adapt their output to the active profile."
+  nil)
+
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."
   []
   (when *memory-atom*
     @*memory-atom*))
+
+(defn current-conversation-id
+  "The current conversation's id (a UUID string) from agent memory, or nil outside a
+  conversation-backed run. Tools use it to record which conversation an entity they
+  create came from (e.g. `save_entity` stamps it onto the saved card)."
+  []
+  (:conversation-id (current-memory)))
 
 (defn current-queries-state
   "Returns the current queries state map from agent memory."
@@ -40,6 +52,11 @@
   "Returns the current agent context from memory."
   []
   (get (current-memory) :context))
+
+(defn inline-viz-capable?
+  "True when the current profile should render visualizations inline."
+  []
+  (= *profile-id* :nlq))
 
 (defn with-memory
   "Helper for debugging memory-bound tools when needed."

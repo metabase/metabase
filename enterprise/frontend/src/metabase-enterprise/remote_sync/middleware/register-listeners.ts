@@ -92,6 +92,7 @@ function shouldInvalidateForCollection(
  */
 function getActionPayload<T>(action: UnknownAction): T | undefined {
   if (action && typeof action === "object" && "payload" in action) {
+    // Unjustified type cast. FIXME
     return action.payload as T;
   }
   return undefined;
@@ -181,6 +182,7 @@ function registerUpdateListeners(
           }
           const oldModel = invalidation.getOriginal(
             getOriginalState(),
+            // Unjustified type cast. FIXME
             newModel.id as number,
           );
           if (shouldInvalidateForRemoteSyncedModel(oldModel, newModel)) {
@@ -243,6 +245,7 @@ function registerDeleteListeners(
           }
           const model = invalidation.getOriginal(
             getOriginalState(),
+            // Unjustified type cast. FIXME
             id as number,
           );
           if (model?.is_remote_synced) {

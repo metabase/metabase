@@ -6,7 +6,9 @@
   (:require
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -44,8 +46,8 @@
   "Given a numeric table_id, return a portable table reference [db-name schema table-name]."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
-          db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
+    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
+          db-name                     (t2/select-one-fn :name [:model/Database :id :name] :id db_id)]
       [db-name schema name])))
 
 (defn export-field-fk
@@ -124,8 +126,10 @@
       (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
           (synthesize-table! db-id schema table-name))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
-                      {:table-id table-id
-                       :database-names (sort (t2/select-fn-vec :name :model/Table))})))))
+                      {:table-id       table-id
+                       :db-name        db-name
+                       :database-names (sort (t2/select-fn-vec :name :model/Database))
+                       :error          ::database-not-found})))))
 
 (defn import-field-fk
   "Given [db-name schema table-name field-name ...], return numeric field_id. If part of the parent
@@ -145,20 +149,32 @@
 (def default-export-resolver
   "A stateless database-backed export resolver."
   (reify resolve/SerdesExportResolver
-    (export-fk       [_ id model]       (export-fk id model))
-    (export-fk-keyed [_ id model field] (export-fk-keyed id model field))
-    (export-user     [this id]          (export-user this id))
-    (export-table-fk [_ table-id]       (export-table-fk table-id))
-    (export-field-fk [this field-id]    (export-field-fk this field-id))))
+    (resolve/export-fk       [_ id model]       (export-fk id model))
+    (resolve/export-fk-keyed [_ id model field] (export-fk-keyed id model field))
+    (resolve/export-user     [this id]          (export-user this id))
+    (resolve/export-table-fk [_ table-id]       (export-table-fk table-id))
+    (resolve/export-field-fk [this field-id]    (export-field-fk this field-id))))
 
 (def default-import-resolver
   "A stateless database-backed import resolver."
   (reify resolve/SerdesImportResolver
-    (import-fk       [_ eid model]            (import-fk eid model))
-    (import-fk-keyed [_ portable model field] (import-fk-keyed portable model field))
-    (import-user     [this email]             (import-user this email))
-    (import-table-fk [_ path]                (import-table-fk path))
-    (import-field-fk [this path]             (import-field-fk this path))))
+    (resolve/import-fk       [_ eid model]            (import-fk eid model))
+    (resolve/import-fk-keyed [_ portable model field] (import-fk-keyed portable model field))
+    (resolve/import-user     [this email]             (import-user this email))
+    (resolve/import-table-fk [_ path]                 (import-table-fk path))
+    (resolve/import-field-fk [this path]              (import-field-fk this path))))
+
+(def lenient-import-resolver
+  "A stateless database-backed import resolver that returns nil for an unresolvable FK instead of throwing."
+  (reify resolve/SerdesImportResolver
+    (resolve/import-fk       [_ eid model]            (try (resolve/import-fk default-import-resolver eid model)
+                                                           (catch ExceptionInfo e
+                                                             (log/warn e "Failed to import FK")
+                                                             nil)))
+    (resolve/import-fk-keyed [_ portable model field] (resolve/import-fk-keyed default-import-resolver portable model field))
+    (resolve/import-user     [_ email]                (resolve/import-user default-import-resolver email))
+    (resolve/import-table-fk [_ path]                 (resolve/import-table-fk default-import-resolver path))
+    (resolve/import-field-fk [_ path]                 (resolve/import-field-fk default-import-resolver path))))
 
 (defn cached-export-resolver
   "Returns a database-backed export resolver with memoized lookups."
@@ -169,11 +185,11 @@
         export-table-fk* (memoize export-table-fk)
         export-field-fk* (memoize export-field-fk)]
     (reify resolve/SerdesExportResolver
-      (export-fk       [_ id model]       (export-fk* id model))
-      (export-fk-keyed [_ id model field] (export-fk-keyed* id model field))
-      (export-user     [this id]          (export-user* this id))
-      (export-table-fk [_ table-id]       (export-table-fk* table-id))
-      (export-field-fk [this field-id]    (export-field-fk* this field-id)))))
+      (resolve/export-fk       [_ id model]       (export-fk* id model))
+      (resolve/export-fk-keyed [_ id model field] (export-fk-keyed* id model field))
+      (resolve/export-user     [this id]          (export-user* this id))
+      (resolve/export-table-fk [_ table-id]       (export-table-fk* table-id))
+      (resolve/export-field-fk [this field-id]    (export-field-fk* this field-id)))))
 
 (defn cached-import-resolver
   "Returns a database-backed import resolver with memoized lookups."
@@ -184,8 +200,8 @@
         import-table-fk* (memoize import-table-fk)
         import-field-fk* (memoize import-field-fk)]
     (reify resolve/SerdesImportResolver
-      (import-fk       [_ eid model]            (import-fk* eid model))
-      (import-fk-keyed [_ portable model field] (import-fk-keyed* portable model field))
-      (import-user     [this email]             (import-user* this email))
-      (import-table-fk [_ path]                (import-table-fk* path))
-      (import-field-fk [this path]             (import-field-fk* this path)))))
+      (resolve/import-fk       [_ eid model]            (import-fk* eid model))
+      (resolve/import-fk-keyed [_ portable model field] (import-fk-keyed* portable model field))
+      (resolve/import-user     [this email]             (import-user* this email))
+      (resolve/import-table-fk [_ path]                 (import-table-fk* path))
+      (resolve/import-field-fk [this path]              (import-field-fk* this path)))))

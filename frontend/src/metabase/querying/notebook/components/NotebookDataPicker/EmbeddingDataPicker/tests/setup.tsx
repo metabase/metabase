@@ -51,6 +51,7 @@ export function setup({
       canChangeDatabase={true}
       isDisabled={false}
       onChange={jest.fn()}
+      title="Pick your starting data"
       placeholder="Pick your starting data"
       table={undefined}
     />,

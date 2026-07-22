@@ -1,8 +1,17 @@
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
-
 import { skipToken, useGetDashboardQuery } from "metabase/api";
-import { useInitialCollectionId } from "metabase/collections/hooks";
+import { QuestionLineage } from "metabase/app/nav/QuestionLineage";
+import {
+  getCollectionId,
+  getIsAppSwitcherVisible,
+  getIsCollectionPathVisible,
+  getIsLogoVisible,
+  getIsMetricsViewer,
+  getIsNavBarEnabled,
+  getIsNewButtonVisible,
+  getIsQuestionLineageVisible,
+  getIsSearchVisible,
+} from "metabase/app/selectors";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import {
   getCommentSidebarOpen,
   getSidebarOpen,
@@ -10,7 +19,6 @@ import {
 import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
 import type { AppBarProps } from "metabase/nav/components/AppBar/AppBar";
-import { QuestionLineage } from "metabase/nav/components/QuestionLineage";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -21,19 +29,9 @@ import {
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
+import { push, withRouteProps } from "metabase/router";
 import type { RouterProps } from "metabase/selectors/app";
-import {
-  getDetailViewState,
-  getIsAppSwitcherVisible,
-  getIsCollectionPathVisible,
-  getIsLogoVisible,
-  getIsMetricsViewer,
-  getIsNavBarEnabled,
-  getIsNavbarOpen,
-  getIsNewButtonVisible,
-  getIsQuestionLineageVisible,
-  getIsSearchVisible,
-} from "metabase/selectors/app";
+import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { modelToUrl } from "metabase/urls";
@@ -86,6 +84,11 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const originalQuestion = useSelector(getOriginalQuestion);
+  // The breadcrumbs' current collection is derived from the active
+  // dashboard/question/document state. CollectionBreadcrumbs used to read this
+  // itself, but getCollectionId orchestrates feature state and now lives in the
+  // app tier, so the app-tier AppBar resolves it and passes it down.
+  const breadcrumbCollectionId = useSelector(getCollectionId);
 
   const { pathname } = props.location;
   const isOnQuestionPage = pathname && isQuestionPath(pathname);
@@ -94,6 +97,7 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
     dashboardId != null ? { id: dashboardId } : skipToken,
   );
 
+  // Unjustified type cast. FIXME
   const locationState = props.location.state as { cardId?: number } | undefined;
 
   const onSearchItemSelect = (result: SearchResult) => {
@@ -112,6 +116,7 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
       collectionBreadcrumbs={
         <CollectionBreadcrumbs
           dashboard={dashboardId != null ? dashboard : undefined}
+          collectionId={breadcrumbCollectionId ?? undefined}
         />
       }
       questionLineage={
@@ -125,6 +130,6 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   );
 }
 
-export const AppBarContainer = withRouter(
+export const AppBarContainer = withRouteProps(
   connect(mapStateToProps, mapDispatchToProps)(AppBarContainerInner),
 );

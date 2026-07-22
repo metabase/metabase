@@ -21,8 +21,7 @@ dataset_query:
       ORDER BY revenue DESC
       LIMIT 10
     template-tags:
-      category:
-        default: Widget
+      - default: Widget
         display-name: Category
         id: b2c3d4e5-f678-90ab-cdef-1234567890ab
         name: category

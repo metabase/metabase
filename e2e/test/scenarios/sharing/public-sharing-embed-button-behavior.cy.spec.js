@@ -47,8 +47,19 @@ const { H } = cy;
             visitResource(resource, id);
           });
 
-          H.openSharingMenu();
-          H.sharingMenu().findByText(/embed/i).should("not.exist");
+          if (resource === "question") {
+            // No public link: the share button copies directly, so there's no menu.
+            H.sharingMenuButton().should(
+              "have.attr",
+              "aria-label",
+              "Copy link",
+            );
+          }
+
+          if (resource === "dashboard") {
+            H.openSharingMenu();
+            H.sharingMenu().findByText(/embed/i).should("not.exist");
+          }
         });
       });
     });
@@ -83,28 +94,20 @@ const { H } = cy;
         });
 
         describe("when user is non-admin", () => {
-          it(`should show a disabled public link button if the ${resource} doesn't have a public link`, () => {
+          it(`should not prompt a non-admin to create a public link for a ${resource} without an existing link`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            assertNonAdminCannotCreatePublicLink(resource);
           });
 
-          it(`should show the public link button if the ${resource} has a public link`, () => {
+          it(`should let a non-admin copy the existing public link for a ${resource}`, () => {
             cy.get("@resourceId").then((id) => {
               createPublicResourceLink(resource, id);
-              visitResource(resource, id);
             });
-
-            H.openSharingMenu(/public link/i);
-
-            assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
             cy.signInAsNormalUser();
 
@@ -112,12 +115,21 @@ const { H } = cy;
               visitResource(resource, id);
             });
 
-            H.openSharingMenu("Public link");
-
-            assertValidPublicLink({
-              resource,
-              shouldHaveRemoveLink: false,
+            cy.window().then((win) => {
+              cy.stub(win.navigator.clipboard, "writeText")
+                .as("copyLink")
+                .resolves();
             });
+
+            H.openSharingMenu("Copy public link");
+            H.tooltip().findByText("Public link copied to clipboard");
+
+            cy.get("@copyLink").should((stub) => {
+              expect(stub.firstCall.args[0]).to.match(
+                new RegExp(`/public/${resource}/`),
+              );
+            });
+            cy.findByTestId("public-link-popover-content").should("not.exist");
           });
         });
       });
@@ -129,7 +141,7 @@ const { H } = cy;
         });
 
         describe("when user is admin", () => {
-          it(`should show a disabled menu item for public links for ${resource} and allow the user to access the embed modal`, () => {
+          it(`should hide the public link option for ${resource} and allow the user to access the embed modal`, () => {
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
@@ -137,26 +149,23 @@ const { H } = cy;
             H.openSharingMenu();
 
             H.sharingMenu().within(() => {
-              cy.findByText("Public link").should("be.visible");
-              cy.findByText("Enable").should("be.visible");
+              cy.findByText(/public link/i).should("not.exist");
+              cy.findByText("Enable").should("not.exist");
             });
 
-            cy.findByTestId("embed-menu-embed-modal-item").click();
+            H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
           });
         });
 
         describe("when user is non-admin", () => {
-          it(`should show a disabled button for ${resource}`, () => {
+          it(`should not prompt a non-admin to create a public link for ${resource}`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            assertNonAdminCannotCreatePublicLink(resource);
           });
         });
       });
@@ -304,8 +313,8 @@ describe("#39152 sharing an unsaved question", () => {
         assert.deepEqual(response.body.embedding_type, "static-legacy");
       });
 
-      H.modal().button("Price").click();
-      H.popover().findByText("Editable").click();
+      H.modal().findByLabelText("Price").click();
+      H.selectDropdown().findByText("Editable").click();
 
       H.publishChanges(apiPath, ({ request, response }) => {
         assert.deepEqual(request.body.embedding_type, "static-legacy");
@@ -496,9 +505,9 @@ describe("#39152 sharing an unsaved question", () => {
           H.modal().within(() => {
             cy.findByRole("tab", { name: "Parameters" }).click();
 
-            cy.findByText("Node.js").click();
+            cy.findByDisplayValue("Node.js").click();
           });
-          H.popover().findByText("Ruby").click();
+          H.selectDropdown().findByText("Ruby").click();
           cy.findByTestId("embed-backend")
             .findByTestId("copy-button")
             .realClick();
@@ -522,10 +531,10 @@ describe("#39152 sharing an unsaved question", () => {
           H.modal().within(() => {
             cy.findByRole("tab", { name: "Look and Feel" }).click();
 
-            cy.findByText("Ruby").click();
+            cy.findByDisplayValue("Ruby").click();
           });
 
-          H.popover().findByText("Python").click();
+          H.selectDropdown().findByText("Python").click();
 
           H.modal().within(() => {
             cy.findByLabelText("Dark").click({ force: true });
@@ -643,9 +652,9 @@ describe("#39152 sharing an unsaved question", () => {
             H.modal().within(() => {
               cy.findByRole("tab", { name: "Parameters" }).click();
 
-              cy.findByText("Node.js").click();
+              cy.findByDisplayValue("Node.js").click();
             });
-            H.popover().findByText("Ruby").click();
+            H.selectDropdown().findByText("Ruby").click();
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
               .realClick();
@@ -669,10 +678,10 @@ describe("#39152 sharing an unsaved question", () => {
             H.modal().within(() => {
               cy.findByRole("tab", { name: "Look and Feel" }).click();
 
-              cy.findByText("Ruby").click();
+              cy.findByDisplayValue("Ruby").click();
             });
 
-            H.popover().findByText("Python").click();
+            H.selectDropdown().findByText("Python").click();
 
             H.modal().within(() => {
               cy.findByLabelText("Dark").click({ force: true });
@@ -819,8 +828,8 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           cy.log("changing parameters, so we could discard changes");
-          H.modal().button("Price").click();
-          H.popover().findByText("Editable").click();
+          H.modal().findByLabelText("Price").click();
+          H.selectDropdown().findByText("Editable").click();
 
           cy.findByTestId("embed-modal-content-status-bar").within(() => {
             cy.findByText("Discard changes").click();
@@ -873,11 +882,11 @@ describe("#39152 sharing an unsaved question", () => {
             .click();
 
           H.modal().findByRole("tab", { name: "Parameters" }).click();
-          H.modal().button("Price").click();
-          H.popover().findByText("Editable").click();
+          H.modal().findByLabelText("Price").click();
+          H.selectDropdown().findByText("Editable").click();
 
-          H.modal().button("Category").click();
-          H.popover().findByText("Locked").click();
+          H.modal().findByLabelText("Category").click();
+          H.selectDropdown().findByText("Locked").click();
 
           cy.then(function () {
             const HOUR = 60 * 60 * 1000;
@@ -1016,6 +1025,24 @@ function visitResource(resource, id) {
 
   if (resource === "dashboard") {
     H.visitDashboard(id);
+  }
+}
+
+function assertNonAdminCannotCreatePublicLink(resource) {
+  if (resource === "question") {
+    // No public link: the share button copies the app link directly, no menu.
+    H.sharingMenuButton().should("have.attr", "aria-label", "Copy link");
+  }
+
+  if (resource === "dashboard") {
+    // No public link: dashboards keep the app link copy and the PDF export.
+    H.openSharingMenu();
+    H.sharingMenu().within(() => {
+      cy.findByText("Copy link").should("be.visible");
+      cy.findByText("Export as PDF").should("be.visible");
+      cy.findByText("Embed").should("not.exist");
+      cy.findByText(/public link/i).should("not.exist");
+    });
   }
 }
 

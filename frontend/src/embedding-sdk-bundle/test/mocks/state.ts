@@ -40,6 +40,7 @@ export const createMockSdkState = ({
     fetchRefreshTokenFn: null,
     pluginsReady: true,
     initialDashboardTabId: null,
+    sdkTrackerReady: false,
     ...opts,
   };
 };

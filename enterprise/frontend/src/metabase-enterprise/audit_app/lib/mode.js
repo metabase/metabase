@@ -1,18 +1,10 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
-export const getColumnName = (column) => column.remapped_to || column.name;
+import { push } from "metabase/router";
 
-export const getRowValuesByColumns = (row, cols) =>
-  cols.reduce((acc, col, index) => {
-    const columnName = getColumnName(col);
-    return {
-      ...acc,
-      [columnName]: row[index],
-    };
-  }, {});
+const getColumnName = (column) => column.remapped_to || column.name;
 
-export const columnNameToUrl = {
+const columnNameToUrl = {
   // No admin page for collections but still want to link to it
   collection_id: (value) => `/collection/${value}`,
   user_id: (value) => `/admin/audit/member/${value}`,

@@ -1,12 +1,12 @@
-import { Route } from "react-router";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { setupDependencyGraphEndpoint } from "__support__/server-mocks/dependencies";
 import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,8 +20,6 @@ import {
   createMockDependencyEdge,
   createMockDependencyGraph,
 } from "metabase-types/api/mocks/dependencies";
-
-import type { MetricUrls } from "../../../../types";
 
 import { DescriptionSection } from "./DescriptionSection";
 
@@ -105,10 +103,7 @@ function setup({
   setupEnterprisePlugins();
 
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <DescriptionSection card={card} urls={URLS} />}
-    />,
+    <Route path="/" element={<DescriptionSection card={card} urls={URLS} />} />,
     {
       storeInitialState: state,
       withRouter: true,

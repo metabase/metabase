@@ -1,3 +1,5 @@
+import { dashboardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
@@ -6,7 +8,6 @@ import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { setErrorPage } from "metabase/redux/app";
 import type { Dispatch } from "metabase/redux/store";
-import { DashboardApi } from "metabase/services";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Parameter } from "metabase-types/api";
@@ -60,7 +61,11 @@ async function verifyMatchingDashcardAndParameters({
   parameters: Parameter[];
 }) {
   try {
-    const dashboard = await DashboardApi.get({ dashId: dashboardId });
+    const dashboard = await runRtkEndpoint(
+      { id: dashboardId },
+      dispatch,
+      dashboardApi.endpoints.getDashboard,
+    );
     if (
       !hasMatchingParameters({
         dashboard,
@@ -120,8 +125,11 @@ export async function propagateDashboardParameters({
     await verifyMatchingDashcardAndParameters({
       dispatch,
       cardId,
+      // Unjustified type cast. FIXME
       dashboardId: dashboardId as number,
+      // Unjustified type cast. FIXME
       dashcardId: dashcardId as number,
+      // Unjustified type cast. FIXME
       parameters: parameters as Parameter[],
     });
     card.parameters = parameters;

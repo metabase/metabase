@@ -1,7 +1,6 @@
 (ns metabase.driver.h2
   (:refer-clojure :exclude [some every?])
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -43,13 +42,7 @@
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
-(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
-
-;; h2 can be used to generate mbql5 natively, but this is not the default yet.
-;; we need to gather more data from the experiment (see query-processor/mbql->honeysql)
-;; before we can switch this over. once that happens, make regular :h2 have
-;; :sql-mbql5 as a parent and move the :h2-mbql5 methods below to just :h2.
-(driver/register! :h2-mbql5, :parent #{:h2 :sql-mbql5})
+(driver/register! :h2, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -98,12 +91,8 @@
     supported?))
 
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
-  [driver [_ arg pattern]]
-  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
-
-(defmethod sql.qp/->honeysql [:h2-mbql5 :regex-match-first]
   [driver [_ _opts arg pattern]]
-  ((get-method sql.qp/->honeysql [:h2 :regex-match-first]) driver [:regex-match-first arg pattern]))
+  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -371,10 +360,6 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
-(defmethod sql.qp/add-interval-honeysql-form :h2-mbql5
-  [driver hsql-form amount unit]
-  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
-
 (defmethod driver/humanize-connection-error-message :h2
   [_ messages]
   (let [message (first messages)]
@@ -401,10 +386,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
-  [driver]
-  (h2x/current-datetime-honeysql-form driver))
-
-(defmethod sql.qp/current-datetime-honeysql-form :h2-mbql5
   [driver]
   (h2x/current-datetime-honeysql-form driver))
 
@@ -478,15 +459,11 @@
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 (defmethod sql.qp/->honeysql [:h2 :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
-(defmethod sql.qp/->honeysql [:h2-mbql5 :log]
-  [driver [_ _opts field]]
-  ((get-method sql.qp/->honeysql [:h2 :log]) driver [:log field]))
-
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
   ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
   ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
@@ -495,10 +472,6 @@
   ;; https://github.com/h2database/h2database/issues/1383
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast :text)))
-
-(defmethod sql.qp/->honeysql [:h2-mbql5 ::sql.qp/expression-literal-text-value]
-  [driver [_ _opts value]]
-  ((get-method sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]) driver [::sql.qp/expression-literal-text-value value]))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
@@ -775,54 +748,79 @@
   (let [[_file options] (connection-string->file+options connection-string)]
     (get options "USER")))
 
-(defmethod driver/init-workspace-isolation! :h2
+(defmethod driver/workspace-isolation-details :h2
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
+  ;; H2 embeds credentials in the :db connection string, so build a new one off the
+  ;; connection's (admin-overlay-resolved) string rather than returning :user/:password.
+  (let [username    (driver.u/workspace-isolation-user-name workspace)
         password    (driver.u/random-workspace-password)
-        ;; H2 embeds credentials in the :db connection string, so we need to build a new one
-        original-db (:db (driver.conn/effective-details database))
-        new-db      (replace-credentials original-db username password)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
-                     (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
-                     (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (try
-          (.executeBatch ^Statement stmt)
-          (catch Throwable t
-            (throw (driver.u/scrub-exceptions t [password]))))))
-    {:schema           schema-name
-     :database_details {:db new-db}}))
+        original-db (:db (driver.conn/effective-details database))]
+    {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+     :database_details {:db (replace-credentials original-db username password)}}))
+
+(defmethod driver/init-workspace-isolation! :h2
+  [driver database workspace]
+  (let [schema-name (:schema workspace)
+        [_file {username "USER" password "PASSWORD"}]
+        (connection-string->file+options (-> workspace :database_details :db))
+        escaped-password (sql.u/escape-sql password :ansi)]
+    ;; No transaction: H2 DDL (CREATE USER/SCHEMA, GRANT) commits any open
+    ;; transaction, so a wrapper would be decorative. Failure recovery is
+    ;; compensation via the idempotent destroy, not rollback.
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username escaped-password)
+                      ;; the user may survive a failed teardown; without this it would keep
+                      ;; its old password while the new one gets persisted
+                      (format "ALTER USER \"%s\" SET PASSWORD '%s'" username escaped-password)
+                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
+                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password])))))))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :h2
-  [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
-                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
-                     (format "DROP USER IF EXISTS \"%s\"" username)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+  [driver database workspace]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :db get-user-from-connection-string)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
+                      (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                      (format "DROP USER IF EXISTS \"%s\"" username)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/grant-workspace-read-access! :h2
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [username (-> workspace :database_details :db get-user-from-connection-string)
         qu       (sql.u/quote-name :h2 :field username)
         schemas  (distinct schemas)]
     ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
     ;; Schema-wide grant covers existing + future tables. Per-table grants
     ;; are not emitted: workspace input shape is per-namespace, not per-table.
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [schema schemas]
-          (.addBatch ^Statement stmt
-                     ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
-                                     (sql.u/quote-name :h2 :schema schema) qu)))
-        (.executeBatch ^Statement stmt)))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         (doseq [schema schemas]
+           (.addBatch ^Statement stmt
+                      ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
+                                      (sql.u/quote-name :h2 :schema schema) qu)))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
   "metabot/prompts/dialects/h2.md")

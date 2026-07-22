@@ -1,5 +1,12 @@
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockMeasure,
+  createMockSegment,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PEOPLE_ID,
@@ -13,6 +20,9 @@ import {
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
 } from "./test-helpers";
+
+const METRIC_ID = 42;
+const QUESTION_ID = 43;
 
 const DEFAULT_QUERY: DatasetQuery = {
   database: SAMPLE_DATABASE.id,
@@ -86,6 +96,88 @@ describe("createTestQuery", () => {
         ],
       });
       expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
+    });
+
+    it("should create a query with a card source", () => {
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          questions: [
+            createMockCard({
+              id: QUESTION_ID,
+              name: "Orders question",
+              dataset_query: createMockStructuredDatasetQuery({
+                database: SAMPLE_DATABASE.id,
+                query: {
+                  "source-table": ORDERS_ID,
+                },
+              }),
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "card",
+              id: QUESTION_ID,
+            },
+          },
+        ],
+      });
+
+      expect(Lib.toJsQuery(query)).toMatchObject({
+        stages: [
+          {
+            "source-card": QUESTION_ID,
+          },
+        ],
+      });
+    });
+
+    it("should create a query with a metric aggregation", () => {
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          questions: [
+            createMockCard({
+              id: METRIC_ID,
+              name: "Revenue",
+              type: "metric",
+              dataset_query: createMockStructuredDatasetQuery({
+                database: SAMPLE_DATABASE.id,
+                query: {
+                  "source-table": ORDERS_ID,
+                  aggregation: [["count"]],
+                },
+              }),
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [{ type: "metric", id: METRIC_ID }],
+          },
+        ],
+      });
+
+      expect(Lib.sourceTableOrCardId(query)).toBe(ORDERS_ID);
+      expect(
+        Lib.displayInfo(query, 0, Lib.aggregations(query, 0)[0]),
+      ).toMatchObject({
+        displayName: "Revenue",
+      });
     });
   });
 
@@ -391,6 +483,43 @@ describe("createTestQuery", () => {
   });
 
   describe("filters", () => {
+    it("should create a query with a segment filter", () => {
+      const SEGMENT_ID = 12;
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          segments: [
+            createMockSegment({
+              id: SEGMENT_ID,
+              table_id: PRODUCTS_ID,
+              definition: createMockStructuredDatasetQuery({
+                query: {
+                  "source-table": PRODUCTS_ID,
+                  filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Widget"],
+                },
+              }),
+            }),
+          ],
+        }),
+      );
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            filters: [{ type: "segment", id: SEGMENT_ID }],
+          },
+        ],
+      });
+
+      expect(Lib.toLegacyQuery(query)).toMatchObject({
+        query: { filter: ["segment", SEGMENT_ID] },
+      });
+    });
+
     it("should create a query with filters", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
@@ -423,6 +552,55 @@ describe("createTestQuery", () => {
   });
 
   describe("aggregations", () => {
+    it("should create a query with a measure aggregation", () => {
+      const MEASURE_ID = 34;
+
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          measures: [
+            createMockMeasure({
+              id: MEASURE_ID,
+              table_id: PRODUCTS_ID,
+              definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: PRODUCTS_ID },
+                    aggregations: [{ type: "operator", operator: "count" }],
+                  },
+                ],
+              }),
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            aggregations: [{ type: "measure", id: MEASURE_ID }],
+          },
+        ],
+      });
+
+      expect(Lib.toLegacyQuery(query)).toMatchObject({
+        query: {
+          aggregation: [
+            [
+              "aggregation-options",
+              expect.anything(),
+              { "display-name": "Measure" },
+            ],
+          ],
+        },
+      });
+    });
+
     it("should create a query with aggregations", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [

@@ -5,7 +5,8 @@ import { useGetMetricQuery } from "metabase/api/metric";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -14,8 +15,6 @@ import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
-
-import type { MetricUrls } from "../../../types";
 
 interface MetricTabsProps {
   card: Card;

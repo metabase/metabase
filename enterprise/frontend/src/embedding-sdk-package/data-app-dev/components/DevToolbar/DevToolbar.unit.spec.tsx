@@ -1,0 +1,86 @@
+import userEvent from "@testing-library/user-event";
+
+import { act, render, screen } from "__support__/ui";
+
+import { DevToolbar } from "./DevToolbar";
+import { clearDevDiagnostics, installDevDiagnostics } from "./diagnostics";
+
+const recordError = (message: string) => {
+  act(() => {
+    console.error(message);
+  });
+};
+
+let originalConsoleError: typeof console.error;
+
+beforeAll(() => {
+  originalConsoleError = console.error;
+  console.error = () => {};
+  installDevDiagnostics();
+});
+
+afterAll(() => {
+  console.error = originalConsoleError;
+});
+
+beforeEach(() => {
+  clearDevDiagnostics();
+});
+
+const getToggle = () => screen.getByRole("button", { name: /Diagnostics/ });
+
+describe("DevToolbar", () => {
+  it("renders a collapsed diagnostics toggle with no count when there are no errors", () => {
+    render(<DevToolbar />);
+
+    expect(getToggle()).toHaveTextContent(/^⚠ Diagnostics$/);
+    expect(screen.queryByText("Data app diagnostics")).not.toBeInTheDocument();
+  });
+
+  it("opens the panel showing the empty state, then closes via the toggle", async () => {
+    render(<DevToolbar />);
+
+    await userEvent.click(getToggle());
+    expect(screen.getByText("Data app diagnostics")).toBeInTheDocument();
+    expect(screen.getByText("No errors captured.")).toBeInTheDocument();
+
+    await userEvent.click(getToggle());
+    expect(screen.queryByText("Data app diagnostics")).not.toBeInTheDocument();
+  });
+
+  it("shows the captured count and lists entries newest first", async () => {
+    render(<DevToolbar />);
+
+    recordError("first error");
+    recordError("second error");
+
+    expect(getToggle()).toHaveTextContent("⚠ Diagnostics (2)");
+
+    await userEvent.click(getToggle());
+
+    const messages = screen.getAllByText(/error$/);
+    expect(messages[0]).toHaveTextContent("second error");
+    expect(messages[1]).toHaveTextContent("first error");
+  });
+
+  it("clears entries when Clear is clicked, leaving the panel open", async () => {
+    render(<DevToolbar />);
+    recordError("boom");
+
+    await userEvent.click(getToggle());
+    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(screen.getByText("No errors captured.")).toBeInTheDocument();
+    expect(getToggle()).toHaveTextContent(/^⚠ Diagnostics$/);
+  });
+
+  it("closes the panel when Close is clicked", async () => {
+    render(<DevToolbar />);
+
+    await userEvent.click(getToggle());
+    expect(screen.getByText("Data app diagnostics")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByText("Data app diagnostics")).not.toBeInTheDocument();
+  });
+});

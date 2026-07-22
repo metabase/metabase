@@ -11,8 +11,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Route } from "react-router";
-import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
@@ -28,7 +26,7 @@ import {
   useListBookmarksQuery,
   useUpdateDocumentMutation,
 } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import {
@@ -41,6 +39,8 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { Route } from "metabase/router";
+import { Outlet, push, replace } from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
@@ -118,7 +118,6 @@ export const DocumentPage = ({
   params,
   route,
   location,
-  children,
 }: {
   params: {
     entityId?: string;
@@ -126,7 +125,6 @@ export const DocumentPage = ({
   };
   location: Location;
   route: Route;
-  children?: ReactNode;
 }) => {
   const { entityId, childTargetId: paramsChildTargetId } = params;
   const previousLocationKey = usePrevious(location.key);
@@ -624,7 +622,7 @@ export const DocumentPage = ({
               />
             )}
 
-            {children}
+            <Outlet />
 
             <LeaveRouteConfirmModal
               // `key` remounts this modal when navigating between different documents or to a new document.

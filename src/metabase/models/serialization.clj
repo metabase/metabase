@@ -24,7 +24,7 @@
       tests)
     - `serdes/descendants` - if model should be extracted along with some support (like Collection and all its
       children), you need to specify what to fetch - see `Card` for an example (used during export)
-    - `serdes/dependencies` - if model references other models, you need to declare which ones, see `Action` for an
+    - `serdes/deserialization-dependencies` - if model references other models, you need to declare which ones, see `Action` for an
       example (used during import)
   - Write tests
     - basic layout (that all entity fields are mentioned, fks are marked as such) is tested automatically
@@ -85,6 +85,10 @@
 
 ;; there was no science behind picking 100 as a number
 (def ^:private extract-nested-batch-limit "max amount of entities to fetch nested entities for" 100)
+
+(def query-batch-size
+  "Maximum number of ids per `:in` clause, to stay under database parameter limits."
+  1000)
 
 (mr/def ::model-keyword
   [:and
@@ -654,35 +658,18 @@
 (defmethod required :default [_ _]
   nil)
 
-;;; # Metadata Export
+(defmulti serialization-dependencies
+  "The references of a raw appdb `entity` (a Toucan instance, not a serialized map) as a seq of dependency maps
+  `{:model \"ModelName\", :id id}`. Its load-time counterpart is [[deserialization-dependencies]], which runs on the
+  serialized form and omits tables/fields (import creates them on the fly); this one reports them so the export can
+  existence-check them. Consumed by [[metabase-enterprise.serialization.v2.dependency-validation]].
 
-(defmulti metadata-query
-  "Returns a reducible row stream for `model` for the metadata export endpoint.
-  `opts` carries caller context (e.g. `:user-info`, section flags, id allow-lists).
-  Implementations return rows with raw numeric ids — joins for portable identifiers
-  are intentionally avoided so the queries stay simple."
-  {:arglists '([model opts])}
-  (fn [model _opts] model))
+  Dispatched on model-name. Default returns `nil`, so only models with references need to implement this."
+  {:arglists '([model-name entity])}
+  (fn [model-name _entity] model-name))
 
-(defmulti metadata-query-filter
-  "Returns a HoneySQL where predicate that restricts rows of `model` qualified by
-  table `alias`. Used to compose `WHERE` and `JOIN ... ON` clauses across model
-  hierarchies (e.g. the field query reuses the database/table filters)."
-  {:arglists '([model alias opts])}
-  (fn [model _alias _opts] model))
-
-(defmulti metadata-query-format
-  "Reshapes a raw query row produced by [[metadata-query]] into the JSON shape emitted
-  by the metadata export endpoint. The default drops nil-valued keys via
-  [[metabase.util/remove-nils]]; overrides do JSON decoding or column-derived
-  adjustments and rely on the same nil-pruning to keep optional keys out of the
-  response."
-  {:arglists '([model row])}
-  (fn [model _row] model))
-
-(defmethod metadata-query-format :default
-  [_model row]
-  (u/remove-nils row))
+(defmethod serialization-dependencies :default [_ _]
+  nil)
 
 ;;; # Import Process
 ;;; Deserialization is split into two stages, mirroring serialization. They are called *ingestion* and *loading*.
@@ -713,7 +700,7 @@
 ;;; Then for each ingested entity:
 ;;;
 ;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
-;;; - `(dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
+;;; - `(deserialization-dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
 ;;;     - See below on dependencies.
 ;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
 ;;;     - Circular dependencies will make the load process throw.
@@ -766,7 +753,7 @@
 ;;; ## Dependencies
 ;;; The files of an export are returned in arbitrary order by [[ingest-list]]. But in order to load any entity,
 ;;; everything it has a foreign key to must be loaded first. This is the purpose of one of the most complicated parts of
-;;; serdes: [[dependencies]].
+;;; serdes: [[deserialization-dependencies]].
 ;;;
 ;;; This multimethod returns a list (possibly empty) of `:serdes/meta` paths that this entity depends on. A `Card`
 ;;; depends on the `Table`s it queries, the `Collection` it belongs to, and possibly much else.
@@ -777,18 +764,19 @@
 ;;; Missing dependencies will cause flaky deserialization failures, since sometimes the FK target will exist already,
 ;;; and sometimes not, depending on the arbitrary order of `ingest-list`.
 
-(defmulti dependencies
+(defmulti deserialization-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
   dependency is represented by its abstract path (its `:serdes/meta` value).
 
-  NOTE: This is called during **LOAD**.
+  NOTE: This is called during **LOAD**. Its export-time counterpart is [[serialization-dependencies]], which runs on a
+  raw entity and additionally reports tables/fields (which import synthesizes on the fly, so they aren't load deps).
 
   Keyed on the model name for this entity.
   Default implementation returns `nil`, so only models that have dependencies need to implement this."
   {:arglists '([ingested])}
   ingested-model)
 
-(defmethod dependencies :default [_]
+(defmethod deserialization-dependencies :default [_]
   nil)
 
 (defmulti load-update!
@@ -1030,7 +1018,7 @@
 
   The identifier can be a single entity ID string, a single identity-hash string, or a vector of entity ID and hash
   strings. If the ID is compound, then the last ID is the one that corresponds to the model. This allows for the
-  compound IDs needed for nested entities like `DashboardCard`s to get their [[dependencies]].
+  compound IDs needed for nested entities like `DashboardCard`s to get their [[deserialization-dependencies]].
 
   Throws if the corresponding entity cannot be found.
 
@@ -1084,7 +1072,7 @@
   [[*import-database-fk*]] is the inverse."
   [id]
   (when id
-    (t2/select-one-fn :name [:model/Database :id :name] :id id)))
+    (resolve/export-fk-keyed (export-resolver) id :model/Database :name)))
 
 (defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
@@ -1101,9 +1089,7 @@
   [[*import-table-fk*]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
-          db-name                     (*export-database-fk* db_id)]
-      [db-name schema name])))
+    (resolve/export-table-fk (export-resolver) table-id)))
 
 (mu/defn ^:dynamic *import-table-fk*
   "Given a `table_id` as exported by [[*export-table-fk*]], resolve it back into a numeric `table_id`.
@@ -1113,7 +1099,7 @@
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
-  This is useful for writing [[dependencies]] implementations."
+  This is useful for writing [[deserialization-dependencies]] implementations."
   [[db-name schema table-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
@@ -1176,6 +1162,13 @@
               [:= :name field]
               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
+;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
+;; database and table exporters above. Fields are unbounded in number (millions on large
+;; instances), and the dominant traffic — each field's own path during a data-model export —
+;; has no reuse, so a cache would retain an O(field-count) map for near-zero hits and can OOM
+;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
+;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
+;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
@@ -1193,7 +1186,7 @@
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
-  This is useful for writing [[dependencies]] implementations."
+  This is useful for writing [[deserialization-dependencies]] implementations."
   [[db-name schema table-name field-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
@@ -1286,7 +1279,7 @@
     [:field (export-mbql-map opts) id]
 
     ;; legacy (MBQL 4) field refs are still supported in parameter targets and in result metadata `field_ref`...
-    [:field (id :guard pos-int?) (opts :guard (some-fn map? nil?))]
+    [:field (id :guard pos-int?) (opts :guard (or (map? opts) (nil? opts)))]
     [:field (*export-field-fk* id) (export-mbql-map opts)]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
@@ -1376,11 +1369,11 @@
     [:field (import-mbql-map opts) (*import-field-fk* fully-qualified-name)]
 
     ;; legacy field refs, still used in parameters and result metadata `field_ref`
-    [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (some-fn map? nil))]
+    [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (or (map? opts) (nil? opts)))]
     [:field (*import-field-fk* fully-qualified-name) (some-> opts import-mbql-update-refs)]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
-    [(tag :guard #{:field :field-id "field" "field-id"}) (id :guard vector?)]
+    [#{:field :field-id "field" "field-id"} (id :guard vector?)]
     [:field (*import-field-fk* id) nil]
 
     [#{:metric "metric"} opts (entity-id :guard portable-id?)]
@@ -1432,6 +1425,14 @@
 
 (declare ^:private mbql-deps-map)
 
+(defn- raw-ref-id?
+  "True if `x` is a raw (numeric) reference id — i.e. a positive integer — and `allow-int-ids?` is set, meaning we're computing
+  *serialization* (export) deps from a raw entity. The `mbql-*` walkers serve both forms; a numeric is only treated as
+  a reference when `allow-int-ids?`, since a serialized query can still carry a stray numeric id (e.g. a query whose deleted
+  source database never got name-ified) that must not be mistaken for a live ref at load time."
+  [allow-int-ids? x]
+  (and allow-int-ids? (pos-int? x)))
+
 (defn- ref->db-dep
   "Given a portable table or field reference (a vector like `[db-name schema table-name ...]`), return a set with
   its Database dependency, or nil. Table and Field references are intentionally *not* dependencies — missing ones
@@ -1442,49 +1443,68 @@
   (when-let [db-name (first ref)]
     #{[{:model "Database" :id db-name}]}))
 
-(defn- mbql-deps-vector [entity]
+(def ^:private mbql-ref-tag->model
+  "The serdes model that a `:metric`/`:segment`/`:measure` MBQL reference clause depends on."
+  {:metric "Card",    "metric"  "Card"
+   :segment "Segment", "segment" "Segment"
+   :measure "Measure", "measure" "Measure"})
+
+(defn- mbql-deps-vector [allow-int-ids? entity]
   (match/match-one entity
-    ;; A `:field`/`:field-id` clause's only dependency is the Database of its referenced field; the Field itself
-    ;; is not a dependency, and a field clause never contains nested metric/segment/card refs, so we don't descend.
+    ;; --- serialized (portable) refs, walked at load time ---
+    ;; A serialized `:field` clause's only dependency is the Database of its referenced field; the Field/Table
+    ;; themselves are synthesized on import, and a field clause never nests metric/segment/card refs, so we don't
+    ;; descend.
     [#{:field "field"} (_opts :guard map?) (ref :guard vector?)]
     (ref->db-dep ref)
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
      (opts :guard map?)
      (field :guard portable-id?)]
-    (into #{[{:model (case tag
-                       (:metric "metric") "Card"
-                       (:segment "segment") "Segment"
-                       (:measure "measure") "Measure")
-              :id field}]}
-          (mbql-deps-map opts))
+    (into #{[{:model (mbql-ref-tag->model tag) :id field}]}
+          (mbql-deps-map allow-int-ids? opts))
 
-    ;; legacy (MBQL 4) refs
+    ;; legacy (MBQL 4) serialized refs
     [#{:field "field" :field-id "field-id"} (ref :guard vector?) _opts]
     (ref->db-dep ref)
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
-    #{[{:model (case tag
-                 (:metric "metric") "Card"
-                 (:segment "segment") "Segment"
-                 (:measure "measure") "Measure")
-        :id field}]}
+    #{[{:model (mbql-ref-tag->model tag) :id field}]}
+
+    ;; --- raw (numeric) refs, walked at export time before serialization ---
+    ;; The referenced Field/Table are real appdb ids, existence-checked so a deleted row can't produce a malformed
+    ;; portable reference. `allow-int-ids?` gates these so a stray numeric in serialized data isn't mistaken for a ref.
+    [#{:field "field"} (_opts :guard map?) (id :guard (raw-ref-id? allow-int-ids? id))]
+    #{[{:model "Field" :id id}]}
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
+     (opts :guard map?)
+     (id :guard (raw-ref-id? allow-int-ids? id))]
+    (into #{[{:model (mbql-ref-tag->model tag) :id id}]}
+          (mbql-deps-map allow-int-ids? opts))
+
+    [#{:field "field" :field-id "field-id"} (id :guard (raw-ref-id? allow-int-ids? id)) _opts]
+    #{[{:model "Field" :id id}]}
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (id :guard (raw-ref-id? allow-int-ids? id))]
+    #{[{:model (mbql-ref-tag->model tag) :id id}]}
 
     _ (reduce #(cond
-                 (map? %2)    (into %1 (mbql-deps-map %2))
-                 (vector? %2) (into %1 (mbql-deps-vector %2))
+                 (map? %2)    (into %1 (mbql-deps-map allow-int-ids? %2))
+                 (vector? %2) (into %1 (mbql-deps-vector allow-int-ids? %2))
                  :else %1)
               #{}
               entity)))
 
-(defn- mbql-deps-map [m]
+(defn- mbql-deps-map [allow-int-ids? m]
   (into #{}
         (mapcat (fn [[k v]]
                   (cond
+                    ;; --- serialized (portable) refs. Table/Field references contribute only their Database as a
+                    ;; dependency (see `ref->db-dep`); the referenced Table/Field are synthesized on import. ---
                     (and (= k :database)
                          (string? v)
                          (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
-                    ;; Table/Field references contribute only their Database as a dependency (see `ref->db-dep`).
                     (and (= k :source-table) (vector? v))      (ref->db-dep v)
                     (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
@@ -1492,19 +1512,32 @@
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
                     (and (= k :table-id)     (vector? v))      (ref->db-dep v)
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
-                    (map? v)                                   (mbql-deps-map v)
-                    (vector? v)                                (mbql-deps-vector v))))
+                    ;; --- raw (numeric) refs, walked at export time: the referenced Table/Field are real appdb ids to
+                    ;; existence-check. `allow-int-ids?` gates these (see `raw-ref-id?`). ---
+                    (and (= k :database)     (raw-ref-id? allow-int-ids? v))     #{[{:model "Database" :id v}]}
+                    (and (= k :source-table) (raw-ref-id? allow-int-ids? v))     #{[{:model "Table" :id v}]}
+                    (and (= k :source-card)  (raw-ref-id? allow-int-ids? v))     #{[{:model "Card" :id v}]}
+                    (and (= k :source-field) (raw-ref-id? allow-int-ids? v))     #{[{:model "Field" :id v}]}
+                    (and (= k :snippet-id)   (raw-ref-id? allow-int-ids? v))     #{[{:model "NativeQuerySnippet" :id v}]}
+                    (and (= k :table-id)     (raw-ref-id? allow-int-ids? v))     #{[{:model "Table" :id v}]}
+                    (and (#{:card_id :card-id} k) (raw-ref-id? allow-int-ids? v)) #{[{:model "Card" :id v}]}
+                    (map? v)                                   (mbql-deps-map allow-int-ids? v)
+                    (vector? v)                                (mbql-deps-vector allow-int-ids? v))))
         m))
 
 (defn mbql-deps
-  "Given an MBQL expression as exported, with qualified names like `[\"some-db\" \"schema\" \"table_name\"]` instead of
-  raw IDs, return the corresponding set of serdes dependencies. The query can't be imported until all the referenced
-  databases, tables and fields are loaded."
-  [entity]
+  "Given an MBQL expression, return the corresponding set of serdes dependencies. The query can't be imported until all
+  the referenced databases, tables and fields are loaded.
+
+  Pass `allow-int-ids?` true when `entity` is a raw appdb query whose references are still integer ids (export /
+  serialization time) and you want those references collected as dependencies. Pass false when `entity` is in
+  serialized/portable form (load time), where references are qualified names like `[\"some-db\" \"schema\"
+  \"table_name\"]` and a bare integer is a stray value to ignore, not a reference."
+  [allow-int-ids? entity]
   (cond
-    (map? entity)     (mbql-deps-map entity)
-    (seqable? entity) (mbql-deps-vector entity)
-    :else             (mbql-deps-vector [entity])))
+    (map? entity)     (mbql-deps-map allow-int-ids? entity)
+    (seqable? entity) (mbql-deps-vector allow-int-ids? entity)
+    :else             (mbql-deps-vector allow-int-ids? [entity])))
 
 ;;; ## Dashboard/Question Parameters
 
@@ -1554,14 +1587,14 @@
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
-  Always returns an empty set even if the input is nil."
-  [parameters]
+  Always returns an empty set even if the input is nil. For `allow-int-ids?` see [[mbql-deps]]."
+  [allow-int-ids? parameters]
   (reduce set/union #{}
           (for [parameter parameters
                 :when (= (keyword (:values_source_type parameter)) :card)
                 :let  [config (:values_source_config parameter)]]
             (set/union #{[{:model "Card" :id (:card_id config)}]}
-                       (mbql-deps-vector (:value_field config))))))
+                       (mbql-deps-vector allow-int-ids? (:value_field config))))))
 
 ;;; ## Viz settings
 
@@ -1784,16 +1817,18 @@
 
 (defn- import-card-dimension-ref
   [s]
-  (if-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:([A-Za-z0-9_\-]{21})_name$" s))]
-    (str "$_card:" (*import-fk* card-id :model/Card) "_name")
-    s))
+  (or (when-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:([A-Za-z0-9_\-]{21})_name$" s))]
+        (when-let [resolved (*import-fk* card-id :model/Card)]
+          (str "$_card:" resolved "_name")))
+      s))
 
 (defn- import-visualizer-source-id
   [source-id]
   (when (string? source-id)
-    (if-let [card-entity-id (second (re-matches #"^card:([A-Za-z0-9_\-]{21})$" source-id))]
-      (str "card:" (*import-fk* card-entity-id :model/Card))
-      source-id)))
+    (or (when-let [card-entity-id (second (re-matches #"^card:([A-Za-z0-9_\-]{21})$" source-id))]
+          (when-let [card-id (*import-fk* card-entity-id :model/Card)]
+            (str "card:" card-id)))
+        source-id)))
 
 (defn import-visualizer-settings
   "Update embedded entity ids to card ids in visualizer dashcard settings"
@@ -1801,20 +1836,26 @@
   (m/update-existing-in
    settings
    [:visualization :columnValuesMapping]
-   (fn [mapping]
-     (into {}
-           (for [[k cols] mapping]
-             (let [updated-cols (cond
-                                  ;; e.g. [{:sourceId "card:..."} ...]
-                                  (and (coll? cols) (map? (first cols)))
-                                  (mapv #(update % :sourceId import-visualizer-source-id) cols)
+   update-vals
+   (fn [cols]
+     (cond
+       ;; e.g. [{:sourceId "card:..."} ...]
+       (and (coll? cols) (map? (first cols)))
+       (mapv #(update % :sourceId import-visualizer-source-id) cols)
 
-                                  ;; e.g. ["$_card:<id>_name"] for funnel dimensions
-                                  (and (coll? cols) (string? (first cols)))
-                                  (mapv import-card-dimension-ref cols)
+       ;; e.g. ["$_card:<id>_name"] for funnel dimensions
+       (and (coll? cols) (string? (first cols)))
+       (mapv import-card-dimension-ref cols)
 
-                                  :else cols)]
-               [k updated-cols]))))))
+       :else cols))))
+
+(defn import-visualizer-settings-lenient
+  "Like [[import-visualizer-settings]], but resolves card references leniently: a dangling reference is
+  left in its portable entity-id form, instead of throwing. Use for paths where a deleted source Card
+  should be treated as a broken section rather than break the whole read."
+  [settings]
+  (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.db/lenient-import-resolver)]
+    (import-visualizer-settings settings)))
 
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
@@ -1830,13 +1871,16 @@
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
-  [settings]
+  [allow-int-ids? settings]
   (when-let [{:keys [model id]} (get-in settings [:link :entity])]
-    #{(case model
-        ;; A linked Table is not a dependency (synthesized on import if missing), but its Database is.
-        "table" [{:model "Database" :id (first id)}]
-        [{:model (name (link-card-model->toucan-model model))
-          :id    id}])}))
+    (if (= model "table")
+      ;; Serialized: a linked Table is not a dependency (synthesized on import), but its Database is. Raw (export
+      ;; time): the numeric table id is a real Table to existence-check.
+      (cond
+        (vector? id)          #{[{:model "Database" :id (first id)}]}
+        (raw-ref-id? allow-int-ids? id) #{[{:model "Table" :id id}]})
+      #{[{:model (name (link-card-model->toucan-model model))
+          :id    id}]})))
 
 (defn- viz-click-behavior-deps
   [settings]
@@ -1852,21 +1896,21 @@
 
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
-  Always returns an empty set even if the input is nil."
-  [viz]
+  Always returns an empty set even if the input is nil. For `allow-int-ids?` see [[mbql-deps]]."
+  [allow-int-ids? viz]
   (let [column-settings-keys-deps (some->> viz
                                            :column_settings
                                            keys
-                                           (map (comp mbql-deps json/decode name)))
+                                           (map (comp #(mbql-deps allow-int-ids? %) json/decode name)))
         column-settings-vals-deps (some->> viz
                                            :column_settings
                                            vals
                                            (map viz-click-behavior-deps))
-        link-card-deps            (viz-link-card-deps viz)
+        link-card-deps            (viz-link-card-deps allow-int-ids? viz)
         click-behavior-deps       (viz-click-behavior-deps viz)]
     (->> (concat column-settings-keys-deps
                  column-settings-vals-deps
-                 [(mbql-deps viz) link-card-deps click-behavior-deps])
+                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps])
          (filter some?)
          (reduce set/union #{}))))
 

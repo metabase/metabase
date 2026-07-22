@@ -1,11 +1,19 @@
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import type { MouseEventHandler } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { Box, Ellipsified, Flex, Icon, Popover, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Popover,
+  Tooltip,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, ParameterTarget, VirtualCard } from "metabase-types/api";
@@ -38,6 +46,15 @@ export const DashCardCardParameterMapperButton = ({
   compact,
 }: DashCardCardParameterMapperButtonProps) => {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+
+  const handleDisconnect: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (event) => {
+      // we have a click listener on the parent
+      event.stopPropagation();
+      handleChangeTarget(null);
+    },
+    [handleChangeTarget],
+  );
 
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {
@@ -72,16 +89,7 @@ export const DashCardCardParameterMapperButton = ({
           buttonVariant: "invalid",
           buttonText: t`Unknown Field`,
           buttonIcon: (
-            <Button
-              icon="close"
-              iconSize={12}
-              className={S.CloseIconButton}
-              aria-label={t`Disconnect`}
-              onClick={(e) => {
-                handleChangeTarget(null);
-                e.stopPropagation();
-              }}
-            />
+            <DisconnectButton iconSize={12} onClick={handleDisconnect} />
           ),
         };
       }
@@ -100,18 +108,7 @@ export const DashCardCardParameterMapperButton = ({
           buttonVariant: "mapped",
           buttonTooltip: null,
           buttonText: formatSelected(selectedMappingOption),
-          buttonIcon: (
-            <Button
-              icon="close"
-              className={S.CloseIconButton}
-              role="button"
-              aria-label={t`Disconnect`}
-              onClick={(e) => {
-                handleChangeTarget(null);
-                e.stopPropagation();
-              }}
-            />
-          ),
+          buttonIcon: <DisconnectButton onClick={handleDisconnect} />,
         };
       }
 
@@ -127,7 +124,7 @@ export const DashCardCardParameterMapperButton = ({
       isVirtual,
       selectedMappingOption,
       target,
-      handleChangeTarget,
+      handleDisconnect,
     ]);
 
   return (
@@ -190,6 +187,26 @@ export const DashCardCardParameterMapperButton = ({
     </Popover>
   );
 };
+
+function DisconnectButton({
+  iconSize,
+  onClick,
+}: {
+  iconSize?: number;
+  onClick: MouseEventHandler<HTMLButtonElement>;
+}) {
+  return (
+    <ActionIcon
+      variant="subtle"
+      size="sm"
+      className={S.CloseIconButton}
+      aria-label={t`Disconnect`}
+      onClick={onClick}
+    >
+      <Icon name="close" size={iconSize} />
+    </ActionIcon>
+  );
+}
 
 function formatSelected({
   name,

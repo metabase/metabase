@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
@@ -22,6 +23,25 @@
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
+
+(defn- openrouter-usage->aisdk-usage
+  "Convert an OpenRouter Chat Completions `usage` block into the AISDK `:usage` shape.
+
+  OpenRouter normalizes usage to the OpenAI shape regardless of the upstream
+  provider: `prompt_tokens` is the total input count, and the cache buckets are
+  a subset breakdown of it under `prompt_tokens_details`:
+
+      cached_tokens      — input tokens read from the provider cache
+      cache_write_tokens — input tokens written to the provider cache;
+                           Anthropic models only. OpenAI caching is
+                           automatic, its writes are free and reported
+                           as 0 (or omitted entirely)."
+  [u]
+  (let [details (:prompt_tokens_details u)]
+    {:promptTokens        (:prompt_tokens u 0)
+     :completionTokens    (:completion_tokens u 0)
+     :cacheCreationTokens (or (:cache_write_tokens details) 0)
+     :cacheReadTokens     (or (:cached_tokens details) 0)}))
 
 ;;; AISDK parts → Chat Completions messages
 
@@ -92,6 +112,11 @@
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
+(defn- ai-proxy-unsupported-ex []
+  (ex-info (tru "AI proxy is not supported for OpenRouter")
+           {:api-error  true
+            :error-code :proxy-unsupported}))
+
 (defn- openrouter-error-msg
   "Canonical, status-specific OpenRouter error message."
   [res]
@@ -107,31 +132,70 @@
       503 (tru "OpenRouter service is unavailable")
       (tru "OpenRouter API error (HTTP {0})" status))))
 
+(def ^:private supported-models
+  "OpenRouter models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the `/v1/models` catalog.
+  Mirrors the models whitelisted for the direct anthropic and openai providers; note that
+  OpenRouter model IDs use dots in version numbers (`claude-haiku-4.5`), unlike the
+  Anthropic API's hyphenated IDs (`claude-haiku-4-5`)."
+  {"anthropic/claude-fable-5"    "Claude Fable 5"
+   "anthropic/claude-opus-4.8"   "Claude Opus 4.8"
+   "anthropic/claude-opus-4.7"   "Claude Opus 4.7"
+   "anthropic/claude-opus-4.6"   "Claude Opus 4.6"
+   "anthropic/claude-opus-4.5"   "Claude Opus 4.5"
+   "anthropic/claude-opus-4.1"   "Claude Opus 4.1"
+   "anthropic/claude-sonnet-5"   "Claude Sonnet 5"
+   "anthropic/claude-sonnet-4.6" "Claude Sonnet 4.6"
+   "anthropic/claude-sonnet-4.5" "Claude Sonnet 4.5"
+   "anthropic/claude-haiku-4.5"  "Claude Haiku 4.5"
+   "openai/gpt-5.6-sol"          "GPT-5.6 Sol"
+   "openai/gpt-5.6-terra"        "GPT-5.6 Terra"
+   "openai/gpt-5.6-luna"         "GPT-5.6 Luna"
+   "openai/gpt-5.5"              "GPT-5.5"
+   "openai/gpt-5.5-pro"          "GPT-5.5 Pro"
+   "openai/gpt-5.4"              "GPT-5.4"
+   "openai/gpt-5.4-pro"          "GPT-5.4 Pro"
+   "openai/gpt-5.4-mini"         "GPT-5.4 Mini"})
+
+(defn- supported-model?
+  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
+  [{:keys [id]}]
+  (contains? supported-models id))
+
+(defn- list-all-models
+  "Fetch the full OpenRouter model catalog (`GET /v1/models`).
+  `:ai-proxy?` is not supported for OpenRouter and throws when true."
+  [{:keys [credentials ai-proxy?]}]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
+  (try
+    (let [auth (core/resolve-auth "openrouter" "OpenRouter"
+                                  (when-let [k (or (not-empty (:api-key credentials))
+                                                   (not-empty (llm/llm-openrouter-api-key)))]
+                                    {:url     (llm/llm-openrouter-api-base-url)
+                                     :headers {"Authorization" (str "Bearer " k)}})
+                                  ai-proxy?)
+          res  (core/request auth {:method  :get
+                                   :url     "/v1/models"
+                                   :as      :json
+                                   :headers {"Content-Type" "application/json"
+                                             "HTTP-Referer" "https://metabase.com"
+                                             "X-Title"      "Metabase"}})]
+      (get-in res [:body :data]))
+    (catch Exception e
+      (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))
+
 (defn list-models
-  "List available OpenRouter models.
-  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  "List the OpenRouter models supported by this adapter (see [[supported-models]]).
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`.
+  `:ai-proxy?` is not supported for OpenRouter and throws when true."
   ([] (list-models {}))
-  ([{:keys [api-key ai-proxy?]}]
-   (when (and api-key (str/blank? api-key))
-     (throw (core/missing-api-key-ex "OpenRouter")))
-   (try
-     (let [auth (core/resolve-auth "openrouter" "OpenRouter"
-                                   (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openrouter-api-key)))]
-                                     {:url     (llm/llm-openrouter-api-base-url)
-                                      :headers {"Authorization" (str "Bearer " k)}})
-                                   ai-proxy?)
-           res  (core/request auth {:method  :get
-                                    :url     "/v1/models"
-                                    :as      :json
-                                    :headers {"Content-Type" "application/json"
-                                              "HTTP-Referer" "https://metabase.com"
-                                              "X-Title"      "Metabase"}})]
-       {:models (mapv (fn [model]
-                        {:id           (:id model)
-                         :display_name (or (:name model) (:id model))})
-                      (reverse (sort-by :created (get-in res [:body :data]))))})
-     (catch Exception e
-       (core/rethrow-api-error! "openrouter" openrouter-error-msg e)))))
+  ([opts]
+   {:models (->> (list-all-models opts)
+                 (filter supported-model?)
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id] :as model}]
+                         {:id id :display_name (or (:name model) (supported-models id))})))}))
 
 ;;; Streaming response → AISDK v5 chunks
 
@@ -243,44 +307,75 @@
                                                                @current-type (close!))
              ;; Usage (often on a separate final chunk with empty choices)
              (some? usage)                                    (rf {:type  :usage
-                                                                   :usage {:promptTokens     (:prompt_tokens usage 0)
-                                                                           :completionTokens (:completion_tokens usage 0)}
+                                                                   :usage (openrouter-usage->aisdk-usage usage)
                                                                    :id    @message-id
                                                                    :model @model-name}))))))))
 
 ;;; HTTP request
 
-(mu/defn openrouter-raw
-  "Perform a streaming request to the Chat Completions API.
+(defn- anthropic-model?
+  "Whether an OpenRouter model id routes to Anthropic (e.g. `anthropic/claude-haiku-4.5`)."
+  [model]
+  (str/starts-with? (str model) "anthropic/"))
 
-  Works with OpenRouter, or any OpenAI-compatible endpoint that supports
-  `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.)."
-  [{:keys [model system input tools temperature max-tokens tool_choice schema ai-proxy?]
-    :or   {model "anthropic/claude-haiku-4-5"}} :- core/LLMRequestOpts]
+(defn- system->cc-message
+  "Build the Chat Completions system message for `system`.
+
+  Anthropic models get explicit prompt-cache breakpoints: the content becomes
+  Anthropic-style text blocks with `cache_control` markers (see
+  [[claude/system->cached-content-blocks]]), which OpenRouter passes through to
+  Anthropic unchanged. Anthropic's cache prefix orders tools before system, so a
+  breakpoint on the system blocks caches the tool definitions too; OpenRouter
+  doesn't document `cache_control` on tool definitions, so unlike claude.clj we
+  don't put a separate breakpoint there.
+
+  Other models (OpenAI) get a plain string system message: OpenAI prompt caching
+  is automatic server-side and takes no request markup."
+  [system model]
+  {:role    "system"
+   :content (cond-> system
+              (anthropic-model? model) claude/system->cached-content-blocks)})
+
+(mu/defn openrouter-request-body
+  "Build the Chat Completions request body for an LLM request."
+  [{:keys [model system input tools temperature max-tokens tool_choice schema]
+    :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (let [messages  (cond-> (parts->cc-messages input)
-                    system (as-> msgs (into [{:role "system" :content system}] msgs)))
+                    system (as-> msgs (into [(system->cc-message system model)] msgs)))
         all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
                         [{:type     "function"
                           :function {:name        "structured_output"
                                      :description "Output structured data"
                                      :parameters  schema}}])
-                      (seq (mapv tool->openai-chat tools)))
-        req       (cond-> {:model             model
-                           :stream            true
-                           :stream_options    {:include_usage true}
-                           :messages          messages}
-                    all-tools   (assoc :tools       (vec all-tools)
-                                       :tool_choice (cond
-                                                      schema      "required"
-                                                      tool_choice tool_choice
-                                                      :else       "auto"))
-                    temperature (assoc :temperature temperature)
-                    max-tokens  (assoc :max_tokens max-tokens))]
-    (log/debug "OpenRouter request" {:model model :msg-count (count messages) :tools (count (or tools []))})
+                      (seq (mapv tool->openai-chat tools)))]
+    (cond-> {:model             model
+             :stream            true
+             :stream_options    {:include_usage true}
+             :messages          messages}
+      all-tools   (assoc :tools       (vec all-tools)
+                         :tool_choice (cond
+                                        schema      "required"
+                                        tool_choice tool_choice
+                                        :else       "auto"))
+      temperature (assoc :temperature temperature)
+      max-tokens  (assoc :max_tokens max-tokens))))
+
+(mu/defn openrouter-raw
+  "Perform a streaming request to the Chat Completions API.
+
+  Works with OpenRouter, or any OpenAI-compatible endpoint that supports
+  `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
+  `:ai-proxy?` is not supported for OpenRouter and throws when true."
+  [{:keys [model tools ai-proxy?] :as opts
+    :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
+  (let [req (openrouter-request-body opts)]
+    (log/debug "OpenRouter request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
     (with-span :info {:name       :metabot.openrouter/request
                       :model      model
-                      :msg-count  (count messages)
+                      :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
         (let [api-key  (not-empty (llm/llm-openrouter-api-key))

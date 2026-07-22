@@ -14,6 +14,7 @@ const getOptionCardsWrapper = () => {
   if (!wrapper) {
     throw new Error("Could not find option cards wrapper with opacity style");
   }
+  // Unjustified type cast. FIXME
   return wrapper as HTMLElement;
 };
 
@@ -65,6 +66,46 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
       landOnAppearanceStep({
         simpleEmbeddingEnabled: true,
         showSimpleEmbedTerms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Behavior")).toBeVisible();
+      });
+
+      expect(getOptionCardsWrapper()).toHaveStyle({ opacity: "1" });
+    });
+
+    it("dims the option cards when Guest is selected but the guest-embed terms have not been accepted", async () => {
+      landOnAppearanceStep({
+        initialState: {
+          resourceId: 1,
+          resourceType: "dashboard",
+          isGuest: true,
+        },
+        simpleEmbeddingEnabled: true,
+        showSimpleEmbedTerms: true,
+        guestEmbeddingEnabled: false,
+        showStaticEmbedTerms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Behavior")).toBeVisible();
+      });
+
+      expect(getOptionCardsWrapper()).toHaveStyle({ opacity: "0.5" });
+    });
+
+    it("does not dim the option cards when Guest is selected and the guest-embed terms are accepted, even if the simple-embedding terms are not", async () => {
+      landOnAppearanceStep({
+        initialState: {
+          resourceId: 1,
+          resourceType: "dashboard",
+          isGuest: true,
+        },
+        simpleEmbeddingEnabled: true,
+        showSimpleEmbedTerms: true,
+        guestEmbeddingEnabled: true,
+        showStaticEmbedTerms: false,
       });
 
       await waitFor(() => {

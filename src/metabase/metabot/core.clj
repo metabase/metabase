@@ -4,6 +4,8 @@
    [metabase.metabot.provider-util]
    [metabase.metabot.scope]
    [metabase.metabot.search-models]
+   [metabase.metabot.tools.entity-details]
+   [metabase.metabot.tools.util]
    [metabase.metabot.usage]
    [potemkin :as p]))
 
@@ -19,13 +21,26 @@
   agent-query-construct
   agent-query-execute
   agent-question-create
+  agent-question-execute
   agent-question-update
+  agent-metric-create
+  agent-metric-update
   agent-resource-read
   agent-search
+  agent-sql-construct
+  agent-sql-create
   agent-sql-execute]
  [metabase.metabot.search-models
   entity-type->search-model
   search-model->entity-type])
+
+(p/import-vars
+ [metabase.metabot.tools.entity-details
+  get-metric-details
+  get-report-details
+  get-table-details]
+ [metabase.metabot.tools.util
+  ->result-column])
 
 (p/import-vars
  [metabase.metabot.usage

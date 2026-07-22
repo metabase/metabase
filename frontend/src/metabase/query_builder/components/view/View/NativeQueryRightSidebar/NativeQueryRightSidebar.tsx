@@ -14,9 +14,11 @@ import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  CollectionId,
   DatabaseId,
   EmbeddingParameterVisibility,
   NativeDatasetQuery,
+  NativeQuerySnippet,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -31,12 +33,17 @@ interface NativeQueryRightSidebarProps {
   toggleTemplateTagsEditor: () => void;
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
-  showTimelineEvents: () => void;
-  hideTimelineEvents: () => void;
-  selectTimelineEvents: () => void;
+  setModalSnippet: (snippet: NativeQuerySnippet) => void;
+  openSnippetModalWithSelectedText: () => void;
+  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  snippetCollectionId: CollectionId | null;
+  setSnippetCollectionId?: (id: CollectionId | null) => void;
+  showTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  hideTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  selectTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
   deselectTimelineEvents: () => void;
   onCloseTimelines: () => void;
-  onSave: (question: Question) => Promise<Question>;
+  onSave: (question: Question) => Promise<void>;
   isShowingTemplateTagsEditor: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
@@ -114,7 +121,11 @@ export const NativeQueryRightSidebar = (
       ) : null;
     })
     .with({ isShowingDataReference: true }, () => (
-      <DataReference {...props} onClose={toggleDataReference} />
+      <DataReference
+        {...props}
+        databaseId={question.databaseId() ?? undefined}
+        onClose={toggleDataReference}
+      />
     ))
     .with({ isShowingSnippetSidebar: true }, () => (
       <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />

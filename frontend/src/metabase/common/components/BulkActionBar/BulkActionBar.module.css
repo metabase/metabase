@@ -2,12 +2,12 @@
   color: var(--mb-color-text-primary-inverse);
   border-color: color-mix(
     in srgb,
-    var(--mb-color-background-secondary),
+    var(--mb-color-background_page-secondary),
     transparent 100%
   );
   background-color: color-mix(
     in srgb,
-    var(--mb-color-background-secondary),
+    var(--mb-color-background_page-secondary),
     transparent 90%
   );
 
@@ -15,24 +15,24 @@
     color: var(--mb-color-text-primary-inverse);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent 100%
     );
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-secondary),
+      var(--mb-color-background_page-secondary),
       transparent 70%
     );
   }
 
   &:disabled {
-    color: var(--mb-color-text-tertiary-inverse);
+    color: var(--mb-color-text-disabled-inverse);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background-disabled-inverse),
+      var(--mb-color-background_surface-disabled-inverse),
       transparent 100%
     );
-    background-color: var(--mb-color-background-disabled-inverse);
+    background-color: var(--mb-color-background_surface-disabled-inverse);
   }
 }
 
@@ -41,22 +41,22 @@
     color: var(--mb-color-text-primary-inverse);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent 100%
     );
-    background-color: var(--mb-color-error);
+    background-color: var(--mb-color-feedback-negative);
   }
 
   &:disabled:hover {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent 100%
     );
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent 90%
     );
   }

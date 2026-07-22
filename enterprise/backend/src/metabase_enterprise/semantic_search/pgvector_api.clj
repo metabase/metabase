@@ -22,7 +22,6 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [unresolved-require]}
 (comment
   (require '[metabase-enterprise.semantic-search.db.datasource :as semantic.db])
   (def pgvector (or @semantic.db/data-source (semantic.db/init-db!)))
@@ -61,6 +60,18 @@
       (semantic.index-metadata/activate-index! tx index-metadata index-id))
     index))
 
+(defn ensure-active-hnsw-index!
+  "Build the HNSW index on the active index table if it does not already exist.
+
+  Called when an instance is (re)configured to the `:hnsw` vector-search strategy. No-ops when there is no
+  active index. Builds the index with `CREATE INDEX CONCURRENTLY` since the table is typically populated."
+  [pgvector index-metadata]
+  (if-let [{:keys [index]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
+    (do
+      (log/info "Building HNSW index for active semantic search index" (:table-name index))
+      (semantic.index/create-hnsw-index-if-not-exists! pgvector index {:concurrently? true}))
+    (log/info "No active semantic search index; skipping HNSW index build")))
+
 (defn init-semantic-search!
   "Initialises a pgvector database for semantic search if it does not exist and creates an index for the provided
   embedding model (if it does not exist).
@@ -86,6 +97,12 @@
   [pgvector index-metadata search-context]
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/query-index pgvector index search-context)))
+
+(defn diagnose
+  "Engine-owned diagnostic stages for the active semantic index. See [[semantic.index/diagnose-row]]."
+  [pgvector index-metadata search-context model id]
+  (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
+    (semantic.index/diagnose-row pgvector index search-context model id)))
 
 (defn index-documents!
   "Indexes documents into the active semantic search index.

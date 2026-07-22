@@ -229,36 +229,6 @@ describe("issue 47847", () => {
   });
 });
 
-describe("issue 51926", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should render pivot table when selecting it from another viz type", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        },
-        database: SAMPLE_DB_ID,
-      },
-      display: "pivot",
-    });
-
-    H.openVizTypeSidebar();
-    H.leftSidebar().within(() => {
-      cy.findByTestId("Table-button").click();
-      cy.findByTestId("Pivot Table-button").click();
-    });
-
-    cy.findAllByTestId("pivot-table-cell").should("contain", "April 27, 2025"); // expect this to break when we shift years in the Sample Database
-  });
-});
-
 describe("issue 51952", () => {
   beforeEach(() => {
     H.restore();
@@ -536,6 +506,68 @@ union all select 'Medium length category', 30 as count`;
   });
 });
 
+describe("issue 68337", () => {
+  const longTooltipValue = "a".repeat(10000);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should wrap long values without expanding the tooltip beyond the viewport (metabase#68337)", () => {
+    H.visitQuestionAdhoc({
+      display: "line",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 as x, 10 as metric_value, '${longTooltipValue}' as details
+union all select 2, 20, 'short value'`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["METRIC_VALUE"],
+        "graph.tooltip_columns": [JSON.stringify(["name", "DETAILS"])],
+      },
+    });
+
+    H.cartesianChartCircle()
+      .should("have.length", 2)
+      .first()
+      .trigger("mousemove");
+
+    cy.window().then((appWindow) => {
+      H.echartsTooltip().then(($tooltip) => {
+        const tooltipRoot = $tooltip[0].parentElement;
+        expect(tooltipRoot).not.to.be.null;
+        if (tooltipRoot == null) {
+          return;
+        }
+
+        const tooltipBounds = tooltipRoot.getBoundingClientRect();
+
+        expect(tooltipBounds.left).to.be.at.least(0);
+        expect(tooltipBounds.right).to.be.at.most(appWindow.innerWidth);
+        expect(tooltipBounds.height).to.be.at.most(appWindow.innerHeight * 0.8);
+        expect(tooltipRoot.scrollHeight).to.be.greaterThan(
+          tooltipRoot.clientHeight,
+        );
+      });
+    });
+
+    H.echartsTooltip()
+      .findByText(longTooltipValue)
+      .should(($value) => {
+        const value = $value[0];
+        const fontSize = Number.parseFloat(getComputedStyle(value).fontSize);
+
+        expect(value.scrollWidth).to.be.at.most(value.clientWidth);
+        expect(value.clientHeight).to.be.greaterThan(fontSize * 2);
+      });
+  });
+});
+
 describe("issue 55853", () => {
   const questionDetails = {
     name: "55853",
@@ -580,12 +612,12 @@ describe("issue 55853", () => {
         const axisTitle: Array<{ text: string; element: HTMLElement }> = [];
 
         $texts.each((i, el) => {
-          const text = (el as HTMLElement).textContent?.trim() || "";
+          const text = el.textContent?.trim() || "";
           if (text.includes("%") && text !== "value") {
-            percentTexts.push({ text, element: el as HTMLElement });
+            percentTexts.push({ text, element: el });
           }
           if (text === "value") {
-            axisTitle.push({ text, element: el as HTMLElement });
+            axisTitle.push({ text, element: el });
           }
         });
 
@@ -784,7 +816,7 @@ describe("UXW-2696", () => {
     H.popover().findByText("Edit Visualization").click();
 
     H.getDocumentSidebar().within(() => {
-      cy.findByRole("radio", { name: /axes/i }).click({ force: true });
+      cy.findByRole("tab", { name: /axes/i }).click({ force: true });
       cy.findByLabelText("Auto y-axis range").should(
         "have.attr",
         "data-checked",
@@ -828,7 +860,7 @@ describe("UXW-2696", () => {
       H.showDashcardVisualizerModalSettings(0, { isVisualizerCard: false });
 
       H.modal().within(() => {
-        cy.findByRole("radio", { name: /axes/i }).click({ force: true });
+        cy.findByRole("tab", { name: /axes/i }).click({ force: true });
         cy.findByLabelText("Auto y-axis range").should(
           "have.attr",
           "data-checked",

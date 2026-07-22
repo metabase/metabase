@@ -4,7 +4,8 @@
    [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -218,6 +219,30 @@
                         (remove (some-fn :is_stub :is_sample))
                         first)]
         (is (false? (get-in own-db [:details :let-user-control-scheduling])))))))
+
+(deftest build-workspace-config-schemaless-engine-omits-filters-test
+  (testing "MySQL (no schemas) omits schema-filters-*/dataset-filters-* entirely (the :else {} branch)"
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name "MySQL DW" :engine :mysql :details {:dbname "dw"}}
+                   :model/Workspace {ws-id :id} {:name       "mysql-ws"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_namespace "ws_alice"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      ;; Select the MySQL entry explicitly rather than relying on `first` -- `:databases` also carries
+      ;; stub/sample entries (e.g. a pre-existing Sample Database), so its ordering isn't something this
+      ;; test should depend on.
+      (let [details (->> (config/build-workspace-config ws-id) :config :databases
+                         (u/seek #(= :mysql (:engine %)))
+                         :details)]
+        (is (nil? (:schema-filters-type details)))
+        (is (nil? (:schema-filters-patterns details)))
+        (is (nil? (:dataset-filters-type details)))
+        (is (nil? (:dataset-filters-patterns details)))))))
 
 (deftest build-workspace-config-emits-sample-database-test
   (testing "When a Sample Database exists in the instance, /config emits an entry with

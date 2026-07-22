@@ -10,7 +10,7 @@ import {
   useUpdateMetabotMutation,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils/settings";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
@@ -212,6 +212,7 @@ function MetabotCollectionConfigurationPane({
             model: "collection",
           }}
           onChange={(item) =>
+            // Unjustified type cast. FIXME
             handleUpdateCollectionId(item as Pick<MetabotInfo, "id" | "name">)
           }
           onClose={close}
@@ -237,11 +238,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-tertiary" mb="sm">
+    <Flex align="center" gap="sm" c="text-disabled" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-tertiary" fw="bold">
+          <Text c="text-disabled" fw="bold">
             /
           </Text>
         </>

@@ -1,6 +1,4 @@
 import { useGetCollectionQuery } from "metabase/api";
-import { useSelector } from "metabase/redux";
-import { getCollectionId } from "metabase/selectors/app";
 import type { CollectionId } from "metabase-types/api";
 
 import {
@@ -17,8 +15,7 @@ type CollectionBreadcrumbsProps = Omit<
 };
 
 export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
-  const statefulCollectionId = useSelector(getCollectionId);
-  const collectionId = props.collectionId ?? statefulCollectionId ?? "root";
+  const collectionId = props.collectionId ?? "root";
 
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
