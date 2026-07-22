@@ -1,0 +1,2 @@
+.evals_branch pins metabase/evals branch. Needed for label trigger, when using other than main branch. See the
+.github/workflows/ai-benchmark.yml for details.
