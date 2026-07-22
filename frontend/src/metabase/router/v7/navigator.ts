@@ -1,10 +1,7 @@
 import type { NavigateFunction, NavigateOptions, To } from "react-router-v7";
 
 import type { RouterNavigator } from "../middleware";
-import type {
-  Location as HistoryLocation,
-  LocationDescriptor,
-} from "../types";
+import type { Location as HistoryLocation, LocationDescriptor } from "../types";
 
 import { queryToSearch } from "./location";
 
