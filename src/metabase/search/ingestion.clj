@@ -299,7 +299,8 @@
     ;; Individual engines may also partition the documents further if they prefer
     (tracing/with-span :search "search.ingestion.update" {:search/engine (name e)}
       (let [timer (u/start-timer)
-            update-report (reduce (fn [_ batch] (search.engine/update! e batch)) nil
+            update-report (reduce (fn [acc batch]
+                                    (merge-with + acc (search.engine/update! e batch))) {}
                                   (eduction (partition-all 150) documents-reducible))
             delete-report (reduce (fn [acc batch]
                                     (->> batch
