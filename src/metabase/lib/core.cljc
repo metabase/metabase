@@ -1409,6 +1409,7 @@
  [lib.binning
   available-binning-strategies
   binning
+  default-bin-width
   with-binning]
  [metabase.lib.card
   ->card-metadata-columns

@@ -309,8 +309,8 @@
               brk (first (lib/breakouts qry))]
           (is (= 1 (count (lib/breakouts qry)))
               "snapshot MBQL adds a breakout from the dimension's target")
-          (is (= :default (:strategy (lib/binning brk)))
-              "numeric dim with a usable fingerprint picks up default auto-binning"))))))
+          (is (= :bin-width (:strategy (lib/binning brk)))
+              "numeric dim with a usable fingerprint picks up auto-binning pinned to an explicit width"))))))
 
 (deftest exploration-get-hydrates-thread-timelines-test
   (testing "GET /api/exploration/:id hydrates thread :timelines so the detail page can offer them"
@@ -487,11 +487,11 @@
           (is (= :day (lib/raw-temporal-bucket (get by-dim "d")))))
         (testing "Time dim → :hour bucket"
           (is (= :hour (lib/raw-temporal-bucket (get by-dim "t")))))
-        (testing "Number dim with a fingerprinted field → default auto-binning"
-          (is (= :default (:strategy (lib/binning (get by-dim "n")))))
+        (testing "Number dim with a fingerprinted field → auto-binning pinned to an explicit width"
+          (is (= :bin-width (:strategy (lib/binning (get by-dim "n")))))
           (is (nil? (lib/raw-temporal-bucket (get by-dim "n")))))
-        (testing "Coordinate (semantic Latitude over Float) with a fingerprinted field → default auto-binning"
-          (is (= :default (:strategy (lib/binning (get by-dim "lat"))))))
+        (testing "Coordinate (semantic Latitude over Float) with a fingerprinted field → auto-binning pinned to an explicit width"
+          (is (= :bin-width (:strategy (lib/binning (get by-dim "lat"))))))
         (testing "Non-numeric / non-temporal dim → no bucket"
           (is (nil? (lib/binning (get by-dim "s"))))
           (is (nil? (lib/raw-temporal-bucket (get by-dim "s")))))))))
