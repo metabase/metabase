@@ -49,4 +49,10 @@ runs:
         mv .ci-conductor-master/release/ci-conductor release/ci-conductor
         mv .ci-conductor-master/e2e/support/ci_conductor.ts e2e/support/ci_conductor.ts
         rm -rf .ci-conductor-master
+        # Cypress 14 (v58 pins ^14.5.3) loads its config through ts-node in CommonJS mode.
+        # The overlaid ci-conductor package is ESM ("type": "module"), so ts-node's require()
+        # of util.ts throws ERR_REQUIRE_ESM. Drop the field on the overlaid copy so ts-node
+        # transpiles it as CommonJS. bun runs the quarantine scripts and treats .ts as ESM by
+        # extension regardless, so it's unaffected. Remove once v58 moves off Cypress 14.
+        node -e 'const fs=require("fs"),f="release/ci-conductor/package.json",p=JSON.parse(fs.readFileSync(f,"utf8"));delete p.type;fs.writeFileSync(f,JSON.stringify(p,null,2)+"\n")'
         echo "Overlaid ci-conductor sources from master."
