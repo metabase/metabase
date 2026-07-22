@@ -2,56 +2,46 @@ import { readFileSync, writeFileSync } from "fs";
 
 import semver from "semver";
 
-// The logic that decides what the Embedding SDK release process publishes:
-// given a branch, the current version, and a chosen release type, compute the
-// next version, its npm dist-tag, and whether it should take the `latest` tag.
-//
-// This is a straight port of the bash that used to live inline in
-// .github/workflows/sdk-version-bump-pr.yml, extracted here so the branchy
-// version/dist-tag logic has unit tests. Kept separate from the core-app
-// version helpers (version-helpers.ts) on purpose - the SDK versioning rules
-// are their own thing and must not be conflated with the OSS/EE tag logic.
+import {
+  getMajorVersionNumberFromReleaseBranch,
+  isReleaseBranch,
+} from "./version-helpers";
+
+// Compute what the Embedding SDK release publishes for a given branch, current
+// version, and release type: the next version, its npm dist-tag, and whether it
+// takes the `latest` tag.
 
 export type SdkReleaseType = "alpha" | "beta" | "preminor" | "patch" | "custom";
 
-// alpha/beta are the ids the master and release-branch flows own; a one-off
-// branch can't reuse them (a custom beta would land on the real <major>-beta
-// dist-tag, alpha on the shared alpha line).
+// alpha and beta are reserved for the master and release-branch flows.
 const RESERVED_PRERELEASE_IDS = ["alpha", "beta"];
 
-const PRERELEASE_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
-
-// The SDK "major" is the second dot-segment (0.63.0 -> 63), matching the
-// `cut -d. -f2` the workflows use - not semver's real major, which is always 0.
+// SDK major is the second segment (0.63.0 -> 63), not semver's major (always 0).
 export function getSdkMajorVersion(version: string): string {
   return version.split(".")[1];
 }
 
-// The prerelease id already on a version, with an optional counter
-// (0.62.5-data-apps.0 -> data-apps). alpha/beta are treated as "no one-off id":
-// a branch cut from master sits on 0.63.0-alpha.5 and that's still a first cut.
-function getExistingPrereleaseId(version: string): string {
-  const match = /^[0-9.]*-([a-z][a-z0-9-]*)(\.[0-9]*)?$/.exec(version);
-  const id = match?.[1] ?? "";
-  return id === "alpha" || id === "beta" ? "" : id;
+// The prerelease id on a version (0.62.5-data-apps.0 -> data-apps), or "".
+function getPrereleaseId(version: string): string {
+  const match = /^[0-9.]*-(?<prereleaseId>[a-z][a-z0-9-]*)(?:\.[0-9]*)?$/.exec(
+    version,
+  );
+  return match?.groups?.prereleaseId ?? "";
 }
 
-// The prerelease id read back out of a freshly bumped version, which always
-// carries a counter (0.62.5-data-apps.0 -> data-apps).
-function getComputedPrereleaseId(version: string): string {
-  const match = /^[0-9.]*-([a-z][a-z0-9-]*)\.[0-9]*$/.exec(version);
-  return match?.[1] ?? "";
-}
+const PRERELEASE_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 
-// Input-only validation: the branch x release_type matrix, plus the prerelease_id
-// rules that don't need the current version. Throws on the first violation.
-// Version-dependent custom checks (first-cut vs later-bump) live in
-// computeNextSdkVersion, which is where the current version is available.
-export function validateBranchReleaseType(
-  branch: string,
-  releaseType: SdkReleaseType,
-  prereleaseId: string,
-): void {
+// Input-only checks; the version-dependent custom checks live in
+// computeNextSdkVersion.
+export function validateBranchReleaseType({
+  branch,
+  releaseType,
+  prereleaseId,
+}: {
+  branch: string;
+  releaseType: SdkReleaseType;
+  prereleaseId: string;
+}): void {
   if (releaseType !== "custom" && prereleaseId) {
     throw new Error(
       `prerelease_id is only used with release_type=custom (got release_type=${releaseType}). Either pick release_type=custom, or clear prerelease_id.`,
@@ -69,7 +59,7 @@ export function validateBranchReleaseType(
   }
 
   if (
-    branch.startsWith("release-x.") &&
+    isReleaseBranch(branch) &&
     releaseType !== "beta" &&
     releaseType !== "patch"
   ) {
@@ -80,7 +70,7 @@ export function validateBranchReleaseType(
 
   if (
     branch !== "master" &&
-    !branch.startsWith("release-x.") &&
+    !isReleaseBranch(branch) &&
     releaseType !== "custom"
   ) {
     throw new Error(
@@ -88,7 +78,10 @@ export function validateBranchReleaseType(
     );
   }
 
-  if (releaseType === "custom" && RESERVED_PRERELEASE_IDS.includes(prereleaseId)) {
+  if (
+    releaseType === "custom" &&
+    RESERVED_PRERELEASE_IDS.includes(prereleaseId)
+  ) {
     throw new Error(
       `prerelease_id '${prereleaseId}' is reserved for master/release-branch releases. Pick a distinct one-off id (e.g. data-apps, esbuild).`,
     );
@@ -105,15 +98,19 @@ export function validateBranchReleaseType(
   }
 }
 
-function increment(
-  version: string,
-  release: semver.ReleaseType,
-  identifier?: string,
-): string {
-  const next =
-    identifier === undefined
-      ? semver.inc(version, release)
-      : semver.inc(version, release, identifier);
+function increment({
+  version,
+  release,
+  prereleaseId,
+}: {
+  version: string;
+  release: semver.ReleaseType;
+  prereleaseId: string;
+}): string {
+  // Empty prerelease id -> 2-arg call, so semver reuses any existing one.
+  const next = prereleaseId
+    ? semver.inc(version, release, prereleaseId)
+    : semver.inc(version, release);
   if (!next) {
     throw new Error(
       `semver could not compute a ${release} bump from '${version}'.`,
@@ -122,29 +119,54 @@ function increment(
   return next;
 }
 
-// Compute the next SDK version for a release type. Assumes the inputs already
-// passed validateBranchReleaseType; the custom branch adds the version-dependent
-// first-cut vs later-bump checks (which need the current version).
-export function computeNextSdkVersion(
-  currentVersion: string,
-  releaseType: SdkReleaseType,
-  prereleaseId: string,
-): string {
+// Assumes the inputs already passed validateBranchReleaseType.
+export function computeNextSdkVersion({
+  currentVersion,
+  releaseType,
+  prereleaseId,
+}: {
+  currentVersion: string;
+  releaseType: SdkReleaseType;
+  prereleaseId: string;
+}): string {
   switch (releaseType) {
     case "alpha":
-      return increment(currentVersion, "prerelease", "alpha");
+      return increment({
+        version: currentVersion,
+        release: "prerelease",
+        prereleaseId: "alpha",
+      });
     case "beta":
-      return increment(currentVersion, "prerelease", "beta");
+      return increment({
+        version: currentVersion,
+        release: "prerelease",
+        prereleaseId: "beta",
+      });
     case "preminor":
-      // master -> next major's alpha (0.63.0-alpha.5 -> 0.64.0-alpha.0). `alpha`
-      // only ever bumps the existing counter, so it can't move the minor.
-      return increment(currentVersion, "preminor", "alpha");
+      // next major's alpha (0.63.0-alpha.5 -> 0.64.0-alpha.0); plain alpha only
+      // bumps the counter, never the minor.
+      return increment({
+        version: currentVersion,
+        release: "preminor",
+        prereleaseId: "alpha",
+      });
     case "patch":
-      return increment(currentVersion, "patch");
+      return increment({
+        version: currentVersion,
+        release: "patch",
+        prereleaseId: "",
+      });
     case "custom": {
-      const existingPrereleaseId = getExistingPrereleaseId(currentVersion);
+      // A one-off branch inherits alpha (from master) or beta (from a release
+      // branch); neither is a one-off id, so it's still on its first cut.
+      const currentPrereleaseId = getPrereleaseId(currentVersion);
+      const existingPrereleaseId = RESERVED_PRERELEASE_IDS.includes(
+        currentPrereleaseId,
+      )
+        ? ""
+        : currentPrereleaseId;
 
-      // prerelease_id is set if and only if this is the first cut.
+      // prerelease_id is set iff this is the first cut.
       if (existingPrereleaseId && prereleaseId) {
         throw new Error(
           `This branch already uses the prerelease id '${existingPrereleaseId}' - leave prerelease_id empty to bump it. To change the id, reset the version in package.template.json by hand.`,
@@ -156,26 +178,27 @@ export function computeNextSdkVersion(
         );
       }
 
-      // First cut: caller supplies the id. Later bumps: no id, so semver reuses
-      // the id already in the version and bumps its counter
-      // (0.62.5-data-apps.0 -> 0.62.5-data-apps.1).
-      return prereleaseId
-        ? increment(currentVersion, "prerelease", prereleaseId)
-        : increment(currentVersion, "prerelease");
+      // First cut: use the given prerelease id. Later (prerelease id ""): semver
+      // reuses the prerelease id in the version.
+      return increment({
+        version: currentVersion,
+        release: "prerelease",
+        prereleaseId,
+      });
     }
     default:
       throw new Error(`Unsupported release_type: ${releaseType}`);
   }
 }
 
-// The npm dist-tag for a release. Every tag here is real and in use today:
-// alpha, <major>-beta, <major>-stable, and the one-off <major>-<id>
-// (56-esbuild, 63-data-apps).
-export function computeSdkDistTag(
-  newVersion: string,
-  releaseType: SdkReleaseType,
-  major: string,
-): string {
+export function computeSdkDistTag({
+  newVersion,
+  releaseType,
+}: {
+  newVersion: string;
+  releaseType: SdkReleaseType;
+}): string {
+  const major = getSdkMajorVersion(newVersion);
   switch (releaseType) {
     case "alpha":
     case "preminor":
@@ -185,9 +208,8 @@ export function computeSdkDistTag(
     case "patch":
       return `${major}-stable`;
     case "custom": {
-      // The id comes from the version just computed, so it's identical on the
-      // first cut and every later bump: 0.62.5-data-apps.0 -> 62-data-apps.
-      const prereleaseId = getComputedPrereleaseId(newVersion);
+      // id read back from the computed version (0.62.5-data-apps.0 -> 62-data-apps).
+      const prereleaseId = getPrereleaseId(newVersion);
       if (!prereleaseId) {
         throw new Error(
           `Could not read a prerelease id back from '${newVersion}'.`,
@@ -200,21 +222,20 @@ export function computeSdkDistTag(
   }
 }
 
-// Take npm's `latest` tag only when patching the current gold release.
-// latestMajorVersion is that major; unset means no match, not an error. The
-// release-branch check is a second guard so nothing published from master or a
-// one-off branch can ever take `latest`.
-export function shouldSdkTagAsLatest(
-  releaseType: SdkReleaseType,
-  branch: string,
-  major: string,
-  latestMajorVersion: string | undefined,
-): boolean {
+// `latest` only when patching the release branch whose major is the current gold.
+export function shouldSdkTagAsLatest({
+  releaseType,
+  branch,
+  latestMajorVersion,
+}: {
+  releaseType: SdkReleaseType;
+  branch: string;
+  latestMajorVersion: string;
+}): boolean {
   return (
     releaseType === "patch" &&
-    branch.startsWith("release-x.") &&
-    !!latestMajorVersion &&
-    major === latestMajorVersion
+    isReleaseBranch(branch) &&
+    getMajorVersionNumberFromReleaseBranch(branch) === latestMajorVersion
   );
 }
 
@@ -226,11 +247,8 @@ type SdkVersionBumpResult = {
   tagAsLatest: boolean;
 };
 
-// The entry point the "SDK Version Bump PR" workflow calls (via
-// actions/github-script): read the current version from package.template.json,
-// compute the next version + sdkRelease metadata, write them back, and return
-// the values for the workflow to surface as step outputs. The file I/O lives
-// here rather than inline in the workflow so it stays readable and testable.
+// Entry point for the SDK Version Bump PR workflow: read the current version,
+// compute the bump, write it back, and return the values as step outputs.
 export function applySdkVersionBump({
   packageTemplatePath,
   branch,
@@ -242,28 +260,26 @@ export function applySdkVersionBump({
   branch: string;
   releaseType: SdkReleaseType;
   prereleaseId?: string;
-  latestMajorVersion?: string;
+  latestMajorVersion: string;
 }): SdkVersionBumpResult {
   const packageTemplate = JSON.parse(readFileSync(packageTemplatePath, "utf8"));
   const previousVersion: string = packageTemplate.version;
 
-  validateBranchReleaseType(branch, releaseType, prereleaseId);
-  const newVersion = computeNextSdkVersion(
-    previousVersion,
+  validateBranchReleaseType({ branch, releaseType, prereleaseId });
+  const newVersion = computeNextSdkVersion({
+    currentVersion: previousVersion,
     releaseType,
     prereleaseId,
-  );
+  });
   const majorVersion = getSdkMajorVersion(newVersion);
-  const distTag = computeSdkDistTag(newVersion, releaseType, majorVersion);
-  const tagAsLatest = shouldSdkTagAsLatest(
+  const distTag = computeSdkDistTag({ newVersion, releaseType });
+  const tagAsLatest = shouldSdkTagAsLatest({
     releaseType,
     branch,
-    majorVersion,
     latestMajorVersion,
-  );
+  });
 
-  // Mutate only .version and .sdkRelease, preserving the rest of the file and
-  // its key order (the same net effect as the two jq writes this replaced).
+  // Mutate only .version and .sdkRelease, preserving the rest of the file.
   packageTemplate.version = newVersion;
   packageTemplate.sdkRelease = { distTag, tagAsLatest };
   writeFileSync(
