@@ -39,7 +39,9 @@
    any named by an op."
   [dash ops]
   (into (set (keep :card_id (:dashcards dash)))
-        (mapcat (fn [op] (cons (:card_id op) (:card_ids op))))
+        ;; `:series` is add_card's series list, `:card_ids` set_series'. Both name cards the
+        ;; projection reads back, so a missed one reaches it as a bare `{:id n}` map.
+        (mapcat (fn [op] (concat [(:card_id op)] (:series op) (:card_ids op))))
         ops))
 
 (defn- fetch-cards
@@ -53,10 +55,12 @@
                  [(:id card) card])))))
 
 (defn- check-cards-exist!
-  "Reject an op naming a card the caller cannot read, before any write happens."
+  "Reject an op naming a card the caller cannot read, before any write happens. Covers series
+   cards too: they are placed on the dashboard just as `card_id` is, and leaving them unchecked
+   would both skip the permission boundary and hand the projection a card it never fetched."
   [ops cards]
   (doseq [[idx op] (map-indexed vector ops)
-          :let     [card-id (:card_id op)]
+          card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
           :when    (and card-id (not (contains? cards card-id)))]
     (dashboard-ops/op-error!
      idx (format "%s): no card with id %s that you can read." (:op op) card-id))))

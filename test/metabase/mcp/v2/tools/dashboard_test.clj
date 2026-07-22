@@ -169,3 +169,28 @@
                    (tool-error (call-tool! :crowberto nil "dashboard_write"
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
+
+(deftest add-card-with-series-test
+  (testing "GHY-4147: add_card's series cards are fetched like card_id is — the response projects
+            them by name, and a create (which dry-runs its ops first) does not blow up on them"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Card base   {:name "Revenue"}
+                     :model/Card overlay {:name "Forecast"}]
+        (let [result (tool-result
+                      (call-tool! :crowberto nil "dashboard_write"
+                                  (wire {:method "create" :name "Sales"
+                                         :ops [{:op "add_card" :id -1 :card_id (:id base)
+                                                :series [(:id overlay)]}]})))]
+          (is (= [{:id (:id overlay) :name "Forecast"}]
+                 (get-in result [:dashcards 0 :series]))))))))
+
+(deftest unknown-series-card-is-a-teaching-error-test
+  (testing "GHY-4147: a series card the user cannot read is rejected like card_id is, rather than
+            being placed unchecked or reaching the projection unfetched"
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}
+                   :model/Card      card {:name "Revenue"}]
+      (is (re-find #"op 0"
+                   (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                           (wire {:method "update" :id (:id dash)
+                                                  :ops [{:op "add_card" :id -1 :card_id (:id card)
+                                                         :series [9999999]}]}))))))))
