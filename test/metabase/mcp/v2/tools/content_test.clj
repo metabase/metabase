@@ -193,19 +193,24 @@
 
 (deftest get-content-transform-test
   (testing "GHY-4140: a transform read carries source type and target"
-    (mt/with-temp [:model/Transform {id :id} {:name   "t1"
-                                              :source {:type  :query
-                                                       :query {:database (mt/id)
-                                                               :type     "query"
-                                                               :query    {:source-table (mt/id :venues)}}}
-                                              :target {:type   :table
-                                                       :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
-                                                       :name   "t1_out"}}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one {:items [{:type "transform" :id id}]})]
-          (is (nil? (:error row)))
-          (is (= "t1" (:name row)))
-          (is (= "t1_out" (-> row :target :name))))))))
+    ;; The transform read-check gates on the transforms feature before the superuser bypass, so the
+    ;; feature and its setting must be on for the read to succeed — otherwise `can-read?` is false and
+    ;; the transform collapses to not-found. Enable them explicitly rather than inheriting ambient state.
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+        (mt/with-temp [:model/Transform {id :id} {:name   "t1"
+                                                  :source {:type  :query
+                                                           :query {:database (mt/id)
+                                                                   :type     "query"
+                                                                   :query    {:source-table (mt/id :venues)}}}
+                                                  :target {:type   :table
+                                                           :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                           :name   "t1_out"}}]
+          (mt/with-test-user :crowberto
+            (let [row (content-one {:items [{:type "transform" :id id}]})]
+              (is (nil? (:error row)))
+              (is (= "t1" (:name row)))
+              (is (= "t1_out" (-> row :target :name))))))))))
 
 (deftest get-content-not-found-is-not-an-existence-oracle-test
   (testing "GHY-4140: a nonexistent id and an existing-but-unreadable id are indistinguishable,
