@@ -170,6 +170,30 @@
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
 
+(deftest create-applies-display-attributes-test
+  (testing "GHY-4147: width and auto_apply_filters are honored on create, not silently dropped"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (let [result (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                            (wire {:method "create" :name "Sales"
+                                                   :width "full" :auto_apply_filters false})))]
+        (is (= {:width "full" :auto_apply_filters false}
+               (t2/select-one [:model/Dashboard :width :auto_apply_filters] :id (:id result))))))))
+
+(deftest null-attributes-are-dropped-at-the-boundary-test
+  (testing "GHY-4147: strict clients fill every declared property with null, and
+            `registry/drop-nil-args` strips those before the handler — so a null attribute leaves
+            the stored value alone rather than reaching a NOT NULL column like `width`.
+            The flip side, pinned here so it is a decision and not a surprise: null cannot be used
+            to *clear* an attribute either."
+    (mt/with-temp [:model/Dashboard dash {:name "Sales" :width "full" :description "old"}]
+      (let [result (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                            (wire {:method "update" :id (:id dash)
+                                                   :width nil :auto_apply_filters nil
+                                                   :name nil :description nil})))]
+        (is (= "Sales" (:name result)))
+        (is (= {:name "Sales" :width "full" :description "old"}
+               (t2/select-one [:model/Dashboard :name :width :description] :id (:id dash))))))))
+
 (deftest add-card-with-series-test
   (testing "GHY-4147: add_card's series cards are fetched like card_id is — the response projects
             them by name, and a create (which dry-runs its ops first) does not blow up on them"

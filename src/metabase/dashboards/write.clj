@@ -30,25 +30,32 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn create-dashboard! :- :map
-  "Create a Dashboard owned by the current user and return the saved row.
+  "Create a Dashboard owned by the current user and return the saved row. `:width` and
+  `:auto_apply_filters` fall back to the column defaults when omitted or nil.
   Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`."
-  [{:keys [name description parameters cache_ttl collection_id collection_position]}
+  [{:keys [name description parameters cache_ttl collection_id collection_position
+           width auto_apply_filters]}
    :- [:map
        [:name                ms/NonBlankString]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
        [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-       [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
+       [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+       [:width               {:optional true} [:maybe [:enum "fixed" "full"]]]
+       [:auto_apply_filters  {:optional true} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:collection_id collection_id})
-  (let [dashboard-data {:name                name
-                        :description         description
-                        :parameters          (or parameters [])
-                        :creator_id          api/*current-user-id*
-                        :cache_ttl           cache_ttl
-                        :collection_id       collection_id
-                        :collection_position collection_position}
+  (let [dashboard-data (cond-> {:name                name
+                                :description         description
+                                :parameters          (or parameters [])
+                                :creator_id          api/*current-user-id*
+                                :cache_ttl           cache_ttl
+                                :collection_id       collection_id
+                                :collection_position collection_position}
+                         ;; both columns are NOT NULL with defaults, so only set them when asked
+                         (some? width)              (assoc :width width)
+                         (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
         dash           (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
