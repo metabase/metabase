@@ -9,8 +9,20 @@ export interface DiagnosticsReporterHot {
   send: (event: string, data: DataAppDiagnosticsMessage) => void;
 }
 
-const getNextSessionId = (): string =>
-  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const getNextSessionId = (): string => {
+  if (typeof globalThis.crypto?.getRandomValues !== "function") {
+    throw new Error(
+      "The data-app dev preview needs Web Crypto to identify a session.",
+    );
+  }
+
+  const random = globalThis.crypto.getRandomValues(new Uint8Array(8));
+  const suffix = Array.from(random, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+
+  return `${Date.now()}-${suffix}`;
+};
 
 /**
  * Mirrors the page's collector to the dev server over the HMR socket, so the
