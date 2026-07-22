@@ -9,7 +9,7 @@
 
     {:op :delete, :model model, :rows [pre-image, ...]}
     {:op :update, :model model, :rows [pre-image, ...], :changes changes}
-    {:op :insert, :model model, :rows [row-literal, ...], :pks [pk, ...]}
+    {:op :insert, :model model, :rows [row, ...], :pks [pk, ...]}
 
   Update and delete `:rows` are narrow pre-image snapshots: plain maps of raw column values, only the
   columns named by [[capture-fields]], selected with the statement's own conditions immediately before it
@@ -20,12 +20,11 @@
   changed value is a literal.
   HoneySQL expression values are delivered as-is.
 
-  Insert `:rows` are the row maps as passed to `insert!` with the generated primary key assoc'd on, and
-  `:pks` are the generated primary keys.
-  A requested capture field absent from the literals — filled in by the database or a `before-insert`
-  method (e.g. `revision.most_recent`) — is recovered by one narrow select of the capture fields by pk, so
-  a captured field is always present and authoritative either way.
-  Other literal values are delivered as passed, before type transforms.
+  Insert `:rows` contain the requested capture fields plus primary-key columns, and `:pks` are the generated
+  primary keys. PK-only capture, complete literal rows with explicit PKs, and a single complete literal row need
+  no follow-up select. Other inserts are re-selected by primary key because JDBC does not guarantee that returned
+  keys preserve input order; each row therefore carries its own authoritative identity rather than relying on
+  positional association.
 
   Delivery guarantees, and non-guarantees:
 
@@ -41,13 +40,12 @@
   - The pre-image select and the statement are separate, unlocked reads: a concurrent writer can make a
     snapshot over- or under-approximate the rows the statement actually affects. toucan2's own
     `before-delete` has the same window. Consumers already must treat events as re-examination hints, so
-    over-approximation is harmless and under-approximation is bounded by their convergence backstop.
-  - Insert back-filling requires a single-column primary key; a composite-pk model whose literals are
-    missing a capture field delivers the incomplete literals as-is (with a debug log)."
+    over-approximation is harmless and under-approximation is bounded by their convergence backstop."
   (:require
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
+   [toucan2.connection :as t2.conn]
    [toucan2.execute :as t2.execute]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
@@ -61,8 +59,7 @@
 (defmulti capture-fields
   "The columns guaranteed present in `:rows` when capturing `op` (`:insert`, `:update` or `:delete`)
   statements against `model`; return nil or empty to leave that op uncaptured.
-  Update and delete snapshots are narrowed to exactly these columns; insert rows are the caller's literals,
-  back-filled by pk when a requested column is missing from them."
+  Update and delete rows are narrowed to these columns; insert rows additionally include all primary-key columns."
   {:arglists '([model op])}
   (fn [model _op] (keyword model)))
 
@@ -73,8 +70,10 @@
 (defmulti captured!
   "Deliver a capture event for a DML statement against `model`; see the namespace docstring for the shape.
   Implementations run on the DML's calling thread, inside any enclosing transaction: keep them cheap.
-  Anything they throw is caught and logged by the seam, so a consumer bug degrades to a missed event —
-  covered by whatever convergence backstop the consumer runs — never a failure of the caller's statement."
+  They must not execute SQL on that transaction's connection: although delivery catches and logs exceptions,
+  catching a database error cannot restore a PostgreSQL transaction that the error has already aborted. Prefer
+  registering a post-commit handoff; ordinary consumer failures then degrade to a missed event covered by the
+  consumer's convergence backstop."
   {:arglists '([model event])}
   (fn [model _event] (keyword model)))
 
@@ -82,7 +81,7 @@
   [model event]
   (try
     (captured! model event)
-    (catch Exception e
+    (catch Throwable e
       (log/errorf e "Error delivering DML capture event for %s %s" model (:op event)))))
 
 (defn- pre-image-rows
@@ -91,18 +90,65 @@
   semantics, but executed modelless: `after-select` methods and type transforms often dereference columns a
   narrow snapshot doesn't fetch, so no instance decoration may run here.
   Runs on the current connection, so inside any transaction the statement itself runs in.
-  Capture is best-effort: a query shape we cannot rebuild as a select (e.g. raw sql-args with kv-args) logs
-  and skips capture rather than failing the caller's statement."
+  A query shape we cannot build or compile as a select (e.g. raw sql-args with kv-args) logs and skips capture.
+  SQL execution failures propagate: suppressing one cannot restore a PostgreSQL transaction it already aborted."
   [query-type model fields parsed-args resolved-query]
-  (try
-    (let [built    (t2.pipeline/build query-type model
-                                      (assoc parsed-args :columns (vec fields))
-                                      resolved-query)
-          sql-args (t2.pipeline/compile query-type model built)]
-      (t2.execute/query sql-args))
-    (catch Exception e
-      (log/errorf e "Skipping DML capture for %s: could not snapshot pre-image rows" model)
-      nil)))
+  (when-let [sql-args (try
+                        (let [built (t2.pipeline/build query-type model
+                                                       (assoc parsed-args :columns (vec fields))
+                                                       resolved-query)]
+                          (t2.pipeline/compile query-type model built))
+                        (catch Exception e
+                          (log/errorf e "Skipping DML capture for %s: could not build pre-image query" model)
+                          nil))]
+    (t2.execute/query sql-args)))
+
+(defn- rows-by-pks
+  [model fields pks]
+  (let [pk-set (set pks)
+        pk-fn  (t2.model/select-pks-fn model)]
+    (some->> (pre-image-rows :toucan.query-type/select.instances model fields
+                             {:kv-args {:toucan/pk [:in pks]}} {})
+             (filterv #(contains? pk-set (pk-fn %))))))
+
+(defn- pk->row
+  [pk-keys pk]
+  (zipmap pk-keys (if (= 1 (count pk-keys)) [pk] pk)))
+
+(defn- literal-value?
+  [x]
+  ;; HoneySQL expressions are represented by collections, keywords (e.g. :%now), or symbols. Be conservative:
+  ;; an unnecessary narrow backfill is cheaper than treating an expression as its persisted value.
+  (not (or (coll? x) (keyword? x) (symbol? x))))
+
+(defn- complete-literal-row?
+  [row fields non-pk-fields]
+  (and (every? #(contains? row %) fields)
+       (every? #(literal-value? (get row %)) non-pk-fields)))
+
+(defn- insert-rows
+  [model fields row-literals pks]
+  (let [pk-keys          (vec (t2.model/primary-keys model))
+        non-pk-fields    (remove (set pk-keys) fields)
+        pk-only?         (every? (set pk-keys) fields)
+        complete-rows    (when (every? #(complete-literal-row? % fields non-pk-fields) row-literals)
+                           (mapv #(select-keys % fields) row-literals))
+        pk-fn            (t2.model/select-pks-fn model)
+        explicit-pk-rows (when (and complete-rows
+                                    (= (set pks) (into #{} (map pk-fn) complete-rows)))
+                           complete-rows)
+        single-row       (when (and (= 1 (count pks)) (= 1 (count row-literals)))
+                           (merge (first row-literals) (pk->row pk-keys (first pks))))]
+    (cond
+      ;; Each returned primary key is already the complete captured row; no association is needed.
+      pk-only?         (mapv #(pk->row pk-keys %) pks)
+      ;; Explicit primary keys make input rows self-identifying; set equality rejects rewrites/defaults.
+      explicit-pk-rows explicit-pk-rows
+      ;; A single generated key has only one possible input row, so result ordering is irrelevant.
+      (and single-row (complete-literal-row? single-row fields non-pk-fields))
+      [(select-keys single-row fields)]
+      ;; Generated keys plus non-PK fields cannot be correlated portably from JDBC result order.
+      :else            (rows-by-pks model fields pks))))
 
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/delete.* #_model ::captured #_resolved-query :default]
@@ -138,71 +184,57 @@
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/insert.* #_model ::captured #_resolved-query :default]
   "Capture the generated pks of an INSERT statement, then deliver one `:insert` event.
-  Count-returning inserts are upgraded to pk-returning ones (the same upgrade `after-insert` rides), so no
-  follow-up SELECT is needed; pk- and instance-returning inserts are captured from their own result stream."
+  Count-returning inserts are upgraded to pk-returning ones (the same upgrade `after-insert` rides), and pk-
+  and instance-returning inserts are captured from their own result stream."
   [rf query-type model parsed-args resolved-query]
   (let [capture? (and (not (::captured? parsed-args))
                       (seq (capture-fields model :insert)))]
     (if-not capture?
       (next-method rf query-type model parsed-args resolved-query)
-      (let [pks         (volatile! (transient []))
-            parsed-args (assoc parsed-args ::captured? true)
-            pks-fn      (t2.model/select-pks-fn model)
-            result      (cond
-                          ;; already streaming instances: tee pks off the realized rows
-                          (isa? query-type :toucan.result-type/instances)
-                          (next-method ((map (fn [row]
-                                               (let [row (t2.realize/realize row)]
-                                                 (vswap! pks conj! (pks-fn row))
-                                                 row)))
-                                        rf)
-                                       query-type model parsed-args resolved-query)
+      ;; Toucan already transacts every DML statement. Extend that same boundary through the optional backfill so a
+      ;; backfill failure cannot escape after an autocommit insert has already persisted.
+      (t2.conn/with-transaction [_]
+        (let [pks         (volatile! (transient []))
+              parsed-args (assoc parsed-args ::captured? true)
+              pks-fn      (t2.model/select-pks-fn model)
+              result      (cond
+                            ;; already streaming instances: tee pks off the realized rows
+                            (isa? query-type :toucan.result-type/instances)
+                            (next-method ((map (fn [row]
+                                                 (let [row (t2.realize/realize row)]
+                                                   (vswap! pks conj! (pks-fn row))
+                                                   row)))
+                                          rf)
+                                         query-type model parsed-args resolved-query)
 
-                          ;; already streaming pks: tee them
-                          (isa? query-type :toucan.result-type/pks)
-                          (next-method ((map (fn [pk]
-                                               (vswap! pks conj! pk)
-                                               pk))
-                                        rf)
-                                       query-type model parsed-args resolved-query)
+                            ;; already streaming pks: tee them
+                            (isa? query-type :toucan.result-type/pks)
+                            (next-method ((map (fn [pk]
+                                                 (vswap! pks conj! pk)
+                                                 pk))
+                                          rf)
+                                         query-type model parsed-args resolved-query)
 
-                          ;; update-count: re-dispatch as a pk-returning insert, converting each returned pk
-                          ;; back into a count of 1 for the original reducing function
-                          :else
-                          (t2.pipeline/transduce-query
-                           ((map (fn [pk]
-                                   (vswap! pks conj! pk)
-                                   1))
-                            rf)
-                           (t2.types/similar-query-type-returning query-type :toucan.result-type/pks)
-                           model parsed-args resolved-query))
-            pks         (persistent! @pks)]
-        (when (seq pks)
-          (let [fields       (capture-fields model :insert)
-                row-literals (:rows parsed-args)
-                pk-keys      (t2.model/primary-keys model)
-                single-pk    (when (= 1 (count pk-keys)) (first pk-keys))
-                rows         (if (and single-pk (= (count pks) (count row-literals)))
-                               (mapv #(assoc %1 single-pk %2) row-literals pks)
-                               (vec row-literals))
-                ;; The literals lack a requested capture field when the column is filled in by the database
-                ;; or a before-insert method (e.g. revision.most_recent); one narrow select by the returned
-                ;; pks recovers the authoritative values. Back-filling needs a single-column pk to select
-                ;; by; composite-pk models deliver their incomplete literals as-is.
-                complete?    (fn [row] (every? #(contains? row %) fields))
-                incomplete?  (not (every? complete? rows))
-                rows         (cond
-                               (not incomplete?) rows
-                               (nil? single-pk)  (do (log/debugf
-                                                      "Cannot back-fill capture fields for composite-pk model %s"
-                                                      model)
-                                                     rows)
-                               :else             (pre-image-rows :toucan.query-type/select.instances model
-                                                                 (distinct (cons single-pk fields))
-                                                                 {:kv-args {:toucan/pk [:in pks]}}
-                                                                 {}))]
-            (deliver-captured! model {:op :insert, :model model, :rows rows, :pks pks})))
-        result))))
+                            ;; update-count: re-dispatch as a pk-returning insert, converting each returned pk
+                            ;; back into a count of 1 for the original reducing function
+                            :else
+                            (t2.pipeline/transduce-query
+                             ((map (fn [pk]
+                                     (vswap! pks conj! pk)
+                                     1))
+                              rf)
+                             (t2.types/similar-query-type-returning query-type :toucan.result-type/pks)
+                             model parsed-args resolved-query))
+              pks         (persistent! @pks)]
+          (when (seq pks)
+            (let [fields       (vec (distinct (concat (t2.model/primary-keys model)
+                                                      (capture-fields model :insert))))
+                  rows         (insert-rows model fields (:rows parsed-args) pks)
+                  captured-pks (when rows (into #{} (map (t2.model/select-pks-fn model)) rows))]
+              (if (= (set pks) captured-pks)
+                (deliver-captured! model {:op :insert, :model model, :rows rows, :pks pks})
+                (log/errorf "Skipping insert capture for %s: could not correlate returned primary keys" model))))
+          result)))))
 
 ;;; A model may mix capture with toucan2's row-level tools; methodical needs to be told the capture method is
 ;;; the innermost of the pack, i.e. closest to the statement actually executing. In particular running inside
