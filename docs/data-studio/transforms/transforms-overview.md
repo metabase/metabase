@@ -220,7 +220,7 @@ Metabase will track transform dependencies and execute transforms in a reasonabl
 
 On Metabase Pro or Enterprise plans, you can see the transform dependencies graph by going to **Data Studio > Transforms** and go to the **Dependencies** tab.
 
-If a job includes a transform that depends on a table created by another transform, then the job will run all the tagged transforms and their dependencies, even if they lack tags, see [Jobs and runs](jobs-and-runs.md) for more information.
+If a job includes a transform that depends on a table created by another transform, then the job will run all the tagged transforms, plus any of their [dependencies that aren't already up to date](jobs-and-runs.md#jobs-include-all-dependent-transforms).
 
 ## Incremental transforms
 
