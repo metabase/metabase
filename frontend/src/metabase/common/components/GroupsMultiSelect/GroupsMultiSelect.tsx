@@ -34,6 +34,8 @@ interface GroupsMultiSelectProps {
   isCurrentUser?: boolean;
   placeholder?: string;
   "aria-label"?: string;
+  // Listed groups (plus Administrators, implicitly) render in a labeled section above "Other groups".
+  itemAccessGroups?: { groupIds: GroupId[]; label: string };
 }
 
 export const GroupsMultiSelect = ({
@@ -45,6 +47,7 @@ export const GroupsMultiSelect = ({
   isCurrentUser = false,
   placeholder,
   "aria-label": ariaLabel = t`Groups`,
+  itemAccessGroups,
 }: GroupsMultiSelectProps) => {
   const combobox = useCombobox();
   const [search, setSearch] = useState("");
@@ -131,6 +134,83 @@ export const GroupsMultiSelect = ({
     }
   };
 
+  const renderOption = (group: GroupInfo) => {
+    const isSelected = value.includes(group.id);
+    return (
+      <Combobox.Option
+        key={group.id}
+        value={String(group.id)}
+        aria-label={getGroupNameLocalized(group)}
+        active={isSelected}
+        disabled={isGroupLocked(group)}
+      >
+        <Flex align="center" justify="space-between" gap="sm">
+          <Flex align="center" gap="sm">
+            <Checkbox
+              checked={isSelected}
+              readOnly
+              aria-hidden
+              tabIndex={-1}
+              style={{ pointerEvents: "none" }}
+            />
+            <span>{getGroupNameLocalized(group)}</span>
+          </Flex>
+          {canEditManager(group) && (
+            <Box onMouseDown={(event) => event.preventDefault()}>
+              <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+                isManager={isManager(group.id)}
+                onChange={() => onToggleManager?.(group.id)}
+              />
+            </Box>
+          )}
+        </Flex>
+      </Combobox.Option>
+    );
+  };
+
+  const renderOptions = () => {
+    if (visibleGroups.length === 0) {
+      return <Combobox.Empty>{t`No groups found`}</Combobox.Empty>;
+    }
+
+    if (itemAccessGroups) {
+      const hasAccess = (group: GroupInfo) =>
+        isAdminGroup(group) || itemAccessGroups.groupIds.includes(group.id);
+      const groupsWithAccess = visibleGroups.filter(hasAccess);
+      const groupsWithoutAccess = visibleGroups.filter(
+        (group) => !hasAccess(group),
+      );
+      return (
+        <>
+          {groupsWithAccess.length > 0 && (
+            <Combobox.Group label={itemAccessGroups.label}>
+              {groupsWithAccess.map(renderOption)}
+            </Combobox.Group>
+          )}
+          {groupsWithoutAccess.length > 0 && (
+            <Combobox.Group label={t`Other groups`}>
+              {groupsWithoutAccess.map(renderOption)}
+            </Combobox.Group>
+          )}
+        </>
+      );
+    }
+
+    return visibleGroups.map((group, index) => {
+      const previousGroup = visibleGroups[index - 1];
+      const showDivider =
+        previousGroup != null &&
+        isPinnedGroup(previousGroup) &&
+        !isPinnedGroup(group);
+      return (
+        <Fragment key={group.id}>
+          {showDivider && <Divider my="sm" />}
+          {renderOption(group)}
+        </Fragment>
+      );
+    });
+  };
+
   return (
     <Combobox
       store={combobox}
@@ -184,52 +264,7 @@ export const GroupsMultiSelect = ({
       </Combobox.DropdownTarget>
 
       <Combobox.Dropdown>
-        <Combobox.Options>
-          {visibleGroups.length === 0 ? (
-            <Combobox.Empty>{t`No groups found`}</Combobox.Empty>
-          ) : (
-            visibleGroups.map((group, index) => {
-              const isSelected = value.includes(group.id);
-              const previousGroup = visibleGroups[index - 1];
-              const showDivider =
-                previousGroup != null &&
-                isPinnedGroup(previousGroup) &&
-                !isPinnedGroup(group);
-              return (
-                <Fragment key={group.id}>
-                  {showDivider && <Divider my="sm" />}
-                  <Combobox.Option
-                    value={String(group.id)}
-                    aria-label={getGroupNameLocalized(group)}
-                    active={isSelected}
-                    disabled={isGroupLocked(group)}
-                  >
-                    <Flex align="center" justify="space-between" gap="sm">
-                      <Flex align="center" gap="sm">
-                        <Checkbox
-                          checked={isSelected}
-                          readOnly
-                          aria-hidden
-                          tabIndex={-1}
-                          style={{ pointerEvents: "none" }}
-                        />
-                        <span>{getGroupNameLocalized(group)}</span>
-                      </Flex>
-                      {canEditManager(group) && (
-                        <Box onMouseDown={(event) => event.preventDefault()}>
-                          <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-                            isManager={isManager(group.id)}
-                            onChange={() => onToggleManager?.(group.id)}
-                          />
-                        </Box>
-                      )}
-                    </Flex>
-                  </Combobox.Option>
-                </Fragment>
-              );
-            })
-          )}
-        </Combobox.Options>
+        <Combobox.Options>{renderOptions()}</Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>
   );

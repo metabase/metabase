@@ -168,8 +168,8 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
 
-(deftest invite-groups-test
-  (testing "GET /api/permissions/invite-groups"
+(deftest invite-group-ids-test
+  (testing "GET /api/permissions/invite-group-ids"
     (mt/with-temp [:model/Collection       coll      {}
                    :model/Dashboard        dash      {:collection_id (u/the-id coll)}
                    :model/PermissionsGroup readers   {:name "Readers"}
@@ -179,58 +179,48 @@
       (perms/grant-collection-readwrite-permissions! writers coll)
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
       (perms/grant-collection-read-permissions! (perms-group/data-analyst) coll)
-      (let [resp  (mt/user-http-request :crowberto :get 200 "permissions/invite-groups"
-                                        :type "dashboard" :id (u/the-id dash))
-            by-id (m/index-by :id resp)]
-        (testing "includes groups with read or read-write access to the item's collection"
-          (is (contains? by-id (u/the-id readers)))
-          (is (contains? by-id (u/the-id writers))))
+      (let [ids (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                           :type "dashboard" :id (u/the-id dash)))]
+        (testing "includes ids of groups with read or read-write access to the item's collection"
+          (is (contains? ids (u/the-id readers)))
+          (is (contains? ids (u/the-id writers)))
+          (is (contains? ids (u/the-id (perms-group/all-users)))))
+        (testing "the ids are unfiltered: system-managed groups like Data Analysts are included when they hold a grant"
+          (is (contains? ids (u/the-id (perms-group/data-analyst)))))
         (testing "excludes groups without access"
-          (is (not (contains? by-id (u/the-id no-access)))))
-        (testing "excludes the Administrators group"
-          (is (not (contains? by-id (u/the-id (perms-group/admin))))))
-        (testing "excludes system-managed magic groups like Data Analysts"
-          (is (not (contains? by-id (u/the-id (perms-group/data-analyst))))))
-        (testing "identifies the All Users group by its magic_group_type, and only it"
-          (is (= "all-internal-users"
-                 (:magic_group_type (get by-id (u/the-id (perms-group/all-users))))))
-          (is (nil? (:magic_group_type (get by-id (u/the-id readers))))))
-        (testing "response shape"
-          (is (malli= [:sequential [:map {:closed true}
-                                    [:id               ms/PositiveInt]
-                                    [:name             ms/NonBlankString]
-                                    [:magic_group_type [:maybe :string]]]]
-                      resp)))))
+          (is (not (contains? ids (u/the-id no-access)))))
+        (testing "excludes the Administrators group, whose access is implicit rather than granted"
+          (is (not (contains? ids (u/the-id (perms-group/admin))))))))
     (testing "works for questions, resolving the card's collection"
       (mt/with-temp [:model/Collection       coll {}
                      :model/Card             card {:collection_id (u/the-id coll)}
                      :model/PermissionsGroup g    {:name "Q Readers"}]
         (perms/grant-collection-read-permissions! g coll)
-        (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/invite-groups"
-                                                           :type "question" :id (u/the-id card))))
+        (is (contains? (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                  :type "question" :id (u/the-id card)))
                        (u/the-id g)))))
     (testing "resolves the Root collection for items with no collection_id"
       (mt/with-temp [:model/PermissionsGroup g    {:name "Root Readers"}
                      :model/Dashboard        dash {:collection_id nil}
                      :model/Permissions      _    {:group_id (u/the-id g), :object "/collection/root/read/"}]
-        (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/invite-groups"
-                                                           :type "dashboard" :id (u/the-id dash))))
+        (is (contains? (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                  :type "dashboard" :id (u/the-id dash)))
                        (u/the-id g)))))
-    (testing "returns no groups for an item in a personal collection (no permission rows exist)"
+    (testing "returns no ids for an item in a personal collection (no permission rows exist)"
       (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
         (mt/with-temp [:model/Dashboard dash {:collection_id (u/the-id personal-coll)}]
-          (is (= [] (mt/user-http-request :crowberto :get 200 "permissions/invite-groups"
+          (is (= [] (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
                                           :type "dashboard" :id (u/the-id dash)))))))
     (testing "requires superuser, even for users who can read the item"
       (mt/with-temp [:model/Collection coll {}
                      :model/Dashboard  dash {:collection_id (u/the-id coll)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 "permissions/invite-groups"
+               (mt/user-http-request :rasta :get 403 "permissions/invite-group-ids"
                                      :type "dashboard" :id (u/the-id dash))))))
     (testing "returns 404 for a nonexistent item"
       (is (= "Not found."
-             (mt/user-http-request :crowberto :get 404 "permissions/invite-groups"
+             (mt/user-http-request :crowberto :get 404 "permissions/invite-group-ids"
                                    :type "dashboard" :id Integer/MAX_VALUE))))))
 
 (deftest create-group-test

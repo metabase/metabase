@@ -4,7 +4,8 @@ import { jt, t } from "ttag";
 import {
   skipToken,
   useCreateUserMutation,
-  useListInviteGroupsQuery,
+  useListInviteGroupIdsQuery,
+  useListPermissionsGroupsQuery,
 } from "metabase/api";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import {
@@ -15,7 +16,6 @@ import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { UserForm } from "metabase/common/components/UserForm";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { isDefaultGroup } from "metabase/common/utils/groups";
 import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
@@ -30,7 +30,7 @@ import {
   Text,
 } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
-import type { InviteGroup, InviteTarget, User } from "metabase-types/api";
+import type { InviteTarget, User } from "metabase-types/api";
 
 interface InviteToViewModalProps {
   title: string;
@@ -67,14 +67,26 @@ export const InviteToViewModal = ({
     trackInviteToViewOpened({ triggeredFrom, targetId });
   }, [triggeredFrom, targetId]);
 
-  // The scoped list changes whenever collection permissions do, so refetch on every open.
-  const { data: inviteGroups, isFetching: isFetchingGroups } =
-    useListInviteGroupsQuery(
-      inviteTarget
-        ? { type: inviteTarget.type, id: inviteTarget.id }
-        : skipToken,
-      { refetchOnMountOrArgChange: true },
-    );
+  // isLoading, not isFetching: a tag-invalidated background refetch must not unmount the form mid-typing.
+  const {
+    data: groups,
+    isLoading: isLoadingGroups,
+    isError: isGroupsError,
+    refetch: refetchGroups,
+  } = useListPermissionsGroupsQuery(
+    inviteTarget ? { tenancy: "internal" } : skipToken,
+  );
+
+  // The access set changes whenever collection permissions do, so refetch on every open.
+  const {
+    data: accessGroupIds,
+    isFetching: isFetchingAccessGroupIds,
+    isError: isAccessGroupIdsError,
+    refetch: refetchAccessGroupIds,
+  } = useListInviteGroupIdsQuery(
+    inviteTarget ? { type: inviteTarget.type, id: inviteTarget.id } : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
 
   const createInvitedUser = async (
     values: Partial<User>,
@@ -135,19 +147,52 @@ export const InviteToViewModal = ({
         onClose={onClose}
       />
     );
-  } else if (isFetchingGroups) {
+  } else if (isLoadingGroups || isFetchingAccessGroupIds) {
     body = (
       <Center py="xl">
         <Loader />
       </Center>
     );
+  } else if (isGroupsError || isAccessGroupIdsError) {
+    // Without the access data the picker loses its "can view" safety net, so fail loudly instead.
+    body = (
+      <Stack gap="lg" align="center" py="xl">
+        <Text>{t`Couldn't load groups. Please try again.`}</Text>
+        <Button
+          onClick={() => {
+            refetchGroups();
+            refetchAccessGroupIds();
+          }}
+        >
+          {t`Try again`}
+        </Button>
+      </Stack>
+    );
   } else {
+    const accessCopy: Record<
+      InviteTarget["type"],
+      { sectionLabel: string; warningMessage: string }
+    > = {
+      dashboard: {
+        sectionLabel: t`Can view this dashboard`,
+        warningMessage: t`None of the selected groups can view this dashboard, so this person won't be able to see it.`,
+      },
+      question: {
+        sectionLabel: t`Can view this question`,
+        warningMessage: t`None of the selected groups can view this question, so this person won't be able to see it.`,
+      },
+    };
     body = (
       <UserForm
-        initialValues={{
-          user_group_memberships: getDefaultInviteMemberships(inviteGroups),
-        }}
-        groups={inviteGroups}
+        initialValues={{}}
+        groups={groups}
+        groupAccess={
+          inviteTarget &&
+          accessGroupIds && {
+            groupIds: accessGroupIds,
+            ...accessCopy[inviteTarget.type],
+          }
+        }
         submitText={t`Send invitation`}
         onCancel={onClose}
         onSubmit={
@@ -164,17 +209,6 @@ export const InviteToViewModal = ({
       {body}
     </Modal>
   );
-};
-
-// preselect All Users when it has access, otherwise the sole candidate, otherwise leave it to the admin
-const getDefaultInviteMemberships = (groups: InviteGroup[] | undefined) => {
-  if (!groups) {
-    return undefined;
-  }
-  const defaultGroup =
-    groups.find(isDefaultGroup) ??
-    (groups.length === 1 ? groups[0] : undefined);
-  return defaultGroup ? [{ id: defaultGroup.id, is_group_manager: false }] : [];
 };
 
 const EmailSetupPrompt = ({

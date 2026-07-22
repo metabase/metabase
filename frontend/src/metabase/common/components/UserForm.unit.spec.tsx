@@ -6,7 +6,7 @@ import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { GroupInfo, Tenant } from "metabase-types/api";
+import type { GroupId, GroupInfo, Tenant, User } from "metabase-types/api";
 import {
   createMockGroup,
   createMockTenant,
@@ -36,13 +36,18 @@ const USER = createMockUser({
 
 interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
-  initialValues?: typeof USER;
+  initialValues?: Partial<User>;
   external?: boolean;
   tenants?: Tenant[];
   hideNameFields?: boolean;
   hideAttributes?: boolean;
   tokenFeatures?: Parameters<typeof createMockTokenFeatures>[0];
   groups?: GroupInfo[];
+  groupAccess?: {
+    groupIds: GroupId[];
+    sectionLabel: string;
+    warningMessage: string;
+  };
 }
 
 const setup = ({
@@ -55,6 +60,7 @@ const setup = ({
   hideAttributes = false,
   tokenFeatures = { sandboxes: true, tenants: true },
   groups = GROUPS,
+  groupAccess,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
@@ -82,6 +88,7 @@ const setup = ({
       hideNameFields={hideNameFields}
       hideAttributes={hideAttributes}
       groups={groups}
+      groupAccess={groupAccess}
     />,
     {
       storeInitialState: state,
@@ -114,8 +121,7 @@ describe("UserForm", () => {
     });
 
     it("should not show validation errors before fields are touched (UXW-3719)", async () => {
-      // Unjustified type cast. FIXME
-      setup({ initialValues: {} as typeof USER });
+      setup({ initialValues: {} });
 
       expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
@@ -407,8 +413,7 @@ describe("UserForm", () => {
 
     it("scopes the picker to provided groups without fetching the full list", async () => {
       setup({
-        // Unjustified type cast. FIXME
-        initialValues: {} as typeof USER,
+        initialValues: {},
         groups: [createMockGroup({ id: 7, name: "scoped" })],
       });
 
@@ -425,6 +430,50 @@ describe("UserForm", () => {
       expect(fetchMock.callHistory.called("path:/api/permissions/group")).toBe(
         false,
       );
+    });
+  });
+
+  describe("item access marking (UXW-4533)", () => {
+    const GROUP_ACCESS = {
+      groupIds: [4], // bar
+      sectionLabel: "Can view this dashboard",
+      warningMessage: "None of the selected groups can view this dashboard.",
+    };
+
+    it("warns while no selected group grants access, and clears once one is added", async () => {
+      // USER belongs to All Users (1) and foo (3); neither grants access.
+      setup({ groupAccess: GROUP_ACCESS });
+
+      expect(
+        await screen.findByText(GROUP_ACCESS.warningMessage),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      await userEvent.click(await screen.findByRole("option", { name: "bar" }));
+
+      expect(
+        screen.queryByText(GROUP_ACCESS.warningMessage),
+      ).not.toBeInTheDocument();
+    });
+
+    it("counts the Administrators group's implicit access", async () => {
+      setup({
+        groupAccess: { ...GROUP_ACCESS, groupIds: [] },
+        initialValues: {
+          ...USER,
+          user_group_memberships: [
+            { id: 1, is_group_manager: false },
+            { id: 2, is_group_manager: false },
+          ],
+        },
+      });
+
+      expect(await screen.findByRole("list")).toBeInTheDocument();
+      expect(
+        screen.queryByText(GROUP_ACCESS.warningMessage),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -4,8 +4,8 @@ import fetchMock from "fetch-mock";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { InviteGroup, InviteTarget } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import type { GroupId, GroupInfo, InviteTarget } from "metabase-types/api";
+import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
 
 import { InviteToViewModal } from "./InviteToViewModal";
 
@@ -15,10 +15,27 @@ const { trackUserInvited, trackInviteToViewOpened } = jest.requireMock(
   "metabase/common/analytics",
 );
 
-const INVITE_GROUPS: InviteGroup[] = [
-  { id: 1, name: "All Users", magic_group_type: "all-internal-users" },
-  { id: 3, name: "foo", magic_group_type: null },
-];
+const ALL_USERS = createMockGroup({
+  id: 1,
+  name: "All Users",
+  magic_group_type: "all-internal-users",
+});
+const ADMINISTRATORS = createMockGroup({
+  id: 2,
+  name: "Administrators",
+  magic_group_type: "admin",
+});
+const MARKETING = createMockGroup({
+  id: 3,
+  name: "Marketing",
+  magic_group_type: null,
+});
+const SALES = createMockGroup({ id: 4, name: "Sales", magic_group_type: null });
+
+const GROUPS: GroupInfo[] = [ALL_USERS, ADMINISTRATORS, MARKETING, SALES];
+
+// By default All Users and Marketing can view the invite target.
+const ACCESS_GROUP_IDS: GroupId[] = [ALL_USERS.id, MARKETING.id];
 
 const TITLE = "Invite someone to view this dashboard";
 
@@ -38,7 +55,11 @@ interface SetupOpts {
   ssoEnabled?: boolean;
   passwordLoginEnabled?: boolean;
   createError?: boolean;
-  inviteGroups?: InviteGroup[];
+  groups?: GroupInfo[];
+  accessGroupIds?: GroupId[];
+  groupsError?: boolean;
+  accessGroupIdsError?: boolean;
+  inviteTarget?: InviteTarget;
 }
 
 const setup = ({
@@ -47,11 +68,22 @@ const setup = ({
   ssoEnabled = false,
   passwordLoginEnabled = true,
   createError = false,
-  inviteGroups = INVITE_GROUPS,
+  groups = GROUPS,
+  accessGroupIds = ACCESS_GROUP_IDS,
+  groupsError = false,
+  accessGroupIdsError = false,
+  inviteTarget = INVITE_TARGET,
 }: SetupOpts = {}) => {
   const onClose = jest.fn();
 
-  fetchMock.get("path:/api/permissions/invite-groups", inviteGroups);
+  fetchMock.get(
+    "path:/api/permissions/group",
+    groupsError ? { status: 500 } : groups,
+  );
+  fetchMock.get(
+    "path:/api/permissions/invite-group-ids",
+    accessGroupIdsError ? { status: 500 } : accessGroupIds,
+  );
   fetchMock.post(
     "path:/api/user",
     createError
@@ -78,7 +110,7 @@ const setup = ({
       title={title}
       shareUrl={SHARE_URL}
       triggeredFrom="dashboard"
-      inviteTarget={INVITE_TARGET}
+      inviteTarget={inviteTarget}
       onClose={onClose}
     />,
     { storeInitialState: state },
@@ -195,82 +227,125 @@ describe("InviteToViewModal", () => {
     expect(body.invite_target).toEqual(INVITE_TARGET);
   });
 
-  describe("group picker scoping (UXW-4533)", () => {
-    it("preselects All Users when it has access to the item", async () => {
-      const { onClose } = setup();
-
-      expect(
-        within(await screen.findByRole("list")).getByText("All Users"),
-      ).toBeInTheDocument();
-
-      await submitInvite("newbie@metabase.com");
-      await waitFor(() => expect(onClose).toHaveBeenCalled());
-
-      const body = await getCreateUserRequestBody();
-      expect(body.user_group_memberships).toEqual([
-        { id: 1, is_group_manager: false },
-      ]);
-    });
-
-    it("preselects the sole candidate when All Users has no access", async () => {
-      const { onClose } = setup({
-        inviteGroups: [{ id: 3, name: "foo", magic_group_type: null }],
-      });
-
-      expect(
-        within(await screen.findByRole("list")).getByText("foo"),
-      ).toBeInTheDocument();
-
-      await submitInvite("newbie@metabase.com");
-      await waitFor(() => expect(onClose).toHaveBeenCalled());
-
-      const body = await getCreateUserRequestBody();
-      expect(body.user_group_memberships).toEqual([
-        { id: 3, is_group_manager: false },
-      ]);
-    });
-
-    it("preselects nothing when there are several candidates", async () => {
-      const { onClose } = setup({
-        inviteGroups: [
-          { id: 3, name: "foo", magic_group_type: null },
-          { id: 4, name: "bar", magic_group_type: null },
-        ],
-      });
-
-      const pills = within(await screen.findByRole("list"));
-      expect(pills.queryByText("foo")).not.toBeInTheDocument();
-      expect(pills.queryByText("bar")).not.toBeInTheDocument();
-
-      await submitInvite("newbie@metabase.com");
-      await waitFor(() => expect(onClose).toHaveBeenCalled());
-
-      const body = await getCreateUserRequestBody();
-      expect(body.user_group_memberships).toEqual([]);
-    });
-
-    it("only offers the groups with access in the picker", async () => {
-      setup({
-        inviteGroups: [
-          { id: 3, name: "foo", magic_group_type: null },
-          { id: 4, name: "bar", magic_group_type: null },
-        ],
-      });
+  describe("group picker access (UXW-4533)", () => {
+    it("offers every group, sectioned by access to the item", async () => {
+      setup();
 
       await userEvent.click(
         await screen.findByRole("combobox", { name: "Groups" }),
       );
 
       expect(
-        await screen.findByRole("option", { name: "foo" }),
+        await screen.findByRole("option", { name: "All Users" }),
       ).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "bar" })).toBeInTheDocument();
       expect(
-        screen.queryByRole("option", { name: "All Users" }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("option", { name: "Administrators" }),
+      ).toBeInTheDocument();
       expect(
-        screen.queryByRole("option", { name: "Administrators" }),
+        screen.getByRole("option", { name: "Marketing" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Sales" })).toBeInTheDocument();
+
+      expect(screen.getByText("Can view this dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Other groups")).toBeInTheDocument();
+    });
+
+    it("labels the access section for questions", async () => {
+      setup({ inviteTarget: { type: "question", id: 7, name: "My question" } });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+
+      expect(
+        await screen.findByText("Can view this question"),
+      ).toBeInTheDocument();
+    });
+
+    it("preselects All Users as a locked membership and leaves the rest to the admin", async () => {
+      const { onClose } = setup();
+
+      const pills = within(await screen.findByRole("list"));
+      expect(pills.getByText("All Users")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Remove All Users" }),
       ).not.toBeInTheDocument();
+
+      await submitInvite("newbie@metabase.com");
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+      // An untouched picker sends no memberships; the backend then defaults to just All Users.
+      const body = await getCreateUserRequestBody();
+      expect(body.user_group_memberships).toBeUndefined();
+    });
+
+    it("sends added groups along with the locked All Users membership", async () => {
+      const { onClose } = setup();
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Sales" }),
+      );
+
+      await submitInvite("newbie@metabase.com");
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+      const body = await getCreateUserRequestBody();
+      expect(body.user_group_memberships).toEqual([
+        { id: ALL_USERS.id, is_group_manager: false },
+        { id: SALES.id, is_group_manager: false },
+      ]);
+    });
+
+    it("warns when no selected group can view the item, until one is added", async () => {
+      setup({ accessGroupIds: [MARKETING.id] });
+
+      expect(
+        await screen.findByText(
+          "None of the selected groups can view this dashboard, so this person won't be able to see it.",
+        ),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Marketing" }),
+      );
+
+      expect(
+        screen.queryByText(/None of the selected groups/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not warn while a selected group has access", async () => {
+      setup();
+
+      expect(await screen.findByRole("list")).toBeInTheDocument();
+      expect(
+        screen.queryByText(/None of the selected groups/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows a retryable error instead of the form when the access query fails", async () => {
+      setup({ accessGroupIdsError: true });
+
+      expect(
+        await screen.findByText("Couldn't load groups. Please try again."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Try again" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    });
+
+    it("shows a retryable error instead of the form when the groups query fails", async () => {
+      setup({ groupsError: true });
+
+      expect(
+        await screen.findByText("Couldn't load groups. Please try again."),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
     });
   });
 

@@ -5,8 +5,7 @@ import type {
   Group,
   GroupId,
   GroupListQuery,
-  InviteGroup,
-  ListInviteGroupsRequest,
+  ListInviteGroupIdsRequest,
   ListUserMembershipsResponse,
   Membership,
   PermissionsGraph,
@@ -63,10 +62,10 @@ export const permissionApi = Api.injectEndpoints({
       }),
       providesTags: (groups = []) => providePermissionsGroupListTags(groups),
     }),
-    listInviteGroups: builder.query<InviteGroup[], ListInviteGroupsRequest>({
+    listInviteGroupIds: builder.query<GroupId[], ListInviteGroupIdsRequest>({
       query: (params) => ({
         method: "GET",
-        url: "/api/permissions/invite-groups",
+        url: "/api/permissions/invite-group-ids",
         params,
       }),
     }),
@@ -181,7 +180,7 @@ export const {
   useGetDatabasePermissionsGraphQuery,
   useUpdatePermissionsGraphMutation,
   useListPermissionsGroupsQuery,
-  useListInviteGroupsQuery,
+  useListInviteGroupIdsQuery,
   useGetPermissionsGroupQuery,
   useCreatePermissionsGroupMutation,
   useUpdatePermissionsGroupMutation,

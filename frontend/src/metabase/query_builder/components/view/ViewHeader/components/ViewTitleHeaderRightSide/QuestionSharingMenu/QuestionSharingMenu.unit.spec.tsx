@@ -290,7 +290,8 @@ describe("QuestionSharingMenu", () => {
     });
 
     it("opens the invite modal for the question", async () => {
-      fetchMock.get("path:/api/permissions/invite-groups", []);
+      fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-group-ids", []);
       await setupQuestionSharingMenu({ isAdmin: true });
       await openMenu();
       await userEvent.click(screen.getByText("Invite someone to view this"));
