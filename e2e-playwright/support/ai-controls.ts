@@ -26,6 +26,7 @@
  */
 import http from "node:http";
 
+import { expect, request as playwrightRequest } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data.json";
@@ -157,20 +158,45 @@ export async function visitHomeAndWaitForXray(page: Page) {
 
 /**
  * Sign in as an arbitrary user (not one of the cached USERS) by POSTing
- * /api/session and installing the session cookies on the browser context —
- * the Playwright equivalent of the spec's `cy.request("POST", "/api/session")`.
- * Only the browser session is switched; `api` keeps its current (admin)
- * session, matching the spec, which does its API setup as admin first.
+ * /api/session through a THROWAWAY request context and installing the resulting
+ * session cookies on the browser context — the Playwright equivalent of the
+ * spec's `cy.request("POST", "/api/session")`.
+ *
+ * The POST deliberately does NOT go through `mb.api`'s shared request context:
+ * its Set-Cookie would land in that jar, and Metabase's `wrap-session-key`
+ * resolves the cookie BEFORE the X-Metabase-Session header — so every later
+ * `mb.api` call would silently run as this user, and `mb.signInAsAdmin()`
+ * (header only) could not undo it (FINDINGS #139/#148 — the leak that made
+ * sandboxing baselines pass while measuring nothing). The throwaway context is
+ * disposed in a `finally`, so ONLY the browser session is switched; `mb.api`
+ * keeps whatever session it had. Same shape as `signInWithCredentials`
+ * (support/sandboxing-via-api.ts).
+ *
+ * No API client for the new user is returned: today's callers do only browser
+ * work as the tenant user. If a caller ever needs API calls AS this user, have
+ * it return `new MetabaseApi(api.requestContext, () => id)` like
+ * `signInWithCredentials` — don't add it speculatively.
  */
 export async function signInViaCookie(
   page: Page,
-  api: MetabaseApi,
   baseUrl: string,
   username: string,
   password: string,
 ) {
-  const response = await api.post("/api/session", { username, password });
-  const { id } = (await response.json()) as { id: string };
+  const throwaway = await playwrightRequest.newContext({ baseURL: baseUrl });
+  let id: string;
+  try {
+    const response = await throwaway.post("/api/session", {
+      data: { username, password },
+    });
+    expect(
+      response.ok(),
+      `POST /api/session for ${username} -> ${response.status()}`,
+    ).toBeTruthy();
+    id = ((await response.json()) as { id: string }).id;
+  } finally {
+    await throwaway.dispose();
+  }
   const { hostname } = new URL(baseUrl);
   const cookie = { domain: hostname, path: "/" };
   await page.context().addCookies([

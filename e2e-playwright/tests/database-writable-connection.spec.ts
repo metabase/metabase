@@ -124,6 +124,29 @@
  *   upstream. The database inventory is asserted back to its pre-run shape at
  *   the end of the file — this spec edits an instance-wide connection, and four
  *   other slots share the box.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * FIXME (workers=2 CI red — PARKED, not fixed): global `readonly_user` collision
+ * ─────────────────────────────────────────────────────────────────────────
+ * `createUser`/`dropUser` below run `CREATE USER` / `DROP USER readonly_user`,
+ * a SERVER-GLOBAL MySQL account — NOT scoped to the per-worker
+ * `writable_db_w<slot>` database that #157 isolates. CI runs `--workers=2
+ * --fully-parallel` against ONE shared MySQL container, so two of this spec's
+ * own tests run concurrently and worker A's `afterEach` DROP pulls the account
+ * out from under worker B mid-test. Symptom: a connection save that targets the
+ * just-vanished account never navigates back — `updateMainConnection` /
+ * `updateWritableConnection` fail at their `toBeVisible` gate, a DIFFERENT
+ * subset of tests each run. This is the residual shard-19 red once the earlier
+ * `beforeEach` resync hang was fixed (retrigger `5cc681aa597` + background-sync
+ * disable `15c0f7f7548`).
+ *
+ * Green at `--workers=1` (9/9, 27/27 under `--repeat-each=3`); only manifests at
+ * `--workers=2`. Classified as shared-resource contention and PARKED per the
+ * single-thread-correctness-first prioritisation — no behavioral change made.
+ * The fix, when workers=2 is picked up, is to make `READ_ONLY_USER.username`
+ * per-slot (mirroring `writable_db_w<slot>`); proven locally to turn workers=2
+ * green (9 passed ×3). Full diagnosis:
+ * findings-inbox/database-writable-connection.md.
  */
 import type { Page } from "@playwright/test";
 

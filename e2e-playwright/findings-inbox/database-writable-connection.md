@@ -311,3 +311,72 @@ files.
 - Own `test-results-*` cleaned; siblings' left alone. Nothing committed. No
   shared support module, `PORTED.txt`, `QUEUE.md` or `playwright.config.ts`
   touched.
+
+---
+
+## CI-red diagnosis (2026-07-22, workers=2 contention)
+
+Investigated the standing red on shard 19 across runs 29814216890 (`20965df504`),
+29820641912 (`5cc681aa59`), 29825096184 (`f39d02a13d`) — different subsets of the
+9 tests, both attempts, each run.
+
+### The cited red is TWO distinct issues; the first is already fixed on HEAD
+
+**Issue 1 — `beforeEach` resync hang (FIXED after those runs).**
+All three cited runs failed with `Test timeout of 90000ms exceeded while running
+"beforeEach" hook`, the disposed-context tail resolving to `resyncDatabase`
+(`schema-viewer.ts:198`) called from `setupTableData` → `beforeEach:213`. Root
+cause: the `mysql-writable` snapshot bakes an overdue Quartz `metadata_sync`
+trigger; a background sync fires on restore and either wipes db 2 or dedupes the
+spec's explicit `POST /sync_schema` (`with-duplicate-ops-prevented`), so
+`GET /api/database/2/metadata` polled `tables: []` forever. This is exactly the
+class fixed by:
+  - `5cc681aa597` — `resyncDatabase` retrigger + a 75s self-reporting budget
+    inside the 90s test timeout, and
+  - `15c0f7f7548` — `restore()` now PUTs db 2's `metadata_sync`/`cache_field_values`
+    to a daily-3am schedule, removing the Quartz actor.
+Both commits land AFTER all three cited runs. Verified fixed on current HEAD:
+`--workers=1` is **9/9 green, and 27/27 under `--repeat-each=3`** — the resync
+path runs in every `beforeEach` and never hangs.
+
+**Issue 2 — global MySQL `readonly_user` collision (STILL PRESENT at workers=2, PARKED).**
+With the resync hang fixed, `--workers=2 --fully-parallel` (slots 2+3, one shared
+MySQL container) is still consistently red, 2–3 of 9 tests each run, a *different
+subset* each time — the exact CI signature. Failures are all test-body navigation
+gates that follow a connection save with `READ_ONLY_USER`:
+`updateWritableConnection` / `updateMainConnection` → the section never returns
+visible (`database-writable-connection.ts:154` / `:171`, 10s `toBeVisible`
+timeout), because saving a main/writable connection whose credentials point at a
+just-vanished account fails validation and never navigates back.
+
+Local repro matrix (this HEAD, JAR `751c2a9`, PW_SLOT_OFFSET=2, feature token):
+| mode | result |
+|---|---|
+| workers=1 ×1 | 9 passed |
+| workers=1 ×3 (`--repeat-each=3`) | 27 passed |
+| workers=2 ×1 | 3 failed (#258, #313, #382) |
+| workers=2 ×1 | 2 failed (#222, #313) |
+
+**Shared resource, identified precisely:** the `readonly_user` MySQL account.
+`createUser`/`dropUser` (spec `433`/`440`) run `CREATE USER` / `DROP USER
+readonly_user` — a **server-global** object, NOT scoped to the per-worker
+`writable_db_w<slot>` database that `#157` isolates. Both workers share one MySQL
+server (:3304), so worker A's `afterEach` `DROP USER readonly_user` pulls the
+account out from under worker B's running test (and the concurrent
+`CREATE`/`GRANT` interleave). The tables (`ORDERS`, `transform_table`) are NOT the
+culprit — they live in the per-worker warehouse database and are already isolated.
+
+**Proof (diagnostic, reverted):** suffixing the account name per slot
+(`readonly_user_w${slot}`, the same slot arithmetic as `writableDbName()`) makes
+workers=2 go **9 passed ×3 consecutive**. That is the whole fix, and it is a
+one-constant change confined to this spec (the username flows through
+`READ_ONLY_USER` into both the SQL and the form).
+
+### Classification: (b) shared-resource contention → PARKED
+
+Per the current single-thread-correctness-first prioritisation, this workers=2-only
+contention is parked, not fixed — **no behavioral change made**. When workers=2
+correctness is picked up, the fix is to make `READ_ONLY_USER.username` per-slot
+(mirroring the `writable_db_w<slot>` isolation `#157` already applies to the
+warehouse database). No assertion was weakened; the diagnostic token/user edits
+used to reproduce were reverted (`git checkout`), tree clean for this spec.

@@ -62,6 +62,7 @@ import {
   getImpersonations,
   setImpersonatedPermission,
   signInAsImpersonatedUser,
+  warmSqlParsingPool,
 } from "../support/impersonated";
 import { expect, test } from "../support/fixtures";
 import { openQuestionActions, runNativeQuery } from "../support/models";
@@ -133,6 +134,13 @@ test.describe("impersonated permission", () => {
         ).toContainEqual(
           expect.objectContaining({ db_id: PG_DB_ID, attribute: "role" }),
         );
+
+        // Warm the GraalPy/sqlglot pool the impersonation middleware parses
+        // through, so the first `runNativeQuery` in the test body doesn't pay a
+        // cold context generation inside its 30s waitForDataset budget and flake
+        // out (FINDINGS #222). Must run after setImpersonatedPermission — see the
+        // helper's docstring for why here and not in worker-backend warmUp.
+        await warmSqlParsingPool(mb.api);
       });
 
       test("have limited access", async ({ page, mb }) => {

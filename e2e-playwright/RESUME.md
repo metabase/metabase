@@ -2,6 +2,18 @@
 
 **Last updated: 2026-07-22, after the snowplow graduation + python tier.**
 
+## 2026-07-22: FINDINGS #222 fixed (impersonated cold-pool flake)
+
+`impersonated.spec.ts`'s two native-query tests flaked when the backend's
+GraalPy/sqlglot pool was cold on first parse (up to ~24s under CI load, inside
+`runNativeQuery`'s 30s waitForDataset budget). Fix: `warmSqlParsingPool(api)`
+in the inner beforeEach fires one `select 1` native parse on the impersonated
+DB as admin, after `setImpersonatedPermission`, moving the cold cost off the
+timed path. NOT in worker-backend `warmUp` (that path never hits sqlglot and
+`min-size 0` re-cools it) — reasoning in the helper docstring and FINDINGS #222
+resolution note. Verified cold on a fresh slot-5 backend: 6036ms cold → 37ms
+warm, 2/2 cold + 4/4 repeat-each=2, tsc clean. `models.ts:64` untouched.
+
 ## 2026-07-22 (later): two coverage tiers went real
 
 **Snowplow stubs are GONE.** All ~53 specs (plus 9 support modules) that carried
@@ -28,8 +40,11 @@ contradictory 402 evidence is settled: python CREATE needs `transforms-basic`
 all-features only locally. **CI now provisions the tier**
 (e2e-playwright.yml: pulls `metabase/python-runner:v0.1.0-7838dc9` — tag PINNED,
 mutable-tag lesson of #225 — plus localstack, bucket via unsigned curl PUT, and
-sets `PW_PYTHON_RUNNER_ENABLED=1`). Local stack lives in the session scratchpad
-clone; re-provision with `compose.ci.yaml` from metabase/python-runner-container.
+sets `PW_PYTHON_RUNNER_ENABLED=1`). To re-provision locally, run the same
+docker commands as that workflow step — the pulled image makes the private
+metabase/python-runner-container repo unnecessary (it was only cloned once,
+to a session scratchpad, to build the image before the published one was
+found; the pinned tag is the same commit).
 
 **Watch the next CI run**: ~60 files' snowplow assertions go live at once on
 4vCPU runners, plus the python tier's first-ever CI execution. Timing-sensitive
@@ -857,8 +872,12 @@ jar and `wrap-session-key` resolves **cookie before header** — every later
 **A mutation proved this makes sandboxing baselines pass while measuring nothing.**
 Working shape is in `sandboxing-via-ui`: session POST through a **throwaway
 request context disposed immediately**.
-⚠️ **`sandboxing-via-api`'s green is marked UNVERIFIED** pending this — 84
-`mb.api`/`signInAsAdmin` references.
+⚠️ ~~**`sandboxing-via-api`'s green is marked UNVERIFIED** pending this — 84
+`mb.api`/`signInAsAdmin` references.~~ **RESOLVED (FINDINGS #209):** the
+throwaway-context fix landed, `sandboxing-via-api` is 29/29 green with `tsc`
+clean, and a before/after `mb.api` identity probe proved the leak both ways
+(reverting the fix flips `mb.api` to the tenant user while the test still
+passes). The UNVERIFIED mark is lifted.
 
 ### 6. CI parallelism — settle before raising the shard count
 - `sandboxing-misconfiguration` and `question-reproductions` **both rebuild

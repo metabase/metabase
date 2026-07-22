@@ -4862,6 +4862,38 @@ request was ever *sent*, which is exactly the discriminator between "slow
 response" and "the click never fired a query". Nothing so far has separated
 those.
 
+**#222 RESOLVED (2026-07-22) — pool warmed in the spec's beforeEach, cold cost
+moved off the timed path.** Correction 4 above is now acted on. The fix is
+`warmSqlParsingPool(api)` (support/impersonated.ts): one trivial native parse
+(`select 1`) on the impersonated DB, as admin, fired at the END of the inner
+`impersonated users` beforeEach — after `setImpersonatedPermission`, so it
+actually routes through `apply-impersonation` -> `is-single-stmt-of-type?` ->
+GraalPy and warms the shared per-JVM pool. `select 1` needs no table access, so
+it succeeds regardless of role. A 120s request timeout is passed because the
+cold parse itself can outrun the 30s APIRequestContext default — the very cost
+being relocated. `support/models.ts:64` (`waitForDataset`) was NOT touched; the
+mask lives in the affected spec's setup, not in the shared helper, and its
+comment stays accurate.
+
+**Not in worker-backend `warmUp`, deliberately** (reasoning recorded in the
+helper docstring): that boot-time warm runs a plain MBQL count on the H2 sample
+DB, which never reaches `is-single-stmt-of-type?`; the `postgres-12` snapshot and
+impersonation config the sqlglot path needs don't exist at boot; it would add the
+cold cost to every spec's boot for a two-test concern; and `min-size 0` lets the
+pool idle back to cold before the test runs. A beforeEach warm is both more
+targeted and more reliable. Option (b) — a wider first-`waitForDataset` timeout —
+was not needed: the explicit warm proved reliable, and it is less masking (a real
+regression in the timed native query still trips the normal 30s budget).
+
+**Measured on a freshly-booted slot-5 backend (port 4105 killed first, genuinely
+cold pool):** the warm helper's first-ever parse took **cold=6036ms**, the
+immediate repeat **warm=37ms** — the exact cold/warm signature, and consistent
+with the finding's "one cold JVM, idle machine" ~7s figure (the 17-24s numbers
+needed two contended JVMs). test 2's beforeEach on the same still-warm JVM saw
+34ms/21ms. Because that 6s (up to ~24s under CI load) now lands in the untimed
+beforeEach, both tests **passed cold** (2/2) and under `--repeat-each=2` (4/4);
+`tsc --noEmit` clean.
+
 ---
 
 ### #226 PORTING RULE: `click({ force: true })` does NOT mean the same thing in

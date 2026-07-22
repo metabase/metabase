@@ -1,4 +1,9 @@
-import { test as base, BrowserContext, APIRequestContext } from "@playwright/test";
+import {
+  test as base,
+  BrowserContext,
+  APIRequestContext,
+  request as playwrightRequest,
+} from "@playwright/test";
 
 import { MetabaseApi } from "./api";
 import {
@@ -75,13 +80,32 @@ class MetabaseHarness {
       return;
     }
 
-    // Fallback for users without a cached session.
+    // Fallback for users without a cached session. The session POST MUST NOT
+    // go through `this.api`'s shared request context: its Set-Cookie would
+    // land in that context's jar, and `wrap-session-key` resolves the cookie
+    // BEFORE the X-Metabase-Session header — every later `mb.api` call would
+    // silently run as this user, and a later cached signInAsAdmin() (header
+    // only) could not undo it (FINDINGS #139/#148 — the same leak that made
+    // sandboxing baselines pass while measuring nothing). Throwaway context,
+    // same shape as signInWithCredentials (support/sandboxing-via-api.ts).
     const { email: username, password } = USERS[user];
-    const response = await this.api.post("/api/session", {
-      username,
-      password,
+    const throwaway = await playwrightRequest.newContext({
+      baseURL: this.baseUrl,
     });
-    const { id } = (await response.json()) as { id: string };
+    let id: string;
+    try {
+      const response = await throwaway.post("/api/session", {
+        data: { username, password },
+      });
+      if (!response.ok()) {
+        throw new Error(
+          `POST /api/session for ${username} -> ${response.status()}`,
+        );
+      }
+      id = ((await response.json()) as { id: string }).id;
+    } finally {
+      await throwaway.dispose();
+    }
     this.sessionId = id;
     await this.setSessionCookies(id, "my-device-id");
   }
@@ -114,42 +138,15 @@ class MetabaseHarness {
       await resetWritableDb({ type: writableDialectFor(name) });
     }
     await this.api.restore(name);
-    // The restore triggers an async search-index rebuild. A frontend search
-    // fired inside that window renders a permanent empty state (the FE never
-    // re-queries), so block until the index answers before the test starts.
-    const adminSession = LOGIN_CACHE.admin?.sessionId;
-    if (adminSession) {
-      const adminApi = new MetabaseApi(
-        this.api.requestContext,
-        () => adminSession,
-      );
-      const deadline = Date.now() + 30_000;
-      let forcedReindex = false;
-      while (Date.now() < deadline) {
-        // Query a TABLE specifically: the rebuild indexes models in phases,
-        // and cards can be searchable while tables still aren't (which broke
-        // the join mini-picker after the card-based poll passed).
-        const response = await adminApi.get(
-          "/api/search?q=Reviews&models=table&limit=1",
-          { failOnStatusCode: false },
-        );
-        if (response.ok()) {
-          const body = await response.json().catch(() => ({ data: [] }));
-          if ((body.data ?? []).length > 0) {
-            break;
-          }
-        }
-        if (!forcedReindex) {
-          // Back-to-back restores can drop the rebuild trigger entirely,
-          // leaving the index dead until something re-triggers it — do so.
-          forcedReindex = true;
-          await adminApi.post("/api/search/force-reindex", undefined, {
-            failOnStatusCode: false,
-          });
-        }
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-    }
+    // ORDER: the db1/db2 repoints and the Quartz disarm run FIRST, the
+    // search-index poll LAST. The poll can take up to 30s, and until the PUTs
+    // land, database 1 points at the shared e2e/tmp H2 file (one-JVM lock) and
+    // database 2's restored QRTZ tables hold an overdue trigger that can
+    // misfire and sync away the metadata (see the db-2 block below). Polling
+    // first held those windows open for the whole poll; nothing in the poll
+    // depends on the repoints, and the disarm PUT does not itself trigger a
+    // sync (:event/database-update subscribers are audit-log and pool
+    // invalidation only — sync fires on database CREATE).
     if (this.sampleDbUrl) {
       // Snapshots pin database 1 to the shared e2e/tmp H2 file, which only
       // one JVM can hold — re-point it at this worker's private copy. Uses
@@ -220,10 +217,57 @@ class MetabaseHarness {
         },
       });
     }
+    // The restore triggers an async search-index rebuild. A frontend search
+    // fired inside that window renders a permanent empty state (the FE never
+    // re-queries), so block until the index answers before the test starts.
+    const adminSession = LOGIN_CACHE.admin?.sessionId;
+    if (adminSession) {
+      const adminApi = new MetabaseApi(
+        this.api.requestContext,
+        () => adminSession,
+      );
+      const deadline = Date.now() + 30_000;
+      let forcedReindex = false;
+      while (Date.now() < deadline) {
+        // Query a TABLE specifically: the rebuild indexes models in phases,
+        // and cards can be searchable while tables still aren't (which broke
+        // the join mini-picker after the card-based poll passed).
+        const response = await adminApi.get(
+          "/api/search?q=Reviews&models=table&limit=1",
+          { failOnStatusCode: false },
+        );
+        if (response.ok()) {
+          const body = await response.json().catch(() => ({ data: [] }));
+          if ((body.data ?? []).length > 0) {
+            break;
+          }
+        }
+        if (!forcedReindex) {
+          // Back-to-back restores can drop the rebuild trigger entirely,
+          // leaving the index dead until something re-triggers it — do so.
+          forcedReindex = true;
+          await adminApi.post("/api/search/force-reindex", undefined, {
+            failOnStatusCode: false,
+          });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      if (Date.now() >= deadline) {
+        // Expiring silently made the resulting failures (empty search states)
+        // surface far downstream, disconnected from this cause.
+        console.warn(
+          `[restore] search-index poll expired after 30s (snapshot "${name}") — ` +
+            "search-dependent assertions in this test may see an empty index",
+        );
+      }
+    }
   }
 
   private async setSessionCookies(sessionId: string, deviceId: string) {
-    const { hostname } = new URL(BASE_URL);
+    // Domain from this.baseUrl, not the module-level BASE_URL: identical today
+    // (both `localhost`), but BASE_URL is the shared :4000 host and would be
+    // wrong if BACKEND_HOST ever became non-local under per-worker backends.
+    const { hostname } = new URL(this.baseUrl);
     const cookie = { domain: hostname, path: "/" };
     await this.context.addCookies([
       { name: "metabase.SESSION", value: sessionId, httpOnly: true, ...cookie },

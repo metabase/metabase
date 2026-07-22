@@ -254,6 +254,58 @@ export async function setImpersonatedPermission(api: MetabaseApi) {
 }
 
 /**
+ * Warm the backend's GraalPy/sqlglot context pool BEFORE the timed part of
+ * either test (FINDINGS #222).
+ *
+ * Both tests run a native query through `runNativeQuery` (support/models.ts),
+ * which waits on `POST /api/dataset` with Playwright's default 30s budget. On
+ * an impersonation-configured DB, `apply-impersonation`
+ * (enterprise .../impersonation/middleware.clj) routes EVERY native query —
+ * admins included — through `driver/validate-impersonated-query` ->
+ * `sql-tools/is-single-stmt-of-type?` -> GraalPy/sqlglot, SYNCHRONOUSLY inside
+ * QP preprocessing. The context pool has `min-size 0`, so the FIRST parse after
+ * a backend boots (or after the pool idles to 0) pays a full cold context
+ * generation — measured 23.8s cold on an idle M-series Mac vs 3-12ms warm,
+ * unbounded inside `.acquire` (graal.clj), i.e. NOT covered by the backend's own
+ * 30s Python call timeout. On a loaded runner that first response can consume
+ * nearly the whole 30s Playwright budget and time the wait out; it passes on
+ * retry once the pool is warm. That is the semi-independent 3/4-and-2/4 flake.
+ *
+ * This fires one trivial native parse on the impersonated DB, as admin, from the
+ * beforeEach — OUTSIDE any waitForDataset window — moving the cold cost off the
+ * measured path while leaving the warm path fully observable. `select 1` touches
+ * no table, so it succeeds for admin and warms the shared per-JVM pool regardless
+ * of role. It MUST run after `setImpersonatedPermission`: `is-single-stmt-of-type?`
+ * is only reached when impersonation is configured on the DB, so a native query
+ * on any other DB would not exercise (and so would not warm) this path.
+ *
+ * === Why here and not in worker-backend.ts `warmUp` ===
+ * The harness's per-backend warmUp runs a plain MBQL count on the H2 sample DB at
+ * boot — that path never reaches `is-single-stmt-of-type?`, so it does not warm
+ * this pool, and it runs before the `postgres-12` snapshot / impersonation config
+ * that the sqlglot path requires even exist. Warming from boot would (1) need to
+ * synthesise an impersonation-configured native query for a concern only these two
+ * tests have, (2) add the ~24s cold cost to every spec's boot, and (3) be unreliable
+ * anyway — `min-size 0` lets the pool idle back to cold before the test runs. A
+ * beforeEach warm, immediately before each test and exercising the exact path, is
+ * both more targeted and more reliable.
+ *
+ * A generous request timeout is passed because the cold parse itself can exceed the
+ * 30s APIRequestContext default on a loaded runner — the very cost being moved here.
+ */
+export async function warmSqlParsingPool(api: MetabaseApi) {
+  await api.post(
+    "/api/dataset",
+    {
+      database: PG_DB_ID,
+      type: "native",
+      native: { query: "select 1" },
+    },
+    { timeout: 120_000 },
+  );
+}
+
+/**
  * Reads back the impersonation policy the graph write installed. Used as the
  * "the restriction is actually in place" precondition — the counterpart to the
  * remove-the-restriction mutation.

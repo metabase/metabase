@@ -804,11 +804,20 @@ test.describe("AI Controls > Tenant usage limits", () => {
     // Sign in as the tenant user
     await signInViaCookie(
       page,
-      mb.api,
       mb.baseUrl,
       TENANT_USER_EMAIL,
       TENANT_USER_PASSWORD,
     );
+
+    // Regression guard: signInViaCookie switches only the BROWSER session — its
+    // /api/session POST must NOT leak into mb.api's request jar, where
+    // wrap-session-key resolves cookie-before-header and would silently rebind
+    // every later mb.api call to the tenant user. mb.api must stay admin.
+    // FINDINGS #139/#148.
+    const currentUser = (await (
+      await mb.api.get("/api/user/current")
+    ).json()) as { email: string };
+    expect(currentUser.email).toBe("admin@metabase.test");
 
     await visitHomeAndWaitForXray(page);
 
@@ -835,7 +844,6 @@ test.describe("AI Controls > Tenant usage limits", () => {
     // Sign in as the tenant user
     await signInViaCookie(
       page,
-      mb.api,
       mb.baseUrl,
       TENANT_USER_EMAIL,
       TENANT_USER_PASSWORD,

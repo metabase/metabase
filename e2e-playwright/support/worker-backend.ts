@@ -151,19 +151,63 @@ async function warmUp(port: number, sampleDbUrl: string) {
  * its events wherever it was booted to). Cheaper to detect and reboot.
  */
 async function pointsAtCollector(port: number, collectorUrl: string) {
-  try {
-    const response = await fetch(
-      `http://localhost:${port}/api/session/properties`,
-      { signal: AbortSignal.timeout(5000) },
-    );
-    if (!response.ok) {
-      return false;
+  // Retried: this runs against a backend the health probe just confirmed
+  // alive, so a single slow /api/session/properties (GC pause, loaded box)
+  // must not read as "wrong collector" — that verdict kills the backend and
+  // costs a ~70s reboot.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(
+        `http://localhost:${port}/api/session/properties`,
+        { signal: AbortSignal.timeout(5000) },
+      );
+      if (!response.ok) {
+        return false;
+      }
+      const properties = (await response.json()) as Record<string, unknown>;
+      return properties["snowplow-url"] === collectorUrl;
+    } catch {
+      // timed out or dropped mid-flight — try again
     }
-    const properties = (await response.json()) as Record<string, unknown>;
-    return properties["snowplow-url"] === collectorUrl;
-  } catch {
-    return false;
   }
+  return false;
+}
+
+/**
+ * Is something already serving this slot? "healthy" / "empty" / after retries
+ * still unresponsive -> "empty" (boot will then fail loudly on the bound port
+ * rather than us silently wiping a live backend's disk).
+ *
+ * The distinction that matters: a CLOSED port refuses in milliseconds, while a
+ * live-but-slow backend (contended CI runner, GC pause) TIMES OUT. The old
+ * single 1s probe conflated the two — a slow healthy backend read as "empty",
+ * after which the caller rmSync'd the running JVM's H2 files out from under it
+ * and booted a second JVM onto the bound port, which failed as "backend
+ * crashed". Refusal exits fast, so the retries cost nothing on a genuinely
+ * empty slot.
+ */
+async function probeSlotHealth(port: number): Promise<"healthy" | "empty"> {
+  const timeouts = [1000, 3000, 5000];
+  for (const timeout of timeouts) {
+    try {
+      const response = await fetch(`http://localhost:${port}/api/health`, {
+        signal: AbortSignal.timeout(timeout),
+      });
+      if (response.ok) {
+        return "healthy";
+      }
+      // Listening but unhealthy (booting, wedged): treat as empty; the
+      // caller's killPort path handles the survivor.
+      return "empty";
+    } catch (error) {
+      const cause = (error as { cause?: { code?: string } }).cause;
+      if (cause?.code === "ECONNREFUSED") {
+        return "empty";
+      }
+      // Timeout or reset — could be a slow live backend; retry longer.
+    }
+  }
+  return "empty";
 }
 
 function killPort(port: number) {
@@ -194,11 +238,8 @@ export async function startWorkerBackend(
   await snowplow.start(collectorPort);
   const collectorUrl = snowplow.url;
 
-  try {
-    const response = await fetch(`http://localhost:${port}/api/health`, {
-      signal: AbortSignal.timeout(1000),
-    });
-    if (response.ok && (await pointsAtCollector(port, collectorUrl))) {
+  if ((await probeSlotHealth(port)) === "healthy") {
+    if (await pointsAtCollector(port, collectorUrl)) {
       return {
         port,
         startupMs: 0,
@@ -207,17 +248,13 @@ export async function startWorkerBackend(
         stop: () => {},
       };
     }
-    if (response.ok) {
-      // Healthy, but booted against some other collector (a pre-change slot
-      // backend, or one carrying leaked MB_SNOWPLOW_URL). Replace it.
-      console.log(
-        `[slot ${slot}] backend on :${port} is not pointed at ${collectorUrl} — rebooting it`,
-      );
-      killPort(port);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
-  } catch {
-    // nothing on this slot yet — boot one
+    // Healthy, but booted against some other collector (a pre-change slot
+    // backend, or one carrying leaked MB_SNOWPLOW_URL). Replace it.
+    console.log(
+      `[slot ${slot}] backend on :${port} is not pointed at ${collectorUrl} — rebooting it`,
+    );
+    killPort(port);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
   const scratch = slotDir(slot);
   fs.rmSync(scratch, { recursive: true, force: true });

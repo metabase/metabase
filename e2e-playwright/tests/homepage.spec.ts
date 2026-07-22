@@ -316,7 +316,6 @@ test.describe("scenarios > home > homepage", () => {
       await mb.api.put(`/api/user/${id}`, { is_superuser: true });
       await signInViaCookie(
         page,
-        mb.api,
         mb.baseUrl,
         randomUser.email,
         randomUser.password,
