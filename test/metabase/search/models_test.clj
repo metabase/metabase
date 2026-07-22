@@ -188,22 +188,24 @@
                    (get "collection_name"))))))))
 
 (deftest insert-enqueues-one-bulk-update-test
-  (testing "a multi-row insert enqueues one re-derivation batch, one message per row per primary hook"
+  (testing "a PK-only multi-row insert stays one statement and enqueues one re-derivation batch"
     (let [calls (atom [])]
       (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
                                   (fn [updates] (swap! calls conj updates))]
         (mt/with-temp [:model/Collection {coll-id :id} {}]
           (reset! calls [])
-          (let [n (t2/insert! :model/Document
-                              (for [i (range 3)]
-                                {:name          (str "Ins Capture Doc " i)
-                                 :collection_id coll-id
-                                 :document      "{}"
-                                 :content_type  "application/json"
-                                 :creator_id    (mt/user->id :crowberto)
-                                 :created_at    :%now
-                                 :updated_at    :%now}))]
-            (is (= 3 n))
+          (let [creator-id (mt/user->id :crowberto)]
+            (t2/with-call-count [call-count]
+              (is (= 3 (t2/insert! :model/Document
+                                   (for [i (range 3)]
+                                     {:name          (str "Ins Capture Doc " i)
+                                      :collection_id coll-id
+                                      :document      "{}"
+                                      :content_type  "application/json"
+                                      :creator_id    creator-id
+                                      :created_at    :%now
+                                      :updated_at    :%now}))))
+              (is (= 1 (call-count))))
             (is (= 1 (count @calls)))
             (is (= 3 (count (set (first @calls)))))
             (is (every? (fn [[search-model where]]
