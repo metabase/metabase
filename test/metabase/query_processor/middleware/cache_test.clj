@@ -341,6 +341,81 @@
         (is (= :cached
                (run-query :cache-strategy strategy)))))))
 
+(deftest stale-while-revalidate-staleness-is-bounded-test
+  (testing "a lease loser may be served a slightly stale entry, but not an arbitrarily old one (#78339)"
+    (with-mock-cache! [save-chan]
+      (let [t0         #t "2026-01-01T00:00:00Z[UTC]"
+            query-hash (qp.util/query-hash (test-query nil))]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (testing "the entry expired 30 days ago and another process holds the refresh lease"
+          (mt/with-clock (t/plus t0 (t/days 30))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :not-cached
+                   (run-query))
+                "an entry this far past its TTL must be recomputed, not served stale")))))))
+
+(deftest stale-while-revalidate-within-grace-window-test
+  (testing "a lease loser is served the stale entry when it is only slightly past its TTL, so concurrent requests
+            don't stampede the warehouse while a refresh is in flight"
+    (with-mock-cache! [save-chan]
+      ;; (ttl-strategy) TTL = :multiplier 60 * :avg-execution-ms 1000 = 60 seconds
+      (let [t0         #t "2026-01-01T00:00:00Z[UTC]"
+            query-hash (qp.util/query-hash (test-query nil))]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (testing "the entry expired 1 second ago and another process holds the refresh lease"
+          (mt/with-clock (t/plus t0 (t/seconds 61))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :cached
+                   (run-query))
+                "just-expired results are fine to serve while the refresh is in flight")))))))
+
+(defn- run-query-with-execute*
+  "Like [[run-query*]] but with an explicit `execute-fn` bound as [[qp.pipeline/*execute*]], so tests can gate query
+  execution on latches to force a deterministic interleaving of concurrent requests."
+  [execute-fn & {:as query-kvs}]
+  (let [qp    (cache/maybe-return-cached-results qp.pipeline/*run*)
+        query (test-query query-kvs)]
+    (binding [driver.settings/*query-timeout-ms* 20000
+              qp.pipeline/*execute*              execute-fn]
+      (driver/with-driver :h2
+        (-> (qp query qp.reducible/default-rff)
+            (assoc :data {}))))))
+
+(deftest concurrent-cold-miss-runs-query-once-test
+  (testing "concurrent identical requests on a cold cache should run the query exactly once; the loser should wait
+            for the winner's result instead of independently hitting the warehouse"
+    (with-mock-cache! []
+      (let [exec-count    (atom 0)
+            first-entered (promise)
+            release       (promise)
+            execute       (fn [_driver _query respond]
+                            (when (= 1 (swap! exec-count inc))
+                              ;; hold the first execution in flight until the test releases it, guaranteeing the
+                              ;; second request does its cache lookup while the first is still running
+                              (deliver first-entered true)
+                              (u/deref-with-timeout release 10000))
+                            (respond {} *rows*))
+            request-1     (future (run-query-with-execute* execute))]
+        (u/deref-with-timeout first-entered 10000)
+        (let [request-2 (future (run-query-with-execute* execute))]
+          ;; wait for the second request to either finish on its own (the bug: it ran the query itself) or block
+          ;; awaiting the first request's result (the desired behavior)
+          (loop [attempts-remaining 100]
+            (when (and (pos? attempts-remaining)
+                       (< @exec-count 2)
+                       (not (future-done? request-2)))
+              (Thread/sleep 10)
+              (recur (dec attempts-remaining))))
+          (deliver release true)
+          (is (partial= {:status :completed} @request-1))
+          (is (partial= {:status :completed} @request-2))
+          (is (= 1 @exec-count)
+              "the second concurrent request should coalesce onto the first, not run the query again"))))))
+
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
     (with-mock-cache! [save-chan]
