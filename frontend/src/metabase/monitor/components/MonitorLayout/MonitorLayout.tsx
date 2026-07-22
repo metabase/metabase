@@ -170,39 +170,26 @@ export function MonitorLayout() {
       )}
       {canAccessAiAuditingTab && hasAuditAppFeature && (
         <AreaTabGroup label={t`AI Auditing`} showLabel={isNavbarOpened}>
-          {hasAiControlsFeature ? (
-            <>
-              <AreaTab
-                label={t`Usage stats`}
-                icon="lineandbar"
-                to={Urls.monitorAiAuditingUsage()}
-                isSelected={activeSection === "ai-auditing-usage-stats"}
-                showLabel={isNavbarOpened}
-                onClick={() =>
-                  trackMonitorSectionClicked("ai-auditing-usage-stats")
-                }
-              />
-              <AreaTab
-                label={t`Conversations`}
-                icon="comment"
-                to={Urls.monitorAiAuditingConversations()}
-                isSelected={activeSection === "ai-auditing-conversations"}
-                showLabel={isNavbarOpened}
-                onClick={() =>
-                  trackMonitorSectionClicked("ai-auditing-conversations")
-                }
-              />
-            </>
-          ) : (
+          <AreaTab
+            label={t`Usage stats`}
+            icon="lineandbar"
+            to={Urls.monitorAiAuditingUsage()}
+            isSelected={activeSection === "ai-auditing-usage-stats"}
+            showLabel={isNavbarOpened}
+            isGated={!hasAiControlsFeature}
+            onClick={() =>
+              trackMonitorSectionClicked("ai-auditing-usage-stats")
+            }
+          />
+          {hasAiControlsFeature && (
             <AreaTab
-              label={t`Usage stats`}
-              icon="lineandbar"
-              to={Urls.monitorAiAuditingUsage()}
-              isSelected={activeSection === "ai-auditing-usage-stats"}
+              label={t`Conversations`}
+              icon="comment"
+              to={Urls.monitorAiAuditingConversations()}
+              isSelected={activeSection === "ai-auditing-conversations"}
               showLabel={isNavbarOpened}
-              isGated
               onClick={() =>
-                trackMonitorSectionClicked("ai-auditing-usage-stats")
+                trackMonitorSectionClicked("ai-auditing-conversations")
               }
             />
           )}
