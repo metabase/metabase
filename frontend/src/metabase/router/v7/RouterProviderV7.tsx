@@ -12,7 +12,6 @@ import { getBasename } from "metabase/utils/basename";
 
 import { LOCATION_CHANGE } from "../routing-reducer";
 
-
 import { SyncHistoryRouter } from "./SyncHistoryRouter";
 import { V7ReduxBridge } from "./V7ReduxBridge";
 import { withBlocking } from "./blocking-history";
