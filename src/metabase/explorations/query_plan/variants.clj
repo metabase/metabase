@@ -18,15 +18,14 @@
                         `per-value-time-series`.
 
   Discovery queries (`run-top-k-discovery`) for the two variants that need
-  them are deduplicated in-process via `discovery-cache`, a TTL cache keyed
-  by `[card-id dim-id k explore-filters]`. Both `query-name` and
-  `dataset-query` go through the cache, so the underlying QP call runs at
-  most once per (card, dim, k, filters) while the entry is still fresh (within
-  the TTL). There is no separate size cap: distinct keys are bounded in practice
-  by the library's metric×dimension×k combinations, and the TTL evicts stale entries."
+  them are deduplicated in-process via `discovery-cache`, a TTL cache. Both
+  `query-name` and `dataset-query` go through the cache, so the underlying QP
+  call runs at most once per cache key while the entry stays warm and fresh.
+  The key includes the user the discovery ran as — see `cached-discovery`."
   (:require
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
+   [metabase.api.common :as api]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
@@ -143,22 +142,28 @@
   (* 15 60 1000))
 
 (defonce ^:private discovery-cache
-  ;; A TTL cache keyed by [card-id dim-id k explore-filters]. The TTL both freshens entries and
-  ;; bounds accumulation on a long-lived JVM — nothing survives past it.
+  ;; A TTL cache: the TTL both freshens entries and bounds accumulation on a long-lived JVM —
+  ;; nothing survives past it. See `cached-discovery` for the key.
   (atom (cache/ttl-cache-factory {} :ttl discovery-cache-ttl-ms)))
 
 (defn- cached-discovery
-  "Memoized `run-top-k-discovery` keyed by `[card-id dim-id k explore-filters]`. Returns
-  the discovered vector (or `[]` on failure / no rows). Both `query-name`
-  and `dataset-query` go through this so the underlying QP query runs at
-  most once per (card, dim, k, filters) while the entry is still fresh (within the TTL)."
+  "Memoized `run-top-k-discovery`. Returns the discovered vector (or `[]` on failure / no rows).
+  Both `query-name` and `dataset-query` go through this so the underlying QP query runs at most
+  once per key while the entry stays fresh (within the TTL).
+
+  The key leads with the executing user (usually creator) because discovery
+  is a real warehouse query run under that user's lens: sandboxing, connection impersonation, and
+  database routing can all give two users different top-K values for the same (card, dim, k), and
+  serving one user's values to another would leak rows they cannot query. This isolates explorations
+  owned by different creators that happen to share a (card, dim, k, filters) tail. Attribute changes
+  within a single user are covered by the TTL rather than the key."
   [{:keys [mp card target dim params explore-filters]}]
   (let [card-id   (:id card)
         dim-id    (or (:dimension_id dim) (:id dim))
         k         (:k params)
         ;; Include the "Explore further" filter chain in the key: two threads sharing a
         ;; (card, dim, k) but scoped to different segments must not share top-N discovery results.
-        cache-key [card-id dim-id k explore-filters]]
+        cache-key [api/*current-user-id* card-id dim-id k explore-filters]]
     (cache.wrapped/lookup-or-miss
      discovery-cache cache-key
      (fn [_] (or (run-top-k-discovery mp card target dim k) [])))))

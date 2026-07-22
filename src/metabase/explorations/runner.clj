@@ -328,25 +328,19 @@
 
   Deliberately holds no transaction.
 
-  The query runs as the exploration's creator, so the snapshot reflects the creator's own lens —
-  sandboxing, connection impersonation, and database routing (all applied by the QP's own
-  middleware under the bound user). The same lens is captured as a `:data_access_token` so
-  non-creator readers can be gated against it."
-  [row]
-  (let [creator-id (exploration-creator-id row)
-        db-id      (:database_id row)
-        run        (fn []
-                     {:qp-result (qp.variants/pin-other-last
-                                  (:query_type row)
-                                  (qp/process-query
-                                   (qp/userland-query-with-default-constraints
-                                    (:dataset_query row)
-                                    {:context :exploration})))
-                      :token     (compute-data-access-token (:dataset_query row) db-id)})
-        {:keys [qp-result token]} (if creator-id
-                                    (request/with-current-user creator-id
-                                      (run))
-                                    (run))
+  Must be called inside the creator's `request/with-current-user` binding — [[run-query!]] holds it
+  — so the snapshot reflects the creator's own lens: sandboxing, connection impersonation, and
+  database routing are all applied by the QP's own middleware, and only to a bound user. The same
+  lens is captured as a `:data_access_token` so non-creator readers can be gated against it."
+  [row creator-id]
+  (let [db-id        (:database_id row)
+        qp-result    (qp.variants/pin-other-last
+                      (:query_type row)
+                      (qp/process-query
+                       (qp/userland-query-with-default-constraints
+                        (:dataset_query row)
+                        {:context :exploration})))
+        token        (compute-data-access-token (:dataset_query row) db-id)
         chart-config (safe-chart-config row qp-result)
         stats        (safe-deep-stats row chart-config)]
     {:creator-id creator-id
@@ -410,12 +404,19 @@
   canceled thread — where `runnable-query` declines it), or gone."
   [query-id]
   (if-let [row (runnable-query query-id)]
-    (let [row      (finalize-row! row)
-          started  (OffsetDateTime/now)
-          computed (compute-query-result row)]
-      (when (persist-query-result! row started computed)
-        (record-query-outcome! "done"))
-      (:exploration_thread_id row))
+    (let [creator-id (exploration-creator-id row)]
+      (when-not creator-id
+        ;; `exploration.creator_id` is NOT NULL, so this means the exploration was deleted out from
+        ;; under the row. Refuse rather than falling back to an unbound (unrestricted) run.
+        (throw (ex-info "Cannot run exploration query: its exploration has no creator"
+                        {:query-id query-id})))
+      (request/with-current-user creator-id
+        (let [row      (finalize-row! row)
+              started  (OffsetDateTime/now)
+              computed (compute-query-result row creator-id)]
+          (when (persist-query-result! row started computed)
+            (record-query-outcome! "done"))
+          (:exploration_thread_id row))))
     (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
                       :id query-id :status [:in ["done" "error" "canceled"]])))
 
