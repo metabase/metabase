@@ -438,13 +438,16 @@
         [cached-key v]  @model-hooks-cache]
     (if (identical? cached-key spec-methods)
       v
-      (let [v (->> (specifications)
-                   vals
-                   (map search-model-hooks)
-                   merge-hooks)]
+      (let [specs        (specifications)
+            spec-methods (methods spec*)
+            v            (->> specs
+                              vals
+                              (map search-model-hooks)
+                              merge-hooks)]
         ;; Resolving specifications can load model namespaces that register more spec* methods. Associate the
-        ;; result with the post-resolution method table so the next steady-state call is a cache hit.
-        (reset! model-hooks-cache [(methods spec*) v])
+        ;; result with that post-resolution method table so the next steady-state call is a cache hit. If another
+        ;; method is registered while hooks are mapped, this older key simply misses on the next call.
+        (reset! model-hooks-cache [spec-methods v])
         v))))
 
 (defn- instance->db-values

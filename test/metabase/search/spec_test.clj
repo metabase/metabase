@@ -173,7 +173,7 @@
 
 (deftest ^:synchronized model-hooks-cache-records-post-resolution-methods-test
   (testing "methods loaded while computing model hooks belong to the cached result"
-    (let [original-specifications search.spec/specifications
+    (let [original-specifications (mt/original-fn #'search.spec/specifications)
           spec-multifn            search.spec/spec*
           calls                   (atom 0)
           installed?              (atom false)
