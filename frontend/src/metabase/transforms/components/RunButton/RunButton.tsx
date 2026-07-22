@@ -8,7 +8,14 @@ import {
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { Button, type ButtonProps, Icon, Loader, Tooltip } from "metabase/ui";
+import {
+  Button,
+  type ButtonProps,
+  Icon,
+  Loader,
+  Menu,
+  Tooltip,
+} from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
   TransformId,
@@ -16,6 +23,7 @@ import type {
   TransformRun,
 } from "metabase-types/api";
 
+import { isActiveRunStatus } from "../../utils";
 import { LockedTransformsHoverCard } from "../LockedTransformsHoverCard/LockedTransformsHoverCard";
 
 const RECENT_TIMEOUT = 5000;
@@ -29,6 +37,7 @@ type RunButtonProps = {
   size?: ButtonProps["size"];
   onRun: () => void;
   onCancel?: () => void;
+  menuItems?: ReactNode;
 };
 
 export const RunButton = forwardRef(function RunButton(
@@ -41,6 +50,7 @@ export const RunButton = forwardRef(function RunButton(
     size = "md",
     onRun,
     onCancel,
+    menuItems,
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -63,6 +73,9 @@ export const RunButton = forwardRef(function RunButton(
     setIsRecent(false);
   }, [id]);
 
+  const isRunning = isActiveRunStatus(run?.status);
+  const showMenu = menuItems != null && !isRunning;
+
   const runButton = (
     <Button.Group>
       <Button
@@ -77,6 +90,24 @@ export const RunButton = forwardRef(function RunButton(
       >
         {label}
       </Button>
+      {showMenu && (
+        <Menu position="bottom-end">
+          <Menu.Target>
+            <Button
+              variant="filled"
+              color={color}
+              disabled={isDisabled}
+              size={size}
+              px="sm"
+              aria-label={t`More run options`}
+              data-testid="run-options-button"
+            >
+              <Icon name="chevrondown" aria-hidden />
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+        </Menu>
+      )}
       {allowCancellation && run?.status === "started" && (
         <Tooltip label={t`Cancel`}>
           <Button

@@ -2447,6 +2447,7 @@
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
+                    :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
@@ -2504,6 +2505,7 @@
            transforms-base
            util}
    :model-imports #{:model/Transform
+                    :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
