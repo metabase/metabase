@@ -11,6 +11,15 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+;; Search handoff is deliberately after commit. `with-temp` normally wraps its body in a rollback-only
+;; transaction, so these integration tests need real commits; `with-temp` still performs explicit cleanup.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each
+  (fn [f]
+    (mt/test-helpers-set-global-values!
+      (binding [search.ingestion/*force-sync* true]
+        (f)))))
+
 (deftest delete-enqueues-one-bulk-update-test
   (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
     (let [calls (atom [])]
@@ -75,8 +84,8 @@
             (is (=? [#{["card" where] ["dataset" where] ["metric" where]}]
                     (mapv set @calls)))))))))
 
-(deftest rollback-still-enqueues-and-leaves-the-row-test
-  (testing "a rolled-back delete still fired its at-least-once re-derivation message, and the row survives"
+(deftest rollback-discards-handoff-and-leaves-the-row-test
+  (testing "a rolled-back delete discards its post-commit handoff, and the row survives"
     (let [calls (atom [])]
       (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
                                   (fn [updates] (swap! calls conj updates))]
@@ -86,5 +95,5 @@
                        (t2/with-transaction [_conn]
                          (t2/delete! :model/Card id)
                          (throw (ex-info "boom" {})))))
-          (is (= 1 (count @calls)))
+          (is (empty? @calls))
           (is (t2/exists? :model/Card id)))))))
