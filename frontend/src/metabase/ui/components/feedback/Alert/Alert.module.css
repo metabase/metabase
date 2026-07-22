@@ -1,4 +1,6 @@
 .root {
+  --alert-control-size: 24px;
+
   padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
     var(--mantine-spacing-lg) var(--mantine-spacing-lg);
   border: 0.5px solid var(--alert-border-color);
@@ -8,28 +10,31 @@
 }
 
 .wrapper {
-  gap: 12px;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) var(--alert-control-size);
+  grid-template-areas: "icon body close";
+  align-items: start;
 }
 
 .icon {
+  grid-area: icon;
   width: auto;
-  height: 24px;
+  height: var(--alert-control-size);
   margin: 0;
+  margin-inline-end: 12px;
   align-items: center;
   color: var(--alert-color);
 }
 
 .body {
+  grid-area: body;
   gap: var(--mantine-spacing-sm);
-  margin-inline-end: var(
-    --mantine-spacing-xs
-  ); /* 12px wrapper gap + 4px = 16px to closeButton */
+  margin-inline-end: var(--mantine-spacing-md);
 }
 
 .title {
   padding: 1px 0; /* with lh 22px keeps the 24px title height */
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 22px;
   font-weight: 600;
   color: var(--alert-title-color);
@@ -44,8 +49,9 @@
 .closeButton {
   --cb-icon-size: 12px !important; /* Alert hardcodes inline iconSize=16; only !important overrides it */
 
-  width: 24px;
-  height: 24px;
+  grid-area: close;
+  width: var(--alert-control-size);
+  height: var(--alert-control-size);
   border-radius: var(--mantine-radius-xs);
   color: var(--mb-color-text-primary);
 }

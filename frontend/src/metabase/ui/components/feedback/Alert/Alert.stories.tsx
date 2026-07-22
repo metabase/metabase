@@ -1,18 +1,13 @@
 import type { StoryFn } from "@storybook/react";
-import { Fragment } from "react";
+import type { ReactNode } from "react";
 
 import { Alert, type AlertProps, Box, Icon, Stack, Text } from "metabase/ui";
+import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
 
 const TITLE = "Open source analytics that answers back";
 const MESSAGE =
   "Let your team and customers chat with your data, query in natural language, and explore with AI-backed tools. Connect to your database in minutes for analytics without bottlenecks.";
-
-const args = {
-  icon: <Icon name="info" />,
-  title: TITLE,
-  withCloseButton: false,
-};
 
 const argTypes = {
   variant: {
@@ -24,119 +19,299 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   color: {
-    control: { type: "text" },
+    options: ["default", "core-brand", "warning", "error", "success"],
+    control: { type: "select" },
+  },
+  withTitle: {
+    control: { type: "boolean" },
+    table: { category: "title" },
   },
   title: {
     control: { type: "text" },
+    table: { category: "title" },
+  },
+  children: {
+    control: { type: "text" },
   },
   withCloseButton: {
-    control: { type: "toggle" },
+    control: { type: "boolean" },
+  },
+  withIcon: {
+    control: { type: "boolean" },
   },
 };
 
-const DefaultTemplate = (args: AlertProps) => (
-  <Alert {...args}>
-    <Text>{MESSAGE}</Text>
-  </Alert>
-);
-
-const COLUMNS = [
-  { variant: "default", withCloseButton: false },
-  { variant: "default", withCloseButton: true },
-  { variant: "light", withCloseButton: false },
-  { variant: "light", withCloseButton: true },
-] as const;
-
-const SIZES = [
-  { size: "default", label: "Default" },
-  { size: "compact", label: "Compact" },
-] as const;
-
-const COLORS = [
-  undefined,
-  "core-brand",
-  "warning",
-  "error",
-  "success",
-] as const;
-
-const Overview: StoryFn<AlertProps> = () => (
-  <StoryShowcase title="Alert">
-    <Box
-      style={{
-        display: "grid",
-        gridTemplateColumns: `8rem repeat(${COLUMNS.length}, minmax(0, 1fr))`,
-        columnGap: "1.5rem",
-        rowGap: "1.5rem",
-        alignItems: "start",
-      }}
-    >
-      <div />
-      {COLUMNS.map(({ variant, withCloseButton }) => (
-        <StoryJsx
-          key={`${variant}-${withCloseButton}`}
-        >{`<Alert variant="${variant}"${withCloseButton ? " withCloseButton" : ""} />`}</StoryJsx>
-      ))}
-      {SIZES.map(({ size, label }) =>
-        COLORS.map((color) => (
-          <Fragment key={`${size}-${color ?? "default"}`}>
-            <Text size="sm" c="text-secondary" mt="sm">
-              {label} / {color ?? "default"}
-            </Text>
-            {COLUMNS.map(({ variant, withCloseButton }) => (
-              <Alert
-                key={`${variant}-${withCloseButton}`}
-                variant={variant}
-                size={size}
-                color={color}
-                withCloseButton={withCloseButton}
-                icon={<Icon name="model" />}
-                title={TITLE}
-              >
-                {MESSAGE}
-              </Alert>
-            ))}
-          </Fragment>
-        )),
-      )}
-    </Box>
-  </StoryShowcase>
-);
-
-const ColorsTemplate = (args: AlertProps) => (
-  <Stack>
-    {COLORS.map((color) => (
-      <Alert
-        {...args}
-        key={color ?? "default"}
-        color={color}
-        icon={<Icon name="info" />}
-        title={color ? `color="${color}"` : "default"}
-      >
-        <Text>{MESSAGE}</Text>
-      </Alert>
-    ))}
-  </Stack>
-);
+type StoryArgs = AlertProps & { withTitle?: boolean; withIcon?: boolean };
 
 export default {
   title: "Components/Feedback/Alert",
   component: Alert,
-  args,
+  args: {
+    variant: "default",
+    size: "default",
+    color: "default",
+    title: TITLE,
+    children: MESSAGE,
+    withCloseButton: false,
+    withTitle: true,
+    withIcon: true,
+  },
   argTypes,
 };
+
+const DefaultTemplate: StoryFn<StoryArgs> = ({
+  withTitle,
+  withIcon,
+  title,
+  ...args
+}) => (
+  <Box w="480px">
+    <Alert
+      icon={withIcon ? <Icon name="model" /> : undefined}
+      title={withTitle ? title : undefined}
+      {...args}
+    />
+  </Box>
+);
 
 export const Default = {
   render: DefaultTemplate,
 };
 
+const OVERVIEW_CELLS = [
+  {
+    variant: "light",
+    size: "default",
+    withCloseButton: false,
+    jsx: '<Alert variant="light" />',
+  },
+  {
+    variant: "light",
+    size: "default",
+    withCloseButton: true,
+    jsx: '<Alert variant="light" withCloseButton />',
+  },
+  {
+    variant: "default",
+    size: "default",
+    withCloseButton: false,
+    jsx: '<Alert variant="default" />',
+  },
+  {
+    variant: "default",
+    size: "default",
+    withCloseButton: true,
+    jsx: '<Alert variant="default" withCloseButton />',
+  },
+  {
+    variant: "light",
+    size: "compact",
+    withCloseButton: false,
+    jsx: '<Alert size="compact" variant="light" />',
+  },
+  {
+    variant: "light",
+    size: "compact",
+    withCloseButton: true,
+    jsx: '<Alert size="compact" variant="light" withCloseButton />',
+  },
+  {
+    variant: "default",
+    size: "compact",
+    withCloseButton: false,
+    jsx: '<Alert size="compact" variant="default" />',
+  },
+  {
+    variant: "default",
+    size: "compact",
+    withCloseButton: true,
+    jsx: '<Alert size="compact" variant="default" withCloseButton />',
+  },
+] as const;
+
+const Overview: StoryFn<StoryArgs> = ({
+  withTitle,
+  withIcon,
+  title,
+  children,
+}) => (
+  <StoryShowcase title="Alert">
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(2, 480px)",
+        gap: "48px",
+        alignItems: "start",
+      }}
+    >
+      {OVERVIEW_CELLS.map(({ variant, size, withCloseButton, jsx }) => (
+        <Stack key={jsx} gap="sm">
+          <StoryJsx>{jsx}</StoryJsx>
+          <Alert
+            variant={variant}
+            size={size}
+            withCloseButton={withCloseButton}
+            icon={withIcon ? <Icon name="model" /> : undefined}
+            title={withTitle ? title : undefined}
+          >
+            {children}
+          </Alert>
+        </Stack>
+      ))}
+    </Box>
+  </StoryShowcase>
+);
+
 export const OverviewStory = {
   render: Overview,
   parameters: {
-    controls: { include: [] },
+    controls: {
+      include: ["theme", "withTitle", "withIcon", "title", "children"],
+    },
   },
 };
 
-export const Colors = {
-  render: ColorsTemplate,
+const FEEDBACK_ROWS = [
+  {
+    color: undefined,
+    variant: "light",
+    title: "Default Alert",
+    jsx: '<Alert variant="light" size="compact" />',
+  },
+  {
+    color: "error",
+    variant: "default",
+    title: "Error alert",
+    jsx: '<Alert variant="default" size="compact" color="error" />',
+  },
+  {
+    color: "warning",
+    variant: "default",
+    title: "Warning alert",
+    jsx: '<Alert variant="default" size="compact" color="warning" />',
+  },
+  {
+    color: "success",
+    variant: "default",
+    title: "Positive alert",
+    jsx: '<Alert variant="default" size="compact" color="success" />',
+  },
+  {
+    color: "core-brand",
+    variant: "default",
+    title: "Brand alert",
+    jsx: '<Alert variant="default" size="compact" color="core-brand" />',
+  },
+] as const;
+
+const THEMES = ["light", "dark"] as const;
+
+const getThemeVars = (
+  colorScheme: (typeof THEMES)[number],
+): Record<`--${string}`, string> => {
+  const { colors } = deriveFullMetabaseTheme({ colorScheme });
+  return Object.fromEntries(
+    Object.entries(colors).map(([name, value]) => [
+      `--mb-color-${name}`,
+      value,
+    ]),
+  );
+};
+
+const FeedbackColumn = ({
+  colorScheme,
+  withTitle,
+  withIcon,
+  titleOverride,
+  message,
+}: {
+  colorScheme: (typeof THEMES)[number];
+  withTitle?: boolean;
+  withIcon?: boolean;
+  titleOverride?: ReactNode;
+  message?: ReactNode;
+}) => (
+  <Stack
+    gap="48px"
+    style={{
+      ...getThemeVars(colorScheme),
+      padding: "48px 96px 96px",
+      backgroundColor: "var(--mb-color-background-primary)",
+    }}
+  >
+    {FEEDBACK_ROWS.map(({ color, variant, title, jsx }) => (
+      <Stack key={color ?? "default"} gap="sm" w="480px">
+        <StoryJsx>{jsx}</StoryJsx>
+        <Alert
+          variant={variant}
+          size="compact"
+          color={color}
+          icon={withIcon ? <Icon name="model" /> : undefined}
+          title={withTitle ? titleOverride || title : undefined}
+        >
+          {message ?? MESSAGE}
+        </Alert>
+      </Stack>
+    ))}
+  </Stack>
+);
+
+const FeedbackTemplate: StoryFn<StoryArgs> = ({
+  withTitle,
+  withIcon,
+  title,
+  children,
+}) => (
+  <Box
+    style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gridTemplateRows: "auto 1fr",
+      minHeight: "100vh",
+    }}
+  >
+    <Box
+      style={{
+        ...getThemeVars("light"),
+        padding: "96px 96px 0",
+        backgroundColor: "var(--mb-color-background-primary)",
+      }}
+    >
+      <Text fz="1.5rem" fw="bold" c="text-primary">
+        Feedback
+      </Text>
+    </Box>
+    <Box
+      style={{
+        ...getThemeVars("dark"),
+        backgroundColor: "var(--mb-color-background-primary)",
+      }}
+    />
+    {THEMES.map((colorScheme) => (
+      <FeedbackColumn
+        key={colorScheme}
+        colorScheme={colorScheme}
+        withTitle={withTitle}
+        withIcon={withIcon}
+        titleOverride={title}
+        message={children}
+      />
+    ))}
+  </Box>
+);
+
+export const Feedback = {
+  render: FeedbackTemplate,
+  args: {
+    title: "",
+  },
+  parameters: {
+    controls: {
+      include: ["withTitle", "withIcon", "title", "children"],
+    },
+    backgrounds: { disable: true },
+    viewport: { disable: true },
+    measure: { disable: true },
+    outline: { disable: true },
+  },
 };
