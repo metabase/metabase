@@ -10,6 +10,34 @@ own base commit and dirty state, no ambient switching. The current synced collec
 the **default worktree** — the same mechanism, one derived flag — so main is a special row,
 not a special code path.
 
+## Status (as built)
+
+The stack is implemented and open as draft PRs: [#78386](https://github.com/metabase/metabase/pull/78386) schema+model,
+[#78387](https://github.com/metabase/metabase/pull/78387) worktree-id threading, [#78388](https://github.com/metabase/metabase/pull/78388)
+identity transform, [#78391](https://github.com/metabase/metabase/pull/78391) CRUD API + containment,
+[#78405](https://github.com/metabase/metabase/pull/78405) scoped pull/push, [#78406](https://github.com/metabase/metabase/pull/78406) guards,
+[#78407](https://github.com/metabase/metabase/pull/78407) FE plumbing, [#78395](https://github.com/metabase/metabase/pull/78395) navbar UI.
+Deltas from the design below, decided during implementation and review:
+
+- **Identity scheme**: worktree-local entity ids are `<worktree-id>/<entity-id>` (`/` is not in the NanoID
+  alphabet), so the canonical id is parseable from the local id. No derivation, no persisted mapping: the
+  `canonical_entity_id` column was dropped, pushes just strip the prefix, and `entity_id` was widened to
+  varchar(254) on every table a checkout can materialize. Branch-born entities keep bare NanoIDs.
+- **Sync base**: the default worktree's base version stays derived from task history (worktree-scoped
+  `last-version`) so it shares its lifecycle with the rest of sync bookkeeping; the `base_version` column
+  is authoritative only for non-default worktrees.
+- **Default-flow scoping**: everything the default flows touch (import reconcile, export roots, ledger
+  rebuild/marking, dirty checks, current-task) is scoped by a shared `worktree-filter-clause`; content
+  created inside a checkout is ledgered by its collection's worktree. Adopting a checked-out branch as the
+  default is guarded (`check-branch-not-checked-out!`).
+- **Deferred**: search exclusion of worktree content (needs a `worktree_id` dimension in the per-model
+  search index specs); incremental/3-way pulls and merge pushes for non-default worktrees (full reconcile
+  only in v1); decoupling `BranchDropdown`'s create flow from default-branch switching; PR 9 cleanup
+  (retire `is_remote_synced` reads, drop the dual-write) lands after the stack merges.
+- **Verified end-to-end** against a local `file://` repo through the HTTP API: seed push, checkout+pull
+  under prefixed ids, default-pull/checkout coexistence, per-ledger dirty state, worktree push producing
+  canonical-id YAML on its branch, dirty-guarded + forced delete, and the switch-collision guard.
+
 ## 1. Motivation and constraints
 
 Remote sync today assumes exactly one active branch instance-wide:
