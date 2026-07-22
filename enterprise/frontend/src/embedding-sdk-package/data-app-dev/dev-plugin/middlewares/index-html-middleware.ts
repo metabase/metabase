@@ -1,8 +1,8 @@
 import type { Connect, ViteDevServer } from "vite";
 
-import { INDEX_HTML } from "../constants/index-html";
+import { INDEX_HTML } from "../../constants/index-html";
 
-export const serveIndexHtml =
+export const getIndexHtmlMiddleware =
   (server: ViteDevServer): Connect.NextHandleFunction =>
   async (req, res, next) => {
     if (req.method !== "GET" || !req.headers.accept?.includes("text/html")) {

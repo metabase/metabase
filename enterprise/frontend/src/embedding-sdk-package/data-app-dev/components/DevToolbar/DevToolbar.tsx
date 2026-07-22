@@ -2,17 +2,15 @@
 import cx from "classnames";
 import { useState, useSyncExternalStore } from "react";
 
+import { formatDevDiagnostic } from "../../lib/diagnostics-payload";
+
 import S from "./DevToolbar.module.css";
-import {
-  clearDevDiagnostics,
-  getDevDiagnostics,
-  subscribeDevDiagnostics,
-} from "./diagnostics";
+import { devDiagnostics } from "./diagnostics";
 
 export function DevToolbar() {
   const entries = useSyncExternalStore(
-    subscribeDevDiagnostics,
-    getDevDiagnostics,
+    devDiagnostics.subscribe,
+    devDiagnostics.getEntries,
   );
   const [open, setOpen] = useState(false);
   const count = entries.length;
@@ -27,7 +25,7 @@ export function DevToolbar() {
             <button
               type="button"
               className={S.Action}
-              onClick={clearDevDiagnostics}
+              onClick={devDiagnostics.clear}
             >
               Clear
             </button>
@@ -51,7 +49,9 @@ export function DevToolbar() {
                     <div className={S.EntryTime}>
                       {new Date(entry.time).toLocaleTimeString()}
                     </div>
-                    <div className={S.EntryMessage}>{entry.message}</div>
+                    <div className={S.EntryMessage}>
+                      {formatDevDiagnostic(entry)}
+                    </div>
                   </div>
                 ))
             )}

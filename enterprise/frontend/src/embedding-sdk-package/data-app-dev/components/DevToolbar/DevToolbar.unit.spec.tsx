@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { act, render, screen } from "__support__/ui";
 
 import { DevToolbar } from "./DevToolbar";
-import { clearDevDiagnostics, installDevDiagnostics } from "./diagnostics";
+import { devDiagnostics } from "./diagnostics";
 
 const recordError = (message: string) => {
   act(() => {
@@ -16,7 +16,7 @@ let originalConsoleError: typeof console.error;
 beforeAll(() => {
   originalConsoleError = console.error;
   console.error = () => {};
-  installDevDiagnostics();
+  devDiagnostics.install();
 });
 
 afterAll(() => {
@@ -24,7 +24,7 @@ afterAll(() => {
 });
 
 beforeEach(() => {
-  clearDevDiagnostics();
+  devDiagnostics.clear();
 });
 
 const getToggle = () => screen.getByRole("button", { name: /Diagnostics/ });
