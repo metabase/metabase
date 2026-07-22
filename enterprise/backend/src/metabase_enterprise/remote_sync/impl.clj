@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
@@ -1416,9 +1417,15 @@
                   :success (do
                              (when branch
                                (settings/remote-sync-branch! branch))
+                             (when-let [worktree-id (:worktree_id task)]
+                               (remote-sync.worktree/set-base-version! worktree-id (:version task)))
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
+                              (when-let [worktree-id (:worktree_id task)]
+                                ;; conflicted tasks still advance the sync base (they record the version
+                                ;; the conflict was computed against), matching `last-version` semantics
+                                (remote-sync.worktree/set-base-version! worktree-id (:version result)))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
                   :error (remote-sync.task/fail-sync-task! task-id (:message result))
                   (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
@@ -1628,7 +1635,7 @@
   (if (settings/remote-sync-enabled)
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
-        (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
+        (settings/remote-sync-branch! (source.p/default-branch (source/source-from-settings))))
       (when (= :read-only (settings/remote-sync-type))
         ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).

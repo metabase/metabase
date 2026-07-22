@@ -212,17 +212,21 @@
   "Gets the version that any changes are built off of.
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
-  tasks exist."
-  []
-  (:version (t2/select-one :model/RemoteSyncTask
-                           {:where [:and
-                                    [:<> nil :ended_at]
-                                    [:= false :cancelled]
-                                    [:= nil :error_message]
-                                    [:<> nil :version]]
-                            :limit 1
-                            :order-by [[:started_at :desc]
-                                       [:id :desc]]})))
+  tasks exist. Scoped by `worktree-id`: nil means the main app (tasks with a nil worktree_id, including all
+  pre-worktree history), a worktree id means only tasks that ran against that worktree."
+  ([]
+   (last-version nil))
+  ([worktree-id]
+   (:version (t2/select-one :model/RemoteSyncTask
+                            {:where [:and
+                                     [:<> nil :ended_at]
+                                     [:= false :cancelled]
+                                     [:= nil :error_message]
+                                     [:<> nil :version]
+                                     [:= :worktree_id worktree-id]]
+                             :limit 1
+                             :order-by [[:started_at :desc]
+                                        [:id :desc]]}))))
 
 (defn running?
   "Checks if a task is currently running.
