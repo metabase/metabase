@@ -16,6 +16,7 @@
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
                                           parse-instant
+                                          transform-run-timeout-seconds
                                           utc-timestamp
                                           with-transform-cleanup!]]
    [metabase.transforms.util :as transforms.util]
@@ -685,7 +686,7 @@
   (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (let [resp      (mt/user-http-request :lucky :post 202 (format "transform/%s/run" transform-id))
-            timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
+            timeout-s transform-run-timeout-seconds
             limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
         (is (=? {:message "Transform run started"}
                 resp))
