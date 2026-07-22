@@ -407,6 +407,23 @@
         (is (= (mt/id :venues) (:table_id created)))
         (is (= 1 (count (get-in created [:definition :stages 0 :filters]))))))))
 
+(deftest ^:parallel table-id-definition-mismatch-test
+  (testing "GHY-4153/GHY-4154: a full-query definition whose source table differs from table_id is a teaching error, not silent"
+    (testing "segment"
+      (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
+                                        {:method "create" :table_id (mt/id :checkins)
+                                         :name "definitions-test mismatch segment"
+                                         :definition (venues-filter-definition)}))]
+        (is (re-find #"must be the same table" msg))
+        (is (not= "Internal error" msg))))
+    (testing "measure"
+      (let [msg (tool-error (call-tool! :crowberto nil "measure_write"
+                                        {:method "create" :table_id (mt/id :checkins)
+                                         :name "definitions-test mismatch measure"
+                                         :definition (venues-count-definition)}))]
+        (is (re-find #"must be the same table" msg))
+        (is (not= "Internal error" msg))))))
+
 ;;; ------------------------------------------ Definition validation -----------------------------------------------
 
 (deftest ^:parallel definition-validation-teaching-test
@@ -483,10 +500,14 @@
   (testing "GHY-4137: a scope a tool checks must be grantable — advertised through registered-scopes"
     (is (set/subset? #{"agent:segment:write" "agent:measure:write"}
                      (registry/registered-scopes))))
-  (testing "GHY-4137: the metabot sql-generation permission bucket covers both scopes via its wildcards"
-    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
+  (testing "GHY-4153/GHY-4154: the metabot NLQ permission bucket covers both scopes via its wildcards, alongside metric"
+    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
       (is (mcp.scope/matches? scopes "agent:segment:write"))
-      (is (mcp.scope/matches? scopes "agent:measure:write")))))
+      (is (mcp.scope/matches? scopes "agent:measure:write"))))
+  (testing "GHY-4153/GHY-4154: and the sql-generation bucket does not"
+    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
+      (is (not (mcp.scope/matches? scopes "agent:segment:write")))
+      (is (not (mcp.scope/matches? scopes "agent:measure:write"))))))
 
 (deftest ^:parallel tools-list-visibility-test
   (testing "GHY-4137: each tool is visible exactly to tokens carrying its scope"

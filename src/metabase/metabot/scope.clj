@@ -188,9 +188,11 @@
 (def ^:private perm-type->scopes
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
-  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"
+  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
+   ;; segment/measure are MBQL query macros authored while building queries, like metric — the NLQ
+   ;; bucket, not the raw-SQL one.
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"
                                         "agent:segment:*" "agent:measure:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
                                         "agent:notification:*" "agent:collection:*"}})
 

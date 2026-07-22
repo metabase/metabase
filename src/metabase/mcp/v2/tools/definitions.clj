@@ -213,6 +213,20 @@
                    (check-normalizable! kind definition)
                    definition))))
 
+(defn- check-table-match!
+  "On create, `table_id` is an explicit argument and a full-query `definition` also names its own
+   source table; when they disagree, fail loud rather than silently storing on the definition's
+   table (the `table_id` read check would also have been on the wrong table). The clause form is
+   built on `table`, so its source always matches and this never trips. Runs after
+   [[prepare-definition]], so the definition is already known to normalize."
+  [table definition]
+  (when-let [defn-table-id (lib/primary-source-table-id (lib-be/normalize-query definition))]
+    (when (not= defn-table-id (:id table))
+      (common/throw-teaching-error
+       (format (str "`table_id` (%d) and `definition`'s source table (%d) must be the same table. "
+                    "Pass table_id %d, or point `definition` at table %d.")
+               (:id table) defn-table-id defn-table-id (:id table))))))
+
 ;;; ---------------------------------------------- Error translation -----------------------------------------------
 
 (defn- humanized-messages
@@ -289,8 +303,8 @@
     [:maybe [:int {:description (str "Create only: numeric id of the table (tables have no entity_ids). Load-bearing "
                                      "when `definition` is the bare clause form — that form names no source, so the "
                                      "clauses are reassembled into a query on this table. When `definition` is a full "
-                                     "query it is advisory: the server derives the stored table from the definition's "
-                                     "source table and silently reconciles a mismatch in the definition's favor.")}]]]
+                                     "query, this must name the definition's own source table; a mismatch is a "
+                                     "teaching error, not silently reconciled.")}]]]
    [:name {:optional true}
     [:maybe [:string {:min 1 :description name-desc}]]]
    [:definition {:optional true}
@@ -331,8 +345,8 @@
   no hard delete). definition holds only filters and comes in either shape: the array of filter clauses get_content's
   \"definition\" include returns for a segment (the same clauses execute_query takes in stages[0].filters), which is
   reassembled onto table_id; or a full single-stage query, where MBQL 4 full queries and bare filter fragments are
-  auto-converted to MBQL 5 on write. Reads always return MBQL 5. For a full query the server derives the stored table
-  from definition's source table, reconciling any table_id mismatch in the definition's favor. Not admin-only:
+  auto-converted to MBQL 5 on write. Reads always return MBQL 5. For a full query table_id must name the definition's
+  own source table; a mismatch is a teaching error. Not admin-only:
   writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live
   in a read-only remote-synced collection."
   {:name  "segment_write"
@@ -345,7 +359,8 @@
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
             table      (resolve-table (:table_id body))
-            definition (prepare-definition :segment (:definition body) table)]
+            definition (prepare-definition :segment (:definition body) table)
+            _          (check-table-match! table definition)]
         (-> (run-domain-write #(segments.api/create-segment! {:name        (:name body)
                                                               :description (:description body)
                                                               :definition  definition}))
@@ -395,8 +410,7 @@
   get_content's \"definition\" include returns for a measure (the same clause execute_query takes in
   stages[0].aggregation), as the one-element array or the bare clause, which is reassembled onto table_id; or a full
   single-stage MBQL 5 query, where MBQL 4 is rejected with no auto-conversion (unlike segment_write). For a full query
-  the server derives the stored table from definition's source table, reconciling any table_id mismatch in the
-  definition's favor. Not admin-only: writing
+  table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only: writing
   requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live in a
   read-only remote-synced collection."
   {:name  "measure_write"
@@ -409,7 +423,8 @@
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
             table      (resolve-table (:table_id body))
-            definition (prepare-definition :measure (:definition body) table)]
+            definition (prepare-definition :measure (:definition body) table)
+            _          (check-table-match! table definition)]
         (-> (run-domain-write #(measures.api/create-measure! {:name        (:name body)
                                                               :description (:description body)
                                                               :definition  definition}))
