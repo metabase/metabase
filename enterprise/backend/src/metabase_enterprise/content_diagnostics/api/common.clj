@@ -183,6 +183,21 @@
                      :effective_ancestors (mapv #(select-keys % [:id :name]) (:effective_ancestors c))}]))
             colls))))
 
+(defn- readable-entities-where
+  "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
+  (the same gate as `visible-findings-clause`) always, plus the personal-collection exclusion when
+  `excluded-personal-ids` is provided. Extracted so the read-time gate lives in one place - a perms change
+  lands once."
+  [ids excluded-personal-ids]
+  [:and
+   [:in :id ids]
+   (collection/visible-collection-filter-clause :collection_id)
+   ;; root-collection entities (nil collection_id) must survive the NOT-IN.
+   (when excluded-personal-ids
+     [:or
+      [:= :collection_id nil]
+      [:not [:in :collection_id excluded-personal-ids]]])])
+
 (defn- hydrate-slow-entities
   "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw> :view_count <int>}}`. The
   read-time hydration of a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects.
@@ -190,23 +205,16 @@
   link/icon; `view_count` is the card's live usage counter. Batched.
 
   Culprit cards can live outside their container's collection, so the per-caller read-time filters are
-  re-applied here: caller visibility (the same gate as `visible-findings-clause`) always, and the
-  personal-collection exclusion when `excluded-personal-ids` is provided. A filtered-out culprit drops
-  out of `slow_entities` exactly like a deleted one."
+  re-applied here via [[readable-entities-where]]: caller visibility always, and the personal-collection
+  exclusion when `excluded-personal-ids` is provided. A filtered-out culprit drops out of `slow_entities`
+  exactly like a deleted one."
   [card-ids excluded-personal-ids]
   (when (seq card-ids)
     ;; `:card_schema` is required on any Card select - its after-select schema-upgrade hook reads it.
     (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)
                                :view_count (:view_count c)})
                       [:model/Card :id :name :type :view_count :card_schema]
-                      {:where [:and
-                               [:in :id (set card-ids)]
-                               (collection/visible-collection-filter-clause :collection_id)
-                               ;; root-collection culprits (nil collection_id) must survive the NOT-IN.
-                               (when excluded-personal-ids
-                                 [:or
-                                  [:= :collection_id nil]
-                                  [:not [:in :collection_id excluded-personal-ids]]])]})))
+                      {:where (readable-entities-where (set card-ids) excluded-personal-ids)})))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:
