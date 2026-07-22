@@ -168,8 +168,16 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("pencil").click();
     H.filterWidget({ isEditing: true, name: startsWith.name }).click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Remove").click();
+    // The sidebar's Remove button is disabled until the dashboard's
+    // subscriptions have loaded (it warns before archiving any bound to this
+    // filter). Target the button element itself — not its inner label — so
+    // Cypress's actionability check waits for it to become enabled; clicking
+    // the label span while the button is still disabled is a silent no-op, and
+    // the filter is never removed (metabase#17933).
+    cy.findByTestId("dashboard-parameter-sidebar")
+      .findByRole("button", { name: "Remove" })
+      .should("be.enabled")
+      .click();
     expectSearchParams({ [endsWith.slug]: "zmo" });
 
     H.saveDashboard();
