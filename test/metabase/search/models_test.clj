@@ -249,3 +249,18 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {id :id} {:name "Insert Capture E2E Card"}]
         (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str id))))))))
+
+(deftest ^:synchronized delete-metrics-test
+  (testing "purges land in the index-deletes counter (not index-updates) and message production is counted"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Card {id :id} {:name "Metrics Probe Card"}]
+          (let [value (fn [metric & [labels]] (or (mt/metric-value system metric labels) 0.0))
+                enqueued-before (value :metabase-search/index-messages-produced)
+                deletes-before  (value :metabase-search/index-deletes {:model "card"})
+                updates-before  (value :metabase-search/index-updates {:model "card"})]
+            (t2/delete! :model/Card id)
+            (is (< deletes-before (value :metabase-search/index-deletes {:model "card"})))
+            (is (< enqueued-before (value :metabase-search/index-messages-produced)))
+            (testing "the purge is not double-counted as an update"
+              (is (= updates-before (value :metabase-search/index-updates {:model "card"}))))))))))
