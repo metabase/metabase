@@ -251,11 +251,21 @@
   Returns `nil` if the target table is empty."
   [{:keys [query filter-column]}]
   (let [{:keys [base-type]} filter-column
-        v (some-> query qp/process-query :data :rows first first)]
+        [v cnt] (some-> query
+                        (lib/aggregate (lib/count))
+                        qp/process-query :data :rows first)
+        cnt (some-> cnt long)]
     ;; QP return values are lossy, we do a bit of parsing to ensure they're of the right
     ;; shape for reinsertion
     (cond
       (nil? v)
+      nil
+
+      ;; Some databases (e.g. ClickHouse) return the column type's default value (0, epoch, ...)
+      ;; instead of NULL for `max()` over an empty relation when the column is non-nullable. Only
+      ;; trust the max when the count from the same scan says there were rows, otherwise the
+      ;; checkpoint would silently regress and the next run would reprocess already-seen rows.
+      (and cnt (zero? cnt))
       nil
 
       (isa? base-type :type/Integer)
