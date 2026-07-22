@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.contextual-interestingness.llm :as contextual-interestingness.llm]
+   [metabase.interestingness.core :as interestingness]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
@@ -242,6 +243,47 @@
 (defn- message-content
   [messages role]
   (some #(when (= role (:role %)) (:content %)) messages))
+
+(deftest build-user-message-reuses-precomputed-stats-test
+  (testing "when the caller already has chart stats, the prompt is built from them without recomputing"
+    ;; The explorations runner computes deep stats for every chart it persists; the scorer used to
+    ;; throw those away and run the whole stats pipeline again (shallow) just to render the prompt.
+    (let [real-compute interestingness/compute-chart-stats
+          stats        (real-compute chart-config {:deep? true})
+          computes     (atom 0)]
+      (with-redefs [interestingness/compute-chart-stats
+                    (fn [config opts] (swap! computes inc) (real-compute config opts))]
+        (let [msg (#'contextual-interestingness.llm/build-user-message
+                   {:chart-config   chart-config
+                    :context-string "Why is revenue down this month?"
+                    :stats          stats})]
+          (is (zero? @computes) "supplied stats must not be recomputed")
+          (is (str/includes? msg "Revenue by month")
+              "the chart is still rendered into the prompt"))))))
+
+(deftest build-user-message-computes-stats-when-not-supplied-test
+  (testing "callers that pass no :stats still get a stats-backed representation"
+    (let [real-compute interestingness/compute-chart-stats
+          computes     (atom 0)]
+      (with-redefs [interestingness/compute-chart-stats
+                    (fn [config opts] (swap! computes inc) (real-compute config opts))]
+        (let [msg (#'contextual-interestingness.llm/build-user-message
+                   {:chart-config   chart-config
+                    :context-string "Why is revenue down this month?"})]
+          (is (= 1 @computes))
+          (is (str/includes? msg "Revenue by month")))))))
+
+(deftest score-and-describe-threads-stats-to-the-prompt-test
+  (testing ":stats passed to the public entry point reaches the prompt builder"
+    (let [real-compute interestingness/compute-chart-stats
+          computes     (atom 0)]
+      (with-redefs [interestingness/compute-chart-stats
+                    (fn [config opts] (swap! computes inc) (real-compute config opts))]
+        (let [stats (real-compute chart-config {:deep? true})]
+          (reset! computes 0)
+          (is (some? (message-content (captured-messages! {:stats stats}) "user")))
+          (is (zero? @computes)
+              "the public seam must forward :stats rather than recompute"))))))
 
 (deftest score-and-describe-sql-input-routes-into-prompt-test
   (testing "Provided :sql shows up in the user message handed to the LLM"

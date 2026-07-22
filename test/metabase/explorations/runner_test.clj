@@ -170,6 +170,26 @@
                                       :exploration_query_id (:id row))]
             (is (= 0.73 (:contextual_interestingness_score result)))))))))
 
+(deftest run-one-iteration-hands-computed-stats-to-the-scorer-test
+  (testing "The deep stats the runner already computed are handed to the contextual scorer, not recomputed"
+    (mt/with-temp [:model/User u {:email "ctx-stats@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u) "Why are venue counts dropping in this region?")
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
+            seen   (atom nil)]
+        (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
+                                    (fn [inputs] (reset! seen inputs) {:score 0.5})]
+          (drain-until-terminal! (:id row))
+          (let [result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))]
+            (is (some? (:stats @seen))
+                "the scorer receives the already-computed stats")
+            (is (= (:chart_stats result) (:stats @seen))
+                "and they are the same deep stats persisted on the result row")))))))
+
 (deftest run-one-iteration-skips-contextual-when-prompt-blank-test
   (testing "Threads with no prompt → contextual_interestingness_score is nil and the lego is not called"
     (mt/with-temp [:model/User u {:email "ctx-noprompt@example.com"}

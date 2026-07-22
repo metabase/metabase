@@ -51,6 +51,10 @@
   Inputs:
     `:chart-config`     — same shape as `chart-interestingness` consumes. Required.
     `:context-string`   — user's natural-language question. Required (blank → nil out).
+    `:stats`            — optional already-computed `compute-chart-stats` result for
+                          `chart-config`. Pass it when you have one: it's what the prompt's
+                          chart block is rendered from, so supplying it skips recomputing the
+                          stats pipeline. Omitted → shallow stats are computed here.
     `:card-description` — optional already-authored metric description. When present, the
                           model is instructed not to regenerate it; `:metric-description`
                           in the response is always nil.

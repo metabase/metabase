@@ -274,11 +274,15 @@
   than throw, leaving the EQR row's contextual fields nil — same fail-soft
   contract as `safe-score`.
 
+  `stats` are the deep stats [[safe-deep-stats]] already computed for this chart; handing
+  them over means the scorer renders its prompt from them instead of re-running the whole
+  stats pipeline. Nil-safe — the scorer computes its own when we have none.
+
   Returns nil whenever scoring isn't applicable (no prompt, no chart-config, no
   creator) or anything throws — so a scoring failure can never break the query
   lifecycle. The cheap gates run before [[build-score-context]]'s DB reads and
   SQL compile, so non-applicable charts cost nothing here."
-  [exploration-query chart-config creator-id]
+  [exploration-query chart-config stats creator-id]
   (try
     (when-let [thread-id (and chart-config (:exploration_thread_id exploration-query))]
       (if (nil? creator-id)
@@ -290,6 +294,7 @@
               (request/with-current-user creator-id
                 (when-let [result (some-> (contextual-interestingness/score-and-describe-chart
                                            {:chart-config     chart-config
+                                            :stats            stats
                                             :card-description card-description
                                             :chart-slicing    (slicing-note exploration-query)
                                             :sql              sql
@@ -350,7 +355,7 @@
      :token      token
      :stats      stats
      :score      (safe-score row chart-config stats)
-     :ctx        (safe-score+describe row chart-config creator-id)}))
+     :ctx        (safe-score+describe row chart-config stats creator-id)}))
 
 (defn- persist-query-result!
   "Write what [[compute-query-result]] produced and flip the query to `done` transactionally.

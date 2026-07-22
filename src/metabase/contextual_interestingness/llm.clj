@@ -109,22 +109,25 @@ Always return a single object matching the supplied schema. Do not respond with 
 (def ^:private max-tokens 1024)
 
 (defn- chart->representation
-  "Humanize the chart's stats into a markdown blob the LLM can read. Uses
-  shallow stats (`:deep? false`) to keep prompt size bounded — we don't need
-  the per-segment depth that interactive analysis uses."
-  [chart-config]
-  (let [stats (interestingness/compute-chart-stats chart-config {:deep? false})]
-    (interestingness/generate-representation
-     {:title           (:title chart-config)
-      :display-type    (:display_type chart-config)
-      :stats           stats
-      :timeline-events (:timeline_events chart-config)})))
+  "Humanize the chart's stats into a markdown blob the LLM can read.
+
+  `stats`, when the caller already has them, are reused as-is: the explorations runner
+  computes deep stats for every chart it persists, and re-running the whole stats pipeline
+  here just to render the prompt is duplicated work — and drops the notable moments the
+  rubric asks the model to reason about. Callers with nothing precomputed fall back to
+  shallow stats (`:deep? false`), which keeps a one-off scoring prompt bounded."
+  [chart-config stats]
+  (interestingness/generate-representation
+   {:title           (:title chart-config)
+    :display-type    (:display_type chart-config)
+    :stats           (or stats (interestingness/compute-chart-stats chart-config {:deep? false}))
+    :timeline-events (:timeline_events chart-config)}))
 
 (defn- build-user-message
   "The data half of the prompt. Carries no instructions of its own — those live in
   [[rubric-preamble]] on the system channel — and every variable part is fenced by
   [[data-block]]."
-  [{:keys [chart-config card-description chart-slicing sql context-string]}]
+  [{:keys [chart-config card-description chart-slicing sql context-string stats]}]
   (str "USER QUESTION:\n" (data-block "user_question" context-string)
        "\n\n---\n\nCHART:\n"
        (when-not (str/blank? card-description)
@@ -133,7 +136,7 @@ Always return a single object matching the supplied schema. Do not respond with 
        (when-not (str/blank? chart-slicing)
          (str "Slicing (this chart is a specific cut of the metric — name it in chart_description):\n"
               (data-block "chart_slicing" chart-slicing) "\n\n"))
-       (data-block "chart" (chart->representation chart-config))
+       (data-block "chart" (chart->representation chart-config stats))
        (when-not (str/blank? sql)
          (str "\n\nCOMPILED SQL (for semantic context — read filters, joins, aggregation):\n"
               (data-block "compiled_sql" sql)))))

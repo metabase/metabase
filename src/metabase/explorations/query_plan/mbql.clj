@@ -115,22 +115,31 @@
         (when (pos-int? id-or-name)
           id-or-name)))))
 
-(defn extract-default-temporal-breakout-col
-  "If the metric Card's `dataset_query` carries a temporal breakout (its default
-  temporal dimension, e.g. `created_at` bucketed by `:month`), resolve the
-  breakout against the query's visible columns and return
-  `[col raw-unit display-name]`. Returns `nil` if no temporal breakout exists,
-  the column can't be resolved, or column resolution throws. The raw unit may
-  be `nil` if the metric breakout was unbucketed."
-  [mp card-dataset-query]
+(defn default-temporal-breakout-col
+  "If `base-query` carries a temporal breakout (the metric's default temporal
+  dimension, e.g. `created_at` bucketed by `:month`), resolve the breakout against
+  the query's visible columns and return `[col raw-unit display-name]`. Returns
+  `nil` if no temporal breakout exists, the column can't be resolved, or column
+  resolution throws. The raw unit may be `nil` if the metric breakout was unbucketed.
+
+  Prefer this over [[extract-default-temporal-breakout-col]] when the caller already
+  holds the Lib query — building one is the expensive half."
+  [base-query]
   (try
-    (let [base-query (lib/query mp card-dataset-query)
-          cols       (lib/visible-columns base-query)]
+    (let [cols (lib/visible-columns base-query)]
       (some (fn [bo]
               (when-let [col (lib/find-matching-column bo cols)]
                 (when (lib.types.isa/temporal? col)
                   [col (lib/raw-temporal-bucket bo) (lib/display-name base-query col)])))
             (lib/breakouts base-query)))
+    (catch Exception _ nil)))
+
+(defn extract-default-temporal-breakout-col
+  "[[default-temporal-breakout-col]] for callers holding a metric Card's `dataset_query`
+  rather than a built Lib query. Returns `nil` when the query can't be normalized."
+  [mp card-dataset-query]
+  (try
+    (default-temporal-breakout-col (lib/query mp card-dataset-query))
     (catch Exception _ nil)))
 
 (defn dim-fingerprint-distinct-count

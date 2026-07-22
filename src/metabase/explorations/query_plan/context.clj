@@ -25,28 +25,29 @@
 (defn- aggregation-summary
   "Compact human label for a metric's aggregation — e.g. `count(*)`,
   `sum(revenue)`, `avg(latency_ms)`. Falls back to a generic `aggregation`
-  string when the dataset query can't be normalized."
-  [mp dataset-query]
-  (try
-    (let [base (lib/query mp dataset-query)
-          agg  (first (lib/aggregations base))]
-      (if agg
-        (lib/display-name base agg)
-        "aggregation"))
-    (catch Exception _ "aggregation")))
+  string when `base-query` is nil (the dataset query couldn't be normalized) or
+  carries no readable aggregation."
+  [base-query]
+  (or (when base-query
+        (try
+          (when-let [agg (first (lib/aggregations base-query))]
+            (lib/display-name base-query agg))
+          (catch Exception _ nil)))
+      "aggregation"))
 
 (defn- segment-blurbs
   "List of `{:id :name :description}` for the metric Card's available segments,
-  resolved against its `dataset_query`. Empty when none."
-  [mp dataset-query]
-  (try
-    (let [q (lib/query mp dataset-query)]
+  resolved against `base-query`. Empty when none."
+  [base-query]
+  (if base-query
+    (try
       (mapv (fn [seg]
               {:id          (:id seg)
                :name        (:name seg)
                :description (:description seg)})
-            (lib/available-segments q)))
-    (catch Exception _ [])))
+            (lib/available-segments base-query))
+      (catch Exception _ []))
+    []))
 
 (defn- column-fingerprint-for-target
   "Resolve `target` against `base-query`'s breakoutable columns and return the
@@ -69,14 +70,14 @@
   is enriched with the resolved column's `:fingerprint`, looked up through
   the metadata provider — bare thread-dim rows don't store fingerprints, so
   categorical-cardinality probes have nothing to read without this lookup."
-  [dim-by-id metric mp card-dataset-query]
+  [dim-by-id metric base-query]
   (let [mappings (:dimension_mappings metric)
-        base    (try (lib/query mp card-dataset-query) (catch Exception _ nil))
-        columns (when base (lib/breakoutable-columns base))]
+        columns  (when base-query (lib/breakoutable-columns base-query))]
     (into {}
           (keep (fn [[dim-id dim]]
                   (when-let [target (qp.mbql/find-dimension-target dim-id mappings)]
-                    (let [fp   (when base (column-fingerprint-for-target base columns target))
+                    (let [fp   (when base-query
+                                 (column-fingerprint-for-target base-query columns target))
                           dim' (cond-> dim fp (assoc :fingerprint fp))]
                       [dim-id {:target target :dim dim'}]))))
           dim-by-id)))
@@ -87,11 +88,12 @@
   applicability, so the planners and the variant builders see the same
   enrichment."
   [tm card mp dim-by-id]
-  (let [dataset-query        (:dataset_query card)
+  (let [base-query           (try (lib/query mp (:dataset_query card)) (catch Exception _ nil))
         card-dims            (u/index-by :id (:dimensions card))
         enriched-thread-dims (update-vals dim-by-id #(block/enrich-with-card-group % card-dims))
-        appl                 (applicability enriched-thread-dims tm mp dataset-query)
-        default-temp         (qp.mbql/extract-default-temporal-breakout-col mp dataset-query)]
+        appl                 (applicability enriched-thread-dims tm base-query)
+        default-temp         (when base-query
+                               (qp.mbql/default-temporal-breakout-col base-query))]
     {:metric-id                         (:card_id tm)
      :card                              card
      :mp                                mp
@@ -99,11 +101,12 @@
      :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
                                           {:column display-name
                                            :unit   (some-> unit name)})
-     :segments                          (segment-blurbs mp dataset-query)
+     :segments                          (segment-blurbs base-query)
      :name                              (:name card)
      :description                       (some-> (:description card) str/trim not-empty)
-     :aggregation                       (aggregation-summary mp dataset-query)
-     :result-column-name                (metrics/aggregation-column-name (:database_id card) dataset-query)}))
+     :aggregation                       (aggregation-summary base-query)
+     :result-column-name                (when base-query
+                                          (metrics/query-aggregation-column-name base-query))}))
 
 (defn- block-context
   "Per-block entry for [[metric-and-dim-context]]'s `:blocks` list. Hydrates this block's

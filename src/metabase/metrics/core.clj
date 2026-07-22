@@ -33,17 +33,25 @@
 
 ;;; ------------------------------------------------- Query Utilities -------------------------------------------------
 
+(defn query-aggregation-column-name
+  "Extract the result column name for the first aggregation in an already-built Lib `query`.
+   Prefer this over [[aggregation-column-name]] when the caller already holds the query —
+   normalizing a `dataset_query` into a Lib query is the expensive half."
+  [query]
+  (try
+    (->> (lib/returned-columns query)
+         (filter lib/aggregation-sourced?)
+         first
+         :name)
+    (catch Exception _ nil)))
+
 (defn aggregation-column-name
   "Extract the result column name for the first aggregation in a query.
    `database-id` is the ID of the database, `query-map` is the dataset_query or definition."
   [database-id query-map]
   (try
-    (let [mp    (lib-be/application-database-metadata-provider database-id)
-          query (lib/query mp query-map)
-          agg   (->> (lib/returned-columns query)
-                     (filter lib/aggregation-sourced?)
-                     first)]
-      (:name agg))
+    (query-aggregation-column-name
+     (lib/query (lib-be/application-database-metadata-provider database-id) query-map))
     (catch Exception _ nil)))
 
 ;;; ------------------------------------------------- Persistence Multimethod -------------------------------------------------
