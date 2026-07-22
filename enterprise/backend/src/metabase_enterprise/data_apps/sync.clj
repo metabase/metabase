@@ -72,9 +72,9 @@
       (if-let [content (read-file config-path)]
         (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
           {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
-        {:slug name, :config-error (tru "Could not read {0}." config-path)})
+        {:slug (data-app.config/dir-slug dir), :config-error (tru "Could not read {0}." config-path)})
       (catch Throwable e
-        {:slug name, :config-error (ex-message e)}))))
+        {:slug (data-app.config/dir-slug dir), :config-error (ex-message e)}))))
 
 ;;; ----------------------------------------------------- Materialize -----------------------------------------------------
 
