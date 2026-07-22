@@ -1268,6 +1268,7 @@
            collections
            config
            dashboards
+           dashboards-rest
            documents
            eid-translation
            lib
