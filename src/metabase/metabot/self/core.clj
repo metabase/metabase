@@ -154,10 +154,14 @@
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
                                        (str/join ""))}
-    :tool-input-start      {:type      :tool-input
-                            :id        (:toolCallId chunk)
-                            :function  (:toolName chunk)
-                            :arguments (parse-tool-arguments chunks)}
+    ;; The chunk's AI SDK v5 :providerMetadata passes through (as kebab-case, like the other part
+    ;; keys) so provider-specific state a replay needs — e.g. Gemini thought signatures — survives
+    ;; into the part an adapter later converts back.
+    :tool-input-start      (cond-> {:type      :tool-input
+                                    :id        (:toolCallId chunk)
+                                    :function  (:toolName chunk)
+                                    :arguments (parse-tool-arguments chunks)}
+                             (:providerMetadata chunk) (assoc :provider-metadata (:providerMetadata chunk)))
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)

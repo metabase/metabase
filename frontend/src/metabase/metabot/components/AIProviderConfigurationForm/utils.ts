@@ -61,6 +61,14 @@ export function getProviderOptions(
           "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
       },
     },
+    google: {
+      value: "google",
+      label: "Google Gemini Enterprise",
+      apiKey: {
+        placeholder: "AIza...",
+        addKeyUrl: "https://console.cloud.google.com/apis/credentials",
+      },
+    },
     openai: {
       value: "openai",
       label: "OpenAI",
@@ -82,7 +90,7 @@ export function getProviderOptions(
 
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
-  "metabase" | "azure" | "bedrock"
+  "metabase" | "azure" | "bedrock" | "google"
 >;
 
 export function isMetabotProvider(
@@ -96,6 +104,7 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "anthropic" ||
     provider === "azure" ||
     provider === "bedrock" ||
+    provider === "google" ||
     provider === "metabase" ||
     provider === "openai" ||
     provider === "openrouter"

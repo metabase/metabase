@@ -355,3 +355,74 @@
              (metabot.settings/configured-provider-credentials "anthropic"))))
     (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
       (is (nil? (metabot.settings/configured-provider-credentials "anthropic"))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-google-test
+  (testing "accepts google provider strings with a model name"
+    (mt/with-temporary-setting-values [llm-metabot-provider "google/gemini-3.5-flash"]
+      (is (= "google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))))
+
+(deftest metabot-configured-with-google-credentials-test
+  (testing "returns true when google has an API key and project ID set — the location is optional"
+    (mt/with-temporary-setting-values [llm-metabot-provider  "google/gemini-3.5-flash"
+                                       llm-google-api-key    "AIzaTestKey"
+                                       llm-google-project-id "my-project"
+                                       llm-google-location   nil]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-with-no-google-credentials-test
+  (testing "returns false when google has no API key"
+    (mt/with-temporary-setting-values [llm-metabot-provider "google/gemini-3.5-flash"
+                                       llm-google-api-key   nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-google-without-project-id-test
+  (testing "returns false when google has an API key but no project ID"
+    (mt/with-temporary-setting-values [llm-metabot-provider  "google/gemini-3.5-flash"
+                                       llm-google-api-key    "AIzaTestKey"
+                                       llm-google-project-id nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest configured-provider-credentials-google-fully-configured-test
+  (testing "returns the api-key/project-id/location credentials map when google is fully configured"
+    (mt/with-temporary-setting-values [llm-google-api-key    "AIzaTestKey"
+                                       llm-google-project-id "my-project"
+                                       llm-google-location   "us-central1"]
+      (is (= {:api-key    "AIzaTestKey"
+              :project-id "my-project"
+              :location   "us-central1"}
+             (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest configured-provider-credentials-google-nil-location-test
+  (testing "the location is optional — a nil location still yields a configured credentials map"
+    (mt/with-temporary-setting-values [llm-google-api-key    "AIzaTestKey"
+                                       llm-google-project-id "my-project"
+                                       llm-google-location   nil]
+      (is (= {:api-key    "AIzaTestKey"
+              :project-id "my-project"
+              :location   nil}
+             (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest configured-provider-credentials-google-missing-project-id-test
+  (testing "returns nil when google has an API key but no project ID"
+    (mt/with-temporary-setting-values [llm-google-api-key    "AIzaTestKey"
+                                       llm-google-project-id nil]
+      (is (nil? (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest configured-provider-credentials-google-missing-key-test
+  (testing "returns nil when google has a project ID but no API key"
+    (mt/with-temporary-setting-values [llm-google-api-key    nil
+                                       llm-google-project-id "my-project"]
+      (is (nil? (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest provider-credentials-complete?-google-test
+  (testing "google credentials are complete with a non-blank API key and project ID; the location is optional"
+    (is (true? (metabot.settings/provider-credentials-complete?
+                "google"
+                {:api-key "AIzaTestKey" :project-id "my-project"})))
+    (is (true? (metabot.settings/provider-credentials-complete?
+                "google"
+                {:api-key "AIzaTestKey" :project-id "my-project" :location "us-central1"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "google" {:api-key "AIzaTestKey"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "google" {:api-key "  " :project-id "my-project"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "google" {:project-id "my-project"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "google" nil)))))

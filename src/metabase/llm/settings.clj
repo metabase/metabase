@@ -25,6 +25,14 @@
   [setting-key new-value]
   (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
 
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
+  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
+  [value]
+  (some-> (trimmed-string value)
+          (str/replace #"/+$" "")
+          not-empty))
+
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]
   (let [trimmed (trimmed-string new-value)]
@@ -134,6 +142,45 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
+;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Requests are always scoped to a
+;;; Google Cloud project: the project ID is required, the location optional (default `global`).
+
+(defsetting llm-google-api-key
+  (deferred-tru "The Google Cloud credential for the Gemini Enterprise Agent Platform: an API key (AIza…) or a short-lived OAuth access token (e.g. from `gcloud auth print-access-token`).")
+  ;; Accepts two credential shapes, so unlike the other direct-provider keys there is no prefix validation.
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-google-api-key))
+
+(defsetting llm-google-project-id
+  (deferred-tru "The Google Cloud project ID for the Gemini Enterprise Agent Platform.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-google-project-id))
+
+(defsetting llm-google-location
+  (deferred-tru "The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global. Regional locations also need the matching regional API base URL.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-google-location))
+
+(defsetting llm-google-api-base-url
+  (deferred-tru "The Gemini Enterprise Agent Platform API base URL.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "https://aiplatform.googleapis.com"
+  :export?     false
+  :doc         false
+  :setter      (fn [new-value]
+                 (setting/set-value-of-type! :string :llm-google-api-base-url (normalize-llm-base-url new-value))))
+
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
@@ -196,14 +243,6 @@
   :export?     false
   :doc         false
   :setter      (partial set-trimmed-string! :llm-azure-api-key))
-
-(defn normalize-llm-base-url
-  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
-  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
-  [value]
-  (some-> (trimmed-string value)
-          (str/replace #"/+$" "")
-          not-empty))
 
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. https://<resource>.services.ai.azure.com/openai.")

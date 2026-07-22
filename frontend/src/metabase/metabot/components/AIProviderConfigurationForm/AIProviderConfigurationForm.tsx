@@ -22,6 +22,7 @@ import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext
 import { ApiKeyProviderFields } from "./ApiKeyProviderFields";
 import { AzureProviderFields } from "./AzureProviderFields";
 import { BedrockProviderFields } from "./BedrockProviderFields";
+import { GoogleProviderFields } from "./GoogleProviderFields";
 import {
   API_KEY_SETTING_BY_PROVIDER,
   getProviderOptions,
@@ -98,7 +99,8 @@ export function AIProviderConfigurationForm({
     if (
       connectedProvider !== "metabase" &&
       connectedProvider !== "bedrock" &&
-      connectedProvider !== "azure"
+      connectedProvider !== "azure" &&
+      connectedProvider !== "google"
     ) {
       const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[connectedProvider];
       const apiKeySetting = providerApiKeyDetails[apiKeySettingKey];
@@ -109,10 +111,14 @@ export function AIProviderConfigurationForm({
     }
 
     try {
-      if (connectedProvider === "bedrock" || connectedProvider === "azure") {
-        // Bedrock and Azure key material spans several settings; an explicit
-        // `credentials: null` clears them all in one call. It runs before the provider
-        // is deselected so a failure can't leave saved keys behind.
+      if (
+        connectedProvider === "bedrock" ||
+        connectedProvider === "azure" ||
+        connectedProvider === "google"
+      ) {
+        // Bedrock, Azure, and Google spread key material across several settings; an
+        // explicit `credentials: null` clears them all in one call. It runs before the
+        // provider is deselected so a failure can't leave saved keys behind.
         await updateMetabotSettings({
           provider: connectedProvider,
           credentials: null,
@@ -264,6 +270,13 @@ export function AIProviderConfigurationForm({
           ))
           .with("bedrock", () => (
             <BedrockProviderFields
+              connectedModel={connectedModel}
+              isCurrentConfigured={isCurrentConfigured}
+              isEnvSetting={isEnvSetting}
+            />
+          ))
+          .with("google", () => (
+            <GoogleProviderFields
               connectedModel={connectedModel}
               isCurrentConfigured={isCurrentConfigured}
               isEnvSetting={isEnvSetting}

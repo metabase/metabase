@@ -2280,3 +2280,163 @@
         (is (= {:value  "azure/anthropic/claude-sonnet-4-5"
                 :models []}
                (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "azure")))))))
+
+;;; ------------------------------------------------ google settings PUT/GET ------------------------------------
+
+(deftest settings-put-saves-google-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-google-api-key    nil
+                                mb-llm-google-project-id nil
+                                mb-llm-google-location   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-api-key       nil
+                                       llm.settings/llm-google-project-id    nil
+                                       llm.settings/llm-google-location      nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                             (is (= "google" provider))
+                                                             (is (= {:api-key    "AIzaSecretKey"
+                                                                     :project-id "my-project"
+                                                                     :location   "us-central1"}
+                                                                    credentials)
+                                                                 "validation runs against the resolved request credentials")
+                                                             (is (nil? (llm.settings/llm-google-api-key))
+                                                                 "validation should happen before saving the credentials")
+                                                             {:models []})]
+        (testing "connecting google saves the credentials and the composed provider/model value"
+          (is (=? {:value  "google/gemini-3.5-flash"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "gemini-3.5-flash"
+                                         :credentials {:api-key    "AIzaSecretKey"
+                                                       :project-id "my-project"
+                                                       :location   "us-central1"}}))))
+        (is (= "AIzaSecretKey" (llm.settings/llm-google-api-key)))
+        (is (= "my-project" (llm.settings/llm-google-project-id)))
+        (is (= "us-central1" (llm.settings/llm-google-location)))))))
+
+(deftest settings-put-google-rejects-missing-project-id-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-google-api-key    nil
+                                mb-llm-google-project-id nil
+                                mb-llm-google-location   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-api-key       nil
+                                       llm.settings/llm-google-project-id    nil
+                                       llm.settings/llm-google-location      nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (testing "an API key without a project ID fails before validation and nothing is saved"
+        (is (=? {:message      "A Google Cloud API key and project ID are required."
+                 :missing-keys ["project-id"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "google"
+                                       :model       "gemini-3.5-flash"
+                                       :credentials {:api-key "AIzaSecretKey"}})))
+        (is (nil? (llm.settings/llm-google-api-key)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-google-rejects-missing-api-key-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-google-api-key    nil
+                                mb-llm-google-project-id nil
+                                mb-llm-google-location   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-api-key       nil
+                                       llm.settings/llm-google-project-id    nil
+                                       llm.settings/llm-google-location      nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (testing "credentials without an API key fail before validation and nothing is saved"
+        (is (=? {:message      "A Google Cloud API key and project ID are required."
+                 :missing-keys ["api-key"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "google"
+                                       :model       "gemini-3.5-flash"
+                                       :credentials {:project-id "my-project"}})))
+        (is (nil? (llm.settings/llm-google-project-id)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-google-key-rotation-keeps-project-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-google-api-key    nil
+                                mb-llm-google-project-id nil
+                                mb-llm-google-location   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-api-key       "AIzaOldKey"
+                                       llm.settings/llm-google-project-id    "my-project"
+                                       llm.settings/llm-google-location      "us-central1"
+                                       metabot.settings/llm-metabot-provider "google/gemini-3.5-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (is (= {:api-key    "AIzaNewKey"
+                                                                     :project-id "my-project"
+                                                                     :location   "us-central1"}
+                                                                    credentials)
+                                                                 "the new key is layered over the saved project and location")
+                                                             {:models []})]
+        (is (=? {:value "google/gemini-3.5-flash"}
+                (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                      {:provider    "google"
+                                       :credentials {:api-key "AIzaNewKey"}})))
+        (is (= "AIzaNewKey" (llm.settings/llm-google-api-key)))
+        (is (= "my-project" (llm.settings/llm-google-project-id)))
+        (is (= "us-central1" (llm.settings/llm-google-location)))))))
+
+(deftest settings-put-google-clears-location-only-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-google-api-key    nil
+                                mb-llm-google-project-id nil
+                                mb-llm-google-location   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-api-key       "AIzaSecretKey"
+                                       llm.settings/llm-google-project-id    "my-project"
+                                       llm.settings/llm-google-location      "us-central1"
+                                       metabot.settings/llm-metabot-provider "google/gemini-3.5-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (is (= {:api-key    "AIzaSecretKey"
+                                                                     :project-id "my-project"
+                                                                     :location   nil}
+                                                                    credentials)
+                                                                 "an explicit nil location field clears it (back to the global location)")
+                                                             {:models []})]
+        (is (=? {:value "google/gemini-3.5-flash"}
+                (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                      {:provider    "google"
+                                       :credentials {:location nil}})))
+        (is (= "AIzaSecretKey" (llm.settings/llm-google-api-key)))
+        (is (= "my-project" (llm.settings/llm-google-project-id)))
+        (is (nil? (llm.settings/llm-google-location)))))))
+
+(deftest settings-put-google-rejects-clearing-project-id-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-google-api-key    nil
+                                mb-llm-google-project-id nil
+                                mb-llm-google-location   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-api-key       "AIzaSecretKey"
+                                       llm.settings/llm-google-project-id    "my-project"
+                                       llm.settings/llm-google-location      "us-central1"
+                                       metabot.settings/llm-metabot-provider "google/gemini-3.5-flash"]
+      (testing "an explicit nil project ID leaves incomplete credentials and is rejected; nothing changes"
+        (is (=? {:message      "A Google Cloud API key and project ID are required."
+                 :missing-keys ["project-id"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "google"
+                                       :credentials {:project-id nil}})))
+        (is (= "AIzaSecretKey" (llm.settings/llm-google-api-key)))
+        (is (= "my-project" (llm.settings/llm-google-project-id)))
+        (is (= "us-central1" (llm.settings/llm-google-location)))))))
+
+(deftest settings-put-nil-google-credentials-clears-saved-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-google-api-key    nil
+                                mb-llm-google-project-id nil
+                                mb-llm-google-location   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-api-key       "AIzaSecretKey"
+                                       llm.settings/llm-google-project-id    "my-project"
+                                       llm.settings/llm-google-location      "us-central1"
+                                       metabot.settings/llm-metabot-provider "google/gemini-3.5-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                             (is false (str "unexpected list-models call: " provider)))]
+        (testing "an explicit nil credentials clears all saved settings without validating against them"
+          (is (=? {:value  "google/gemini-3.5-flash"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :credentials nil})))
+          (is (nil? (llm.settings/llm-google-api-key)))
+          (is (nil? (llm.settings/llm-google-project-id)))
+          (is (nil? (llm.settings/llm-google-location))))))))
