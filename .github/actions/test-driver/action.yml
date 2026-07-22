@@ -23,6 +23,13 @@ inputs:
     default: ""
     description: >-
       Configured status for this driver ("info", "skip", "required", or empty), as reported by `mage driver-decisions`.
+  granular-rerun:
+    required: false
+    default: "true"
+    description: >-
+      When "true" (default), a re-run of a failed job runs only the tests that failed on the
+      previous attempt (hawk `:only`). Stress workflows set this to "false": they intentionally
+      run a fixed test set `:times N`, and narrowing to failures would drop that repetition.
 
 outputs:
   test-outcome:
@@ -54,7 +61,7 @@ runs:
     # missing/empty artifact leaves no file and the run falls back to the full
     # suite. First attempts skip this entirely.
     - name: Restore previously-failed tests
-      if: ${{ github.run_attempt != '1' }}
+      if: ${{ inputs.granular-rerun == 'true' && github.run_attempt != '1' }}
       continue-on-error: true
       uses: actions/download-artifact@v8
       with:
@@ -69,7 +76,7 @@ runs:
       # vector reaches clojure -X as a single argument.
       run: |
         BASE="clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
-        if [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
+        if [ "${{ inputs.granular-rerun }}" = "true" ] && [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
           echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
           $BASE :only "$(cat target/failed-tests)"
         else
@@ -96,13 +103,13 @@ runs:
     # writes nothing unless every failure is attributable to a var, so an
     # unattributable failure falls back to a full rerun.
     - name: Collect failed tests for rerun
-      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      if: ${{ inputs.granular-rerun == 'true' && !cancelled() && steps.run-test.outcome == 'failure' }}
       continue-on-error: true
       shell: bash
       run: bun release/ci-conductor/src/collect-failed-backend.ts
 
     - name: Upload failed tests for rerun
-      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      if: ${{ inputs.granular-rerun == 'true' && !cancelled() && steps.run-test.outcome == 'failure' }}
       continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
