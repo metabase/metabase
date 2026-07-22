@@ -104,7 +104,7 @@
 (mu/defn make-routes :- ::api.macros/handler
   "Create the top-level Ring route handler for Metabase."
   [api-routes :- ::api.macros/handler]
-  ;; top-level non-/api routes (SPA shell, health, redirects) have no OpenAPI surface
+  ;; top-level routes defined outside the api.macros surface (SPA shell, health, redirects) have no OpenAPI metadata
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    auth-wrapper/routes
