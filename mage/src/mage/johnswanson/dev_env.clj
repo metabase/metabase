@@ -493,7 +493,7 @@
 
 (defn- generate-mise-local!
   "Generate mise.local.toml at the project root."
-  [slot {:keys [app-db with edition token h2-file config-file]}]
+  [slot {:keys [app-db with edition token h2-file config-file encryption-key]}]
   (let [wt-name     (worktree-name)
         ;; Track which CLI env var families the app-db already claimed
         pg-claimed?    (= app-db :postgres)
@@ -538,6 +538,10 @@
                   ;; Metabase config.yml (EE feature; preseeds users/dbs/settings)
                   config-file
                   (conj (str "MB_CONFIG_FILE_PATH = \"" config-file "\""))
+
+                  ;; Set MB_ENCRYPTION_SECRET_KEY
+                  encryption-key
+                  (conj (str "MB_ENCRYPTION_SECRET_KEY = \"" encryption-key "\""))
 
                   ;; App DB connection + CLI env vars
                   (= app-db :postgres)
@@ -788,7 +792,7 @@
 
 (defn- build-env
   "Assemble the env map for spawning backend/frontend processes."
-  [slot {:keys [app-db edition token h2-file config-file]}]
+  [slot {:keys [app-db edition token h2-file config-file encryption-key]}]
   (cond-> {"MB_JETTY_PORT"        (str (port-for :jetty slot))
            "MB_FRONTEND_DEV_PORT" (str (port-for :frontend-dev slot))
            "NREPL_PORT"           (str (port-for :nrepl slot))
@@ -808,6 +812,9 @@
 
     config-file
     (assoc "MB_CONFIG_FILE_PATH" config-file)
+
+    encryption-key
+    (assoc "MB_ENCRYPTION_SECRET_KEY" encryption-key)
 
     (= app-db :postgres)
     (assoc "MB_DB_TYPE" "postgres"
@@ -887,7 +894,7 @@
   [opts]
   (let [state (read-state-file)
         has-cli-overrides? (or (:edition opts) (:token opts) (:app-db opts)
-                               (seq (:with opts)) (:config-file opts))]
+                               (seq (:with opts)) (:config-file opts) (:encryption-key opts))]
     (when (and (:config state) (not has-cli-overrides?))
       (if (:non-interactive opts)
         ;; Non-interactive: silently reuse the saved config rather than prompting.
@@ -943,6 +950,7 @@
         (println "  --app-db DB      App database: h2, postgres, mysql, mariadb (default: prompt)")
         (println "  --with SERVICE   Warehouse service (repeatable)")
         (println "  --config-file PATH  Metabase config.yml to load (MB_CONFIG_FILE_PATH)")
+        (println "  --encryption-key KEY  Set MB_ENCRYPTION_SECRET_KEY")
         (println "  --slot SLOT      Override port slot (0-99)"))
 
     "add"
@@ -1391,13 +1399,18 @@
           config-file (if saved
                         (:config-file saved)
                         (select-config-file opts))
+          encryption-key (if saved
+                           (:encryption-key saved)
+                           (:encryption-key opts))
           slot        (compute-slot (:slot opts))
           config      (validate-services! {:app-db app-db :with with})
           full-config (cond-> (assoc config :edition edition :token token)
                         (= app-db :h2)
                         (assoc :h2-file (str target-project-directory "/local/mb-db"))
                         config-file
-                        (assoc :config-file config-file))
+                        (assoc :config-file config-file)
+                        encryption-key
+                        (assoc :encryption-key encryption-key))
           fresh?      (:fresh opts)]
       ;; Pre-flight: every port we'd bind must be free (or already ours)
       (preflight-port-checks! slot full-config opts)

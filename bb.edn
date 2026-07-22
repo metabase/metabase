@@ -610,6 +610,7 @@
               ["./bin/mage -johnswanson-dev-env up --no-backend" "Start containers only, no backend process"]
               ["./bin/mage -johnswanson-dev-env up --edition ee --token all-features --app-db h2 --with none" "Fully non-interactive: all flags specified"]
               ["./bin/mage -johnswanson-dev-env up --config-file ./local/configs/seed.yml" "Preseed users/dbs/settings from a config file"]
+              ["./bin/mage -johnswanson-dev-env up --encryption-key my-secret-key" "Set MB_ENCRYPTION_SECRET_KEY"]
               ["./bin/mage -johnswanson-dev-env up --non-interactive" "Reuse saved config without prompting"]
               ["./bin/mage -johnswanson-dev-env add mongo" "Add MongoDB warehouse to running env"]
               ["./bin/mage -johnswanson-dev-env logs" "Show last 100 lines from all log sources"]
@@ -634,6 +635,7 @@
              [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev, or 'none' to skip"
               :multi true :default [] :update-fn conj]
              [nil "--config-file PATH" "Metabase config.yml to load on backend start (MB_CONFIG_FILE_PATH)"]
+             [nil "--encryption-key KEY" "Set MB_ENCRYPTION_SECRET_KEY"]
              [nil "--non-interactive" "Never prompt. Fail if required flags are missing; treat missing --with as 'none'."]
              [nil "--no-frontend" "Skip frontend dev server"]
              [nil "--no-backend" "Skip backend process (containers + config only)"]
