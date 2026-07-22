@@ -10,16 +10,17 @@ import type { Dispatch } from "metabase/redux/store";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
-import type { Location } from "metabase/router";
-import { type InjectedRouteProps, withRouteProps } from "metabase/router";
+import {
+  type InjectedRouteProps,
+  type Location,
+  withRouteProps,
+} from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
-} from "../selectors";
 import {
+  type ReferenceRouteParams,
+  type ReferenceRouteProps,
+  type StateWithReference,
   getDatabase,
   getDatabaseId,
   getIsEditing,

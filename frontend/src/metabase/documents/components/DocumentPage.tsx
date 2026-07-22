@@ -38,9 +38,13 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import type { Location } from "metabase/router";
-import type { Route } from "metabase/router";
-import { Outlet, push, replace } from "metabase/router";
+import {
+  type Location,
+  Outlet,
+  type Route,
+  push,
+  replace,
+} from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";

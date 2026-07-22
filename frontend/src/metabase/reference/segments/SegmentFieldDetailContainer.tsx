@@ -7,16 +7,22 @@ import * as metadataActions from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import * as actions from "metabase/reference/reference";
 import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
-import type { Location } from "metabase/router";
-import { type InjectedRouteProps, withRouteProps } from "metabase/router";
+import {
+  type InjectedRouteProps,
+  type Location,
+  withRouteProps,
+} from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
+import {
+  type ReferenceRouteParams,
+  type ReferenceRouteProps,
+  type StateWithReference,
+  getField,
+  getIsEditing,
+  getSegment,
+  getSegmentId,
 } from "../selectors";
-import { getField, getIsEditing, getSegment, getSegmentId } from "../selectors";
 import type { StubbedField, StubbedSegment } from "../types";
 
 import SegmentFieldSidebar from "./SegmentFieldSidebar";

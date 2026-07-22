@@ -10,17 +10,23 @@ import type { Dispatch } from "metabase/redux/store";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import * as actions from "metabase/reference/reference";
 import { SegmentQuestions } from "metabase/reference/segments/SegmentQuestions";
-import type { Location } from "metabase/router";
-import { type InjectedRouteProps, withRouteProps } from "metabase/router";
+import {
+  type InjectedRouteProps,
+  type Location,
+  withRouteProps,
+} from "metabase/router";
 import type { User } from "metabase-types/api";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
+import {
+  type ReferenceRouteParams,
+  type ReferenceRouteProps,
+  type StateWithReference,
+  getIsEditing,
+  getSegment,
+  getSegmentId,
+  getUser,
 } from "../selectors";
-import { getIsEditing, getSegment, getSegmentId, getUser } from "../selectors";
 import type { StubbedSegment } from "../types";
 
 import SegmentSidebar from "./SegmentSidebar";

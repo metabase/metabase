@@ -39,7 +39,6 @@ export type Query<T = DefaultQuery> = T;
  * legacy route-prop readers were written against that; tightened when the
  * `state.routing` slice is thinned to the pure v7 shape (DEV-2290).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type LocationState = any;
 
 /**
@@ -66,7 +65,6 @@ export interface Location<Q = DefaultQuery> {
  * still be numbers or other primitives before serialization. Mirrors history@3's
  * `QueryLike`, distinct from the parsed `DefaultQuery` a `Location` carries.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryLike = Record<string, any>;
 
 /**

@@ -8,16 +8,20 @@ import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 import { SegmentList } from "metabase/reference/segments/SegmentList";
-import type { Location } from "metabase/router";
-import { type InjectedRouteProps, withRouteProps } from "metabase/router";
+import {
+  type InjectedRouteProps,
+  type Location,
+  withRouteProps,
+} from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
+import {
+  type ReferenceRouteParams,
+  type ReferenceRouteProps,
+  type StateWithReference,
+  getDatabaseId,
+  getIsEditing,
 } from "../selectors";
-import { getDatabaseId, getIsEditing } from "../selectors";
 
 const mapStateToProps = (
   state: StateWithReference,

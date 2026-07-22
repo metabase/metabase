@@ -7,17 +7,18 @@ import * as metadataActions from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
 import * as actions from "metabase/reference/reference";
-import type { Location } from "metabase/router";
-import { type InjectedRouteProps, withRouteProps } from "metabase/router";
+import {
+  type InjectedRouteProps,
+  type Location,
+  withRouteProps,
+} from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
-} from "../selectors";
 import {
+  type ReferenceRouteParams,
+  type ReferenceRouteProps,
+  type StateWithReference,
   getDatabase,
   getDatabaseId,
   getField,

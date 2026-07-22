@@ -16,9 +16,7 @@ import {
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { push } from "metabase/router";
-import { Link, type Route } from "metabase/router";
+import { Link, type Location, type Route, push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
