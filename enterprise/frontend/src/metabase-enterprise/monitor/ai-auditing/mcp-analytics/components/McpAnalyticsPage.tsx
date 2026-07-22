@@ -1,9 +1,9 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
@@ -17,7 +17,6 @@ import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
 import { VIEW_GROUP_MEMBERS, VIEW_MCP_TOOL_CALLS } from "../constants";
 import { useMcpHasData } from "../hooks/useMcpHasData";
 import { buildCallsByDayByStatusQuery } from "../query-utils";
-import type { McpTab } from "../url-state";
 import { mcpUrlStateConfig } from "../url-state";
 
 import { McpAnalyticsEmptyState } from "./McpAnalyticsEmptyState";
@@ -81,131 +80,141 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
 
   return (
     <MonitorMain>
-      <SettingsPageWrapper mt="sm">
-        <Flex align="center" justify="space-between">
-          <Title order={2}>{t`MCP analytics`}</Title>
+      <Flex align="center" justify="space-between" mb="sm">
+        <MonitorHeaderTitle>{t`MCP analytics`}</MonitorHeaderTitle>
 
-          <McpToolCallsFilter
-            date={date}
-            onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-            user={user}
-            onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-            userOptions={userOptions}
-            group={group}
-            onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-            groupOptions={groupOptions}
-            groupNoFilterValue={groupNoFilterValue}
-            tenant={tenant}
-            onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-            tenantOptions={tenantOptions}
-            hasTenants={hasTenants}
-          />
-        </Flex>
+        <McpToolCallsFilter
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+          userOptions={userOptions}
+          group={group}
+          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+          groupOptions={groupOptions}
+          groupNoFilterValue={groupNoFilterValue}
+          tenant={tenant}
+          onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
+          tenantOptions={tenantOptions}
+          hasTenants={hasTenants}
+        />
+      </Flex>
 
-        {match({ isInitialLoading, showEmpty })
-          .with({ isInitialLoading: true }, () => (
-            <Flex mih="60vh" align="center" justify="center">
-              <Loader size="lg" />
-            </Flex>
-          ))
-          .with({ showEmpty: true }, () => <McpAnalyticsEmptyState />)
-          .otherwise(() => (
-            <Tabs
-              value={tab}
-              // Unjustified type cast. FIXME
-              onChange={(val) => patchUrlState({ tab: val as McpTab })}
-              keepMounted={false}
-            >
-              <Tabs.List mb="lg">
-                <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
-                <Tabs.Tab value="events">{t`Tool calls`}</Tabs.Tab>
-              </Tabs.List>
+      {match({ isInitialLoading, showEmpty })
+        .with({ isInitialLoading: true }, () => (
+          <Flex mih="60vh" align="center" justify="center">
+            <Loader size="lg" />
+          </Flex>
+        ))
+        .with({ showEmpty: true }, () => <McpAnalyticsEmptyState />)
+        .otherwise(() => (
+          <Tabs
+            variant="pills"
+            value={tab}
+            onChange={(val) =>
+              patchUrlState({ tab: val === "events" ? "events" : "charts" })
+            }
+            keepMounted={false}
+            flex={1}
+            mih={0}
+            display="flex"
+            style={{ flexDirection: "column" }}
+          >
+            <Tabs.List mb="lg">
+              <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
+              <Tabs.Tab value="events">{t`Tool calls`}</Tabs.Tab>
+            </Tabs.List>
 
-              <Tabs.Panel value="charts">
-                <Stack gap="lg">
-                  <McpCallsTimelineChart
-                    {...dataSources}
-                    {...chartFilters}
-                    title={t`Calls by client over time`}
-                  />
-                  <SimpleGrid cols={2} spacing="lg">
-                    <McpBreakoutChart
-                      {...dataSources}
-                      {...chartFilters}
-                      title={t`Calls by tool`}
-                      display="pie"
-                      breakoutColumn="tool_name"
-                      h={500}
-                    />
-                    <McpBreakoutChart
-                      {...dataSources}
-                      {...chartFilters}
-                      title={t`Calls by user`}
-                      display="row"
-                      breakoutColumn="user_display_name"
-                      h={500}
-                    />
-                  </SimpleGrid>
-
-                  {hasErrors && (
-                    <>
-                      <Title order={3} mt="md">{t`Errors`}</Title>
-                      <McpCallsTimelineChart
-                        {...dataSources}
-                        {...chartFilters}
-                        title={t`Calls by status over time`}
-                        buildQuery={buildCallsByDayByStatusQuery}
-                      />
-                      <SimpleGrid cols={2} spacing="lg">
-                        <McpBreakoutChart
-                          {...dataSources}
-                          {...chartFilters}
-                          title={t`Errors by type`}
-                          display="pie"
-                          breakoutColumn="error_type"
-                          errorsOnly
-                          h={500}
-                        />
-                        <McpBreakoutChart
-                          {...dataSources}
-                          {...chartFilters}
-                          title={t`Errors by tool`}
-                          display="row"
-                          breakoutColumn="tool_name"
-                          errorsOnly
-                          h={500}
-                        />
-                      </SimpleGrid>
-                    </>
-                  )}
-                </Stack>
-              </Tabs.Panel>
-
-              <Tabs.Panel value="events">
-                <McpEventsTable
+            <Tabs.Panel value="charts">
+              <Stack gap="lg">
+                <McpCallsTimelineChart
                   {...dataSources}
                   {...chartFilters}
-                  hasTenants={hasTenants}
-                  hasPii={hasPii}
-                  page={page}
-                  total={count}
-                  onPageChange={(newPage) => patchUrlState({ page: newPage })}
-                  sortingOptions={{
-                    sort_column: sortColumn,
-                    sort_direction: sortDirection,
-                  }}
-                  onSortingOptionsChange={(newSorting) =>
-                    patchUrlState({
-                      sortColumn: newSorting.sort_column,
-                      sortDirection: newSorting.sort_direction,
-                      page: 0,
-                    })
-                  }
+                  title={t`Calls by client over time`}
                 />
-              </Tabs.Panel>
-            </Tabs>
-          ))}
-      </SettingsPageWrapper>
+                <SimpleGrid cols={2} spacing="lg">
+                  <McpBreakoutChart
+                    {...dataSources}
+                    {...chartFilters}
+                    title={t`Calls by tool`}
+                    display="pie"
+                    breakoutColumn="tool_name"
+                    h={500}
+                  />
+                  <McpBreakoutChart
+                    {...dataSources}
+                    {...chartFilters}
+                    title={t`Calls by user`}
+                    display="row"
+                    breakoutColumn="user_display_name"
+                    h={500}
+                  />
+                </SimpleGrid>
+
+                {hasErrors && (
+                  <>
+                    <Title order={3} mt="md">{t`Errors`}</Title>
+                    <McpCallsTimelineChart
+                      {...dataSources}
+                      {...chartFilters}
+                      title={t`Calls by status over time`}
+                      buildQuery={buildCallsByDayByStatusQuery}
+                    />
+                    <SimpleGrid cols={2} spacing="lg">
+                      <McpBreakoutChart
+                        {...dataSources}
+                        {...chartFilters}
+                        title={t`Errors by type`}
+                        display="pie"
+                        breakoutColumn="error_type"
+                        errorsOnly
+                        h={500}
+                      />
+                      <McpBreakoutChart
+                        {...dataSources}
+                        {...chartFilters}
+                        title={t`Errors by tool`}
+                        display="row"
+                        breakoutColumn="tool_name"
+                        errorsOnly
+                        h={500}
+                      />
+                    </SimpleGrid>
+                  </>
+                )}
+              </Stack>
+            </Tabs.Panel>
+
+            <Tabs.Panel
+              value="events"
+              flex={1}
+              mih={0}
+              display="flex"
+              style={{ flexDirection: "column" }}
+            >
+              <McpEventsTable
+                {...dataSources}
+                {...chartFilters}
+                hasTenants={hasTenants}
+                hasPii={hasPii}
+                page={page}
+                total={count}
+                onPageChange={(newPage) => patchUrlState({ page: newPage })}
+                sortingOptions={{
+                  sort_column: sortColumn,
+                  sort_direction: sortDirection,
+                }}
+                onSortingOptionsChange={(newSorting) =>
+                  patchUrlState({
+                    sortColumn: newSorting.sort_column,
+                    sortDirection: newSorting.sort_direction,
+                    page: 0,
+                  })
+                }
+              />
+            </Tabs.Panel>
+          </Tabs>
+        ))}
     </MonitorMain>
   );
 }

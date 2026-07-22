@@ -7,7 +7,13 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route, withRouteProps } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -179,6 +185,9 @@ function setupEndpoints(dataset: Dataset = datasetResponse) {
 
 /** Render `McpAnalyticsPage` at its route with EE plugins + `audit_app`, optionally overriding the dataset response. */
 function setup({ dataset }: { dataset?: Dataset } = {}) {
+  // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
+  // for its virtualized rows to render.
+  mockGetBoundingClientRect({ width: 100, height: 100 });
   setupEnterprisePlugins();
   setupEndpoints(dataset);
 
@@ -233,7 +242,9 @@ describe("McpAnalyticsPage", () => {
     );
 
     const eventsPanel = screen.getByRole("tabpanel");
-    expect(await within(eventsPanel).findByRole("table")).toBeInTheDocument();
+    expect(
+      await within(eventsPanel).findByRole("treegrid", { name: "Tool calls" }),
+    ).toBeInTheDocument();
     // curated column header + a cell value from the mocked dataset row
     expect(within(eventsPanel).getByText("Tool")).toBeInTheDocument();
     expect(
@@ -250,7 +261,9 @@ describe("McpAnalyticsPage", () => {
     );
 
     // The Tool header is sortable; clicking it re-sorts ascending (it wasn't the active column).
-    await userEvent.click(await screen.findByRole("button", { name: "Tool" }));
+    await userEvent.click(
+      await screen.findByRole("columnheader", { name: "Tool" }),
+    );
 
     await waitFor(() => {
       const sortedAscending = fetchMock.callHistory

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
-import { Card, Flex, Title } from "metabase/ui";
+import { Flex } from "metabase/ui";
 
 import { useListMetabotAnalyticsConversationsQuery } from "../../api";
 import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
@@ -34,6 +34,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
   const {
     data: conversationsData,
     isLoading,
+    isFetching,
     error,
   } = useListMetabotAnalyticsConversationsQuery(
     {
@@ -57,52 +58,48 @@ export function ConversationsPage({ location }: WithRouterProps) {
 
   return (
     <MonitorMain>
-      <SettingsPageWrapper mt="sm">
-        <Flex align="center" justify="space-between">
-          <Title order={2} display="flex" style={{ alignItems: "center" }}>
-            {t`Conversations`}
-          </Title>
+      <Flex align="center" justify="space-between" mb="sm">
+        <MonitorHeaderTitle>{t`Conversations`}</MonitorHeaderTitle>
 
-          <ConversationFilters
-            date={date}
-            onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-            user={user}
-            onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-            group={group}
-            onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-            groupNoFilterValue={groupNoFilterValue}
-            tenant={tenant}
-            onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-            userOptions={userOptions}
-            groupOptions={groupOptions}
-            tenantOptions={tenantOptions}
-            hasTenants={hasTenants}
-          />
-        </Flex>
+        <ConversationFilters
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+          group={group}
+          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+          groupNoFilterValue={groupNoFilterValue}
+          tenant={tenant}
+          onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
+          userOptions={userOptions}
+          groupOptions={groupOptions}
+          tenantOptions={tenantOptions}
+          hasTenants={hasTenants}
+        />
+      </Flex>
 
-        <Card withBorder shadow="none" p={0}>
-          <ConversationsTable
-            conversations={conversations}
-            isLoading={isLoading}
-            error={error}
-            sortingOptions={{ sort_column, sort_direction }}
-            onSortingOptionsChange={(newSortingOptions) =>
-              patchUrlState({ ...newSortingOptions, page: 0 })
-            }
-          />
-        </Card>
+      <ConversationsTable
+        conversations={conversations}
+        isLoading={isLoading}
+        isFetching={isFetching}
+        error={error}
+        page={page}
+        sortingOptions={{ sort_column, sort_direction }}
+        onSortingOptionsChange={(newSortingOptions) =>
+          patchUrlState({ ...newSortingOptions, page: 0 })
+        }
+      />
 
-        <Flex justify="flex-end">
-          <PaginationControls
-            onPreviousPage={() => patchUrlState({ page: page - 1 })}
-            onNextPage={() => patchUrlState({ page: page + 1 })}
-            page={page}
-            pageSize={PAGE_SIZE}
-            itemsLength={conversations.length}
-            total={total}
-          />
-        </Flex>
-      </SettingsPageWrapper>
+      <Flex justify="flex-end">
+        <PaginationControls
+          onPreviousPage={() => patchUrlState({ page: page - 1 })}
+          onNextPage={() => patchUrlState({ page: page + 1 })}
+          page={page}
+          pageSize={PAGE_SIZE}
+          itemsLength={conversations.length}
+          total={total}
+        />
+      </Flex>
     </MonitorMain>
   );
 }

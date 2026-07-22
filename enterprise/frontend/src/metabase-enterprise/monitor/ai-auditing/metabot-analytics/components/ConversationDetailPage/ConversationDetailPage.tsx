@@ -99,7 +99,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 
   return (
     <MonitorMain>
-      <Stack gap="2.5rem">
+      <Stack gap="xl">
         <ConversationHeader conversation={conversation} />
 
         <SimpleGrid cols={4}>
