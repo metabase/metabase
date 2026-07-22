@@ -145,6 +145,12 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               debug
               readonly
               conversationId={convoId}
+              forkBoundaryMessageId={conversation.fork_boundary_message_id}
+              forkBoundaryHref={
+                conversation.forked_from_conversation_id
+                  ? `/admin/metabot/usage-auditing/conversations/${conversation.forked_from_conversation_id}`
+                  : undefined
+              }
             />
           </Card>
         </Stack>

@@ -134,6 +134,22 @@ export function ConversationHeader({
                 </Anchor>
               </Flex>
             )}
+            {conversation.forked_from_conversation_id && (
+              <Flex gap="xs" align="center">
+                <Icon name="git_branch" size={16} c="text-disabled" />
+                <Anchor
+                  component={ForwardRefLink}
+                  to={`/admin/metabot/usage-auditing/conversations/${conversation.forked_from_conversation_id}`}
+                  c="text-secondary"
+                  size="md"
+                  underline="hover"
+                >
+                  {conversation.forked_from_title
+                    ? t`Forked from ${conversation.forked_from_title}`
+                    : t`Forked from original conversation`}
+                </Anchor>
+              </Flex>
+            )}
           </Flex>
         </Stack>
       </Flex>

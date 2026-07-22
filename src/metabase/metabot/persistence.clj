@@ -836,18 +836,21 @@
   "Build the insert map for a cloned message: a fresh `external_id`, `user-id`
   attribution, and no timestamps so `created_at` is stamped anew by the DB
   default. Token usage is zeroed (`total_tokens` 0, `usage` nil) so a fork never
-  double-counts tokens in the analytics views."
-  [new-conversation-id user-id {:keys [data data_version role profile_id ai_proxied finished error state]}]
-  (cond-> {:conversation_id new-conversation-id
-           :data            data
-           :data_version    data_version
-           :role            role
-           :profile_id      profile_id
-           :external_id     (str (random-uuid))
-           :total_tokens    0
-           :usage           nil
-           :ai_proxied      (boolean ai_proxied)
-           :user_id         user-id}
+  double-counts tokens in the analytics views. `forked_from_message_id` records
+  the source row so the copied prefix can be told apart from messages added after
+  the fork."
+  [new-conversation-id user-id {:keys [id data data_version role profile_id ai_proxied finished error state]}]
+  (cond-> {:conversation_id        new-conversation-id
+           :data                   data
+           :data_version           data_version
+           :role                   role
+           :profile_id             profile_id
+           :external_id            (str (random-uuid))
+           :total_tokens           0
+           :usage                  nil
+           :ai_proxied             (boolean ai_proxied)
+           :user_id                user-id
+           :forked_from_message_id id}
     (some? finished) (assoc :finished finished)
     (some? error)    (assoc :error error)
     (some? state)    (assoc :state state)))
@@ -876,8 +879,9 @@
             title               (t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
         (t2/with-transaction [_conn]
           (t2/insert! :model/MetabotConversation
-                      (cond-> {:id      new-conversation-id
-                               :user_id user-id}
+                      (cond-> {:id                          new-conversation-id
+                               :user_id                     user-id
+                               :forked_from_conversation_id conversation-id}
                         (forked-title title) (assoc :title (forked-title title))))
           (t2/insert! :model/MetabotMessage
                       (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))

@@ -24,6 +24,7 @@ import { createAsyncThunk } from "metabase/redux/utils";
 import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import type {
@@ -899,6 +900,10 @@ export const forkConversation = createAsyncThunk(
         activeToolCalls: [],
       }),
     );
+
+    if (agentId === "ask") {
+      dispatch(push(Urls.metabotConversation(conversation.conversation_id)));
+    }
 
     return conversation;
   },

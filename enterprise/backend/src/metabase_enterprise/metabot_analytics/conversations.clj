@@ -137,6 +137,7 @@
    :embedding_path          (:embedding_path row)
    :user_agent              (:user_agent row)
    :sanitized_user_agent    (:sanitized_user_agent row)
+   :forked_from_conversation_id (:forked_from_conversation_id row)
    :user                    (trim-user (:user row))})
 
 (defn- hydrate-tool-counts
@@ -220,6 +221,17 @@
                                     [:metabot_feedback.user_id :asc]]})]
     (t2/hydrate rows :user)))
 
+(defn- fork-boundary-external-id
+  "The `external_id` of the last message copied in from the parent when this
+   conversation is a fork — the point the message list changes from inherited to
+   new. `nil` when nothing was copied. Messages arrive ordered oldest-first, so
+   the last one carrying `:forked_from_message_id` is the boundary."
+  [ordered-messages]
+  (->> ordered-messages
+       (filter :forked_from_message_id)
+       last
+       :external_id))
+
 (defn fetch-conversation-detail
   "Fetch a conversation detail or throw a 404."
   [conversation-id]
@@ -228,6 +240,7 @@
     (let [all-messages (t2/select :model/MetabotMessage
                                   :conversation_id conversation-id
                                   {:order-by [[:created_at :asc] [:id :asc]]})
+          forked-from  (:forked_from_conversation_id conversation)
           hydrated     (t2/hydrate conversation :user)]
       {:conversation_id (:id conversation)
        :created_at      (:created_at conversation)
@@ -248,4 +261,8 @@
        :embedding_path       (:embedding_path conversation)
        :user_agent           (:user_agent conversation)
        :sanitized_user_agent (:sanitized_user_agent conversation)
+       :forked_from_conversation_id forked-from
+       :forked_from_title           (when forked-from
+                                      (t2/select-one-fn :title :model/MetabotConversation :id forked-from))
+       :fork_boundary_message_id    (fork-boundary-external-id all-messages)
        :feedback             (fetch-conversation-feedback conversation-id)})))
