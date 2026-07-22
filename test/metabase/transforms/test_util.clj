@@ -15,6 +15,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def transform-run-timeout-seconds
+  "How long tests wait for a transform run to finish execution and sync."
+  ;; BigQuery runs routinely take 50-70s in CI.
+  120)
+
 (defn seconds-from-now-ns
   "Returns a deadline `seconds` from now in nanoseconds, for use with `System/nanoTime`.
   We use nanoTime rather than currentTimeMillis because it is monotonic and not affected by
@@ -135,7 +140,7 @@
 (defn test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "transform/%s/run" transform-id))
-        timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+        timeout-s transform-run-timeout-seconds
         deadline  (seconds-from-now-ns timeout-s)]
     (is (=? {:message "Transform run started"}
             resp))
