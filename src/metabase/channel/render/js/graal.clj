@@ -69,11 +69,10 @@
 (defn- build-source
   "Build a `Source` from a classpath resource path."
   ^Source [source-path]
-  (let [resource (io/resource source-path)]
-    (when (nil? resource)
-      (throw (ex-info (trs "Javascript resource not found: {0}" source-path)
-                      {:source source-path})))
-    (.build (Source/newBuilder "js" ^java.net.URL resource))))
+  (if-let [resource (io/resource source-path)]
+    (.build (Source/newBuilder "js" ^java.net.URL resource))
+    (throw (ex-info (trs "Javascript resource not found: {0}" source-path)
+                    {:source source-path}))))
 
 (defn- eval-source
   "Evaluate an already-built `Source` in the js context."
@@ -81,14 +80,13 @@
   (.eval context source))
 
 (defn load-resource
-  "Load a JS classpath resource into `context` as a *literal* `Source` (content, not URL-backed). A
+  "Load a JS classpath resource into `context` as a *literal* `Source` (content, not URL-backed).
   It's needed for the `SandboxPolicy/UNTRUSTED` context"
   [^Context context ^String source-path]
-  (let [resource (io/resource source-path)]
-    (when (nil? resource)
-      (throw (ex-info (trs "Javascript resource not found: {0}" source-path)
-                      {:source source-path})))
-    (.eval context (.buildLiteral (Source/newBuilder "js" ^String (slurp resource :encoding "UTF-8") source-path)))))
+  (if-let [resource (io/resource source-path)]
+    (.eval context (.buildLiteral (Source/newBuilder "js" ^String (slurp resource :encoding "UTF-8") source-path)))
+    (throw (ex-info (trs "Javascript resource not found: {0}" source-path)
+                    {:source source-path}))))
 
 (defn execute-fn-name
   "Execute the global js function named `js-fn-name` in `context` with `args`. Not thread-safe on its own
