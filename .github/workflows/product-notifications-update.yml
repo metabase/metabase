@@ -2,8 +2,8 @@ name: Update Product Notifications
 
 on:
   push:
-    branches:
-      - master
+    # branches: FIXME testing
+    #   - master
     paths:
       - ".github/data/notifications.json"
   workflow_dispatch:
