@@ -1,18 +1,12 @@
 import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 
-import {
-  type SandboxBlockedNetworkInfo,
-  type SandboxRealm,
-  makeSandboxFetch,
-  makeSandboxXhr,
-} from "./allowed-hosts";
+import { makeSandboxFetch, makeSandboxXhr } from "./allowed-hosts";
 import { makeCreateElementDistortion } from "./create-element";
-
-export type SandboxBlockedEvent =
-  | { type: "api"; message: string }
-  | ({ type: "network" } & SandboxBlockedNetworkInfo);
-
-export type SandboxBlockedListener = (event: SandboxBlockedEvent) => void;
+import type {
+  SandboxBlockedListener,
+  SandboxBlockedNetworkInfo,
+  SandboxRealm,
+} from "./types";
 
 /**
  * Data-app Near Membrane distortion callback.

@@ -1,5 +1,5 @@
-import type { SandboxRealm } from "./allowed-hosts";
 import { makeDistortionCallback } from "./distortions";
+import type { SandboxRealm } from "./types";
 
 // A minimal stand-in for the iframe window the data-app sandbox is built on.
 // `fetch`/`XMLHttpRequest` are the native refs the membrane passes to the

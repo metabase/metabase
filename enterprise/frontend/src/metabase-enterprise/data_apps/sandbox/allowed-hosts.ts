@@ -16,29 +16,7 @@
  * sandboxed browser realm — so keep the two in sync if either changes.
  */
 
-/**
- * The slice of the sandbox's realm the network wrappers touch: the native
- * `fetch`/`XMLHttpRequest` they wrap, and the location a relative request URL
- * resolves against. A real `Window & typeof globalThis` satisfies it.
- */
-export interface SandboxRealm {
-  fetch: typeof fetch;
-  XMLHttpRequest: typeof XMLHttpRequest;
-  location: { href: string; origin: string };
-}
-
-/**
- * A network request the sandbox refused, reported to an optional listener.
- **/
-export interface SandboxBlockedNetworkInfo {
-  api: "fetch" | "xhr";
-  url: string;
-  reason: string;
-}
-
-export type SandboxBlockedNetworkListener = (
-  info: SandboxBlockedNetworkInfo,
-) => void;
+import type { SandboxBlockedNetworkListener, SandboxRealm } from "./types";
 
 interface AllowedOrigin {
   protocol: string; // "https:" | "http:"
@@ -51,7 +29,7 @@ interface AllowedOrigin {
  * A valid `allowed_hosts` entry is *origin-only*: an http(s) scheme + host (+ an
  * optional port), with no path, query, fragment, or credentials.
  */
-function isRawHttpOrigin(url: URL): boolean {
+const isRawHttpOrigin = (url: URL): boolean => {
   return (
     (url.protocol === "https:" || url.protocol === "http:") &&
     url.pathname === "/" &&
@@ -60,9 +38,9 @@ function isRawHttpOrigin(url: URL): boolean {
     url.username === "" &&
     url.password === ""
   );
-}
+};
 
-function parseAllowedOrigin(entry: string): AllowedOrigin | null {
+const parseAllowedOrigin = (entry: string): AllowedOrigin | null => {
   let url: URL;
   try {
     // The standard URL parser lowercases the host, normalizes away the default
@@ -85,9 +63,9 @@ function parseAllowedOrigin(entry: string): AllowedOrigin | null {
     host: wildcard ? url.hostname.slice(2) : url.hostname,
     port: url.port,
   };
-}
+};
 
-function originMatches(url: URL, origin: AllowedOrigin): boolean {
+const isOriginMatches = (url: URL, origin: AllowedOrigin): boolean => {
   if (url.protocol !== origin.protocol) {
     return false;
   }
@@ -102,17 +80,17 @@ function originMatches(url: URL, origin: AllowedOrigin): boolean {
   return origin.wildcard
     ? host.endsWith(`.${origin.host}`)
     : host === origin.host;
-}
+};
 
-export function isHostAllowed(url: URL, allowedHosts: string[]): boolean {
+export const isHostAllowed = (url: URL, allowedHosts: string[]): boolean => {
   return allowedHosts.some((entry) => {
     const origin = parseAllowedOrigin(entry);
 
-    return origin ? originMatches(url, origin) : false;
+    return origin ? isOriginMatches(url, origin) : false;
   });
-}
+};
 
-function toUrl(input: RequestInfo | URL, base: string): URL | null {
+const toUrl = (input: RequestInfo | URL, base: string): URL | null => {
   try {
     if (typeof input === "string") {
       return new URL(input, base);
@@ -130,23 +108,14 @@ function toUrl(input: RequestInfo | URL, base: string): URL | null {
   }
 
   return null;
-}
+};
 
-/**
- * The single decision the `fetch` and `XMLHttpRequest` wrappers share: resolve
- * the request URL and decide whether the sandbox may make it. Returns `null`
- * when the request is allowed, or a human-readable reason when it is blocked.
- *
- * A request is allowed only when its origin is in `allowedHosts` AND is not the
- * Metabase origin — raw access to Metabase is *always* denied (the SDK is the
- * sanctioned channel), even if an admin mistakenly lists it in `allowed_hosts`.
- */
-function blockedReason(
+const getBlockedReason = (
   input: RequestInfo | URL,
   base: string,
   allowedHosts: string[],
   metabaseOrigin: string,
-): string | null {
+): string | null => {
   const url = toUrl(input, base);
 
   if (!url) {
@@ -162,43 +131,29 @@ function blockedReason(
   }
 
   return null;
-}
+};
 
-/**
- * Report a block without letting the listener affect the block itself. A throwing
- * listener would otherwise turn `fetch`'s rejection into a synchronous throw,
- * breaking the promise contract for every `.catch()` caller — and reporting must
- * never be able to change what is blocked.
- */
-function reportBlocked(
+const reportBlockedEvent = (
   onBlocked: SandboxBlockedNetworkListener | undefined,
   event: Parameters<SandboxBlockedNetworkListener>[0],
-): void {
+): void => {
   try {
     onBlocked?.(event);
   } catch {
     // A broken reporter is not the app's problem.
   }
-}
+};
 
-/**
- * The request URL for a blocked-network report: resolved when parseable.
- **/
-function buildRequestUrl(input: RequestInfo | URL, base: string): string {
+const buildRequestUrl = (input: RequestInfo | URL, base: string): string => {
   return toUrl(input, base)?.href ?? String(input);
-}
+};
 
-/**
- * A `fetch` that only reaches `allowedHosts` (rejecting everything else,
- * including the Metabase origin). Returns `null` when the allowlist is empty so
- * the caller keeps the sandbox's default hard block.
- */
-export function makeSandboxFetch(
+export const makeSandboxFetch = (
   targetWindow: SandboxRealm,
   allowedHosts: string[],
   label: string,
   onBlocked?: SandboxBlockedNetworkListener,
-): typeof fetch | null {
+): typeof fetch | null => {
   if (allowedHosts.length === 0) {
     return null;
   }
@@ -208,10 +163,10 @@ export function makeSandboxFetch(
   const metabaseOrigin = targetWindow.location.origin;
 
   return function dataAppFetch(input: RequestInfo | URL, init?: RequestInit) {
-    const reason = blockedReason(input, base, allowedHosts, metabaseOrigin);
+    const reason = getBlockedReason(input, base, allowedHosts, metabaseOrigin);
 
     if (reason) {
-      reportBlocked(onBlocked, {
+      reportBlockedEvent(onBlocked, {
         api: "fetch",
         url: buildRequestUrl(input, base),
         reason,
@@ -224,19 +179,14 @@ export function makeSandboxFetch(
 
     return realFetch(input, init);
   };
-}
+};
 
-/**
- * An `XMLHttpRequest` subclass that gates `open()` against `allowedHosts` (and
- * always denies the Metabase origin). Returns `null` when the allowlist is empty
- * (keeps the default hard block).
- */
-export function makeSandboxXhr(
+export const makeSandboxXhr = (
   targetWindow: SandboxRealm,
   allowedHosts: string[],
   label: string,
   onBlocked?: SandboxBlockedNetworkListener,
-): typeof XMLHttpRequest | null {
+): typeof XMLHttpRequest | null => {
   if (allowedHosts.length === 0) {
     return null;
   }
@@ -252,10 +202,10 @@ export function makeSandboxXhr(
       username?: string | null,
       password?: string | null,
     ): void {
-      const reason = blockedReason(url, base, allowedHosts, metabaseOrigin);
+      const reason = getBlockedReason(url, base, allowedHosts, metabaseOrigin);
 
       if (reason) {
-        reportBlocked(onBlocked, {
+        reportBlockedEvent(onBlocked, {
           api: "xhr",
           url: buildRequestUrl(url, base),
           reason,
@@ -272,4 +222,4 @@ export function makeSandboxXhr(
   // The subclass inherits the static UNSENT/OPENED/… constants at runtime;
   // cast so the type matches the native constructor the membrane expects.
   return SandboxXhr as typeof XMLHttpRequest;
-}
+};

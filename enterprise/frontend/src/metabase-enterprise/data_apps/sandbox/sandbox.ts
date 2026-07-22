@@ -1,11 +1,8 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
-import {
-  type SandboxBlockedListener,
-  makeDistortionCallback,
-} from "./distortions";
+import { makeDistortionCallback } from "./distortions";
 import { DATA_APP_GLOBAL_NAMES } from "./globals";
-import type { DataAppFactory } from "./types";
+import type { DataAppFactory, SandboxBlockedListener } from "./types";
 
 /**
  * The realm objects the sandbox exposes to the bundle as globals.

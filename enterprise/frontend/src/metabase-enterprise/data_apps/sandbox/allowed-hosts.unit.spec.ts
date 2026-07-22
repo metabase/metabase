@@ -1,9 +1,9 @@
 import {
-  type SandboxRealm,
   isHostAllowed,
   makeSandboxFetch,
   makeSandboxXhr,
 } from "./allowed-hosts";
+import type { SandboxRealm } from "./types";
 
 const u = (href: string) => new URL(href);
 
