@@ -345,7 +345,7 @@ jobs:
         run: |
           if [ $(git tag -l | grep $tag$) ]
           then
-            echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
+            echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow."
             exit 1
           else
             exit 0
