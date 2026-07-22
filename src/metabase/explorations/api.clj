@@ -920,12 +920,13 @@
         (queries/assert-can-view-cached-result! sr)
         (stream-stored-result format (:result_data sr)))
 
-      ;; Pending / errored: no blob exists yet and the response is status-only (no rows, no
-      ;; derived text), so it carries no data to leak — it rides the exploration's collection
-      ;; perms (already enforced by `get-exploration-query-or-404`'s read-check), like seeing a
-      ;; dashboard card that's still loading.
+      ;; Pending / errored: no result blob exists. The status payload (id/status/timestamps) rides
+      ;; the exploration's collection perms (already enforced by `get-exploration-query-or-404`'s
+      ;; read-check), like a dashboard card that's still loading. `error_message` a generic error message.
+      ;; The actual error with SQL details they may not have permission for is logged.
       {:status 409
-       :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
+       :body   (cond-> (select-keys q [:id :status :started_at :finished_at])
+                 (:error_message q) (assoc :error_message (tru "This query failed to run.")))})))
 
 (api.macros/defendpoint :put "/page/:id/starred" :- :nil
   "Set whether an exploration page is starred."
