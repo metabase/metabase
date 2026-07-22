@@ -2,17 +2,19 @@
 import cx from "classnames";
 import { useState, useSyncExternalStore } from "react";
 
-import { formatDevDiagnostic } from "../../lib/diagnostics-payload";
+import { formatDevDiagnostic, isAlert } from "../../lib/diagnostics-payload";
 
 import S from "./DevToolbar.module.css";
 import { devDiagnostics } from "./diagnostics";
 
 export function DevToolbar() {
-  const entries = useSyncExternalStore(
+  const captured = useSyncExternalStore(
     devDiagnostics.subscribe,
     devDiagnostics.getEntries,
   );
   const [open, setOpen] = useState(false);
+
+  const entries = captured.filter(isAlert);
   const count = entries.length;
 
   return (

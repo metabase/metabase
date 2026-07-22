@@ -7,7 +7,7 @@ const isFailedSdkCall = (entry: DevDiagnosticEntry): boolean =>
   entry.kind === "sdk-call" &&
   (entry.error != null || (entry.status != null && entry.status >= 400));
 
-const isAlert = (entry: DevDiagnosticEntry): boolean =>
+export const isAlert = (entry: DevDiagnosticEntry): boolean =>
   entry.kind === "error" ||
   entry.kind === "blocked-api" ||
   entry.kind === "blocked-network" ||
