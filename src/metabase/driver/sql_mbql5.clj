@@ -60,6 +60,8 @@
    (reduce
     (fn [[prev-hsql prev-stage] stage]
       [(cond->> (stage->honeysql driver stage)
+         ;; We don't add the source query if the stage is persisted, because the persisted query
+         ;; is already all of the previous stages materialized from the cached table
          (and prev-hsql (not (:persisted-info/native stage)))
          (add-source-query driver prev-stage prev-hsql))
        stage])
