@@ -89,11 +89,22 @@ else
 fi
 echo ""
 
-# Check that new migration files are in the correct directory
-changed_files=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}..HEAD" -- 'resources/migrations/**/*.yaml') || {
+# Check that new migration files are in the correct directory. Two layouts, collected separately:
+#   - Per-feature changesets (resources/migrations/NNN/…, v60+): added as new files.
+#     Added-only — a released changeset is never edited in place.
+#   - Shared pre-v60 files (resources/migrations/NNN_update_migrations.yaml): appended to, so a new
+#     changeset is a modification, not an addition — filter AM.
+#     The '**/*' glob can't reach these root-level files (needs a slash after migrations/), hence the
+#     separate pathspec.
+dir_files=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}..HEAD" -- 'resources/migrations/**/*.yaml') || {
     echo "ERROR: git diff failed — could not compare against origin/${BASE_REF}" >&2
     exit 1
 }
+shared_files=$(git diff --name-only --diff-filter=AM "origin/${BASE_REF}..HEAD" -- 'resources/migrations/*_update_migrations.yaml') || {
+    echo "ERROR: git diff failed — could not compare against origin/${BASE_REF}" >&2
+    exit 1
+}
+changed_files=$(printf '%s\n%s\n' "$dir_files" "$shared_files" | grep -v '^[[:space:]]*$' || true)
 
 if [[ -z "$changed_files" ]]; then
     echo "No new migration files changed."
@@ -103,20 +114,40 @@ fi
 errors=0
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
-    dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9][0-9]*\)/.*|\1|p')
-    [[ -z "$dir" ]] && continue
-    dir_version=$((10#$dir))
-    dir=$(printf "%03d" "$dir_version")
 
-    if [[ "$dir_version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
-        echo "ERROR: ${file} targets v${dir_version}, but per-feature directories start at v${DIR_LAYOUT_FLOOR} — a pre-${DIR_LAYOUT_FLOOR} changeset goes in resources/migrations/${dir}_update_migrations.yaml" >&2
+    # Version from whichever layout matches: a numeric per-feature directory, else the root-level shared file.
+    # Non-numeric dirs (resources/migrations/custom_sql/…) carry no version and are skipped.
+    file_dir=$(sed -n 's|^resources/migrations/\([0-9][0-9]*\)/.*|\1|p' <<<"$file")
+    if [[ -n "$file_dir" ]]; then
+        layout="dir"
+    else
+        file_dir=$(sed -n 's|^resources/migrations/\([0-9][0-9]*\)_update_migrations\.yaml$|\1|p' <<<"$file")
+        [[ -z "$file_dir" ]] && continue
+        layout="shared"
+    fi
+    file_version=$((10#$file_dir))
+    padded=$(printf "%03d" "$file_version")
+
+    # Layout must match the version, independent of the constraint: v60+ in per-feature directories, pre-v60
+    # in the shared file.
+    if [[ "$layout" == "dir" && "$file_version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+        echo "ERROR: ${file} targets v${file_version}, but per-feature directories start at v${DIR_LAYOUT_FLOOR} — a pre-${DIR_LAYOUT_FLOOR} changeset goes in resources/migrations/${padded}_update_migrations.yaml" >&2
         errors=$((errors + 1))
-    elif [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
-        [[ "$constraint" == "<=" && "$dir_version" -gt "$version" ]]; then
+        continue
+    fi
+    if [[ "$layout" == "shared" && "$file_version" -ge "$DIR_LAYOUT_FLOOR" ]]; then
+        echo "ERROR: ${file} is a shared migration file for v${file_version}, but v${DIR_LAYOUT_FLOOR}+ changesets go in the per-feature directory resources/migrations/${padded}/" >&2
+        errors=$((errors + 1))
+        continue
+    fi
+
+    # Version must satisfy the target constraint.
+    if [[ "$constraint" == "=" && "$file_version" -ne "$version" ]] ||
+        [[ "$constraint" == "<=" && "$file_version" -gt "$version" ]]; then
         if [[ "$version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
-            echo "ERROR: ${file} is in ${dir} but the changeset belongs in resources/migrations/${expected_dir}_update_migrations.yaml" >&2
+            echo "ERROR: ${file} targets v${file_version} but the changeset belongs in resources/migrations/${expected_dir}_update_migrations.yaml" >&2
         else
-            echo "ERROR: ${file} is in ${dir} but expected ${constraint} ${expected_dir}" >&2
+            echo "ERROR: ${file} targets v${file_version} but expected ${constraint} ${expected_dir}" >&2
         fi
         errors=$((errors + 1))
     fi

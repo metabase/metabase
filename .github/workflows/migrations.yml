@@ -34,12 +34,17 @@ jobs:
       # so migrations on such a PR must sit in the oldest supported line's directory. Resolve
       # that floor with the same getSupportedMajors the backport workflow uses; skip the
       # release-script build entirely for PRs without the label.
+      #
+      # `backport` is master-only: backport-reminder.yml solicits it only on master PRs, and this script
+      # ignores labels on release-branch PRs (they validate against their own version).
+      # The base-ref gate keeps an inert label from running the release-script build + S3 lookup, a needless
+      # failure surface on a required check.
       - name: Prepare release scripts
-        if: contains(github.event.pull_request.labels.*.name, 'backport')
+        if: github.base_ref == 'master' && contains(github.event.pull_request.labels.*.name, 'backport')
         uses: ./.github/actions/prepare-release-scripts
       - name: Compute oldest supported backport target
         id: oldest-supported
-        if: contains(github.event.pull_request.labels.*.name, 'backport')
+        if: github.base_ref == 'master' && contains(github.event.pull_request.labels.*.name, 'backport')
         uses: actions/github-script@v9
         env:
           AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
