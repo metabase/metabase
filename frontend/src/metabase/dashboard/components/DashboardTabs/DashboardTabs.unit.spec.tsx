@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";

@@ -1,6 +1,5 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
 
-
 import {
   useGetSubscriptionQuery,
   useUpdateSubscriptionMutation,

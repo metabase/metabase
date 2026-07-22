@@ -1,7 +1,6 @@
 import type { State } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 
-
 const DEFAULT_LOCATION: Location = {
   pathname: "",
   search: "",

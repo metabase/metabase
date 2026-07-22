@@ -1,6 +1,5 @@
 import querystring from "querystring";
 
-
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type {

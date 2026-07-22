@@ -1,4 +1,3 @@
-
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { Location } from "metabase/router";

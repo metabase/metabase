@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";

@@ -1,6 +1,5 @@
 import fetchMock from "fetch-mock";
 
-
 import { createMockEntitiesState } from "__support__/store";
 import { databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";

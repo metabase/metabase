@@ -1,6 +1,5 @@
 import { parse as parseUrl } from "url";
 
-
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
 import type { LocationDescriptor } from "metabase/router";

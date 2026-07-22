@@ -1,4 +1,3 @@
-
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {

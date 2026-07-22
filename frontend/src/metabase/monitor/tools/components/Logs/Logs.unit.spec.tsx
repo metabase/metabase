@@ -1,6 +1,5 @@
 import fetchMock from "fetch-mock";
 
-
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockLocation,

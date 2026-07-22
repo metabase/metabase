@@ -1,4 +1,3 @@
-
 import {
   canResetFilter,
   createTabSlug,

@@ -1,7 +1,6 @@
 import type { StoreDashboard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 
-
 export interface MainNavbarOwnProps {
   isOpen: boolean;
   location: Location;

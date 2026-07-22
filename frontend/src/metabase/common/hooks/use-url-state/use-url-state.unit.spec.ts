@@ -1,4 +1,3 @@
-
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockLocation } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";

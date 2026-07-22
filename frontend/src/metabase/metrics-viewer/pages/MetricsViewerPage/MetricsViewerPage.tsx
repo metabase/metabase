@@ -1,4 +1,3 @@
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
 import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";

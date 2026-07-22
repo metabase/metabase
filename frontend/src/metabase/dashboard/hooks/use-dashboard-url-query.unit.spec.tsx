@@ -1,6 +1,5 @@
 import { act } from "@testing-library/react";
 
-
 import { renderHookWithProviders } from "__support__/ui";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { selectTab } from "metabase/redux/dashboard";
