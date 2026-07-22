@@ -2,6 +2,7 @@
   (:require
    [clojure.core.cache :as cache]
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -15,6 +16,18 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(deftest ^:synchronized update-accumulates-reports-across-batches-test
+  (testing "index-updates counts every engine batch, not only the last one"
+    (let [increments (atom [])]
+      (mt/with-dynamic-fn-redefs [analytics/inc!                (fn [& args] (swap! increments conj args))
+                                  analytics/observe!            (fn [& _args])
+                                  search.engine/active-engines (constantly [:search.engine/test])]
+        (with-redefs [search.engine/update! (fn [_engine documents]
+                                              {"card" (count documents)})]
+          (search.ingestion/update! (repeat 301 {:model "card"}) [])
+          (is (= [[:metabase-search/index-updates {:model "card"} 301]]
+                 (filter (comp #{:metabase-search/index-updates} first) @increments))))))))
 
 (deftest extract-model-and-id
   (is (= ["action" "1895"] (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.id]])))
