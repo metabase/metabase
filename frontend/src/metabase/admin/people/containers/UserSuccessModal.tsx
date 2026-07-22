@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useEffect } from "react";
-import { push, replace } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
@@ -11,6 +10,7 @@ import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push, replace } from "metabase/router";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import type { User } from "metabase-types/api";

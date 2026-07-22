@@ -258,7 +258,7 @@ describe("issue 51020", () => {
       cy.findByText("Update a dashboard filter").click();
       cy.findByTestId("click-target-column").click();
     });
-    cy.findByRole("listbox").findByText(columnName).click();
+    H.selectDropdown().findByText(columnName).click();
     cy.button("Done").click();
 
     cy.findByLabelText("Add action").click();
@@ -268,7 +268,7 @@ describe("issue 51020", () => {
       cy.findByText("Update").click();
       cy.findAllByDisplayValue("Ask the user").eq(0).click();
     });
-    cy.findByRole("listbox").findByText("ID").click();
+    H.selectDropdown().findByText("ID").click();
     cy.button("Done").click();
 
     H.saveDashboard();

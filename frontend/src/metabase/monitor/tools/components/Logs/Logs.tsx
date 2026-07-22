@@ -1,8 +1,6 @@
-import type { Location } from "history";
 import * as React from "react";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import reactAnsiStyle from "react-ansi-style";
-import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -11,6 +9,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { Link, Outlet, useRouter } from "metabase/router";
 import {
   Button,
   DefaultSelectItem,
@@ -31,8 +30,6 @@ import {
 } from "./utils";
 
 interface LogsProps {
-  children?: ReactNode;
-  location: Location;
   // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB instance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable
   // amount of time
@@ -41,11 +38,10 @@ interface LogsProps {
 
 export const DEFAULT_POLLING_DURATION_MS = 1000;
 
-const LogsBase = ({
-  children,
-  location,
+export const Logs = ({
   pollingDurationMs = DEFAULT_POLLING_DURATION_MS,
 }: LogsProps) => {
+  const { location } = useRouter();
   const [{ process, query }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,
@@ -178,11 +174,9 @@ const LogsBase = ({
       </SettingsPageWrapper>
 
       {
-        // render 'children' so that the modals show up
-        children
+        // render the outlet so that the modals show up
+        <Outlet />
       }
     </>
   );
 };
-
-export const Logs = withRouter(LogsBase);

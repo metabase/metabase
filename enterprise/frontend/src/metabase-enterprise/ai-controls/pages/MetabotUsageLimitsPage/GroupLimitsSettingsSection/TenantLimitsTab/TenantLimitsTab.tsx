@@ -50,6 +50,7 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
           ...map,
           [limitObj.tenant_id]: limitObj.max_usage,
         }),
+        // Unjustified type cast. FIXME
         {} as TenantLimitsMap,
       ),
     [tenantLimits],

@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv select-keys])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
@@ -8,7 +8,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -20,11 +19,11 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]]
+   [metabase.util.performance :refer [mapv select-keys]]
    [next.jdbc])
   (:import
    (java.sql Connection SQLException SQLTimeoutException)))
@@ -177,18 +176,24 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod create-index-sql :default
-  [driver schema table-name index-name column-names & _]
-  (with-quoting driver
-    (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
-                           (map keyword)
-                           column-names)]
-      (first (sql/format {:create-index [(keyword index-name) index-spec]}
-                         :quoted true
-                         :dialect (sql.qp/quote-style driver))))))
+  [driver schema table-name index-name column-names & {:keys [unique if-not-exists]}]
+  (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
+                         (map keyword)
+                         column-names)
+        index-ref  (cond-> (if unique
+                             [:unique (keyword index-name)]
+                             [(keyword index-name)])
+                     if-not-exists (conj :if-not-exists))]
+    (first (sql.qp/format-honeysql driver {:create-index [index-ref index-spec]}))))
+
+(defmethod driver/compile-create-index :sql-jdbc
+  [driver schema table {index-name :name, :keys [columns] :as structured}]
+  [[(create-index-sql driver schema table index-name (map :name columns)
+                      (select-keys structured [:kind :unique :if-not-exists]))]])
 
 (defmethod driver/create-index! :sql-jdbc
-  [driver database-id schema table-name index-name column-names & _]
-  (let [sql (create-index-sql driver schema table-name index-name column-names)]
+  [driver database-id schema table-name index-name column-names & {:as opts}]
+  (let [sql (create-index-sql driver schema table-name index-name column-names opts)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))
     nil))
@@ -201,11 +206,9 @@
 
 (defmethod drop-index-sql :default
   [driver schema _table-name index-name]
-  (first (sql/format {:drop-index [(keyword (if schema
-                                              (str (name schema) "." (name index-name))
-                                              (name index-name)))]}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
+  (first (sql.qp/format-honeysql driver {:drop-index [(keyword (if schema
+                                                                 (str (name schema) "." (name index-name))
+                                                                 (name index-name)))]})))
 
 (defmethod driver/drop-index! :sql-jdbc
   [driver database-id schema table-name index-name & _]
@@ -403,49 +406,8 @@
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
-
-(defmethod driver/check-isolation-permissions :sql-jdbc
-  [driver database test-table]
-  (let [test-workspace {:id   perm-check-workspace-id
-                        :name "_mb_perm_check_"}]
-    (driver.conn/with-admin-connection
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database
-       {:write? true}
-       (fn [^Connection conn]
-         (.setAutoCommit conn false)
-         (try
-           (let [init-result (try
-                               (driver/init-workspace-isolation! driver database test-workspace)
-                               (catch Exception e
-                                 (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE SCHEMA/USER): {0}"
-                                                      (ex-message e))
-                                                 {:step :init} e))))
-                 workspace-with-details (merge test-workspace init-result)]
-             (when test-table
-               (try
-                 ;; `grant-workspace-read-access!` takes a vector of schema-name
-                 ;; strings; per-table grants no longer exist.
-                 (driver/grant-workspace-read-access! driver database workspace-with-details
-                                                      [(:schema test-table)])
-                 (catch Exception e
-                   (throw (ex-info (tru "Failed to grant read access to schema {0}: {1}"
-                                        (:schema test-table) (ex-message e))
-                                   {:step :grant :table test-table} e)))))
-             (try
-               (driver/destroy-workspace-isolation! driver database workspace-with-details)
-               (catch Exception e
-                 (throw (ex-info (tru "Failed to destroy workspace isolation (DROP SCHEMA/USER): {0}"
-                                      (ex-message e))
-                                 {:step :destroy} e)))))
-           nil
-           (catch Exception e
-             (ex-message e))
-           (finally
-             (.rollback conn))))))))
+(defmethod driver/workspace-isolation-details :sql-jdbc
+  [_driver _database workspace]
+  {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+   :database_details {:user     (driver.u/workspace-isolation-user-name workspace)
+                      :password (driver.u/random-workspace-password)}})

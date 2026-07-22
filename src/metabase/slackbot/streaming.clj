@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.core :as metabot]
@@ -183,13 +184,14 @@
         ;; `:user-id` stamps the author on both rows so participation-based
         ;; conversation read permissions work for multi-user Slack threads.
         {:keys [assistant-msg-id assistant-external-id]}
-        (metabot.persistence/start-turn! conversation-id "slackbot" message
-                                         :channel-id      channel-id
-                                         :slack-team-id   team-id
-                                         :slack-thread-ts thread-ts
-                                         :slack-msg-id    req-slack-msg-id
-                                         :user-id         api/*current-user-id*
-                                         :ai-proxy?       ai-proxy?)
+        (metabot.persistence/with-conversation-lock conversation-id
+          (metabot.persistence/start-turn! conversation-id "slackbot" message
+                                           :channel-id      channel-id
+                                           :slack-team-id   team-id
+                                           :slack-thread-ts thread-ts
+                                           :slack-msg-id    req-slack-msg-id
+                                           :user-id         api/*current-user-id*
+                                           :ai-proxy?       ai-proxy?))
         data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
@@ -199,9 +201,11 @@
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/internal-metabot-id})
+                         {:metabot-id metabot.config/internal-metabot-id
+                          :profile-id :slackbot})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
+        memory-atom     (atom nil)
         ;; Sibling capture for throwables that escape the agent loop's own
         ;; `catch Exception`. The slack `send-dm-response` / `send-channel-response`
         ;; wrappers already turn the rethrown error into a user-facing slack message;
@@ -241,12 +245,14 @@
     (try
       (transduce dispatch-xf (constantly nil) nil
                  (agent/run-agent-loop
-                  {:messages      messages
-                   :state         {}
-                   :profile-id    :slackbot
-                   :context       context
-                   :tracking-opts {:source     "slackbot"
-                                   :session-id conversation-id}}))
+                  {:messages        messages
+                   :state           {}
+                   :profile-id      :slackbot
+                   :conversation-id conversation-id
+                   :context         context
+                   :memory-atom     memory-atom
+                   :tracking-opts   {:source     "slackbot"
+                                     :session-id conversation-id}}))
       (catch Throwable t
         ;; Capture for the finally's `:error` payload, then re-throw so the
         ;; existing slack error-handling path (DM/channel) still surfaces a
@@ -259,10 +265,11 @@
         ;; pipeline threw. Raw native parts (not the lossy AI-SDK-message
         ;; round-trip) preserve tool-output :structured-output for analytics.
         (metabot.persistence/finalize-assistant-turn!
-         conversation-id assistant-msg-id
+         assistant-msg-id
          (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
          :profile-id   "slackbot"
          :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+         :turn-state   (some-> @memory-atom memory/turn-state)
          :error        (some-> @thrown metabot.persistence/throwable->error-payload))))
     {:msg-id      assistant-msg-id
      :external-id assistant-external-id}))

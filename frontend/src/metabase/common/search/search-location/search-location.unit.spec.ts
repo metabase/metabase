@@ -9,24 +9,28 @@ import type { SearchAwareLocation } from "metabase/common/search/types";
 describe("isSearchPageLocation", () => {
   it("should return true for a search page location", () => {
     const location = { pathname: "/search" };
+    // Unjustified type cast. FIXME
     const result = isSearchPageLocation(location as SearchAwareLocation);
     expect(result).toBe(true);
   });
 
   it("should return true for a search page location with query params", () => {
     const location = { pathname: "/search", search: "?q=test" };
+    // Unjustified type cast. FIXME
     const result = isSearchPageLocation(location as SearchAwareLocation);
     expect(result).toBe(true);
   });
 
   it('should return false for non-search location that might have "search" in the path', () => {
     const location = { pathname: "/collection/1-search" };
+    // Unjustified type cast. FIXME
     const result = isSearchPageLocation(location as SearchAwareLocation);
     expect(result).toBe(false);
   });
 
   it("should return false for non-search location", () => {
     const location = { pathname: "/some-page" };
+    // Unjustified type cast. FIXME
     const result = isSearchPageLocation(location as SearchAwareLocation);
     expect(result).toBe(false);
   });
@@ -38,6 +42,7 @@ describe("getSearchTextFromLocation", () => {
       pathname: "/search",
       query: { q: "test" },
     };
+    // Unjustified type cast. FIXME
     expect(getSearchTextFromLocation(location as SearchAwareLocation)).toBe(
       "test",
     );
@@ -50,6 +55,7 @@ describe("getSearchTextFromLocation", () => {
         q: "test",
       },
     };
+    // Unjustified type cast. FIXME
     expect(getSearchTextFromLocation(location as SearchAwareLocation)).toBe("");
   });
 });
@@ -62,6 +68,7 @@ describe("getFiltersFromLocation", () => {
         [SearchFilterKeys.Type]: ["app", "database"],
       },
     };
+    // Unjustified type cast. FIXME
     expect(getFiltersFromLocation(location as SearchAwareLocation)).toEqual({
       [SearchFilterKeys.Type]: ["app", "database"],
     });
@@ -74,6 +81,7 @@ describe("getFiltersFromLocation", () => {
         [SearchFilterKeys.Type]: ["app", "database"],
       },
     };
+    // Unjustified type cast. FIXME
     expect(getFiltersFromLocation(location as SearchAwareLocation)).toEqual({});
   });
 

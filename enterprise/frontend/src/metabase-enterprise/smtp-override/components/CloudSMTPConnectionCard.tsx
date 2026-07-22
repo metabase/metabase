@@ -76,7 +76,7 @@ export const CloudSMTPConnectionCard = () => {
               />
             ) : (
               <Flex gap={"md"}>
-                <Icon name="check" c="success" size={20} />
+                <Icon name="check" c="feedback-positive" size={20} />
                 <Stack gap={0}>
                   <Text
                     className={S.cardTitle}

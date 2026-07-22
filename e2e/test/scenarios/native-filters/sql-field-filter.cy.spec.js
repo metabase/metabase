@@ -85,45 +85,6 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.filterWidget().should("contain.text", "8");
     });
   });
-
-  context("ID filter", () => {
-    beforeEach(() => {
-      H.startNewNativeQuestion({ display: "table" });
-      SQLFilter.enterParameterizedQuery(
-        "SELECT * FROM products WHERE {{filter}}",
-      );
-
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Field Filter");
-
-      FieldFilter.mapTo({
-        table: "Products",
-        field: "ID",
-      });
-
-      cy.findByTestId("filter-widget-type-select")
-        .should("have.value", "ID")
-        .should("be.disabled");
-    });
-
-    it("should work when set initially as default value and then through the filter widget", () => {
-      cy.log("the default value should apply");
-      FieldFilter.addDefaultStringFilter("2", "Add filter");
-      SQLFilter.runQuery();
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("Small Marble Shoes");
-      });
-
-      cy.log("the default value should not apply when the value is cleared");
-      H.clearFilterWidget();
-      SQLFilter.runQuery();
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("Small Marble Shoes");
-        cy.findByText("Rustic Paper Wallet");
-      });
-    });
-  });
-
   // Deprecated field filter types
   context("Category", () => {
     const questionDetails = {

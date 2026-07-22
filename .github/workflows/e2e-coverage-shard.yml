@@ -1,0 +1,112 @@
+name: E2E Coverage Shard
+
+# Reusable per-shard worker for the coverage manifest run. Trimmed extract of
+# e2e-test.yml: runs one cypress-split shard against an instrumented build and
+# uploads that shard's per-spec coverage. Intentionally omits the PR-only
+# concerns (failed-spec retry, Trunk quarantine, S3 result upload, timing
+# output) since this is a nightly, non-blocking job.
+
+on:
+  workflow_call:
+    inputs:
+      edition:
+        type: string
+        default: ee
+      total_chunks:
+        type: number
+        required: true
+      split_index:
+        type: number
+        required: true
+
+env:
+  DISPLAY: ""
+  TERM: xterm
+  TZ: US/Pacific
+  INSTRUMENT_COVERAGE: "true"
+
+jobs:
+  run:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    name: coverage-shard-${{ inputs.split_index }}
+    env:
+      MB_EDITION: ${{ inputs.edition }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: true
+          webhook: true
+          snowplow: true
+          postgres: true
+          mysql: true
+          mongo: true
+
+      # The orchestrator built and uploaded this in an earlier job of the same run.
+      - name: Download instrumented uberjar
+        uses: actions/download-artifact@v8
+        with:
+          name: instrumented-uberjar
+          path: target/uberjar
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js snapshot
+
+      # cypress-split divides the spec set by timing data; INSTRUMENT_COVERAGE
+      # makes the support hook drain __coverage__ into e2e/coverage-manifest-raw/.
+      - name: Run shard ${{ inputs.split_index }}
+        # No SPLIT_FILE: cypress-split shards evenly by spec count using
+        # SPLIT/SPLIT_INDEX alone. Omitting it means no timings are read or
+        # written, which avoids cypress-split's after:run writeback (it would
+        # otherwise try to overwrite ./e2e/support/timings.json from a cwd where
+        # that subpath isn't reachable, crashing the run). Even-by-count is fine
+        # here — every spec runs exactly once across the shards.
+        env:
+          SPLIT: ${{ inputs.total_chunks }}
+          SPLIT_INDEX: ${{ inputs.split_index }}
+          SPLIT_SUMMARY: false
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: |
+          node e2e/runner/run_cypress_ci.js e2e \
+            --expose grepTags="-@mongo+-@python+-@OSS+-@skip"
+        # Don't let a single failing/flaky spec abort the shard — we still want
+        # coverage from the specs that did run.
+        continue-on-error: true
+
+      - name: Upload shard coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-shard-${{ inputs.split_index }}
+          path: e2e/coverage-manifest-raw/
+          retention-days: 7
+          if-no-files-found: warn

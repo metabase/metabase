@@ -12,6 +12,7 @@ import { getFilterItems } from "metabase/querying/filters/components/FilterPanel
 import type { PopoverProps } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../../context";
+import { shouldRenderQueryBuilderEditingControl } from "../../../utils/should-render-query-builder-editing-control";
 import { ToolbarButton } from "../../util/ToolbarButton";
 import { FilterBadgeList } from "../FilterBadgeList";
 import { FilterPicker } from "../FilterPicker/FilterPicker";
@@ -113,7 +114,7 @@ const FilterDropdownInner = ({
 export const FilterDropdown = ({ withColumnItemIcon }: FilterDropdownProps) => {
   const { question } = useSdkQuestionContext();
 
-  if (!question) {
+  if (!question || !shouldRenderQueryBuilderEditingControl(question)) {
     return null;
   }
 

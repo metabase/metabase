@@ -78,6 +78,7 @@ export const getTooltipBaseOption = (
         ? echartsTooltipContainerSelector
         : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
 
+      // Unjustified type cast. FIXME
       let container = document.querySelector(
         containerSelector,
       ) as HTMLDivElement;

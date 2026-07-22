@@ -7,7 +7,6 @@ import type {
   ExpressionDefinitionEntry,
   ExpressionSubToken,
   MetricDefinitionEntry,
-  MetricExpressionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDimensionBreakoutState,
@@ -45,7 +44,8 @@ function makeMetricEntry(metric: SelectedMetric): MetricDefinitionEntry {
   const sid =
     metric.sourceType === "metric"
       ? createMetricSourceId(metric.id)
-      : (`measure:${metric.id}` as MetricSourceId);
+      : // Unjustified type cast. FIXME
+        (`measure:${metric.id}` as MetricSourceId);
   if (metric.sourceType === "measure") {
     return { id: sid, type: "metric" as const, definition: null };
   }
@@ -67,7 +67,7 @@ function makeExpressionEntry(
   tokens: ExpressionSubToken[],
 ): ExpressionDefinitionEntry {
   return {
-    id: `expression:${name}` as MetricExpressionId,
+    id: `expression:${name}`,
     type: "expression",
     name,
     tokens,
@@ -544,6 +544,7 @@ describe("expression pill display after committing a formula", () => {
       expect(onFormulaEntitiesChange).toHaveBeenCalled();
     });
 
+    // Unjustified type cast. FIXME
     const committedEntities = onFormulaEntitiesChange.mock.calls[
       onFormulaEntitiesChange.mock.calls.length - 1
     ][0] as MetricsViewerFormulaEntity[];

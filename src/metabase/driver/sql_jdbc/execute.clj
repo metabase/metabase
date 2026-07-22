@@ -30,6 +30,8 @@
    [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
+   (com.mchange.v2.c3p0 PooledDataSource)
+   (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
@@ -288,7 +290,6 @@
       ;; use the deprecated impl for `connection-with-timezone` if one exists.
       (do
         (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
-                   #_{:clj-kondo/ignore [:deprecated-var]}
                    'connection-with-timezone
                    'do-with-connection-with-options)
         ;; for compatibility, make sure we pass it an actual Database instance.
@@ -320,6 +321,33 @@
   []
   (pos? *connection-recursion-depth*))
 
+(defn- connection-checkout-timeout?
+  "True if `e` (or anything in its cause chain) is a c3p0 pool-checkout timeout, i.e. the data-warehouse connection
+  pool was exhausted and the wait exceeded [[driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms]].
+  c3p0 signals this by throwing a `SQLException` caused by a `com.mchange.v2.resourcepool.TimeoutException`."
+  [^Throwable e]
+  (loop [cause e]
+    (cond
+      (nil? cause)                        false
+      (instance? TimeoutException cause)  true
+      :else                               (recur (.getCause cause)))))
+
+(defn- checkout-queue-full?
+  "True if `data-source` already has at least
+  [[driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts]] queries waiting for a free connection.
+  Used to shed load: rather than letting the checkout queue grow without bound when the pool is saturated, additional
+  queries are rejected immediately. A limit of `0` (the default) disables the check. Only c3p0 `PooledDataSource`s
+  expose the waiting-thread count; any other data source is never considered full."
+  [data-source]
+  (let [max-pending (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts)]
+    (and (pos? max-pending)
+         (instance? PooledDataSource data-source)
+         (try
+           (>= (.getNumThreadsAwaitingCheckoutDefaultUser ^PooledDataSource data-source) max-pending)
+           (catch Throwable _
+             ;; if we can't read the stat for some reason, fail open rather than blocking queries
+             false)))))
+
 (mu/defn do-with-resolved-connection
   "Execute
 
@@ -338,13 +366,22 @@
       (f conn)
       (let [get-conn (^:once fn* []
                        (let [conn-data-source (do-with-resolved-connection-data-source driver db-or-id-or-spec options)]
+                         (when (checkout-queue-full? conn-data-source)
+                           (throw (ex-info (tru "Too many queries are running. Please try again in a moment.")
+                                           {:type   driver-api/qp.error-type.connection-pool-checkout-queue-full
+                                            :driver driver})))
                          (try
                            (.getConnection conn-data-source)
                            (catch Throwable e
-                             (throw (ex-info (tru "Unable to connect to the database: {0}" (ex-message e))
-                                             {:type   driver-api/qp.error-type.unable-to-acquire-connection
-                                              :driver driver}
-                                             e))))))]
+                             (let [timed-out? (connection-checkout-timeout? e)]
+                               (throw (ex-info (if timed-out?
+                                                 (tru "Too many queries are running. Please try again in a moment.")
+                                                 (tru "Unable to connect to the database: {0}" (ex-message e)))
+                                               {:type   (if timed-out?
+                                                          driver-api/qp.error-type.connection-pool-checkout-timeout
+                                                          driver-api/qp.error-type.unable-to-acquire-connection)
+                                                :driver driver}
+                                               e)))))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]

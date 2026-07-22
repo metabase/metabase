@@ -263,7 +263,7 @@
               (format ":error must be a nonblank string when the throwable's message is %s" label)))))))
 
 (deftest ^:sequential complexity-scores-metabot-scope-opt-test
-  (testing ":verified-only? true flows the caller's metabot-scope through to enumerate-catalogs"
+  (testing ":curated-only? true flows the caller's metabot-scope through to enumerate-catalogs"
     (let [captured-scope (atom nil)]
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
                                   (fn [scope]
@@ -273,12 +273,12 @@
                                      :metabot  [(entity :name "orders")]})]
         (let [{:keys [universe metabot]} (complexity/complexity-scores
                                           :embedder nil
-                                          :metabot-scope {:verified-only? true :collection-id nil})]
-          (is (= {:verified-only? true :collection-id nil} @captured-scope)
+                                          :metabot-scope {:curated-only? true :collection-id nil})]
+          (is (= {:curated-only? true :collection-id nil} @captured-scope)
               "enumerate-catalogs was invoked with the caller's scope")
           (is (= 1.0 (get-in metabot  [:components :size :components :entity-count :measurement])))
           (is (= 2.0 (get-in universe [:components :size :components :entity-count :measurement])))))))
-  (testing ":collection-id alone also flows through to enumerate-catalogs (no verified flag required)"
+  (testing ":collection-id alone also flows through to enumerate-catalogs (no curated flag required)"
     (let [captured-scope (atom nil)]
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
                                   (fn [scope]
@@ -288,14 +288,14 @@
                                      :metabot  [(entity :name "orders")]})]
         (let [{:keys [metabot]} (complexity/complexity-scores
                                  :embedder nil
-                                 :metabot-scope {:verified-only? false :collection-id 42})]
-          (is (= {:verified-only? false :collection-id 42} @captured-scope))
+                                 :metabot-scope {:curated-only? false :collection-id 42})]
+          (is (= {:curated-only? false :collection-id 42} @captured-scope))
           (is (= 1.0 (get-in metabot [:components :size :components :entity-count :measurement])))))))
   (testing "empty scope (or no :metabot-scope opt) still runs enumerate-catalogs with that scope so metabot's table-visibility filter still narrows the catalog"
     ;; Regression: we used to reuse the :universe score verbatim when scope was empty. That hid the
     ;; fact that Metabot's table visibility (`:visibility_type nil`, non-routed DB) already narrows
     ;; the catalog even before Card scoping kicks in.
-    (doseq [scope [nil {} {:verified-only? false :collection-id nil}]]
+    (doseq [scope [nil {} {:curated-only? false :collection-id nil}]]
       (let [captured-scope (atom ::not-called)]
         (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
                                     (fn [s]
@@ -326,10 +326,17 @@
        :model/Table    {hidden :id}    {:db_id plain-db  :name "hidden_table"
                                         :active true :visibility_type "hidden"}
        :model/Table    {technical :id} {:db_id plain-db  :name "technical_table"
-                                        :active true :visibility_type "technical"}
-       :model/Table    {routed :id}    {:db_id routed-db :name "routed_table"
-                                        :active true :visibility_type nil}]
-      (let [metabot-entities (:metabot (#'complexity/enumerate-catalogs nil))
+                                        :active true :visibility_type "technical"}]
+      ;; A table can't exist on a routed (destination) db in production (destinations aren't synced),
+      ;; so a normal `with-temp :model/Table` trips the destination-permission guard. Insert it
+      ;; directly to fabricate the routed table this exclusion test needs.
+      (let [routed           (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                      {:db_id      routed-db
+                                                       :name       "routed_table"
+                                                       :active     true
+                                                       :created_at :%now
+                                                       :updated_at :%now})
+            metabot-entities (:metabot (#'complexity/enumerate-catalogs nil))
             ids              (into #{} (comp (filter #(= :table (:kind %))) (map :id)) metabot-entities)]
         (testing "visible non-routed table is included"
           (is (contains? ids visible)))
@@ -341,6 +348,60 @@
         (testing "tables on a routed database are excluded"
           (is (not (contains? ids routed))
               "tables whose db has router_database_id are filtered out"))))))
+
+(deftest ^:sequential metabot-catalog-curated-scope-test
+  (testing "{:curated-only? true} restricts the :metabot catalog to curated Cards AND Tables,
+           mirroring the `curated` filter Metabot search applies when use_verified_content is on"
+    (collections.tu/with-library [{:keys [metrics]}]
+      (mt/with-temp
+        [:model/Database   {db-id :id}    {:name "Curated Scope DB"}
+         :model/Collection {official :id} {:name "Curated Scope Official" :authority_level "official"}
+         :model/Card {verified-card :id}  {:database_id db-id :type :model :archived false
+                                           :name "curated_scope_verified_card"}
+         :model/ModerationReview _        {:moderated_item_id   verified-card
+                                           :moderated_item_type "card"
+                                           :moderator_id        (mt/user->id :crowberto)
+                                           :status              "verified"
+                                           :most_recent         true}
+         :model/Card {official-card :id}  {:database_id db-id :type :model :archived false
+                                           :collection_id official
+                                           :name "curated_scope_official_card"}
+         :model/Card {library-card :id}   {:database_id db-id :type :metric :archived false
+                                           :collection_id (:id metrics)
+                                           :name "curated_scope_library_card"}
+         :model/Card {plain-card :id}     {:database_id db-id :type :model :archived false
+                                           :name "curated_scope_plain_card"}
+         :model/Table {authoritative :id} {:db_id db-id :active true :name "curated_scope_authoritative"
+                                           :data_authority :authoritative}
+         :model/Table {pub-final :id}     {:db_id db-id :active true :name "curated_scope_published_final"
+                                           :is_published true :data_layer :final}
+         :model/Table {pub-internal :id}  {:db_id db-id :active true :name "curated_scope_published_internal"
+                                           :is_published true :data_layer :internal}
+         :model/Table {plain-table :id}   {:db_id db-id :active true :name "curated_scope_plain_table"}
+         :model/Table {hidden-auth :id}   {:db_id db-id :active true :name "curated_scope_hidden_authoritative"
+                                           :visibility_type "hidden" :data_authority :authoritative}]
+        (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true :collection-id nil}))
+              in?     (comp boolean (into #{} (map (juxt :kind :id)) metabot) vector)]
+          (is (= {:verified-card       true
+                  :official-card       true
+                  :library-card        true
+                  :plain-card          false
+                  :authoritative-table true
+                  :published-final     true
+                  :published-internal  false
+                  :plain-table         false
+                  :hidden-authoritative false}
+                 {:verified-card        (in? :model  verified-card)
+                  :official-card        (in? :model  official-card)
+                  :library-card         (in? :metric library-card)
+                  :plain-card           (in? :model  plain-card)
+                  :authoritative-table  (in? :table  authoritative)
+                  :published-final      (in? :table  pub-final)
+                  :published-internal   (in? :table  pub-internal)
+                  :plain-table          (in? :table  plain-table)
+                  :hidden-authoritative (in? :table  hidden-auth)})
+              "curated Cards (verified / official / library) and curated Tables (authoritative /
+               published-final) are in; uncurated entities and hidden tables stay out"))))))
 
 (deftest ^:sequential metabot-collection-scope-ids-test
   (testing "nil collection-id returns nil (no Metabot collection scope configured)"

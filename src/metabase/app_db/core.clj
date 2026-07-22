@@ -16,6 +16,7 @@
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
+   [metabase.app-db.h2 :as mdb.h2]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
@@ -36,16 +37,20 @@
   application-db
   data-source
   db-type
+  do-before-commit
   do-after-commit
   in-transaction?
   quoting-style
-  unique-identifier]
+  unique-identifier
+  transaction-state]
  [mdb.connection-pool-setup
   recent-activity?]
  [mdb.data-source
   broken-out-details->DataSource]
  [mdb.env
   db-file]
+ [mdb.h2
+  jdbc-sql-syntax-error-exception-classname]
  [mdb.jdbc-protocols
   clob->str]
  [mdb.encryption
@@ -67,6 +72,8 @@
   qualify
   query
   select-or-insert!
+  streaming-reducible
+  streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
   with-conflict-retry]

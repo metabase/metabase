@@ -1,6 +1,5 @@
 import { useClipboard } from "@mantine/hooks";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
@@ -12,6 +11,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { Route, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Task } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
@@ -19,11 +19,14 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { TaskDetailsPage } from "./TaskDetailsPage";
 
+const RoutedTaskDetailsPage = withRouteProps(TaskDetailsPage);
+
 jest.mock("@mantine/hooks", () => ({
   ...jest.requireActual("@mantine/hooks"),
   useClipboard: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockUseClipboard = useClipboard as jest.Mock;
 
 const PATHNAME = `${Urls.adminToolsTasksList()}/:taskId`;
@@ -37,7 +40,7 @@ const setup = ({ task = createMockTask() }: SetupOpts = {}) => {
   setupTaskEndpoint(task);
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskDetailsPage} />,
+    <Route path={PATHNAME} element={<RoutedTaskDetailsPage />} />,
     {
       initialRoute: Urls.adminToolsTaskDetails(task.id),
       withRouter: true,

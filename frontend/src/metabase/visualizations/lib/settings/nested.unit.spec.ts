@@ -15,7 +15,7 @@ describe("nestedSettings", () => {
             getDefault: (object: string) => `foo${object}`,
           },
         }),
-        component: () => null,
+        widget: "nestedSeries",
       },
     );
     const stored = { nested_settings: { 1: { foo: "bar" } } };

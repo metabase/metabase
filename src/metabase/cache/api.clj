@@ -122,7 +122,7 @@
 
 (mr/def ::cache-invalidate-response
   [:map
-   [:status [:enum 200 404]]
+   [:status [:= 200]]
    [:body   [:map
              [:count   :int]
              [:message :string]]]])
@@ -212,6 +212,12 @@
                                      (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+  ;; Require at least one target. Without a filter there is nothing to invalidate, so the request is
+  ;; malformed rather than not-found: returning 404 here misled callers into thinking the endpoint
+  ;; itself did not exist (see #66499), and a 200 would falsely imply something was invalidated.
+  (when (every? empty? [database dashboard question])
+    (throw (ex-info (tru "At least one of `database`, `dashboard`, or `question` is required.")
+                    {:status-code 400})))
   (doseq [db-id database] (api/write-check :model/Database db-id))
   (doseq [dashboard-id dashboard] (api/write-check :model/Dashboard dashboard-id))
   (doseq [question-id question] (api/write-check :model/Card question-id))
@@ -219,7 +225,9 @@
                                        :dashboards      dashboard
                                        :questions       question
                                        :with-overrides? (= include :overrides)})]
-    {:status (if (= cnt -1) 404 200)
+    ;; A well-formed filter that simply matched no cached results is a successful no-op (200); the
+    ;; `:message` below explains what happened.
+    {:status 200
      :body   {:count   cnt
               ;; Use condp instead of case to avoid Clojure compiler warnings.
               :message (condp = [(= include :overrides) (if (pos? cnt) 1 cnt)]

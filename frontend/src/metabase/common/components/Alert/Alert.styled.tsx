@@ -16,8 +16,8 @@ interface AlertRootProps {
 const colorsByVariant = {
   border: {
     info: "var(--mb-color-background_page-tertiary)",
-    error: color("error"),
-    warning: color("warning"),
+    error: color("feedback-negative"),
+    warning: color("feedback-warning"),
   },
   background: {
     info: "var(--mb-color-background_page-secondary)",
@@ -26,8 +26,8 @@ const colorsByVariant = {
   },
   icon: {
     info: color("text-primary"),
-    error: color("error"),
-    warning: color("warning"),
+    error: color("feedback-negative"),
+    warning: color("feedback-warning"),
   },
 };
 

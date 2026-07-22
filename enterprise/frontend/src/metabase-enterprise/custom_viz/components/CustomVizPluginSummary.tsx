@@ -36,7 +36,7 @@ export function CustomVizPluginSummary({ plugin }: Props) {
           </Group>
         )}
         {plugin.error_message && (
-          <Text size="sm" c="error">
+          <Text size="sm" c="feedback-negative">
             {plugin.error_message}
           </Text>
         )}

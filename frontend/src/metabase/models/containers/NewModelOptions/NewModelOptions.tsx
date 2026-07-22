@@ -33,6 +33,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const collectionId = Urls.extractEntityId(
+    // Unjustified type cast. FIXME
     location.query.collectionId as string,
   );
 

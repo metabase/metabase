@@ -42,6 +42,7 @@ export function translateContentString<T>(
   }
 
   if (Array.isArray(rawMsgid)) {
+    // Unjustified type cast. FIXME
     return rawMsgid.map((msgid) =>
       translateContentString(dictionary, locale, msgid),
     ) as T;
@@ -147,14 +148,14 @@ export const translateDisplayNames = <T>({
 
   const traverse = (element: T): T => {
     if (Array.isArray(element)) {
+      // Unjustified type cast. FIXME
       return element.map((item) => traverse(item)) as T;
     }
 
     if (isRecord(element)) {
       return Object.entries(element).reduce((acc, [key, value]) => {
         const shouldTranslate =
-          fieldsToTranslate.includes(key as string) &&
-          typeof value === "string";
+          fieldsToTranslate.includes(key) && typeof value === "string";
 
         // We can't detect if an element has a special pattern (aggregation, binning, temporal bucket) or not here.
         // We can't rely on the `source` field as for cases when a question containing aggregations is a base for another question,
@@ -163,11 +164,12 @@ export const translateDisplayNames = <T>({
         // and inside `translateColumnDisplayName` we fallback to regular tc() call if no pattern is matched.
         const newValue = shouldTranslate
           ? translateColumnDisplayName({
-              displayName: value as string,
+              displayName: value,
               tc,
               locale,
             })
-          : traverse(value as T);
+          : // Unjustified type cast. FIXME
+            traverse(value as T);
 
         return I.assoc(acc, key, newValue);
       }, element);

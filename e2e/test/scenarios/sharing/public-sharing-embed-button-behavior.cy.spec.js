@@ -314,7 +314,7 @@ describe("#39152 sharing an unsaved question", () => {
       });
 
       H.modal().findByLabelText("Price").click();
-      cy.findByRole("listbox").findByText("Editable").click();
+      H.selectDropdown().findByText("Editable").click();
 
       H.publishChanges(apiPath, ({ request, response }) => {
         assert.deepEqual(request.body.embedding_type, "static-legacy");
@@ -507,7 +507,7 @@ describe("#39152 sharing an unsaved question", () => {
 
             cy.findByDisplayValue("Node.js").click();
           });
-          cy.findByRole("listbox").findByText("Ruby").click();
+          H.selectDropdown().findByText("Ruby").click();
           cy.findByTestId("embed-backend")
             .findByTestId("copy-button")
             .realClick();
@@ -534,7 +534,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByDisplayValue("Ruby").click();
           });
 
-          cy.findByRole("listbox").findByText("Python").click();
+          H.selectDropdown().findByText("Python").click();
 
           H.modal().within(() => {
             cy.findByLabelText("Dark").click({ force: true });
@@ -654,7 +654,7 @@ describe("#39152 sharing an unsaved question", () => {
 
               cy.findByDisplayValue("Node.js").click();
             });
-            cy.findByRole("listbox").findByText("Ruby").click();
+            H.selectDropdown().findByText("Ruby").click();
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
               .realClick();
@@ -681,7 +681,7 @@ describe("#39152 sharing an unsaved question", () => {
               cy.findByDisplayValue("Ruby").click();
             });
 
-            cy.findByRole("listbox").findByText("Python").click();
+            H.selectDropdown().findByText("Python").click();
 
             H.modal().within(() => {
               cy.findByLabelText("Dark").click({ force: true });
@@ -829,7 +829,7 @@ describe("#39152 sharing an unsaved question", () => {
 
           cy.log("changing parameters, so we could discard changes");
           H.modal().findByLabelText("Price").click();
-          cy.findByRole("listbox").findByText("Editable").click();
+          H.selectDropdown().findByText("Editable").click();
 
           cy.findByTestId("embed-modal-content-status-bar").within(() => {
             cy.findByText("Discard changes").click();
@@ -883,10 +883,10 @@ describe("#39152 sharing an unsaved question", () => {
 
           H.modal().findByRole("tab", { name: "Parameters" }).click();
           H.modal().findByLabelText("Price").click();
-          cy.findByRole("listbox").findByText("Editable").click();
+          H.selectDropdown().findByText("Editable").click();
 
           H.modal().findByLabelText("Category").click();
-          cy.findByRole("listbox").findByText("Locked").click();
+          H.selectDropdown().findByText("Locked").click();
 
           cy.then(function () {
             const HOUR = 60 * 60 * 1000;

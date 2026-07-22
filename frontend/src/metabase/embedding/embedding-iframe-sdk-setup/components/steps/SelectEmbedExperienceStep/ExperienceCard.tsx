@@ -43,6 +43,7 @@ export const ExperienceCard = () => {
           value={experience}
           onChange={(experience) =>
             handleEmbedExperienceChange(
+              // Unjustified type cast. FIXME
               experience as SdkIframeEmbedSetupExperience,
             )
           }

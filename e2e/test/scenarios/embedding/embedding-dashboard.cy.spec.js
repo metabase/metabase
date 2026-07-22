@@ -89,11 +89,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.findByLabelText("Name").click();
       });
 
-      cy.findByRole("listbox").findByText("Editable").click();
+      H.selectDropdown().findByText("Editable").click();
 
       cy.get("@allParameters").findByLabelText("Id").click();
 
-      cy.findByRole("listbox").findByText("Locked").click();
+      H.selectDropdown().findByText("Locked").click();
 
       H.modal().within(() => {
         // set the locked parameter's value
@@ -160,10 +160,10 @@ describe("scenarios > embedding > dashboard parameters", () => {
         });
       });
       cy.get("@allParameters").findByDisplayValue("Locked").click();
-      cy.findByRole("listbox").findByText("Disabled").click();
+      H.selectDropdown().findByText("Disabled").click();
 
       cy.get("@allParameters").findByDisplayValue("Editable").click();
-      cy.findByRole("listbox").findByText("Disabled").click();
+      H.selectDropdown().findByText("Disabled").click();
 
       H.publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {

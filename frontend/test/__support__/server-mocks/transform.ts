@@ -24,6 +24,10 @@ export function setupListTransformsEndpoint(transforms: Transform[]) {
   fetchMock.get(`path:/api/transform`, transforms);
 }
 
+export function setupGetTransformEndpoint(transform: Transform) {
+  fetchMock.get(`path:/api/transform/${transform.id}`, transform);
+}
+
 export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
   fetchMock.get(`path:/api/transform-tag`, tags);
 }
@@ -39,8 +43,13 @@ export function setupListTransformJobsEndpoint(jobs: TransformJob[]) {
 export function setupListTransformJobTransformsEndpoint(
   jobId: TransformJobId,
   transforms: Transform[],
+  options?: { delay?: number },
 ) {
-  fetchMock.get(`path:/api/transform-job/${jobId}/transforms`, transforms);
+  fetchMock.get(
+    `path:/api/transform-job/${jobId}/transforms`,
+    transforms,
+    options,
+  );
 }
 
 export function setupListTransformJobTransformsEndpointWithError(

@@ -7,6 +7,7 @@ import CollectionHeader from "../../components/CollectionHeader";
 
 const mapDispatchToProps = {
   onUpdateCollection: (collection: Collection, values: Partial<Collection>) =>
+    // Unjustified type cast. FIXME
     collectionApi.endpoints.updateCollection.initiate({
       id: collection.id,
       ...values,

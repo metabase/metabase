@@ -11,7 +11,8 @@ type TabName =
   | "schema-viewer"
   | "glossary"
   | "git-sync"
-  | "workspaces";
+  | "workspaces"
+  | "settings";
 
 export const getCurrentTab = (pathname: string): TabName => {
   switch (true) {
@@ -35,6 +36,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "runs";
     case pathname.startsWith(Urls.transformList()):
       return "transforms";
+    case pathname.startsWith(Urls.dataStudioSettings()):
+      return "settings";
     default:
       return "data";
   }

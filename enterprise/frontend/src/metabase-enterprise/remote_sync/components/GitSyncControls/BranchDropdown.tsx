@@ -123,7 +123,7 @@ export const BranchDropdown = ({
           </Flex>
         ) : branchesError ? (
           <Box p="md">
-            <Text size="sm" c="error" ta="center">
+            <Text size="sm" c="feedback-negative" ta="center">
               {t`Failed to load branches — check your authentication token`}
             </Text>
           </Box>

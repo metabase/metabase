@@ -11,13 +11,13 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux/hooks";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
+import { push } from "metabase/router";
 import { Box } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 

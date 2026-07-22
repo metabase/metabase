@@ -16,7 +16,7 @@ export default {
 
 const Template: StoryFn<RowChartProps<any>> = (args) => {
   return (
-    <Box h={600} bg="white" p="8px">
+    <Box h={600} bg="core-white" p="8px">
       <RowChart {...args} />
     </Box>
   );
@@ -90,7 +90,7 @@ const ThemedRowChart = () => {
   const theme = useRowChartTheme("Lato", false);
 
   return (
-    <Box h={600} bg="white" p="8px">
+    <Box h={600} bg="core-white" p="8px">
       <RowChart {...DEFAULT_ROW_CHART_ARGS} theme={theme} stackOffset={null} />
     </Box>
   );

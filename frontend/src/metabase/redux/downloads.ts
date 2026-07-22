@@ -363,10 +363,8 @@ const convertSearchParamsToObject = (params: URLSearchParams) => {
   const object: Record<string, string | string[]> = {};
   for (const [key, value] of params.entries()) {
     if (object[key]) {
-      object[key] = ([] as string[]).concat(
-        object[key] as string | string[],
-        value,
-      );
+      // Unjustified type cast. FIXME
+      object[key] = ([] as string[]).concat(object[key], value);
     } else {
       object[key] = value;
     }
