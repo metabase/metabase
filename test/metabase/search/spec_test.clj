@@ -206,16 +206,20 @@
           (reset! @#'search.spec/model-hooks-cache nil)
           (search.spec/model-hooks))))))
 
-(deftest ^:parallel hook-where-fields-test
+(deftest ^:parallel direct-hook-where-fields-test
   (testing "single-key :id joins collapse to #{:id}"
     (is (= #{:id} (search.spec/hook-where-fields :model/Collection)))
     (is (= #{:id} (search.spec/hook-where-fields :model/Card)))
     (is (= #{:id} (search.spec/hook-where-fields :model/Table)))
-    (is (= #{:id} (search.spec/hook-where-fields :model/Database))))
+    (is (= #{:id} (search.spec/hook-where-fields :model/Database)))))
+
+(deftest ^:parallel joined-hook-where-fields-test
   (testing "multi-clause joins collect every :updated-qualified column referenced in the where"
     (is (= #{:most_recent :model_id :model} (search.spec/hook-where-fields :model/Revision)))
     (is (= #{:most_recent :moderated_item_id :moderated_item_type}
-           (search.spec/hook-where-fields :model/ModerationReview))))
+           (search.spec/hook-where-fields :model/ModerationReview)))))
+
+(deftest ^:parallel model-without-hooks-has-no-where-fields-test
   (testing "a model that feeds no search-model hooks has nothing to capture"
     (is (nil? (search.spec/hook-where-fields :model/User)))))
 
