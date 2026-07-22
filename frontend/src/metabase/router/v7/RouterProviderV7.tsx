@@ -89,8 +89,12 @@ export function RouterProviderV7({ children }: PropsWithChildren): JSX.Element {
  * being created (and trapped) inside the provider.
  */
 export function createMemoryTestHistory(initialRoute: string) {
+  // history@3 resolved a relative initial entry against the root; v7 keeps it
+  // relative, and a location without a leading slash then matches no route. Specs
+  // written against v3 pass both forms, so normalize.
+  const entry = initialRoute.startsWith("/") ? initialRoute : `/${initialRoute}`;
   return withBlocking(
-    createMemoryHistory({ initialEntries: [initialRoute], v5Compat: true }),
+    createMemoryHistory({ initialEntries: [entry], v5Compat: true }),
   );
 }
 
