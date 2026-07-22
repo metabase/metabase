@@ -1048,6 +1048,7 @@
   health-inspector
   {:team "Querying Platform"
    :api #{metabase.health-inspector.api
+          metabase.health-inspector.core
           metabase.health-inspector.init}
    :uses #{api
            lib
@@ -2016,6 +2017,7 @@
            metabase.search.core
            metabase.search.engine
            metabase.search.in-place.scoring
+           metabase.search.index-health
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
@@ -2030,6 +2032,7 @@
            collections
            config
            events
+           health-inspector
            lib
            lib-be
            models
@@ -3582,7 +3585,6 @@
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
-           metabase-enterprise.semantic-search.embedding-health
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
