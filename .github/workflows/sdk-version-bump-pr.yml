@@ -330,8 +330,6 @@ jobs:
 
           `distTag` and `tagAsLatest` are computed defaults - edit them here if this release should publish under a different dist-tag, or should (not) become the `latest` tag on npm. `tagAsLatest` is `true` only when patching the current gold major (`vars.LATEST_MAJOR_VERSION`).
 
-          ${{ inputs.release_type == 'preminor' && format('This is a `preminor` bump (master -> next major''s alpha). Merging it publishes `{0}` to npm like any other bump - remove the `sdk-release-trigger` label first if you only want the version bump.', steps.bump.outputs.new_version) || '' }}
-
           Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
 
           _Opened by the [SDK Version Bump PR workflow](../actions/workflows/sdk-version-bump-pr.yml), triggered by @${{ github.event.sender.login }}._
