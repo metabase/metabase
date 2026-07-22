@@ -13,6 +13,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def transform-run-timeout-seconds
+  "How long tests wait for a transform run to finish execution and sync."
+  ;; BigQuery runs routinely take 50-70s in CI.
+  120)
+
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
    `target` can be a string or a map. If `target` is a string, type :table is assumed."
@@ -97,7 +102,7 @@
 (defn test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
-        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
+        timeout-s transform-run-timeout-seconds
         limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
     (is (=? {:message "Transform run started"}
             resp))
