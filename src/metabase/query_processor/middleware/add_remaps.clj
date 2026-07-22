@@ -165,25 +165,14 @@
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- ::lib.schema/fields]
   (let [field->remapped-col (into {}
-                                  (map (fn [{:keys [original-field-clause new-field-clause]}]
-                                         [(simplify-ref-options original-field-clause) new-field-clause]))
-                                  infos)
-        field-id+alias->remapped-col (into {}
-                                           (map (fn [{:keys [original-field-clause new-field-clause dimension]}]
-                                                  [[(:field-id dimension)
-                                                    (lib/current-join-alias original-field-clause)]
-                                                   new-field-clause]))
-                                           infos)]
+                                  (mapcat (fn [{:keys [original-field-clause new-field-clause dimension]}]
+                                            (let [original-with-id (assoc original-field-clause 2 (:field-id dimension))]
+                                              [[(simplify-ref-options original-field-clause) new-field-clause]
+                                               [(simplify-ref-options original-with-id) new-field-clause]])))
+                                  infos)]
     (mapv
      (fn [field-ref]
-       (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name]
-                (or (field->remapped-col (simplify-ref-options field-ref))
-                    ;; Sandboxing can add a stage between the selected field and its source table. In that case
-                    ;; `returned-columns` produces a previous-stage name ref while `:fields` still contains an ID ref.
-                    ;; Match those equivalent refs by Field ID, retaining the join alias to disambiguate self joins.
-                    (let [[_tag _opts id-or-name] field-ref]
-                      (when (pos-int? id-or-name)
-                        (field-id+alias->remapped-col [id-or-name (lib/current-join-alias field-ref)]))))]
+       (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name] (field->remapped-col (simplify-ref-options field-ref))]
          (lib/update-options field-ref assoc ::original-field-dimension-id new-field-dimension-id)
          field-ref))
      fields)))
