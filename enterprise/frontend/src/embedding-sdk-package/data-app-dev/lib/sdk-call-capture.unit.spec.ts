@@ -191,6 +191,19 @@ describe("SdkCallCapture", () => {
     expect(error).toContain(`truncated, ${message.length} chars`);
   });
 
+  it("gives up on an error body too large to buffer", async () => {
+    install();
+    // A proxy's error page can be megabytes; the app is waiting on this
+    // response while we read the clone.
+    realFetch.mockResolvedValue(
+      new Response("x".repeat(200 * 1024), { status: 502 }),
+    );
+
+    await window.fetch(`${METABASE_URL}/api/dataset`);
+
+    expect(calls()[0]).toMatchObject({ status: 502, error: undefined });
+  });
+
   it("keeps the querystring out of the recorded endpoint", async () => {
     install();
 

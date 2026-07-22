@@ -55,6 +55,23 @@ describe("dev diagnostics collector", () => {
     expect(forwarded).toContainEqual(["passed through"]);
   });
 
+  it("survives arguments JSON cannot represent", () => {
+    const noop = () => undefined;
+
+    // `JSON.stringify` returns undefined rather than throwing for these. The
+    // wrapper must still record and forward — breaking `console.error` itself
+    // would take the app down over a log line.
+    console.error(undefined);
+    console.error(noop);
+    console.error(Symbol("sym"));
+
+    expect(
+      devDiagnostics.getEntries().map((entry) => formatDevDiagnostic(entry)),
+    ).toEqual(["undefined", String(noop), "Symbol(sym)"]);
+    expect(forwarded).toContainEqual([undefined]);
+    expect(forwarded).toContainEqual([noop]);
+  });
+
   it("formats Error arguments using their message", () => {
     console.error(new Error("kaboom"));
 

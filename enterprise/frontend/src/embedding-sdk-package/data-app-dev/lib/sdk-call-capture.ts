@@ -120,20 +120,20 @@ export class SdkCallCapture {
     response: Response,
   ): Promise<string | undefined> {
     try {
-      if (!response.ok) {
-        const responseBody = await response.clone().text();
-
-        return responseBody ? this.getErrorMessage(responseBody) : undefined;
-      }
-
       const responseBody = await this.readWithinBound(
         response.clone(),
         MAX_INSPECTED_BODY_CHARS,
       );
 
-      return responseBody == null
-        ? undefined
-        : this.getQueryFailure(responseBody);
+      if (responseBody == null) {
+        return undefined;
+      }
+
+      if (!response.ok) {
+        return responseBody ? this.getErrorMessage(responseBody) : undefined;
+      }
+
+      return this.getQueryFailure(responseBody);
     } catch {
       return undefined;
     }
