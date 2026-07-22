@@ -164,3 +164,23 @@
   "Schema for POST /test-connection response."
   [:map
    [:status [:= :success]]])
+
+;;; ------------------------------------------- Worktree Schemas -------------------------------------------
+
+(def Worktree
+  "Schema for a remote sync worktree object as returned by the API."
+  [:map
+   [:id pos-int?]
+   [:branch :string]
+   [:base_version [:maybe :string]]
+   [:is_default :boolean]
+   [:roots [:sequential [:map
+                         [:id pos-int?]
+                         [:name :string]]]]
+   [:creator_id [:maybe pos-int?]]
+   [:created_at :any]])
+
+(def WorktreeListResponse
+  "Schema for GET /worktrees response."
+  [:map
+   [:items [:sequential Worktree]]])

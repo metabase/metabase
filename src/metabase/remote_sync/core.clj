@@ -36,6 +36,14 @@
   []
   nil)
 
+(defenterprise non-default-worktree-filter-clause
+  "HoneySQL clause that excludes collections materialized by non-default remote sync worktrees (branch
+  checkouts), for queries over the `collection` table. Nil — no filtering needed — on OSS, where
+  worktrees cannot exist."
+  metabase-enterprise.remote-sync.core
+  []
+  nil)
+
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration.
 

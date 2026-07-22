@@ -25,6 +25,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.tracing.core :as tracing]
@@ -85,7 +86,8 @@
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
   By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           include-worktrees?]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -108,6 +110,8 @@
                           [:not-in :type [collection/library-collection-type
                                           collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
+                       (when-not include-worktrees?
+                         (remote-sync/non-default-worktree-filter-clause))
                        [:or
                         (when (contains? namespaces nil)
                           [:= :namespace nil])
@@ -246,12 +250,13 @@
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
   [_route-params
-   {:keys [exclude-archived exclude-other-user-collections include-library
+   {:keys [exclude-archived exclude-other-user-collections include-library include-worktrees
            namespace namespaces shallow collection-id]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
        [:include-library                {:default false} [:maybe :boolean]]
+       [:include-worktrees              {:default false} [:maybe :boolean]]
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
@@ -269,7 +274,8 @@
                                              :namespaces                     namespaces
                                              :shallow                        shallow
                                              :collection-id                  collection-id
-                                             :include-library?               include-library})
+                                             :include-library?               include-library
+                                             :include-worktrees?             include-worktrees})
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
@@ -340,6 +346,7 @@
    [:collection-type {:optional true} [:maybe CollectionType]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
+   [:include-worktrees?             {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
@@ -711,7 +718,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library? include-worktrees?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
@@ -726,6 +733,8 @@
             [:not [:in :type [collection/library-collection-type
                               collection/library-metrics-collection-type
                               collection/library-data-collection-type]]]])
+         (when-not include-worktrees?
+           (remote-sync/non-default-worktree-filter-clause))
          (if archived?
            [:or
             [:= :archived true]
@@ -1354,7 +1363,7 @@
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query include_library collection_type
+           include_can_run_adhoc_query include_library include_worktrees collection_type
            show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
                                           [:collection_type             {:optional true} CollectionType]
@@ -1362,6 +1371,7 @@
                                           [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                           [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
                                           [:include_library             {:default false} [:maybe ms/BooleanValue]]
+                                          [:include_worktrees           {:default false} [:maybe ms/BooleanValue]]
                                           [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
                                           [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
                                           [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
@@ -1379,6 +1389,7 @@
       :show-dashboard-questions?   (boolean show_dashboard_questions)
       :collection-type             collection_type
       :include-library?            include_library
+      :include-worktrees?          include_worktrees
       :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
                                      #{:collection}
                                      model-kwds)
@@ -1676,6 +1687,9 @@
                                   {:show-dashboard-questions?   show_dashboard_questions
                                    :models                      model-kwds
                                    :include-library?             true
+                                   ;; children of a worktree collection are visible when browsing into it directly;
+                                   ;; the default-off containment applies to roots, tree, and flat listings
+                                   :include-worktrees?           true
                                    :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state                (keyword pinned_state)
                                    :include-can-run-adhoc-query include_can_run_adhoc_query

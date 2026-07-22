@@ -7,6 +7,7 @@
    can come from an env var (`MB_REMOTE_SYNC_BRANCH`) that a SQL migration cannot read."
   (:require
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -88,6 +89,39 @@
   (t2/query {:update (t2/table-name :model/RemoteSyncObject)
              :set    {:worktree_id to-id}
              :where  [:= :worktree_id from-id]}))
+
+(mu/defn default-worktree? :- :boolean
+  "Is `worktree` the default worktree — the one whose branch the `remote-sync-branch` setting names?"
+  [worktree :- [:map [:branch :string]]]
+  (= (:branch worktree) (setting/get :remote-sync-branch)))
+
+(mu/defn worktree-roots :- [:sequential [:map [:id pos-int?] [:name :string]]]
+  "Root collections of `worktree-id`: member collections whose parent collection is not itself a member.
+   A worktree can have several roots — the repository supports multiple managed top-level collections."
+  [worktree-id :- pos-int?]
+  (let [members (t2/select [:model/Collection :id :name :location] :remote_sync_worktree_id worktree-id)
+        member? (into #{} (map :id) members)]
+    (into []
+          (comp (remove (fn [{:keys [location]}]
+                          (some-> (last (collection/location-path->ids location)) member?)))
+                (map #(select-keys % [:id :name])))
+          members)))
+
+(mu/defn worktree-dirty-rows :- [:sequential :map]
+  "RemoteSyncObject rows of `worktree-id` with local changes not yet pushed (status other than synced)."
+  [worktree-id :- pos-int?]
+  (t2/select :model/RemoteSyncObject :worktree_id worktree-id :status [:not= "synced"]))
+
+(mu/defn delete-worktree! :- :nil
+  "Delete `worktree` and the collection trees it materialized. Its RemoteSyncObject rows go with the
+   worktree row (FK cascade); task history keeps its rows with a nulled worktree reference. Guards
+   (default-worktree refusal, dirty check) are the caller's responsibility."
+  [worktree :- [:map [:id pos-int?]]]
+  (t2/with-transaction [_conn]
+    (doseq [root (worktree-roots (:id worktree))]
+      (t2/delete! :model/Collection :id (:id root)))
+    (t2/delete! :model/RemoteSyncWorktree :id (:id worktree)))
+  nil)
 
 (mu/defn set-default-branch! :- [:maybe [:map [:id pos-int?]]]
   "Point remote sync at `branch`: updates the `remote-sync-branch` setting, ensures a worktree row for

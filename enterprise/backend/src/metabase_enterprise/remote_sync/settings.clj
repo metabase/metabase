@@ -166,6 +166,14 @@
   :default false
   :on-change sync-transform-tracking-on-change)
 
+(defsetting remote-sync-worktrees
+  (deferred-tru "Whether remote sync worktrees (checking out additional branches as separate collection trees) are enabled.")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default false)
+
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
   :type :integer

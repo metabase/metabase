@@ -74,6 +74,18 @@
   []
   (remote-sync.worktree/default-worktree-id))
 
+(defenterprise non-default-worktree-filter-clause
+  "HoneySQL clause that excludes collections materialized by non-default remote sync worktrees (branch
+  checkouts), for queries over the `collection` table. A collection passes when it belongs to no
+  worktree or to the default one (the row whose branch matches the `remote-sync-branch` setting)."
+  :feature :none
+  []
+  [:or
+   [:= :remote_sync_worktree_id nil]
+   [:in :remote_sync_worktree_id {:select [:id]
+                                  :from   [(t2/table-name :model/RemoteSyncWorktree)]
+                                  :where  [:= :branch (settings/remote-sync-branch)]}]])
+
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration."
   :feature :none
