@@ -1,1 +1,4 @@
-export { ProductNotifications } from "./ProductNotifications";
+export {
+  ProductNotifications,
+  useDismissNotification,
+} from "./ProductNotifications";
