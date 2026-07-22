@@ -151,11 +151,12 @@
   Both `query-name` and `dataset-query` go through this so the underlying QP query runs at most
   once per key while the entry stays fresh (within the TTL).
 
-  The key leads with the current user because discovery is a real warehouse query run under that
-  user's lens: sandboxing, connection impersonation, and database routing can all give two users
-  different top-K values for the same (card, dim, k), and serving one user's values to another
-  would leak rows they cannot query. Attribute changes within a single user are covered by the TTL
-  rather than the key."
+  The key leads with the executing user (usually creator) because discovery
+  is a real warehouse query run under that user's lens: sandboxing, connection impersonation, and
+  database routing can all give two users different top-K values for the same (card, dim, k), and
+  serving one user's values to another would leak rows they cannot query. This isolates explorations
+  owned by different creators that happen to share a (card, dim, k, filters) tail. Attribute changes
+  within a single user are covered by the TTL rather than the key."
   [{:keys [mp card target dim params explore-filters]}]
   (let [card-id   (:id card)
         dim-id    (or (:dimension_id dim) (:id dim))
