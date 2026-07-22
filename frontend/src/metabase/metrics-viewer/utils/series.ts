@@ -107,8 +107,15 @@ export function buildSeries({
   const cardIdToEntityIndex: Record<CardId, number> = {};
   const activeBreakoutColors: SourceBreakoutColorMap = {};
 
-  const series = Array.from(resultsByEntityIndex.entries()).flatMap(
-    ([entityIndex, result]) => {
+  // Iterate entities by entityIndex, not by the order their datasets resolved.
+  // The datasets are fetched asynchronously (the API responds 202 and is
+  // polled), so under a slow network they can settle out of order. Because the
+  // first series drives `isFirstSeries` and the combined visualization settings
+  // (see `combineSettings` below), an order-dependent first series yields
+  // mismatched `graph.dimensions`/`graph.metrics` and crashes the chart.
+  const series = Array.from(resultsByEntityIndex.entries())
+    .sort(([a], [b]) => a - b)
+    .flatMap(([entityIndex, result]) => {
       const entity = formulaEntities[entityIndex];
 
       const name = uniqueNamesByEntityIndex.get(entityIndex);
@@ -180,8 +187,7 @@ export function buildSeries({
         cardIdToEntityIndex[series.card.id] = entityIndex;
       }
       return entrySeries;
-    },
-  );
+    });
 
   if (series.length > 1 && displayType.combineSettings) {
     series[0].card.visualization_settings = displayType.combineSettings(

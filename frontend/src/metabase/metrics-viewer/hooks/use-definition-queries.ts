@@ -334,6 +334,7 @@ export function useDefinitionQueries(
       let queriesError = null;
 
       for (const { entityIndex, result } of datasetResults) {
+        const hasData = Boolean(result.data?.data?.cols?.length);
         if (result.data?.data?.cols?.length) {
           if (result.data.data.cols.some((col) => isMetric(col))) {
             resultsByEntityIndex.set(entityIndex, result.data);
@@ -345,6 +346,17 @@ export function useDefinitionQueries(
           queriesError = getErrorMessage(result.error);
         }
         if (result.isLoading || ("isFetching" in result && result.isFetching)) {
+          queriesAreLoading = true;
+        }
+        // A requested dataset that has neither resolved data nor an error is
+        // still pending: freshly added/refetching requests briefly report
+        // `isUninitialized` before their initiate effect fires, and the async
+        // (202 + polled) dataset endpoint has gaps between polls where
+        // `isFetching` is momentarily false. Treat these as loading so the
+        // chart never renders a partial set of series while other requests are
+        // still settling out of order — that transient partial multi-series
+        // state crashes the combined visualization.
+        if (!hasData && !result.error) {
           queriesAreLoading = true;
         }
       }
