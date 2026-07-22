@@ -299,7 +299,8 @@
     ;; Individual engines may also partition the documents further if they prefer
     (tracing/with-span :search "search.ingestion.update" {:search/engine (name e)}
       (let [timer (u/start-timer)
-            update-report (reduce (fn [_ batch] (search.engine/update! e batch)) nil
+            update-report (reduce (fn [acc batch]
+                                    (merge-with + acc (search.engine/update! e batch))) {}
                                   (eduction (partition-all 150) documents-reducible))
             delete-report (reduce (fn [acc batch]
                                     (->> batch
@@ -312,8 +313,12 @@
         (log/debugf "Updated search entries in %.0fms Updated: %s Deleted: %s" duration (sort-by (comp - val) update-report) (sort-by (comp - val) delete-report))
         (analytics/inc! :metabase-search/index-update-ms duration)
         (analytics/observe! :metabase-search/index-update-duration-ms duration)
-        (doseq [[model cnt] (merge-with + update-report delete-report)]
-          (analytics/inc! :metabase-search/index-updates {:model model} cnt))))))
+        (doseq [[model cnt] update-report]
+          (analytics/inc! :metabase-search/index-updates {:model model} cnt))
+        ;; Purge volume is its own signal: steady means deletion capture is working, a spike is the anomaly
+        ;; worth alerting on.
+        (doseq [[model cnt] delete-report]
+          (analytics/inc! :metabase-search/index-deletes {:model model} cnt))))))
 
 (comment
   (u/group-by first second [["metric" 124] ["dataset" 124] ["metric" 124] ["other" 5]]))
@@ -373,14 +378,18 @@
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
    (when-not *disable-updates*
-     (if sync?
-       (bulk-ingest! updates)
-       (do
-         (doseq [update updates]
-           (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue message-delay-ms update))
-         (track-queue-size!)
-         true)))))
+     (let [updates (if (counted? updates) updates (vec updates))]
+       ;; Counted at production rather than consumption, so the rate reflects what change capture generates
+       ;; whether or not a listener is processing the queue.
+       (analytics/inc! :metabase-search/index-messages-produced (count updates))
+       (if sync?
+         (bulk-ingest! updates)
+         (do
+           (doseq [update updates]
+             (log/trace "Queuing update" update)
+             (queue/put-with-delay! queue message-delay-ms update))
+           (track-queue-size!)
+           true))))))
 
 (defn wait-for-idle!
   "Block until the ingestion queue has been drained and no more items arrive.

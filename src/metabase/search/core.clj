@@ -66,6 +66,11 @@
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
+(defmethod analytics.core/known-labels :metabase-search/index-deletes
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
+
 (defmethod analytics.core/known-labels :metabase-search/appdb-index-batches-skipped
   [_]
   [{:table-type :active} {:table-type :pending}])
@@ -257,4 +262,6 @@
             search-model (->> (vals (search.spec/specifications))
                               (filter (comp #{model} :model))
                               (map :name))]
-      (search.engine/delete! e search-model ids))))
+      ;; Explicit deletions count toward index-deletes; ingestion's purge path counts capture-driven ones.
+      (doseq [[m cnt] (search.engine/delete! e search-model ids)]
+        (analytics/inc! :metabase-search/index-deletes {:model m} cnt)))))
