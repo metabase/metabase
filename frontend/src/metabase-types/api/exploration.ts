@@ -360,8 +360,6 @@ export interface ExplorationThread {
   entity_id: string;
   created_at: string;
   updated_at: string;
-  metrics?: ExplorationThreadMetric[];
-  dimensions?: ExplorationThreadDimension[];
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
   blocks?: ExplorationBlockNode[] | null;

@@ -13,13 +13,19 @@ interface Props {
   params?: {
     childTargetId?: string;
   };
+  onClose: () => void;
 }
 
-export const CommentsSidesheet = ({ params }: Props) => {
+export const CommentsSidesheet = ({ params, onClose }: Props) => {
   const childTargetId = params?.childTargetId;
   const { openCommentSidebar, closeCommentSidebar } = useDocumentState();
   const document = useSelector(getCurrentDocument);
   const dispatch = useDispatch();
+
+  const closeSidebar = useCallback(() => {
+    closeCommentSidebar();
+    onClose();
+  }, [closeCommentSidebar, onClose]);
 
   const handleHoverChange = useCallback(
     (hoveredChildTargetId: string | undefined) => {
@@ -51,7 +57,7 @@ export const CommentsSidesheet = ({ params }: Props) => {
         }}
         childTargetId={childTargetId}
         onOpenComments={openCommentSidebar}
-        onCloseComments={closeCommentSidebar}
+        onCloseComments={closeSidebar}
         title={
           childTargetId === "all" ? t`All comments` : t`Comments about this`
         }

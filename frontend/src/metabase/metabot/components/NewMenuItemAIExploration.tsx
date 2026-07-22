@@ -31,7 +31,11 @@ export function NewMenuItemAIExploration({
       component={ForwardRefLink}
       to={url}
       leftSection={<Icon name="comment" />}
-      onClick={() => dispatch(resetConversation({ agentId: "ask" }))}
+      onClick={() => {
+        if (hasNlqAccess) {
+          dispatch(resetConversation({ agentId: "ask" }));
+        }
+      }}
     >
       {t`AI exploration`}
     </Menu.Item>

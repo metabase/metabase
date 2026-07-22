@@ -129,7 +129,7 @@ const LABELS = {
     unarchived: () => t`unarchived`,
   },
   exploration: {
-    subject: () => t`exploration`,
+    subject: () => t`research`,
     archived: () => t`trashed`,
     unarchived: () => t`restored`,
   },

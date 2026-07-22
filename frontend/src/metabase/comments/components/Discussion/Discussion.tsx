@@ -139,9 +139,7 @@ export const Discussion = ({
   };
 
   const handleCopyLink = (comment: Comment) => {
-    const url = comment
-      ? `${commentsUrl}#${getCommentNodeId(comment)}`
-      : commentsUrl;
+    const url = `${commentsUrl}#${getCommentNodeId(comment)}`;
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
     sendToast({ icon: "check", message: t`Copied link` });

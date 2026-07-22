@@ -62,7 +62,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     timelines,
     name,
   } = selection;
-  const { canUseNlq } = useUserMetabotPermissions();
+  const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
 
   // Surface the in-progress draft plan to Metabot each turn so it can read and edit it.
   useRegisterMetabotContextProvider(
@@ -394,6 +394,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               p="0.75rem"
               featureName={t`the AI agent`}
               inline
+              hasFeatureAccess={hasNlqAccess}
               onConfigureAi={openAiProviderConfigurationModal}
             />
           )}

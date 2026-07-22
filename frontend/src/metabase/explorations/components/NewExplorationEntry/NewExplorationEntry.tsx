@@ -50,7 +50,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
   const { data: myExplorationsResponse, isSuccess: hasLoadedMyExplorations } =
     useGetMyExplorationsQuery({ limit: 25 });
   const myExplorations = myExplorationsResponse?.data ?? [];
-  const { canUseNlq } = useUserMetabotPermissions();
+  const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
   const [
     isAiProviderConfigurationModalOpen,
     {
@@ -78,16 +78,18 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
   return (
     <Stack h="100%" bg="background-primary" align="center" p="2rem">
       <Stack w="100%" maw="42rem" align="flex-start" gap="lg" mih={0}>
-        <Button
-          component={ForwardRefLink}
-          to={Urls.newQuestion({ mode: "ask" })}
-          c="text-secondary"
-          bd="none"
-          flex="none"
-          leftSection={<Icon name="arrow_left" />}
-        >
-          {t`Explore`}
-        </Button>
+        {hasNlqAccess && (
+          <Button
+            component={ForwardRefLink}
+            to={Urls.newQuestion({ mode: "ask" })}
+            c="text-secondary"
+            bd="none"
+            flex="none"
+            leftSection={<Icon name="arrow_left" />}
+          >
+            {t`Explore`}
+          </Button>
+        )}
         <Text fz="xl" fw={600} c="text-primary" mb="0.5rem">
           {t`What do you want to research?`}
         </Text>
@@ -114,6 +116,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
               mih="7rem"
               featureName={t`the AI agent`}
               inline
+              hasFeatureAccess={hasNlqAccess}
               onConfigureAi={openAiProviderConfigurationModal}
             />
           )}

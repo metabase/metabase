@@ -15,8 +15,6 @@ import {
 } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
 import {
   ActionIcon,
   Box,
@@ -73,7 +71,6 @@ export const Comments = ({
     error,
   } = useListCommentsQuery(getListCommentsQuery(commentTarget));
   const comments = commentsData?.comments;
-  const dispatch = useDispatch();
   const [sendToast] = useToast();
 
   const targetComments = useMemo(() => {
@@ -92,21 +89,7 @@ export const Comments = ({
 
   const closeSidebar = useCallback(() => {
     onCloseComments?.();
-    // ModalRoute's onClose method doesn't preserve search query params
-    // we need them for explorations, so manually preserve them
-    const { pathname = "" } = location;
-    const existingCommentIndex = pathname.lastIndexOf("/comments/");
-    const nextPathname =
-      existingCommentIndex !== -1
-        ? pathname.slice(0, existingCommentIndex)
-        : pathname;
-    dispatch(
-      push({
-        pathname: nextPathname,
-        search: location.search,
-      }),
-    );
-  }, [onCloseComments, dispatch, location]);
+  }, [onCloseComments]);
 
   useEffect(() => {
     onOpenComments?.();

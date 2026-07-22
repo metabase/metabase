@@ -1004,7 +1004,7 @@ describe("ExplorationSidebar", () => {
       const row = headingRow();
       expect(row).toHaveAttribute("aria-busy", "false");
       expect(
-        within(row).queryByLabelText("Failed to generate"),
+        within(row).queryByTestId("exploration-error-marker"),
       ).not.toBeInTheDocument();
     });
   });
@@ -1438,7 +1438,9 @@ describe("ExplorationSidebar", () => {
       // is derived from that page's own queries.
       expect(getRow("Still running")).toHaveAttribute("aria-busy", "true");
       expect(
-        within(getRow("Has an error")).getByLabelText("Failed to generate"),
+        within(getRow("Has an error")).getByLabelText(
+          "We couldn't generate one or more of these charts.",
+        ),
       ).toBeInTheDocument();
       expect(
         within(getRow("All settled")).getByLabelText("Ready"),
@@ -1511,7 +1513,9 @@ describe("ExplorationSidebar", () => {
       expect(rowIndex("Done")).toBeLessThan(rowIndex("Running"));
       expect(rowIndex("Running")).toBeLessThan(rowIndex("Empty"));
       expect(
-        within(getRow("Empty")).getByLabelText("Failed to generate"),
+        within(getRow("Empty")).getByLabelText(
+          "We couldn't generate one or more of these charts.",
+        ),
       ).toBeInTheDocument();
     });
 
@@ -1643,7 +1647,9 @@ describe("ExplorationSidebar", () => {
 
         // The error wins — the row's icon is the warning.
         expect(
-          within(getRow("Mixed page")).getByLabelText("Failed to generate"),
+          within(getRow("Mixed page")).getByLabelText(
+            "We couldn't generate one or more of these charts.",
+          ),
         ).toBeInTheDocument();
       });
     });

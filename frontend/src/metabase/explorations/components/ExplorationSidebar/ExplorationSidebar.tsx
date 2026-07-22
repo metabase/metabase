@@ -486,6 +486,12 @@ function ExplorationTreeHeading({
         [S.treeRowThreadSeparated]:
           depth === 0 && item.data?.headingKind === "sub-exploration",
       })}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          onToggleExpand();
+        }
+      }}
       onClick={onToggleExpand}
       style={{ "--tree-depth": depth }}
     >

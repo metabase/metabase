@@ -62,7 +62,6 @@ export function useTree<TData = unknown>({
     data,
     selectedId,
     previousSelectedId,
-    expandedIds,
     freezeAutoExpandOnManualToggle,
   ]);
 

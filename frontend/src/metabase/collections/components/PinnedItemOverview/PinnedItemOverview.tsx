@@ -232,7 +232,7 @@ function PinnedItemOverview({
 
         {explorationItems.length > 0 && (
           <div>
-            <SectionTitle title={t`Explorations`} icon="telescope" />
+            <SectionTitle title={t`Research projects`} icon="telescope" />
             <Grid>
               {explorationItems.map((item) => (
                 <div key={item.id} className={CS.relative}>
