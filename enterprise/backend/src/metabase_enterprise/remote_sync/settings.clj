@@ -245,7 +245,7 @@
         (when updating-git-settings?
           (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
         (t2/with-transaction [_conn]
-          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
+          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms :remote-sync-worktrees]]
             (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
                        (not (and (= k :remote-sync-token) obfuscated?)))
               ;; refuse to point the main app at a branch that is checked out as a worktree

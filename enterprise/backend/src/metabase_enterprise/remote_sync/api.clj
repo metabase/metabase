@@ -312,6 +312,7 @@
        [:remote-sync-branch {:optional true} [:maybe :string]]
        [:remote-sync-auto-import {:optional true} [:maybe :boolean]]
        [:remote-sync-transforms {:optional true} [:maybe :boolean]]
+       [:remote-sync-worktrees {:optional true} [:maybe :boolean]]
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
   ;; In read-write mode, changing the branch here would flip the setting without reconciling synced

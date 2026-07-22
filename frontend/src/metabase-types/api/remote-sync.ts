@@ -137,6 +137,7 @@ export type RemoteSyncConfigurationSettings = Pick<
   | "remote-sync-branch"
   | "remote-sync-auto-import"
   | "remote-sync-transforms"
+  | "remote-sync-worktrees"
 > & {
   collections?: CollectionSyncPreferences;
 };
