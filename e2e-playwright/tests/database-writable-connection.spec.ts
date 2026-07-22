@@ -126,26 +126,21 @@
  *   other slots share the box.
  *
  * ─────────────────────────────────────────────────────────────────────────
- * FIXME (workers=2 CI red — PARKED, not fixed): global `readonly_user` collision
+ * Resolved (was: workers=2 CI red — global `readonly_user` collision)
  * ─────────────────────────────────────────────────────────────────────────
- * `createUser`/`dropUser` below run `CREATE USER` / `DROP USER readonly_user`,
- * a SERVER-GLOBAL MySQL account — NOT scoped to the per-worker
- * `writable_db_w<slot>` database that #157 isolates. CI runs `--workers=2
- * --fully-parallel` against ONE shared MySQL container, so two of this spec's
- * own tests run concurrently and worker A's `afterEach` DROP pulls the account
- * out from under worker B mid-test. Symptom: a connection save that targets the
- * just-vanished account never navigates back — `updateMainConnection` /
- * `updateWritableConnection` fail at their `toBeVisible` gate, a DIFFERENT
- * subset of tests each run. This is the residual shard-19 red once the earlier
- * `beforeEach` resync hang was fixed (retrigger `5cc681aa597` + background-sync
- * disable `15c0f7f7548`).
+ * `createUser`/`dropUser` run `CREATE USER` / `DROP USER` on a SERVER-GLOBAL
+ * MySQL account — NOT scoped to the per-worker `writable_db_w<slot>` database
+ * #157 isolates. Under CI's `--workers=2 --fully-parallel` against ONE shared
+ * MySQL container, two of this spec's own tests ran concurrently and worker
+ * A's `afterEach` DROP pulled the account out from under worker B mid-test: a
+ * connection save targeting the vanished account never navigated back, failing
+ * `updateMainConnection`/`updateWritableConnection` at their `toBeVisible`
+ * gate for a DIFFERENT subset of tests each run (residual shard-19 red after
+ * the `beforeEach` resync hang was fixed by `5cc681aa597` + `15c0f7f7548`).
  *
- * Green at `--workers=1` (9/9, 27/27 under `--repeat-each=3`); only manifests at
- * `--workers=2`. Classified as shared-resource contention and PARKED per the
- * single-thread-correctness-first prioritisation — no behavioral change made.
- * The fix, when workers=2 is picked up, is to make `READ_ONLY_USER.username`
- * per-slot (mirroring `writable_db_w<slot>`); proven locally to turn workers=2
- * green (9 passed ×3). Full diagnosis:
+ * FIX: `READ_ONLY_USERNAME` is now per-slot (`readonly_user_w<slot>`,
+ * mirroring `writable_db_w<slot>`), so the two workers no longer share one
+ * account. Verified 9×3 at workers=2. Full diagnosis:
  * findings-inbox/database-writable-connection.md.
  */
 import type { Page } from "@playwright/test";
@@ -179,7 +174,7 @@ import {
 } from "../support/database-writable-connection";
 import type { MetabaseApi } from "../support/api";
 import { expect, test } from "../support/fixtures";
-import { writableDbName } from "../support/writable-db";
+import { writableDbName, writableDbSlot } from "../support/writable-db";
 import { openQuestionActions } from "../support/models";
 import { createCard, createTestNativeQuery } from "../support/native-reproductions";
 import { FIRST_COLLECTION_ID } from "../support/sample-data";
@@ -201,8 +196,19 @@ const DEFAULT_USER: DatabaseCredentials = {
   password: "metasample123",
 };
 
+// Per-slot username: CREATE/DROP USER targets a SERVER-GLOBAL MySQL account,
+// not the per-worker `writable_db_w<slot>` database, so a shared name collides
+// under `--workers=2` (worker A's afterEach DROP yanks it from under worker B).
+// Suffix it per slot exactly as writableDbName() does — proven to turn
+// workers=2 green (see the header note). Falls back to the plain name when
+// isolation is off.
+const READ_ONLY_USERNAME = (() => {
+  const slot = writableDbSlot();
+  return slot === null ? "readonly_user" : `readonly_user_w${slot}`;
+})();
+
 const READ_ONLY_USER: DatabaseCredentials = {
-  username: "readonly_user",
+  username: READ_ONLY_USERNAME,
   password: "readonly_user",
 };
 

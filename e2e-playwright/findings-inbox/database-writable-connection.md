@@ -380,3 +380,22 @@ correctness is picked up, the fix is to make `READ_ONLY_USER.username` per-slot
 (mirroring the `writable_db_w<slot>` isolation `#157` already applies to the
 warehouse database). No assertion was weakened; the diagnostic token/user edits
 used to reproduce were reverted (`git checkout`), tree clean for this spec.
+
+### UNPARKED & FIXED (2026-07-22)
+
+Applied the proven fix: `READ_ONLY_USERNAME` is derived per-slot
+(`readonly_user_w${slot}` when isolation is on, `readonly_user` otherwise, using
+`writableDbSlot()` — the same arithmetic as `writableDbName()`). The username
+flows through `READ_ONLY_USER` into both the `CREATE/DROP/GRANT` SQL and the
+admin connection form, so the two workers no longer share a server-global
+account.
+
+Verified on the CI merge jar (bleeding-edge token locally, since pro-self-hosted
+is short the `writable_connection` feature on this box — the spec keeps
+`pro-self-hosted` for CI):
+- workers=1: 9/9
+- workers=2 --fully-parallel (slots 2+3): 9/9, then 18/18 under --repeat-each=2
+
+The header FIXME block is rewritten to a "Resolved" note. This is the one
+shared-resource item that was cheap, proven, and worth unparking on its own;
+the others (snapshot-name partitioning, webhook-tester per-slot) remain parked.
