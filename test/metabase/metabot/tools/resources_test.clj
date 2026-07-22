@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -129,7 +130,10 @@
    ;; ----- Dashboard -----
    ["metabase://dashboard/8"                               :dashboard                  ["8"]]
    ["metabase://dashboard/8/items"                         :dashboard-items            ["8" nil]]
-   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]])
+   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]
+   ;; ----- Conversation state -----
+   ["metabase://chart/7f018c82-4381-4264"                  :conversation-chart         ["7f018c82-4381-4264"]]
+   ["metabase://query/NXRVLzEMoMpfNJpqPshQR"               :conversation-query         ["NXRVLzEMoMpfNJpqPshQR"]]])
 
 (deftest dispatch-routing-test
   (testing "every supported URI pattern routes to the expected handler with the expected args"
@@ -163,7 +167,9 @@
                                   read-resource/fetch-transform-sources          (spy :transform-sources)
                                   read-resource/fetch-transform-target           (spy :transform-target)
                                   read-resource/fetch-dashboard                  (spy :dashboard)
-                                  read-resource/fetch-dashboard-items            (spy :dashboard-items)]
+                                  read-resource/fetch-dashboard-items            (spy :dashboard-items)
+                                  read-resource/fetch-conversation-chart         (spy :conversation-chart)
+                                  read-resource/fetch-conversation-query         (spy :conversation-query)]
         (doseq [[uri expected-handler expected-args] dispatch-cases]
           (testing uri
             (reset! calls nil)
@@ -261,6 +267,61 @@
       (testing "returns error for unknown dashboard"
         (is (=? {:resources [{:error string?}]}
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
+
+(deftest read-document-resource-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card {card-id :id} {:name "Embedded chart"}
+                   :model/Document {document-id :id}
+                   {:name     "Q3 report"
+                    :document {:type "doc"
+                               :content [{:type "heading"
+                                          :content [{:type "text" :text "Revenue"}]}
+                                         {:type "resizeNode"
+                                          :content [{:type "cardEmbed" :attrs {:id card-id}}]}
+                                         {:type "paragraph"
+                                          :content [{:type "text" :text "Detailed analysis"}]}]}}]
+      (testing "fetches an indexed outline of the document's top-level blocks"
+        (let [{:keys [output] :as result} (read-resource/read-resource
+                                           {:uris [(str "metabase://document/" document-id)]})]
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  result))
+          (is (str/includes? output "Q3 report"))
+          (is (str/includes? output "[0] heading: Revenue"))
+          (is (str/includes? output (str "[1] resizeNode (embeds card " card-id ")")))
+          (is (str/includes? output "[2] paragraph: Detailed analysis"))))
+      (testing "returns error for unknown document"
+        (is (=? {:resources [{:error string?}]}
+                (read-resource/read-resource {:uris ["metabase://document/99999"]})))))))
+
+(deftest read-conversation-chart-resource-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [query {:database (mt/id)
+                 :type     "query"
+                 :query    {:source-table (mt/id :orders)
+                            :aggregation  [["count"]]}}]
+      (binding [tools.shared/*memory-atom*
+                (atom {:state {:queries {"q-1" query}
+                               :charts  {"chart-1" {:chart_id "chart-1"
+                                                    :query_id "q-1"
+                                                    :queries  [query]
+                                                    :visualization_settings {:chart_type "line"}}}}})]
+        (testing "resolves a conversation chart to its chart type and exported query"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-1"]})]
+            (is (=? {:resources [{:content {:structured-output map?}}]}
+                    result))
+            (is (str/includes? (:output result) "conversation-chart"))
+            (is (str/includes? (:output result) "Chart type: line"))
+            (is (str/includes? (:output result) "ORDERS"))))
+        (testing "falls back to the queries state when the id is a query id"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/q-1"]})]
+            (is (str/includes? (:output result) "conversation-query"))))
+        (testing "resolves a conversation query"
+          (let [result (read-resource/read-resource {:uris ["metabase://query/q-1"]})]
+            (is (str/includes? (:output result) "conversation-query"))
+            (is (str/includes? (:output result) "ORDERS"))))
+        (testing "errors clearly for ids that are in neither charts nor queries state"
+          (is (=? {:resources [{:error #"No chart or query with id 'nope'.*"}]}
+                  (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
 
 (deftest read-transform-resource-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -528,14 +589,18 @@
 (deftest read-collections-and-collection-items-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Marketing" :location "/"}
-                   :model/Card {card-id :id} {:name "Sales report" :collection_id coll-id}]
+                   :model/Card {card-id :id} {:name "Sales report" :collection_id coll-id}
+                   :model/Document {doc-id :id} {:name "Campaign plan" :collection_id coll-id}]
       (testing "metabase://collections lists root collections (excluding trash)"
         (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://collections"]})]
           (is (str/includes? output "Marketing"))))
       (testing "metabase://collection/{id}/items lists members with drill-in URIs"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items")]})]
           (is (str/includes? output "Sales report"))
-          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
+          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
+          (is (str/includes? output "Campaign plan"))
+          (is (str/includes? output (str "uri=\"metabase://document/" doc-id "\"")))
+          (is (str/includes? output "can_write=\"true\"")))))))
 
 (deftest read-table-derived-test
   (mt/with-current-user (mt/user->id :crowberto)

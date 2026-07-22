@@ -1,7 +1,9 @@
-import type { LocationDescriptor } from "history";
+import type { Location as HistoryLocation, LocationDescriptor } from "history";
 import type { NavigateFunction, NavigateOptions, To } from "react-router-v7";
 
 import type { RouterNavigator } from "../middleware";
+
+import { queryToSearch } from "./location";
 
 /**
  * The live v7 `navigate`, registered by `V7ReduxBridge` once the router mounts.
@@ -12,6 +14,28 @@ let currentNavigate: NavigateFunction | null = null;
 
 export function setV7Navigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
+}
+
+/**
+ * Subscribers to location changes, backing the imperative router's `listen`. v3's
+ * `router.listen` had no v7 equivalent, so `V7ReduxBridge` fans every location
+ * change out to these on the app's behalf (e.g. `use-dashboard-url-query`).
+ */
+type LocationListener = (location: HistoryLocation) => void;
+const locationListeners = new Set<LocationListener>();
+
+export function subscribeLocation(listener: LocationListener): () => void {
+  locationListeners.add(listener);
+  return () => {
+    locationListeners.delete(listener);
+  };
+}
+
+export function notifyLocationListeners(location: HistoryLocation): void {
+  // Snapshot so a listener that unsubscribes mid-run cannot skip a sibling.
+  for (const listener of [...locationListeners]) {
+    listener(location);
+  }
 }
 
 /**
@@ -26,10 +50,18 @@ export function toNavigateArgs(
   if (typeof location === "string") {
     return [location, options];
   }
+  // v3 descriptors carry the query as a `query` object, which v7 does not read, so
+  // serialize it into the search string. Dropping it silently loses params (e.g.
+  // the dashboard's tab and filter slugs). `query` wins over `search`, matching
+  // history@3's `useQueries`: callers build `{ ...location, query }`, so the
+  // spread's stale `search` must not shadow the query they just set.
+  const search = location.query
+    ? queryToSearch(location.query)
+    : location.search;
   return [
     {
       pathname: location.pathname,
-      search: location.search,
+      search,
       hash: location.hash,
     },
     { ...options, state: location.state },

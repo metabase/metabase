@@ -91,6 +91,18 @@ function toBlockedLocation(
   return toV3Location(location, action);
 }
 
+function isSameUrl(
+  to: To,
+  current: { pathname: string; search: string; hash: string },
+): boolean {
+  const path = typeof to === "string" ? parsePath(to) : to;
+  return (
+    (path.pathname ?? current.pathname) === current.pathname &&
+    (path.search ?? "") === current.search &&
+    (path.hash ?? "") === current.hash
+  );
+}
+
 /**
  * Wrap a history so a registered leave hook can cancel navigation, restoring the
  * v3 `setRouteLeaveHook` behavior on the declarative v7 engine. react-router
@@ -113,6 +125,14 @@ export function withBlocking(history: History): History {
   };
 
   const replace: History["replace"] = (to, state) => {
+    // v3/history@3 did not notify listeners when replacing to the current URL, so
+    // effects that sync state into the URL by replacing the location they just
+    // read stayed stable. v7's `v5Compat` history notifies on every replace,
+    // which loops those effects (e.g. the dashboard's `useLocationSync`). Skip the
+    // redundant replace to keep the v3 behavior.
+    if (isSameUrl(to, history.location)) {
+      return;
+    }
     if (!isBlocked(toBlockedLocation(to, "REPLACE", state))) {
       history.replace(to, state);
     }
