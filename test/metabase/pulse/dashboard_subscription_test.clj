@@ -1398,3 +1398,51 @@
               (first (:channel/email pulse-results))
               #"Aviary KPIs"
               #"Dashboard content available in attached files"))))))
+(defn- do-with-executed-card-ids!
+  "Run `f` while recording the :card_id of every dashcard that actually executes, returning the atom of ids."
+  [f]
+  (let [executed (atom [])
+        orig     @#'notification.payload.execute/execute-dashboard-subscription-card]
+    (with-redefs [notification.payload.execute/execute-dashboard-subscription-card
+                  (fn [dashcard parameters]
+                    (swap! executed conj (:card_id dashcard))
+                    (orig dashcard parameters))]
+      (f))
+    executed))
+
+(deftest dashboard-sub-attachment-only-skips-unattached-cards-test
+  (mt/with-temp [:model/Card          {attached-id :id} {:name          "Attached Card"
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                 :model/Card          {other-id :id}    {:name          "Other Card"
+                                                         :dataset_query (mt/mbql-query venues {:limit 1})}
+                 :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                 :model/DashboardCard _ {:dashboard_id dashboard-id :card_id attached-id}
+                 :model/DashboardCard _ {:dashboard_id dashboard-id :card_id other-id}
+                 :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                      :dashboard_id dashboard-id}
+                 :model/PulseCard     _ {:pulse_id    pulse-id
+                                         :card_id     attached-id
+                                         :position    0
+                                         :include_csv true}
+                 :model/PulseCard     _ {:pulse_id pulse-id
+                                         :card_id  other-id
+                                         :position 1}]
+    (testing "attachment-only subscriptions only execute the cards selected for attachment (GDGT-2772)"
+      (mt/with-temp [:model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                       :channel_type "email"
+                                                       :details      {:attachment_only true}}
+                     :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                     :pulse_channel_id pc-id}]
+        (let [executed      (do-with-executed-card-ids!
+                             #(pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+          (is (= [attached-id] @executed)))))
+    (testing "a slack channel executes every card"
+      (notification.tu/with-channel-fixtures [:channel/slack]
+        (mt/with-temp [:model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type "slack"
+                                              :details      {:channel "#general"}}]
+          (let [executed (do-with-executed-card-ids!
+                          #(pulse.test-util/with-captured-channel-send-messages!
+                             (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+            (is (= #{attached-id other-id} (set @executed)))))))))
