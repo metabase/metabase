@@ -89,6 +89,14 @@
                                  (lib-metric/extract-persisted-dimensions dimensions)
                                  dimension-mappings)))
 
+(defn- table-prefixed-dimension
+  [dimension]
+  (if (= "connection" (get-in dimension [:group :type]))
+    (assoc dimension :display-name (str (get-in dimension [:group :display-name])
+                                        " - "
+                                        (or (:display-name dimension) (:name dimension))))
+    dimension))
+
 (defn compute-full-dimension-set
   "Compute the FULL dimension set for a metric's `query` — its own-table columns PLUS every
    implicitly-joined (FK-reachable) column — in the persisted `{:dimensions ... :dimension-mappings ...}`
@@ -102,7 +110,8 @@
   (when (seq query)
     (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
           {:keys [dimensions dimension-mappings]}
-          (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)]
+          (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)
+          dimensions (mapv table-prefixed-dimension dimensions)]
       {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
        :dimension-mappings dimension-mappings})))
 
