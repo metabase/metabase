@@ -1181,7 +1181,7 @@
           (mt/with-temp [:model/Tenant _ {:slug "tenant-mctenantson"
                                           :name "Tenant McTenantson"}
                          :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Administrators"
-                                                                       :is_tenant_group true}]
+                                                                        :is_tenant_group true}]
             (mt/with-temporary-setting-values
               [jwt-group-sync true
                jwt-group-mappings {"Tenant Administrators" [tenant-group-id]}
@@ -1219,7 +1219,7 @@
       (mt/with-additional-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Administrators"
-                                                                       :is_tenant_group true}]
+                                                                        :is_tenant_group true}]
             (mt/with-temporary-setting-values
               [jwt-group-sync true
                jwt-group-mappings {"Tenant Administrators" [tenant-group-id]}
