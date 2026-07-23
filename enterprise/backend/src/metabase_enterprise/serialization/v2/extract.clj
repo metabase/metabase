@@ -158,9 +158,11 @@
                             ;; so cards that reference them can still be exported and imported correctly
                             (and analytics-cards (contains? by-model "Card"))
                             (update "Card" (fn [ids] (vec (remove analytics-cards ids)))))
+          pk-col          (fn [model]
+                            (first (t2/primary-keys (t2/resolve-model (keyword "model" model)))))
           extract-by-ids  (fn [[model ids]]
                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                   :where          [:in (serdes/pk-column model) ids]})))
+                                                                   :where          [:in (pk-col model) ids]})))
           extract-all     (fn [model]
                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
       (eduction cat

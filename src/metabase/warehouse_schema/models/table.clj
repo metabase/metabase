@@ -648,12 +648,8 @@
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            [["Measure" measure-id] {"Table" id}]))
-        ;; full exports extract TableUserSettings as a top-level model instead
-        table-user-settings (when (and user-edits-only
-                                       (t2/exists? :model/TableUserSettings :table_id id))
-                              {["TableUserSettings" id] {"Table" id}})]
-    (merge fields segments measures table-user-settings)))
+                            [["Measure" measure-id] {"Table" id}]))]
+    (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]

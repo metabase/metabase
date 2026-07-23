@@ -1248,7 +1248,7 @@
    3. Are in one of the provided collections (or descendants)"
   []
   (eduction (map (fn [[model ids]]
-                   (serdes/extract-all model {:where         [:in (serdes/pk-column model) ids]
+                   (serdes/extract-all model {:where         [:in (first (t2/primary-keys (t2/resolve-model (keyword "model" model)))) ids]
                                               :skip-archived true})))
             cat
             (exportable-entities)))
@@ -1260,7 +1260,7 @@
   [rows]
   (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
     (eduction (map (fn [[model ids]]
-                     (serdes/extract-all model {:where         [:in (serdes/pk-column model) ids]
+                     (serdes/extract-all model {:where         [:in (first (t2/primary-keys (t2/resolve-model (keyword "model" model)))) ids]
                                                 :skip-archived true})))
               cat
               by-model)))

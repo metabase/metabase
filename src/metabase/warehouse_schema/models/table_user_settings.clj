@@ -42,8 +42,6 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/pk-column "TableUserSettings" [_model-name] :table_id)
-
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
 (defmethod serdes/generate-path "TableUserSettings" [_ {:keys [table_id]}]

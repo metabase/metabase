@@ -968,14 +968,6 @@
   [[_db-name _schema _table-name :as table-id] :- [:maybe [:tuple string? [:maybe string?] string?]]]
   (resolve/import-table-fk (import-resolver) table-id))
 
-(defmulti pk-column
-  "The application-db primary-key column for serdes model `model-name`, `:id` by default. Mirror
-  models whose PK is their parent's FK (the *UserSettings models) override this."
-  {:arglists '([model-name])}
-  identity)
-
-(defmethod pk-column :default [_model-name] :id)
-
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
   This is useful for writing [[deserialization-dependencies]] implementations."
