@@ -204,35 +204,36 @@ function getMetricMappingOptions(
   mappingOptions: ParameterMappingOption[],
   dimensions: MetricDimension[],
 ): ParameterMappingOption[] {
-  return dimensions.flatMap((dimension) => {
-    const fieldIds = new Set(
-      dimension.sources?.map((source) => source["field-id"]),
-    );
-    const mappingOption = mappingOptions.find((option) => {
-      if (!isStructuredDimensionTarget(option.target)) {
-        return false;
-      }
-
-      const fieldReference = option.target[1];
-      return (
-        fieldReference[0] === "field" &&
-        typeof fieldReference[1] === "number" &&
-        fieldIds.has(fieldReference[1])
-      );
-    });
-
-    if (!mappingOption) {
-      return [];
+  const optionByFieldId = new Map<number, ParameterMappingOption>();
+  for (const option of mappingOptions) {
+    if (!isStructuredDimensionTarget(option.target)) {
+      continue;
     }
+    const fieldReference = option.target[1];
+    if (
+      fieldReference[0] === "field" &&
+      typeof fieldReference[1] === "number" &&
+      !optionByFieldId.has(fieldReference[1])
+    ) {
+      optionByFieldId.set(fieldReference[1], option);
+    }
+  }
 
-    return [
-      {
-        name: dimension.display_name,
-        icon: mappingOption.icon,
-        isForeign: false,
-        target: mappingOption.target,
-      },
-    ];
+  return dimensions.flatMap((dimension) => {
+    for (const source of dimension.sources ?? []) {
+      const mappingOption = optionByFieldId.get(source["field-id"]);
+      if (mappingOption) {
+        return [
+          {
+            name: dimension.display_name,
+            icon: mappingOption.icon,
+            isForeign: false,
+            target: mappingOption.target,
+          },
+        ];
+      }
+    }
+    return [];
   });
 }
 
