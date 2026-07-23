@@ -24,9 +24,9 @@
 (deftest wrap-tools-with-state-carries-title-fn-test
   (testing "a tool var's :title-fn metadata reaches the tool-def map"
     (let [wrapped (agent-tools/wrap-tools-with-state
-                   {"read_resource" #'agent-tools/read-resource-tool}
+                   {"search" #'agent-tools/search-tool}
                    (atom {}) nil nil)]
-      (is (fn? (get-in wrapped ["read_resource" :title-fn]))))))
+      (is (fn? (get-in wrapped ["search" :title-fn]))))))
 
 (deftest filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"

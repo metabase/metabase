@@ -22,12 +22,14 @@
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
+(def tool-title-type "AI-SDK data type for a tool call's settled display title." "tool_title")
 
 (def ^:private ephemeral-data-types
   "Data types not written to MetabotMessage.data."
   ;; state is diffed separately into the row's state column
-  ;; search_results renders under the client-only chain of thought, never rehydrated
-  #{state-type search-results-type})
+  ;; search_results and tool_title render under the client-only chain of
+  ;; thought, never rehydrated
+  #{state-type search-results-type tool-title-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -155,6 +157,15 @@
   {:type :data
    :data-type search-results-type
    :data value})
+
+(defn tool-title-part
+  "Data part carrying a tool call's display title, derived from what the tool
+  actually read/did; [[expand-data-parts-xf]] stamps on the tool-call id it
+  labels."
+  [title]
+  {:type :data
+   :data-type tool-title-type
+   :data {:title title}})
 
 (defn viz-part
   "Return the `generated_entity` card data part that surfaces a query/chart result

@@ -159,6 +159,8 @@
     (is (false? (streaming/persistable-data-part? (streaming/state-part {:queries {}})))))
   (testing "search-results parts are not persisted (they render under the ephemeral chain of thought)"
     (is (false? (streaming/persistable-data-part? (streaming/search-results-part {:total_count 0 :results []})))))
+  (testing "tool-title parts are not persisted (they render under the ephemeral chain of thought)"
+    (is (false? (streaming/persistable-data-part? (streaming/tool-title-part "[Orders](metabase://table/1)")))))
   (testing "other parts are persisted"
     (is (true? (streaming/persistable-data-part? (streaming/todo-list-part []))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))

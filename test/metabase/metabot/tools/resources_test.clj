@@ -343,61 +343,62 @@
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
 
-(deftest read-resource-display-test
+(defn- read-title
+  "The chain-of-thought title `read-resource` derives from what it read."
+  [& uris]
+  (-> (read-resource/read-resource {:uris (vec uris)})
+      :data-parts first :data :title))
+
+(deftest read-resource-title-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales Overview"}
-                   :model/Table     {table-id :id} {:name "orders" :display_name "Orders"}]
-      (testing "a single entity becomes a Reading markdown link"
+                   :model/Table     {table-id :id} {:name "orders" :display_name "Orders" :active true}]
+      (testing "a single entity becomes a markdown link"
         (is (= (str "[Sales Overview](metabase://dashboard/" dash-id ")")
-               (#'read-resource/read-resource-display
-                {:uris [(str "metabase://dashboard/" dash-id)]}))))
+               (read-title (str "metabase://dashboard/" dash-id)))))
+      (testing "square brackets in a name are stripped — they'd break the client's link parsing"
+        (mt/with-temp [:model/Dashboard {bracket-id :id} {:name "Sales [2024]"}]
+          (is (= (str "[Sales 2024](metabase://dashboard/" bracket-id ")")
+                 (read-title (str "metabase://dashboard/" bracket-id))))))
       (testing "a table uses its friendly display_name"
         (is (= (str "[Orders](metabase://table/" table-id ")")
-               (#'read-resource/read-resource-display
-                {:uris [(str "metabase://table/" table-id)]}))))
+               (read-title (str "metabase://table/" table-id)))))
       (testing "a sub-resource appends its aspect, so fields reads differently than the entity"
         (is (= (str "[Orders](metabase://table/" table-id ") fields")
-               (#'read-resource/read-resource-display
-                {:uris [(str "metabase://table/" table-id "/fields")]}))))
-      (testing "a trailing field id is dropped from the aspect"
-        (is (= (str "[Orders](metabase://table/" table-id ") fields")
-               (#'read-resource/read-resource-display
-                {:uris [(str "metabase://table/" table-id "/fields/99")]}))))
-      (testing "dashboard items read as cards, matching product copy"
-        (is (= (str "[Sales Overview](metabase://dashboard/" dash-id ") cards")
-               (#'read-resource/read-resource-display
-                {:uris [(str "metabase://dashboard/" dash-id "/items")]}))))
-      (testing "multiple URIs join as a comma-delimited list; missing entities are skipped"
+               (read-title (str "metabase://table/" table-id "/fields")))))
+      (testing "a list read that carries no entity name falls back to the aspect noun"
+        (is (= "cards"
+               (read-title (str "metabase://dashboard/" dash-id "/items")))))
+      (testing "multiple URIs join as a comma-delimited list; failed reads are skipped"
         (is (= (str "[Sales Overview](metabase://dashboard/" dash-id "), "
                     "[Orders](metabase://table/" table-id "), databases")
-               (#'read-resource/read-resource-display
-                {:uris [(str "metabase://dashboard/" dash-id)
-                        (str "metabase://table/" table-id)
-                        "metabase://dashboard/99999"
-                        "metabase://databases"]}))))
-      (testing "no URIs -> nil"
-        (is (nil? (#'read-resource/read-resource-display {:uris []}))))
+               (read-title (str "metabase://dashboard/" dash-id)
+                           (str "metabase://table/" table-id)
+                           "metabase://dashboard/99999"
+                           "metabase://databases"))))
+      (testing "no URIs -> no title data part"
+        (is (nil? (read-title))))
       (testing "a named but non-linkable entity surfaces as plain text, not a link"
-        (mt/with-temp [:model/Card {metric-id :id} {:name "Revenue" :type :metric}]
+        (mt/with-temp [:model/Card {metric-id :id} {:name          "Revenue"
+                                                    :type          :metric
+                                                    :database_id   (mt/id)
+                                                    :table_id      (mt/id :orders)
+                                                    :dataset_query (mt/mbql-query orders
+                                                                     {:aggregation [[:count]]})}]
           (is (= "Revenue"
-                 (#'read-resource/read-resource-display
-                  {:uris [(str "metabase://metric/" metric-id)]})))))
+                 (read-title (str "metabase://metric/" metric-id))))))
       (testing "a document becomes a markdown link"
         (mt/with-temp [:model/Document {doc-id :id} {:name "Campaign plan"}]
           (is (= (str "[Campaign plan](metabase://document/" doc-id ")")
-                 (#'read-resource/read-resource-display
-                  {:uris [(str "metabase://document/" doc-id)]})))))
+                 (read-title (str "metabase://document/" doc-id))))))
       (testing "a navigation list names what's being browsed"
-        (is (= "databases"
-               (#'read-resource/read-resource-display {:uris ["metabase://databases"]})))
-        (is (= "recent items"
-               (#'read-resource/read-resource-display {:uris ["metabase://user/recent-items"]}))))
-      (testing "a missing entity -> nil"
-        (is (nil? (#'read-resource/read-resource-display {:uris ["metabase://dashboard/99999"]}))))
+        (is (= "databases" (read-title "metabase://databases")))
+        (is (= "recent items" (read-title "metabase://user/recent-items"))))
+      (testing "a missing entity -> no title"
+        (is (nil? (read-title "metabase://dashboard/99999"))))
       (testing "an unreadable entity never leaks its name"
         (with-redefs [mi/can-read? (constantly false)]
-          (is (nil? (#'read-resource/read-resource-display
-                     {:uris [(str "metabase://dashboard/" dash-id)]}))))))))
+          (is (nil? (read-title (str "metabase://dashboard/" dash-id)))))))))
 
 ;; ===== Permission coverage — every branch =====
 ;;
