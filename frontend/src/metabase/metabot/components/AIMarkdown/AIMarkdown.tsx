@@ -23,6 +23,7 @@ type AIMarkdownProps = {
   children: string;
   className?: string;
   isStreaming?: boolean;
+  animateFromStart?: boolean;
   onInternalLinkClick?: (link: string) => void;
   singleNewlinesAreParagraphs?: boolean;
 };
@@ -132,6 +133,7 @@ export const AIMarkdown = memo(
     onInternalLinkClick,
     children,
     isStreaming = false,
+    animateFromStart = false,
     singleNewlinesAreParagraphs = false,
   }: AIMarkdownProps) => {
     const components = useMemo(
@@ -149,6 +151,7 @@ export const AIMarkdown = memo(
           blockClassName={S.aiMarkdown}
           components={components}
           isStreaming={isStreaming}
+          animateFromStart={animateFromStart}
           source={source}
         />
       </div>

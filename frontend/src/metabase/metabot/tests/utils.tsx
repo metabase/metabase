@@ -76,9 +76,21 @@ export const conversationTitle = () =>
   screen.findByTestId("metabot-conversation-title");
 export const queryConversationTitle = () =>
   screen.queryByTestId("metabot-conversation-title");
-export const chatMessages = () =>
-  screen.findAllByTestId("metabot-chat-message");
-export const lastChatMessage = async () => (await chatMessages()).at(-1);
+// chain-of-thought rows are UI furniture, not conversation content, so they're
+// excluded by default to keep message-count assertions about the actual exchange
+export const chatMessages = async ({
+  includeChainOfThought = false,
+}: { includeChainOfThought?: boolean } = {}) => {
+  const messages = await screen.findAllByTestId("metabot-chat-message");
+  return includeChainOfThought
+    ? messages
+    : messages.filter(
+        (el) => !within(el).queryByTestId("metabot-chain-of-thought"),
+      );
+};
+export const lastChatMessage = async (options?: {
+  includeChainOfThought?: boolean;
+}) => (await chatMessages(options)).at(-1);
 export const input = async () => {
   const chatInput = await screen.findByTestId("metabot-chat-input");
   return chatInput.querySelector('[contenteditable="true"]')!;
