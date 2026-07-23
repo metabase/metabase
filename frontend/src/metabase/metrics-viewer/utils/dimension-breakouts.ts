@@ -2,7 +2,10 @@ import { t } from "ttag";
 
 import type { DimensionDescriptor } from "metabase/common/metrics/utils/dimension-descriptors";
 import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
-import { GEO_SUBTYPE_PRIORITY } from "metabase/common/metrics/utils/dimension-types";
+import {
+  GEO_SUBTYPE_PRIORITY,
+  getGeoSubtype,
+} from "metabase/common/metrics/utils/dimension-types";
 import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
@@ -807,6 +810,50 @@ export function getDimensionBreakoutTypeLabel(
     default:
       return null;
   }
+}
+
+export function getDimensionBreakoutLabel(
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  metricSlots: MetricSlot[],
+): string | null {
+  if (dimensionBreakout.type === "time") {
+    return getDimensionBreakoutTypeLabel("time");
+  }
+
+  const dimensions = metricSlots.flatMap((slot) => {
+    const dimensionId = dimensionBreakout.dimensionMapping[slot.slotIndex];
+    const definition = definitions[slot.sourceId]?.definition;
+    if (!dimensionId || !definition) {
+      return [];
+    }
+
+    const dimension = getDimensionDescriptors(definition).get(dimensionId);
+    return dimension ? [dimension] : [];
+  });
+
+  if (
+    dimensionBreakout.type === "geo" &&
+    dimensions.some(
+      (dimension) => getGeoSubtype(dimension.dimensionMetadata) === "state",
+    )
+  ) {
+    return t`State`;
+  }
+
+  if (dimensions.length === 0) {
+    return dimensionBreakout.label;
+  }
+
+  const [firstDimension] = dimensions;
+  const haveSameName = dimensions.every(
+    (dimension) => dimension.name === firstDimension.name,
+  );
+
+  return haveSameName
+    ? firstDimension.displayName
+    : (getDimensionBreakoutTypeLabel(dimensionBreakout.type) ??
+        dimensionBreakout.label);
 }
 
 // ── DimensionBreakout dimension matching ──

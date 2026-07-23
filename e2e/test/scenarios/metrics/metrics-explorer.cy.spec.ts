@@ -2227,7 +2227,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover()
         .findByRole("button", { name: "Change column" })
         .should("be.visible")
-        .should("contain.text", "Created At");
+        .should("contain.text", "Time");
       H.popover()
         .findByRole("button", { name: /by month/i })
         .should("be.visible");
@@ -2558,6 +2558,11 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
         cy.findByRole("button", { name: "Rating" }).should("be.visible");
         cy.findByRole("button", { name: "Created At" }).should("not.exist");
       });
+
+      selectDimensionBreakout("Vendor");
+      H.MetricsViewer.getMetricControls()
+        .findByRole("button", { name: "Change column" })
+        .should("contain.text", "Vendor");
     });
 
     it("shares dimensions with the same source column under the first metric's dimension name", () => {
@@ -2678,6 +2683,9 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
           ).to.equal(this.productsVendorId);
         });
       });
+      H.MetricsViewer.getMetricControls()
+        .findByRole("button", { name: "Change column" })
+        .should("contain.text", "Category");
     });
 
     it("disables metrics without a dimension of the picked type", () => {

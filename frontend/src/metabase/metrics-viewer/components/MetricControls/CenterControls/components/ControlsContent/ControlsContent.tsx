@@ -5,7 +5,7 @@ import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDimensionBreakoutProjectionConfig } from "metabase/metrics-viewer/types";
 import {
   type DimensionFilterValue,
-  getDimensionBreakoutTypeLabel,
+  getDimensionBreakoutLabel,
   getDimensionIcon,
   getProjectionInfo,
 } from "metabase/metrics-viewer/utils";
@@ -45,7 +45,8 @@ export function ControlsContent(props: ControlsContentProps) {
   const {
     activeDimensionBreakout: dimensionBreakout,
     availableDimensions,
-    formulaEntities,
+    definitions,
+    metricSlots,
     sourceOrder,
     openSidebar,
     updateActiveDimensionBreakout,
@@ -60,8 +61,6 @@ export function ControlsContent(props: ControlsContentProps) {
     (sourceId) => (availableDimensions.bySource[sourceId]?.length ?? 0) > 0,
   );
   const hasAvailableDimensions = hasSharedDimensions || hasAnySourceDimensions;
-  const isStandaloneMetric =
-    formulaEntities.length === 1 && formulaEntities[0]?.type === "metric";
   const columnPickerIcon = projectionInfo.projectionDimension
     ? getDimensionIcon(projectionInfo.projectionDimension)
     : undefined;
@@ -105,12 +104,10 @@ export function ControlsContent(props: ControlsContentProps) {
     [updateProjectionConfig],
   );
 
-  const dimensionBreakoutTypeLabel =
-    !isStandaloneMetric && dimensionBreakout
-      ? getDimensionBreakoutTypeLabel(dimensionBreakout.type)
-      : null;
   const columnPickerLabel =
-    dimensionBreakoutTypeLabel ?? dimensionBreakout?.label ?? t`Select column`;
+    (dimensionBreakout
+      ? getDimensionBreakoutLabel(dimensionBreakout, definitions, metricSlots)
+      : null) ?? t`Select column`;
   const dimensionFilter = dimensionBreakout?.projectionConfig.dimensionFilter;
 
   return (

@@ -21,6 +21,7 @@ export type MetricDimensionStatus = "status/active" | "status/orphaned";
 
 export type MetricDimension = {
   id: DimensionId;
+  name?: string;
   display_name: string;
   description?: string | null;
   effective_type: string;

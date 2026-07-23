@@ -1,4 +1,10 @@
-import type { MetricSourceId } from "../types/viewer-state";
+import { createMockMetricDimensionGroup } from "metabase-types/api/mocks/metric";
+
+import type {
+  MetricSourceId,
+  MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
+} from "../types/viewer-state";
 
 import {
   createMetricMetadata,
@@ -10,6 +16,7 @@ import {
   computeDefaultDimensionBreakouts,
   createDimensionBreakoutFromInfo,
   findMatchingDimensionForBreakout,
+  getDimensionBreakoutLabel,
   getDimensionBreakoutTypeLabel,
   resolveCommonDimensionBreakoutLabel,
 } from "./dimension-breakouts";
@@ -30,6 +37,166 @@ describe("getDimensionBreakoutTypeLabel", () => {
       expect(getDimensionBreakoutTypeLabel(type)).toBeNull();
     },
   );
+});
+
+describe("getDimensionBreakoutLabel", () => {
+  const firstMetric = createMockNormalizedMetric({
+    id: 201,
+    dimensions: [
+      createMockMetricDimension({
+        id: "first-vendor",
+        name: "VENDOR",
+        display_name: "Preferred vendor",
+        semantic_type: "type/Category",
+        group: createMockMetricDimensionGroup({ display_name: "Orders" }),
+      }),
+      createMockMetricDimension({
+        id: "first-total",
+        display_name: "Total",
+        effective_type: "type/Float",
+        semantic_type: "type/Currency",
+      }),
+      createMockMetricDimension({
+        id: "first-created-at",
+        display_name: "Created At",
+        effective_type: "type/DateTime",
+        semantic_type: "type/CreationTimestamp",
+      }),
+      createMockMetricDimension({
+        id: "first-state",
+        display_name: "Shipping region",
+        semantic_type: "type/State",
+      }),
+    ],
+  });
+  const secondMetric = createMockNormalizedMetric({
+    id: 202,
+    dimensions: [
+      createMockMetricDimension({
+        id: "second-vendor",
+        name: "VENDOR",
+        display_name: "Vendor",
+        semantic_type: "type/Category",
+        group: createMockMetricDimensionGroup({ display_name: "Products" }),
+      }),
+      createMockMetricDimension({
+        id: "second-total",
+        display_name: "Total",
+        effective_type: "type/Float",
+        semantic_type: "type/Currency",
+      }),
+      createMockMetricDimension({
+        id: "second-subtotal",
+        display_name: "Subtotal",
+        effective_type: "type/Float",
+        semantic_type: "type/Currency",
+      }),
+    ],
+  });
+  const firstSourceId: MetricSourceId = `metric:${firstMetric.id}`;
+  const secondSourceId: MetricSourceId = `metric:${secondMetric.id}`;
+  const metadata = createMetricMetadata([firstMetric, secondMetric]);
+  const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+    [firstSourceId]: {
+      id: firstSourceId,
+      definition: setupDefinition(metadata, firstMetric.id),
+    },
+    [secondSourceId]: {
+      id: secondSourceId,
+      definition: setupDefinition(metadata, secondMetric.id),
+    },
+  };
+  const metricSlots = [
+    { slotIndex: 0, entityIndex: 0, sourceId: firstSourceId },
+    { slotIndex: 1, entityIndex: 1, sourceId: secondSourceId },
+  ];
+
+  function createBreakout(
+    type: MetricsViewerDimensionBreakoutState["type"],
+    dimensionMapping: Record<number, string | null>,
+    label: string,
+  ): MetricsViewerDimensionBreakoutState {
+    return {
+      id: label,
+      type,
+      label,
+      display: "bar",
+      dimensionMapping,
+      projectionConfig: {},
+    };
+  }
+
+  it("uses the curated display name when mapped columns have the same name", () => {
+    const breakout = createBreakout(
+      "category",
+      { 0: "first-vendor", 1: "second-vendor" },
+      "Category",
+    );
+
+    expect(getDimensionBreakoutLabel(breakout, definitions, metricSlots)).toBe(
+      "Preferred vendor",
+    );
+  });
+
+  it("uses the breakout type when mapped column names differ", () => {
+    const breakout = createBreakout(
+      "numeric",
+      { 0: "first-total", 1: "second-subtotal" },
+      "Total",
+    );
+
+    expect(getDimensionBreakoutLabel(breakout, definitions, metricSlots)).toBe(
+      "Number",
+    );
+  });
+
+  it("uses the curated display name when only one slot is mapped", () => {
+    const breakout = createBreakout(
+      "numeric",
+      { 0: "first-total", 1: null },
+      "Number",
+    );
+
+    expect(getDimensionBreakoutLabel(breakout, definitions, metricSlots)).toBe(
+      "Total",
+    );
+  });
+
+  it("always labels time breakouts by type", () => {
+    const breakout = createBreakout(
+      "time",
+      { 0: "first-created-at" },
+      "Created At",
+    );
+
+    expect(getDimensionBreakoutLabel(breakout, definitions, metricSlots)).toBe(
+      "Time",
+    );
+  });
+
+  it("always labels state breakouts by subtype", () => {
+    const breakout = createBreakout(
+      "geo",
+      { 0: "first-state" },
+      "Shipping region",
+    );
+
+    expect(getDimensionBreakoutLabel(breakout, definitions, metricSlots)).toBe(
+      "State",
+    );
+  });
+
+  it("falls back to the stored label when no mapped dimension resolves", () => {
+    const breakout = createBreakout(
+      "category",
+      { 0: "missing-dimension" },
+      "Stored label",
+    );
+
+    expect(getDimensionBreakoutLabel(breakout, definitions, metricSlots)).toBe(
+      "Stored label",
+    );
+  });
 });
 
 describe("resolveCommonDimensionBreakoutLabel", () => {
