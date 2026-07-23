@@ -76,7 +76,7 @@
                    :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id tab2 :card_id card-id}]
       (let [budget (temp-storage/make-resident-budget {:per-card 100000 :resident-cap 1000 :floor 100})
             parts  (card-parts (notification.payload.execute/execute-dashboard
-                                dash-id (mt/user->id :rasta) [] budget))]
+                                dash-id (mt/user->id :rasta) [] {:spill-budget budget}))]
         (is (= 4 (count parts)) "all four cards render")
         (is (some spilled-part? parts)
             "with a shared budget the cumulative cells across tabs cross the cap, so a later card spills to disk")
