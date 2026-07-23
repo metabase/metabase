@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.core :as core]
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase.collections.test-utils :refer [with-library-synced with-library-not-synced]]
    [metabase.events.core :as events]
    [metabase.test :as mt]
@@ -267,53 +268,78 @@
 
 ;;; ------------------------------------------- RSO Cleanup Tests -------------------------------------------
 
-(deftest bulk-set-remote-sync-cleans-up-rsos-on-disable-test
-  (testing "bulk-set-remote-sync deletes RemoteSyncObject entries for un-synced collections and their contents"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}
-                   :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id
-                                              :database_id (mt/id)
-                                              :dataset_query (mt/mbql-query venues)}]
-      (let [now (t/offset-date-time)]
+(deftest bulk-set-remote-sync-marks-rsos-removed-on-disable-test
+  (testing "bulk-set-remote-sync marks RemoteSyncObject entries for un-synced collections and their
+            contents as 'removed' — a pending deletion the next export pushes to the remote — instead of
+            silently dropping them, which left nothing to push (GHY-4189)"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}]
+      (let [now      (t/offset-date-time)
+            card-eid 90001]
+        ;; Both entities are already on the remote (status 'synced', with a stored file_path).
         (t2/insert! :model/RemoteSyncObject
                     {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
-                     :status "update" :status_changed_at now})
+                     :status "synced" :status_changed_at now :file_path "collections/tc/tc.yaml"})
         (t2/insert! :model/RemoteSyncObject
-                    {:model_type "Card" :model_id card-id :model_name "Test Card"
-                     :model_collection_id coll-id :status "update" :status_changed_at now})
-        (is (= 2 (t2/count :model/RemoteSyncObject
-                           {:where [:or
-                                    [:and [:= :model_type "Collection"] [:= :model_id coll-id]]
-                                    [:= :model_collection_id coll-id]]})))
+                    {:model_type "Card" :model_id card-eid :model_name "Test Card"
+                     :model_collection_id coll-id :status "synced" :status_changed_at now
+                     :file_path "collections/tc/cards/card.yaml"})
         (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
           (core/bulk-set-remote-sync {coll-id false}))
-        (is (= 0 (t2/count :model/RemoteSyncObject
-                           {:where [:or
-                                    [:and [:= :model_type "Collection"] [:= :model_id coll-id]]
-                                    [:= :model_collection_id coll-id]]})))))))
+        (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
+                                           :model_type "Collection" :model_id coll-id))
+            "the collection RSO is marked removed, not deleted")
+        (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
+                                           :model_type "Card" :model_id card-eid))
+            "the collection's contents are marked removed too")
+        (is (true? (remote-sync.object/dirty?))
+            "disabling leaves a pending change so a subsequent export pushes the removal")))))
 
-(deftest bulk-set-remote-sync-cleans-up-descendant-rsos-test
-  (testing "bulk-set-remote-sync deletes RSOs for descendant collections and their contents"
+(deftest bulk-set-remote-sync-drops-never-pushed-rsos-on-disable-test
+  (testing "bulk-set-remote-sync drops RSOs still in 'create' (never pushed to the remote) rather than
+            marking them 'removed' — the remote never received them, so there is nothing to delete there"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}]
+      (let [now      (t/offset-date-time)
+            card-eid 90002]
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                     :status "create" :status_changed_at now})
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type "Card" :model_id card-eid :model_name "Test Card"
+                     :model_collection_id coll-id :status "create" :status_changed_at now})
+        (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
+          (core/bulk-set-remote-sync {coll-id false}))
+        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
+            "a never-pushed collection RSO is dropped outright")
+        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Card" :model_id card-eid))
+            "a never-pushed content RSO is dropped outright")))))
+
+(deftest bulk-set-remote-sync-marks-descendant-rsos-removed-test
+  (testing "bulk-set-remote-sync marks RSOs for descendant collections and their contents as removed,
+            dropping only the never-pushed ('create') ones (GHY-4189)"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
                    :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id)
-                                                     :is_remote_synced true}
-                   :model/Card {card-id :id} {:name "Child Card" :collection_id child-id
-                                              :database_id (mt/id)
-                                              :dataset_query (mt/mbql-query venues)}]
-      (let [now (t/offset-date-time)]
+                                                     :is_remote_synced true}]
+      (let [now      (t/offset-date-time)
+            card-eid 90003]
         (t2/insert! :model/RemoteSyncObject
                     {:model_type "Collection" :model_id parent-id :model_name "Parent"
-                     :status "update" :status_changed_at now})
+                     :status "synced" :status_changed_at now :file_path "collections/parent/parent.yaml"})
         (t2/insert! :model/RemoteSyncObject
                     {:model_type "Collection" :model_id child-id :model_name "Child"
-                     :status "update" :status_changed_at now})
+                     :status "update" :status_changed_at now :file_path "collections/parent/child/child.yaml"})
         (t2/insert! :model/RemoteSyncObject
-                    {:model_type "Card" :model_id card-id :model_name "Child Card"
+                    {:model_type "Card" :model_id card-eid :model_name "Child Card"
                      :model_collection_id child-id :status "create" :status_changed_at now})
         (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
           (core/bulk-set-remote-sync {parent-id false}))
-        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id parent-id)))
-        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id child-id)))
-        (is (false? (t2/exists? :model/RemoteSyncObject :model_id card-id)))))))
+        (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
+                                           :model_type "Collection" :model_id parent-id))
+            "already-pushed parent collection is marked removed")
+        (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
+                                           :model_type "Collection" :model_id child-id))
+            "already-pushed descendant collection is marked removed")
+        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Card" :model_id card-eid))
+            "never-pushed content RSO is dropped")))))
 
 ;;; ------------------------------------------- batch-model-eligible? Tests -------------------------------------------
 

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -87,6 +88,22 @@
     (spec/batch-check-eligibility spec instances)
     (into {} (map (fn [inst] [(:id inst) false])) instances)))
 
+(defn- record-removed-rsos!
+  "Records a pending removal on the RemoteSyncObject rows of the given collections and their contents, so
+  the next export deletes them from the remote. Rows still in 'create' (never pushed) are dropped outright
+  — the remote never received them, so there is nothing to delete there."
+  [collection-ids]
+  (let [rows (t2/select [:model/RemoteSyncObject :id :status]
+                        {:where [:or
+                                 [:and [:= :model_type "Collection"] [:in :model_id collection-ids]]
+                                 [:in :model_collection_id collection-ids]]})
+        {created true tracked false} (group-by #(= "create" (:status %)) rows)]
+    (when (seq created)
+      (t2/delete! :model/RemoteSyncObject :id [:in (map :id created)]))
+    (when (seq tracked)
+      (t2/update! :model/RemoteSyncObject :id [:in (map :id tracked)]
+                  {:status "removed" :status_changed_at (t/offset-date-time)}))))
+
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."
@@ -123,11 +140,7 @@
             (t2/query {:update (t2/table-name :model/Collection)
                        :set {:is_remote_synced false}
                        :where [:in :id affected-collection-ids]})
-            (t2/delete! :model/RemoteSyncObject
-                        :model_type "Collection"
-                        :model_id [:in affected-collection-ids])
-            (t2/delete! :model/RemoteSyncObject
-                        :model_collection_id [:in affected-collection-ids]))))
+            (record-removed-rsos! affected-collection-ids))))
       (doseq [collection sync-on]
         (collections/check-non-remote-synced-dependencies collection))
       (doseq [collection sync-off]
