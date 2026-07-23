@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetabotConversationDetail } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
 import { forkConversation } from "metabase/metabot/state";
 import * as Urls from "metabase/urls";
@@ -15,12 +16,9 @@ import {
   whoIsYourFavoriteResponse,
 } from "./utils";
 
-const forkedConversation = {
+const forkedConversation = createMockMetabotConversationDetail({
   conversation_id: "forked-convo-id",
-  created_at: "2026-01-01T00:00:00Z",
   title: "Who is your favorite? (forked)",
-  user_id: 1,
-  state: {},
   messages: [
     {
       id: "m1",
@@ -38,7 +36,7 @@ const forkedConversation = {
       finished: true,
     },
   ],
-};
+});
 
 const setupWithReply = async () => {
   const { store } = setup();
