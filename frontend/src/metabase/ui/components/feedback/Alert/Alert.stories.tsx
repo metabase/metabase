@@ -170,38 +170,33 @@ export const OverviewStory = {
   },
 };
 
-const FEEDBACK_ROWS = [
-  {
-    color: undefined,
-    variant: "light",
-    title: "Default Alert",
-    jsx: '<Alert variant="light" size="compact" />',
-  },
-  {
-    color: "error",
-    variant: "default",
-    title: "Error alert",
-    jsx: '<Alert variant="default" size="compact" color="error" />',
-  },
-  {
-    color: "warning",
-    variant: "default",
-    title: "Warning alert",
-    jsx: '<Alert variant="default" size="compact" color="warning" />',
-  },
-  {
-    color: "success",
-    variant: "default",
-    title: "Positive alert",
-    jsx: '<Alert variant="default" size="compact" color="success" />',
-  },
-  {
-    color: "core-brand",
-    variant: "default",
-    title: "Brand alert",
-    jsx: '<Alert variant="default" size="compact" color="core-brand" />',
-  },
+const FEEDBACK_COLORS = [
+  { color: undefined, variant: "light", title: "Default alert" },
+  { color: "error", variant: "default", title: "Error alert" },
+  { color: "warning", variant: "default", title: "Warning alert" },
+  { color: "success", variant: "default", title: "Positive alert" },
+  { color: "core-brand", variant: "default", title: "Brand alert" },
 ] as const;
+
+const FEEDBACK_SIZES = ["default", "compact"] as const;
+
+const buildAlertJsx = ({
+  variant,
+  size,
+  color,
+}: {
+  variant: AlertProps["variant"];
+  size: AlertProps["size"];
+  color?: AlertProps["color"];
+}) =>
+  `<Alert ${[
+    `variant="${variant}"`,
+    `size="${size}"`,
+    color !== undefined && `color="${color}"`,
+    "withCloseButton",
+  ]
+    .filter(Boolean)
+    .join(" ")} />`;
 
 const THEMES = ["light", "dark"] as const;
 
@@ -232,26 +227,30 @@ const FeedbackColumn = ({
 }) => (
   <Stack
     gap="48px"
+    data-mantine-color-scheme={colorScheme}
     style={{
       ...getThemeVars(colorScheme),
       padding: "48px 96px 96px",
       backgroundColor: "var(--mb-color-background-primary)",
     }}
   >
-    {FEEDBACK_ROWS.map(({ color, variant, title, jsx }) => (
-      <Stack key={color ?? "default"} gap="sm" w="480px">
-        <StoryJsx>{jsx}</StoryJsx>
-        <Alert
-          variant={variant}
-          size="compact"
-          color={color}
-          icon={withIcon ? <Icon name="model" /> : undefined}
-          title={withTitle ? titleOverride || title : undefined}
-        >
-          {message ?? MESSAGE}
-        </Alert>
-      </Stack>
-    ))}
+    {FEEDBACK_COLORS.flatMap(({ color, variant, title }) =>
+      FEEDBACK_SIZES.map((size) => (
+        <Stack key={`${color ?? "default"}-${size}`} gap="sm" w="480px">
+          <StoryJsx>{buildAlertJsx({ variant, size, color })}</StoryJsx>
+          <Alert
+            variant={variant}
+            size={size}
+            color={color}
+            withCloseButton
+            icon={withIcon ? <Icon name="model" /> : undefined}
+            title={withTitle ? titleOverride || title : undefined}
+          >
+            {message ?? MESSAGE}
+          </Alert>
+        </Stack>
+      )),
+    )}
   </Stack>
 );
 

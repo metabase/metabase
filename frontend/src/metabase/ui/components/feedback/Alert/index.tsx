@@ -13,5 +13,9 @@ export type AlertProps = MantineAlertProps & {
 };
 
 export const Alert = ({ size = "default", ...props }: AlertProps) => (
-  <MantineAlert data-size={size} {...props} />
+  <MantineAlert
+    data-size={size}
+    data-color={props.color ?? "default"}
+    {...props}
+  />
 );
