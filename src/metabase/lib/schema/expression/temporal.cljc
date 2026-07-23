@@ -290,7 +290,7 @@
   [:unit [:? [:schema [:ref ::relative-datetime.unit]]]])
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/Time
-  #_:timestr [:schema [:ref ::expression/string]]
+  #_:timestr [:schema [:ref ::literal/time]]
   #_:unit    [:or
               [:= {:decode/normalize common/normalize-keyword-lower} :default]
               [:ref ::temporal-bucketing/unit.time.interval]])

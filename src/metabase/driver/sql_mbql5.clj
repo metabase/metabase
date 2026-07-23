@@ -6,14 +6,11 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.sql-mbql5.pivot]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv]]))
@@ -167,11 +164,12 @@
   [_driver inner-query expression-name]
   (m/find-first #(= expression-name (lib.util/expression-name %)) (:expressions inner-query)))
 
+;; TODO (Cam 2026-07-23) this method allegedly takes a legacy inner query and legacy ag clause as args but for
+;; SQL-MBQL 5 it seems like it gets MBQL 5 stuff
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql.qp/aggregation-name :sql-mbql5
-  [_driver inner-query ag-clause]
-  (or (::add/desired-alias (lib/options ag-clause))
-      (:name (lib/options ag-clause))
-      (lib/column-name inner-query ag-clause)))
+  [_driver mbql-5-query ag-clause]
+  (driver-api/mbql-5-aggregation-name mbql-5-query -1 ag-clause))
 
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
 

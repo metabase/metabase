@@ -159,5 +159,5 @@
 ;;; convert drivers to MBQL 5.
 (p/import-vars
  [metabase.query-processor.middleware.annotate.legacy-helper-fns
-  aggregation-name
+  #_{:clj-kondo/ignore [:deprecated-var]} aggregation-name
   merged-column-info])

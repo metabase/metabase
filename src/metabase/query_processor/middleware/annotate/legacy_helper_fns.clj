@@ -46,7 +46,7 @@
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause.
 
   DEPRECATED: use [[mbql-5-aggregation-name]] going forward."
-  {:deprecated "0.63.0"}
+  {:deprecated "0.64.0"}
   [legacy-inner-query :- :map
    legacy-ag-clause]
   (let [ag-clause (lib/->mbql5 legacy-ag-clause)]

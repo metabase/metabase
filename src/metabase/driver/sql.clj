@@ -13,7 +13,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.values :as params.values]

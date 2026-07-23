@@ -41,7 +41,7 @@
                                   {:collection  (:collection first-stage)
                                    :projections (:projections first-stage)
                                    :query       x})))))]
-      (update (vec stages) 0 update-first-stage)))
+    (update (vec stages) 0 update-first-stage)))
 
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
   "Convert Card's query (`:dataset-query`) to MBQL 5 as needed; splice in stage metadata and some extra keys."

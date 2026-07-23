@@ -302,18 +302,18 @@
 (deftest ^:parallel substitute-native-parameters-test
   (let [mp    meta/metadata-provider
         query (lib/query mp {:database   (meta/id)
-                               :type       :native
-                               :native     {:query         (to-bson [{:$match (bson-literal "{{date}}")}
-                                                                     {:$sort {:_id 1}}])
-                                            :collection    "checkins"
-                                            :template-tags {"date" {:name         "date"
-                                                                    :display-name "Date"
-                                                                    :type         :dimension
-                                                                    :widget-type  :date/all-options
-                                                                    :dimension    [:field (meta/id :checkins :date) nil]}}}
-                               :parameters [{:type   :date/range
-                                             :target [:dimension [:template-tag "date"]]
-                                             :value  "2014-03-01~2014-03-02"}]})
+                             :type       :native
+                             :native     {:query         (to-bson [{:$match (bson-literal "{{date}}")}
+                                                                   {:$sort {:_id 1}}])
+                                          :collection    "checkins"
+                                          :template-tags {"date" {:name         "date"
+                                                                  :display-name "Date"
+                                                                  :type         :dimension
+                                                                  :widget-type  :date/all-options
+                                                                  :dimension    [:field (meta/id :checkins :date) nil]}}}
+                             :parameters [{:type   :date/range
+                                           :target [:dimension [:template-tag "date"]]
+                                           :value  "2014-03-01~2014-03-02"}]})
         query (lib/update-query-stage query 0 assoc :parameters (:parameters query))]
     (is (=? {:native (to-bson
                       [{:$match {:$and [{"DATE" {:$gte (ISODate "2014-03-01T00:00:00Z")}}

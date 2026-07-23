@@ -88,7 +88,14 @@
 (mr/def ::$lookup-stage
   [:map-of
    [:= "$lookup"]
-   [:map-of [:or :keyword :string] :any]])
+   [:map
+    {:closed true} ; add more stuff as needed
+    [:from     :string]
+    [:let      [:map
+                [:vars {:optional true} :any]
+                [:in   {:optional true} :any]]]
+    [:pipeline [:ref ::pipeline]]
+    [:as       :string]]])
 
 (mr/def ::$unwind-stage
   [:map-of
@@ -111,30 +118,33 @@
    [:map-of ::lib.schema.common/non-blank-string :any]])
 
 (mr/def ::stage
-  [:or
-   ;; TODO (Cam 2026-07-17) consider whether we should parsed the BSON documents out into Ordered Maps so we can
-   ;; properly validate them... even tho they implement `java.util.Map` Malli won't validate them as `:map` because
-   ;; they're not `map?`
-   (lib.schema.common/instance-of-class org.bson.Document)
-   [:and
-    :map
-    [:fn
-     {:error/message "map with a single key"}
-     #(= (count %) 1)]
-    [:multi
-     {:dispatch (fn [m]
-                  (when (map? m)
-                    (first (keys m))))}
-     ["$project"         ::$project-stage]
-     ["$sort"            ::$sort-stage]
-     ["$group"           ::$group-stage]
-     ["$addFields"       ::$add-fields-stage]
-     ["$lookup"          ::$lookup-stage]
-     ["$unwind"          ::$unwind-stage]
-     ["$match"           ::$match-stage]
-     ["$limit"           ::$limit-stage]
-     ["$skip"            ::$skip-stage]
-     ["$setWindowFields" ::$set-window-fields-stage]]]])
+  [:multi
+   {:dispatch #(boolean (instance? org.bson.Document %))}
+   [true
+    ;; TODO (Cam 2026-07-17) consider whether we should parsed the BSON documents out into Ordered Maps so we can
+    ;; properly validate them... even tho they implement `java.util.Map` Malli won't validate them as `:map` because
+    ;; they're not `map?`
+    (lib.schema.common/instance-of-class org.bson.Document)]
+   [false
+    [:and
+     :map
+     [:fn
+      {:error/message "map with a single key"}
+      #(= (count %) 1)]
+     [:multi
+      {:dispatch (fn [m]
+                   (when (map? m)
+                     (first (keys m))))}
+      ["$project"         ::$project-stage]
+      ["$sort"            ::$sort-stage]
+      ["$group"           ::$group-stage]
+      ["$addFields"       ::$add-fields-stage]
+      ["$lookup"          ::$lookup-stage]
+      ["$unwind"          ::$unwind-stage]
+      ["$match"           ::$match-stage]
+      ["$limit"           ::$limit-stage]
+      ["$skip"            ::$skip-stage]
+      ["$setWindowFields" ::$set-window-fields-stage]]]]])
 
 (mr/def ::pipeline
   [:sequential ::stage])
@@ -147,7 +157,15 @@
   returned in an MBQL query. e.g.
 
     [\"_id\" \"date\" \"user_id\" \"venue_id\"]"
-  [:sequential ::projection])
+
+  [:and
+   [:sequential ::projection]
+   [:fn
+    {:error/message "projected column names should be distinct"}
+    (fn [coll]
+      (if (seq coll)
+        (apply distinct? coll)
+        true))]])
 
 (mr/def ::compiled-pipeline
   "Compiled pipeline query. Note that this is actually a subset of `:metabase.query-processor.compile/compiled`.
@@ -155,7 +173,7 @@
   This is also the schema for the value of `:native` in a MBQL stage for MongoDB."
   [:map
    {:closed true} ; we should document anything else we add here.
-   [:projections [:maybe ::projections]]
+   [:projections {:optional true} [:maybe ::projections]]
    [:query       ::pipeline]
    ;; TODO (Cam 2026-07-17) it's not really clear if `:collection` is supposed to be in the top-level of the stage e.g.
    ;;
@@ -613,9 +631,10 @@ function(bin) {
 (defn- $date-from-string [s]
   {:$dateFromString {:dateString (str s)}})
 
-(mu/defmethod ->rvalue :absolute-datetime
-  [query _stage-number [_ _opts t unit] :- :mbql.clause/absolute-datetime]
-  (let [report-zone (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database query))
+(mu/defn- absolute-datetime-or-time->rvalue
+  [metadata-providerable
+   [_ _opts t unit] :- [:or :mbql.clause/absolute-datetime :mbql.clause/time]]
+  (let [report-zone (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database metadata-providerable))
                                    "UTC"))
         t           (condp = (class t)
                       java.time.LocalDate      t
@@ -645,6 +664,14 @@ function(bin) {
         :quarter         (bucket :quarter)
         :quarter-of-year (extract :quarter-of-year)
         :year            (bucket :year)))))
+
+(mu/defmethod ->rvalue :absolute-datetime
+  [query _stage-number clause :- :mbql.clause/absolute-datetime]
+  (absolute-datetime-or-time->rvalue query clause))
+
+(mu/defmethod ->rvalue :time
+  [query _stage-number clause :- :mbql.clause/time]
+  (absolute-datetime-or-time->rvalue query clause))
 
 (mu/defmethod ->rvalue :relative-datetime
   [query _stage-number [_ _opts amount unit] :- :mbql.clause/relative-datetime]
@@ -1035,14 +1062,29 @@ function(bin) {
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
-(mr/def ::not
+;; represents a regex pattern that should be compiled to `{$not <regex}`
+(lib.schema.mbql-clause/define-mbql-clause ::not-regex :- :type/Text
   [:tuple
-   #_tag   [:= ::not]
-   #_value :any])
+   [:= ::not-regex]
+   [:ref ::lib.schema.common/options]
+   (lib.schema.common/instance-of-class java.util.regex.Pattern)])
 
-(mu/defmethod ->rvalue ::not
-  [query stage-number [_ value] :- ::not]
-  {$not (->rvalue query stage-number value)})
+;; TODO (Cam 2026-07-23) this actually gets compiled by [[str-match-pattern]], consider whether that behavior should
+;; get rolled into this method or we should just remove this method altogether since it's not meant to actually be
+;; used
+(mu/defmethod ->rvalue ::not-regex
+  [query stage-number [_ _opts pattern] :- ::not-regex]
+  {$not (->rvalue query stage-number pattern)})
+
+(lib.schema.mbql-clause/define-mbql-clause ::size :- :type/Integer
+  [:tuple
+   [:= ::size]
+   [:ref ::lib.schema.common/options]
+   :string])
+
+(mu/defmethod ->rvalue ::size
+  [_query _stage-number [_ _opts x]]
+  {$size x})
 
 (defmulti compile-filter
   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
@@ -1058,8 +1100,9 @@ function(bin) {
                                       (lib/<= expr max-val))))
 
 (defn- str-match-pattern [query stage-number field options prefix value suffix]
-  (if (driver-api/is-clause? ::not value)
-    {$not (str-match-pattern query stage-number field options prefix (second value) suffix)}
+  (if (driver-api/is-clause? ::not-regex value)
+    (let [[_tag _opts pattern] value]
+      {$not (str-match-pattern query stage-number field options prefix pattern suffix)})
     (do
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
               "Wrong prefix or suffix value.")
@@ -1159,38 +1202,43 @@ function(bin) {
   [query stage-number [_or _opts & args]]
   {$or (mapv (partial compile-filter query stage-number) args)})
 
-;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
-;; to negate everything, with the exception of the string filter clauses, which we will convert to a `{not <regex}`
-;; clause (see `->rvalue` for `::not` above). `negate` below wraps the MBQL lib function
+;;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's
+;;; `negate-filter-clause` to negate everything, with the exception of the string filter clauses, which we will
+;;; convert to a `{not <regex}` clause (see `->rvalue` for `::not-regex` above). `negate` below wraps the MBQL lib
+;;; function
+
 (defmulti ^:private negate
   {:arglists '([mbql-clause])}
   driver-api/dispatch-by-clause-name-or-class)
 
-(mu/defmethod negate :default :- vector?
+(mu/defmethod negate :default :- ::lib.schema.mbql-clause/clause
   [expr :- ::lib.schema.expression/boolean]
   (lib/negate-boolean-expression expr))
 
-(mu/defmethod negate :and :- vector?
+(mu/defmethod negate :and :- ::lib.schema.mbql-clause/clause
   [[_ opts & subclauses] :- :mbql.clause/and]
   (into [:or opts]  (map negate) subclauses))
 
-(mu/defmethod negate :or  :- vector?
+(mu/defmethod negate :or  :- ::lib.schema.mbql-clause/clause
   [[_ opts & subclauses] :- :mbql.clause/or]
   (into [:and opts] (map negate) subclauses))
 
-(mu/defmethod negate :contains :- vector?
+(mu/defn- not-regex [pattern :- (lib.schema.common/instance-of-class java.util.regex.Pattern)]
+  [::not-regex {:lib/uuid (str (random-uuid))} pattern])
+
+(mu/defmethod negate :contains :- ::lib.schema.mbql-clause/clause
   [[_ opts field v] :- :mbql.clause/contains]
-  [:contains opts field [::not v]])
+  [:contains opts field (not-regex v)])
 
-(mu/defmethod negate :starts-with :- vector?
+(mu/defmethod negate :starts-with :- ::lib.schema.mbql-clause/clause
   [[_ opts field v] :- :mbql.clause/starts-with]
-  [:starts-with opts field [::not v]])
+  [:starts-with opts field (not-regex v)])
 
-(mu/defmethod negate :ends-with :- vector?
+(mu/defmethod negate :ends-with :- ::lib.schema.mbql-clause/clause
   [[_ opts field v] :- :mbql.clause/ends-with]
-  [:ends-with opts field [::not v]])
+  [:ends-with opts field (not-regex v)])
 
-(mu/defmethod compile-filter :not
+(mu/defmethod compile-filter :not :- ::lib.schema.mbql-clause/clause
   [query stage-number [_ _opts subclause] :- :mbql.clause/not]
   (compile-filter query stage-number (negate subclause)))
 
@@ -1207,17 +1255,19 @@ function(bin) {
   [query stage-number value-clause :- :mbql.clause/value]
   {$expr (->rvalue query stage-number value-clause)})
 
-(mu/defn- handle-filter :- ::compiled-pipeline
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   pipeline-ctx :- ::compiled-pipeline]
-  (let [filter-clauses (lib/filters query stage-number)]
-    (if (empty? filter-clauses)
-      pipeline-ctx
-      (let [combined-filter-clause (if (> (count filter-clauses) 1)
-                                     (apply lib/and filter-clauses)
-                                     (first filter-clauses))]
-        (update pipeline-ctx :query conj {$match (compile-filter query stage-number combined-filter-clause)})))))
+(mu/defn- handle-filters :- ::compiled-pipeline
+  ([query stage-number pipeline-ctx]
+   (handle-filters query stage-number pipeline-ctx (lib/filters query stage-number)))
+  ([query          :- ::lib.schema/query
+    stage-number   :- :int
+    pipeline-ctx   :- ::compiled-pipeline
+    filter-clauses :- [:maybe [:ref ::lib.schema/filters]]]
+   (if (empty? filter-clauses)
+     pipeline-ctx
+     (let [combined-filter-clause (if (> (count filter-clauses) 1)
+                                    (apply lib/and filter-clauses)
+                                    (first filter-clauses))]
+       (update pipeline-ctx :query conj {$match (compile-filter query stage-number combined-filter-clause)})))))
 
 (defmulti ^:private compile-cond
   {:arglists '([query stage-number mbql-clause])}
@@ -1325,12 +1375,13 @@ function(bin) {
         (:name (driver-api/table metadata-providerable table-id)))))
 
 (defn- localize-join-alias
-  "Rename :join-alias properties fields to ::join-local.
+  "Rename `:join-alias` properties in `:field` ref options to `::join-local`.
+
   See [[find-mapped-field-name]] for an explanation why this is done."
-  [expr alias]
+  [expr join-alias]
   (match/replace expr
-    [:field _ {:join-alias (a :guard (= a alias))}]
-    (update &match 2 set/rename-keys {:join-alias ::join-local})))
+    [:field {:join-alias (a :guard (= a join-alias))} _id-or-name]
+    (lib/update-options &match set/rename-keys {:join-alias ::join-local})))
 
 (mu/defn- get-field-mappings :- [:map-of ::lib.schema.mbql-clause/clause ::projection]
   [query        :- ::lib.schema/query
@@ -1342,29 +1393,29 @@ function(bin) {
 
 (declare ^:private mbql->native-rec)
 
-(defn- compile-join-source
-  "Compile `source-query`, the source of a join clause, if any. Returns a map with the projections under the
-  key :projections and the pipeline under the key :query.
-  Handles both native and MBQL source queries."
-  [source-query]
-  (when source-query
-    (if-let [native (:native source-query)]
-      {:projections (:projections source-query)
-       :query (:query native)}
-      (mbql->native-rec source-query))))
+(defn- ^:deprecated append-projections
+  "Projection names must be unique, for historic reasons the MongoDB driver does things like `col` and `col_2` instead
+  of `col` and `Join - col`."
+  [pipeline-ctx new-projections]
+  (letfn [(update-projections [existing-projections]
+            (let [existing-projections (vec existing-projections)
+                  f                    (lib/non-truncating-unique-name-generator existing-projections)]
+              (into existing-projections (map f) new-projections)))]
+    (update pipeline-ctx :projections update-projections)))
 
 (mu/defn- handle-join
   [query        :- ::lib.schema/query
    stage-number :- :int
    pipeline-ctx
-   {:keys [alias condition source-query strategy] :as join}]
-  (let [{:keys [projections], pipeline :query, :or {projections [], pipeline []}} (compile-join-source source-query)
+   {join-alias :alias, :keys [conditions stages strategy], :as join}]
+  (let [join-query (assoc query :stages stages)
+        {:keys [projections], pipeline :query, :or {projections [], pipeline []}} (mbql->native-rec join-query)
         ;; Get the mappings introduced by the source query.
         source-field-mappings (get-field-mappings query stage-number projections)
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
-        own-fields (match/match-many condition
-                     [:field _ (opts :guard (not= (:join-alias opts) alias))] &match)
+        own-fields (match/match-many conditions
+                     [:field (opts :guard (not= (:join-alias opts) join-alias)) _id-or-name] &match)
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue query stage-number f))
                                              ;; Mongo `$lookup` let variable names allow ASCII letters, digits,
@@ -1381,18 +1432,19 @@ function(bin) {
     (binding [*field-mappings* (merge *field-mappings*
                                       source-field-mappings
                                       (into {} (map (juxt :field #(str \$ (:alias %)))) mapping))]
-      (let [pipeline (cond-> pipeline
-                       condition (conj {$match (compile-filter query stage-number (localize-join-alias condition alias))}))
-            lookup-as (get-join-alias alias)
-            stages [{$lookup {:from (find-source-collection query join)
-                              :let (into {} (map (juxt :alias :rvalue)) mapping)
-                              :pipeline pipeline
-                              :as lookup-as}}
-                    {$unwind {:path (str \$ lookup-as)
-                              ;; left and inner joins are supported, the default is left join
-                              :preserveNullAndEmptyArrays (not= strategy :inner-join)}}]]
+      (let [filters   (localize-join-alias conditions join-alias)
+            pipeline  (-> (handle-filters query -1 {:query pipeline} filters)
+                          :query)
+            lookup-as (get-join-alias join-alias)
+            stages    [{$lookup {:from     (find-source-collection query join)
+                                 :let      (into {} (map (juxt :alias :rvalue)) mapping)
+                                 :pipeline pipeline
+                                 :as       lookup-as}}
+                       {$unwind {:path (str \$ lookup-as)
+                                 ;; left and inner joins are supported, the default is left join
+                                 :preserveNullAndEmptyArrays (not= strategy :inner-join)}}]]
         (-> pipeline-ctx
-            (update :projections into projections)
+            (append-projections projections)
             (update :query into stages))))))
 
 (mu/defn- handle-joins :- ::compiled-pipeline
@@ -1451,11 +1503,17 @@ function(bin) {
               {:type :invalid-query, :clause ag}))))
 
 (defn- field-alias
-  [query stage-number [_tag _id-or-name opts, :as field-ref]]
+  [query stage-number [_tag opts _id-or-name, :as field-ref]]
   (or (driver-api/qp.add.desired-alias opts)
       (->lvalue query stage-number field-ref)))
 
-(mu/defn- breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]]
+(mu/defn- breakouts-and-ags->projected-fields :- [:maybe
+                                                  [:and
+                                                   [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]
+                                                   [:fn
+                                                    {:error/message "projected fields should have distinct names"}
+                                                    (fn [projected-fields]
+                                                      (apply distinct? (map first projected-fields)))]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
   [query stage-number]
@@ -1631,8 +1689,18 @@ function(bin) {
   `aggr-expr` is expected to be a clause that is a result of [[extract-aggregations]]. For details see its docstring.
 
   Distinct values are computed using the `$addToSet` in a `$group` stage. `$size` transforms them to actual count."
-  [[aggr-expr mappings]]
-  (let [distinct-keys (filter (fn [[tag]] (= :distinct tag)) (keys mappings))
+  [[aggr-expr mappings :as x] :- [:tuple
+                                  #_aggr-expr
+                                  [:or
+                                   [:ref ::lib.schema.mbql-clause/clause]
+                                   :string] ; Mongo expr
+                                  #_mappings
+                                  [:map-of
+                                   #_ag-clause [:or
+                                                [:ref ::lib.schema.mbql-clause/clause]
+                                                :string]
+                                   #_name      :string]]]
+  (let [distinct-keys (filter (fn [[tag, :as _ag-clause]] (= :distinct tag)) (keys mappings))
         distinct-vals (into #{}
                             (comp (map #(get mappings %))
                                   ;; \$ is added to identifiers so eg. `q~count1` becomes `$q~count1`. Those values
@@ -1642,7 +1710,7 @@ function(bin) {
     [(perf/postwalk (fn [x]
                       (if (and (string? x)
                                (distinct-vals x))
-                        {$size x}
+                        [::size {:lib/uuid (str (random-uuid))} x]
                         x))
                     aggr-expr)
      mappings]))
@@ -1832,8 +1900,7 @@ function(bin) {
           pipeline-stages  (breakouts-and-ags->pipeline-stages query stage-number projected-fields)]
       (-> pipeline-ctx
           ;; add :projections key which is just a sequence of the names of projections from above
-          (assoc :projections (vec (for [[field] projected-fields]
-                                     field)))
+          (assoc :projections (mapv first projected-fields))
           ;; now add additional clauses to the end of :query as applicable
           (update :query into pipeline-stages)))))
 
@@ -2024,7 +2091,7 @@ function(bin) {
              (f query stage-number pipeline-ctx))
            pipeline-ctx
            [#'handle-joins
-            #'handle-filter
+            #'handle-filters
             #'handle-breakout+aggregation
             #'handle-order-by
             #'handle-fields
@@ -2059,17 +2126,16 @@ function(bin) {
                                   e))))]
     query
     #_(u/prog1 (perf/postwalk
-              (letfn [(bson-map->clj [m]
-                        (into (ordered-map/ordered-map) m))
-                      (bson-map? [x]
-                        (and (instance? java.util.Map x)
-                             (not (map? x))))]
-                (fn [x]
-                  (cond-> x
-                    (bson-map? x) bson-map->clj)))
-              query)
-      (def %query <>)
-      )))
+                (letfn [(bson-map->clj [m]
+                          (into (ordered-map/ordered-map) m))
+                        (bson-map? [x]
+                          (and (instance? java.util.Map x)
+                               (not (map? x))))]
+                  (fn [x]
+                    (cond-> x
+                      (bson-map? x) bson-map->clj)))
+                query)
+        (def %query <>))))
 
 (mu/defn- mbql->native-rec :- ::compiled-pipeline
   "Compile an MBQL 5 query."
@@ -2151,12 +2217,17 @@ function(bin) {
       (:and join
             {:lib/type               :mbql/join
              driver-api/qp.add.alias (add-alias :guard (and add-alias (not= add-alias (:alias join))))})
-      (&recur (assoc join :alias add-alias)))))
+      (&recur (-> join
+                  (assoc :alias add-alias)
+                  (m/update-existing :fields (fn [fields]
+                                               (mapv (fn [field]
+                                                       (lib/with-join-alias field add-alias))
+                                                     fields))))))))
 
 (mu/defn- preprocess :- ::lib.schema/query
   [query :- ::lib.schema/query]
   (-> query
-      (driver-api/add-alias-info {:globally-unique-join-aliases? true})
+      (driver-api/add-alias-info {:globally-unique-join-aliases? true}) ; NOCOMMIT
       HACK-update-aliases))
 
 (mr/def ::compiled
