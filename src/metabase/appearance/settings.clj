@@ -51,7 +51,8 @@
   :type       :boolean
   :default    true
   :visibility :public
-  :export?    false)
+  :export?    false
+  :doc        false)
 
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.

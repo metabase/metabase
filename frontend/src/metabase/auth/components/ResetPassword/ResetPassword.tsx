@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -8,6 +7,7 @@ import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import { resetPassword } from "metabase/redux/auth";
+import type { Location } from "metabase/router";
 import { replace } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";

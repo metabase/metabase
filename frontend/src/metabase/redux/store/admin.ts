@@ -14,7 +14,7 @@ export type AdminPathKey =
   | "databases"
   | "permissions"
   | "audit"
-  | "tools"
+  | "help"
   | "performance"
   | "performance-models"
   | "performance-dashboards-and-questions"

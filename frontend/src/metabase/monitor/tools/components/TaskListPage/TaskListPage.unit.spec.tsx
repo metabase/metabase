@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import type { Location } from "history";
 
 import {
   setupDatabasesEndpoints,
@@ -9,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import {
   act,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
@@ -17,6 +17,7 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { createMockLocation } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import { Route, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ListTasksResponse } from "metabase-types/api";
@@ -33,7 +34,7 @@ interface SetupOpts {
   tasksResponse?: ListTasksResponse;
 }
 
-const PATHNAME = Urls.adminToolsTasksList();
+const PATHNAME = Urls.monitorTasksList();
 
 const setup = ({
   error,
@@ -44,6 +45,7 @@ const setup = ({
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupUniqueTasksEndpoint(["task-a", "task-b"]);
+  mockGetBoundingClientRect({ width: 100, height: 100 });
 
   if (error) {
     fetchMock.get("path:/api/task", { status: 500 });
@@ -52,12 +54,19 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route path={PATHNAME} element={<RoutedTaskListPage />} />,
+    <Route path={PATHNAME} element={<RoutedTaskListPage />}>
+      <Route path=":taskId" />
+    </Route>,
     {
       initialRoute: `${location.pathname}${location.search}`,
       withRouter: true,
     },
   );
+};
+
+const getLastTaskCallUrl = () => {
+  const calls = fetchMock.callHistory.calls("path:/api/task");
+  return calls[calls.length - 1]?.url;
 };
 
 describe("TaskListPage", () => {
@@ -69,39 +78,33 @@ describe("TaskListPage", () => {
     jest.useRealTimers();
   });
 
-  it("should show loading and empty state", async () => {
+  it("should show empty state", async () => {
     setup();
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
-    expect(screen.getByText("No results")).toBeInTheDocument();
+    expect(await screen.findByText("No results")).toBeInTheDocument();
   });
 
-  it("should show loading and results state", async () => {
+  it("should show results state", async () => {
     setup({
       tasksResponse: createMockTasksResponse({ data: [createMockTask()] }),
     });
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
+    expect(await screen.findByText("A task")).toBeInTheDocument();
     expect(screen.queryByText("No results")).not.toBeInTheDocument();
-    expect(screen.getByText("A task")).toBeInTheDocument();
   });
 
   it("should show error state", async () => {
     setup({ error: true });
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
+    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
     expect(screen.queryByText("No results")).not.toBeInTheDocument();
     expect(screen.queryByText("A task")).not.toBeInTheDocument();
-    expect(screen.getByText("An error occurred")).toBeInTheDocument();
   });
 
   it("should not show pagination controls if there's only 1 page", async () => {
     setup();
 
-    await waitForLoaderToBeRemoved();
+    await screen.findByText("No results");
     expect(
       screen.queryByRole("button", { name: "Previous page" }),
     ).not.toBeInTheDocument();
@@ -128,9 +131,9 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const previousPage = await screen.findByRole("button", {
+      name: "Previous page",
+    });
     const nextPage = screen.getByRole("button", { name: "Next page" });
 
     expect(previousPage).toBeDisabled();
@@ -177,6 +180,25 @@ describe("TaskListPage", () => {
     expect(history?.getCurrentLocation().search).toEqual("");
   });
 
+  it("should show the total results count below the table", async () => {
+    setup({
+      tasksResponse: createMockTasksResponse({
+        data: [createMockTask()],
+        total: 75,
+        limit: 50,
+        offset: 0,
+      }),
+    });
+
+    await screen.findByText("A task");
+
+    const pagination = screen.getByRole("navigation", { name: "pagination" });
+    expect(
+      within(pagination).getByTestId("pagination-total"),
+    ).toHaveTextContent("75");
+    expect(pagination).toHaveTextContent("1 - 1");
+  });
+
   it("should reset pagination on task filter change", async () => {
     const { history } = setup({
       tasksResponse: createMockTasksResponse({
@@ -195,9 +217,9 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const previousPage = await screen.findByRole("button", {
+      name: "Previous page",
+    });
     const nextPage = screen.getByRole("button", { name: "Next page" });
     const taskPicker = screen.getByPlaceholderText("Filter by task");
 
@@ -250,9 +272,9 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const previousPage = await screen.findByRole("button", {
+      name: "Previous page",
+    });
     const nextPage = screen.getByRole("button", { name: "Next page" });
     const taskStatusPicker = screen.getByPlaceholderText("Filter by status");
 
@@ -290,6 +312,7 @@ describe("TaskListPage", () => {
   it("should reset pagination on sorting change", async () => {
     const { history } = setup({
       tasksResponse: createMockTasksResponse({
+        data: [createMockTask()],
         total: 75,
         limit: 50,
         offset: 0,
@@ -305,11 +328,11 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const previousPage = await screen.findByRole("button", {
+      name: "Previous page",
+    });
     const nextPage = screen.getByRole("button", { name: "Next page" });
-    const startedAtHeader = screen.getByRole("button", {
+    const startedAtHeader = screen.getByRole("columnheader", {
       name: /Started at/,
     });
 
@@ -457,84 +480,108 @@ describe("TaskListPage", () => {
   });
 
   it("should allow to sort tasks list", async () => {
-    const { history } = setup();
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({ data: [createMockTask()] }),
+    });
 
     await waitFor(() => {
       expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
     });
-
-    expect(
-      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
-    ).toEqual([
+    expect(getLastTaskCallUrl()).toEqual(
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-    ]);
-    await waitForLoaderToBeRemoved();
-
-    const startedAtHeader = screen.getByRole("button", { name: /Started at/ });
-    const endedAtHeader = screen.getByRole("button", { name: /Ended at/ });
-    const durationHeader = screen.getByRole("button", { name: /Duration/ });
-
-    expect(startedAtHeader).toBeInTheDocument();
-    expect(endedAtHeader).toBeInTheDocument();
-    expect(durationHeader).toBeInTheDocument();
+    );
+    const startedAtHeader = await screen.findByRole("columnheader", {
+      name: /Started at/,
+    });
+    expect(startedAtHeader).toHaveAttribute("aria-sort", "descending");
     expect(
       within(startedAtHeader).getByRole("img", { name: "chevrondown icon" }),
     ).toBeInTheDocument();
     expect(history?.getCurrentLocation().search).toEqual("");
 
     await userEvent.click(startedAtHeader);
-
+    await waitFor(() => {
+      expect(
+        screen.getByRole("columnheader", { name: /Started at/ }),
+      ).toHaveAttribute("aria-sort", "ascending");
+    });
     expect(
-      within(startedAtHeader).getByRole("img", { name: "chevronup icon" }),
+      within(
+        screen.getByRole("columnheader", { name: /Started at/ }),
+      ).getByRole("img", { name: "chevronup icon" }),
     ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
-    ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+    expect(getLastTaskCallUrl()).toEqual(
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
-    ]);
+    );
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
     expect(history?.getCurrentLocation().search).toEqual("?sort_direction=asc");
 
-    await userEvent.click(endedAtHeader);
-
-    expect(
-      within(endedAtHeader).getByRole("img", { name: "chevronup icon" }),
-    ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
-    ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=ended_at&sort_direction=asc",
-    ]);
-    act(() => {
-      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
-    });
-    expect(history?.getCurrentLocation().search).toEqual(
-      "?sort_column=ended_at&sort_direction=asc",
+    await userEvent.click(
+      screen.getByRole("columnheader", { name: /Started at/ }),
     );
-
-    await userEvent.click(durationHeader);
-
-    expect(
-      within(durationHeader).getByRole("img", { name: "chevronup icon" }),
-    ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
-    ).toEqual([
+    await waitFor(() => {
+      expect(
+        screen.getByRole("columnheader", { name: /Started at/ }),
+      ).toHaveAttribute("aria-sort", "descending");
+    });
+    expect(getLastTaskCallUrl()).toEqual(
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=ended_at&sort_direction=asc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=duration&sort_direction=asc",
-    ]);
+    );
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual(
-      "?sort_column=duration&sort_direction=asc",
+    expect(history?.getCurrentLocation().search).toEqual("");
+
+    // every sortable column drives the request and URL state
+    const cases: { header: RegExp; column: string }[] = [
+      { header: /Ended at/, column: "ended_at" },
+      { header: /Duration/, column: "duration" },
+      { header: /Task/, column: "task" },
+      { header: /DB Name/, column: "db_name" },
+      { header: /DB Engine/, column: "db_engine" },
+      { header: /Status/, column: "status" },
+    ];
+
+    for (const { header, column } of cases) {
+      await userEvent.click(screen.getByRole("columnheader", { name: header }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("columnheader", { name: header }),
+        ).toHaveAttribute("aria-sort", "ascending");
+      });
+      expect(
+        within(screen.getByRole("columnheader", { name: header })).getByRole(
+          "img",
+          { name: "chevronup icon" },
+        ),
+      ).toBeInTheDocument();
+      expect(getLastTaskCallUrl()).toEqual(
+        `http://localhost/api/task?limit=50&offset=0&sort_column=${column}&sort_direction=asc`,
+      );
+      act(() => {
+        jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+      });
+      expect(history?.getCurrentLocation().search).toEqual(
+        `?sort_column=${column}&sort_direction=asc`,
+      );
+    }
+  });
+
+  it("should navigate to task details when a row is clicked", async () => {
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({
+        data: [createMockTask({ id: 123 })],
+      }),
+    });
+
+    const row = await screen.findByTestId("task");
+    await userEvent.click(row);
+
+    expect(history?.getCurrentLocation().pathname).toBe(
+      Urls.monitorTaskDetails(123),
     );
   });
 
@@ -560,7 +607,9 @@ describe("TaskListPage", () => {
     const taskPicker = screen.getByPlaceholderText("Filter by task");
 
     expect(taskPicker).toBeInTheDocument();
-    expect(taskPicker).toHaveValue("task-b");
+    await waitFor(() => {
+      expect(taskPicker).toHaveValue("task-b");
+    });
   });
 
   it("accepts status query param", async () => {
@@ -619,9 +668,7 @@ describe("TaskListPage", () => {
       }),
     });
 
-    await waitForLoaderToBeRemoved();
-
-    const row = screen.getByTestId("task");
+    const row = await screen.findByTestId("task");
     const startedAtElement = within(row).getByTestId("started-at");
     const endedAtElement = within(row).getByTestId("ended-at");
     expect(startedAtElement).toHaveTextContent("March 4, 2023, 1:45 AM");
@@ -641,9 +688,7 @@ describe("TaskListPage", () => {
       }),
     });
 
-    await waitForLoaderToBeRemoved();
-
-    const row = screen.getByTestId("task");
+    const row = await screen.findByTestId("task");
     const startedAtElement = within(row).getByTestId("started-at");
     await userEvent.hover(startedAtElement);
 

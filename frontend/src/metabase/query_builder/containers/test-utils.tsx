@@ -287,7 +287,7 @@ export const setup = async ({
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const { container, history, store } = renderWithProviders(
-    <div>
+    <>
       <Route>
         <Route path="/" element={<TestHome />} />
         <Route path="/model">
@@ -309,7 +309,7 @@ export const setup = async ({
         </Route>
         <Route path="/redirect" element={<TestRedirect />} />
       </Route>
-    </div>,
+    </>,
     {
       withRouter: true,
       initialRoute,
