@@ -30,6 +30,16 @@
              [{:role :user :content "Hello"}
               {:type :text :text "Hi there!"}])))))
 
+(deftest ^:parallel parts->cc-messages-drops-reasoning-test
+  (testing "reasoning parts are dropped, not turned into empty user messages"
+    (is (=? [{:role "user" :content "Hello"}
+             {:role "assistant" :content "Hi there!"}]
+            (openrouter/parts->cc-messages
+             [{:role :user :content "Hello"}
+              {:type :reasoning :id "r1" :text "thinking"}
+              {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "abc"}}}
+              {:type :text :text "Hi there!"}])))))
+
 (deftest ^:parallel parts->cc-messages-tool-call-test
   (testing "text + tool call merges into single assistant message"
     (is (=? [{:role       "assistant"
