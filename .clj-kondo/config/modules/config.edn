@@ -1265,6 +1265,7 @@
            ai-tracing
            api
            app-db
+           channel
            collections
            config
            dashboards
@@ -1867,7 +1868,6 @@
            permissions
            public-sharing
            queries
-           query-permissions
            query-processor
            request
            revisions
@@ -1876,7 +1876,6 @@
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
-                    :model/Dashboard
                     :model/Database
                     :model/Table}}
 
