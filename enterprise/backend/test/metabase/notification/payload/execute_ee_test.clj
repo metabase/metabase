@@ -25,7 +25,7 @@
                                  (mt/user->id :crowberto)
                                  card-id)
                                 :result))]
-      (t2/delete! :model/QueryCache)
+      (t2/delete! :model/OpCacheEntry)
       (mt/with-premium-features #{:cache-granular-controls}
         (mt/with-temp
           ;; Card 1 has count hidden, sum visible
@@ -95,7 +95,7 @@
           table-columns-of (fn [result]
                              (get-in result [:data :viz-settings
                                              :metabase.models.visualization-settings/table-columns]))]
-      (t2/delete! :model/QueryCache)
+      (t2/delete! :model/OpCacheEntry)
       (mt/with-premium-features #{:cache-granular-controls}
         (mt/with-temp
           [:model/Card          {card-id :id} {:dataset_query          query
@@ -109,17 +109,17 @@
           (let [run-sub!         (fn [] (:result (mt/as-admin
                                                    (notification.payload.execute/execute-dashboard-subscription-card
                                                     dashcard []))))
-                cache-updated-at #(t2/select-one-fn :updated_at :model/QueryCache)]
+                cache-updated-at #(t2/select-one-fn :written_at :model/OpCacheEntry)]
             (testing "initial run populates cache with four columns"
               (let [result (run-sub!)]
                 (is (= 4 (count (table-columns-of result))))
-                (is (= 1 (t2/count :model/QueryCache))
+                (is (= 1 (t2/count :model/OpCacheEntry))
                     "The query should have been cached exactly once")))
             (let [first-updated-at (cache-updated-at)]
               (t2/update! :model/Card card-id {:visualization_settings edited-setting})
               (testing "after card edit, cache-hit run reflects the two-column setting"
                 (let [result (run-sub!)]
-                  (is (= 1 (t2/count :model/QueryCache))
+                  (is (= 1 (t2/count :model/OpCacheEntry))
                       "Second run should reuse the cache entry, not create a new one")
                   (is (= first-updated-at (cache-updated-at))
                       "Cache entry should not have been overwritten — confirms cache hit")

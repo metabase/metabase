@@ -17,4 +17,7 @@
     claim older than `claim-ttl-ms` counts as abandoned and may be taken over. Claims are per-key and independent of
     whether a value is stored at `k`.")
   (release-claim! [storage k]
-    "Release any claim on `k` without touching the stored value."))
+    "Release any claim on `k` without touching the stored value.")
+  (purge-entries-written-before! [storage cutoff]
+    "Remove every entry whose value was written before instant `cutoff`, along with any abandoned claim-only state at
+    least that old. Retention maintenance; when to call it is the caller's policy."))

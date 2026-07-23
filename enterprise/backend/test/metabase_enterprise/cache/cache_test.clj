@@ -187,7 +187,7 @@
 
 (deftest invalidation-test
   (mt/with-model-cleanup [:model/CacheConfig
-                          [:model/QueryCache :updated_at]]
+                          [:model/OpCacheEntry :written_at]]
     (mt/with-premium-features #{:cache-granular-controls :audit-app}
       (mt/with-temp [:model/Dashboard     dash           {}
                      :model/Card          {card1-id :id} {:database_id   (mt/id)

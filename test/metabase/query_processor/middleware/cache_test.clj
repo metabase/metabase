@@ -20,6 +20,7 @@
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.query-processor.middleware.cache-backend.storage-adapter :as storage-adapter]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -55,6 +56,11 @@
 
 (def ^:private ^:dynamic *purge-chan*
   "Gets a message whenever old entries are purged from the test backend."
+  nil)
+
+(def ^:private ^:dynamic *mock-backend*
+  "The mock CacheBackend behind [[cache/*storage*]] inside [[with-mock-cache!]], for tests that manipulate backend
+  state directly (e.g. pre-acquiring the refresh lease to simulate another process refreshing)."
   nil)
 
 (defn- test-backend
@@ -124,20 +130,22 @@
                           purge-chan (a/chan 10)]
     (mt/with-temporary-setting-values [query-caching-max-ttl     60
                                        synchronous-batch-updates true]
-      (binding [cache/*backend* (test-backend save-chan purge-chan)
-                *save-chan*     save-chan
-                *purge-chan*    purge-chan]
-        (let [orig (mt/original-fn #'cache/serialized-bytes)]
-          (mt/with-dynamic-fn-redefs [cache/serialized-bytes (fn []
-                                                               ;; if `save-results!` isn't going to get called because `*result-fn*`
-                                                               ;; throws an Exception, catch it and send it to `save-chan` so it still
-                                                               ;; gets a result and tests can finish
-                                                               (try
-                                                                 (orig)
-                                                                 (catch Throwable e
-                                                                   (a/>!! save-chan e)
-                                                                   (throw e))))]
-            (f {:save-chan save-chan, :purge-chan purge-chan})))))))
+      (let [backend (test-backend save-chan purge-chan)]
+        (binding [cache/*storage* (storage-adapter/storage backend)
+                  *mock-backend*  backend
+                  *save-chan*     save-chan
+                  *purge-chan*    purge-chan]
+          (let [orig (mt/original-fn #'cache/serialized-bytes)]
+            (mt/with-dynamic-fn-redefs [cache/serialized-bytes (fn []
+                                                                 ;; if `save-results!` isn't going to get called because `*result-fn*`
+                                                                 ;; throws an Exception, catch it and send it to `save-chan` so it still
+                                                                 ;; gets a result and tests can finish
+                                                                 (try
+                                                                   (orig)
+                                                                   (catch Throwable e
+                                                                     (a/>!! save-chan e)
+                                                                     (throw e))))]
+              (f {:save-chan save-chan, :purge-chan purge-chan}))))))))
 
 (defmacro with-mock-cache! [[& bindings] & body]
   `(do-with-mock-cache! (fn [{:keys [~@bindings]}] ~@body)))
@@ -342,7 +350,7 @@
         (run-query :cache-strategy strategy)
         (mt/wait-for-result save-chan)
         (Thread/sleep 200)
-        (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash 600000)))
+        (is (true? (i/try-acquire-refresh-lease! *mock-backend* query-hash 600000)))
         (is (= :cached
                (run-query :cache-strategy strategy)))))))
 
@@ -414,7 +422,7 @@
           (mt/wait-for-result save-chan))
         (testing "the entry expired 1 second ago and another process holds the refresh lease"
           (mt/with-clock (t/plus t0 (t/seconds 61))
-            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (true? (i/try-acquire-refresh-lease! *mock-backend* query-hash (u/minutes->ms 5))))
             (is (= :cached
                    (run-query))
                 "just-expired results are fine to serve while the refresh is in flight")))))))
@@ -561,9 +569,9 @@
       (let [query-hash (qp.util/query-hash (test-query nil))]
         (testing "Cached results should exist"
           (is (true?
-               (i/cached-results cache/*backend* query-hash
+               (i/cached-results *mock-backend* query-hash
                                  (fn [is _updated-at] (some? is))))))
-        (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
+        (i/save-results! *mock-backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
                  (run-query))))))))
@@ -975,25 +983,16 @@
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
 
-(def stub-no-op-cache-backend
-  (reify i/CacheBackend
-    (cached-results [_ _ respond] (respond nil nil))
-    (save-results! [_ _ _])
-    (purge-old-entries! [_ _])
-    (delete-entry! [_ _])
-    (try-acquire-refresh-lease! [_ _ _] true)))
-
 (deftest ^:parallel caching-big-resultsets
-  (binding [cache/*backend* stub-no-op-cache-backend]
-    (testing "Make sure we can save large result sets without tripping over internal async buffers"
-      (is (= 10000 (count (transduce identity
-                                     (#'cache/serialize-tee-xform {} (byte-array 0) conj)
-                                     (repeat 10000 [1]))))))
-    (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
-      (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
-        (is (= max-bytes (count (transduce identity
-                                           (#'cache/serialize-tee-xform {} (byte-array 0) conj)
-                                           (repeat max-bytes [1])))))))))
+  (testing "Make sure we can save large result sets without tripping over internal async buffers"
+    (is (= 10000 (count (transduce identity
+                                   (#'cache/serialize-tee-xform {} (byte-array 0) conj)
+                                   (repeat 10000 [1]))))))
+  (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
+    (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
+      (is (= max-bytes (count (transduce identity
+                                         (#'cache/serialize-tee-xform {} (byte-array 0) conj)
+                                         (repeat max-bytes [1]))))))))
 
 (deftest perms-checks-should-still-apply-test
   (testing "Double-check that perms checks still happen even for cached results"

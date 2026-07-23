@@ -61,7 +61,9 @@
         (t2/update! :conn conn :secret
                     {:id id}
                     {:value (encrypt-bytes-fn value)}))
-      (t2/delete! :conn conn :model/QueryCache))))
+      (t2/delete! :conn conn :model/QueryCache)
+      ;; cached values are encrypted with the old key; they're disposable, so drop them rather than re-encrypt
+      (t2/delete! :conn conn :model/OpCacheEntry))))
 
 (defn encrypt-db
   "Encrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data, and the passed `to-key` to re-encrypt.

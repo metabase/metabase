@@ -243,11 +243,11 @@
                     :model/Document
                     :model/Field
                     :model/ModerationReview
+                    :model/OpCacheEntry
                     :model/PermissionsGroup
                     :model/Pulse
                     :model/PulseCard
                     :model/PulseChannel
-                    :model/QueryCache
                     :model/QueryExecution
                     :model/Segment
                     :model/Table
@@ -354,6 +354,7 @@
            task
            util}
    :model-imports #{:model/Field
+                    :model/OpCacheEntry
                     :model/QueryCache
                     :model/Secret
                     :model/Setting}}
@@ -465,18 +466,20 @@
   {:team "UX West"
    :api  #{metabase.cache.api
            metabase.cache.core
-           metabase.cache.init}
+           metabase.cache.init
+           metabase.cache.op-cache-storage}
    :uses #{api
            app-db
            config
            events
            models
+           op-cache-impl
            permissions
            premium-features
            request
            settings
            util}
-   :model-exports #{:model/CacheConfig :model/QueryCache}
+   :model-exports #{:model/CacheConfig :model/OpCacheEntry :model/QueryCache}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
@@ -1544,12 +1547,12 @@
            util}}
 
   op-cache
-  {:team "Querying Platform"
+  {:team "Graphy"
    :api  #{metabase.op-cache.core}
    :uses #{}}
 
   op-cache-impl
-  {:team "Querying Platform"
+  {:team "Graphy"
    :api  #{metabase.op-cache-impl.cache metabase.op-cache-impl.storage}
    :uses #{op-cache
            util}}
@@ -3021,7 +3024,8 @@
   enterprise/cache
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
-   :uses #{cache
+   :uses #{app-db
+           cache
            premium-features
            query-processor
            task
@@ -3030,8 +3034,8 @@
                     :model/Card
                     :model/Dashboard
                     :model/DatabaseRouter
+                    :model/OpCacheEntry
                     :model/Query
-                    :model/QueryCache
                     :model/QueryExecution}}
 
   enterprise/cloud-add-ons

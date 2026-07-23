@@ -4,9 +4,9 @@
   If query caching is enabled, cache strategy has been passed and it's not a `{:type :nocache}`, THEN cached results
   will be returned for Cards if available or stored if applicable. For all other queries, caching is skipped.
 
-  The default backend is `db`, which uses the application database; this value can be changed by setting the env var
-  `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
-  about how the cache backends themselves."
+  Storage defaults to the application database (see [[metabase.cache.op-cache-storage]]). Setting the env var
+  `MB_QP_CACHE_BACKEND` to another value routes storage through the legacy
+  [[metabase.query-processor.middleware.cache-backend.interface]] backend of that name instead."
   (:refer-clojure :exclude [get-in])
   (:require
    [clojure.string :as str]
@@ -14,9 +14,11 @@
    [medley.core :as m]
    [metabase.batch-processing.core :as grouper]
    [metabase.cache.core :as cache]
+   [metabase.cache.op-cache-storage :as op-cache-storage]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.op-cache-impl.cache :as op-cache.impl]
+   [metabase.op-cache-impl.storage :as op-cache.storage]
    [metabase.op-cache.core :as op-cache]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -44,9 +46,12 @@
     [initial-metadata row-1 row-2 ... row-n final-metadata]"
   3)
 
-(def ^:dynamic *backend*
-  "Current cache backend. Dynamically rebindable primary for test purposes."
-  (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
+(def ^:dynamic *storage*
+  "Current op-cache storage. Dynamically rebindable primarily for test purposes."
+  (let [backend-kw (config/config-kw :mb-qp-cache-backend)]
+    (if (= backend-kw :db)
+      (op-cache-storage/storage)
+      (storage-adapter/storage (i/cache-backend backend-kw)))))
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
@@ -58,11 +63,13 @@
 
 (def ^:private purge-queue-capacity 1000)
 
-(defn- purge!* [backends]
-  (doseq [backend (distinct backends)]
+(defn- purge!* [storages]
+  (doseq [storage (distinct storages)]
     (try
       (log/tracef "Purging cache entries older than %s" (u/format-seconds (cache/query-caching-max-ttl)))
-      (i/purge-old-entries! backend (cache/query-caching-max-ttl))
+      (op-cache.storage/purge-entries-written-before!
+       storage
+       (t/minus (t/instant) (t/millis (long (* 1000 (cache/query-caching-max-ttl))))))
       (log/trace "Successfully purged old cache entries.")
       (catch Throwable e
         (log/errorf e "Error purging old cache entries: %s" (ex-message e))))))
@@ -73,8 +80,8 @@
           :capacity purge-queue-capacity
           :interval (* purge-interval-seconds 1000))))
 
-(defn- schedule-purge! [backend]
-  (grouper/submit! @purge-queue backend))
+(defn- schedule-purge! [storage]
+  (grouper/submit! @purge-queue storage))
 
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
@@ -218,9 +225,9 @@
     (alength v)))
 
 (defn- query-op-cache
-  "An op cache running [[*backend*]], configured for `cache-strategy`."
+  "An op cache running [[*storage*]], configured for `cache-strategy`."
   [cache-strategy]
-  (op-cache.impl/cache (storage-adapter/storage *backend*)
+  (op-cache.impl/cache *storage*
                        {:min-duration-ms (:min-duration-ms cache-strategy 0)
                         :max-size        (* (cache/query-caching-max-kb) 1024)
                         :size-fn         serialized-size
@@ -264,7 +271,7 @@
               (when stored
                 (log/infof "Cached results for next time for query with hash %s. %s"
                            (pr-str (i/short-hex-hash query-hash)) (u/emoji "💾"))
-                (schedule-purge! *backend*))
+                (schedule-purge! *storage*))
               ;; only augment a `:cache/details` the rf chain preserved -- middlewares up the chain (userland query
               ;; execution) strip it from their response, and it should stay stripped
               (let [result @result-vol]

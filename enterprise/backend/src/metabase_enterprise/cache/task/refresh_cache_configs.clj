@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
+   [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.core :as qp]
    [metabase.task.core :as task]
@@ -92,6 +93,14 @@
   (t/minus (t/offset-date-time)
            (t/duration duration (keyword unit))))
 
+(defn- hex-of
+  "HoneySQL expression for the lowercase hex encoding of binary column `col`, per app-db type."
+  [col]
+  (case (app-db/db-type)
+    :postgres [:encode col [:inline "hex"]]
+    :mysql    [:lower [:hex col]]
+    :h2       [:lower [:rawtohex col]]))
+
 (defn- duration-queries-to-rerun-honeysql
   "HoneySQL query for selecting query definitions that should be rerun, given a list of :duration cache configs.
   Executed twice, once to find parameterized queries and once to find non-parameterized queries."
@@ -101,18 +110,20 @@
           (let [rerun-cutoff (duration-ago config)]
             {:nest
              {:select   [[:q.query :query]
-                         [:qc.query_hash :cache-hash]
+                         [:qc.cache_key :cache-hash]
                          [:qe.card_id :card-id]
                          [:qe.dashboard_id :dashboard-id]
                          [[:count :q.query_hash] :count]]
               :from     [[(t2/table-name :model/Query) :q]]
               :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
-                         [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
+                         ;; op_cache keys are the hex-encoded query hash
+                         [(t2/table-name :model/OpCacheEntry) :qc] [:= :qc.cache_key (hex-of :qe.cache_hash)]]
               :where    [:and
                          (case model
                            "question" [:= :qe.card_id model_id]
                            "dashboard" [:= :qe.dashboard_id model_id])
-                         [:<= :qc.updated_at rerun-cutoff]
+                         ;; claim-only rows (no stored value) have a NULL written_at and are excluded here
+                         [:<= :qc.written_at rerun-cutoff]
                          ;; This is a safety check so that we don't scan all of query_execution -- if a query
                          ;; has not been executed at all in the last month (including cache hits) we won't bother
                          ;; refreshing it again.
@@ -127,7 +138,7 @@
                             ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
                             [:not= :qe.context (name :cache-refresh)]]
                            [:= :qe.parameterized false])]
-              :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}}))]
+              :group-by [:q.query_hash :q.query :qc.cache_key :qe.card_id :qe.dashboard_id]}}))]
     {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
      :from   [[{:union queries} :u]]}))
 
@@ -157,7 +168,7 @@
   to re-run them before the cache has been refreshed. "
   [queries]
   (doseq [batch (partition 1000 1000 nil queries)]
-    (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash batch)])))
+    (t2/delete! :model/OpCacheEntry :cache_key [:in (map :cache-hash batch)])))
 
 (defn- maybe-refresh-duration-caches!
   "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that

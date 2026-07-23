@@ -33,4 +33,10 @@
           @won))
       (release-claim! [_ k]
         (swap! claims dissoc k)
+        nil)
+      (purge-entries-written-before! [_ cutoff]
+        (swap! entries (fn [entries]
+                         (into {} (remove (fn [[_ {:keys [written-at]}]]
+                                            (t/before? written-at (t/instant cutoff))))
+                               entries)))
         nil))))

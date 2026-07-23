@@ -470,9 +470,10 @@
 ;;; Cache Metrics
 
 (defn- cache-metrics
-  "Metrics based on use of the QueryCache."
+  "Metrics based on use of the query cache."
   []
-  (let [{:keys [length count]} (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
+  ;; count only rows with a stored value -- a NULL value is a claim-only row, not a cache entry
+  (let [{:keys [length count]} (t2/select-one [:model/OpCacheEntry [[:avg [:length :value]] :length] [[:count :value] :count]])]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)
      ;; this value gets used in the snowplow ping 'metrics' section.

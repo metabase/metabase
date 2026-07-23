@@ -7,6 +7,7 @@
   counts as won (every caller computes, matching the backend-less behavior), so cache trouble never fails the
   query itself."
   (:require
+   [java-time.api :as t]
    [metabase.op-cache-impl.storage :as op-cache.storage]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.log :as log])
@@ -47,4 +48,9 @@
     (release-claim! [_ query-hash]
       (when (satisfies? i/LeaseControl backend)
         (i/release-refresh-lease! backend query-hash))
+      nil)
+    (purge-entries-written-before! [_ cutoff]
+      ;; CacheBackend expresses retention as a max age rather than a cutoff instant
+      (let [max-age-seconds (max 0 (t/as (t/duration (t/instant cutoff) (t/instant)) :seconds))]
+        (i/purge-old-entries! backend max-age-seconds))
       nil)))

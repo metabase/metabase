@@ -1244,7 +1244,7 @@
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
-    (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+    (mt/with-model-cleanup [[:model/OpCacheEntry :written_at]]
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
         (let [card-id (t2/select-one-fn :card_id :model/Sandbox :group_id (u/the-id &group))
               _ (is (pos-int? card-id))
