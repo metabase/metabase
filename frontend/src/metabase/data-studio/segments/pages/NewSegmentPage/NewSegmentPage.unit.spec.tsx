@@ -68,7 +68,6 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
       element={
         <NewSegmentPage
           // Unjustified type cast. FIXME
-          route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
           getSuccessUrl={getSuccessUrl}

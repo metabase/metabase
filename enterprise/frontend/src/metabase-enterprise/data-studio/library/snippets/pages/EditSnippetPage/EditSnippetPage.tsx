@@ -19,7 +19,7 @@ import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHe
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -32,12 +32,8 @@ type EditSnippetPageParams = {
   snippetId: string;
 };
 
-type EditSnippetPageProps = {
-  params: EditSnippetPageParams;
-  route: Route;
-};
-
-export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
+export function EditSnippetPage() {
+  const params = useParams<EditSnippetPageParams>();
   const snippetId = Urls.extractEntityId(params.snippetId);
   const [sendToast] = useToast();
   const remoteSyncReadOnly = useSelector(
@@ -179,7 +175,6 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
       </PageContainer>
       <LeaveRouteConfirmModal
         key={snippetId}
-        route={route}
         isEnabled={isDirty && !isSaving}
       />
     </>

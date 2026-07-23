@@ -9,7 +9,6 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
 import { push } from "metabase/router";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
@@ -22,14 +21,12 @@ import { useMeasureQuery } from "../../hooks/use-measure-query";
 import { createInitialQueryForTable } from "../../utils/measure-query";
 
 type NewMeasurePageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (measure: Measure) => string;
 };
 
 export function NewMeasurePage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
@@ -131,7 +128,7 @@ export function NewMeasurePage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

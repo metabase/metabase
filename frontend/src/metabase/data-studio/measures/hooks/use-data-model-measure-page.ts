@@ -22,7 +22,9 @@ type DataModelMeasurePageParams = {
   measureId: string;
 };
 
-export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
+export function useDataModelMeasurePage(
+  params: Partial<DataModelMeasurePageParams>,
+) {
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [updateMeasure] = useUpdateMeasureMutation();
