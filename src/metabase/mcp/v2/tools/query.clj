@@ -455,7 +455,7 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
   (let [result (qp.card/process-query-for-card
                 card :api
                 :parameters  parameters
-                :context     :question
+                :context     :agent
                 :constraints {:max-results           row-limit
                               :max-results-bare-rows row-limit}
                 :middleware  {:process-viz-settings? false}
