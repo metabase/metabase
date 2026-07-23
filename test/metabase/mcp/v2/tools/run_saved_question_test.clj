@@ -8,6 +8,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
    ;; registers the run_saved_question tool for the call-tool seam below
    [metabase.mcp.v2.tools.query]
@@ -186,7 +188,8 @@
   (testing "a declared card parameter targeting a query dimension (not a template tag) is a teaching error, not a QP failure"
     (mt/with-temp [:model/Card {card-id :id}
                    {:name          "rsq mbql param"
-                    :dataset_query (mt/mbql-query products)
+                    :dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :products)))
                     :parameters    [{:id     "p1"
                                      :slug   "cat_dim"
                                      :name   "Category"
@@ -240,9 +243,11 @@
     (mt/with-temp [:model/Card {card-id :id}
                    {:name                   "rsq pivot"
                     :display                :pivot
-                    :dataset_query          (mt/mbql-query products
-                                              {:aggregation [[:count]]
-                                               :breakout    [$category $vendor]})
+                    :dataset_query          (-> (lib/query (mt/metadata-provider)
+                                                           (lib.metadata/table (mt/metadata-provider) (mt/id :products)))
+                                                (lib/aggregate (lib/count))
+                                                (lib/breakout (lib.metadata/field (mt/metadata-provider) (mt/id :products :category)))
+                                                (lib/breakout (lib.metadata/field (mt/metadata-provider) (mt/id :products :vendor))))
                     :visualization_settings {:pivot_table.column_split
                                              {:rows    ["CATEGORY"]
                                               :columns ["VENDOR"]
