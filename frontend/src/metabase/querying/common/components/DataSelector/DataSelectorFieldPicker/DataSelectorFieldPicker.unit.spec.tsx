@@ -1,14 +1,25 @@
-import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, render, screen } from "__support__/ui";
+import type { ReactElement } from "react";
+
+import { createMockEntitiesState } from "__support__/store";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
-import type Table from "metabase-lib/v1/metadata/Table";
-import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS,
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DataSelectorFieldPicker } from "./DataSelectorFieldPicker";
 
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
+const state = createMockState({
+  entities: createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  }),
 });
+
+const metadata = getMetadata(state);
 
 const props = {
   hasFiltering: true,
@@ -17,6 +28,9 @@ const props = {
   onBack: jest.fn(),
   onChangeField: jest.fn(),
 };
+
+const render = (ui: ReactElement) =>
+  renderWithProviders(ui, { storeInitialState: state });
 
 describe("DataSelectorFieldPicker", () => {
   describe("when loading", () => {
@@ -27,18 +41,19 @@ describe("DataSelectorFieldPicker", () => {
     });
 
     it("uses table display name as title if passed", () => {
-      const displayName = "Display name";
+      const selectedTable = checkNotNull(metadata.table(ORDERS_ID));
 
       render(
         <DataSelectorFieldPicker
           {...props}
           isLoading={true}
-          // Unjustified type cast. FIXME
-          selectedTable={{ display_name: displayName } as Table}
+          selectedTable={selectedTable}
         />,
       );
 
-      expect(screen.getByText(displayName)).toBeInTheDocument();
+      expect(
+        screen.getByText(checkNotNull(selectedTable.display_name)),
+      ).toBeInTheDocument();
     });
 
     it("goes back if clicked", () => {
@@ -56,22 +71,19 @@ describe("DataSelectorFieldPicker", () => {
 
   describe("loaded", () => {
     it("displays table name and fields", () => {
-      const tableDisplayName = "Table display name";
-
-      const selectedTable = {
-        display_name: tableDisplayName,
-      };
+      const selectedTable = checkNotNull(metadata.table(ORDERS_ID));
 
       render(
         <DataSelectorFieldPicker
           {...props}
-          // Unjustified type cast. FIXME
-          selectedTable={selectedTable as Table}
+          selectedTable={selectedTable}
           fields={[checkNotNull(metadata.field(ORDERS.PRODUCT_ID))]}
         />,
       );
 
-      expect(screen.getByText(tableDisplayName)).toBeInTheDocument();
+      expect(
+        screen.getByText(checkNotNull(selectedTable.display_name)),
+      ).toBeInTheDocument();
       expect(screen.getByText("Product ID")).toBeInTheDocument();
       expect(screen.getByLabelText("More info")).toBeInTheDocument();
     });
@@ -80,8 +92,7 @@ describe("DataSelectorFieldPicker", () => {
       render(
         <DataSelectorFieldPicker
           {...props}
-          // Unjustified type cast. FIXME
-          selectedTable={{ display_name: "Orders" } as Table}
+          selectedTable={checkNotNull(metadata.table(ORDERS_ID))}
           fields={[
             checkNotNull(metadata.field(ORDERS.ID)),
             checkNotNull(metadata.field(ORDERS.TOTAL)),
