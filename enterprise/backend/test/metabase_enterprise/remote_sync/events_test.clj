@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.events :as remote-sync.events]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.models.collection :as collection]
@@ -13,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -1199,3 +1201,58 @@
     (is (isa? :event/field-create ::remote-sync.events/field-change-event))
     (is (isa? :event/field-update ::remote-sync.events/field-change-event))
     (is (isa? :event/field-delete ::remote-sync.events/field-change-event))))
+
+;;; ------------------------------------- Concurrent Un-Sync Race Tests -------------------------------------
+
+(deftest disable-racing-card-update-event-does-not-lose-removal-test
+  (testing "a card-update event whose eligibility check read pre-disable state must not clobber the
+            'removed' status a concurrent disable wrote — the pending removal must survive (GHY-4189)"
+    ;; Rows must be committed: the event handler runs on another thread, with its own connection.
+    (binding [tu.thread-local/*thread-local* false]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Race-Sync" :location "/" :is_remote_synced true}
+                     :model/Card card {:name "Race Card" :collection_id coll-id
+                                       :database_id (mt/id)
+                                       :dataset_query (mt/mbql-query venues)}]
+        (try
+          ;; Both entities are already on the remote, as after an export. No content_hash, so the
+          ;; handler's no-op-update suppression does not kick in.
+          (t2/delete! :model/RemoteSyncObject)
+          (t2/insert! :model/RemoteSyncObject
+                      [{:model_type "Collection" :model_id coll-id :model_name "Race-Sync"
+                        :status "synced" :status_changed_at (t/offset-date-time)
+                        :file_path "collections/rs/rs.yaml"}
+                       {:model_type "Card" :model_id (:id card) :model_name "Race Card"
+                        :model_collection_id coll-id :status "synced"
+                        :status_changed_at (t/offset-date-time)
+                        :file_path "collections/rs/cards/race.yaml"}])
+          (let [handler-read (promise)
+                disable-done (promise)
+                parked?      (atom false)
+                orig         t2/select-one]
+            ;; Park the card-update handler exactly once, after its eligibility check has read
+            ;; pre-disable state, until the disable has committed. This is the interleaving a real
+            ;; concurrent card edit produces under read committed.
+            (with-redefs [t2/select-one (fn [& args]
+                                          (let [res (apply orig args)]
+                                            (when (and (= (first args) :model/RemoteSyncObject)
+                                                       (compare-and-set! parked? false true))
+                                              (deliver handler-read true)
+                                              (deref disable-done 10000 nil))
+                                            res))]
+              (let [event (future
+                            (events/publish-event! :event/card-update
+                                                   {:object card :previous-object card
+                                                    :user-id (mt/user->id :rasta)}))]
+                (is (true? (deref handler-read 10000 false))
+                    "the event handler ran and read pre-disable state")
+                (remote-sync.core/bulk-set-remote-sync {coll-id false})
+                (deliver disable-done true)
+                (deref event 10000 nil))))
+          (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
+                                             :model_type "Card" :model_id (:id card)))
+              "the pending removal survives a concurrent card-update event")
+          (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
+                                             :model_type "Collection" :model_id coll-id))
+              "the collection's pending removal is untouched")
+          (finally
+            (t2/delete! :model/RemoteSyncObject)))))))

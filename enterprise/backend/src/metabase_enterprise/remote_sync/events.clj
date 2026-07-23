@@ -119,6 +119,13 @@
 
 ;;; ----------------------------------------- Spec-based Event Handling ------------------------------------------------
 
+(defn- still-eligible?
+  "Re-checks `model-id`'s eligibility against current DB state. The eligibility that got us here was computed
+   from an event payload, which a concurrent change may have invalidated in the meantime."
+  [model-spec model-id]
+  (boolean (when-let [instance (t2/select-one (:model-key model-spec) :id model-id)]
+             (spec/check-eligibility model-spec instance))))
+
 (defn- create-or-update-sync-object-from-spec!
   "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
    This is the spec-based version of create-or-update-remote-sync-object-entry!."
@@ -137,6 +144,13 @@
                            fields)))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
+      ;; A pending removal must not be resurrected by a tracked-status write whose eligibility check was
+      ;; overtaken by a concurrent un-sync: that check ran against the event payload, well before this
+      ;; write, so re-check against current state and let the removal stand when it no longer holds.
+      (and (contains? #{"removed" "delete"} (:status existing))
+           (not (contains? #{"removed" "delete"} status))
+           (not (still-eligible? model-spec model-id)))
+      nil
       (= "delete" (:status existing))
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status            status
