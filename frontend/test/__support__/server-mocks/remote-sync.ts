@@ -218,6 +218,11 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   setupRemoteSyncTestConnectionEndpoint({ error: testConnectionError });
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
+  fetchMock.post("path:/api/ee/remote-sync/stash", {
+    status: "success",
+    message: "Stashing",
+    task_id: 1,
+  });
   fetchMock.get(
     "path:/api/ee/remote-sync/has-remote-changes",
     hasRemoteChangesError

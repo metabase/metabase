@@ -1,6 +1,7 @@
 (ns metabase.remote-sync.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (defenterprise collection-editable?
@@ -28,6 +29,41 @@
   metabase-enterprise.remote-sync.core
   []
   true)
+
+(defn non-worktree-filter-clause
+  "HoneySQL clause matching only main-app rows — those not materialized by a remote-sync worktree
+  checkout. `column` defaults to `:remote_sync_worktree_id`; pass a qualified column when the query
+  joins other tables."
+  ([] (non-worktree-filter-clause :remote_sync_worktree_id))
+  ([column]
+   [:= column nil]))
+
+(defn inherit-worktree-id
+  "Derive a row's `:remote_sync_worktree_id` from its parent entity (`parent-key` on the row, a
+  `parent-model` id): rows belong to the remote-sync worktree of whatever contains them, and nil — no
+  parent, or a main-app parent — is the main app, which is not a worktree. The column is derived, never
+  client-supplied. Call from a model's `before-insert`."
+  [instance parent-model parent-key]
+  (assoc instance :remote_sync_worktree_id
+         (when-let [parent-id (get instance parent-key)]
+           (t2/select-one-fn :remote_sync_worktree_id parent-model :id parent-id))))
+
+(defn check-same-worktree
+  "Throw a 400 when an update would change a row's remote-sync worktree membership: `parent-key`
+  changed to a parent whose `:remote_sync_worktree_id` differs from the row's. Content cannot move
+  into, out of, or between worktrees except through a pull — a worktree must stay a faithful
+  materialization of its branch. Call from a model's `before-update`; returns `instance`."
+  [instance parent-model parent-key]
+  (when (contains? (t2/changes instance) parent-key)
+    (let [current (:remote_sync_worktree_id (t2/original instance))
+          target  (when-let [parent-id (get instance parent-key)]
+                    (t2/select-one-fn :remote_sync_worktree_id parent-model :id parent-id))]
+      (when (not= current target)
+        (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
+                        {:status-code 400
+                         :remote-sync-worktree-id current
+                         :target-worktree-id      target})))))
+  instance)
 
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration.

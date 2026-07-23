@@ -68,6 +68,8 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
+  /** Remote sync worktree this collection was materialized by; null/absent for main-app content. */
+  remote_sync_worktree_id?: number | null;
   namespace: CollectionNamespace | null;
 
   parent_id?: CollectionId | null;
@@ -143,6 +145,7 @@ export interface CollectionItem {
   is_shared_tenant_collection?: boolean;
   is_tenant_dashboard?: boolean;
   is_remote_synced?: boolean;
+  remote_sync_worktree_id?: number | null;
 }
 
 export interface CollectionListQuery {
@@ -215,6 +218,7 @@ export type ListCollectionsTreeRequest = {
   "exclude-archived"?: boolean;
   "exclude-other-user-collections"?: boolean;
   "include-library"?: boolean;
+  "include-worktrees"?: boolean;
   namespace?: CollectionNamespace;
   namespaces?: string[];
   shallow?: boolean;

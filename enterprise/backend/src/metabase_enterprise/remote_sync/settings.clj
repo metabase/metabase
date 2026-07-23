@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -163,6 +164,14 @@
   :default false
   :on-change sync-transform-tracking-on-change)
 
+(defsetting remote-sync-worktrees
+  (deferred-tru "Whether remote sync worktrees (checking out additional branches as separate collection trees) are enabled.")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default false)
+
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
   :type :integer
@@ -236,9 +245,12 @@
         (when updating-git-settings?
           (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
         (t2/with-transaction [_conn]
-          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
+          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms :remote-sync-worktrees]]
             (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
                        (not (and (= k :remote-sync-token) obfuscated?)))
+              ;; refuse to point the main app at a branch that is checked out as a worktree
+              (when (and (= k :remote-sync-branch) (some? (k settings)))
+                (remote-sync.worktree/check-branch-not-checked-out! (k settings)))
               (setting/set! k (k settings)))))))))
 
 (defn library-is-remote-synced?

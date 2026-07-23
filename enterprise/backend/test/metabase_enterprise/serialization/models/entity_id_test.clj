@@ -153,7 +153,9 @@
     ;; provisioning state, not portable content. Same rationale as TableRemapping above.
     :model/Workspace
     :model/WorkspaceDatabase
-    :model/WorkspaceInstance})
+    :model/WorkspaceInstance
+    ;; remote-sync worktree checkouts are per-instance sync bookkeeping, not portable content
+    :model/RemoteSyncWorktree})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

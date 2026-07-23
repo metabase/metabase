@@ -212,7 +212,9 @@
    :skip [;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; always re-derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
+          :table_id
+          ;; worktree membership is instance-local state, not portable content
+          :remote_sync_worktree_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}

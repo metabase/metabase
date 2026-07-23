@@ -115,6 +115,17 @@ export type ImportFromBranchResponse = {
   message?: string;
 };
 
+export type StashChangesRequest = {
+  new_branch: string;
+  message?: string;
+};
+
+export type StashChangesResponse = {
+  status: string;
+  message: string;
+  task_id: number;
+};
+
 export type CollectionSyncPreferences = Record<number, boolean>;
 
 export type RemoteSyncConfigurationSettings = Pick<
@@ -126,6 +137,7 @@ export type RemoteSyncConfigurationSettings = Pick<
   | "remote-sync-branch"
   | "remote-sync-auto-import"
   | "remote-sync-transforms"
+  | "remote-sync-worktrees"
 > & {
   collections?: CollectionSyncPreferences;
 };
@@ -197,4 +209,63 @@ export type TestRemoteSyncConnectionRequest = {
 
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
+};
+
+export type RemoteSyncWorktreeId = number;
+
+export type GetRemoteSyncHasChangesRequest = {
+  "worktree-id"?: RemoteSyncWorktreeId;
+} | void;
+
+export type GetHasRemoteChangesRequest = {
+  "worktree-id"?: RemoteSyncWorktreeId;
+} | void;
+
+export type GetRemoteSyncTaskRequest = {
+  "worktree-id"?: RemoteSyncWorktreeId;
+} | void;
+
+/** A remote sync worktree: a checked-out branch materialized as collection trees. */
+export type RemoteSyncWorktree = {
+  id: RemoteSyncWorktreeId;
+  branch: string;
+  /** Last synced git SHA; null until the first successful pull. */
+  base_version: string | null;
+  roots: RemoteSyncWorktreeRoot[];
+  creator_id: UserId | null;
+  created_at: string;
+};
+
+export type RemoteSyncWorktreeRoot = {
+  id: number;
+  name: string;
+};
+
+export type ListWorktreesResponse = {
+  items: RemoteSyncWorktree[];
+};
+
+export type CreateWorktreeRequest = {
+  branch: string;
+  /** Fork the branch from this one server-side when it does not exist on the remote yet. */
+  from_branch?: string;
+};
+
+export type DeleteWorktreeRequest = {
+  id: RemoteSyncWorktreeId;
+  /** Delete even when the worktree has unpushed local changes. */
+  force?: boolean;
+};
+
+export type PullWorktreeRequest = {
+  worktree_id: RemoteSyncWorktreeId;
+  /** Discard unpushed local changes in the worktree. */
+  force?: boolean;
+};
+
+export type PushWorktreeRequest = {
+  worktree_id: RemoteSyncWorktreeId;
+  message?: string;
+  /** Overwrite the remote branch when it has advanced past the worktree's base version. */
+  force?: boolean;
 };

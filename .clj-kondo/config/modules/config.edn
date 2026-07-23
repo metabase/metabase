@@ -106,6 +106,7 @@
            parameters
            queries
            query-processor
+           remote-sync
            search
            settings
            util
@@ -632,6 +633,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            settings
@@ -723,6 +725,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -823,6 +826,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -1791,6 +1795,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -1943,7 +1948,8 @@
            metabase.remote-sync.init}
    :uses #{api
            models
-           premium-features}
+           premium-features
+           util}
    :model-imports #{:model/Collection}}
 
   request
@@ -2397,6 +2403,7 @@
            collections
            events
            models
+           remote-sync
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -3440,6 +3447,7 @@
            events
            models
            premium-features
+           remote-sync
            search
            settings
            startup
@@ -3458,6 +3466,7 @@
                     :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/Permissions
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table

@@ -69,6 +69,7 @@
     :model/Revision
     :model/ViewLog
     :model/Session
+    :model/RemoteSyncWorktree
     :model/Collection
     :model/CollectionPermissionGraphRevision
     :model/Dashboard

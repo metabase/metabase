@@ -81,6 +81,20 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.stashChanges.matchPending,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskStarted({ taskType: "export" }));
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.stashChanges.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared());
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchPending,
   effect: async (_action, { dispatch }) => {
     dispatch(taskStarted({ taskType: "import" }));
@@ -100,6 +114,44 @@ remoteSyncListenerMiddleware.startListening({
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared());
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.pullWorktree.matchPending,
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "import",
+        worktreeId: action.meta.arg.originalArgs.worktree_id,
+      }),
+    );
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.pullWorktree.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared());
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.pushWorktree.matchPending,
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "export",
+        worktreeId: action.meta.arg.originalArgs.worktree_id,
+      }),
+    );
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.pushWorktree.matchRejected,
   effect: async (_action, { dispatch }) => {
     dispatch(taskCleared());
   },
