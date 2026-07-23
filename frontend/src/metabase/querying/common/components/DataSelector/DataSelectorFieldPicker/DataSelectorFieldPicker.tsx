@@ -1,14 +1,18 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
-  TableColumnInfoIcon,
+  QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, DelayGroup, Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { IconName } from "metabase-types/api";
 
@@ -16,6 +20,8 @@ import { DataSelectorLoading } from "../DataSelectorLoading";
 import { CONTAINER_WIDTH } from "../constants";
 
 import DataSelectorFieldPickerS from "./DataSelectorFieldPicker.module.css";
+
+const STAGE_INDEX = -1;
 
 type DataSelectorFieldPickerProps = {
   fields: Field[];
@@ -48,6 +54,12 @@ export const DataSelectorFieldPicker = ({
   hasFiltering,
   hasInitialFocus,
 }: DataSelectorFieldPickerProps) => {
+  const metadata = useSelector(getMetadata);
+  const columnQuery = useMemo(
+    () => getColumnQuery(metadata, selectedTable),
+    [metadata, selectedTable],
+  );
+
   const header = <Header onBack={onBack} selectedTable={selectedTable} />;
 
   if (isLoading) {
@@ -67,16 +79,29 @@ export const DataSelectorFieldPicker = ({
   const checkIfItemIsSelected = (item: FieldWithName) =>
     item.field && selectedField && item.field.id === selectedField.id;
 
-  const renderItemIcon = (item: FieldWithName) =>
-    item.field && (
-      <TableColumnInfoIcon
-        field={item.field}
+  const renderItemIcon = (item: FieldWithName) => {
+    if (item.field == null || columnQuery == null) {
+      return null;
+    }
+
+    const column = columnQuery.columnsByName.get(item.field.name);
+
+    if (column == null) {
+      return null;
+    }
+
+    return (
+      <QueryColumnInfoIcon
+        query={columnQuery.query}
+        stageIndex={STAGE_INDEX}
+        column={column}
         position="top-end"
         size={18}
         // Unjustified type cast. FIXME
         icon={item.field.icon() as unknown as IconName}
       />
     );
+  };
 
   return (
     <Box w={CONTAINER_WIDTH} className={DataSelectorFieldPickerS.Container}>
@@ -99,6 +124,32 @@ export const DataSelectorFieldPicker = ({
       </DelayGroup>
     </Box>
   );
+};
+
+const getColumnQuery = (metadata: Metadata, table: Table | undefined) => {
+  if (table == null) {
+    return null;
+  }
+
+  const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+
+  if (tableMetadata == null) {
+    return null;
+  }
+
+  const query = Lib.queryFromTableOrCardMetadata(
+    metadataProvider,
+    tableMetadata,
+  );
+  const columnsByName = new Map(
+    Lib.returnedColumns(query, STAGE_INDEX).map((column) => [
+      Lib.displayInfo(query, STAGE_INDEX, column).name,
+      column,
+    ]),
+  );
+
+  return { query, columnsByName };
 };
 
 function renderItemWrapper(content: ReactNode) {
