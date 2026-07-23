@@ -1403,7 +1403,7 @@
   (query-index db index {:search-string "Copper knife"})
 
   ;; REPL scratch; metabase.test is off-limits to this module's real code
-  #_:clj-kondo/ignore
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index db index {:search-string "Copper knife"}))))
@@ -1456,14 +1456,14 @@
   ;; only be realized in memory once a thread is available.
   (defn process-batch [batch]
     ;; REPL scratch; println shows batch progress on stdout
-    #_:clj-kondo/ignore
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (println "Processing batch starting with " (first batch))
     (Thread/sleep 2000)
     {:count (count batch)})
 
   (defn logging-range [n]
     ;; REPL scratch; println shows lazy realization on stdout
-    #_:clj-kondo/ignore
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (map #(do (println "Realizing item" %) %)
          (range n)))
 

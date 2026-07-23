@@ -11,7 +11,6 @@
 
 #?(:clj (set! *warn-on-reflection* true))
 
-#_:clj-kondo/ignore
 #?(:clj
    (defn druid-id-fn
      "I have a strong feeling this should be handled differently! Let's discuss that during review!"

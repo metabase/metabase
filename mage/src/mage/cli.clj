@@ -73,7 +73,7 @@
       (when usage-fn
         (println "\n"
                  ;; usage-fn comes as data from bb.edn; eval makes it callable
-                 #_:clj-kondo/ignore
+                 #_{:clj-kondo/ignore [:discouraged-var]}
                  ((eval usage-fn) current-task)))
       ;; u/exit's exit-exception would be swallowed by parse!'s catch-all; only a hard exit works here
       #_{:clj-kondo/ignore [:discouraged-java-method]}
@@ -84,7 +84,7 @@
     arguments
     (let [decoded-args (try (mc/decode arg-schema arguments mtx/string-transformer)
                             (catch Exception _e arguments))]
-      #_:clj-kondo/ignore ;; TODO: don't run all linters on these files
+      #_{:clj-kondo/ignore [:discouraged-java-method :discouraged-var]} ;; TODO: don't run all linters on these files
       (if (mc/validate arg-schema decoded-args)
         decoded-args
         (do (doseq [{:keys [path schema value]} (:errors
@@ -127,7 +127,7 @@
     (check-print-help current-task)
     (let [;; options are defined in bb.edn, as data,
           ;; so we need to eval them to get any functions to work
-          options #_:clj-kondo/ignore (eval options)
+          options #_{:clj-kondo/ignore [:discouraged-var]} (eval options)
           *error-hit? (atom false)
           {:keys [summary]
            option-errors :errors

@@ -15,7 +15,7 @@
    (java.lang Integer)))
 
 ;; kondo also lints a :cljs branch where this doesn't resolve; the file is :clj + :bb only
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:unresolved-symbol]}
 (set! *warn-on-reflection* true)
 
 (comment change-set.strict/keep-me)
@@ -154,7 +154,7 @@
                                 seq)]
      (throw (validation-error
              ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
-             #_:clj-kondo/ignore
+             #_{:clj-kondo/ignore [:unresolved-symbol]}
              (format "Migration(s) [%s] uses invalid types (in %s)"
                      (str/join "," (map #(str "'" % "'") using-types?))
                      (str/join "," (map #(str "'" % "'") target-types)))
@@ -337,7 +337,7 @@
                   :else x))]
     (fix-vals (yaml/parse-string
                ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
-               #_:clj-kondo/ignore (slurp file)))))
+               #_{:clj-kondo/ignore [:unresolved-symbol]} (slurp file)))))
 
 (defn- display-name
   "Returns a human-readable name for a migration file.
@@ -366,14 +366,14 @@
     (validate-all)
     (println "Ok.")
     ;; false unresolved warning from kondo's :cljs pass; this cljc is :clj+:bb only
-    #_:clj-kondo/ignore
+    #_{:clj-kondo/ignore [:unresolved-namespace]}
     (System/exit 0)
     (catch ExceptionInfo e
       (if (validation-error? e)
         (do
           (println)
           ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
-          #_:clj-kondo/ignore
+          #_{:clj-kondo/ignore [:unresolved-symbol]}
           (printf "Error in %s:\t%s\n" (:file (ex-data e)) (.getMessage e))
           (printf "Details:\n\n %s" (with-out-str (pprint/pprint (dissoc (ex-data e) ::validation-error))))
           (println))
@@ -382,7 +382,7 @@
           (println (.getMessage e))))
       (System/exit 1))
     ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
-    (catch #_:clj-kondo/ignore
+    (catch #_{:clj-kondo/ignore [:unresolved-symbol]}
      Throwable e
            (pprint/pprint (Throwable->map e))
            (println (.getMessage e))
