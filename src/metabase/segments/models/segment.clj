@@ -213,10 +213,6 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Segment
-  [_segment]
-  [:name (serdes/hydrated-hash :table) :created_at])
-
 (defmethod serdes/deserialization-dependencies "Segment" [{:keys [definition]}]
   (serdes/mbql-deps false definition))
 

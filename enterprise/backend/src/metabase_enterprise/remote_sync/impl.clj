@@ -460,7 +460,7 @@
                         (serdes/with-cache
                           (serialization/load-metabase!
                            (source.ingestable/wrap-progress-ingestable task-id 0.7 ingestable)
-                           :backfill? false :reindex? false)))
+                           :reindex? false)))
         imported-data (spec/extract-imported-entities (:seen load-result))
         loaded-eid?   (fn [model-type eid]
                         ;; by-entity-id holds sets of raw entity_id strings, keyed by model type
