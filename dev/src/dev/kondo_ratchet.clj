@@ -28,13 +28,11 @@
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 
-;; Keep marker boundaries aligned with [[linter-keywords]] so lookalike keywords such as
-;; `:clj-kondo/ignore?` remain ordinary data rather than being mistaken for the ignore marker.
-(def ^:private keyword-token-char-class
-  "[A-Za-z0-9*+!?<>=._/-]")
-
+;; A keyword ends only at EOF, whitespace/comma, or one of Clojure's terminating reader macros.
+;; Defining the boundary by delimiters keeps every other character -- including Unicode -- in a
+;; lookalike keyword such as `:clj-kondo/ignoreλ` rather than mistaking its prefix for the marker.
 (def ^:private ignore-marker-boundary
-  (str "(?!" keyword-token-char-class ")"))
+  "(?=$|[\\s,()\\[\\]{}\";@^`~\\\\])")
 
 ;; Canonical map form: the ignore must be the first key. This covers reader-discard maps, metadata maps,
 ;; and prefix-less attr maps such as `(ns foo {...})`. Keeping one deliberately narrow spelling lets the
@@ -52,10 +50,10 @@
 (def ^:private ignore-marker-re
   (re-pattern (str ignore-marker ignore-marker-boundary)))
 
-;; `#:clj-kondo{:ignore [...]}` reads as a map containing the real ignore key without spelling that key
-;; literally. Reject this narrow alternate spelling so it cannot bypass the lexical scanner.
-(def ^:private namespaced-ignore-marker-re
-  (re-pattern (str "#:clj-kondo\\s*\\{\\s*:ignore" ignore-marker-boundary)))
+;; Any explicit `#:clj-kondo{...}` map can spell the real ignore key as `:ignore`, including after
+;; arbitrary values or comments. Reserve the whole spelling rather than parsing inside the map.
+(def ^:private namespaced-ignore-map-re
+  #"#:clj-kondo\s*\{")
 
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
@@ -149,7 +147,7 @@
                 (if (.find m)
                   (recur (conj acc (.start m)))
                   acc))))
-          [ignore-marker-re namespaced-ignore-marker-re]))
+          [ignore-marker-re namespaced-ignore-map-re]))
 
 (defn- unsupported-ignore-lines
   "Lines containing an ignore marker outside one of `matches`' canonical spans."
@@ -200,7 +198,7 @@
                     (some #(str/ends-with? (.getPath f) %) source-extensions))
          :let  [content (slurp f)]
          :when (or (str/includes? content ignore-marker)
-                   (re-find namespaced-ignore-marker-re content))
+                   (re-find namespaced-ignore-map-re content))
          m     (ignore-matches content)]
      {:file       (.getPath f)
       :line       (:line m)
