@@ -113,7 +113,10 @@ export const Comments = ({
 
   const [createComment] = useCreateCommentMutation();
 
-  const resolvedCommentsCount = getCommentsCount(resolvedComments);
+  const resolvedCommentsCount = useMemo(
+    () => getCommentsCount(resolvedComments),
+    [resolvedComments],
+  );
 
   const availableTabs = useMemo<SidesheetTab[]>(() => {
     // Only show tabs if there are resolved comments
@@ -245,7 +248,12 @@ export const Comments = ({
               direction="column"
               gap="md"
             >
-              <Image w={120} h={120} src={noResultsSource} />
+              <Image
+                w={120}
+                h={120}
+                src={noResultsSource}
+                alt={t`No comments`}
+              />
 
               <Text fw="700" c="text-disabled">{t`No comments`}</Text>
             </Flex>

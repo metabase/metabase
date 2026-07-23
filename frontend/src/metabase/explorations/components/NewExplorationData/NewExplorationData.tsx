@@ -105,7 +105,8 @@ export function buildCreateExplorationRequest(
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
     timeline_ids: timelines.map((tl) => tl.id),
     collection_id: collectionId,
-    blocks: blocks.map(blockToSelection),
+    // Drop empties: the planner ignores them, but they'd linger as empty sidebar headings.
+    blocks: blocks.filter(isNonEmptyBlock).map(blockToSelection),
   };
 }
 
@@ -131,7 +132,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     useCreateExplorationMutation();
 
   const { messages, isDoingScience } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
-  const canStart = blocks.length > 0;
+  const canStart = blocks.some(isNonEmptyBlock);
 
   const isManualDataPickingDisabled = isDoingScience;
 
@@ -329,7 +330,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           flex="none"
           variant="filled"
           loading={isStarting}
-          disabled={isStarting || isManualDataPickingDisabled}
+          disabled={isStarting || isManualDataPickingDisabled || !canStart}
           onClick={handleStart}
         >{t`Start research`}</Button>
       </Group>
@@ -351,4 +352,11 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       />
     </Stack>
   );
+}
+
+function isNonEmptyBlock(block: ExplorationBlock): boolean {
+  if (isMetricBlock(block)) {
+    return block.selectedDimensionIds.size > 0;
+  }
+  return block.selectedMetricIds.size > 0;
 }

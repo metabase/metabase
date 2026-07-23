@@ -82,7 +82,9 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const nextUnprocessedMessageIndexRef = useRef(0);
+
+  const processedMessageIdsRef = useRef(new Set<string>());
+
   const {
     prompt,
     setPrompt,
@@ -312,18 +314,20 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
   );
 
   useEffect(() => {
-    if (nextUnprocessedMessageIndexRef.current > messages.length) {
-      nextUnprocessedMessageIndexRef.current = 0;
-    }
+    processedMessageIdsRef.current = new Set();
+  }, [conversationId]);
 
+  useEffect(() => {
     if (isDoingScience) {
       return;
     }
 
-    const unprocessedMessages = messages.slice(
-      nextUnprocessedMessageIndexRef.current,
+    const unprocessedMessages = messages.filter(
+      (message) => !processedMessageIdsRef.current.has(message.id),
     );
-    nextUnprocessedMessageIndexRef.current = messages.length;
+    for (const message of unprocessedMessages) {
+      processedMessageIdsRef.current.add(message.id);
+    }
 
     handleAddResearchGroupsToolCallMessages(
       unprocessedMessages.filter(isAddResearchGroupsToolCallMessage),

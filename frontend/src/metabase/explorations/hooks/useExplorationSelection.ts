@@ -208,11 +208,11 @@ export function useExplorationSelection(): ExplorationSelection {
 
   const [blocks, setBlocks] = useState<ExplorationBlock[]>([]);
   const [timelines, setTimelines] = useState<Timeline[]>([]);
-  const [name, setName] = useState<string>(getDefaultExplorationName());
-  const [collection, setCollection] = useState<ExplorationCollection>({
+  const [name, setName] = useState<string>(() => getDefaultExplorationName());
+  const [collection, setCollection] = useState<ExplorationCollection>(() => ({
     id: personalCollectionId,
     name: t`Personal collection`,
-  });
+  }));
 
   // The current-user selector may resolve after the first render, in which
   // case the useState initializer above captured `undefined`. Keep applying

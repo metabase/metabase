@@ -57,7 +57,7 @@ export const MetabotGreeting = ({
     },
   ] = useDisclosure(false);
   const metabot = useMetabotAgent(agentId);
-  const { isConfigured, canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
+  const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
@@ -65,7 +65,7 @@ export const MetabotGreeting = ({
       limit: SUGGESTED_PROMPTS_LIMIT,
       sample: true,
     },
-    { skip: !isConfigured },
+    { skip: !canUseNlq },
   );
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
 
