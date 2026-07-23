@@ -25,13 +25,22 @@
    shared.params/param-val-or-default
    (the-parameters dashboard-subscription-params dashboard-params)))
 
+(defn- attached-card-ids
+  "Ids of the cards selected for attachment on a dashboard subscription."
+  [dashboard-subscription]
+  (->> (:dashboard_subscription_dashcards dashboard-subscription)
+       (filter #(or (:include_csv %) (:include_xls %)))
+       (into #{} (keep :card_id))))
+
 (mu/defmethod notification.payload/payload :notification/dashboard
   [{:keys [creator_id dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
   (log/with-context {:dashboard_id (:dashboard_id dashboard_subscription)}
     (let [dashboard-id (:dashboard_id dashboard_subscription)
           dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
-          parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))]
-      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
+          parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))
+          attached-ids (attached-card-ids dashboard_subscription)]
+      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters
+                                                                                nil attached-ids)
                                  (:skip_if_empty dashboard_subscription)
                                  (remove (fn [{part-type :type :as part}]
                                            (and
