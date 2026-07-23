@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.health-inspector.core :as hi]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -24,7 +25,7 @@
 (deftest validate-queries*-works
   ;; guarantees a template row exists: the raw :report_card copy below needs one even when this
   ;; test runs in isolation
-  (mt/with-temp [:model/Card _template {:dataset_query (mt/mbql-query venues)}]
+  (mt/with-temp [:model/Card _template {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
     (let [bad-query {"database" 1
                      "query" {"expressions" "extremely invalid"
                               "source-table" 2}
