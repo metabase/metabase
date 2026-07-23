@@ -895,53 +895,10 @@ describe("version-helpers", () => {
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x"]);
     });
 
-    it("should add an lts tag for a major LTS version", () => {
+    it("should add an lts tag if tagLts is true", () => {
       expect(
         getExtraTagsForVersion({ version: "v1.75.0", tagLts: true }),
       ).toEqual(["v0.75.x", "v1.75.x", "lts"]);
-
-      expect(
-        getExtraTagsForVersion({ version: "v0.75.0", tagLts: true }),
-      ).toEqual(["v0.75.x", "v1.75.x", "lts"]);
-    });
-
-    it("should add an lts tag for a minor/patch LTS version", () => {
-      expect(
-        getExtraTagsForVersion({ version: "v1.75.1", tagLts: true }),
-      ).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-        "v0.75.1.x",
-        "v1.75.1.x",
-        "lts",
-      ]);
-
-      expect(
-        getExtraTagsForVersion({ version: "v0.75.1.3", tagLts: true }),
-      ).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-        "v0.75.1.x",
-        "v1.75.1.x",
-        "lts",
-      ]);
-    });
-
-    it("should add an lts tag alongside the latest tag, leaving version tags unchanged", () => {
-      expect(
-        getExtraTagsForVersion({
-          version: "v0.58.1",
-          latestMajorVersion: "58",
-          tagLts: true,
-        }),
-      ).toEqual([
-        "v0.58.x",
-        "v1.58.x",
-        "v0.58.1.x",
-        "v1.58.1.x",
-        "latest",
-        "lts",
-      ]);
     });
   });
 

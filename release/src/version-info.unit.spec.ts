@@ -489,6 +489,61 @@ describe("version-info", () => {
         false,
       );
     });
+
+    describe("with multiple active LTS majors (transition window)", () => {
+      // both 58 and 60 are active LTS; 60 is the newest LTS and owns the tag
+      const multiLtsSupport = [
+        { major: 58, released: "2025-10-01", lts: true, eol: "2027-02-17" }, // older active LTS
+        { major: 60, released: "2026-04-01", lts: true, eol: "2028-04-01" }, // newest active LTS
+        { major: 61, released: "2026-05-01", lts: false, eol: "2026-07-01" }, // active, not LTS
+      ];
+
+      const multiLtsInfo = fileWith(multiLtsSupport, {
+        latest: { version: "v0.61.0" },
+        older: [
+          { version: "v0.60.3" },
+          { version: "v0.60.2" },
+          { version: "v0.58.9" },
+          { version: "v0.58.8" },
+        ],
+      });
+
+      it("returns true for the latest release of the newest LTS major", () => {
+        expect(
+          isVersionActiveLatestLts("v0.60.3", multiLtsInfo, "2026-06-04"),
+        ).toBe(true);
+      });
+
+      it("returns true for a release newer than the newest LTS major's latest", () => {
+        expect(
+          isVersionActiveLatestLts("v0.60.4", multiLtsInfo, "2026-06-04"),
+        ).toBe(true);
+      });
+
+      it("returns false for the latest release of an older, still-active LTS major", () => {
+        expect(
+          isVersionActiveLatestLts("v0.58.9", multiLtsInfo, "2026-06-04"),
+        ).toBe(false);
+      });
+
+      it("returns false for a release newer than the older LTS major's latest", () => {
+        // even a brand-new 58.x must not drag the tag back off the newest LTS
+        expect(
+          isVersionActiveLatestLts("v0.58.10", multiLtsInfo, "2026-06-04"),
+        ).toBe(false);
+      });
+
+      it("returns true for the first release of the newest LTS major", () => {
+        const freshNewestLts = fileWith(multiLtsSupport, {
+          latest: { version: "v0.61.0" },
+          older: [{ version: "v0.58.9" }],
+        });
+
+        expect(
+          isVersionActiveLatestLts("v0.60.0", freshNewestLts, "2026-06-04"),
+        ).toBe(true);
+      });
+    });
   });
 
   describe("isLatestActiveLts", () => {

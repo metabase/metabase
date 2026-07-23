@@ -199,19 +199,28 @@ const getLatestVersionForMajor = (
     .sort(versionSort)
     .at(-1);
 
-// Determines if a version is part of an active LTS major release and if it is the latest version for that LTS version.
+// Determines if a version is part of the latest active LTS major release and if it is the latest version for that LTS release.
 export const isVersionActiveLatestLts = (
   version: string,
   versionInfo: VersionInfoFile,
   today: string = new Date().toISOString().slice(0, 10),
 ): boolean => {
-  const activeVersion = getActiveMajorVersions(versionInfo, today).find(
+  const activeVersions = getActiveMajorVersions(versionInfo, today);
+  const activeVersion = activeVersions.find(
     line => String(line.major) === getMajorVersion(version),
   );
 
   if (!activeVersion?.lts) {
     return false;
   }
+
+  // check that this is the newest LTS release, we may have multiple active LTS releases
+  const latestLtsMajor = Math.max(
+    ...activeVersions.filter(line => line.lts).map(line => line.major),
+  );
+  if (activeVersion.major !== latestLtsMajor) {
+    return false;
+  };
 
   const latestVersion = getLatestVersionForMajor(
     versionInfo,
