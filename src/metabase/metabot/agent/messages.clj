@@ -131,10 +131,12 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn- step->parts
-  "Extract AISDK parts from a step, filtering out non-message types."
+  "Extract AISDK parts from a step, filtering out non-message types. `:reasoning`
+  is kept for same-turn replay only (Claude requires thinking blocks echoed back);
+  prior-turn history comes from `input-message->parts`, which never carries it."
   [step]
   (->> (:parts step)
-       (filter #(#{:text :tool-input :tool-output} (:type %)))))
+       (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
 (defn- messages-with-injected-context
   "Returns messages from memory and injects context into the most recent one."
