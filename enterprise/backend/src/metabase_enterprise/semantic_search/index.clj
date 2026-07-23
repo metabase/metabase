@@ -525,12 +525,6 @@
                          concurrently? (str/replace-first "CREATE INDEX " "CREATE INDEX CONCURRENTLY "))]
     (jdbc/execute! connectable (into [sql] params))))
 
-(defn drop-index-concurrently-if-exists!
-  "Drop `index-name` without blocking writes. Must run outside a transaction."
-  [connectable index-name]
-  (jdbc/execute! connectable
-                 [(str "DROP INDEX CONCURRENTLY IF EXISTS " (semantic.util/quote-table index-name))]))
-
 (defn create-index-table-if-not-exists!
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists.
@@ -1188,13 +1182,11 @@
       (do
         ;; `:vector-search-allow-missing-index?` is a deliberate opt-out for callers that want the inner
         ;; query to run without the HNSW index (e.g. the strategy matrix test probing the exact seq-scan
-        ;; path). A concurrent build also uses that exact path until PostgreSQL marks the index ready; an
-        ;; absent or abandoned invalid index fails fast.
+        ;; path); production traffic leaves it unset and gets the fail-fast.
         (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
                    (not (:vector-search-allow-missing-index? search-context))
-                   (semantic.util/index-needs-build?
-                    db (schema-qualified-index-name index (hnsw-index-name index))))
-          (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no usable HNSW index exists. "
+                   (not (semantic.util/index-exists? db (schema-qualified-index-name index (hnsw-index-name index)))))
+          (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no HNSW index exists. "
                                "Set the semantic-search-vector-strategy setting to an index-backed strategy "
                                "(:hnsw or :hnsw-iterative-*) to build it.")
                           {:table-name (:table-name index)

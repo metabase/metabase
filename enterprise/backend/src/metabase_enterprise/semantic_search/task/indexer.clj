@@ -49,12 +49,12 @@
             (if-let [{:keys [index]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
               (do
                 ;; The strategy setter's build event no-ops while semantic is inactive, so an index-backed
-                ;; strategy configured before (re)activation arrives here with no HNSW index. Retry absent
-                ;; or abandoned invalid indexes; an active concurrent build is left alone.
+                ;; strategy configured before (re)activation arrives here with no HNSW index. CONCURRENTLY
+                ;; registers the index in pg_indexes as soon as the build starts, so this fires only once.
                 (let [hnsw-index (semantic.index/schema-qualified-index-name
                                   index (semantic.index/hnsw-index-name index))]
                   (when (and (hnsw-strategy?)
-                             (semantic.u/index-needs-build? pgvector hnsw-index))
+                             (not (semantic.u/index-exists? pgvector hnsw-index)))
                     (semantic.core/build-hnsw-index-async!)))
                 (semantic-search.indexer/quartz-job-run! pgvector index-metadata))
               ;; Engines can activate at runtime (license applied, additional-search-engines set on

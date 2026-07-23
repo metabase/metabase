@@ -10,7 +10,6 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -112,21 +111,6 @@
                   "relfilenode unchanged => the existing index was reused, not rebuilt")))))
       (testing "is a noop when there is no active index"
         (is (nil? (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)))))))
-
-(deftest ensure-hnsw-index-under-lock!-test
-  (let [index {:table-name "index_1"}
-        calls (atom [])]
-    (mt/with-dynamic-fn-redefs
-      [semantic.index/drop-index-concurrently-if-exists! (fn [& args] (swap! calls conj [:drop args]))
-       semantic.index/create-hnsw-index-if-not-exists!    (fn [& args] (swap! calls conj [:create args]))]
-      (doseq [[state expected-operations] [[:ready []]
-                                           [:building []]
-                                           [nil [:create]]
-                                           [:invalid [:drop :create]]]]
-        (reset! calls [])
-        (mt/with-dynamic-fn-redefs [semantic.util/index-state (constantly state)]
-          (#'semantic.pgvector-api/ensure-hnsw-index-under-lock! ::connection index))
-        (is (= expected-operations (mapv first @calls)) (str state " maintenance operations"))))))
 
 (defn- open-semantic-search! ^Closeable [pgvector index-metadata embedding-model]
   (semantic.tu/closeable

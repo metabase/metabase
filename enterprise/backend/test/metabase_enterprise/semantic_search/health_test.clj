@@ -127,7 +127,7 @@
          [semantic.index-metadata/get-active-index-state       (constantly active-state)
           semantic.health/active-index-queryable?              (constantly true)
           semantic.settings/semantic-search-vector-strategy    (constantly :hnsw)
-          semantic.util/index-exists?                          (constantly false)
+          semantic.util/index-ready?                           (constantly false)
           semantic.embedding/embedder-circuit-untrusted?       (constantly false)
           embedding-health/embedding-service-reachable?        (constantly {:reachable? true :error nil})]
          (is (=? {:health 0 :message #".*required HNSW index is missing.*"}

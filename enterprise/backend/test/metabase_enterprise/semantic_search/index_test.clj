@@ -13,7 +13,6 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.spec-trace-test-util :as spec-trace]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -271,22 +270,17 @@
               "relfilenode is unchanged, so the index was not dropped, rebuilt, or reindexed"))))))
 
 (deftest query-index-hnsw-without-index-throws-test
-  (mt/with-premium-features #{:semantic-search}
-    (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
-      (testing "a query under any HNSW-index-backed strategy fails fast when no usable HNSW index exists"
+  (testing "a query under any HNSW-index-backed strategy fails fast when no HNSW index exists, rather than silently scanning"
+    (mt/with-premium-features #{:semantic-search}
+      (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
         (doseq [strategy [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
           (testing strategy
             (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo #"no usable HNSW index exists"
+                 clojure.lang.ExceptionInfo #"no HNSW index exists"
                  (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
                                              @index-ref
-                                             {:search-string "puppy" :vector-search-strategy strategy}))))))
-      (testing "an active concurrent build temporarily uses the exact-scan path"
-        (mt/with-dynamic-fn-redefs [semantic.util/index-state (constantly :building)]
-          (is (map? (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
-                                                @index-ref
-                                                {:search-string "puppy" :vector-search-strategy :hnsw}))))))))
+                                             {:search-string "puppy" :vector-search-strategy strategy})))))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}

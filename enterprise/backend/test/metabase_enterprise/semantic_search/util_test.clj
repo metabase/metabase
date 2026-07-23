@@ -33,36 +33,18 @@
     (is (= :index_table_1.model
            (semantic.util/conflict-target-column "semantic_search.index_table_1" "model")))))
 
-(deftest index-state-test
-  (testing "classifies catalog and concurrent-build state"
-    (doseq [[row expected] [[nil nil]
-                            [{:is_ready true, :is_valid true, :is_building false} :ready]
-                            [{:is_ready false, :is_valid false, :is_building true} :building]
-                            [{:is_ready true, :is_valid false, :is_building false} :invalid]]]
-      (mt/with-dynamic-fn-redefs [jdbc/execute-one! (constantly row)]
-        (is (= expected (semantic.util/index-state ::pgvector "index_1"))))))
-  (testing "only ready indexes exist; absent and abandoned invalid indexes need a build"
-    (doseq [[state exists? needs-build?] [[nil false true]
-                                          [:ready true false]
-                                          [:building false false]
-                                          [:invalid false true]]]
-      (mt/with-dynamic-fn-redefs [semantic.util/index-state (constantly state)]
-        (is (= exists? (semantic.util/index-exists? ::pgvector "index_1")))
-        (is (= needs-build? (semantic.util/index-needs-build? ::pgvector "index_1")))))))
-
-(deftest index-state-catalog-query-test
+(deftest index-ready?-catalog-query-test
   (let [queries (atom [])]
     (mt/with-dynamic-fn-redefs
       [jdbc/execute-one! (fn [_ query _]
                            (swap! queries conj query)
-                           {:is_ready true, :is_valid true, :is_building false})]
-      (is (= :ready (semantic.util/index-state ::pgvector "semantic_search.index_1")))
-      (is (= :ready (semantic.util/index-state ::pgvector "index_2"))))
-    (testing "both catalog queries distinguish active builds from abandoned invalid indexes"
+                           {:index_ready true})]
+      (is (true? (semantic.util/index-ready? ::pgvector "semantic_search.index_1")))
+      (is (true? (semantic.util/index-ready? ::pgvector "index_2"))))
+    (testing "both catalog queries require PostgreSQL to mark the index ready and valid"
       (doseq [[statement] @queries]
         (is (re-find #"x\.indisready" statement))
-        (is (re-find #"x\.indisvalid" statement))
-        (is (re-find #"pg_stat_progress_create_index" statement))))
+        (is (re-find #"x\.indisvalid" statement))))
     (testing "qualified names retain their schema constraint"
       (is (= ["semantic_search" "index_1"] (rest (first @queries))))
       (is (= ["index_2"] (rest (second @queries)))))))
