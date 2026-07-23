@@ -1,5 +1,10 @@
 import { Tooltip as MantineTooltip, type TooltipProps } from "@mantine/core";
-import { type PropsWithChildren, createContext, useContext } from "react";
+import {
+  type PropsWithChildren,
+  createContext,
+  useContext,
+  useMemo,
+} from "react";
 
 const TooltipPortalTargetContext = createContext<HTMLElement | null>(null);
 
@@ -14,17 +19,20 @@ export function TooltipPortalTargetProvider({
   );
 }
 
-export const Tooltip = Object.assign(
-  function Tooltip({ portalProps, ...props }: TooltipProps) {
-    const contextTarget = useContext(TooltipPortalTargetContext);
-    const resolvedPortalProps =
+function TooltipImpl({ portalProps, ...props }: TooltipProps) {
+  const contextTarget = useContext(TooltipPortalTargetContext);
+  const resolvedPortalProps = useMemo(
+    () =>
       contextTarget && portalProps?.target == null
         ? { ...portalProps, target: contextTarget }
-        : portalProps;
-    return <MantineTooltip {...props} portalProps={resolvedPortalProps} />;
-  },
-  {
-    Floating: MantineTooltip.Floating,
-    Group: MantineTooltip.Group,
-  },
-);
+        : portalProps,
+    [contextTarget, portalProps],
+  );
+
+  return <MantineTooltip {...props} portalProps={resolvedPortalProps} />;
+}
+
+export const Tooltip = Object.assign(TooltipImpl, {
+  Floating: MantineTooltip.Floating,
+  Group: MantineTooltip.Group,
+});
