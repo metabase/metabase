@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { Column, RowValue, Series } from "./data";
+import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 import type {
   BaseVisualizationSettings,
   CreateDefineSetting,
@@ -102,19 +103,24 @@ export type VisualizationGridSize = {
   height: number;
 };
 
+export type ColorGetter = (colorName: string) => string;
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  measureTextWidth: TextWidthMeasurer;
+  measureTextHeight: TextHeightMeasurer;
+  fontFamily: string;
+}
+
 export type CustomVisualizationProps<
   TSettings extends BaseVisualizationSettings,
 > = {
   width: number | null;
-
   height: number | null;
-
   series: Series;
-
   settings: CustomVisualizationSettings<TSettings>;
-
   colorScheme: "light" | "dark";
-
+  renderingContext: RenderingContext;
   onClick: (
     clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
   ) => void;

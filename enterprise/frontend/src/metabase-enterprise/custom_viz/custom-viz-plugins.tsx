@@ -6,7 +6,7 @@ import type {
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
 } from "custom-viz";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { api } from "metabase/api/client";
@@ -23,6 +23,7 @@ import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type {
   Visualization,
   VisualizationProps,
@@ -508,10 +509,22 @@ function createCustomVizWrapper(
     height,
     series,
     settings,
+    fontFamily,
     onVisualizationClick,
     onHoverChange,
   }: VisualizationProps) {
     const { resolvedColorScheme } = useColorScheme();
+    const browserRenderingContext = useBrowserRenderingContext({ fontFamily });
+
+    const renderingContext = useMemo<GenericVizPluginProps["renderingContext"]>(
+      () => ({
+        getColor: browserRenderingContext.getColor,
+        measureTextWidth: browserRenderingContext.measureText,
+        measureTextHeight: browserRenderingContext.measureTextHeight,
+        fontFamily: browserRenderingContext.fontFamily,
+      }),
+      [browserRenderingContext],
+    );
 
     const pluginProps: GenericVizPluginProps = {
       width,
@@ -523,6 +536,7 @@ function createCustomVizWrapper(
       // unions); the runtime value is the host's computed settings.
       settings: settings as unknown as GenericVizPluginProps["settings"],
       colorScheme: resolvedColorScheme,
+      renderingContext,
       // Unjustified type cast. FIXME
       onClick: onVisualizationClick as unknown as (
         clickObject: CustomVizClickObject<Record<string, unknown>> | null,
