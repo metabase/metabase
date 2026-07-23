@@ -2148,8 +2148,9 @@
                   :metrics       [{:card_id (:id metric)
                                    :dimension_mappings (venues-dimension-mappings)}]
                   :dimensions    [{:dimension_id "price" :display_name "Price"}]})]
-        ;; Mark the source thread as a follow-up so the next drill is nested.
-        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id 999})
+        ;; Mark the source thread as a follow-up so the next drill is nested. Any real page works;
+        ;; a made-up id would violate the source_page_id FK.
+        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id (:page-id src)})
         (mt/user-http-request :crowberto :post 200
                               (str "exploration/" (:exploration-id src) "/explore-further")
                               {:page_id         (:page-id src)

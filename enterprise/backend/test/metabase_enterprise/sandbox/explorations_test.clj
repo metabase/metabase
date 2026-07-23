@@ -17,6 +17,8 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-access-token :as data-access-token]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -49,37 +51,39 @@
   "Bird Sanctuary")
 
 (defn- with-done-exploration!
-  "Create a shared-collection exploration whose single venues-count query is `done`, backed by a
-  StoredResult carrying `creator-id` and `data-access-token`. The query's `:name` embeds
-  [[discovered-value]], as the top-N variants' names do. Calls `f` with the created rows."
-  [{:keys [creator-id data-access-token]} f]
-  (mt/with-temp [:model/Collection coll {}
-                 :model/Card        metric {:name          "metric"
-                                            :type          :metric
-                                            :creator_id    creator-id
-                                            :database_id   (mt/id)
-                                            :dataset_query (venues-count-query)}
-                 :model/Exploration e {:name "shared" :creator_id creator-id :collection_id (:id coll)}
-                 :model/ExplorationThread th {:exploration_id (:id e)}
-                 :model/ExplorationBlock g {:exploration_thread_id (:id th)}
-                 :model/ExplorationPage p {:exploration_block_id (:id g) :card_id (:id metric)
-                                           :dimension_id "d1" :query_type "default"}
-                 :model/ExplorationQuery q {:exploration_thread_id (:id th)
-                                            :page_id               (:id p)
-                                            :card_id               (:id metric)
-                                            :dimension_id          "d1"
-                                            :name                  (str "Count for " discovered-value)
-                                            :status                "done"
-                                            :dataset_query         (venues-count-query)}
-                 :model/StoredResult sr {:result_data       (fake-result-bytes)
-                                         :creator_id        creator-id
-                                         :database_id       (mt/id)
-                                         :dataset_query     (venues-count-query)
-                                         :data_access_token data-access-token}
-                 :model/ExplorationQueryResult _ {:exploration_query_id (:id q)
-                                                  :stored_result_id     (:id sr)}]
-    (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
-    (f {:exploration e :query q :collection coll})))
+  "Create a shared-collection exploration whose single query is `done`, backed by a StoredResult
+  carrying `creator-id` and `data-access-token`. The query is `dataset-query` (default: the
+  venues-count query). The query's `:name` embeds [[discovered-value]], as the top-N variants'
+  names do. Calls `f` with the created rows."
+  [{:keys [creator-id data-access-token dataset-query]} f]
+  (let [dataset-query (or dataset-query (venues-count-query))]
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card        metric {:name          "metric"
+                                              :type          :metric
+                                              :creator_id    creator-id
+                                              :database_id   (mt/id)
+                                              :dataset_query dataset-query}
+                   :model/Exploration e {:name "shared" :creator_id creator-id :collection_id (:id coll)}
+                   :model/ExplorationThread th {:exploration_id (:id e)}
+                   :model/ExplorationBlock g {:exploration_thread_id (:id th)}
+                   :model/ExplorationPage p {:exploration_block_id (:id g) :card_id (:id metric)
+                                             :dimension_id "d1" :query_type "default"}
+                   :model/ExplorationQuery q {:exploration_thread_id (:id th)
+                                              :page_id               (:id p)
+                                              :card_id               (:id metric)
+                                              :dimension_id          "d1"
+                                              :name                  (str "Count for " discovered-value)
+                                              :status                "done"
+                                              :dataset_query         dataset-query}
+                   :model/StoredResult sr {:result_data       (fake-result-bytes)
+                                           :creator_id        creator-id
+                                           :database_id       (mt/id)
+                                           :dataset_query     dataset-query
+                                           :data_access_token data-access-token}
+                   :model/ExplorationQueryResult _ {:exploration_query_id (:id q)
+                                                    :stored_result_id     (:id sr)}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      (f {:exploration e :query q :collection coll}))))
 
 (deftest same-sandbox-viewer-sees-cached-result-test
   (testing "a viewer whose sandbox lens matches the creator's may stream the cached result"
@@ -385,6 +389,20 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Required user attribute is missing"
                               (data-access-token/routing-token-for-db (mt/id))))))))
 
+(deftest resolved-table-ids-skip-viewer-routing-lens-test
+  (testing "resolving a query's table footprint must not resolve the *viewer's* routing lens.
+            Footprint resolution preprocesses as admin, but do-as-admin keeps the user's id and
+            attributes, so without `preprocess-without-per-user-lens` the routing preprocess
+            middleware resolves this user's destination db and throws (no :database-routing
+            feature) — and the read gate would deny every same-lens viewer"
+    (mt/with-temp [:model/Database _ {:name "sr-dest-a" :router_database_id (mt/id)}
+                   :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "db_name"}]
+      (mt/with-premium-features #{}
+        (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-a"}
+          (mt/with-test-user :rasta
+            (is (= #{(mt/id :venues)}
+                   (query-perms/query->resolved-source-table-ids (venues-count-query))))))))))
+
 (deftest routing-gate-end-to-end-test
   (testing "the routing lens gates cached exploration results per destination database"
     (mt/with-temp [:model/Database {dest-a-id :id} {:name "sr-dest-a" :router_database_id (mt/id)}
@@ -446,6 +464,107 @@
         (is (< 1 (count (discover (mt/user->id :crowberto))))
             "an unsandboxed superuser discovers the full set — so the single value above was the
              sandbox at work, not a small table")))))
+
+;;; ------------------------------------- card-sourced queries --------------------------------------
+;;;
+;;; The lens capture derives the tables to fingerprint from the stored `dataset_query`. A query
+;;; sourced from a card (`:source-table "card__N"`) names no table id directly, so the capture must
+;;; resolve the card chain down to the underlying tables — otherwise both creator's and viewer's
+;;; sandbox dimensions come up empty and the gate falls open.
+
+(defn- venues-rows-query
+  "A plain rows query over VENUES — stands in for the model/card a metric is built on."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(defn- card-sourced-count-query
+  "A count aggregation whose source is `card-id` — the shape of a metric built on a model/card."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/card mp card-id))
+        (lib/aggregate (lib/count)))))
+
+(deftest sandboxed-viewer-blocked-from-card-sourced-snapshot-test
+  (testing "a snapshot whose query is sourced from a card over a sandboxed table still gates: the
+            sandboxed viewer must not stream the unsandboxed creator's blob even though the raw
+            query names no table id directly"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (mt/with-temp [:model/Card base {:name          "venues model"
+                                       :database_id   (mt/id)
+                                       :dataset_query (venues-rows-query)}]
+        (with-done-exploration!
+          {:creator-id        (mt/user->id :lucky)
+           ;; the unsandboxed creator's captured lens: unrestricted
+           :data-access-token {}
+           :dataset-query     (card-sourced-count-query (:id base))}
+          (fn [{:keys [exploration query]}]
+            (testing "metadata is readable via collection perms"
+              (mt/user-http-request :rasta :get 200 (format "exploration/%d" (:id exploration))))
+            (testing "but the cached result is blocked"
+              (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))))
+
+(deftest sandboxed-viewer-blocked-from-nested-card-chain-snapshot-test
+  (testing "card-on-card chains resolve recursively: a query sourced from card B, itself sourced
+            from card A over the sandboxed table, still picks up the underlying table's lens"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (mt/with-temp [:model/Card base {:name          "venues model"
+                                       :database_id   (mt/id)
+                                       :dataset_query (venues-rows-query)}]
+        (mt/with-temp [:model/Card middle {:name          "model on model"
+                                           :database_id   (mt/id)
+                                           :dataset_query (let [mp (mt/metadata-provider)]
+                                                            (lib/query mp (lib.metadata/card mp (:id base))))}]
+          (with-done-exploration!
+            {:creator-id        (mt/user->id :lucky)
+             :data-access-token {}
+             :dataset-query     (card-sourced-count-query (:id middle))}
+            (fn [{:keys [query]}]
+              (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))))))))
+
+(deftest unsandboxed-viewer-streams-card-sourced-snapshot-test
+  (testing "no false lockout: when neither creator nor viewer is sandboxed, a card-sourced snapshot
+            still streams"
+    (mt/with-temp [:model/Card base {:name          "venues model"
+                                     :database_id   (mt/id)
+                                     :dataset_query (venues-rows-query)}]
+      (with-done-exploration!
+        {:creator-id        (mt/user->id :lucky)
+         :data-access-token {}
+         :dataset-query     (card-sourced-count-query (:id base))}
+        (fn [{:keys [query]}]
+          (mt/user-http-request :rasta :get 202 (format "exploration/query/%d" (:id query))))))))
+
+(deftest unresolvable-card-chain-fails-closed-test
+  (testing "when the source-card chain cannot be resolved (the card was deleted), the viewer's lens
+            is indeterminate: non-admins are denied rather than treating the query as touching no
+            tables, while an admin — never sandboxed, impersonated, or routed off the router db —
+            falls back to the same admin-only access as a nil token"
+    (mt/with-temp [:model/Card base {:name          "venues model"
+                                     :database_id   (mt/id)
+                                     :dataset_query (venues-rows-query)}]
+      (let [dataset-query (card-sourced-count-query (:id base))]
+        (with-done-exploration!
+          {:creator-id        (mt/user->id :lucky)
+           :data-access-token {}
+           :dataset-query     dataset-query}
+          (fn [{:keys [query]}]
+            (t2/delete! :model/Card :id (:id base))
+            (testing "a non-admin viewer is denied"
+              (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))
+            (testing "an admin still streams the snapshot"
+              (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query))))))))))
+
+(deftest missing-dataset-query-throws-test
+  (testing "stored_result.dataset_query is NOT NULL in the schema, so a map lacking the key means a
+            caller passed a trimmed row — the gate fails loudly (500) for every user, admins
+            included, so the bug is caught in development instead of silently changing access"
+    (let [snapshot {:data_access_token {} :database_id (mt/id)}]
+      (doseq [user [:crowberto :rasta]]
+        (testing user
+          (mt/with-test-user user
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing its dataset_query"
+                                  (queries/viewer-can-view-cached-result? snapshot)))))))))
 
 (deftest impersonation-and-routing-token-edn-round-trip-test
   (testing "keyword-keyed impersonation/routing tokens survive the stored_result.data_access_token EDN round-trip"
