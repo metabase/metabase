@@ -71,10 +71,13 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
 
     // width/height are the pixel box to fill when provided (e.g. a dashboard
     // grid cell in a PDF export); fall back to a fixed size otherwise.
+    const finalWidth = width ?? 540;
+    const finalHeight = height ?? 360;
+
     return (
       <svg
-        width={width ?? 540}
-        height={height ?? 360}
+        width={finalWidth}
+        height={finalHeight}
         viewBox="0 0 17 16"
         xmlns="http://www.w3.org/2000/svg"
       >
