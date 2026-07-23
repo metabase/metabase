@@ -2,6 +2,7 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 export const CustomStaticVisualization = ({
   rawSeries,
@@ -12,6 +13,13 @@ export const CustomStaticVisualization = ({
   height,
 }: StaticVisualizationProps) => {
   const display = rawSeries[0].card.display;
+
+  if (!isCustomVizDisplay(display)) {
+    throw new Error(
+      `Unsupported display type for custom static visualization: ${display}`,
+    );
+  }
+
   const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
 
   if (!customViz?.StaticVisualizationComponent) {
