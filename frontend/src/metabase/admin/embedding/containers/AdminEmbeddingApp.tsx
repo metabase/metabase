@@ -1,6 +1,5 @@
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
-import type { Location } from "metabase/router";
-import { Outlet } from "metabase/router";
+import { Outlet, useLocation } from "metabase/router";
 
 import { EmbeddingNav } from "../components/EmbeddingNav";
 import { useEnsureDefaultEmbeddingThemes } from "../hooks";
@@ -16,7 +15,9 @@ const SIDEBAR_HIDDEN_PATH_PREFIXES = ["/admin/embedding/themes/"];
 // routes in this array will take the full width _of the main content area_
 const FULL_CONTENT_WIDTH_PATH_PREFIXES = ["/admin/embedding/themes/"];
 
-export const AdminEmbeddingApp = ({ location }: { location: Location }) => {
+export const AdminEmbeddingApp = () => {
+  const location = useLocation();
+
   useEnsureDefaultEmbeddingThemes();
 
   const shouldHideSidebar =

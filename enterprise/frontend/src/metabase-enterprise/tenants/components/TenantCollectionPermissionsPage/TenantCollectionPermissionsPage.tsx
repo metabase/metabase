@@ -28,7 +28,6 @@ import { assertNumericId } from "metabase/admin/permissions/types";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type { Route } from "metabase/router";
 import { push } from "metabase/router";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -71,7 +70,6 @@ type TenantCollectionPermissionsPageProps = {
   savePermissions: (...args: any[]) => any;
   loadPermissions: (...args: any[]) => any;
   initialize: (...args: any[]) => any;
-  route: Route;
 };
 
 function TenantCollectionPermissionsPageView({
@@ -84,7 +82,6 @@ function TenantCollectionPermissionsPageView({
   updateCollectionPermission,
   navigateToItem,
   initialize,
-  route,
 }: TenantCollectionPermissionsPageProps) {
   useListCollectionsTreeQuery(tenantCollectionsQuery);
 
@@ -116,7 +113,6 @@ function TenantCollectionPermissionsPageView({
     <PermissionsPageLayout
       tab="tenant-collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}

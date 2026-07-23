@@ -13,7 +13,9 @@ import DataPermissionsPage from "./pages/DataPermissionsPage";
 import { DatabasesPermissionsPage } from "./pages/DatabasePermissionsPage/DatabasesPermissionsPage";
 import { GroupsPermissionsPage } from "./pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 
-const RoutedDataPermissionsPage = withRouteProps(DataPermissionsPage);
+// These three read route params through `connect`'s `mapStateToProps`, so the
+// hooks cannot reach them. Migrating them means rewriting the connected
+// containers, tracked separately.
 const RoutedDatabasesPermissionsPage = withRouteProps(DatabasesPermissionsPage);
 const RoutedGroupsPermissionsPage = withRouteProps(GroupsPermissionsPage);
 const RoutedCollectionPermissionsPage = withRouteProps(
@@ -43,7 +45,7 @@ const getRoutes = () => (
   <Route>
     <Route index element={redirect("data")} />
 
-    <Route path="data" element={<RoutedDataPermissionsPage />}>
+    <Route path="data" element={<DataPermissionsPage />}>
       <Route index element={redirect("group")} />
 
       {DATABASES_PERMISSIONS_PATHS.map((path) => (

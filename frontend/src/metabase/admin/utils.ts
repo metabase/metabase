@@ -16,9 +16,8 @@ export const createAdminRouteGuard = (routeKey: string) =>
     "/unauthorized",
   );
 
-const mapStateToProps = (state: State, props: { location: Location }) => ({
+const mapStateToProps = (state: State) => ({
   adminItems: getAdminPaths(state),
-  path: props.location.pathname,
 });
 
 const mapDispatchToProps = {
