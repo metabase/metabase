@@ -89,10 +89,6 @@
   {:copy      [:path :source :entity_id]
    :transform {:created_at (serdes/date)}})
 
-(defmethod serdes/hash-fields :model/PythonLibrary
-  [_model]
-  [:path])
-
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
   [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
 
