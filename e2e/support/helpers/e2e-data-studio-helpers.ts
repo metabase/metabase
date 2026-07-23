@@ -158,9 +158,16 @@ export const DataStudio = {
       DataStudio.Library.allTableItems().contains(name),
     result: (name: string) =>
       libraryPage().findByText(name).closest('[role="row"]'),
+    rowCheckbox: (name: string) =>
+      DataStudio.Library.result(name).findByRole("checkbox"),
+    selectRow: (name: string) => DataStudio.Library.rowCheckbox(name).check(),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string | RegExp) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
+    expandCollection: (name: string) =>
+      DataStudio.Library.result(name)
+        .findByRole("button", { name: "Expand" })
+        .click(),
     emptyStateRow: (description: string | RegExp) =>
       libraryPage().contains('[data-testid="empty-state-row"]', description),
   },
