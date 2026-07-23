@@ -860,24 +860,32 @@
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
-(defn- assert-dashcards-are-not-internal-to-other-dashboards [dashboard dashcards]
-  (when-let [card-ids (seq (concat
-                            (seq (keep :card_id dashcards))
-                            (->> dashcards
-                                 (mapcat :series)
-                                 (keep :id))))]
-    (api/check-400 (not (t2/exists? :model/Card
-                                    {:where [:and
-                                             [:not= :dashboard_id (u/the-id dashboard)]
-                                             [:not= :dashboard_id nil]
-                                             [:in :id (set card-ids)]]})))))
+(defn- dashcard-card-ids [dashcard]
+  (concat (when-let [card-id (:card_id dashcard)]
+            [card-id])
+          (keep :id (:series dashcard))))
+
+(defn- assert-dashcards-are-not-internal-to-other-dashboards
+  "Reject `new-dashcards` that newly reference a question internal to another dashboard. Card ids the
+  dashboard already references (as a dashcard's card or series, per `existing-dashboard`'s hydrated
+  `:dashcards`) are grandfathered so that pre-existing associations never block saving the dashboard
+  (UXW-4870)."
+  [existing-dashboard new-dashcards]
+  (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
+    (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
+      (api/check-400 (not (t2/exists? :model/Card
+                                      {:where [:and
+                                               [:not= :dashboard_id (u/the-id existing-dashboard)]
+                                               [:not= :dashboard_id nil]
+                                               [:in :id (set card-ids)]]}))))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
-    ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731).
+    ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
+    ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).
     (assert-dashcards-are-not-internal-to-other-dashboards dashboard (concat to-create to-update))
     (when (seq to-update)
       (update-dashcards! dashboard to-update))
