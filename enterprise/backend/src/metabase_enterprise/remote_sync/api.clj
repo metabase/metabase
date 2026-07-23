@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -365,6 +366,89 @@
     (catch Exception e
       (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                       {:status-code 400})))))
+
+;;; ------------------------------------------------ Worktrees -------------------------------------------------------
+
+(defn- check-worktrees-enabled! []
+  (api/check-superuser)
+  (api/check-400 (settings/remote-sync-worktrees) "Remote sync worktrees are not enabled.")
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured."))
+
+(defn- present-worktree [worktree]
+  {:id           (:id worktree)
+   :branch       (:branch worktree)
+   :base_version (:base_version worktree)
+   :roots        (remote-sync.worktree/worktree-roots (:id worktree))
+   :creator_id   (:creator_id worktree)
+   :created_at   (:created_at worktree)})
+
+(api.macros/defendpoint :get "/worktrees" :- remote-sync.schema/WorktreeListResponse
+  "List all remote sync worktrees (branch checkouts; the main app is not one of them).
+
+  Requires superuser permissions."
+  []
+  (check-worktrees-enabled!)
+  {:items (mapv present-worktree
+                (t2/select :model/RemoteSyncWorktree {:order-by [[:created_at :asc] [:id :asc]]}))})
+
+(api.macros/defendpoint :post "/worktrees" :- remote-sync.schema/Worktree
+  "Create a worktree for `branch` — the metadata row only; content materializes on the first pull
+  (`base_version` stays null until then). The branch must exist on the remote, unless `from_branch`
+  is given, in which case it is forked from that branch server-side first. 409 when the branch is
+  already checked out (one branch, one worktree — including the default).
+
+  Requires superuser permissions."
+  [_route
+   _query
+   {:keys [branch from_branch]} :- [:map
+                                    [:branch ms/NonBlankString]
+                                    [:from_branch {:optional true} ms/NonBlankString]]]
+  (check-worktrees-enabled!)
+  (api/check-400 (not= branch (settings/remote-sync-branch))
+                 (format "Branch '%s' is the current remote sync branch." branch))
+  (let [source (source/source-from-settings)]
+    (api/check-400 source "Source not configured")
+    (if from_branch
+      (source.p/create-branch source branch from_branch)
+      (api/check-400 (some #{branch} (source.p/branches source))
+                     (format "Branch '%s' not found on the remote. Pass from_branch to create it." branch)))
+    (try
+      (present-worktree
+       (t2/insert-returning-instance! :model/RemoteSyncWorktree
+                                      {:branch     branch
+                                       :creator_id api/*current-user-id*}))
+      (catch Exception e
+        (if-let [existing (t2/select-one :model/RemoteSyncWorktree :branch branch)]
+          (throw (ex-info (format "Branch '%s' is already checked out." branch)
+                          {:status-code 409
+                           :worktree_id (:id existing)}))
+          (throw e))))))
+
+(api.macros/defendpoint :get "/worktrees/:id" :- remote-sync.schema/Worktree
+  "Get a single worktree.
+
+  Requires superuser permissions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (check-worktrees-enabled!)
+  (present-worktree (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))))
+
+(api.macros/defendpoint :delete "/worktrees/:id" :- :nil
+  "Delete a worktree along with the collection trees it materialized. Refused, unless `force`, for a
+  worktree with unpushed local changes (400 carrying the dirty objects).
+
+  Requires superuser permissions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [force]} :- [:map [:force {:default false} [:maybe :boolean]]]]
+  (check-worktrees-enabled!)
+  (let [worktree (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))]
+    (let [dirty (remote-sync.worktree/worktree-dirty-rows id)]
+      (when (and (seq dirty) (not force))
+        (throw (ex-info "This worktree has changes that have not been pushed."
+                        {:status-code   400
+                         :dirty_objects (mapv #(select-keys % [:model_type :model_id :model_name :status])
+                                              dirty)}))))
+    (remote-sync.worktree/delete-worktree! worktree)
+    nil))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

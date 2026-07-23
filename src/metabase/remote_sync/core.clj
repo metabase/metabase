@@ -29,6 +29,14 @@
   []
   true)
 
+(defn non-worktree-filter-clause
+  "HoneySQL clause matching only main-app rows — those not materialized by a remote-sync worktree
+  checkout. `column` defaults to `:remote_sync_worktree_id`; pass a qualified column when the query
+  joins other tables."
+  ([] (non-worktree-filter-clause :remote_sync_worktree_id))
+  ([column]
+   [:= column nil]))
+
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration.
 
