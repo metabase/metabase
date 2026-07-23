@@ -86,6 +86,13 @@
                          :primary-key primary-key
                          :error       ::missing-pk})))
       (let [new-hash (serdes/identity-hash instance)]
+        ;; entity_id uniqueness is per remote-sync worktree at the schema level (NULL rows are not
+        ;; mutually DB-unique), so duplicates must be refused here rather than left to a constraint
+        (when (t2/exists? model :entity_id new-hash)
+          (throw (ex-info (format "Duplicate entity ID %s" (pr-str new-hash))
+                          {:model     (name model)
+                           :entity-id new-hash
+                           :error     ::duplicate-entity-id})))
         (log/infof "Update %s %s entity ID => %s" (name model) (pr-str pk-value) (pr-str new-hash))
         (t2/update! model pk-value {:entity_id new-hash}))
       {:update-count 1}

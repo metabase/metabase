@@ -63,7 +63,8 @@
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
-   :skip      []
+   :skip      [;; which checkout materialized this row is local state, not portable content
+               :remote_sync_worktree_id]
    :transform {:created_at   (serdes/date)
                :dashboard_id (serdes/parent-ref)}})
 

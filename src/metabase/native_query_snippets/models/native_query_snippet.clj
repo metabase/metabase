@@ -178,7 +178,8 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
-   :skip      []
+   :skip      [;; which checkout materialized this row is local state, not portable content
+               :remote_sync_worktree_id]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
