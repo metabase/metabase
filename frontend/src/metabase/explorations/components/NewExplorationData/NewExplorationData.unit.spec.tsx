@@ -81,7 +81,7 @@ describe("NewExplorationData (Research plan)", () => {
   });
 
   describe("empty state", () => {
-    it("renders the header + the +Data / +Events affordances, with no Start research CTA yet", () => {
+    it("renders the header + the +Data / +Events affordances, with the Start research CTA disabled", () => {
       setup();
 
       expect(screen.getByText("Research plan")).toBeInTheDocument();
@@ -90,8 +90,8 @@ describe("NewExplorationData (Research plan)", () => {
         screen.getByRole("button", { name: /Events/ }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /Start research/i }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: /Start research/i }),
+      ).toBeDisabled();
     });
 
     it("opens the metrics modal from the +Data menu", async () => {
