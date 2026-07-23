@@ -3321,3 +3321,137 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest backfill-table-user-settings-for-published-tables-test
+  (testing "v64.2026-07-23: published tables get all their settings backfilled as user-authored"
+    (impl/test-migrations ["v64.2026-07-23T10:00:00" "v64.2026-07-23T10:00:06"] [migrate!]
+      (let [new-db!    (fn [name & {:as extra}]
+                         (t2/insert-returning-pk! :metabase_database
+                                                  (merge {:name       name
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"}
+                                                         extra)))
+            db-id      (new-db! "Regular DB")
+            audit-db   (new-db! "Audit DB" :is_audit true)
+            coll-id    (t2/insert-returning-pk! :collection {:name     "Library Data"
+                                                             :slug     "library_data"
+                                                             :location "/"})
+            new-table! (fn [db-id name & {:as extra}]
+                         (t2/insert-returning-pk! :metabase_table
+                                                  (merge {:db_id      db-id
+                                                          :name       name
+                                                          :active     true
+                                                          :created_at :%now
+                                                          :updated_at :%now}
+                                                         extra)))
+            settings   (fn [table-id] (t2/select-one :metabase_table_user_settings :table_id table-id))
+            published  (new-table! db-id "orders"
+                                   :display_name  "Orders Curated"
+                                   :description   "Hand-written"
+                                   :collection_id coll-id
+                                   :is_published  true)
+            unpub      (new-table! db-id "drafts"
+                                   :display_name "Drafts Renamed"
+                                   :description  "Also written")
+            audit-tbl  (new-table! audit-db "vw_users"
+                                   :display_name "Metabase Users"
+                                   :is_published true)]
+        (migrate!)
+        (testing "a published table gets a full settings row"
+          (is (=? {:display_name  "Orders Curated"
+                   :description   "Hand-written"
+                   :collection_id coll-id
+                   :is_published  true}
+                  (settings published))))
+        (testing "unpublished tables get no row, even with curated-looking values"
+          (is (nil? (settings unpub))))
+        (testing "audit database tables are excluded"
+          (is (nil? (settings audit-tbl))))))))
+
+(deftest backfill-table-user-settings-for-published-tables-test
+  (testing "v64.2026-07-23: published tables get their settings backfilled as user-authored, defaults as NULL"
+    (impl/test-migrations ["v64.2026-07-23T10:00:00" "v64.2026-07-23T10:00:06"] [migrate!]
+      (let [new-db!    (fn [name & {:as extra}]
+                         (t2/insert-returning-pk! :metabase_database
+                                                  (merge {:name       name
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"}
+                                                         extra)))
+            db-id      (new-db! "Regular DB")
+            audit-db   (new-db! "Audit DB" :is_audit true)
+            coll-id    (t2/insert-returning-pk! :collection {:name      "Library Data"
+                                                             :slug      "library_data"
+                                                             :location  "/"
+                                                             :entity_id "tus-backfill-collectn"})
+            new-table! (fn [db-id name & {:as extra}]
+                         (t2/insert-returning-pk! :metabase_table
+                                                  (merge {:db_id      db-id
+                                                          :name       name
+                                                          :active     true
+                                                          :created_at :%now
+                                                          :updated_at :%now}
+                                                         extra)))
+            settings   (fn [table-id] (t2/select-one :metabase_table_user_settings :table_id table-id))
+            curated    (new-table! db-id "orders"
+                                   :display_name    "Orders Curated"
+                                   :description     "Hand-written"
+                                   :collection_id   coll-id
+                                   :is_published    true
+                                   :visibility_type "hidden"
+                                   :data_layer      "hidden"
+                                   :data_authority  "authoritative"
+                                   :field_order     "custom")
+            defaults   (new-table! db-id "products"
+                                   :display_name   "Products"
+                                   :collection_id  coll-id
+                                   :is_published   true
+                                   :data_layer     "internal"
+                                   :data_authority "unconfigured"
+                                   :field_order    "database")
+            crufty     (new-table! db-id "checkins_bak"
+                                   :display_name    "Checkins Bak"
+                                   :collection_id   coll-id
+                                   :is_published    true
+                                   :visibility_type "cruft"
+                                   :data_layer      "hidden")
+            unpub      (new-table! db-id "drafts"
+                                   :display_name "Drafts Renamed"
+                                   :description  "Also written")
+            audit-tbl  (new-table! audit-db "vw_users"
+                                   :display_name "Metabase Users"
+                                   :is_published true)]
+        (migrate!)
+        (testing "user-set values are copied; display_name/description are assumed changed"
+          (is (=? {:display_name    "Orders Curated"
+                   :description     "Hand-written"
+                   :collection_id   coll-id
+                   :is_published    true
+                   :visibility_type "hidden"
+                   :data_layer      "hidden"
+                   :data_authority  "authoritative"
+                   :field_order     "custom"}
+                  (settings curated))))
+        (testing "system defaults are recorded as NULL"
+          (is (=? {:display_name    "Products"
+                   :description     nil
+                   :collection_id   coll-id
+                   :is_published    true
+                   :visibility_type nil
+                   :data_layer      nil
+                   :data_authority  nil
+                   :field_order     nil
+                   :entity_type     nil
+                   :data_source     nil}
+                  (settings defaults))))
+        (testing "sync-authored cruft visibility and its derived data_layer are NULL"
+          (is (=? {:visibility_type nil
+                   :data_layer      nil}
+                  (settings crufty))))
+        (testing "unpublished tables get no row, even with curated-looking values"
+          (is (nil? (settings unpub))))
+        (testing "audit database tables are excluded"
+          (is (nil? (settings audit-tbl))))))))
