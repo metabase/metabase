@@ -52,6 +52,7 @@
    [:created_at      ms/TemporalInstant]
    [:title           [:maybe :string]]
    [:user_id         [:maybe ms/PositiveInt]]
+   [:forked_from_conversation_id [:maybe ms/UUIDString]]
    [:state           {:optional true} [:maybe ::metabot.schema/state]]
    [:saved_entities  [:sequential
                       [:map

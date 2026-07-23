@@ -487,6 +487,8 @@
               (is (not= convo-id new-id))
               (testing "the fork starts without a title so one is generated from the user's first post-fork message"
                 (is (nil? (:title response))))
+              (testing "the fork records the conversation it was forked from"
+                (is (= convo-id (:forked_from_conversation_id response))))
               (is (= user-id (:user_id response))))
             (testing "only the thread up to and including the target is copied"
               (is (= ["hi" "hello"] (mapv :message (:messages response)))))
