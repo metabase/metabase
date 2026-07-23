@@ -506,7 +506,7 @@
     (when (replayable-assistant-row? reply)
       {:rows rows :reply reply})))
 
-(defn first-valid-user-message
+(defn first-non-forked-user-message
   "Return the first non-blank user message from a live replayable turn.
 
   `messages` must be in reader order. Soft-deleted rows are ignored, as are
