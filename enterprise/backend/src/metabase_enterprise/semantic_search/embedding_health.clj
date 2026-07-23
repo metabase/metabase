@@ -98,7 +98,8 @@
   (.schedule recovery-scheduler ^Runnable f (long recovery-delay-ms) TimeUnit/MILLISECONDS))
 
 (defn request-circuit-recovery!
-  "Schedule a throttled breaker-controlled probe after the breaker's open delay. Returns promptly."
+  "Schedule a throttled breaker-controlled probe for the configured semantic-search embedder after the breaker's
+  open delay. Semantic search and library retrieval share this embedder. Returns promptly."
   []
   (when (and (embedding/embedder-circuit-untrusted?)
              (claim-recovery! (System/nanoTime)))
