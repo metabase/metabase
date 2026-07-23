@@ -297,9 +297,6 @@
     :dashboard-subscription nil
     :pulse                  nil
     :map-tiles              nil
-    ;; an agent running a saved question on the user's behalf is not a human view — record the
-    ;; run in the query-execution log (via the query's `:context`) but not the view log.
-    :agent                  nil
     context))
 
 (mu/defn process-query-for-card
