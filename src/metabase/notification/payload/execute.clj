@@ -316,11 +316,10 @@
     subscriptions that never render the other cards)."
   ([dashboard-id user-id parameters]
    (execute-dashboard dashboard-id user-id parameters nil))
-  ([dashboard-id user-id parameters {:keys [spill-budget only-card-ids]}]
-   (let [spill-budget    (or spill-budget (new-spill-budget))
-         keep-dashcards  (fn [dashcards]
-                           (cond->> dashcards
-                             only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
+  ([dashboard-id user-id parameters {:keys [spill-budget only-card-ids] :or {spill-budget (new-spill-budget)}}]
+   (let [keep-dashcards (fn [dashcards]
+                          (cond->> dashcards
+                            only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
      (request/with-current-user user-id
        (if (render-tabs? dashboard-id)
          (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
