@@ -1,10 +1,16 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
 import { useDispatch } from "metabase/redux";
-import type { InjectedRouter, PlainRoute, Route } from "metabase/router";
-import { goBack, push, replace } from "metabase/router";
+import {
+  type InjectedRouter,
+  type Location,
+  type PlainRoute,
+  type Route,
+  goBack,
+  push,
+  replace,
+} from "metabase/router";
 
 import { useBeforeUnload } from "./use-before-unload";
 

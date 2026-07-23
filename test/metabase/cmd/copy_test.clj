@@ -77,6 +77,7 @@
     :model/Transform
     :model/TransformRun
     :model/TransformRunCancelation
+    :model/TransformDagRun
     :model/TransformJob
     :model/TransformJobRun
     :model/TransformJobTransformTag

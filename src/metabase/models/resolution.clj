@@ -140,6 +140,7 @@
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase.transforms.models.transform
+    :model/TransformDagRun                   metabase.transforms.models.dag-run
     :model/TransformJob                      metabase.transforms.models.transform-job
     :model/TransformJobRun                   metabase.transforms.models.job-run
     :model/TransformJobTransformTag          metabase.transforms.models.transform-job-transform-tag

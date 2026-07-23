@@ -1,6 +1,5 @@
-import type { History } from "history";
-
 import { LOCATION_CHANGE, type RouterState } from "./routing-reducer";
+import type { History } from "./types";
 
 // Only the slice of the redux store `sync` actually touches. Declared
 // structurally rather than as `Store<State>` so this leaf does not instantiate

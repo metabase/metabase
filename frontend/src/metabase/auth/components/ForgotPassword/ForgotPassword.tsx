@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux";
 import { forgotPassword } from "metabase/redux/auth";
+import type { Location } from "metabase/router";
 import { Button } from "metabase/ui";
 
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";

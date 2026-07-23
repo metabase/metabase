@@ -775,7 +775,11 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       cy.get(".container").within(() => {
         cy.findByText("Total Orders");
-        cy.findAllByText("18,760").should("have.length", 2);
+        // the scalar counts all orders, but the body-only Orders table is
+        // capped at the 2,000-row display limit so its truncation note no
+        // longer says 18,760 (GDGT-2773)
+        cy.findAllByText("18,760").should("have.length", 1);
+        cy.findByText("2,000");
       });
     });
 

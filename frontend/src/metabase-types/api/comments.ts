@@ -50,10 +50,10 @@ export interface CommentTarget {
 
 /** request types below */
 
-export interface ListCommentsRequest {
+export type ListCommentsRequest = {
   target_type: CommentEntityType;
   target_id: EntityId;
-}
+};
 
 export interface CreateCommentRequest {
   target_id: EntityId;
@@ -79,6 +79,6 @@ export interface DeleteReactionRequest {
   id: CommentId;
 }
 
-export interface ListMentionsRequest {
+export type ListMentionsRequest = {
   limit: number;
-}
+};

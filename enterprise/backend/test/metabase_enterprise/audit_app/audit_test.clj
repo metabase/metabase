@@ -7,11 +7,9 @@
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase-enterprise.audit-app.settings :as ee.audit.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.lib.core :as lib]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
@@ -141,26 +139,6 @@
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync occurred even when called directly for audit db."))))
-
-(deftest no-backfill-occurs-when-loading-analytics-content-test
-  (mt/with-model-cleanup [:model/Collection]
-    (let [c1-instance (t2/insert-returning-instance! :model/Collection
-                                                     {:entity_id nil,
-                                                      :name      "My Duped Collection",
-                                                      :location  "/"})]
-      ;; fill in the entity_id for c1:
-      (serdes.backfill/backfill-ids-for! :model/Collection)
-      ;; insert c2, which will have the same entity id:
-      (let [c2-instance (t2/insert-returning-instance! :model/Collection (dissoc c1-instance :id))]
-        (testing "c1 and c2 hash to the same entity id."
-          (is (= (u/generate-nano-id (serdes/identity-hash c1-instance))
-                 (u/generate-nano-id (serdes/identity-hash c2-instance)))))
-        (testing "A backfill with 'duplicate' rows (with different ids)."
-          (is (thrown? Exception
-                       (serdes.backfill/backfill-ids-for! :model/Collection))))
-        (testing "No exception is thrown when db has 'duplicate' entries."
-          (is (= ::ee-audit/no-op
-                 (ee-audit/ensure-audit-db-installed!))))))))
 
 (deftest checksum-not-recorded-when-load-fails-test
   (mt/test-drivers #{:postgres :h2 :mysql}

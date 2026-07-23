@@ -1,4 +1,4 @@
-import type { LocationDescriptor } from "history";
+import type { LocationDescriptor } from "metabase/router";
 
 import type { PaletteActionImpl } from "./types";
 import {
