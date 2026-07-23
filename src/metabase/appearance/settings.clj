@@ -49,7 +49,7 @@
 (defsetting use-v7-router
   (deferred-tru "Serve the app with the react-router v7 engine instead of the legacy v3 engine. Toggle off for an instant rollback.")
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :public
   :export?    false
   :doc        false)

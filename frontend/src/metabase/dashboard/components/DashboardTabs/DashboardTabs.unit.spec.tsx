@@ -102,7 +102,7 @@ function setup({
 
   const { store } = renderWithProviders(
     <>
-      <Route path="dashboard/:slug(/:tabSlug)" element={<DashboardRoute />} />
+      <Route path="dashboard/:slug" element={<DashboardRoute />} />
       <Route path="someotherpath" element={<OtherComponent />} />
     </>,
     {

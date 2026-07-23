@@ -179,10 +179,16 @@ const setup = ({
   );
 
   return renderWithProviders(
-    <Route
-      path="/admin/tools/notifications(/:notificationId)"
-      element={<RoutedNotificationsAdminPage />}
-    />,
+    <>
+      <Route
+        path="/admin/tools/notifications"
+        element={<RoutedNotificationsAdminPage />}
+      />
+      <Route
+        path="/admin/tools/notifications/:notificationId"
+        element={<RoutedNotificationsAdminPage />}
+      />
+    </>,
     { withRouter: true, initialRoute },
   );
 };

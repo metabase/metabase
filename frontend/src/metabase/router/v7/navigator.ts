@@ -12,8 +12,30 @@ import { queryToSearch } from "./location";
  */
 let currentNavigate: NavigateFunction | null = null;
 
+/**
+ * Navigations requested before the router registered its `navigate`. On v3 the
+ * history existed at store creation, so a `dispatch(replace(...))` from a mount
+ * `useLayoutEffect` (e.g. a guard redirect) took effect immediately. v7's
+ * `navigate` only registers in an effect, which runs after descendant layout
+ * effects, so buffer these and flush them once it does rather than dropping them.
+ */
+let pendingNavigations: Array<(navigate: NavigateFunction) => void> = [];
+
 export function setV7Navigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
+  if (!navigate) {
+    // The router unmounted. Anything still buffered was meant for it, not for
+    // whatever router mounts next, so drop it rather than replay it later.
+    pendingNavigations = [];
+    return;
+  }
+  if (pendingNavigations.length > 0) {
+    const flushing = pendingNavigations;
+    pendingNavigations = [];
+    for (const run of flushing) {
+      run(navigate);
+    }
+  }
 }
 
 /**
@@ -71,15 +93,17 @@ export function toNavigateArgs(
 /**
  * A `RouterNavigator` (the subset of `history` that `routerMiddleware` drives)
  * backed by the live v7 `navigate`. Passed to the store on v7 so
- * `dispatch(push(...))` navigates the v7 router. Calls before the router mounts
- * are dropped, matching the pre-mount no-op window on v3.
+ * `dispatch(push(...))` navigates the v7 router. A call before the router mounts
+ * is buffered and flushed on registration, so a mount-time redirect is not lost.
  */
 export function createV7Navigator(): RouterNavigator {
   const navigate = (to: To | number, options?: NavigateOptions) => {
-    if (typeof to === "number") {
-      currentNavigate?.(to);
+    const run = (fn: NavigateFunction) =>
+      typeof to === "number" ? fn(to) : fn(to, options);
+    if (currentNavigate) {
+      run(currentNavigate);
     } else {
-      currentNavigate?.(to, options);
+      pendingNavigations.push(run);
     }
   };
 
