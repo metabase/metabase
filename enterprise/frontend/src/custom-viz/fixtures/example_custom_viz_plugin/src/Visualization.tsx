@@ -7,10 +7,30 @@ import type { Settings } from "./types";
 export const Visualization = (
   props: CustomVisualizationProps<Settings> & { locale: string },
 ) => {
-  const { series, settings, onClick, onHover, locale } = props;
+  const { series, settings, renderingContext, onClick, onHover, locale } =
+    props;
   const { threshold } = settings;
   const { cols, rows } = series[0].data;
   const value = rows[0][0];
+
+  const measuredTextStyle = {
+    size: 14,
+    family: renderingContext.fontFamily,
+    weight: 700,
+  };
+  const measuredWidth = Math.round(
+    renderingContext.measureTextWidth(
+      "Custom viz rendered successfully",
+      measuredTextStyle,
+    ),
+  );
+  const measuredHeight = Math.round(
+    renderingContext.measureTextHeight(
+      "Custom viz rendered successfully",
+      measuredTextStyle,
+    ),
+  );
+  const brandColor = renderingContext.getColor("brand");
 
   const [lastClickValue, setLastClickValue] = useState<RowValue | null>(null);
   const [lastHoverValue, setLastHoverValue] = useState<RowValue | null>(null);
@@ -56,6 +76,16 @@ export const Visualization = (
         Formatted: {formatValue(value, settings.column?.(cols[0]))}
       </div>
       <div data-testid="demo-viz-locale">Locale: {locale}</div>
+      <div data-testid="demo-viz-measured-width">
+        Measured width: {measuredWidth}
+      </div>
+      <div data-testid="demo-viz-measured-height">
+        Measured height: {measuredHeight}
+      </div>
+      <div data-testid="demo-viz-brand-color">Brand color: {brandColor}</div>
+      <div data-testid="demo-viz-font-family">
+        Font family: {renderingContext.fontFamily}
+      </div>
       <button
         type="button"
         data-testid="demo-viz-click-target"
