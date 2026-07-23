@@ -312,18 +312,26 @@
 (defn do-with-unshared-connection
   "Impl for [[with-unshared-connection]]."
   [f]
-  (with-open [conn (.getConnection (data-source))]
+  ;; check out through *application-db* itself (not the raw data source) so the ApplicationDB
+  ;; read-lock gate applies — the testing API blocks new connections through it during appdb restore
+  (with-open [conn (.getConnection *application-db*)]
     (f (t2.conn/unshared-connection! conn))))
 
 (defmacro with-unshared-connection
   "Execute `body` with `conn-binding` bound to a fresh app-db connection that ambient connection reuse can
   never pick up: toucan runs queries and transactions on it when `body` passes it explicitly, but never
-  binds it as `*current-connectable*`, so toucan calls that resolve their connection ambiently -- including
-  mid-reduction of a long-running query on this connection -- run (and commit) on other pooled connections.
+  binds it as [[toucan2.connection/*current-connectable*]], so toucan calls that resolve their connection
+  ambiently -- including mid-reduction of a long-running query on this connection -- run (and commit) on
+  other pooled connections.
 
   In every other respect this is an ordinary JDBC connection, configured by `body`: e.g. call
   `.setAutoCommit false` for a streaming result set (postgres portal/cursor) or a held row lock. It is
   closed when `body` ends; the pool resets its state (rolling back any unresolved transaction) on check-in.
+
+  Caveat: do not pass the unshared connection to an explicit `t2/with-transaction` while an ambient
+  appdb transaction is open on this thread. Nesting depth is tracked per thread, not per connection, so
+  the inner call would take a savepoint on this connection that no commit ever follows, and its work
+  would silently roll back at check-in.
 
     (mdb/with-unshared-connection [conn]
       (.setAutoCommit conn false)

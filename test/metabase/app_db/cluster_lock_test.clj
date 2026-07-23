@@ -285,3 +285,79 @@
       (is (= :ok (deref (:done held) 3000 :timeout)))
       (testing "released once the body completes"
         (is (acquirable-within? {:lock ::detached-mutex :detached? true} 3000))))))
+
+(defn- query-canceled-exception
+  "Build a query-canceled SQLException for the current appdb type. Mirrors the codes in
+  [[metabase.app-db.query-cancelation]] so the test exercises the real db-type path."
+  []
+  (case (mdb/db-type)
+    :postgres (SQLException. "ERROR: canceling statement due to user request" "57014")
+    :mysql    (SQLException. "Statement cancelled due to timeout or client request" "70100" 1317)))
+
+(deftest detached-lock-body-error-not-retried-test
+  ;; h2 takes an in-process lock and bypasses the retry path entirely, so this only exercises real row locks.
+  (when (not= (mdb/db-type) :h2)
+    ;; warm up the row first so we're not racing on the initial INSERT
+    (sut/with-cluster-lock {:lock ::detached-body-error :detached? true} :warm)
+    (let [attempts (atom 0)
+          e        (is (thrown? Throwable
+                                (sut/with-cluster-lock {:lock ::detached-body-error :detached? true
+                                                        :retry-config {:max-retries 2 :delay-ms 1}}
+                                  (swap! attempts inc)
+                                  (throw (query-canceled-exception)))))]
+      (testing "an acquisition-retryable error raised by the body must not re-run the body: its work commits
+                incrementally, so a re-run double-applies it (the hazard the :retry-transient? rejection closes)"
+        (is (= 1 @attempts)))
+      (testing "a body error must not be rewrapped as an acquisition failure — the lock WAS obtained"
+        (is (not (re-find #"Failed to obtain cluster lock" (str (ex-message e)))))))))
+
+(deftest detached-lock-nested-lock-timeout-not-retried-test
+  ;; The audit-pipeline shape: a detached body that takes another cluster lock inside (serdes takes the
+  ;; permissions lock when inserting a Database). When the inner acquisition times out, the canceled
+  ;; SELECT stays in the cause chain of the inner "Failed to obtain cluster lock" wrapper, so the outer
+  ;; retry must not read it as a failure to acquire the OUTER lock: re-running the body double-applies
+  ;; its committed work, and attributing the error to the outer lock makes callers that treat outer-lock
+  ;; contention as benign (ensure-audit-db-installed!) swallow a genuine body failure.
+  (when (not= (mdb/db-type) :h2)
+    (sut/with-cluster-lock ::nested-timeout-inner :warm)
+    (sut/with-cluster-lock {:lock ::nested-timeout-outer :detached? true} :warm)
+    (let [held (run-with-lock {:lock ::nested-timeout-inner})]
+      (try
+        (is (.await ^CountDownLatch (:entered held) 3 TimeUnit/SECONDS))
+        (let [attempts (atom 0)
+              e        (is (thrown? Throwable
+                                    (sut/with-cluster-lock {:lock ::nested-timeout-outer :detached? true
+                                                            :retry-config {:max-retries 2 :delay-ms 1}}
+                                      (swap! attempts inc)
+                                      (sut/with-cluster-lock {:lock ::nested-timeout-inner
+                                                              :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                        :never))))]
+          (testing "the incrementally-committing outer body must run exactly once"
+            (is (= 1 @attempts)))
+          (testing "the failure must not be attributed to the outer lock the body already holds"
+            (is (not= [(u/qualified-name ::nested-timeout-outer)]
+                      (:lock-names (ex-data e))))))
+        (finally
+          (.countDown ^CountDownLatch (:release held))
+          (is (= :ok (deref (:done held) 3000 :timeout))))))))
+
+(deftest detached-lock-released-after-body-throw-test
+  ;; The throw path has no explicit rollback: it relies on with-open closing the dedicated
+  ;; connection and the pool rolling back the unresolved transaction on check-in. If that ever
+  ;; stopped happening (pool swap or misconfiguration), a boot-time audit failure would leave the
+  ;; row lock held until the connection ages out, silently stalling other nodes' boots — the class
+  ;; of bug :detached? exists to fix. Release after *normal* completion is covered by
+  ;; detached-lock-mutual-exclusion-test; this pins the throw path.
+  (when (not= (mdb/db-type) :h2)
+    ;; warm up the row first so we're not racing on the initial INSERT
+    (sut/with-cluster-lock {:lock ::detached-throw-release :detached? true} :warm)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                          (sut/with-cluster-lock {:lock ::detached-throw-release :detached? true}
+                            (throw (ex-info "boom" {})))))
+    (testing "the row lock is released once the throwing body's connection is checked back in"
+      (is (acquirable-within? {:lock ::detached-throw-release :detached? true
+                               :timeout-seconds 1 :retry-config {:max-retries 0}}
+                              3000))
+      (is (acquirable-within? {:lock ::detached-throw-release
+                               :timeout-seconds 1 :retry-config {:max-retries 0}}
+                              3000)))))

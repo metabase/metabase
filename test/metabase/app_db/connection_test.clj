@@ -345,8 +345,10 @@
   (mdb.connection/with-unshared-connection [conn]
     (testing "explicitly passing the unshared connection works, but it is never bound as *current-connectable*"
       (let [rows (reduce (fn [acc row]
-                           (is (not (identical? conn t2.connection/*current-connectable*))
-                               "the unshared connection must not be ambiently visible mid-reduction")
+                           ;; the contract is nil, not merely "not this connection": while an unshared
+                           ;; connection is in use there is no ambient connection at all
+                           (is (nil? t2.connection/*current-connectable*)
+                               "ambient resolution must be suppressed mid-reduction")
                            (conj acc (into {} row)))
                          []
                          (t2/reducible-query conn ["select 1 as x"]))]
@@ -360,17 +362,19 @@
 
 (deftest unshared-connection-borrower-work-commits-independently-test
   (let [email (mt/random-email)]
-    (testing "toucan work while the unshared connection is in use commits on its own connection"
-      (mdb.connection/with-unshared-connection [conn]
-        ;; open a transaction on the unshared connection that is never committed: if the insert below
-        ;; wrongly rode this connection, it would be rolled back at pool check-in and the user would not exist
-        (.setAutoCommit ^Connection conn false)
-        (reduce (fn [_ _row]
-                  (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
-                nil
-                (t2/reducible-query conn ["select 1 as x"])))
-      (is (t2/exists? :model/User :email email))
-      (t2/delete! :model/User :email email))))
+    (try
+      (testing "toucan work while the unshared connection is in use commits on its own connection"
+        (mdb.connection/with-unshared-connection [conn]
+          ;; open a transaction on the unshared connection that is never committed: if the insert below
+          ;; wrongly rode this connection, it would be rolled back at pool check-in and the user would not exist
+          (.setAutoCommit ^Connection conn false)
+          (reduce (fn [_ _row]
+                    (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
+                  nil
+                  (t2/reducible-query conn ["select 1 as x"])))
+        (is (t2/exists? :model/User :email email)))
+      (finally
+        (t2/delete! :model/User :email email)))))
 
 (deftest unshared-connection-postgres-portal-survival-test
   ;; postgres streams a result set through a portal that dies if anything commits on the connection
@@ -395,7 +399,7 @@
                                       (inc n))
                                     0
                                     (t2/reducible-query conn ["select g from generate_series(1, 1000) g"]))))]
-      (testing "control: an ordinary connection is ambiently visible mid-reduction, so the borrower commit kills the portal"
+      (testing "control: an ordinary connection is ambiently visible mid-reduction; the borrower commit kills the portal"
         (with-open [^Connection raw (.getConnection (mdb.connection/data-source))]
           (let [e (try (stream! raw) nil (catch Throwable e e))]
             (is (portal-death? e)))
@@ -404,3 +408,22 @@
       (testing "an unshared connection is invisible to the borrower; the portal survives"
         (mdb.connection/with-unshared-connection [conn]
           (is (= 1000 (stream! conn))))))))
+
+(deftest unshared-connection-uncommitted-work-rolls-back-on-close-test
+  ;; the with-unshared-connection docstring promises the pool resets state on check-in, rolling
+  ;; back any unresolved transaction — the same mechanism the detached cluster lock relies on to
+  ;; release its row locks after a body throw. Pin the rollback itself.
+  (let [lock-name "connection-test/unshared-rollback"]
+    (try
+      (mdb.connection/with-unshared-connection [conn]
+        (.setAutoCommit ^Connection conn false)
+        (t2/query-one conn {:insert-into :metabase_cluster_lock
+                            :columns     [:lock_name]
+                            :values      [[lock-name]]})
+        (testing "the write is visible on the unshared connection before close"
+          (is (= 1 (count (t2/query conn ["select * from metabase_cluster_lock where lock_name = ?"
+                                          lock-name]))))))
+      (testing "the uncommitted write vanished at pool check-in"
+        (is (not (t2/exists? :metabase_cluster_lock :lock_name lock-name))))
+      (finally
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)))))
