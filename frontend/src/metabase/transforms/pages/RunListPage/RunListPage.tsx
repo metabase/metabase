@@ -1,7 +1,6 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import {
   useListTransformRunsQuery,

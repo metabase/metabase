@@ -9,7 +9,11 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import * as Urls from "metabase/urls";
 
-import { isTransformsMainRoute } from "./utils";
+import {
+  isTransformsJobsRoute,
+  isTransformsMainRoute,
+  isTransformsRunsRoute,
+} from "./utils";
 
 type TransformsHeaderProps = {
   showMetabotButton?: boolean;
@@ -31,13 +35,13 @@ export const TransformsHeader = memo(function TransformsHeader({
       label: t`Jobs`,
       to: Urls.transformJobList(),
       icon: "clock",
-      isSelected: (pathname) => pathname.startsWith(Urls.transformJobList()),
+      isSelected: isTransformsJobsRoute,
     },
     {
       label: t`Runs`,
-      to: Urls.transformRunList(),
+      to: Urls.transformGraphRunList(),
       icon: "play_outlined",
-      isSelected: (pathname) => pathname.startsWith(Urls.transformRunList()),
+      isSelected: isTransformsRunsRoute,
     },
   ];
 

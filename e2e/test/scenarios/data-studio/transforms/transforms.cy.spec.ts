@@ -1939,6 +1939,7 @@ LIMIT
       getRunButton().should("have.text", "Running now…");
       getRunStatus().should("have.text", "Run in progress…");
 
+      H.DataStudio.breadcrumbs().findByText("Transforms").click();
       getRunsNavLink().click();
       getDetailedViewSwitch().click();
       getTransformRunTable().findByText("In progress").click();
@@ -3112,6 +3113,8 @@ describe("scenarios > admin > transforms > jobs", () => {
         .findByText("Last ran a few seconds ago successfully.")
         .should("be.visible");
 
+      H.DataStudio.breadcrumbs().findByText("Jobs").click();
+
       getRunsNavLink().click();
       getDetailedViewSwitch().click();
       getTransformRunTable().within(() => {
@@ -3216,7 +3219,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("deep.equal", { active: true });
       H.DataStudio.Jobs.editor().findByText("Disabled").should("not.exist");
 
-      H.DataStudio.Transforms.jobsTab().click();
+      H.DataStudio.breadcrumbs().findByText("Jobs").click();
 
       cy.log("bulk-disable: cancel from the modal does not fire the mutation");
       openBulkActionsMenu();
@@ -3654,6 +3657,7 @@ describe("scenarios > admin > transforms > runs", () => {
     }
 
     createInitialData();
+    H.DataStudio.breadcrumbs().findByText("Transforms").click();
     getRunsNavLink().click();
     getDetailedViewSwitch().click();
     testTransformFilter();
@@ -3704,6 +3708,7 @@ describe("scenarios > admin > transforms > runs", () => {
     }
 
     createInitialData();
+    H.DataStudio.breadcrumbs().findByText("Transforms").click();
     getRunsNavLink().click();
     getDetailedViewSwitch().click();
 
@@ -4309,18 +4314,19 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
 
       cy.log("Verify no upsell gem icon is displayed in Transforms menu item");
       H.DataStudio.nav()
-        .findByText("Transforms")
+        .findByText("Data transformation")
         .closest("a")
         .within(() => {
           cy.findByTestId("upsell-gem").should("not.exist");
         });
 
       cy.log("Verify transforms page is accessible");
-      H.DataStudio.nav().findByText("Transforms").click();
 
       H.DataStudio.Transforms.enableTransformPage()
         .findByRole("button", { name: "Enable transforms" })
         .click();
+
+      H.DataStudio.nav().findByText("Data transformation").click();
 
       H.DataStudio.Transforms.list().should("be.visible");
 
@@ -4373,20 +4379,22 @@ describe(
         H.DataStudio.nav().should("be.visible");
 
         cy.log("Verify Transforms menu item is visible");
-        H.DataStudio.nav().findByText("Transforms").should("be.visible");
+        H.DataStudio.nav()
+          .findByText("Data transformation")
+          .should("be.visible");
 
         cy.log(
           "Verify no upsell gem icon is displayed in Transforms menu item",
         );
         H.DataStudio.nav()
-          .findByText("Transforms")
+          .findByText("Data transformation")
           .closest("a")
           .within(() => {
             cy.findByTestId("upsell-gem").should("not.exist");
           });
 
         cy.log("Verify transforms page is accessible");
-        H.DataStudio.nav().findByText("Transforms").click();
+        H.DataStudio.nav().findByText("Data transformation").click();
         H.DataStudio.Transforms.enableTransformPage()
           .findByRole("button", { name: "Enable transforms" })
           .click();

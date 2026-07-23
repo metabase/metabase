@@ -4,6 +4,7 @@ import { t } from "ttag";
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import {
   AreaLayout,
   AreaTab,
@@ -58,6 +59,7 @@ export function DataStudioLayout() {
   // if transform setup isn't complete, we still show transforms - that's where the upsell/enable pages are
   const shouldShowTransforms = canUseTransforms || !isTransformsSetupComplete;
 
+  const settings = useDataStudioSettings();
   const currentTab = getCurrentTab(pathname);
 
   const upperNav = (
@@ -157,7 +159,7 @@ export function DataStudioLayout() {
       ) : (
         <AreaTab
           label={t`Remote sync`}
-          icon="gear"
+          icon="git_branch"
           to={Urls.dataStudioGitSync()}
           isSelected={currentTab === "git-sync"}
           showLabel={isNavbarOpened}
@@ -170,6 +172,15 @@ export function DataStudioLayout() {
           icon="workspace"
           to={Urls.workspaces()}
           isSelected={currentTab === "workspaces"}
+          showLabel={isNavbarOpened}
+        />
+      )}
+      {settings.length > 0 && (
+        <AreaTab
+          label={t`Settings`}
+          icon="gear"
+          to={Urls.dataStudioSettings()}
+          isSelected={currentTab === "settings"}
           showLabel={isNavbarOpened}
         />
       )}

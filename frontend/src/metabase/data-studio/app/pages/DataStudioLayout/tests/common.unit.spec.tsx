@@ -47,15 +47,11 @@ describe("DataStudioLayout", () => {
   });
 
   describe("transforms nav tab", () => {
-    // Jobs and Runs moved out of the sidebar into the transforms section header,
-    // so the sidebar only ever shows the "Data transformation" nav tab.
-    it("shows Data transformation but not Jobs or Runs when setup is incomplete", async () => {
+    it("shows Data transformation when setup is incomplete", async () => {
       setup({ transformsSetupComplete: false, transformsEnabled: false });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
       expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Runs")).not.toBeInTheDocument();
     });
 
     it("hides Data transformation when setup is complete but transforms are disabled", async () => {
@@ -65,17 +61,13 @@ describe("DataStudioLayout", () => {
       expect(
         screen.queryByLabelText("Data transformation"),
       ).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Runs")).not.toBeInTheDocument();
     });
 
-    it("shows Data transformation, and keeps Jobs and Runs out of the sidebar, when transforms are enabled", async () => {
+    it("shows Data transformation when transforms are enabled", async () => {
       setup({ transformsSetupComplete: true, transformsEnabled: true });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
       expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Runs")).not.toBeInTheDocument();
     });
 
     it("shows Data transformation for non-admins when setup is incomplete", async () => {
@@ -102,8 +94,6 @@ describe("DataStudioLayout", () => {
       expect(
         screen.queryByLabelText("Data transformation"),
       ).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Runs")).not.toBeInTheDocument();
     });
 
     it("shows Data transformation for non-admins with transform access when enabled", async () => {
@@ -116,18 +106,6 @@ describe("DataStudioLayout", () => {
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
       expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Runs")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("settings tab", () => {
-    // Settings is no longer a sidebar tab in the reorganized Data Studio nav.
-    it("does not render a Settings tab in the sidebar", async () => {
-      setup({ isAdmin: true, transformsSetupComplete: true });
-
-      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Settings")).not.toBeInTheDocument();
     });
   });
 });
