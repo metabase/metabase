@@ -53,8 +53,6 @@ export type SearchResultItem = {
   type: string;
   name: string;
   display_name?: string;
-  // a question's visualization type (line/bar/table/…), so the chain-of-thought
-  // row can show its real icon; verified models get a badge from moderated_status
   display?: CardDisplayType;
   moderated_status?: string;
   database_id?: number;
@@ -112,8 +110,6 @@ export type EntitySavedValue = {
   chart_id: string;
   card_id: number;
   destination: SavedEntityDestination;
-  // present when the save ran as a chain-of-thought tool call: the id ties the
-  // saved-entity link (`title`, a metabase:// markdown link) to its "Saved …" step
   tool_call_id?: string;
   title?: string;
 };

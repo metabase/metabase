@@ -18,8 +18,6 @@ export type MetabotDataPart = Exclude<
   | { type: "data-search_results" }
 >;
 
-// Search results are rendered under their search step in the chain of thought,
-// not as a standalone data-part message.
 export type MetabotSearchResults = {
   totalCount: number;
   results: SearchResultItem[];
@@ -101,15 +99,11 @@ export type MetabotAgentTurnInProgressMessage = {
   externalId?: string;
 };
 
-// The turn's reasoning + tool activity, in chronological order. Held in the
-// message list so it renders inline and persists after the turn, but
-// client-only: never sent to the model or saved server-side.
 export type MetabotAgentChainOfThoughtMessage = {
   id: string;
   role: "agent";
   type: "chain_of_thought";
   steps: MetabotChainStep[];
-  // wall-clock span for "Thought for Ns"; kept in redux so it survives remounts
   startedAtMs?: number;
   endedAtMs?: number;
 };
@@ -140,8 +134,6 @@ export type MetabotToolCall = {
 };
 
 export type MetabotChainStep =
-  // startedAtMs: wall-clock when the step began, used to time labels and guard
-  // against flashing. Absent on persisted/legacy chains — treat as "show now".
   | { kind: "reasoning"; text: string; startedAtMs?: number }
   | {
       kind: "tool";
@@ -171,7 +163,6 @@ export interface MetabotConverstationState {
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
-  // the chain_of_thought message still accumulating steps; undefined between turns
   activeChainId: string | undefined;
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;

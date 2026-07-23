@@ -76,8 +76,6 @@ export const conversationTitle = () =>
   screen.findByTestId("metabot-conversation-title");
 export const queryConversationTitle = () =>
   screen.queryByTestId("metabot-conversation-title");
-// chain-of-thought rows are UI furniture, not conversation content, so they're
-// excluded by default to keep message-count assertions about the actual exchange
 export const chatMessages = async ({
   includeChainOfThought = false,
 }: { includeChainOfThought?: boolean } = {}) => {

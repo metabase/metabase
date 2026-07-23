@@ -1,14 +1,12 @@
 import cx from "classnames";
 import { useState } from "react";
 
+import Animation from "metabase/css/core/animation.module.css";
 import { AIMarkdown } from "metabase/metabot/components/AIMarkdown";
 import { Collapse, Icon, Text, UnstyledButton } from "metabase/ui";
 
 import S from "./MetabotChainOfThought.module.css";
 
-// reasoning is tucked away behind a duration-based collapse ("Thought briefly", or
-// the exact seconds once it runs long) and stays collapsed by default; active only
-// drives the reasoning text streaming.
 export const ReasoningStep = ({
   text,
   label,
@@ -37,10 +35,8 @@ export const ReasoningStep = ({
         />
       </UnstyledButton>
       <Collapse in={open}>
-        <div className={S.reasoningBody}>
-          <AIMarkdown isStreaming={active} animateFromStart>
-            {text}
-          </AIMarkdown>
+        <div className={cx(S.reasoningBody, Animation.fadeIn)}>
+          <AIMarkdown isStreaming={active}>{text}</AIMarkdown>
         </div>
       </Collapse>
     </div>

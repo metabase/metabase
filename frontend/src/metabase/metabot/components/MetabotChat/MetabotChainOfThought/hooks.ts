@@ -1,25 +1,28 @@
 import { useEffect, useRef, useState } from "react";
+import { useInterval } from "react-use";
 
-import { PREVIEW_MIN_MS } from "./constants";
+import { NOW_TICK_MS, PREVIEW_MIN_MS } from "./constants";
 
-// re-renders on a slow tick while the turn is live so elapsed-time thresholds
-// (e.g. reasoning duration) cross even with no streaming events
 export const useNow = (active: boolean) => {
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 150);
-    return () => clearInterval(id);
-  }, [active]);
+  useInterval(() => setNow(Date.now()), active ? NOW_TICK_MS : null);
   return now;
 };
 
-// meters a stream of preview labels: each is held on screen for at least
-// PREVIEW_MIN_MS before the next replaces it. labels that pile up during a hold
-// are queued, never dropped, so each one still gets its moment.
+export const useAutoCollapseOnSettle = (isStreaming: boolean) => {
+  const [open, setOpen] = useState(false);
+  const hasSettledRef = useRef(false);
+
+  useEffect(() => {
+    if (!isStreaming && !hasSettledRef.current) {
+      hasSettledRef.current = true;
+      setOpen(false);
+    }
+  }, [isStreaming]);
+
+  return { open, toggle: () => setOpen((prev) => !prev) };
+};
+
 export const useMeteredLabel = (target: string): string => {
   const [shown, setShown] = useState(target);
   const queueRef = useRef<string[]>([]);

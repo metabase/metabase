@@ -6,7 +6,6 @@ import {
   closeChain,
   createConversation,
   endChainTool,
-  finalizeChain,
   openChain,
   startChainReasoning,
 } from "./reducer-utils";
@@ -46,7 +45,7 @@ describe("chain of thought duration timing", () => {
   it("drops a shell that never gathered a step at turn teardown", () => {
     const convo = produce(createConversation("omnibot"), (d) => {
       openChain(d);
-      finalizeChain(d);
+      closeChain(d);
     });
     expect(chainOf(convo)).toBeUndefined();
     expect(convo.activeChainId).toBeUndefined();
