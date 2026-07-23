@@ -348,6 +348,8 @@
   [base-jar]
   (u/step "Create uberjar from cached deps base jar"
     (with-duration-ms [duration-ms]
+      ;; b/uber creates this for the cold path; on a clean workspace nothing else has.
+      (u/create-directory-unless-exists! (.getParent (io/file uberjar-filename)))
       (io/copy (io/file base-jar) (io/file uberjar-filename))
       (let [root  (.toPath (io/file class-dir))
             files (->> (io/file class-dir) file-seq (filter #(.isFile ^File %)))]
