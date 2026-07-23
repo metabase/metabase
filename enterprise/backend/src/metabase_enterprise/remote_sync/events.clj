@@ -251,8 +251,6 @@
         status   (spec/determine-status table-spec topic object)
         rso      (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id table-id)]
     (cond
-      ;; The table is being deleted or archived: its TableUserSettings row cascades away with it, so
-      ;; transition the RSO directly (the hydration the generic path does would find no table).
       (and rso (= status "delete"))
       (if (= "create" (:status rso))
         (t2/delete! :model/RemoteSyncObject (:id rso))

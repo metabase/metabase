@@ -128,8 +128,6 @@
           table-ids-to-update (when (seq downstream-ids)
                                 (t2/select-pks-set :model/Table :id [:in downstream-ids] :is_published true))]
       (when (seq table-ids-to-update)
-        ;; the Table before-update hook mirrors the collection_id nulling into any recorded
-        ;; TableUserSettings row, so the mirror stops claiming the archived collection
         (t2/update! :model/Table :id [:in table-ids-to-update]
                     {:collection_id nil
                      :is_published  false})

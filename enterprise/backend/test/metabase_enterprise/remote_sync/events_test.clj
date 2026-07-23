@@ -1284,7 +1284,6 @@
                                            :model_table_id    (:id table)
                                            :status            "synced"
                                            :status_changed_at (t/offset-date-time)})
-      ;; the TUS row is already cascade-deleted by the time the event fires
       (events/publish-event! :event/table-delete {:object table :user-id (mt/user->id :rasta)})
       (is (= "delete"
              (:status (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id (:id table))))))))
