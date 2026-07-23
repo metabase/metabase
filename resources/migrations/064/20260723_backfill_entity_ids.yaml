@@ -4,13 +4,15 @@
 ## subset of the NanoID alphabet) from a per-row UUID, so they satisfy the entity_id uniques —
 ## uuid generation rather than md5() because md5 is unavailable on FIPS-configured servers. With the
 ## blanks gone (and the insert hook generating ids in every remaining case), the column becomes
-## NOT NULL everywhere it exists.
+## NOT NULL everywhere it exists. All three dialect variants live in one changeset so every
+## database executes (and records) it — a changeset whose only change is dbms-filtered away never
+## reaches the changelog, which breaks consolidation.
 
 databaseChangeLog:
   - changeSet:
       id: v64.2026-07-23T12:00:00
       author: ranquild
-      comment: Backfill NULL entity_id values (postgres)
+      comment: Backfill NULL entity_id values
       changes:
         - sql:
             dbms: postgresql
@@ -42,13 +44,6 @@ databaseChangeLog:
               UPDATE transform_job_transform_tag SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
               UPDATE transform_tag SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
               UPDATE transform_transform_tag SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-23T12:00:01
-      author: ranquild
-      comment: Backfill NULL entity_id values (mysql, mariadb)
-      changes:
         - sql:
             dbms: mysql,mariadb
             sql: |
@@ -79,13 +74,6 @@ databaseChangeLog:
               UPDATE transform_job_transform_tag SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
               UPDATE transform_tag SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
               UPDATE transform_transform_tag SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-23T12:00:02
-      author: ranquild
-      comment: Backfill NULL entity_id values (h2)
-      changes:
         - sql:
             dbms: h2
             sql: |
