@@ -5,7 +5,7 @@ import {
   Routes,
   UNSAFE_createBrowserHistory as createBrowserHistory,
   UNSAFE_createMemoryHistory as createMemoryHistory,
-} from "react-router-v7";
+} from "react-router";
 
 import { useDispatch } from "metabase/redux";
 import { getBasename } from "metabase/utils/basename";
@@ -60,10 +60,9 @@ function useLocationMirror() {
 }
 
 /**
- * react-router v7 hosting the app, declarative mode (Phase 3.1). Replaces the v3
- * `<Router>` + `useRouterHistory` + `syncHistoryWithStore` stack behind the
- * `use-v7-router` flag. Hosted on a blocking history so `setRouteLeaveHook`
- * cancels navigation the way it does on v3.
+ * react-router v7 hosting the app, declarative mode. Replaces the v3 `<Router>` +
+ * `useRouterHistory` + `syncHistoryWithStore` stack. Hosted on a blocking history
+ * so `setRouteLeaveHook` cancels navigation the way it did on v3.
  */
 export function RouterProviderV7({ children }: PropsWithChildren): JSX.Element {
   // `v5Compat` makes the history notify its listeners on push/replace, which is
@@ -110,9 +109,11 @@ export type MemoryTestHistory = ReturnType<typeof createMemoryTestHistory>;
 export function RouterProviderV7Memory({
   children,
   initialRoute,
+  basename,
   history: providedHistory,
 }: PropsWithChildren<{
   initialRoute: string;
+  basename?: string;
   history?: MemoryTestHistory;
 }>): JSX.Element {
   const [history] = useState(
@@ -120,7 +121,11 @@ export function RouterProviderV7Memory({
   );
   const onLocationChange = useLocationMirror();
   return (
-    <SyncHistoryRouter history={history} onLocationChange={onLocationChange}>
+    <SyncHistoryRouter
+      history={history}
+      basename={basename}
+      onLocationChange={onLocationChange}
+    >
       <V7RouterTree history={history}>{children}</V7RouterTree>
     </SyncHistoryRouter>
   );
