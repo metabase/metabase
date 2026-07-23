@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.server.instance :as server.instance]
@@ -237,6 +238,7 @@
                           *group-sync-email*  email]
                   (with-group-sync-oidc!
                     ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                     #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                     (with-redefs [oidc.state/validate-oidc-callback
                                   (fn [_request _state _provider & _opts]
@@ -389,3 +391,17 @@
                (is (contains?
                     (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
                     group-id))))))))))
+
+(deftest successful-oidc-callback-does-not-log-pii-test
+  (testing "Successful OIDC callback should not log user's email address"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-log-messages-for-level [log-messages [metabase-enterprise.sso.integrations.oidc :info]]
+        ;; Mock login! to return a successful result with user email, in-thread so log capture works
+        (with-redefs [auth-identity/login! (constantly {:success? true
+                                                        :redirect-url "/"
+                                                        :user {:email "jane@example.com"}})]
+          (oidc-integration/sso-callback
+           "test-idp"
+           {:params {:code "test-code" :state "test-state"}})
+          (is (not-any? #(re-find #"jane@example.com" (:message %)) (log-messages))
+              "Log messages should not contain user's email address"))))))

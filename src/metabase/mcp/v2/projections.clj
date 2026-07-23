@@ -10,7 +10,8 @@
    hand-listed), so it cannot drift from the projection: dot-paths up to three segments deep,
    item-relative inside arrays."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [medley.core :as m]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,6 +68,27 @@
     (swap! registry assoc type (assoc entry :catalog resolved-catalog))
     type))
 
+(defn register-key-projection!
+  "Register `type`'s concise/detailed projections as `select-keys` over the given key vectors —
+   the common case, replacing a hand-written `{:concise … :detailed … :sample …}` map. Options:
+
+   - `:detailed-keys` — keys for the detailed projection; defaults to `concise-keys`.
+   - `:compact?` — drop nil-valued keys from the projected row (default true). Pass false for rows
+     whose columns are always populated and where an explicit null is meaningful.
+   - `:sample` — a representative detailed row, overriding the auto `(zipmap detailed-keys \"x\")`
+     for types with nested (non-scalar) shapes the catalog must see."
+  [type concise-keys & {:keys [detailed-keys compact? sample] :or {compact? true}}]
+  (let [detailed-keys (or detailed-keys concise-keys)
+        project-fn    (fn [ks]
+                        (if compact?
+                          #(m/remove-vals nil? (select-keys % ks))
+                          #(select-keys % ks)))]
+    (register-projection!
+     type
+     {:concise  (project-fn concise-keys)
+      :detailed (project-fn detailed-keys)
+      :sample   (or sample (zipmap detailed-keys (repeat "x")))})))
+
 (defn project
   "Apply `type`'s `fmt` (`:concise` | `:detailed`) projection to `row`. Throws when no
    projection is registered for `type`."
@@ -98,11 +120,8 @@
   (into collection-concise-keys
         [:authority_level :personal_owner_id :namespace :entity_id :slug :created_at]))
 
-(register-projection!
- :collection
- {:concise  #(select-keys % collection-concise-keys)
-  :detailed #(select-keys % collection-detailed-keys)
-  :sample   (zipmap collection-detailed-keys (repeat "x"))})
+(register-key-projection! :collection collection-concise-keys
+                          :detailed-keys collection-detailed-keys :compact? false)
 
 (def ^:private table-concise-keys
   [:id :name :display_name :schema :db_id :description])
@@ -112,23 +131,32 @@
         [:entity_type :view_count :active :field_order :is_upload :visibility_type
          :initial_sync_status :created_at :updated_at]))
 
-(register-projection!
- :table
- {:concise  #(select-keys % table-concise-keys)
-  :detailed #(select-keys % table-detailed-keys)
-  :sample   (zipmap table-detailed-keys (repeat "x"))})
+(register-key-projection! :table table-concise-keys
+                          :detailed-keys table-detailed-keys :compact? false)
 
+;; The one canonical card projection. Shared by browse_collection's model list and get_content's
+;; question/model reads — registered here (the namespace both load) so it has a single definition
+;; rather than one tool silently overwriting another's at load time. `query_summary`/`template_tags`
+;; are enrichments get_content computes; browse rows lack them and `compact` drops them.
 (def ^:private question-concise-keys
-  [:id :name :type :description :display :collection_id :database_id :table_id :archived])
+  [:id :name :type :description :display :collection_id :database_id :table_id :source_card_id
+   :archived :query_summary :template_tags :parameters])
 
-(def ^:private question-detailed-keys
+(def question-detailed-keys
+  "Keys of the `:question` detailed projection. All are Card columns except
+   [[question-enrichment-keys]], which `get_content` computes at read time."
   (into question-concise-keys
-        [:entity_id :dashboard_id :collection_position :creator_id :cache_ttl
-         :created_at :updated_at :parameters]))
+        [:entity_id :dashboard_id :query_type :collection_position :creator_id :cache_ttl
+         :created_at :updated_at]))
 
-(register-projection!
- :question
- {:concise  #(select-keys % question-concise-keys)
-  :detailed #(select-keys % question-detailed-keys)
-  :sample   (-> (zipmap question-detailed-keys (repeat "x"))
-                (assoc :parameters [{:id "p1" :name "Category" :type "category"}]))})
+(def question-enrichment-keys
+  "Projection keys `get_content` computes at read time — not Card columns. Column-select paths
+   (`list_models`, browse rows) can't fetch them, so they drop these before selecting."
+  #{:query_summary :template_tags})
+
+(register-key-projection!
+ :question question-concise-keys
+ :detailed-keys question-detailed-keys
+ :sample (-> (zipmap question-detailed-keys (repeat "x"))
+             (assoc :template_tags {}
+                    :parameters [{:id "x" :name "x" :type "x" :target ["x"] :slug "x"}])))

@@ -1265,6 +1265,7 @@
            ai-tracing
            api
            app-db
+           channel
            collections
            config
            dashboards
@@ -1334,6 +1335,7 @@
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools.construct
+              metabase.metabot.tools.entity-details
               metabase.metabot.tools.search
               metabase.metabot.tools.shared.content-store}
    :friends #{agent-api
@@ -1355,6 +1357,7 @@
               documents
               driver
               entity-retrieval
+              events
               interestingness
               legacy-mbql
               lib
@@ -1367,6 +1370,8 @@
               permissions
               premium-features
               pulse
+              queries
+              query-permissions
               query-processor
               request
               search
@@ -1377,6 +1382,7 @@
               sync
               system
               task
+              tracing
               transforms
               transforms-base
               util
@@ -1392,6 +1398,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Glossary
                     :model/Measure
@@ -1861,7 +1868,6 @@
            permissions
            public-sharing
            queries
-           query-permissions
            query-processor
            request
            revisions
@@ -1870,7 +1876,6 @@
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
-                    :model/Dashboard
                     :model/Database
                     :model/Table}}
 
@@ -1934,6 +1939,7 @@
            cache
            config
            dashboards
+           database-routing
            driver
            events
            formatter
@@ -2536,6 +2542,28 @@
                     :model/TransformRun
                     :model/TransformTag}}
 
+  typed-schemas
+  {:team "Embedding"
+   :api  #{metabase.typed-schemas.api}
+   :uses #{actions
+           api
+           collections
+           lib
+           lib-be
+           metabot
+           metrics
+           models
+           system
+           types
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
+
   types
   {:team "Querying Platform"
    :api  #{metabase.types.core
@@ -3025,20 +3053,6 @@
                     :model/QueryCache
                     :model/QueryExecution}}
 
-  enterprise/checker
-  {:team "Graphy"
-   ;; todo: add ability to prevent usage (transitive even) of app db
-   :api  #{}
-   :uses #{classloader
-           lib
-           models
-           plugins
-           query-processor
-           sql-tools
-           util
-           enterprise/dependencies}
-   :model-imports #{:model/Database}}
-
   enterprise/cloud-add-ons
   {:team "Cloud"
    :api  #{metabase-enterprise.cloud-add-ons.api}
@@ -3106,6 +3120,17 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-apps
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-apps.api
+           metabase-enterprise.data-apps.init
+           metabase-enterprise.data-apps.sync}
+   :uses #{api
+           models
+           premium-features
+           settings
+           util}}
+
   enterprise/data-complexity-score
   {:team "Metabot"
    :api  #{metabase-enterprise.data-complexity-score.api
@@ -3166,7 +3191,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           config
            database-routing
            driver
            events
@@ -3184,8 +3208,7 @@
 
   enterprise/dependencies
   {:team "Graphy"
-   :api  #{metabase-enterprise.dependencies.analysis
-           metabase-enterprise.dependencies.api
+   :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
@@ -3455,6 +3478,7 @@
            task
            task-history
            util
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}
@@ -3599,6 +3623,7 @@
            config
            connection-pool
            events
+           lib-be
            llm
            metabot
            models
@@ -3618,8 +3643,6 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
-           metabase-enterprise.serialization.init
-           metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
@@ -3636,9 +3659,7 @@
            search
            server
            setup
-           sync
-           util
-           warehouse-schema}
+           util}
    :model-imports :bypass}
 
   enterprise/snippet-collections
@@ -3799,12 +3820,10 @@
            premium-features
            query-processor
            sample-data
-           server
            settings
            sql-tools
            util
-           workspaces
-           enterprise/serialization}
+           workspaces}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table

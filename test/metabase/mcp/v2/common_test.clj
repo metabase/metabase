@@ -26,7 +26,55 @@
       (is (str/includes? line "`search`"))
       (is (str/includes? line "offset: 50"))))
   (testing "the final page gets no steering line"
-    (is (nil? (common/truncation-line {:param "search" :offset 200 :limit 50 :total 214})))))
+    (is (nil? (common/truncation-line {:param "search" :offset 200 :limit 50 :total 214}))))
+  (testing "a list with nothing to narrow by still steers to the next offset — without a line the
+            caller reads a truncated page as the whole set"
+    (is (= "Returned 50 of 214 — continue with `offset: 50`."
+           (common/truncation-line {:offset 0 :limit 50 :total 214})))
+    (testing "and still goes quiet on the final page"
+      (is (nil? (common/truncation-line {:offset 200 :limit 50 :total 214})))))
+  (testing "an unknown total cannot be reasoned about, so no line either way"
+    (is (nil? (common/truncation-line {:param "search" :offset 0 :limit 50})))
+    (is (nil? (common/truncation-line {:offset 0 :limit 50}))))
+  (testing "GHY-4137: an exact total reads as a plain count"
+    (let [line (common/truncation-line {:param "type" :offset 0 :limit 50 :total 214})]
+      (is (str/includes? line "of 214"))
+      (is (not (str/includes? line "at least")))))
+  (testing "GHY-4137: a floor total (a ranking-capped search count) reads as \"at least N\", so the
+            agent doesn't take a capped total for the full match count"
+    (let [line (common/truncation-line {:param "type" :offset 0 :limit 50 :total 1000 :total-floor? true})]
+      (is (str/includes? line "at least 1000")))))
+
+(deftest ^:parallel list-content-test
+  (testing "a truncated page carries the envelope and the steering line, newline-separated"
+    (let [text (-> (common/list-content [{:id 1}] 214 {:param :type :offset 0 :limit 1})
+                   :content first :text)
+          [body line] (str/split-lines text)]
+      (is (= {:data [{:id 1}] :returned 1 :total 214} (json/decode+kw body)))
+      (is (= "Returned 1 of 214 — narrow with `type`, or continue with `offset: 1`." line))))
+  (testing "a list with no narrowing param still steers to the next offset"
+    (let [text (-> (common/list-content [{:id 1}] 214 {:offset 0 :limit 1})
+                   :content first :text)
+          [_ line] (str/split-lines text)]
+      (is (= "Returned 1 of 214 — continue with `offset: 1`." line))))
+  (testing "an untruncated page is the envelope alone"
+    (let [text (-> (common/list-content [{:id 1}] 1 {:offset 0 :limit 50})
+                   :content first :text)]
+      (is (= {:data [{:id 1}] :returned 1 :total 1} (json/decode+kw text)))
+      (is (not (str/includes? text "\n")))))
+  (testing "empty-hint replaces the steering line when nothing matched at all"
+    (let [text (-> (common/list-content [] 0 {:offset 0 :limit 50 :empty-hint "Nothing here."})
+                   :content first :text)]
+      (is (= "{\"data\":[],\"returned\":0,\"total\":0}\nNothing here." text))))
+  (testing "empty-hint stays quiet when rows exist — an empty page past the end is a paging
+            result, not an empty set, and the hint would be a lie"
+    (let [text (-> (common/list-content [] 214 {:offset 500 :limit 50 :empty-hint "Nothing here."})
+                   :content first :text)]
+      (is (not (str/includes? text "Nothing here.")))))
+  (testing "empty-hint is opt-in — an empty list without one stays bare"
+    (let [text (-> (common/list-content [] 0 {:offset 0 :limit 50})
+                   :content first :text)]
+      (is (not (str/includes? text "\n"))))))
 
 (deftest ^:parallel teaching-error-test
   (testing "teaching errors surface their message as MCP error content"
@@ -37,6 +85,43 @@
       (is (:isError content))
       (is (= "Use `fields` OR `response_format`, not both."
              (-> content :content first :text))))))
+
+(deftest ^:parallel error-redaction-test
+  (let [text #(-> % :content first :text)]
+    (testing "GHY-4137: only deliberately caller-facing errors surface their message — client
+              (4xx) status codes or an explicit ::error-code"
+      (doseq [[label e expected] [["teaching 400"  (ex-info "Use fields OR response_format." {:status-code 400})       "Use fields OR response_format."]
+                                  ["not-found 404" (ex-info "card 7 not found." {:status-code 404})                    "card 7 not found."]
+                                  ["scope 403"     (ex-info "Insufficient scope." {:status-code 403
+                                                                                   ::common/error-code common/error-code-invalid-request}) "Insufficient scope."]]]
+        (testing label
+          (is (= expected (text (common/->mcp-error-content e)))))))
+    (testing "GHY-4137: 402 (missing premium feature) and 409 (conflict) are deliberate
+              caller-facing errors too — a premium-feature check names the missing feature, a
+              conflict names the clashing state, and neither may be redacted to a generic error"
+      (doseq [[label e expected]
+              [["premium-feature 402" (ex-info "Transforms is a paid feature not available on this instance."
+                                               {:status-code 402}) "Transforms is a paid feature not available on this instance."]
+               ["conflict 409"        (ex-info "A snippet named \"totals\" already exists in this collection."
+                                               {:status-code 409}) "A snippet named \"totals\" already exists in this collection."]]]
+        (testing label
+          (is (= expected (text (common/->mcp-error-content e)))))))
+    (testing "internal failures are redacted to a generic message — their real text may embed SQL,
+              schema, or connection detail and must never reach the client"
+      (doseq [[label e] [["projection 500 invariant" (ex-info "No projection registered for type: widget" {:status-code 500})]
+                         ["ex-info with no status-code (library wrap)" (ex-info "Error executing query: SELECT * FROM secret_accounts" {:query {}})]
+                         ["JDBC SQLException" (java.sql.SQLException. "ERROR: relation \"secret_accounts\" does not exist")]
+                         ["NPE naming an internal class" (NullPointerException. "metabase.driver.internal.Foo is null")]]]
+        (testing label
+          (let [content (common/->mcp-error-content e)]
+            (is (:isError content))
+            (is (= "Internal error" (text content)))
+            (is (= common/error-code-internal (::common/error-code content))
+                "internal errors carry the internal JSON-RPC code")))))
+    (testing "an explicit internal ::error-code never surfaces its message even on an ex-info"
+      (is (= "Internal error"
+             (text (common/->mcp-error-content
+                    (ex-info "leaky internal detail" {::common/error-code common/error-code-internal}))))))))
 
 (deftest ^:parallel success-content-test
   (testing "read responses default to text-only"
@@ -230,3 +315,17 @@
           (let [h (mbql-handle! sid uid)]
             (mt/with-no-data-perms-for-all-users!
               (is (= 403 (first (thrown #(common/resolve-query-handle! sid uid h))))))))))))
+
+(deftest resolve-query-handle-for-save-allows-native-test
+  (mt/with-model-cleanup [:model/McpQueryHandle]
+    (let [uid (mt/user->id :rasta)
+          sid (str (random-uuid))]
+      (mt/with-current-user uid
+        (testing "a stored NATIVE query resolves on the save path (no native reject)"
+          (let [native {:database (mt/id)
+                        :stages [{:lib/type "mbql.stage/native" :native "SELECT 1"}]}
+                h (common/mint-query-handle! sid uid (common/encode-serialized-query native))]
+            (is (= native (:query (common/resolve-query-handle-for-save! sid uid h))))))
+        (testing "an unknown handle is a teaching error, not a 500"
+          (is (= [400 "Query handle not found — it may have expired; run the query again."]
+                 (thrown #(common/resolve-query-handle-for-save! sid uid (str (random-uuid)))))))))))

@@ -1,18 +1,33 @@
-import { type ComponentClass, type ReactElement, createElement } from "react";
+import {
+  type ComponentClass,
+  type ReactElement,
+  type ReactNode,
+  createElement,
+} from "react";
 
+import { routeElementToComponent } from "./Outlet";
 import {
   type PlainRoute,
   ReactRouterRoute,
   type RouteProps,
   createRoutes,
 } from "./react-router";
+import { translatePatternToV3 } from "./translate-pattern";
 
 /**
- * Props accepted by the `<Route>` element. Adds react-router v7's `index` on top
- * of v3's route props, so an index route is written `<Route index component={X}/>`
- * instead of the v3 `<IndexRoute>`.
+ * Props accepted by the `<Route>` element. Adds react-router v7's `index` and
+ * `element` on top of v3's route props. `index` registers the route as its
+ * parent's index route (what v3's `<IndexRoute>` did) and works with either
+ * `component` or `element`. `element` is bridged to a v3 `component` that renders
+ * it and exposes the matched child through `<Outlet/>`.
  */
-export type RouteElementProps = RouteProps & { index?: boolean };
+// `component` is intentionally omitted: routes must use `element={<X/>}`. The
+// bridge still sets a `component` on the built v3 route config internally, and
+// the raw v3 `Route` (ReactRouterRoute) remains for the facade's own bootstrap.
+export type RouteElementProps = Omit<RouteProps, "component"> & {
+  index?: boolean;
+  element?: ReactNode;
+};
 
 interface RouteConfigElement {
   (props: RouteElementProps): null;
@@ -50,7 +65,31 @@ export const Route: RouteConfigElement = Object.assign(
       // Rebuild the element as a raw v3 `<Route>` so v3's own builder turns it (and
       // its children) into a route object without dispatching back into this static.
       const { index, ...props } = element.props;
-      const [route] = createRoutes(createElement(ReactRouterRoute, props));
+      // The tree is authored in v7 path syntax; translate to v3 so the v3 engine
+      // matches it. A no-op for ordinary paths. Goes away with the v3 engine.
+      const v3Props =
+        typeof props.path === "string"
+          ? { ...props, path: translatePatternToV3(props.path) }
+          : props;
+      // v3 copies our `element` prop onto the route config but `PlainRoute` does
+      // not type it, so widen the result to read it below.
+      const [route] = createRoutes(
+        createElement(ReactRouterRoute, v3Props),
+      ) as [(PlainRoute & { element?: ReactNode }) | undefined];
+
+      // Bridge `element` onto v3: render it through a `component` that publishes
+      // the matched child on `<Outlet/>`'s context. The `element` stays on the
+      // route config so the bridge component can render it off the injected
+      // `route` prop, letting sibling routes that share a component reconcile
+      // instead of remounting. Goes away at the engine swap.
+      //
+      // The guard is `!== undefined`, not `!= null`, to match v7: an explicit
+      // `element={null}` renders nothing (bridged to a component that renders
+      // null), while an omitted `element` falls through to v3's render-children
+      // default, which is v7's implicit `<Outlet/>`.
+      if (route != null && route.element !== undefined) {
+        route.component = routeElementToComponent(route.element);
+      }
 
       if (index) {
         if (parentRoute && route) {

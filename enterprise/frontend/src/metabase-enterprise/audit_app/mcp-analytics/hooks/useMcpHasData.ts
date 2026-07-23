@@ -23,6 +23,8 @@ type Result = {
   isRefetching: boolean;
   /** Whether the current (resolved) filters match any tool calls. */
   hasData: boolean;
+  /** Total number of tool calls matching the current filters — drives the events pagination. */
+  count: number;
 };
 
 /**
@@ -83,5 +85,6 @@ export function useMcpHasData({
     isInitialLoading: !hasLoadedOnce.current,
     isRefetching: hasLoadedOnce.current && isFetching,
     hasData: count > 0,
+    count,
   };
 }

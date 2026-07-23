@@ -25,6 +25,13 @@
   (when *memory-atom*
     @*memory-atom*))
 
+(defn current-conversation-id
+  "The current conversation's id (a UUID string) from agent memory, or nil outside a
+  conversation-backed run. Tools use it to record which conversation an entity they
+  create came from (e.g. `save_entity` stamps it onto the saved card)."
+  []
+  (:conversation-id (current-memory)))
+
 (defn current-queries-state
   "Returns the current queries state map from agent memory."
   []

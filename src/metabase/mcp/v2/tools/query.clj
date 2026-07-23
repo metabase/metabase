@@ -13,7 +13,9 @@
    kill switch and native-query permission. It also mints a handle on every call (including
    `validate_only`, which replaces v1's `construct_native_query`), so saving or visualizing SQL
    needs no separate construct step. Never a cursor: arbitrary SQL can't be rewritten with a
-   server-side keyset predicate, so truncation steers to narrowing the SQL or `export`.
+   server-side keyset predicate — the server can't know whether the SQL has a total order. The
+   caller does, so truncation steers it to page the SQL itself with a keyset filter, or to narrow
+   the query / raise `row_limit`.
 
    `run_saved_question`: a stored card by numeric id or entity_id, with parameters resolved
    server-side against the card's own parameter list — the stored target and type always
@@ -109,6 +111,22 @@
       (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))
     result))
 
+(defn- execute-page!
+  "Run `serialized-query` for one page of at most `row-limit` rows. Fetches one row past the
+   limit so truncation is *observed* rather than inferred from a full page: a result that fills
+   the page exactly is complete, and is reported that way. Returns
+   `{:cols :rows :returned :truncated?}` with the probe row already dropped, so `rows` is the
+   page and `(last rows)` is a real page boundary."
+  [serialized-query row-limit]
+  (let [result     (execute! serialized-query (inc row-limit))
+        all-rows   (vec (get-in result [:data :rows]))
+        truncated? (> (count all-rows) row-limit)
+        rows       (cond-> all-rows truncated? (subvec 0 row-limit))]
+    {:cols       (get-in result [:data :cols])
+     :rows       rows
+     :returned   (count rows)
+     :truncated? truncated?}))
+
 (defn- last-stage
   [serialized-query]
   (peek (vec (:stages serialized-query))))
@@ -119,24 +137,28 @@
     (boolean (or (seq (:aggregation stage))
                  (seq (:breakout stage))))))
 
-(defn- page-cap
-  "The number of rows this call could return at most — the binding cap between `row-limit` and
-   the query's own last-stage limit. A page that fills to this cap is reported `truncated`."
-  [serialized-query row-limit]
-  (if-let [limit (:limit (last-stage serialized-query))]
-    (min limit row-limit)
-    row-limit))
+(defn- remaining-rows
+  "Rows still owed by the query's own last-stage limit once `returned` of them have been served,
+   or nil when the query carries no limit of its own. That limit bounds the whole result set, so
+   paging has to spend it down across pages rather than reapply it to each one."
+  [serialized-query returned]
+  (when-let [limit (:limit (last-stage serialized-query))]
+    (- limit returned)))
 
 (defn- cursor-query
-  "The query the next-page cursor stores: the page's own query with the served page size
-   embedded as the last-stage limit, so continuing with `cursor` alone serves another page of
-   the same size. An aggregated last stage is passed through unchanged — an embedded limit
-   there would cut the base set before the keyset order can pin it down, and
+  "The query the next-page cursor stores: the page's own query carrying `remaining` — the rows
+   still owed by the query's own limit — as its last-stage limit, so a `limit 500` query pages
+   to row 500 and stops there. A query that set no limit of its own stores none either: a limit
+   at this position reads as the caller's whole-result budget, so embedding the page size there
+   would make the next page look complete the moment it filled, and the chain would stop one
+   page in. Page size is `row_limit`'s job, and a cursor call takes it like any other. An
+   aggregated last stage is passed through unchanged — an embedded limit there would cut the
+   base set before the keyset order can pin it down, and
    [[metabase.mcp.v2.query/next-page-cursor!]] would rightly refuse to mint."
-  [serialized-query page-size]
-  (if (aggregated-last-stage? serialized-query)
+  [serialized-query remaining]
+  (if (or (nil? remaining) (aggregated-last-stage? serialized-query))
     serialized-query
-    (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit] page-size)))
+    (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit] remaining)))
 
 ;;; ------------------------------------------------- Response -----------------------------------------------------
 
@@ -154,8 +176,8 @@
   (if next-cursor
     (format "returned %d rows, more available — continue with `cursor`, or narrow the query (filter/aggregate)"
             returned)
-    (format "returned %d rows — narrow the query (filter/aggregate) or `export` for the full set"
-            returned)))
+    (format "returned %d rows, more available — narrow the query (filter/aggregate), or raise `row_limit` (max %d)"
+            returned max-row-limit)))
 
 (defn- mint-handle!
   [session-id serialized-query prompt]
@@ -164,7 +186,7 @@
                              (common/encode-serialized-query serialized-query)
                              prompt))
 
-(defn- validate-only-response
+(defn- validate-only-response!
   [session-id serialized-query prompt]
   (let [counts {:query_handle (mint-handle! session-id serialized-query prompt)
                 :returned     0
@@ -173,19 +195,18 @@
      (str (json/encode counts)
           "\nQuery validated, not executed — execute or save it later by passing this query_handle."))))
 
-(defn- execute-response
+(defn- execute-response!
   [session-id serialized-query prompt row-limit]
-  (let [result      (execute! serialized-query row-limit)
-        cols        (get-in result [:data :cols])
-        rows        (get-in result [:data :rows])
-        returned    (count rows)
-        cap         (page-cap serialized-query row-limit)
-        truncated?  (and (pos? returned) (= returned cap))
+  (let [{:keys [cols rows returned truncated?]} (execute-page! serialized-query row-limit)
+        ;; `truncated?` is observed, so the query's own limit needs no separate accounting here:
+        ;; a `limit 3` query can never yield a 4th row to trip the probe. `remaining` is still
+        ;; needed to spend that limit down across cursor pages.
+        remaining   (remaining-rows serialized-query returned)
         handle      (mint-handle! session-id serialized-query prompt)
         next-cursor (when truncated?
                       (v2.query/next-page-cursor! session-id
                                                   api/*current-user-id*
-                                                  (cursor-query serialized-query cap)
+                                                  (cursor-query serialized-query remaining)
                                                   (last rows)
                                                   {:result-cols cols :prompt prompt}))
         counts      (cond-> {:query_handle handle
@@ -217,7 +238,7 @@
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-query
-  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks the query against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; when a response carries next_cursor, fetch the next page by calling again with cursor alone, otherwise narrow the query (filter/aggregate) or export for the full set.
+  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks the query against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; when a response carries next_cursor, fetch the next page by calling again with cursor (pass row_limit alongside it to keep the same page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
 
 Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAMES first (search, browse_data) — never invent identifiers, never use numeric ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}. Each stage has \"lib/type\": \"mbql.stage/mbql\" plus either source-table: [\"<db>\", \"<schema-or-null>\", \"<table>\"] or source-card: \"<entity_id>\" on the FIRST stage only; later stages implicitly read the previous stage's output. Every clause is [\"op\", {}, ...args] with a MANDATORY options map at position 1. Field refs are [\"field\", {}, [\"<db>\", \"<schema-or-null>\", \"<table>\", \"<column>\"]] — a 4-segment portable name array — or a bare column-name string for a previous stage's output ([\"field\", {}, \"count\"]). Per-stage clause keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Minimal example (order count by month): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}. The full grammar (operators, joins, expressions, multi-stage queries) is available as an MCP resource. Native SQL is rejected at any depth — use execute_sql for raw SQL."
   {:name        "execute_query"
@@ -226,10 +247,14 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
    :args        execute-query-args-schema}
   [{:keys [validate_only row_limit] :as args} {:keys [session-id]}]
   (let [input (query-input args)
-        {serialized-query :query prompt :prompt} (resolve-input input args session-id)]
+        {resolved :query prompt :prompt} (resolve-input input args session-id)
+        ;; The total order goes on before the query runs, not when the cursor is minted: a page
+        ;; is continuable only if it was served in the order the keyset seeks past. Handles are
+        ;; minted from this query, so what a later call re-runs is what ran here.
+        serialized-query (v2.query/with-total-order resolved)]
     (if (true? validate_only)
-      (validate-only-response session-id serialized-query prompt)
-      (execute-response session-id serialized-query prompt (or row_limit default-row-limit)))))
+      (validate-only-response! session-id serialized-query prompt)
+      (execute-response! session-id serialized-query prompt (or row_limit default-row-limit)))))
 
 ;;; ------------------------------------------------ execute_sql ---------------------------------------------------
 
@@ -308,29 +333,31 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
 
 (defn- sql-steering-line
   [returned]
-  (format "returned %d rows — narrow the SQL (add filters/aggregation) or export for the full set"
-          returned))
+  ;; The keyset hint is execute_sql's alone. The MBQL dead end it mirrors is the fan-out join,
+  ;; where a keyset is unsound — that is why that path refuses to mint a cursor — so suggesting
+  ;; one there would hand back the gapped pagination the refusal exists to prevent. Here the
+  ;; caller wrote the SQL and knows its key, which is the information the server lacks.
+  (format (str "returned %d rows, more available — narrow the SQL (add filters/aggregation), "
+               "raise `row_limit` (max %d), or page with `ORDER BY <unique key>` + "
+               "`WHERE <key> > <last value returned>`")
+          returned max-row-limit))
 
-(defn- validate-sql-response
-  [session-id serialized-query]
-  (let [counts {:query_handle (mint-handle! session-id serialized-query nil)
+(defn- validate-sql-response!
+  [session-id serialized-query prompt]
+  (let [counts {:query_handle (mint-handle! session-id serialized-query prompt)
                 :returned     0
                 :truncated    false}]
     (common/success-content
      (str (json/encode counts)
           "\nSQL accepted, not executed — template tags and permissions were checked; the SQL text itself was not validated. Execute, save, or visualize it later by passing this query_handle."))))
 
-(defn- execute-sql-response
-  [session-id serialized-query row-limit]
-  (let [result     (execute! serialized-query row-limit)
-        cols       (get-in result [:data :cols])
-        rows       (get-in result [:data :rows])
-        returned   (count rows)
-        ;; Native rows arrive already truncated by the `:max-results` constraint, so a page
-        ;; that fills `row-limit` is reported truncated — a result set exactly that size is
-        ;; the same false positive execute_query accepts.
-        truncated? (and (pos? returned) (= returned row-limit))
-        counts     {:query_handle (mint-handle! session-id serialized-query nil)
+(defn- execute-sql-response!
+  [session-id serialized-query prompt row-limit]
+  (let [;; The probe row matters more here than on the MBQL path: with no cursor to page, a
+        ;; complete result mis-reported as truncated would steer the agent to rewrite SQL that
+        ;; was already right, and nothing downstream could correct it.
+        {:keys [cols rows returned truncated?]} (execute-page! serialized-query row-limit)
+        counts     {:query_handle (mint-handle! session-id serialized-query prompt)
                     :returned     returned
                     :truncated    truncated?}
         payload    (assoc counts
@@ -348,18 +375,25 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
     [:string {:min 1 :description "The raw SQL text, run verbatim against the database. Put caller-supplied values behind {{tag}} placeholders bound via template_tag_values — never splice them into this string."}]]
    [:template_tag_values {:optional true}
     [:maybe [:map-of {:description "Values for the {{tag}} placeholders in sql, keyed by tag name. Each value binds as a driver-level prepared-statement parameter (injection-safe): strings bind as text, numbers as numbers. Snippet ({{snippet: …}}) and card-reference ({{#123}}) tags cannot be populated here."}
+             ;; No date case: a date value arrives as a JSON string and binds as `:text`, which
+             ;; the warehouse coerces. A `:date` tag type would change the QP's parsing, so it
+             ;; needs an explicit caller signal rather than a guess at the string's shape.
              :keyword [:or :string number? :boolean]]]]
+   [:prompt {:optional true}
+    [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle so visualize_query can surface it in the feedback flow."}]]]
    [:validate_only {:optional true}
     [:maybe [:boolean {:description "true mints a query_handle without executing — template tags and permissions are checked, the SQL text itself is not (default false)."}]]]
    [:row_limit {:optional true}
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-sql
-  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the target database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql string runs verbatim against the warehouse, so it is the injection surface — never splice caller-supplied or user-supplied values into it. Put values behind {{tag}} placeholders and pass them in template_tag_values instead: they bind as driver-level prepared-statement parameters, injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (template tags and permissions checked; the SQL text itself is not validated) — use it to stage SQL for saving or visualizing without pulling rows into context. Every call returns a query_handle accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination for SQL: when a result is truncated, narrow the SQL (add filters/aggregation) or export for the full set."
+  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the target database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql string runs verbatim against the warehouse, so it is the injection surface — never splice caller-supplied or user-supplied values into it. Put values behind {{tag}} placeholders and pass them in template_tag_values instead: they bind as driver-level prepared-statement parameters, injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (template tags and permissions checked; the SQL text itself is not validated) — use it to stage SQL for saving or visualizing without pulling rows into context. Every call returns a query_handle accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination for SQL: the server cannot page arbitrary SQL soundly, because it cannot know whether your query has a total order. You can, so page it yourself — re-run with ORDER BY on a unique key and a WHERE <key> > <last value returned> filter, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (add filters/aggregation) or raise row_limit (max 2000)."
+  ;; No `:readOnlyHint` — unlike execute_query, arbitrary SQL can write. MCP's defaults for an
+  ;; unannotated tool (not read-only, possibly destructive) are the honest ones here.
   {:name  "execute_sql"
    :scope metabot.scope/agent-sql-execute
    :args  execute-sql-args-schema}
-  [{:keys [database_id sql template_tag_values validate_only row_limit]} {:keys [session-id]}]
+  [{:keys [database_id sql template_tag_values prompt validate_only row_limit]} {:keys [session-id]}]
   (check-execute-sql-gates! database_id)
   (let [mp    (lib-be/application-database-metadata-provider database_id)
         query (lib/native-query mp sql)
@@ -369,11 +403,17 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
         ;; Re-attached after serialization (which strips `:parameters` as runtime-only) so the
         ;; execution and the minted handle both carry the bound values: what the agent later
         ;; visualizes or re-runs through the handle is exactly what ran here.
+        ;;
+        ;; This makes the stored query deliberately wider than the app-DB shape —
+        ;; [[metabase.lib.schema]]'s serialize-query strips `:parameters` because it "doesn't get
+        ;; saved along with the query in the app DB". Re-run and visualize want it; a consumer
+        ;; that saves the handle as a card must lift these into the card's own `:parameters` (or
+        ;; template-tag `:default`s) rather than storing them inside `dataset_query`.
         serialized (cond-> (lib/prepare-for-serialization query)
                      (seq parameters) (assoc :parameters parameters))]
     (if (true? validate_only)
-      (validate-sql-response session-id serialized)
-      (execute-sql-response session-id serialized (or row_limit default-row-limit)))))
+      (validate-sql-response! session-id serialized prompt)
+      (execute-sql-response! session-id serialized prompt (or row_limit default-row-limit)))))
 
 ;;; --------------------------------------------- run_saved_question -----------------------------------------------
 

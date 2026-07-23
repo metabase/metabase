@@ -32,10 +32,10 @@ import { McpEventsTable } from "./McpEventsTable";
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
 export function McpAnalyticsPage({ location, router }: WithRouterProps) {
-  const [{ date, user, group, tenant, tab }, { patchUrlState }] = useUrlState(
-    location,
-    mcpUrlStateConfig,
-  );
+  const [
+    { date, user, group, tenant, tab, page, sortColumn, sortDirection },
+    { patchUrlState },
+  ] = useUrlState(location, mcpUrlStateConfig);
 
   const {
     dateFilter,
@@ -67,7 +67,7 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
 
   const chartFilters = { dateFilter, userId, groupId, tenantId };
 
-  const { isInitialLoading, isRefetching, hasData } = useMcpHasData({
+  const { isInitialLoading, isRefetching, hasData, count } = useMcpHasData({
     ...dataSources,
     ...chartFilters,
   });
@@ -104,16 +104,16 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
 
           <McpToolCallsFilter
             date={date}
-            onDateChange={(val) => patchUrlState({ date: val })}
+            onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
             user={user}
-            onUserChange={(val) => patchUrlState({ user: val })}
+            onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
             userOptions={userOptions}
             group={group}
-            onGroupChange={(val) => patchUrlState({ group: val })}
+            onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
             groupOptions={groupOptions}
             groupNoFilterValue={groupNoFilterValue}
             tenant={tenant}
-            onTenantChange={(val) => patchUrlState({ tenant: val })}
+            onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
             tenantOptions={tenantOptions}
             hasTenants={hasTenants}
           />
@@ -204,6 +204,20 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
                   {...chartFilters}
                   hasTenants={hasTenants}
                   hasPii={hasPii}
+                  page={page}
+                  total={count}
+                  onPageChange={(newPage) => patchUrlState({ page: newPage })}
+                  sortingOptions={{
+                    sort_column: sortColumn,
+                    sort_direction: sortDirection,
+                  }}
+                  onSortingOptionsChange={(newSorting) =>
+                    patchUrlState({
+                      sortColumn: newSorting.sort_column,
+                      sortDirection: newSorting.sort_direction,
+                      page: 0,
+                    })
+                  }
                 />
               </Tabs.Panel>
             </Tabs>

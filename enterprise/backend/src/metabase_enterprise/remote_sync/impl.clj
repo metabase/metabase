@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
+   [metabase-enterprise.data-apps.sync :as data-apps.sync]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -311,6 +312,19 @@
   (and (some? pre-task-branch)
        (not= pre-task-branch (settings/remote-sync-branch))))
 
+(defn- materialize-data-apps!
+  "After a successful content import, materialize data apps from the same
+   snapshot. Data apps live under `data_apps/` in the repo (outside the serdes
+   paths), so they ride this import rather than having their own sync. Adapts the
+   snapshot to plain reader fns; `data-apps.sync/sync-from-snapshot!` never throws."
+  [^SourceSnapshot snapshot]
+  ;; `read-file` returns file text (a string) or nil; data-apps.sync converts to
+  ;; bytes on its side, keeping all Java interop out of this namespace.
+  (data-apps.sync/sync-from-snapshot!
+   {:read-file  (fn [path] (source.p/read-file snapshot path))
+    :list-files (fn [] (source.p/list-files snapshot))
+    :sha        (source.p/version snapshot)}))
+
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -382,6 +396,20 @@
   [imported-data]
   (transduce (map count) + 0 (concat (vals (:by-entity-id imported-data))
                                      (vals (:by-path imported-data)))))
+
+(defn- fold-data-app-changes
+  "Fold the count of data apps a pull changed — upserted *or* removed — into its
+  `:outcome`. Data apps live under `data_apps/` — outside serdes — and are
+  materialized separately (see [[materialize-data-apps!]]), so they're invisible
+  to [[pulled-change-count]]. Without this, a pull whose only changes are data
+  apps (including one that only deletes an app) reports `pull-skipped` /
+  `count 0`. Caller guarantees `da-changed` is positive."
+  [outcome da-changed]
+  (case (:kind outcome)
+    "pull-skipped" {:kind "pulled" :count da-changed :branch (settings/remote-sync-branch)}
+    "pulled"       (update outcome :count (fnil + 0) da-changed)
+    "merged"       (update outcome :pulled (fnil + 0) da-changed)
+    outcome))
 
 (defn- incremental-import-plan
   "What an incremental load would touch, or [[incremental-not-possible]] if the change must fall back to a full
@@ -566,90 +594,105 @@
                                      (not force-deletion?)
                                      (into (:deletion-conflicts @conflicts)))))
             incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
-            dirty?             (delay (remote-sync.object/dirty?))]
-        (cond
-          ;; --- Merge mode: fold remote changes into local, keeping un-pushed local changes. ---
-          merge?
-          (cond
-            ;; No safe merge base (no prior sync, or base orphaned by a force-push/rebase) — can't 3-way merge.
-            (nil? base-snapshot)
-            {:status    :conflict
-             :version   snapshot-version
-             :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-             :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
+            dirty?             (delay (remote-sync.object/dirty?))
+            result
+            (cond
+              ;; --- Merge mode: fold remote changes into local, keeping un-pushed local changes. ---
+              merge?
+              (cond
+                ;; No safe merge base (no prior sync, or base orphaned by a force-push/rebase) — can't 3-way merge.
+                (nil? base-snapshot)
+                {:status    :conflict
+                 :version   snapshot-version
+                 :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+                 :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
 
-            ;; Remote hasn't advanced past the merge base — nothing to fold in; keep local changes dirty.
-            (= (source.p/version base-snapshot) snapshot-version)
-            (do
-              (log/info "Pull merge: remote has not advanced; keeping local changes unchanged")
-              {:status        :success
-               :version       snapshot-version
-               :merge-summary {:added 0 :updated 0 :removed 0}
-               :outcome       {:kind "pull-skipped"}})
+                ;; Remote hasn't advanced past the merge base — nothing to fold in; keep local changes dirty.
+                (= (source.p/version base-snapshot) snapshot-version)
+                (do
+                  (log/info "Pull merge: remote has not advanced; keeping local changes unchanged")
+                  {:status        :success
+                   :version       snapshot-version
+                   :merge-summary {:added 0 :updated 0 :removed 0}
+                   :outcome       {:kind "pull-skipped"}})
 
-            :else
-            (import-merged! snapshot base-snapshot task-id sync-timestamp))
+                :else
+                (import-merged! snapshot base-snapshot task-id sync-timestamp))
 
-          ;; --- Forced reload: bypasses the no-op/incremental guards. Deletion conflicts (when
-          ;; force-deletion? is false) still block; otherwise a full reload. ---
-          force?
-          (cond
-            (seq @blocking-conflicts)
-            (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
-              (log/info message)
-              {:status :conflict
-               :version snapshot-version
-               :conflicts (into #{} (map :category) @blocking-conflicts)
-               :conflict-details @blocking-conflicts
-               :message message})
+              ;; --- Forced reload: bypasses the no-op/incremental guards. Deletion conflicts (when
+              ;; force-deletion? is false) still block; otherwise a full reload. ---
+              force?
+              (cond
+                (seq @blocking-conflicts)
+                (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
+                  (log/info message)
+                  {:status :conflict
+                   :version snapshot-version
+                   :conflicts (into #{} (map :category) @blocking-conflicts)
+                   :conflict-details @blocking-conflicts
+                   :message message})
 
-            :else
-            (let [_             (log/info "Remote sync full import: forced")
-                  imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
-              (log/info "Successfully reloaded entities from git repository")
-              {:status :success
-               :version snapshot-version
-               :outcome {:kind "pulled"
-                         :count (pulled-change-count imported-data)
-                         :branch (settings/remote-sync-branch)}}))
+                :else
+                (let [_             (log/info "Remote sync full import: forced")
+                      imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+                  (log/info "Successfully reloaded entities from git repository")
+                  {:status :success
+                   :version snapshot-version
+                   :outcome {:kind "pulled"
+                             :count (pulled-change-count imported-data)
+                             :branch (settings/remote-sync-branch)}}))
 
-          ;; --- Normal pull ---
-          ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
-          (= last-imported-version snapshot-version)
-          (do
-            (log/infof "Skipping import: snapshot version %s matches last imported version" snapshot-version)
-            {:status :success
-             :version snapshot-version
-             :outcome {:kind "pull-skipped"}})
+              ;; --- Normal pull ---
+              ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
+              (= last-imported-version snapshot-version)
+              (do
+                (log/infof "Skipping import: snapshot version %s matches last imported version" snapshot-version)
+                {:status :success
+                 :version snapshot-version
+                 :outcome {:kind "pull-skipped"}})
 
-          ;; Incremental fast-path: no local drift and the change is incrementally loadable. Tested before the
-          ;; conflict. It touches only changed files, so it can't wholesale-delete unsynced transforms.
-          (and (not @dirty?)
-               (not= :remote-sync/incremental-not-possible @incremental-plan))
-          (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
+              ;; Incremental fast-path: no local drift and the change is incrementally loadable. Tested before the
+              ;; conflict. It touches only changed files, so it can't wholesale-delete unsynced transforms.
+              (and (not @dirty?)
+                   (not= :remote-sync/incremental-not-possible @incremental-plan))
+              (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
 
-          (seq @blocking-conflicts)
-          (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
-            (log/info message)
-            {:status :conflict
-             :version snapshot-version
-             :conflicts (into #{} (map :category) @blocking-conflicts) ; Backward compat: set of category names
-             :conflict-details @blocking-conflicts
-             :message message})
+              (seq @blocking-conflicts)
+              (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
+                (log/info message)
+                {:status :conflict
+                 :version snapshot-version
+                 :conflicts (into #{} (map :category) @blocking-conflicts) ; Backward compat: set of category names
+                 :conflict-details @blocking-conflicts
+                 :message message})
 
-          :else ;; fall back to full import
-          (let [reason        (cond
-                                @dirty?       "local changes pending"
-                                first-import? "first import"
-                                :else         "changes not incrementally loadable")
-                _             (log/infof "Remote sync full import: %s" reason)
-                imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
-            (log/info "Successfully reloaded entities from git repository")
-            {:status :success
-             :version snapshot-version
-             :outcome {:kind "pulled"
-                       :count (pulled-change-count imported-data)
-                       :branch (settings/remote-sync-branch)}})))
+              :else ;; fall back to full import
+              (let [reason        (cond
+                                    @dirty?       "local changes pending"
+                                    first-import? "first import"
+                                    :else         "changes not incrementally loadable")
+                    _             (log/infof "Remote sync full import: %s" reason)
+                    imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+                (log/info "Successfully reloaded entities from git repository")
+                {:status :success
+                 :version snapshot-version
+                 :outcome {:kind "pulled"
+                           :count (pulled-change-count imported-data)
+                           :branch (settings/remote-sync-branch)}}))]
+        ;; Data apps ride the pull: re-materialize from the real source snapshot
+        ;; (the repo file tree under `data_apps/`), not the synthetic merged
+        ;; snapshot `load-snapshot!` sees. They're counted outside serdes, so fold
+        ;; how many they upserted or removed into the outcome — otherwise a
+        ;; data-app-only pull would report `pull-skipped` / `count 0`.
+        (if (= :success (:status result))
+          (let [da-result  (materialize-data-apps! snapshot)
+                ;; Removals count too: a pull whose only change is deleting an app
+                ;; directory upserts nothing (`:changed` 0) but still changed what
+                ;; this instance serves, so it must report as a pull, not skipped.
+                da-changed (+ (:changed da-result 0) (:removed da-result 0))]
+            (cond-> result
+              (pos? da-changed) (update :outcome fold-data-app-changes da-changed)))
+          result))
       (catch Exception e
         ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and
         ;; return a user-friendly :error result.
@@ -658,7 +701,7 @@
           (do
             (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
             (analytics/inc! :metabase-remote-sync/imports-failed)
-            {:status :error
+            {:status  :error
              :message (source-error-message e)
              :version (source.p/version snapshot)
              :details {:error-type (type e)}})))
@@ -668,24 +711,27 @@
 (defn- commit-staged!
   "Open a commit on `snapshot`, stage into it via `stage-fn`, then finish it.
 
-  `stage-fn` will be passed the open commit. It should return the synced write-rows.
+  `stage-fn` will be passed the open commit. It should return the synced write-rows. `report-progress`, when
+  non-nil, is a reporter fn forwarded unchanged to `finish-commit!` (fired forced at the commit checkpoint,
+  before the push, then throttled during the push itself).
 
   Will abort the commit if it is empty.
 
   Returns `[version, write-rows]` where version is the new commit SHA or `:remote-sync/empty-commit` if empty.
 
   Will abort the commit and throw on any Throwable."
-  [snapshot message stage-fn]
-  (let [commit (source.p/open-commit snapshot)]
-    (try
-      (let [synced  (stage-fn commit)
-            version (if (source.p/empty-commit? commit)
-                      (do (source.p/abort-commit! commit) :remote-sync/empty-commit)
-                      (source.p/finish-commit! commit message))]
-        [synced version])
-      (catch Throwable e
-        (source.p/abort-commit! commit)
-        (throw e)))))
+  ([snapshot message stage-fn] (commit-staged! snapshot message stage-fn nil))
+  ([snapshot message stage-fn report-progress]
+   (let [commit (source.p/open-commit snapshot)]
+     (try
+       (let [synced  (stage-fn commit)
+             version (if (source.p/empty-commit? commit)
+                       (do (source.p/abort-commit! commit) :remote-sync/empty-commit)
+                       (source.p/finish-commit! commit message report-progress))]
+         [synced version])
+       (catch Throwable e
+         (source.p/abort-commit! commit)
+         (throw e))))))
 
 (defn- export-merged!
   "Export when the remote branch has advanced beyond the last synced version. Runs an entity-identity 3-way merge of
@@ -996,13 +1042,22 @@
   "Stage WriteRows ({:model_type :model_id, optional :id/:file_path}) to `commit`, chunking internally per
   model type so each chunk's entities load in one query with bounded memory. Callers pass a flat seq.
 
+  `on-chunk`, when non-nil, is called once per staged chunk with the cumulative number of rows staged so
+  far — used to drive serialize-phase progress. It must not realize `rows`.
+
   Returns:
    - [{:id :file_path :content_hash}]"
-  [commit opts rows]
-  (->> rows
-       (->sized-chunks)
-       (mapcat #(chunk-stage-writes commit opts %))
-       (doall)))
+  ([commit opts rows] (stage-writes commit opts rows nil))
+  ([commit opts rows on-chunk]
+   (let [staged (volatile! 0)]
+     (->> rows
+          (->sized-chunks)
+          (mapcat (fn [chunk]
+                    (let [res (chunk-stage-writes commit opts chunk)]
+                      (vswap! staged + (count (:rows chunk)))
+                      (when on-chunk (on-chunk @staged))
+                      res)))
+          (doall)))))
 
 (defn- stage-deletes [commit delete-paths]
   (doseq [delete-path delete-paths]
@@ -1052,6 +1107,9 @@
                                                         hits)
                                                 [:else :content_hash]))))))))
 
+(def ^:private export-progress-plan-done 0.33) ; phase 1 (plan) complete / serialize start
+(def ^:private export-progress-serialize 0.66) ; phase 2 (serialize) complete
+
 (defn- full-export!
   "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject.
 
@@ -1059,39 +1117,56 @@
    - {:status :success}
    or throws"
   [snapshot task-id message sync-timestamp]
-  (let [export-rows (exportable-write-rows)]
+  (let [export-rows (vec (exportable-write-rows))]
     (when (empty? export-rows)
       (throw (ex-info "No remote-syncable content available." {})))
-    (remote-sync.task/update-progress! task-id 0.3)
-    (let [opts             (serdes/storage-base-context)
-          [synced version] (commit-staged! snapshot message
-                                           (fn [commit]
-                                             (source.p/replace-all! commit) ; replace the managed dirs wholesale
-                                             (stage-writes commit opts export-rows)))]
-      (t2/with-transaction [_]
-        (when-not (= version :remote-sync/empty-commit)
-          (remote-sync.task/set-version! task-id version))
-        (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
-          (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-        (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
-      (if (= version :remote-sync/empty-commit)
-        (do
-          (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
-          {:status :success :outcome {:kind "push-skipped"}})
-        {:status :success
-         :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}}))))
+    (let [report (remote-sync.task/make-progress-reporter task-id)
+          total  (count export-rows)
+          span   (- export-progress-serialize export-progress-plan-done)]
+      (report export-progress-plan-done {:force? true})
+      (let [opts             (serdes/storage-base-context)
+            [synced version] (commit-staged! snapshot message
+                                             (fn [commit]
+                                               (source.p/replace-all! commit) ; replace the managed dirs wholesale
+                                               (let [synced (stage-writes commit opts export-rows
+                                                                          (fn [staged]
+                                                                            (report (+ export-progress-plan-done
+                                                                                       (* span (/ staged total))))))]
+                                                 (report export-progress-serialize {:force? true})
+                                                 synced))
+                                             report)]
+        (t2/with-transaction [_]
+          (when-not (= version :remote-sync/empty-commit)
+            (remote-sync.task/set-version! task-id version))
+          (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
+            (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
+        (if (= version :remote-sync/empty-commit)
+          (do
+            (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
+            {:status :success :outcome {:kind "push-skipped"}})
+          {:status :success
+           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
   (let [{:keys [writes delete-paths removed-ids]} plan
-        delete-paths (into (vec delete-paths) disabled-files)]
-    (remote-sync.task/update-progress! task-id 0.3)
+        delete-paths (into (vec delete-paths) disabled-files)
+        report       (remote-sync.task/make-progress-reporter task-id)
+        total        (max 1 (count writes))
+        span         (- export-progress-serialize export-progress-plan-done)]
+    (report export-progress-plan-done {:force? true})
     (let [opts             (serdes/storage-base-context)
           [synced version] (commit-staged! snapshot message
                                            (fn [commit]
-                                             (let [synced (stage-writes commit opts writes)]
+                                             (let [synced (stage-writes commit opts writes
+                                                                        (fn [staged]
+                                                                          (report (+ export-progress-plan-done
+                                                                                     (* span (/ staged total))))))]
                                                (stage-deletes commit delete-paths)
-                                               synced)))]
+                                               (report export-progress-serialize {:force? true})
+                                               synced))
+                                           report)]
       (t2/with-transaction [_]
         (when-not (= version :remote-sync/empty-commit)
           (remote-sync.task/set-version! task-id version))

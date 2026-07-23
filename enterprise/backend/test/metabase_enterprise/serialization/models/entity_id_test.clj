@@ -54,6 +54,7 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataApp
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
