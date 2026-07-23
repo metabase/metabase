@@ -33,9 +33,10 @@ export function useMetricAboutQuery(
         dimension.default && dimension.status !== "status/orphaned",
     )?.id ?? null;
 
-  const dimensionDescriptors = definition
-    ? getDimensionDescriptors(definition)
-    : null;
+  const dimensionDescriptors = useMemo(
+    () => (definition ? getDimensionDescriptors(definition) : null),
+    [definition],
+  );
   const dimensionOptions =
     metric?.dimensions.flatMap((dimension) => {
       const descriptor = dimensionDescriptors?.get(dimension.id);

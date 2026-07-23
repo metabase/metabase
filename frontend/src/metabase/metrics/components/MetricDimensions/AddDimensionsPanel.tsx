@@ -5,8 +5,10 @@ import {
   useAddMetricDimensionsMutation,
   useListMetricDimensionsQuery,
 } from "metabase/api/metric";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -30,7 +32,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./MetricDimensions.module.css";
-import { getDimensionIcon, getNewDimensionTitle } from "./utils";
+import { getNewDimensionTitle } from "./utils";
 
 interface AddDimensionsPanelProps {
   metricId: MetricId;
@@ -53,6 +55,8 @@ export function AddDimensionsPanel({
 
   const groups = data?.addable ?? [];
   const groupIds = groups.map(({ group }) => group.id);
+  const isSearchActive = search.length > 0 || Boolean(debouncedSearch);
+  const isEmpty = groups.length === 0;
 
   const handleAdd = async (
     group: MetricDimensionGroup,
@@ -87,59 +91,72 @@ export function AddDimensionsPanel({
         <Button variant="filled" onClick={onDone} size="sm">{t`Done`}</Button>
       </Group>
 
-      <TextInput
-        classNames={{ input: S.searchInput }}
-        placeholder={t`Search…`}
-        value={search}
-        leftSection={<Icon name="search" />}
-        onChange={(event) => setSearch(event.currentTarget.value)}
-      />
+      {(!isEmpty || isSearchActive) && (
+        <TextInput
+          classNames={{ input: S.searchInput }}
+          placeholder={t`Search…`}
+          value={search}
+          leftSection={<Icon name="search" />}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+        />
+      )}
 
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-        <ScrollArea className={S.scrollArea} offsetScrollbars="present">
-          <Accordion
-            key={groupIds.join(",")}
-            className={S.accordion}
-            classNames={{
-              item: S.item,
-              control: S.control,
-              label: S.label,
-              chevron: S.chevron,
-              content: S.content,
-            }}
-            multiple
-            defaultValue={groupIds}
-          >
-            {groups.map(({ group, dimensions }) => (
-              <Accordion.Item key={group.id} value={group.id}>
-                <Accordion.Control
-                  icon={<Icon name="table" c="text-secondary" />}
-                >
-                  {group.display_name}
-                </Accordion.Control>
-                <Accordion.Panel>
-                  <Stack gap="sm">
-                    {dimensions.map((dimension) => (
-                      <UnstyledButton
-                        key={dimension.id}
-                        className={S.addableRow}
-                        onClick={() => handleAdd(group, dimension)}
-                      >
-                        <Group gap="sm" wrap="nowrap">
-                          <Icon
-                            name={getDimensionIcon(dimension)}
-                            c="text-secondary"
-                          />
-                          <Text>{dimension.display_name}</Text>
-                        </Group>
-                      </UnstyledButton>
-                    ))}
-                  </Stack>
-                </Accordion.Panel>
-              </Accordion.Item>
-            ))}
-          </Accordion>
-        </ScrollArea>
+        {isEmpty ? (
+          <EmptyState
+            className={S.emptyState}
+            message={
+              isSearchActive
+                ? t`No dimensions match your search.`
+                : t`All available dimensions have been added`
+            }
+          />
+        ) : (
+          <ScrollArea className={S.scrollArea} offsetScrollbars="present">
+            <Accordion
+              key={groupIds.join(",")}
+              className={S.accordion}
+              classNames={{
+                item: S.item,
+                control: S.control,
+                label: S.label,
+                chevron: S.chevron,
+                content: S.content,
+              }}
+              multiple
+              defaultValue={groupIds}
+            >
+              {groups.map(({ group, dimensions }) => (
+                <Accordion.Item key={group.id} value={group.id}>
+                  <Accordion.Control
+                    icon={<Icon name="table" c="text-secondary" />}
+                  >
+                    {group.display_name}
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <Stack gap="sm">
+                      {dimensions.map((dimension) => (
+                        <UnstyledButton
+                          key={dimension.id}
+                          className={S.addableRow}
+                          onClick={() => handleAdd(group, dimension)}
+                        >
+                          <Group gap="sm" wrap="nowrap">
+                            <Icon
+                              name={getDimensionIcon(dimension)}
+                              c="text-secondary"
+                            />
+                            <Text>{dimension.display_name}</Text>
+                          </Group>
+                        </UnstyledButton>
+                      ))}
+                    </Stack>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              ))}
+            </Accordion>
+          </ScrollArea>
+        )}
       </LoadingAndErrorWrapper>
     </Stack>
   );

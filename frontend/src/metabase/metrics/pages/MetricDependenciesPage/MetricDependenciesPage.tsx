@@ -32,7 +32,7 @@ export function MetricDependenciesPage({
               defaultEntry: { id: card.id, type: "card" },
             }}
           >
-            <Card withBorder p={0} flex={1}>
+            <Card withBorder shadow="none" p={0} flex={1}>
               <Outlet />
             </Card>
           </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>

@@ -347,7 +347,7 @@ describe("MetricAbout", () => {
       });
 
       const dimensionSelect = await screen.findByRole("button", {
-        name: "Dimension",
+        name: "Select dimension: Created At",
       });
       expect(dimensionSelect).toHaveTextContent("Created At");
 
@@ -359,6 +359,12 @@ describe("MetricAbout", () => {
         within(categoryOption).getByLabelText("string icon"),
       );
       await userEvent.click(categoryOption);
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Select dimension: Product Category",
+        }),
+      ).toBeInTheDocument();
 
       await waitFor(() => {
         expect(fetchMock.callHistory.calls("metric-dataset")).toHaveLength(2);
@@ -407,7 +413,7 @@ describe("MetricAbout", () => {
       });
 
       const dimensionSelect = await screen.findByRole("button", {
-        name: "Dimension",
+        name: "Select dimension: Quantity: 8 bins",
       });
       expect(dimensionSelect).toHaveTextContent("Quantity: 8 bins");
 
@@ -484,7 +490,7 @@ describe("MetricAbout", () => {
         "150",
       );
       expect(
-        screen.queryByRole("button", { name: "Dimension" }),
+        screen.queryByRole("button", { name: /Select dimension:/ }),
       ).not.toBeInTheDocument();
       expect(await getMetricDatasetRequest()).toEqual(
         expect.objectContaining({

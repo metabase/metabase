@@ -48,7 +48,7 @@ export function DimensionSelect({
     >
       <Combobox.Target>
         <UnstyledButton
-          aria-label={t`Dimension`}
+          aria-label={t`Select dimension: ${label}`}
           className={S.trigger}
           onClick={() => combobox.toggleDropdown()}
         >

@@ -104,6 +104,7 @@ export function MetricDimensions({
           isLoading={isLoading}
           error={error}
           search={search}
+          isSearchActive={search.length > 0 || Boolean(debouncedSearch)}
           checkedIds={checkedIds}
           activeId={activeId}
           isAddDisabled={mode.type === "add" || checkedIds.size > 0}

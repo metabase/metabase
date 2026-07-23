@@ -104,18 +104,12 @@ export const cardApi = Api.injectEndpoints({
       >({
         // `_refetchDeps` is part of the RTK cache key (so imperative runners can
         // force a unique key per call) but must not be sent to the server.
-        query: ({
-          cardId,
-          dashboardId,
-          dashboard_id,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ cardId, dashboardId, _refetchDeps, ...body }) => ({
           method: "POST",
           url: `/api/card/${cardId}/query`,
           body: {
             ...body,
-            dashboard_id: dashboard_id ?? dashboardId,
+            dashboard_id: dashboardId,
           },
         }),
         providesTags: (_data, _error, { cardId }) =>
@@ -125,18 +119,12 @@ export const cardApi = Api.injectEndpoints({
         Dataset,
         CardQueryRequest & { _refetchDeps?: unknown }
       >({
-        query: ({
-          cardId,
-          dashboardId,
-          dashboard_id,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ cardId, dashboardId, _refetchDeps, ...body }) => ({
           method: "POST",
           url: `/api/card/pivot/${cardId}/query`,
           body: {
             ...body,
-            dashboard_id: dashboard_id ?? dashboardId,
+            dashboard_id: dashboardId,
           },
         }),
         providesTags: (_data, _error, { cardId }) =>

@@ -26,19 +26,33 @@ export function setupMetricDimensionsEndpoints(
   metricId: MetricId,
   response: ListMetricDimensionsResponse,
 ) {
-  // Reorder mutates this so subsequent GETs reflect the persisted order.
+  // Mutations update this so subsequent GETs reflect persisted dimensions.
   let added = [...response.added];
 
   fetchMock.get(
     `path:/api/metric/${metricId}/dimension`,
     (call) => {
-      const query = new URL(call.url).searchParams.get("query")?.toLowerCase();
-      const filtered = query
+      const searchParams = new URL(call.url).searchParams;
+      const query = searchParams.get("query")?.toLowerCase();
+      const filteredAdded = query
         ? added.filter((dimension) =>
             dimension.display_name.toLowerCase().includes(query),
           )
         : added;
-      return { added: filtered, addable: response.addable };
+      const addable =
+        searchParams.get("with-addable") === "true"
+          ? response.addable
+              .map(({ group, dimensions }) => ({
+                group,
+                dimensions: query
+                  ? dimensions.filter((dimension) =>
+                      dimension.display_name.toLowerCase().includes(query),
+                    )
+                  : dimensions,
+              }))
+              .filter(({ dimensions }) => dimensions.length > 0)
+          : [];
+      return { added: filteredAdded, addable };
     },
     { name: `metric-${metricId}-dimensions-list` },
   );
@@ -47,7 +61,14 @@ export function setupMetricDimensionsEndpoints(
   });
   fetchMock.post(
     `path:/api/metric/${metricId}/dimension/remove`,
-    response.added,
+    async (call) => {
+      const body: { dimension_ids?: string[] } = JSON.parse(
+        (await call.request?.text()) ?? "{}",
+      );
+      const removedIds = new Set(body.dimension_ids ?? []);
+      added = added.filter((dimension) => !removedIds.has(dimension.id));
+      return added;
+    },
     { name: `metric-${metricId}-dimensions-remove` },
   );
   fetchMock.post(

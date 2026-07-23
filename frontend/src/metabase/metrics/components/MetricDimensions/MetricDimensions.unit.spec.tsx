@@ -167,6 +167,31 @@ describe("MetricDimensions", () => {
     ).toHaveAttribute("data-variant", "default");
   });
 
+  it("shows an empty state and hides search when no dimensions have been added", async () => {
+    setup({ added: [] });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      getListPanel().getByText("No dimensions have been added."),
+    ).toBeInTheDocument();
+    expect(
+      getListPanel().queryByPlaceholderText("Search…"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a search empty state and keeps search visible", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const search = getListPanel().getByPlaceholderText("Search…");
+    await userEvent.type(search, "Missing");
+
+    expect(
+      await getListPanel().findByText("No dimensions match your search."),
+    ).toBeInTheDocument();
+    expect(search).toBeInTheDocument();
+  });
+
   it("shows no detail panel until the user acts", async () => {
     setup();
     await waitForLoaderToBeRemoved();
@@ -219,6 +244,26 @@ describe("MetricDimensions", () => {
     });
   });
 
+  it("shows the empty state after removing the final dimension", async () => {
+    setup({ added: [COUNTRY] });
+    await waitForLoaderToBeRemoved();
+
+    await userEvent.click(
+      getListPanel().getByRole("checkbox", { name: "Country" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+    expect(
+      await getListPanel().findByText("No dimensions have been added."),
+    ).toBeInTheDocument();
+    expect(
+      getListPanel().queryByPlaceholderText("Search…"),
+    ).not.toBeInTheDocument();
+    expect(
+      await getPostBody(`path:/api/metric/${METRIC_ID}/dimension/remove`),
+    ).toEqual({ dimension_ids: [COUNTRY_ID] });
+  });
+
   it("adds a joined-table dimension with a table-prefixed title", async () => {
     setup();
     await waitForLoaderToBeRemoved();
@@ -268,6 +313,40 @@ describe("MetricDimensions", () => {
     });
   });
 
+  it("shows an empty state and hides search when all dimensions have been added", async () => {
+    setup({ addable: [] });
+    await waitForLoaderToBeRemoved();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Available dimensions" }),
+    );
+
+    const addPanel = within(await screen.findByTestId("add-dimensions-panel"));
+    await waitForLoaderToBeRemoved();
+    expect(
+      addPanel.getByText("All available dimensions have been added"),
+    ).toBeInTheDocument();
+    expect(addPanel.queryByPlaceholderText("Search…")).not.toBeInTheDocument();
+  });
+
+  it("shows an available-dimension search empty state and keeps search visible", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Available dimensions" }),
+    );
+    const addPanel = within(await screen.findByTestId("add-dimensions-panel"));
+    await waitForLoaderToBeRemoved();
+    const search = addPanel.getByPlaceholderText("Search…");
+    await userEvent.type(search, "Missing");
+
+    expect(
+      await addPanel.findByText("No dimensions match your search."),
+    ).toBeInTheDocument();
+    expect(search).toBeInTheDocument();
+  });
+
   it("edits a dimension's display name", async () => {
     setup();
     await waitForLoaderToBeRemoved();
@@ -277,7 +356,7 @@ describe("MetricDimensions", () => {
 
     const nameInput = settings.getByLabelText("Display name");
     await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, "Creation date");
+    await userEvent.type(nameInput, "  Creation date  ");
     await userEvent.tab();
 
     await waitFor(async () => {
@@ -285,6 +364,45 @@ describe("MetricDimensions", () => {
         `path:/api/metric/${METRIC_ID}/dimension/${CREATED_AT_ID}`,
       );
       expect(body.display_name).toBe("Creation date");
+    });
+    expect(nameInput).toHaveValue("Creation date");
+  });
+
+  it("restores a blank display name without making a request", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    const nameInput = settings.getByLabelText("Display name");
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "   ");
+    await userEvent.tab();
+
+    expect(nameInput).toHaveValue("Created At");
+    expect(
+      fetchMock.callHistory.calls(
+        `path:/api/metric/${METRIC_ID}/dimension/${CREATED_AT_ID}`,
+        { method: "POST" },
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("restores the persisted display name when an update fails", async () => {
+    setup();
+    fetchMock.modifyRoute(
+      `metric-${METRIC_ID}-dimension-${CREATED_AT_ID}-update`,
+      { response: { status: 500 } },
+    );
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    const nameInput = settings.getByLabelText("Display name");
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Creation date");
+    await userEvent.tab();
+
+    await waitFor(() => {
+      expect(nameInput).toHaveValue("Created At");
     });
   });
 

@@ -1,6 +1,7 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   type DragEndEvent,
@@ -26,6 +27,7 @@ interface DimensionListProps {
   isLoading: boolean;
   error: unknown;
   search: string;
+  isSearchActive: boolean;
   checkedIds: Set<DimensionId>;
   activeId: DimensionId | null;
   isAddDisabled: boolean;
@@ -42,6 +44,7 @@ export function DimensionList({
   isLoading,
   error,
   search,
+  isSearchActive,
   checkedIds,
   activeId,
   isAddDisabled,
@@ -53,9 +56,10 @@ export function DimensionList({
   onReorder,
 }: DimensionListProps) {
   const hasChecked = checkedIds.size > 0;
+  const isEmpty = dimensions.length === 0;
   // Reordering a search-filtered subset is ambiguous, so dragging is
   // only available on the full list.
-  const canReorder = search === "" && dimensions.length > 1;
+  const canReorder = !isSearchActive && dimensions.length > 1;
 
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
@@ -93,36 +97,49 @@ export function DimensionList({
         </Group>
       </Group>
 
-      <TextInput
-        classNames={{ input: S.searchInput }}
-        leftSection={<Icon name="search" />}
-        onChange={(event) => onSearchChange(event.currentTarget.value)}
-        placeholder={t`Search…`}
-        value={search}
-      />
+      {(!isEmpty || isSearchActive) && (
+        <TextInput
+          classNames={{ input: S.searchInput }}
+          leftSection={<Icon name="search" />}
+          onChange={(event) => onSearchChange(event.currentTarget.value)}
+          placeholder={t`Search…`}
+          value={search}
+        />
+      )}
 
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-        <ScrollArea className={S.scrollArea} offsetScrollbars="present">
-          <Stack gap="sm">
-            <SortableList
-              items={dimensions}
-              getId={(dimension) => dimension.id}
-              sensors={[pointerSensor]}
-              onSortEnd={handleSortEnd}
-              renderItem={({ item: dimension }) => (
-                <DimensionRow
-                  key={dimension.id}
-                  dimension={dimension}
-                  checked={checkedIds.has(dimension.id)}
-                  active={dimension.id === activeId}
-                  canReorder={canReorder}
-                  onToggle={(checked) => onToggle(dimension.id, checked)}
-                  onEdit={() => onEdit(dimension.id)}
-                />
-              )}
-            />
-          </Stack>
-        </ScrollArea>
+        {isEmpty ? (
+          <EmptyState
+            className={S.emptyState}
+            message={
+              isSearchActive
+                ? t`No dimensions match your search.`
+                : t`No dimensions have been added.`
+            }
+          />
+        ) : (
+          <ScrollArea className={S.scrollArea} offsetScrollbars="present">
+            <Stack gap="sm">
+              <SortableList
+                items={dimensions}
+                getId={(dimension) => dimension.id}
+                sensors={[pointerSensor]}
+                onSortEnd={handleSortEnd}
+                renderItem={({ item: dimension }) => (
+                  <DimensionRow
+                    key={dimension.id}
+                    dimension={dimension}
+                    checked={checkedIds.has(dimension.id)}
+                    active={dimension.id === activeId}
+                    canReorder={canReorder}
+                    onToggle={(checked) => onToggle(dimension.id, checked)}
+                    onEdit={() => onEdit(dimension.id)}
+                  />
+                )}
+              />
+            </Stack>
+          </ScrollArea>
+        )}
       </LoadingAndErrorWrapper>
     </Stack>
   );

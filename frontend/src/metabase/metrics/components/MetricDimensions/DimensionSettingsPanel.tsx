@@ -5,6 +5,7 @@ import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
 } from "metabase/api/metric";
+import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
@@ -26,7 +27,6 @@ import type {
 
 import S from "./MetricDimensions.module.css";
 import {
-  getDimensionIcon,
   getDimensionTypeLabel,
   getSourceColumnLabel,
   isOrphaned,
@@ -69,14 +69,26 @@ export function DimensionSettingsPanel({
         dimensionId: dimension.id,
         ...changes,
       }).unwrap();
+      return true;
     } catch {
       sendErrorToast(t`Couldn't update ${dimension.display_name}`);
+      return false;
     }
   };
 
-  const handleNameBlur = () => {
-    if (displayName !== dimension.display_name) {
-      persist({ display_name: displayName });
+  const handleNameBlur = async () => {
+    const nextDisplayName = displayName.trim();
+    if (!nextDisplayName) {
+      setDisplayName(dimension.display_name);
+      return;
+    }
+
+    setDisplayName(nextDisplayName);
+    if (nextDisplayName !== dimension.display_name) {
+      const isPersisted = await persist({ display_name: nextDisplayName });
+      if (!isPersisted) {
+        setDisplayName(dimension.display_name);
+      }
     }
   };
 

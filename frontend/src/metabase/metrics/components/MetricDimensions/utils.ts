@@ -1,7 +1,5 @@
 import { t } from "ttag";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
-import * as Lib from "metabase-lib";
 import { COORDINATE, LOCATION } from "metabase-lib/v1/types/constants";
 import {
   isBoolean,
@@ -14,19 +12,9 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardQueryMetadata,
-  IconName,
   MetricDimension,
   MetricDimensionGroup,
 } from "metabase-types/api";
-
-export function getDimensionIcon(dimension: MetricDimension): IconName {
-  return getColumnIcon(
-    Lib.legacyColumnTypeInfo({
-      effective_type: dimension.effective_type,
-      semantic_type: dimension.semantic_type,
-    }),
-  );
-}
 
 export type DimensionTypeKey =
   | "date"

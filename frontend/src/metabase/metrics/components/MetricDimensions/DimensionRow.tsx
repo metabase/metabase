@@ -2,6 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
+import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
 import {
   Badge,
   Box,
@@ -14,7 +15,7 @@ import {
 import type { MetricDimension } from "metabase-types/api";
 
 import S from "./MetricDimensions.module.css";
-import { getDimensionIcon, isOrphaned } from "./utils";
+import { isOrphaned } from "./utils";
 
 interface DimensionRowProps {
   dimension: MetricDimension;
