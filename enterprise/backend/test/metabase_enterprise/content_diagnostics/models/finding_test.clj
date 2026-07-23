@@ -53,3 +53,22 @@
     (is (= 5 (cd.settings/content-diagnostics-sparse-collection-threshold-items))))
   (testing "sparse: non-empty dashboard <4 dashcards total"
     (is (= 4 (cd.settings/content-diagnostics-sparse-dashboard-threshold-dashcards)))))
+
+;; `duplicated` has no settings-defaults test: a duplicate is definitionally a cluster of >= 2, so there
+;; is no threshold to configure.
+
+(deftest duplicated-details-round-trip-test
+  (testing "the duplicated details envelope survives the JSON round-trip"
+    (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+      (let [details {:normalized_name      "orders by month"
+                     :duplicate_entity_ids [10 11]}
+            fid     (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                     {:scan_id         "dup-round-trip"
+                                                      :entity_type     :card
+                                                      :entity_id       1
+                                                      :finding_type    :duplicated
+                                                      :duplicate_count 2
+                                                      :details         details}))
+            row     (t2/select-one :model/ContentDiagnosticsFinding :id fid)]
+        (is (= details (:details row)))
+        (is (= 2 (:duplicate_count row)))))))

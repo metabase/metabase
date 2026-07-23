@@ -42,27 +42,44 @@
            [:name [:maybe :string]]
            [:type [:= :user]]]])
 
-(def ^:private StaleFinding
-  "Response item for a `stale` finding: flat identity + nested typed `details`."
+(def ^:private FindingBase
+  "The flat identity every finding response shares: stable id/type columns, the per-finding `detected_at`
+  freshness stamp, the display name, and the denormalized `created_at`. Each finding `:merge`s its own
+  top-level column (`last_active_at` / `duration_ms` / `duplicate_count`) and its typed `details` onto this."
   [:map
    [:id                  :int]
    [:finding_type        :keyword]
    [:entity_type         :keyword]
    [:entity_id           :int]
-   [:detected_at         some?]
+   [:detected_at         ms/TemporalInstant]
    [:entity_display_name [:maybe :string]]
-   ;; frozen scan-time activity anchor; nil ⇒ never used/ran (top-level, SQL-filterable by threshold-days)
-   [:last_active_at      [:maybe some?]]
    ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
-   [:created_at          [:maybe some?]]
-   [:details
-    [:map
-     [:collection     [:maybe :map]]
-     [:description    [:maybe :string]]
-     [:owner          NormalizedUser]
-     [:creator        Creator]
-     [:view_count     {:optional true} :int]
-     [:threshold_days {:optional true} :int]]]])
+   [:created_at          [:maybe ms/TemporalInstant]]])
+
+(def ^:private FindingDetailsBase
+  "The display fields every finding's `details` carries: the collection breadcrumb, live `description`, the
+  hydrated `owner`/`creator`, and the entity's `view_count` (present for every type but transform). Each
+  finding type `:merge`s its own detail extras onto this."
+  [:map
+   [:collection  [:maybe :map]]
+   [:description [:maybe :string]]
+   [:owner       NormalizedUser]
+   [:creator     Creator]
+   [:view_count  {:optional true} :int]])
+
+(def ^:private StaleDetails
+  "`stale` details: the shared core plus the frozen `threshold_days` verdict."
+  [:merge FindingDetailsBase
+   [:map
+    [:threshold_days {:optional true} :int]]])
+
+(def ^:private StaleFinding
+  "Response item for a `stale` finding: flat identity + a top-level `last_active_at` + nested typed `details`."
+  [:merge FindingBase
+   [:map
+    ;; frozen scan-time activity anchor; nil ⇒ never used/ran (top-level, SQL-filterable by threshold-days)
+    [:last_active_at [:maybe ms/TemporalInstant]]
+    [:details        StaleDetails]]])
 
 (def ^:private SlowEntity
   "A hydrated culprit of a container roll-up: an embedded slow **card** of a dashboard/document finding.
@@ -77,31 +94,59 @@
    [:card_type   {:optional true} [:maybe :keyword]]
    [:view_count  :int]])
 
+(def ^:private SlowDetails
+  "`slow` details: the shared core plus a leaf's frozen `threshold_ms`, or a container's hydrated
+  `slow_entities` culprit cards."
+  [:merge FindingDetailsBase
+   [:map
+    [:threshold_ms  {:optional true} :int]
+    [:slow_entities {:optional true} [:sequential SlowEntity]]]])
+
 (def ^:private SlowFinding
   "Response item for a `slow` finding: flat identity + a top-level `duration_ms` + nested typed `details`.
   One open map covering both variants: a **leaf** (card/transform) freezes `details.threshold_ms`; a
   **container** (dashboard/document) carries `details.slow_entities` (hydrated culprit cards). Every slow
   row stamps `duration_ms` (leaf mean / container's slowest culprit), so it is never null in this result."
+  [:merge FindingBase
+   [:map
+    ;; measured magnitude (top-level, SQL-filterable/sortable); always present on slow findings
+    [:duration_ms :int]
+    [:details     SlowDetails]]])
+
+(def ^:private DuplicatedEntity
+  "A hydrated peer of a `duplicated` finding: another entity **of the same type** sharing the flagged
+  entity's normalized name. `{id, name, entity_type, card_type?, view_count?}` - `card_type`
+  (question/model/metric) only on card peers. Card/dashboard/document peers carry their live
+  `view_count` for judging which duplicate is the abandoned one; transforms have no view concept, so
+  transform peers carry no usage signal."
   [:map
-   [:id                  :int]
-   [:finding_type        :keyword]
-   [:entity_type         :keyword]
-   [:entity_id           :int]
-   [:detected_at         some?]
-   [:entity_display_name [:maybe :string]]
-   ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
-   [:created_at          [:maybe some?]]
-   ;; measured magnitude (top-level, SQL-filterable/sortable); always present on slow findings
-   [:duration_ms         :int]
-   [:details
-    [:map
-     [:collection    [:maybe :map]]
-     [:description   [:maybe :string]]
-     [:owner         NormalizedUser]
-     [:creator       Creator]
-     [:view_count    {:optional true} :int]
-     [:threshold_ms  {:optional true} :int]
-     [:slow_entities {:optional true} [:sequential SlowEntity]]]]])
+   [:id          :int]
+   [:name        [:maybe :string]]
+   [:entity_type :keyword]
+   [:card_type   {:optional true} [:maybe :keyword]]
+   [:view_count  {:optional true} :int]])
+
+(def ^:private DuplicatedDetails
+  "`duplicated` details: the shared core plus the collided `normalized_name` and the hydrated same-type
+  `duplicate_entities` peers."
+  [:merge FindingDetailsBase
+   [:map
+    [:normalized_name    :string]
+    [:duplicate_entities [:sequential DuplicatedEntity]]]])
+
+(def ^:private DuplicatedFinding
+  "Response item for a `duplicated` finding: flat identity + a top-level `duplicate_count` + nested typed
+  `details`. `duplicate_count` is the peer count (cluster size minus 1) and is never null on duplicated
+  findings. `details.view_count` is the flagged entity's own live usage counter (present for every type
+  but transform). `details.normalized_name` is the normalized name the cluster collided on;
+  `details.duplicate_entities` are the hydrated peers the caller can see - permission and
+  personal-collection filtering can leave it shorter than `duplicate_count` (down to empty, but the key
+  is always present)."
+  [:merge FindingBase
+   [:map
+    ;; peer count (top-level, SQL-filterable/sortable); always present on duplicated findings
+    [:duplicate_count :int]
+    [:details         DuplicatedDetails]]])
 
 (def ^:private ImbalancedFinding
   "Response item for the `/imbalanced` umbrella - the stored `empty`/`sparse`/`crowded` finding types
@@ -161,6 +206,11 @@
   yields an empty set)."
   #{:card :collection :dashboard :document :transform})
 
+(def ^:private duplicated-sort-column->field
+  "Sortable duplicated-list params → their native `content_diagnostics_finding` column. The shared base
+  plus the duplicated-specific `duplicate-count` magnitude column."
+  (assoc api.common/base-sort-column->field :duplicate-count :duplicate_count))
+
 (defn- stale-where-clause
   "The shared finding-list WHERE plus the stale-specific `threshold-days` filter - keeps findings whose
   `last_active_at` is on or before `today - threshold-days` (never-used always pass)."
@@ -192,6 +242,14 @@
      (mapv name types) params
      (when min-content-count [:>= :content_count min-content-count])
      (when max-content-count [:<= :content_count max-content-count]))))
+
+(defn- duplicated-where-clause
+  "The shared finding-list WHERE plus the duplicated-specific `min-duplicate-count` floor on the native
+  `duplicate_count` (the peer count - e.g. names shared by 3+ entities = `min-duplicate-count` 2)."
+  [{:keys [min-duplicate-count] :as params}]
+  (api.common/findings-where
+   "duplicated" params
+   (when min-duplicate-count [:>= :duplicate_count min-duplicate-count])))
 
 (defn- findings-response
   "The shared list-endpoint pipeline: select the sorted, paginated page for `where`, hydrate it
@@ -230,7 +288,7 @@
       [:total        :int]
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
-      [:last_scan_at [:maybe some?]]]
+      [:last_scan_at [:maybe ms/TemporalInstant]]]
   "List **stale** findings - the latest valid `stale` finding per entity, permission-filtered
   for the current user. Each item is a flat identity + a nested `details` (collection, `description`, `owner`,
   `creator`, `threshold_days`). Paginated via `limit`/`offset`; `total` is the full valid count.
@@ -269,7 +327,7 @@
       [:total        :int]
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
-      [:last_scan_at [:maybe some?]]]
+      [:last_scan_at [:maybe ms/TemporalInstant]]]
   "List **slow** findings - the latest valid `slow` finding per entity, permission-filtered for the
   current user. Each item is a flat identity + a top-level `duration_ms` + a nested `details`. `details`
   varies by `entity_type`: leaves (card/transform) freeze `threshold_ms`; containers (dashboard/document)
@@ -360,6 +418,47 @@
                                                  :max-content-count                max-content-count
                                                  :query                            query})
                        imbalanced-sort-column->field sort-column sort-direction
+                       excluded-personal-ids)))
+(api.macros/defendpoint :get "/duplicated"
+  :- [:map
+      [:data         [:sequential DuplicatedFinding]]
+      [:total        :int]
+      [:limit        [:maybe :int]]
+      [:offset       [:maybe :int]]
+      [:last_scan_at [:maybe ms/TemporalInstant]]]
+  "List **duplicated** findings - the latest valid `duplicated` finding per entity, permission-filtered
+  for the current user. Each item is a flat identity + a top-level `duplicate_count` (the number of other
+  same-type entities sharing the normalized name) + a nested `details` (collection, `description`,
+  `owner`, `creator`, `normalized_name`, and the hydrated same-type `duplicate_entities` peers).
+  Paginated via `limit`/`offset`; `total` is the full valid count.
+
+  Params: `include-personal-collections` (default false) - when false, entities currently in a personal
+  collection are excluded and personal-collection peers are omitted from `duplicate_entities`.
+  `entity-types` (repeatable; `card`|`dashboard`|`document`|`transform`, omitted = all).
+  `min-duplicate-count` (positive int) keeps findings with at least that many peers. `query`
+  case-insensitively substring-matches the entity name. `sort-column`
+  (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duplicate-count`, default `detected-at`)
+  + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  [_route-params
+   {:keys [include-personal-collections sort-column sort-direction entity-types min-duplicate-count query]
+    :or   {include-personal-collections false
+           sort-column                   :detected-at
+           sort-direction                :asc}}
+   :- [:map
+       [:include-personal-collections {:optional true} :boolean]
+       [:sort-column         {:optional true} (ms/enum-decode-keyword (keys duplicated-sort-column->field))]
+       [:sort-direction      {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
+       [:entity-types        {:optional true} [:or
+                                               (ms/enum-decode-keyword api.common/covered-entity-types)
+                                               [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
+       [:min-duplicate-count {:optional true} ms/PositiveInt]
+       [:query               {:optional true} :string]]]
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
+    (findings-response (duplicated-where-clause {:excluded-personal-collection-ids excluded-personal-ids
+                                                 :entity-types                     entity-types
+                                                 :min-duplicate-count              min-duplicate-count
+                                                 :query                            query})
+                       duplicated-sort-column->field sort-column sort-direction
                        excluded-personal-ids)))
 
 (def ^{:arglists '([request respond raise])} routes

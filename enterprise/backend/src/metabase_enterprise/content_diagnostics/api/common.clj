@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -153,14 +154,16 @@
 (defmethod hydrate-owner :transform [_ rows] (t2/hydrate rows :owner))
 
 (defn- context-rows
-  "Build `{entity-id → row}` for a column-resident type: select `common/context-cols` plus
-  `id`/`collection_id`, hydrate the owner (`hydrate-owner`), index by id."
+  "Build `{entity-id → row}` for a column-resident type: select `common/context-cols` plus `id`/`collection_id`,
+  hydrate the owner (`hydrate-owner`), index by id. Empty `ids` → nil (skips a degenerate `IN ()`; callers use
+  `get-in`, so nil is fine)."
   [entity-type ids]
-  (->> (t2/select (into [(common/entity-type->model entity-type) :id :collection_id]
-                        (common/context-cols entity-type))
-                  :id [:in (set ids)])
-       (hydrate-owner entity-type)
-       (m/index-by :id)))
+  (when (seq ids)
+    (->> (t2/select (into [(common/entity-type->model entity-type) :id :collection_id]
+                          (common/context-cols entity-type))
+                    :id [:in (set ids)])
+         (hydrate-owner entity-type)
+         (m/index-by :id))))
 
 (defmulti ^:private entity-context
   "For one entity-type's id set → `{entity-id → row}` of the live display fields (description, collection_id,
@@ -224,8 +227,8 @@
 (defn- readable-entities-where
   "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
   (the same gate as `visible-findings-clause`) always, plus the personal-collection exclusion when
-  `excluded-personal-ids` is provided. Extracted so the read-time gate lives in one place - a perms change
-  lands once."
+  `excluded-personal-ids` is provided. Shared by the culprit/peer hydrators so the read-time gate lives in
+  one place - a perms change lands once, not per hydrator."
   [ids excluded-personal-ids]
   [:and
    [:in :id ids]
@@ -254,6 +257,48 @@
                       [:model/Card :id :name :type :view_count :card_schema]
                       {:where (readable-entities-where (set card-ids) excluded-personal-ids)})))
 
+(defmulti ^:private read-entity-rows
+  "Permission-filtered rows for hydrating a type's duplicate ids, read-gated by [[readable-entities-where]].
+  For card/dashboard/document (`::collection-item`) that collection clause IS the read permission (they derive
+  `:perms/use-parent-collection-perms`), with projection cols from `common/peer-select-cols`; transform
+  readability isn't collection-based, so it selects full rows and additionally filters by `mi/can-read?`."
+  {:arglists '([entity-type ids excluded-personal-ids])}
+  (fn [entity-type _ids _excluded] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod read-entity-rows ::common/collection-item
+  [entity-type ids excluded-personal-ids]
+  ;; :card_schema (a peer-select-col for cards) is required on any Card select - its after-select hook reads it.
+  (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/peer-select-cols entity-type))
+             {:where (readable-entities-where ids excluded-personal-ids)}))
+
+(defmethod read-entity-rows :transform
+  [_ ids excluded-personal-ids]
+  ;; mi/can-read? on a transform = source-type feature gate + (superuser, or data-analyst with readable
+  ;; source tables) - the collection clause alone would leak transform names to collection-granted
+  ;; non-analysts. It reads :source, so select full rows; peer sets are page-bounded, so the per-row check
+  ;; is cheap.
+  (filter mi/can-read? (t2/select :model/Transform {:where (readable-entities-where ids excluded-personal-ids)})))
+
+(defn- hydrate-duplicate-entities
+  "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
+  :card_type <kw> :view_count <int>}}`. `card_type` and `view_count` are present only on card/dashboard/
+  document peers (transforms have no view concept, so their peers carry no usage signal). Peers share the
+  finding's own entity type, so each type's ids resolve from that type's own model via [[read-entity-rows]]
+  (which applies the per-type read gate); a filtered-out peer drops out of `duplicate_entities` like a
+  deleted one."
+  [findings excluded-personal-ids]
+  (into {}
+        (for [[etype rows] (group-by :entity_type findings)
+              :let  [model (common/entity-type->model etype)
+                     ids   (into #{} (mapcat (comp :duplicate_entity_ids :details)) rows)]
+              :when (and model (seq ids))
+              row   (read-entity-rows etype ids excluded-personal-ids)]
+          [[etype (:id row)]
+           (cond-> {:id (:id row) :name (:name row) :entity_type etype}
+             (not= etype :transform) (assoc :view_count (:view_count row))
+             (= etype :card)         (assoc :card_type (:type row)))])))
+
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:
   `{id,name,email,type:user}` or, for an external email-only transform owner, `{email,type:external}`.
@@ -281,11 +326,19 @@
   [details culprits]
   (rewrite-ids->entities details :slow_entity_ids :slow_entities culprits))
 
+(defn- with-duplicate-peers
+  "Replace `details.duplicate_entity_ids` with hydrated same-type `details.duplicate_entities` from
+  `entities` (keyed `[entity-type id]`). The raw stored ids are not permission-filtered, so the hydrated
+  list is the served form; a filtered-out peer drops out like a deleted one. A no-op when the finding
+  carries no `duplicate_entity_ids`."
+  [details entity-type entities]
+  (rewrite-ids->entities details :duplicate_entity_ids :duplicate_entities #(get entities [entity-type %])))
+
 (defmulti ^:private finalize-finding
   "Apply the finding-type-specific tail to one assembled finding `base`: hoist the type's native top-level
-  column(s) from `row`, and rewrite `details` from the batch-hydrated `ctx` (`{:culprits _}`). Dispatches
-  per row on `finding_type`, so a page may mix finding types (the imbalanced umbrella spans three); an
-  unregistered type throws - fail-closed, no `:default`."
+  column(s) from `row`, and rewrite `details` from the batch-hydrated `ctx` (`{:culprits _ :entities _}`).
+  Dispatches per row on `finding_type`, so a page may mix finding types (an umbrella endpoint; the imbalanced
+  umbrella spans three); an unregistered type throws - fail-closed, no `:default`."
   {:arglists '([finding-type base row ctx])}
   (fn [finding-type _base _row _ctx] finding-type))
 
@@ -295,6 +348,10 @@
 (defmethod finalize-finding :slow [_ base row {:keys [culprits]}]
   (-> (merge base (select-keys row [:duration_ms]))
       (update :details with-slow-culprits culprits)))
+
+(defmethod finalize-finding :duplicated [_ base row {:keys [entities]}]
+  (-> (merge base (select-keys row [:duplicate_count]))
+      (update :details with-duplicate-peers (:entity_type row) entities)))
 
 ;; the imbalanced umbrella - all three types hoist the same measured magnitude, no details rewrite
 (defmethod finalize-finding :empty   [_ base row _ctx] (merge base (select-keys row [:content_count])))
@@ -307,10 +364,11 @@
   is the entity's live usage counter, present only for types that have the column (card/dashboard/document;
   not transform, not collection). Batched, page-size-independent.
 
-  The finding-type-specific tail - the hoisted native column(s) and any `details` rewrite (slow culprits) -
-  is dispatched per row on each finding's `finding_type` via [[finalize-finding]], so a page may mix finding
-  types (the imbalanced umbrella). `excluded-personal-ids` (the request's resolved exclusion set) gates the
-  culprit hydration so it matches the findings filter without re-querying."
+  The finding-type-specific tail - the hoisted native column(s) and any `details` rewrite (slow culprits /
+  duplicated peers) - is dispatched per row on each finding's `finding_type` via [[finalize-finding]], so a
+  page may mix finding types (an umbrella endpoint; the imbalanced umbrella spans three).
+  `excluded-personal-ids` (the request's resolved exclusion set) gates the culprit/peer hydration so it
+  matches the findings filter without re-querying."
   [findings excluded-personal-ids]
   (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
                                [etype (entity-context etype (map :entity_id rows))]))
@@ -318,11 +376,12 @@
                                       (get-in ctx-by-type [entity_type entity_id :collection_id])))
                           findings)
         breadcrumbs (collection-breadcrumbs coll-ids)
-        ;; Batch-prep runs over whatever the page carries - a page with no slow findings contributes no
-        ;; culprit ids, so the hydrator issues no query.
+        ;; Batch-prep runs over whatever the page carries - an absent finding type contributes no ids, so
+        ;; its hydrator issues no query.
         culprits    (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
                                            excluded-personal-ids)
-        ctx         {:culprits culprits}]
+        entities    (hydrate-duplicate-entities findings excluded-personal-ids)
+        ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
                        entity_name entity_creator_id entity_creator_name details] :as row}]
             (let [entity   (get-in ctx-by-type [entity_type entity_id])
