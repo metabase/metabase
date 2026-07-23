@@ -118,6 +118,22 @@ java.lang.RuntimeException: boom
 </testcase>
 </testsuite>`;
 
+// hawk's var-less error file (mb_hawk_var_less_errors.xml, hawk PR #50): an
+// error with no test var — a fixture-init throw or namespace load/compile
+// failure. The testcase carries a `name` but deliberately NO `classname`, so it
+// must parse to a namespace-less (`path` undefined) failure — that's what forces
+// the granular-rerun collector into a full rerun rather than a narrow one.
+const VAR_LESS_ERROR = `<?xml version='1.0' encoding='UTF-8'?>
+<testsuite name="mb.hawk.var-less-errors" tests="1" errors="1" failures="0">
+<testcase name="Uncaught error with no associated test var (metabase.foo-test :once fixture)">
+<error type="clojure.lang.ExceptionInfo" message="boom in fixture">
+<![CDATA[
+java.lang.RuntimeException: boom in fixture
+]]>
+</error>
+</testcase>
+</testsuite>`;
+
 // jest-junit with `addFileAttribute: "true"` emits a `file` attribute holding
 // the source path, plus an entity-escaped (non-CDATA) failure body. The parser
 // must surface that path as `file` and decode the body.
@@ -205,6 +221,20 @@ describe("parseJunit", () => {
     // text lands in `stack`.
     expect(test.message).toBeNull();
     expect(test.stack).toContain("Error: expect(received).toBe(expected)");
+    expect(test.status).toBe("failure");
+  });
+
+  it("parses a var-less error (no classname) to a namespace-less failure", () => {
+    const tests = parseJunit(VAR_LESS_ERROR);
+    expect(tests).toHaveLength(1);
+    const [test] = tests;
+    // No classname => no namespace => the rerun collector can't attribute it and
+    // (correctly) falls back to a full rerun.
+    expect(test.path).toBeUndefined();
+    expect(test.name).toBe(
+      "Uncaught error with no associated test var (metabase.foo-test :once fixture)",
+    );
+    expect(test.message).toBe("boom in fixture");
     expect(test.status).toBe("failure");
   });
 
