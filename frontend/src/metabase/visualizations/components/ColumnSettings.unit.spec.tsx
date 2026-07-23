@@ -1,10 +1,13 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockDatetimeColumn,
   createMockField,
 } from "metabase-types/api/mocks";
 
 import { ColumnSettings, hasColumnSettingsWidgets } from "./ColumnSettings";
+
+registerVisualizations();
 
 describe("hasColumnSettingsWidgets", () => {
   it("returns true for a date DatasetColumn", () => {

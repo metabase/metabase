@@ -8,6 +8,8 @@ import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 
 import { Root } from "./ChartSettingsWidget.styled";
 
+export type ChartSettingsWidgetVariant = "default" | "form-field";
+
 type Props = {
   title?: string;
   description?: string;
@@ -16,9 +18,8 @@ type Props = {
   widget?: string | ComponentType<{ id: string }> | WidgetMount;
   inline?: boolean;
   props?: Record<string, unknown>;
-  variant?: "default" | "form-field";
+  variant?: ChartSettingsWidgetVariant;
   dataTestId?: string;
-  unset?: boolean;
   id: string;
   style?: CSSProperties;
 };

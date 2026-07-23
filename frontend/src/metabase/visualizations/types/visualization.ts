@@ -120,19 +120,11 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
-export type FormattingColumn = DatasetColumn | Field;
-
-export function getFormattingColumnUnit(
-  column: FormattingColumn,
-): DatasetColumn["unit"] {
-  return "unit" in column ? column.unit : undefined;
-}
-
-export function getFormattingColumnUnitOrDefault(
-  column: FormattingColumn,
-): NonNullable<DatasetColumn["unit"]> {
-  return getFormattingColumnUnit(column) ?? "default";
-}
+// `unit` never exists on a Field; declaring it optional lets consumers read
+// `column.unit` directly instead of narrowing the union first.
+export type FormattingColumn =
+  | DatasetColumn
+  | (Field & { unit?: DatasetColumn["unit"] });
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
@@ -332,6 +324,10 @@ export type SettingsExtra = {
   transformedSeries?: RawSeries | TransformedSeries;
 };
 
+type SettingsForObject<T> = T extends FormattingColumn
+  ? ColumnSettings
+  : ComputedVisualizationSettings;
+
 export type VisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
@@ -346,44 +342,32 @@ export type VisualizationSettingDefinition<
   widget?: string | ComponentType<TProps & { id: string }>;
   isValid?: (
     object: T,
-    settings: T extends FormattingColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: SettingsForObject<T>,
     extra?: SettingsExtra,
   ) => boolean;
   getHidden?: (
     object: T,
-    settings: T extends FormattingColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: SettingsForObject<T>,
     extra?: SettingsExtra,
   ) => boolean;
   getDefault?: (
     object: T,
-    settings: T extends FormattingColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: SettingsForObject<T>,
     extra?: SettingsExtra,
   ) => TValue;
   getValue?: (
     object: T,
-    settings: T extends FormattingColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: SettingsForObject<T>,
     extra?: SettingsExtra,
   ) => TValue;
   getSection?: (
     object: T,
-    settings: T extends FormattingColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: SettingsForObject<T>,
     extra?: SettingsExtra,
   ) => string;
   getWrapperStyle?: (
     object: T,
-    settings: T extends FormattingColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: SettingsForObject<T>,
     extra?: SettingsExtra,
   ) => CSSProperties | undefined;
   autoOpenWhenUnset?: boolean;
@@ -392,9 +376,7 @@ export type VisualizationSettingDefinition<
   inline?: boolean;
   getProps?: (
     object: T,
-    vizSettings: T extends FormattingColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    vizSettings: SettingsForObject<T>,
     onChange: (value: TValue) => void,
     extra: SettingsExtra | undefined,
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,

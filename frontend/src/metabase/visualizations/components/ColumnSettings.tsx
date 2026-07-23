@@ -2,23 +2,21 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
+import ChartSettingsWidget, {
+  type ChartSettingsWidgetVariant,
+} from "metabase/visualizations/components/ChartSettingsWidget";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
-import {
-  type FormattingColumn,
-  type SettingsExtra,
-  getFormattingColumnUnitOrDefault,
+import type {
+  FormattingColumn,
+  SettingsExtra,
 } from "metabase/visualizations/types";
 import type {
   ColumnSettings as ApiColumnSettings,
-  FieldFormattingSettings,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-
-type ColumnSettingsInput = ApiColumnSettings | FieldFormattingSettings;
 
 type CommonProps = {
   column: FormattingColumn;
@@ -35,32 +33,30 @@ type GetWidgetsProps = CommonProps & {
 };
 
 type HasColumnSettingsWidgetsProps = CommonProps & {
-  value?: ColumnSettingsInput | null;
+  value?: ApiColumnSettings | null;
 };
 
 type ColumnSettingsProps = HasColumnSettingsWidgetsProps & {
   style?: React.CSSProperties;
-  variant?: "default" | "form-field";
+  variant?: ChartSettingsWidgetVariant;
 };
 
 function getWidgets({
   column,
-  inheritedSettings = {},
+  inheritedSettings,
   storedSettings,
   onChange,
   onChangeSetting,
   allowlist,
   denylist,
-  extraData = {},
+  extraData,
 }: GetWidgetsProps) {
   // fake series
   const series: Series = [];
 
   // add a "unit" to make certain settings work
-  const columnWithUnit: FormattingColumn = {
-    ...column,
-    unit: getFormattingColumnUnitOrDefault(column),
-  };
+  const columnWithUnit: FormattingColumn =
+    column.unit != null ? column : { ...column, unit: "default" };
 
   const settingsDefs = getSettingDefinitionsForColumn(series, columnWithUnit);
 
@@ -98,7 +94,7 @@ export function hasColumnSettingsWidgets({
   value,
   ...props
 }: HasColumnSettingsWidgetsProps) {
-  const storedSettings: ApiColumnSettings = value ?? {};
+  const storedSettings = value ?? {};
   return getWidgets({ storedSettings, ...props }).length > 0;
 }
 
@@ -108,7 +104,7 @@ export const ColumnSettings = ({
   variant = "default",
   ...props
 }: ColumnSettingsProps) => {
-  const storedSettings: ApiColumnSettings = value ?? {};
+  const storedSettings = value ?? {};
   const widgets = getWidgets({ storedSettings, ...props });
 
   return (
@@ -118,7 +114,6 @@ export const ColumnSettings = ({
           <ChartSettingsWidget
             key={widget.id}
             {...widget}
-            unset={storedSettings[widget.id] === undefined}
             style={{
               marginLeft: 0,
               marginRight: 0,

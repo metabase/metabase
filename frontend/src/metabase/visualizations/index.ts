@@ -113,7 +113,7 @@ export function getVisualization(display: VisualizationDisplay | null) {
 export function getVisualizationRaw(
   series: SeriesLike,
 ): Visualization | undefined {
-  return series[0] ? visualizations.get(series[0].card.display) : undefined;
+  return visualizations.get(series[0].card.display);
 }
 
 export function getVisualizationTransformed(

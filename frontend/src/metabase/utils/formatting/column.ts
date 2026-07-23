@@ -1,10 +1,13 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import type { DatasetColumn, Field } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
-export function displayNameForColumn(column: DatasetColumn | Field): string {
-  const remappedName =
-    "remapped_to_column" in column
-      ? column.remapped_to_column?.display_name
-      : undefined;
-  return remappedName ?? column.display_name ?? NULL_DISPLAY_VALUE;
+// structural subset of both DatasetColumn and Field
+export function displayNameForColumn(
+  column: Pick<DatasetColumn, "display_name" | "remapped_to_column">,
+): string {
+  return (
+    column.remapped_to_column?.display_name ??
+    column.display_name ??
+    NULL_DISPLAY_VALUE
+  );
 }
