@@ -4,6 +4,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -19,6 +20,14 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(t2/define-before-insert :model/DashboardTab
+  [tab]
+  (remote-sync/set-worktree-id-before-insert tab :model/Dashboard :dashboard_id))
+
+(t2/define-before-update :model/DashboardTab
+  [tab]
+  (remote-sync/set-worktree-id-before-update tab :model/Dashboard :dashboard_id))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]

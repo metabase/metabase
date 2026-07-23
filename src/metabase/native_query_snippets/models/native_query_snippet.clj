@@ -81,7 +81,9 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 (add-template-tags snippet)
+  (u/prog1 (-> snippet
+               add-template-tags
+               (remote-sync/set-worktree-id-before-insert :model/Collection :collection_id))
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
@@ -93,8 +95,9 @@
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
-  (u/prog1 (cond-> snippet
-             (:content snippet) add-template-tags)
+  (u/prog1 (-> (cond-> snippet
+                 (:content snippet) add-template-tags)
+               (remote-sync/set-worktree-id-before-update :model/Collection :collection_id))
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))

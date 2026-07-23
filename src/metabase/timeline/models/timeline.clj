@@ -3,6 +3,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -26,11 +27,11 @@
 
 (t2/define-before-insert :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id model))
-  model)
+  (remote-sync/set-worktree-id-before-insert model :model/Collection :collection_id))
 
 (t2/define-before-update :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
-  model)
+  (remote-sync/set-worktree-id-before-update model :model/Collection :collection_id))
 
 ;;;; functions
 

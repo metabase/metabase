@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -31,10 +32,15 @@
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (merge {:parameter_mappings     []
-          :visualization_settings {}
-          :inline_parameters      []}
-         dashcard))
+  (-> (merge {:parameter_mappings     []
+              :visualization_settings {}
+              :inline_parameters      []}
+             dashcard)
+      (remote-sync/set-worktree-id-before-insert :model/Dashboard :dashboard_id)))
+
+(t2/define-before-update :model/DashboardCard
+  [dashcard]
+  (remote-sync/set-worktree-id-before-update dashcard :model/Dashboard :dashboard_id))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
