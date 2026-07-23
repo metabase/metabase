@@ -22,8 +22,8 @@
   [s]
   (-> (or (u/remove-diacritical-marks s) "")   ; remove-diacritical-marks returns nil on empty input
       u/lower-case-en
-      (str/replace #"(?U)\p{Cf}" "")
-      (str/replace #"(?U)\s+" " ")
+      (str/replace #"(?U)\p{Cf}" "")   ; strip Unicode format chars (zero-width joiners, bidi marks, soft hyphens)
+      (str/replace #"(?U)\s+" " ")     ; collapse any run of Unicode whitespace to a single space
       str/trim))
 
 (defmulti ^:private candidate-rows

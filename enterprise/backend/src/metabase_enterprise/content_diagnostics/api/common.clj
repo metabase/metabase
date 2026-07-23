@@ -129,13 +129,15 @@
 
 (defn- context-rows
   "Build `{entity-id → row}` for a column-resident type: select `common/context-cols` plus `id`/`collection_id`,
-  hydrate the owner (`hydrate-owner`), index by id."
+  hydrate the owner (`hydrate-owner`), index by id. Empty `ids` → nil (skips a degenerate `IN ()`; callers use
+  `get-in`, so nil is fine)."
   [entity-type ids]
-  (->> (t2/select (into [(common/entity-type->model entity-type) :id :collection_id]
-                        (common/context-cols entity-type))
-                  :id [:in (set ids)])
-       (hydrate-owner entity-type)
-       (m/index-by :id)))
+  (when (seq ids)
+    (->> (t2/select (into [(common/entity-type->model entity-type) :id :collection_id]
+                          (common/context-cols entity-type))
+                    :id [:in (set ids)])
+         (hydrate-owner entity-type)
+         (m/index-by :id))))
 
 (defmulti ^:private entity-context
   "For one entity-type's id set → `{entity-id → row}` of the live display fields (description, collection_id,
