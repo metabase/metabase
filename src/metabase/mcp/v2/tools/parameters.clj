@@ -2,14 +2,15 @@
   "The v2 MCP `get_parameter_values` tool: the valid values behind a dashboard or question filter.
 
    It can't ride `get_content` as an include — it takes its own arguments (a parameter id, a
-   prefix `query`, chain-filter `constraints`) — so it is its own tool. Backed by the same
-   functions the REST param-value endpoints call, under the same read check, so sandboxing and
-   collection permissions apply unchanged.
+   prefix `query`, chain-filter `constraints`) — so it is its own tool. Read permission on the
+   dashboard or card is the whole gate: a caller who can read it can look up its filter values
+   without query permission on the underlying table, and sandboxing still narrows the values
+   themselves.
 
-   Two things the REST layer leaves implicit are made explicit here, before the backend call:
-   an unknown `parameter_id` names the parameters that do exist, and a `constraints` key that
-   isn't a dashboard parameter is rejected rather than silently dropped — a dropped constraint
-   would return values the agent believes were filtered."
+   Both object-dependent arguments are checked against the resolved object before any values are
+   fetched. An unknown `parameter_id` answers with the ids that do exist. A `constraints` key
+   that isn't a dashboard parameter is rejected rather than dropped — a dropped constraint would
+   hand back values the agent believes were filtered."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -53,8 +54,7 @@
              target (pr-str parameter-id) (parameter-catalog params)))))
 
 (defn- card-parameters
-  "A card's parameters, falling back to its native template tags viewed as parameters — the same
-   resolution [[metabase.queries.core/card-param-values]] performs."
+  "A card's parameters, falling back to its native query's template tags viewed as parameters."
   [card]
   (or (seq (:parameters card))
       (queries/card-template-tag-parameters card)))
