@@ -424,5 +424,5 @@ function denyTransformsPermissionToAllGroups() {
 }
 
 function getTransformsNavLink() {
-  return H.DataStudio.nav().findByRole("link", { name: "Transforms" });
+  return H.DataStudio.nav().findByRole("link", { name: "Data transformation" });
 }

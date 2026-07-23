@@ -9,14 +9,13 @@ import {
   useListTransformsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import type { Location } from "metabase/router";
 import { replace } from "metabase/router";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Stack } from "metabase/ui";
@@ -163,11 +162,7 @@ export function RunListPage({ location }: RunListPageProps) {
       data-testid="transforms-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
-        <PaneHeader
-          breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-          py={0}
-          showMetabotButton
-        />
+        <TransformsHeader showMetabotButton />
         {!data || isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />

@@ -1,22 +1,17 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_DEPENDENCIES,
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
   PLUGIN_SCHEMA_VIEWER,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import {
-  Navigate,
   Route,
   type RouteComponent,
   redirect,
   withRouteProps,
 } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
-import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
@@ -27,6 +22,7 @@ import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { GuidePage } from "./guide/pages/GuidePage/GuidePage";
 import { getDataStudioSettingsRoutes } from "./settings/routes";
 import {
   DependenciesUpsellPage,
@@ -53,7 +49,8 @@ export function getDataStudioRoutes(
       {getDataStudioDependencyDiagnosticsRedirects()}
       <Route element={<CanAccessDataStudio />}>
         <Route path="data-studio" element={<DataStudioLayout />}>
-          <Route index element={<DataStudioIndexRedirect />} />
+          <Route index element={redirect(Urls.dataStudioGuide())} />
+          <Route path="guide" element={<GuidePage />} />
           <Route path="data" element={<CanAccessDataModel />}>
             <Route element={<DataSectionLayout />}>
               {getDataStudioMetadataRoutes(IsAdmin)}
@@ -110,19 +107,4 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
       />
     </>
   );
-}
-
-function DataStudioIndexRedirect() {
-  const indexPath = useSelector(getIndexPath);
-  return <Navigate to={indexPath} replace />;
-}
-
-function getIndexPath(state: State) {
-  if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
-    return Urls.dataStudioData();
-  }
-  if (canAccessTransforms(state)) {
-    return Urls.transformList();
-  }
-  return Urls.dataStudioLibrary();
 }

@@ -6,15 +6,14 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { push } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -120,11 +119,7 @@ export const JobListPage = () => {
 
   return (
     <PageContainer data-testid="transforms-job-list" gap={0}>
-      <PaneHeader
-        breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
-        py={0}
-        showMetabotButton
-      />
+      <TransformsHeader showMetabotButton />
       <Stack style={{ overflow: "hidden" }}>
         {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="0.5rem">
