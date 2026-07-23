@@ -42,10 +42,6 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/TableUserSettings
-  [_table-user-settings]
-  [(serdes/hydrated-hash :table)])
-
 (defmethod serdes/pk-column "TableUserSettings" [_model-name] :table_id)
 
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)

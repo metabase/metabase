@@ -4,7 +4,6 @@
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.set :as set]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.dependency-validation :as dependency-validation]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.models.collection :as collection]
@@ -174,7 +173,6 @@
 (defn extract
   "Returns a reducible stream of entities to serialize"
   [opts]
-  (serdes.backfill/backfill-ids!)
   (extract-subtrees opts))
 
 (comment

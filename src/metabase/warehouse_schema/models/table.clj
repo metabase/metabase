@@ -465,10 +465,6 @@
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Table
-  [_table]
-  [:schema :name (serdes/hydrated-hash :db :db_id)])
-
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
 (def field-order-rule

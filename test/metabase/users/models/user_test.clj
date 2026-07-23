@@ -5,7 +5,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.config.core :as config]
-   [metabase.models.serialization :as serdes]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -426,13 +425,6 @@
           (is (pos? (t2/update! :model/User user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
-
-(deftest identity-hash-test
-  (testing "User hashes are based on the email address"
-    (mt/with-temp [:model/User user {:email "fred@flintston.es"}]
-      (is (= "e8d63472"
-             (serdes/raw-hash ["fred@flintston.es"])
-             (serdes/identity-hash user))))))
 
 (deftest hash-password-on-update-test
   (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[t2/insert!]]"

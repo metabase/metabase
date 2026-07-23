@@ -80,7 +80,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
           />
         </Flex>
 
-        <Card withBorder shadow="none" p={0}>
+        <Card withBorder shadow="none" p={0} style={{ overflowX: "auto" }}>
           <ConversationsTable
             conversations={conversations}
             isLoading={isLoading}
