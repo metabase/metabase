@@ -16,16 +16,17 @@ describe("hasColumnSettingsWidgets", () => {
     ).toBe(true);
   });
 
-  // proves a raw Field flows through the same pipeline as a DatasetColumn
-  it("returns true for a number Field", () => {
-    expect(
-      hasColumnSettingsWidgets({
-        column: createMockField({
-          base_type: "type/Integer",
-          effective_type: "type/Integer",
+  describe("prove a raw Field flows through the same pipeline as a DatasetColumn", () => {
+    it("returns true for a number Field", () => {
+      expect(
+        hasColumnSettingsWidgets({
+          column: createMockField({
+            base_type: "type/Integer",
+            effective_type: "type/Integer",
+          }),
         }),
-      }),
-    ).toBe(true);
+      ).toBe(true);
+    });
   });
 });
 

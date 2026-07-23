@@ -40,9 +40,6 @@ type ColumnSettingsProps = HasColumnSettingsWidgetsProps & {
   variant?: ChartSettingsWidgetVariant;
 };
 
-// The settings pipeline works on DatasetColumns, but the metadata editors pass
-// raw Fields; a Field is a column of its table, so it only needs `source` (and
-// a numeric `id` — a Field's id may be a field reference) to become one.
 function toDatasetColumn(column: DatasetColumn | Field): DatasetColumn {
   if ("source" in column) {
     return column;
