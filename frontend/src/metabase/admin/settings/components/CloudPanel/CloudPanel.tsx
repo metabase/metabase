@@ -65,9 +65,6 @@ export const CloudPanel = ({
     [migration, getPollingInterval],
   );
 
-  // The migration progresses server-side while we poll, flipping settings
-  // (e.g. read-only mode) without any client mutation to invalidate them —
-  // so refetch settings whenever the polled migration state changes.
   useEffect(
     function syncSiteSettings() {
       if (migrationState) {
@@ -86,8 +83,7 @@ export const CloudPanel = ({
   );
 
   const handleCreateMigration = async () => {
-    // createCloudMigration invalidates session-properties, which refetches
-    // settings.
+    // createCloudMigration invalidates session-properties, which refetches settings.
     const newMigration = await createCloudMigration().unwrap();
     onMigrationStart(storeUrl, plan, newMigration);
   };
