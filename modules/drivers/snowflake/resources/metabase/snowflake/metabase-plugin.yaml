@@ -36,17 +36,17 @@ driver:
         use-password: false
       required: true
     - name: private-key-passphrase
-      display-name: Passphrase for RSA private key
+      display-name: Private key passphrase
       helper-text: Use only if your private key is encrypted. This is not your Snowflake user password.
       type: password
       visible-if:
         use-password: false
       required: false
     - merge:
-      - password
-      - visible-if:
-          use-password: true
-        required: true
+        - password
+        - visible-if:
+            use-password: true
+          required: true
     - name: warehouse
       display-name: Warehouse
       helper-text: If your user doesn't have a default warehouse, enter the warehouse to connect to.
@@ -68,11 +68,11 @@ driver:
     - group:
         container-style: ["component", "backdrop"]
         fields:
-        - ssh-tunnel
+          - ssh-tunnel
     - advanced-options-start
     - merge:
-      - additional-options
-      - placeholder: 'queryTimeout=0'
+        - additional-options
+        - placeholder: "queryTimeout=0"
     - default-advanced-options
 init:
   - step: load-namespace

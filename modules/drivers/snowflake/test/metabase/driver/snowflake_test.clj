@@ -23,6 +23,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -52,7 +53,12 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io StringReader StringWriter)
+   (org.bouncycastle.asn1.pkcs PrivateKeyInfo)
+   (org.bouncycastle.openssl PEMKeyPair PEMParser PKCS8Generator)
+   (org.bouncycastle.openssl.jcajce JcaPEMWriter JceOpenSSLPKCS8EncryptorBuilder)))
 
 (set! *warn-on-reflection* true)
 
@@ -737,6 +743,30 @@
             :private_key_file some?}
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
 
+(defn- private-key-info
+  ^PrivateKeyInfo [private-key-pem]
+  (with-open [reader (PEMParser. (StringReader. private-key-pem))]
+    (let [pem-object (.readObject reader)]
+      (cond
+        (instance? PrivateKeyInfo pem-object) pem-object
+        (instance? PEMKeyPair pem-object)     (.getPrivateKeyInfo ^PEMKeyPair pem-object)
+        :else                                 (throw (ex-info "Unsupported test private key format."
+                                                              {:type (type pem-object)}))))))
+
+(defn- encrypted-private-key-pem
+  [private-key-pem ^String passphrase]
+  (let [encryptor (-> (JceOpenSSLPKCS8EncryptorBuilder. PKCS8Generator/PBE_SHA1_3DES)
+                      (.setPassword (.toCharArray passphrase))
+                      (.build))
+        generator (PKCS8Generator. (private-key-info private-key-pem) encryptor)
+        output    (StringWriter.)]
+    (with-open [writer (JcaPEMWriter. output)]
+      (.writeObject writer generator))
+    (str output)))
+
+(deftest ^:parallel private-key-passphrase-is-sensitive-test
+  (is (contains? (driver.u/sensitive-fields :snowflake) :private-key-passphrase)))
+
 (deftest ^:parallel private-key-passphrase-connection-spec-test
   (let [base-details {:role nil
                       :warehouse "COMPUTE_WH"
@@ -752,25 +782,26 @@
                       :host ""
                       :use-password false
                       :private-key-value "testing"}]
-    (testing "non-blank passphrase: URL has private_key_pwd; spec has JDBC Properties keys for the connection pool
-              (clojure.java.jdbc with :connection-uri only does not add extra keys from the spec to get-connection)"
-      (let [spec (sql-jdbc.conn/connection-details->spec
-                  :snowflake
-                  (assoc base-details :private-key-passphrase "  my-pk-pass  "))]
-        (is (= "my-pk-pass" (get (#'driver.snowflake/connection-str->parameters (:connection-uri spec))
-                                 "PRIVATE_KEY_PWD")))
-        (is (= "my-pk-pass" (:private_key_pwd spec)))
-        (is (= "my-pk-pass" (:private_key_file_pwd spec)))
-        (is (nil? (:private-key-passphrase spec)))))
-    (testing "blank or absent passphrase does not add private_key_pwd to the connection URI"
-      (doseq [pass [nil "" "   "]]
+    (testing "passphrase is passed unchanged in the URL and JDBC properties"
+      (doseq [passphrase ["my-pk-pass" "  my-pk-pass  " "   "]]
         (let [spec (sql-jdbc.conn/connection-details->spec
                     :snowflake
-                    (cond-> base-details
-                      pass (assoc :private-key-passphrase pass)))]
-          (is (nil? (get (#'driver.snowflake/connection-str->parameters (:connection-uri spec))
-                         "PRIVATE_KEY_PWD"))))))
-    (testing "account password auth does not set private key passphrase in the URL and strips Metabase key"
+                    (assoc base-details :private-key-passphrase passphrase))]
+          (is (= passphrase
+                 (get (driver.snowflake/connection-str->parameters (:connection-uri spec))
+                      "PRIVATE_KEY_PWD")))
+          (is (= passphrase (:private_key_pwd spec)))
+          (is (nil? (:private_key_file_pwd spec)))
+          (is (nil? (:private-key-passphrase spec))))))
+    (testing "nil or empty passphrase does not add private_key_pwd"
+      (doseq [passphrase [nil ""]]
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc base-details :private-key-passphrase passphrase))]
+          (is (nil? (get (driver.snowflake/connection-str->parameters (:connection-uri spec))
+                         "PRIVATE_KEY_PWD")))
+          (is (nil? (:private_key_pwd spec))))))
+    (testing "account password auth strips the private key passphrase"
       (let [spec (sql-jdbc.conn/connection-details->spec
                   :snowflake
                   (assoc base-details
@@ -778,45 +809,11 @@
                          :password "account-pass"
                          :private-key-value nil
                          :private-key-passphrase "ignored-in-spec"))]
-        (is (str/blank? (get (#'driver.snowflake/connection-str->parameters (:connection-uri spec))
-                             "PRIVATE_KEY_PWD")))
+        (is (nil? (get (driver.snowflake/connection-str->parameters (:connection-uri spec))
+                       "PRIVATE_KEY_PWD")))
         (is (nil? (:private_key_pwd spec)))
         (is (nil? (:private_key_file_pwd spec)))
         (is (nil? (:private-key-passphrase spec)))))))
-
-(deftest ^:parallel encrypted-pkcs8-without-passphrase-validation-test
-  (let [encrypted-pem   "-----BEGIN ENCRYPTED PRIVATE KEY-----\nYWJj\n-----END ENCRYPTED PRIVATE KEY-----\n"
-        unencrypted-pem "-----BEGIN PRIVATE KEY-----\nYWJj\n-----END PRIVATE KEY-----\n"
-        base-details    {:role nil
-                         :warehouse "COMPUTE_WH"
-                         :additional-options nil
-                         :db "v3_sample-dataset"
-                         :let-user-control-scheduling false
-                         :private-key-options "uploaded"
-                         :port nil
-                         :account "ls10467.us-east-2.aws"
-                         :tunnel-enabled false
-                         :engine :snowflake
-                         :user "SNOWFLAKE_DEVELOPER"
-                         :host ""
-                         :use-password false}]
-    (testing "encrypted PKCS#8 PEM and blank passphrase throws before JDBC"
-      (try
-        (sql-jdbc.conn/connection-details->spec
-         :snowflake
-         (assoc base-details
-                :private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes encrypted-pem))
-                :private-key-passphrase nil))
-        (is false "expected throw")
-        (catch clojure.lang.ExceptionInfo e
-          (is (re-find #"Passphrase for RSA private key" (ex-message e)))
-          (is (true? (:metabase.driver/can-connect-message? (ex-data e)))))))
-    (testing "unencrypted PKCS#8 PEM and blank passphrase does not throw this validation"
-      (is (some? (sql-jdbc.conn/connection-details->spec
-                  :snowflake
-                  (assoc base-details
-                         :private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes unencrypted-pem))
-                         :private-key-passphrase nil)))))))
 
 (deftest can-connect-test
   (let [pk-key (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
@@ -828,11 +825,14 @@
             "can-connect? should return true for normal Snowflake DB details")
         (let [original-query jdbc/query]
           ;; make jdbc/query return a falsey value, but should still be able to connect
-          (with-redefs [jdbc/query (fn fake-jdbc-query
-                                     ([db sql-params] (fake-jdbc-query db sql-params {}))
-                                     ([db sql-params opts] (if (str/starts-with? sql-params "SHOW OBJECTS IN DATABASE")
-                                                             nil
-                                                             (original-query db sql-params (or opts {})))))]
+          (mt/with-dynamic-fn-redefs
+            [jdbc/query (fn fake-jdbc-query
+                          ([db sql-params]
+                           (fake-jdbc-query db sql-params {}))
+                          ([db sql-params opts]
+                           (if (str/starts-with? sql-params "SHOW OBJECTS IN DATABASE")
+                             nil
+                             (original-query db sql-params (or opts {})))))]
             (is (can-connect? (:details (mt/db))))))
         (is (thrown?
              net.snowflake.client.api.exception.SnowflakeSQLException
@@ -845,6 +845,17 @@
                               (dissoc :account)))
             "can-connect? with host and no account")
         (when (and pk-key pk-user)
+          (testing "passphrase-protected private key authentication"
+            (let [passphrase "  snowflake-test-passphrase  "
+                  details    (-> (:details (mt/db))
+                                 (dissoc :password)
+                                 (merge {:db pk-db
+                                         :user pk-user
+                                         :use-password false
+                                         :private-key-options "uploaded"
+                                         :private-key-value (encrypted-private-key-pem pk-key passphrase)
+                                         :private-key-passphrase passphrase}))]
+              (is (can-connect? details))))
           (mt/with-temp-file [pk-path]
             (mt/with-temp [:model/Secret {path-secret-id :id} {:name "Private key for Snowflake"
                                                                :kind :pem-cert
