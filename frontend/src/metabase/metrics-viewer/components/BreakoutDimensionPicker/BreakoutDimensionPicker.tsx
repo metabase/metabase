@@ -5,10 +5,7 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import {
-  type DimensionOption,
-  groupIntoSections,
-} from "metabase/common/components/DimensionPill";
+import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { Flex, Icon } from "metabase/ui";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
@@ -47,7 +44,7 @@ export function BreakoutDimensionPicker({
       selected: currentBreakoutDimensionName === dim.name,
     }));
 
-    return groupIntoSections(items);
+    return [{ items }];
   }, [dimensions, currentBreakoutDimensionName]);
 
   const handleSelect = useCallback(
@@ -136,6 +133,7 @@ export function BreakoutDimensionPicker({
         renderItemWrapper={renderItemWrapper}
         itemIsSelected={itemIsSelected}
         alwaysExpanded
+        hideSingleSectionTitle
         maxHeight={Infinity}
         width="16rem"
       />

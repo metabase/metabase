@@ -77,3 +77,13 @@ export function getDimensionDescriptors(
   dimensionDescriptorCache.set(definition, result);
   return result;
 }
+
+export function getDimensionDescriptor(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): DimensionDescriptor | undefined {
+  const dimensionId = LibMetric.dimensionValuesInfo(definition, dimension).id;
+  return dimensionId
+    ? getDimensionDescriptors(definition).get(dimensionId)
+    : undefined;
+}

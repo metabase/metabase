@@ -1,3 +1,4 @@
+import { getDimensionDescriptor } from "metabase/common/metrics/utils/dimension-descriptors";
 import * as LibMetric from "metabase-lib/metric";
 
 import {
@@ -91,9 +92,9 @@ export function buildLegendGroups(
         effectiveEntry.definition,
         breakoutProjection,
       );
-      const dimensionInfo = rawDimension
-        ? LibMetric.displayInfo(effectiveEntry.definition, rawDimension)
-        : null;
+      const dimension = rawDimension
+        ? getDimensionDescriptor(effectiveEntry.definition, rawDimension)
+        : undefined;
 
       const items: LegendItem[] = Array.from(colors.entries()).map(
         ([breakoutValue, color]) => ({
@@ -103,7 +104,11 @@ export function buildLegendGroups(
       );
 
       const header =
-        dimensionInfo?.longDisplayName ?? dimensionInfo?.displayName;
+        dimension?.displayName ??
+        (rawDimension
+          ? LibMetric.displayInfo(effectiveEntry.definition, rawDimension)
+              .displayName
+          : undefined);
       if (!header) {
         return;
       }
