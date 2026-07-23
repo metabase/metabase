@@ -325,11 +325,26 @@
           (is (= {:values [] :returned 0 :has_more_values false} (params-result args)))
           (is (re-find #"No values" (steering-line args))))))))
 
+(defn- tool-manifest-entry
+  []
+  (some #(when (= "get_parameter_values" (:name %)) %) (registry/list-tools nil)))
+
 (defn- tool-description
   []
-  (->> (registry/list-tools nil)
-       (some #(when (= "get_parameter_values" (:name %)) %))
-       :description))
+  (:description (tool-manifest-entry)))
+
+(defn- arg-description
+  "The description a client sees for one argument, dug out of the published inputSchema rather than
+   the Malli source — that string is what reaches the model."
+  [arg]
+  (->> (get-in (tool-manifest-entry) [:inputSchema :properties arg :oneOf])
+       (some :description)))
+
+(deftest offset-description-test
+  (testing "GHY-4141: the offset description names the source cap and points at query — an agent paging
+            a long list can't reach past the cap, and nothing else in the schema says so"
+    (is (re-find #"1000" (arg-description :offset)))
+    (is (re-find #"`query`" (arg-description :offset)))))
 
 (deftest date-parameter-values-test
   (testing "GHY-4141: a date parameter mapped to a column returns that column's distinct values"
