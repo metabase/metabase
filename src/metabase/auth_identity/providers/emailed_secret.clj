@@ -142,13 +142,14 @@
     :else
     (try
       (if-let [user-id (parse-token-user-id token)]
-        (if-let [auth-identity (t2/query-one {:select [:auth_identity.*
-                                                       [:core_user.is_active :is_active]]
-                                              :from :auth_identity
-                                              :left-join [:core_user [:= :core_user.id :auth_identity.user_id]]
-                                              :where [:and
-                                                      [:= :auth_identity.user_id user-id]
-                                                      [:= :auth_identity.provider (name provider)]]})]
+        (if-let [auth-identity (t2/select-one :model/AuthIdentity
+                                              {:select [:auth_identity.*
+                                                        [:core_user.is_active :is_active]]
+                                               :from :auth_identity
+                                               :left-join [:core_user [:= :core_user.id :auth_identity.user_id]]
+                                               :where [:and
+                                                       [:= :auth_identity.user_id user-id]
+                                                       [:= :auth_identity.provider (name provider)]]})]
           (if (false? (:is_active auth-identity))
             {:success? false
              :error :inactive-account
@@ -160,7 +161,8 @@
                   (log/debugf "Valid reset token for user %s" user-id)
                   {:success? true
                    :user-id user-id
-                   :auth-identity auth-identity})
+                   ;; Need to remove :is_active so that saving via t2 works properly later
+                   :auth-identity (dissoc auth-identity :is_active)})
                 :expired
                 {:success? false
                  :error :expired-token
