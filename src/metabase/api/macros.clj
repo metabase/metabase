@@ -184,6 +184,7 @@
    args  :- :map]
   (when-let [ks (not-empty (metabase.api.common.internal/route-arg-keywords route))]
     (let [route-params-schema (some-> (get-in args [:params :route :schema])
+                                      ;; eval runs at macroexpansion time to resolve the schema form
                                       #_:clj-kondo/ignore
                                       eval
                                       mr/resolve-schema
@@ -954,6 +955,7 @@
 ;;;; Example usages
 ;;;;
 
+;; examples are fully qualified so they can be pasted into a REPL from any namespace
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (comment
   (metabase.api.macros/ns-routes 'metabase.timeline.api.timeline)

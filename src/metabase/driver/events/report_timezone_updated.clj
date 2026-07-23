@@ -4,6 +4,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
+   ;; event handler runs outside any query; it enumerates Database rows itself, no metadata provider exists
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 

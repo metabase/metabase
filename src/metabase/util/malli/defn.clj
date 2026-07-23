@@ -54,6 +54,7 @@
                                                      (:arities arities-value)))
                                       ")"))
           "\n  Return: " (str/replace (with-out-str
+                                        ;; renders the schema into the generated docstring via with-out-str
                                         #_{:clj-kondo/ignore [:discouraged-var]}
                                         (pp/pprint (:schema (:values return) :any)
                                                    {:max-width 120}))

@@ -46,16 +46,20 @@
   query->database-and-table-ids
   save-queries-and-update-average-execution-times!])
 
+;; the re-exported var carries the docstring; kondo can't see through import-def
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
 
+;; the re-exported var carries the docstring; kondo can't see through import-def
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/template-tag-parameters card-template-tag-parameters)
 
+;; the re-exported var carries the docstring; kondo can't see through import-def
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.parameter-card/delete-all-for-parameterized-object!
               delete-all-parameter-cards-for-parameterized-object!)
 
+;; the re-exported var carries the docstring; kondo can't see through import-def
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.parameter-card/upsert-or-delete-from-parameters!
               upsert-or-delete-parameter-cards-from-parameters!)

@@ -8,6 +8,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.options :as lib.options]
    [metabase.lib.pivot :as lib.pivot]
+   ;; :as-alias only, for ::add-remaps keywords; no runtime dependency on QP internals
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]

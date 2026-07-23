@@ -15,7 +15,7 @@
                   :deprecated-var                                                      81
                   :discouraged-java-method                                             3
                   :discouraged-namespace                                               81
-                  :discouraged-var                                                     106
+                  :discouraged-var                                                     104
                   :equals-true                                                         1
                   :main-without-gen-class                                              1
                   :metabase/defsetting-namespace                                       7
@@ -66,39 +66,14 @@
                   :unresolved-symbol                       19
                   :unresolved-var                          1
                   :unused-referred-var                     4}
- :comment-exempt #{:aliased-namespace-symbol
-                   :all
-                   :case-symbol-test
+ :comment-exempt #{:all
                    :clojure-lsp/unused-public-var
-                   :def-fn
                    :deprecated-namespace
-                   :deprecated-var
-                   :discouraged-java-method
                    :discouraged-namespace
                    :discouraged-var
-                   :equals-true
-                   :metabase/defsetting-namespace
-                   :metabase/discourage-millis-duration
-                   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
                    :metabase/modules
-                   :metabase/namespace-name
-                   :metabase/prefer-with-dynamic-fn-redefs
-                   :metabase/test-helpers-use-non-thread-safe-functions
                    :metabase/validate-defendpoint-has-response-schema
                    :metabase/validate-defendpoint-query-params-use-kebab-case
                    :metabase/validate-defendpoint-route-uses-kebab-case
-                   :metabase/validate-deftest
-                   :missing-docstring
-                   :missing-protocol-method
-                   :reduce-without-init
-                   :syntax
-                   :unquote-not-syntax-quoted
-                   :unresolved-namespace
-                   :unresolved-require
-                   :unresolved-symbol
-                   :unused-alias
-                   :unused-binding
                    :unused-excluded-var
-                   :unused-namespace
-                   :unused-private-var
-                   :unused-value}}
+                   :unused-private-var}}

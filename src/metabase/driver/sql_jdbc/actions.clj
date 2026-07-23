@@ -112,6 +112,7 @@
                         [::cast-values table-id]
                         (fn []
                           (into {}
+                                ;; actions row casting keys on legacy snake_case field metadata
                                 #_{:clj-kondo/ignore [:deprecated-var]}
                                 (map (juxt :name driver-api/->legacy-metadata))
                                 (driver-api/with-metadata-provider database-id

@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; third-party drivers depend on this exact name
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.driver
   "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
@@ -1099,6 +1100,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+;; default impl of the deprecated multimethod; throws to point implementers at the replacement
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod splice-parameters-into-native-query ::driver
   [_driver _query]

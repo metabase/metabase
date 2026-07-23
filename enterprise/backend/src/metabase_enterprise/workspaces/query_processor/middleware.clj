@@ -71,6 +71,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   ;; replaces the store's metadata provider for workspace table remapping; only qp.store exposes that
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]))
 

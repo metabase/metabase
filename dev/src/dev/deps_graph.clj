@@ -573,6 +573,7 @@
   (let [deps        (dependencies)
         all-modules (into (sorted-set) (map :module) deps)
         module-deps (set (keys (all-module-deps-paths deps module)))]
+    ;; dev REPL tool; the summary line is for the human at the console
     #_{:clj-kondo/ignore [:discouraged-var]}
     (printf "Module %s depends on %d/%d (%.1f%%) other modules.\n"
             module

@@ -24,6 +24,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test :as qp]
@@ -43,6 +44,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; one-time DB init; a :once fixture runs before any tests, parallel or not
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
@@ -241,6 +243,7 @@
 
 (deftest refresh-lease-test
   (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -257,6 +260,7 @@
                 "updated_at means 'when the results blob was last written' -- freshness, purging, and the EE refresh "
                 "scheduler all read it that way. Bumping it on lease claim makes a crashed refresh look freshly "
                 "written, so the stale row is treated as fresh for a full additional cache window.")
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (let [original-updated-at (t/offset-date-time "2020-01-01T00:00Z")]
       (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
@@ -272,6 +276,7 @@
 
 (deftest delete-entry-test
   (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])

@@ -11,6 +11,7 @@
     [(fn [result] (swap! results conj result))
      results]))
 
+;; fixture rebinding is safe here; this ns has no ^:parallel tests
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each
   (fn [t]

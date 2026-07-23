@@ -1,5 +1,6 @@
 (ns metabase.task-history.models.task-history
   (:require
+   ;; installs a capturing LoggerFactory via *logger-factory*; util.log doesn't expose the factory plumbing
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]

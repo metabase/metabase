@@ -84,6 +84,7 @@
   (mdb/memoize-for-application-db
    (memoize/ttl
     (fn []
+      ;; the JDBC-spec variant works on the app-db datasource without building a driver connection pool
       #_{:clj-kondo/ignore [:deprecated-var]}
       (sql-jdbc.sync/db-default-timezone (mdb/db-type) {:datasource (mdb/app-db)}))
     :ttl/threshold (u/hours->ms 1))))

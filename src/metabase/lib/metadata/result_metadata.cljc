@@ -13,7 +13,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   ;; result metadata's field-ref wire format is still legacy MBQL; schemas describe legacy refs
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   ;; legacy ref munging (update-field-options) on the legacy wire format; dies with the MBQL 5 port
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
@@ -238,6 +240,7 @@
   used by individual pieces of middleware or driver implementations for tracking little bits of information that
   should not be considered relevant when comparing clauses for equality."
   [legacy-ref]
+  ;; operates on legacy refs kept for FE compat; the legacy options helper matches that shape
   ^{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/update-field-options legacy-ref (partial into {} (remove (fn [[k _]]
                                                                      (qualified-keyword? k))))))

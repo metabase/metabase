@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? empty? get-in not-empty]]
+   ;; records QueryExecution rows in the app db; a write the metadata provider can't do
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 

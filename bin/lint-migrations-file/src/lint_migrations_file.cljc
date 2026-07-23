@@ -1,5 +1,6 @@
 (ns lint-migrations-file
   "This is cljc because it is used from both Clojure (:clj) and Babashka (:bb). Not cljs!"
+  ;; kondo also lints cljc as cljs, where the :bb/:clj conditional below hides the only io usage
   #_{:clj-kondo/ignore [:unused-alias :unused-namespace]}
   (:require
    [change-set.strict]
@@ -13,6 +14,7 @@
    (clojure.lang ExceptionInfo)
    (java.lang Integer)))
 
+;; kondo also lints a :cljs branch where this doesn't resolve; the file is :clj + :bb only
 #_:clj-kondo/ignore
 (set! *warn-on-reflection* true)
 
@@ -151,6 +153,7 @@
                                 (map #(get-in % [:changeSet :id]))
                                 seq)]
      (throw (validation-error
+             ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
              #_:clj-kondo/ignore
              (format "Migration(s) [%s] uses invalid types (in %s)"
                      (str/join "," (map #(str "'" % "'") using-types?))
@@ -311,6 +314,7 @@
   :ok)
 
 (defn- migration-files []
+  ;; kondo can't parse the :bb reader-conditional branch and mangles the surrounding let
   #_{:clj-kondo/ignore [:unresolved-symbol :unused-binding :syntax]}
   (let [dir-str #?(:bb "resources/migrations" :clj "../../resources/migrations")
         dir (io/file dir-str)]
@@ -332,6 +336,7 @@
                   (sequential? x) (mapv fix-vals x)
                   :else x))]
     (fix-vals (yaml/parse-string
+               ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
                #_:clj-kondo/ignore (slurp file)))))
 
 (defn- display-name
@@ -360,12 +365,14 @@
   (try
     (validate-all)
     (println "Ok.")
+    ;; false unresolved warning from kondo's :cljs pass; this cljc is :clj+:bb only
     #_:clj-kondo/ignore
     (System/exit 0)
     (catch ExceptionInfo e
       (if (validation-error? e)
         (do
           (println)
+          ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
           #_:clj-kondo/ignore
           (printf "Error in %s:\t%s\n" (:file (ex-data e)) (.getMessage e))
           (printf "Details:\n\n %s" (with-out-str (pprint/pprint (dissoc (ex-data e) ::validation-error))))
@@ -374,6 +381,7 @@
           (pprint/pprint (Throwable->map e))
           (println (.getMessage e))))
       (System/exit 1))
+    ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
     (catch #_:clj-kondo/ignore
      Throwable e
            (pprint/pprint (Throwable->map e))

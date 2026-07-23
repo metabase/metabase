@@ -116,6 +116,7 @@
   (t2/delete! :model/ApiKey id)
   api/generic-204-no-content)
 
+;; REPL doc-check example; uses namespaces this ns doesn't require
 #_:clj-kondo/ignore
 (comment
   ;; check the generated docs

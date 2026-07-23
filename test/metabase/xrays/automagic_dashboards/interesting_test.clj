@@ -384,6 +384,7 @@
                                                (->> dimension-defs cycle (drop 3) (take 4)))))))))
 
 (defn- result-metadata-for-query [query]
+  ;; x-ray tests consume legacy-shaped result metadata (persisted card result_metadata format)
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query nil))
 

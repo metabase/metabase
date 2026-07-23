@@ -161,6 +161,7 @@
         tree
         parsed-collapsed-subtotals))))
 
+;; defrecord has no docstring slot for the vars it interns
 #_{:clj-kondo/ignore [:missing-docstring]}
 (defrecord TreeNode [value children value->child-pos isCollapsed])
 
@@ -287,6 +288,7 @@
 
   Takes raw pivot data and generates hierarchical tree structures for both rows
   and columns, along with a lookup map for cell values."
+  ;; settings is only used by the :cljs branch of this function
   #_{:clj-kondo/ignore [:unused-binding]}
   [rows cols row-indexes col-indexes val-indexes settings col-settings]
   (let [row-tree (->TreeNode nil (perf/make-list) (perf/make-map) false)
@@ -589,6 +591,7 @@
       #?(:cljs (perf/clj->js result)
          :clj result))))
 
+;; defrecord has no docstring slot for the vars it interns
 #_{:clj-kondo/ignore [:missing-docstring]}
 (defrecord ResultItem [value rawValue clicked isCollapsed hasSubtotal isGrandTotal isSubtotal isValueColumn depth offset
                        hasChildren path span maxDepthBelow])

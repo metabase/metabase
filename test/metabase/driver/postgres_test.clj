@@ -50,6 +50,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.models.secret :as secret]
@@ -2090,6 +2091,7 @@
       (let [db-name "sync_writable_test"
             details (tx/dbdef->connection-details :postgres :db {:database-name db-name})]
         (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+        ;; fixture DDL on a scratch pg database with no :model/Database row, so raw jdbc on the spec
         #_{:clj-kondo/ignore [:discouraged-var]}
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (try

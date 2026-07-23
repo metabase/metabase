@@ -15,7 +15,9 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
+   ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.models.dispatch :as models.dispatch]
@@ -212,6 +214,7 @@
 (def ^{:deprecated "0.57.0"} transform-legacy-field-ref
   "Transform field refs"
   {:in  json-in
+   ;; inside the deprecated transform itself; legacy refs from the app DB need the legacy normalizer
    :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
               json-out-with-keywordization)})
 
@@ -664,6 +667,7 @@
   ([model pk]
    (can-read? model pk)))
 
+;; only reached through the :can_write hydration key, never called by name
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write
   :can_write

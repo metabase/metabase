@@ -55,6 +55,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -550,6 +551,7 @@
      ;; MBQL 4 inner MBQL query
      ((some-fn :source-table :source-query) query)
      (-> query
+         ;; legacy inner-query entry point; the deprecated bridge is the only path to a Lib query here
          #_{:clj-kondo/ignore [:deprecated-var]}
          annotate.legacy-helper-fns/legacy-inner-query->mbql5-query
          (add-alias-info options)

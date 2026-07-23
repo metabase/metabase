@@ -7,12 +7,14 @@
   (:require
    ;; existing legacy usage -- don't use legacy MBQL namespaces in QP going forward
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; helpers convert to legacy MBQL for drivers not yet on MBQL 5; typed against the legacy schema
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
+   ;; this ns is itself the legacy compat layer; it reads the store the legacy pipeline fills
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as-alias add]
    [metabase.util.i18n :refer [tru]]
@@ -50,6 +52,7 @@
     (or (::add/desired-alias (lib/options ag-clause))
         (:name (lib/options ag-clause))
         (lib/column-name
+         ;; this ns is the legacy-MBQL bridge for drivers; the deprecated conversion is its purpose
          #_{:clj-kondo/ignore [:deprecated-var]}
          (legacy-inner-query->mbql5-query legacy-inner-query)
          (lib/->mbql5 legacy-ag-clause)))))

@@ -13,6 +13,7 @@
                                  (slurp "resources/data_readers.clj")))
                           'js)]
     (zipmap reader-tags (map (fn [tag]
+                               ;; eval builds a quoting reader fn per dynamic tag
                                #_:clj-kondo/ignore
                                (eval `(fn [v] (list (quote ~tag) v))))
                              reader-tags))))
@@ -100,6 +101,7 @@
   [file & [line-number]]
   (let [content (try (slurp file) (catch Exception _ (read-check-problem :missing-file)))]
     (if-not line-number
+      ;; CLI output; results print to stdout by design
       #_:clj-kondo/ignore
       (let [result (can-read-content? content)]
         (prn result)
@@ -135,6 +137,7 @@
                 :message (ex-message e)
                 :data data}))))))
 
+;; REPL scratch full of deliberately unreadable tokens and ad-hoc requires
 #_:clj-kondo/ignore
 (comment ;; hi self
 

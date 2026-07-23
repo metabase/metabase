@@ -17,6 +17,7 @@
      :filter      expression}))
 
 (defn- nested-filter-query [expression]
+  ;; boolean->comparison operates on legacy inner queries; legacy nesting matches the shape under test
   #_{:clj-kondo/ignore [:deprecated-var]}
   (mt/nest-query (basic-filter-query expression) 4))
 
