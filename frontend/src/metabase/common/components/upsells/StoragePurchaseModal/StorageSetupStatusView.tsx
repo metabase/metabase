@@ -8,17 +8,15 @@ interface StorageSetupStatusViewProps {
   /** Rendered inside the circular badge overlaying the illustration. */
   badge: ReactNode;
   title: string;
-  description: string;
-  action?: ReactNode;
+  description: ReactNode;
 }
 
 export const StorageSetupStatusView = ({
   badge,
   title,
   description,
-  action,
 }: StorageSetupStatusViewProps) => (
-  <Stack align="center" justify="center" gap="lg" h="100%">
+  <Stack pt="40" align="center" gap="lg">
     <Box h={96} pos="relative" w={96}>
       <Box component={databaseAdd} />
 
@@ -52,7 +50,5 @@ export const StorageSetupStatusView = ({
         {description}
       </Text>
     </Box>
-
-    {action}
   </Stack>
 );

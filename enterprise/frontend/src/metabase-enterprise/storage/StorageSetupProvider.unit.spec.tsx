@@ -14,6 +14,8 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -275,6 +277,37 @@ describe("StorageSetupProvider", () => {
       jest.advanceTimersByTime(STORAGE_SETUP_TIMEOUT_MS);
     });
     expect(screen.getByText("setup failed")).toBeInTheDocument();
+  });
+
+  it("clears a failed setup once the attached DWH database surfaces", async () => {
+    const user = setupFakeClock();
+    const { store } = setup();
+
+    await confirmPurchase(user);
+    expect(await screen.findByText("setting up")).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(STORAGE_SETUP_TIMEOUT_MS);
+    });
+    expect(screen.getByText("setup failed")).toBeInTheDocument();
+
+    // Setup timed out locally, but the DWH lands in the background. A later
+    // databases-list refetch (e.g. a page refresh) must clear the stale failure.
+    const storage = [createMockDatabase({ id: 1, is_attached_dwh: true })];
+    fetchMock.modifyRoute("database-list", {
+      response: () => ({ data: storage, total: storage.length }),
+    });
+    await act(async () => {
+      store.dispatch(Api.util.invalidateTags([listTag("database")]));
+    });
+    await act(async () => {
+      await fetchMock.callHistory.flush(true);
+    });
+
+    expect(screen.queryByText("setup failed")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Metabase Storage is ready"),
+    ).toBeInTheDocument();
   });
 
   it("never enters setup on its own, however the instance looks on load", async () => {

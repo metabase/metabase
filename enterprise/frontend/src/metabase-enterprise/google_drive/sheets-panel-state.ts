@@ -51,7 +51,10 @@ export function getSheetsPanelState({
     return "provisioning-storage";
   }
 
-  if (hasSetupFailed) {
+  // `hasSetupFailed` can be a stale, session-cached verdict: setup may have timed
+  // out locally yet completed in the background. Once the DWH is actually attached,
+  // trust that over the cached failure rather than showing an error state.
+  if (hasSetupFailed && !hasAttachedDwh) {
     return "storage-setup-failed";
   }
 
