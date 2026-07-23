@@ -145,6 +145,30 @@
           by-id  (u/index-by :id rows)]
       (into [] (keep by-id) card-ids))))
 
+(defn- sync-missing-dimensions!
+  "Self-heal metrics whose dimensions were never successfully synced (`:dimensions` NULL/empty) —
+   e.g. metrics created on a model before the model had `result_metadata`, or SQL-model metrics
+   that predate the source-card dimension-sync fix (UXW-4475). Syncs each such metric and returns
+   `cards` with the healed rows reloaded. Metrics whose sync computes nothing (or throws) are
+   returned unchanged; they will be retried on a later call, which is cheap (app-DB reads only,
+   no write when nothing changed)."
+  [cards]
+  (let [broken-ids (into []
+                         (comp (filter #(and (:dataset_query %) (empty? (:dimensions %))))
+                               (map :id))
+                         cards)]
+    (if (empty? broken-ids)
+      cards
+      (do
+        (doseq [id broken-ids]
+          (try
+            (metrics/sync-dimensions! :metadata/metric id)
+            (catch Throwable e
+              (log/warnf e "Failed to sync dimensions for metric card %d" id))))
+        (let [healed (u/index-by :id (t2/select (into [:model/Card] metric-card-cols)
+                                                :id [:in broken-ids]))]
+          (mapv #(or (get healed (:id %)) %) cards))))))
+
 (defn- simple-table-query?
   "True if `query` is a single-stage query over a base table (the metric's `:table_id`) with no
    explicit joins or expressions. Such a query's breakoutable columns depend only on the source
@@ -236,7 +260,7 @@
   (lib-be/with-metadata-provider-cache
     (let [library-ids (or (library-metrics-collection-ids) #{})
           card-ids   (accessible-metric-ids metric-ids library-ids)
-          cards      (load-metric-cards card-ids)
+          cards      (sync-missing-dimensions! (load-metric-cards card-ids))
           ;; Filter dimensions by user permissions for all metrics at once (one set of queries
           ;; for the whole batch, rather than per metric).
           permitted  (metrics/filter-dimensions-for-user-batch cards)
