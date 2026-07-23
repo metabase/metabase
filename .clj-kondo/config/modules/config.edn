@@ -2696,6 +2696,7 @@
            metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
+           metabase.warehouse-schema.models.table-user-settings
            metabase.warehouse-schema.table}
    :uses #{analyze
            api
@@ -3137,7 +3138,8 @@
            models
            permissions
            premium-features
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Collection
                     :model/Dimension
                     :model/Field

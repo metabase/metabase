@@ -61,6 +61,7 @@
     :model/Setting
     :model/EmbeddingTheme
     :model/Table
+    :model/TableUserSettings
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
@@ -383,6 +384,7 @@
     :model/ImplicitAction
     :model/HTTPAction
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue

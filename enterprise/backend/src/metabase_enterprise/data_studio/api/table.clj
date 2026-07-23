@@ -14,6 +14,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -175,6 +176,8 @@
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
+      (schema.table-user-settings/upsert-user-settings! table-ids-to-update
+                                                        {:collection_id (:id target-collection)})
       (t2/update! :model/Table :id [:in table-ids-to-update]
                   {:collection_id (:id target-collection)
                    :is_published  true})
@@ -200,6 +203,7 @@
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
+      (schema.table-user-settings/upsert-user-settings! table-ids-to-update {:collection_id nil})
       (t2/update! :model/Table :id [:in table-ids-to-update]
                   {:collection_id nil
                    :is_published  false})

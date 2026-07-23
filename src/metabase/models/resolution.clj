@@ -124,6 +124,7 @@
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
+    :model/TableUserSettings                 metabase.warehouse-schema.models.table-user-settings
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models

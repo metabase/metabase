@@ -95,7 +95,8 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
-(def ^:private transform-data-authority
+(def transform-table-data-authority
+  "Toucan transform for `data_authority`, shared with `:model/TableUserSettings`."
   {:out (fn [value]
           (let [kw (some-> value keyword)]
             (if (contains? writable-data-authority-types kw)
@@ -119,20 +120,28 @@
    :silver :final
    :gold   :final})
 
+(def transform-table-data-layer
+  "Toucan transform for `data_layer`, shared with `:model/TableUserSettings`."
+  (mi/transform-validator-with-fixes
+   mi/transform-keyword
+   (partial mi/assert-optional-enum data-layers)
+   (some-fn legacy-data-layer->current identity)))
+
+(def transform-table-data-source
+  "Toucan transform for `data_source`, shared with `:model/TableUserSettings`."
+  (mi/transform-validator-with-fixes
+   mi/transform-keyword
+   (partial mi/assert-optional-enum data-sources)
+   (some-fn keyword identity)))
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-layers)
-                     (some-fn legacy-data-layer->current identity))
+   :data_layer      transform-table-data-layer
    :field_order     mi/transform-keyword
-   :data_source     (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-sources)
-                     (some-fn keyword identity))
+   :data_source     transform-table-data-source
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority  transform-data-authority})
+   :data_authority  transform-table-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -187,6 +196,11 @@
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :table_id (:id table)))
+
+(def table-user-settings
+  "Set of user-settable values for a Table, mirrored in `:model/TableUserSettings`."
+  #{:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
+    :show_in_getting_started :collection_id :data_layer :data_authority :data_source :owner_email :owner_user_id})
 
 (t2/define-before-update :model/Table
   [table]
