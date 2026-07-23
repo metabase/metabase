@@ -9,17 +9,18 @@ import {
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
   useParams as useV7Params,
-} from "react-router-v7";
+} from "react-router";
 
 import { OutletContext, RouteContext } from "../Outlet";
 import { RouterContext } from "../RouterProvider";
+import type { Route } from "../route";
 import type {
+  Location as HistoryLocation,
   InjectedRouter,
+  LocationDescriptor,
   PlainRoute,
   WithRouterProps,
-} from "../react-router";
-import type { Route } from "../route";
-import type { Location as HistoryLocation, LocationDescriptor } from "../types";
+} from "../types";
 
 import { registerLeaveHook } from "./blocking-history";
 import { toV3Location } from "./location";
@@ -68,24 +69,24 @@ export function RouterBridge({
   // `route` changes, which closed it mid-interaction. Key on the matched branch.
   const matchesKey = matches
     .map((match) => {
-      // `handle` is typed `unknown`; we only ever put `{ v3Path }` on it.
-      const handle = match.route.handle as { v3Path?: string } | undefined;
-      return `${match.pathname}|${handle?.v3Path ?? ""}`;
+      // `handle` is typed `unknown`; we only ever put `{ path, props }` on it.
+      const handle = match.route.handle as { path?: string } | undefined;
+      return `${match.pathname}|${handle?.path ?? ""}`;
     })
     .join(">");
   const routes = useMemo<RouteStub[]>(
     () =>
       matches.map((match) => {
-        // `handle` is typed `unknown`; we only ever put `{ v3Path, props }` on it.
+        // `handle` is typed `unknown`; we only ever put `{ path, props }` on it.
         const handle = match.route.handle as
-          | { v3Path?: string; props?: PlainRoute["props"] }
+          | { path?: string; props?: PlainRoute["props"] }
           | undefined;
         // The facade hooks read `route.path`; `pathnameBase` is the route's matched
         // pathname, which `setRouteLeaveHook` uses to scope its hook to this route.
         // `props` carries the arbitrary route props v3 exposed (the command palette
         // reads `route.props.disableCommandPalette`).
         return {
-          path: handle?.v3Path,
+          path: handle?.path,
           props: handle?.props,
           pathnameBase: match.pathname,
         };

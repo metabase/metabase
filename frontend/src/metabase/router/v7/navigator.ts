@@ -1,4 +1,4 @@
-import type { NavigateFunction, NavigateOptions, To } from "react-router-v7";
+import type { NavigateFunction, NavigateOptions, To } from "react-router";
 
 import type { RouterNavigator } from "../middleware";
 import type { Location as HistoryLocation, LocationDescriptor } from "../types";

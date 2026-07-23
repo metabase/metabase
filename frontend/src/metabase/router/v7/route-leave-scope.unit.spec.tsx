@@ -10,8 +10,6 @@ import {
   useRouter,
 } from "metabase/router";
 
-import type { RouterEngine } from "../engine";
-
 // Registers an always-blocking leave hook scoped to the route it is rendered on,
 // exactly as the leave-confirm modals do (guard on a parent layout route).
 function Guard() {
@@ -48,36 +46,31 @@ const tree = (
 // v3's `setRouteLeaveHook` is scoped to the guarded route: it fires only when a
 // navigation leaves that route's subtree. So moving between sibling child routes
 // under the guarded layout is allowed, and only leaving the layout is blocked.
-describe.each<RouterEngine>(["v3", "v7"])(
-  "route-scoped leave hook on the %s engine",
-  (routerEngine) => {
-    it("allows navigation that stays within the guarded route", async () => {
-      const { store } = renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/section/a",
-      });
-      expect(await screen.findByTestId("a")).toBeInTheDocument();
-
-      store.dispatch(push("/section/b"));
-
-      expect(await screen.findByTestId("b")).toBeInTheDocument();
-      expect(screen.getByTestId("location")).toHaveTextContent("/section/b");
+describe("route-scoped leave hook", () => {
+  it("allows navigation that stays within the guarded route", async () => {
+    const { store } = renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/section/a",
     });
+    expect(await screen.findByTestId("a")).toBeInTheDocument();
 
-    it("blocks navigation that leaves the guarded route", async () => {
-      const { store } = renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/section/a",
-      });
-      expect(await screen.findByTestId("a")).toBeInTheDocument();
+    store.dispatch(push("/section/b"));
 
-      store.dispatch(push("/other"));
+    expect(await screen.findByTestId("b")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/section/b");
+  });
 
-      await new Promise((resolve) => setTimeout(resolve, 30));
-      expect(screen.queryByTestId("other")).not.toBeInTheDocument();
-      expect(screen.getByTestId("location")).toHaveTextContent("/section/a");
+  it("blocks navigation that leaves the guarded route", async () => {
+    const { store } = renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/section/a",
     });
-  },
-);
+    expect(await screen.findByTestId("a")).toBeInTheDocument();
+
+    store.dispatch(push("/other"));
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(screen.queryByTestId("other")).not.toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/section/a");
+  });
+});

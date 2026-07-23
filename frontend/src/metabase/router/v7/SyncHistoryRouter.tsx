@@ -5,7 +5,7 @@ import {
   type NavigationType,
   Router,
   type Location as V7Location,
-} from "react-router-v7";
+} from "react-router";
 
 type History = HistoryRouterProps["history"];
 
