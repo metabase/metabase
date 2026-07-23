@@ -69,6 +69,23 @@
        (format "This dashboard has no parameter %s — each constraints key names another of its filters and the value is that filter's current selection. Available: %s."
                (pr-str param-key) (parameter-catalog (vals resolved-params)))))))
 
+(def ^:private no-values
+  {:values [] :has_more_values false})
+
+(defn- valueless-dashboard-param?
+  "True when a dashboard filter has nothing behind it to fetch values from: no values source, and no
+   dashcard mapping to supply a field. Chain filtering has nothing to query in that case."
+  [param]
+  (and (nil? (:values_source_type param))
+       (empty? (:mappings param))))
+
+(defn- valueless-card-param?
+  "True when a card parameter has nothing behind it to fetch values from: no values source, and no
+   field under its target. A free-text template tag is the common case."
+  [card param]
+  (and (nil? (:values_source_type param))
+       (nil? (params/param-target->field-id (:target param) card))))
+
 (defn- dashboard-values
   [id-or-eid parameter-id query constraints]
   (let [dash            (-> (common/resolve-and-read :model/Dashboard id-or-eid
@@ -78,25 +95,18 @@
         constraints     (update-keys constraints u/qualified-name)]
     (check-parameter-id! "dashboard" parameter-id (vals resolved-params))
     (check-constraints! resolved-params constraints)
-    ;; `*param-values-query*` is what lets a caller who can read the dashboard look up its filter
-    ;; values without query permission on the underlying table — the same grant the REST endpoints
-    ;; make. The search path additionally pins remapping to the field actually being filtered
-    ;; (#59020), as `GET …/params/:param-key/search/:query` does.
-    (binding [qp.perms/*param-values-query* true]
-      (if query
-        (binding [chain-filter/*allow-implicit-uuid-field-remapping* false]
-          (parameters.dashboard/param-values dash parameter-id constraints query))
-        (parameters.dashboard/param-values dash parameter-id constraints)))))
-
-(def ^:private no-values
-  {:values [] :has_more_values false})
-
-(defn- valueless-param?
-  "True when a card parameter has nothing behind it to fetch values from: no values source, and no
-   field under its target. A free-text template tag is the common case."
-  [card param]
-  (and (nil? (:values_source_type param))
-       (nil? (params/param-target->field-id (:target param) card))))
+    ;; Chain filtering raises on an unmapped parameter; an empty value list is the honest answer,
+    ;; and the one target "question" gives for the same shape of parameter.
+    (if (valueless-dashboard-param? (get resolved-params parameter-id))
+      no-values
+      ;; `*param-values-query*` is what lets a caller who can read the dashboard look up its filter
+      ;; values without query permission on the underlying table. The search path additionally pins
+      ;; remapping to the field actually being filtered (#59020).
+      (binding [qp.perms/*param-values-query* true]
+        (if query
+          (binding [chain-filter/*allow-implicit-uuid-field-remapping* false]
+            (parameters.dashboard/param-values dash parameter-id constraints query))
+          (parameters.dashboard/param-values dash parameter-id constraints))))))
 
 (defn- question-values
   [id-or-eid parameter-id query]
@@ -107,7 +117,7 @@
     (let [param (some #(when (= parameter-id (u/qualified-name (:id %))) %) params)]
       ;; `card-param-values` answers nil for a valueless parameter, which its own output schema
       ;; rejects — so the tool decides this case rather than calling and catching.
-      (if (valueless-param? card param)
+      (if (valueless-card-param? card param)
         no-values
         (binding [qp.perms/*param-values-query* true]
           (queries/card-param-values card parameter-id query))))))

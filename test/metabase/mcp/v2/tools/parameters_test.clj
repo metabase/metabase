@@ -87,8 +87,7 @@
                     :type                 "category"
                     :values_source_type   "card"
                     :values_source_config {:card_id source-card-id :value_field (mt/$ids $categories.name)}}
-                   ;; Wired to no dashcard at all — the backend refuses it, and the tool has to
-                   ;; surface that refusal as a teaching error rather than an internal failure.
+                   ;; Wired to no dashcard at all, so nothing can supply it values.
                    {:name "Unmapped" :slug "unmapped" :id "_UNMAPPED_" :type "category"}]}
      :model/Card {card-id :id} {:database_id   (mt/id)
                                 :table_id      (mt/id :venues)
@@ -318,11 +317,13 @@
           (is (re-find #"_CARD_NAME_" error)))))))
 
 (deftest unmapped-parameter-test
-  (testing "GHY-4141: a parameter wired to no card surfaces the backend's refusal as a teaching error"
+  (testing "GHY-4141: a dashboard filter wired to no card returns an empty value list — the same answer
+            target \"question\" gives for a parameter with nothing behind it, rather than an error"
     (with-fixtures [{:keys [dashboard]}]
       (mt/with-test-user :rasta
-        (is (re-find #"does not have any Fields"
-                     (params-error {:target "dashboard" :id (:id dashboard) :parameter_id "_UNMAPPED_"})))))))
+        (let [args {:target "dashboard" :id (:id dashboard) :parameter_id "_UNMAPPED_"}]
+          (is (= {:values [] :returned 0 :has_more_values false} (params-result args)))
+          (is (re-find #"No values" (steering-line args))))))))
 
 (defn- tool-description
   []
