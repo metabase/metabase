@@ -196,7 +196,7 @@
                              :content (into [] (mapcat (comp ->content-blocks :content)) group)}])))
         messages))
 
-(defn- coalesce-reasoning
+(defn- merge-reasoning
   "Join consecutive same-id `:reasoning` parts (streamed as small parts plus a
   metadata carrier) into one block, keeping its provider metadata."
   [parts]
@@ -225,7 +225,7 @@
   reasoning (foreign parts, interrupted blocks) is dropped."
   [parts]
   (->> parts
-       coalesce-reasoning
+       merge-reasoning
        (into []
              (keep (fn [part]
                      (case (:type part)
@@ -403,9 +403,7 @@
 
 (defn- model-thinking-config
   "Thinking config that streams reasoning for `model`, or nil where we don't enable
-  it (older budget-token models — off in v1). `display: \"summarized\"` is explicit
-  on every branch: per-model defaults range from `omitted` to `summarized` and have
-  already changed silently once across a model bump."
+  it (older budget-token models — off in v1)."
   [model]
   (let [[_ major minor] (claude-model-version model)]
     (cond
@@ -426,7 +424,9 @@
         thinking  (when-not (or schema (= "required" (some-> tool_choice name)))
                     (model-thinking-config model))]
     (cond-> {:model         model
-             ;; thinking tokens count against max_tokens; 4096 would truncate answers.
+             ;; thinking draws from the same max_tokens budget as the answer, so with
+             ;; the 4096 default the model can spend it all thinking and truncate its
+             ;; reply — give thinking requests more headroom.
              :max_tokens    (cond-> (or max-tokens 4096)
                               thinking (max 16384))
              :stream        true
@@ -447,8 +447,7 @@
 
       thinking          (assoc :thinking thinking)
 
-      ;; sampling params are rejected alongside thinking (relevant for 4.6, which
-      ;; still accepts temperature but streams thinking here)
+      ;; sampling params are rejected alongside thinking
       (and temperature (not thinking) (model-supports-temperature? model))
       (assoc :temperature temperature))))
 

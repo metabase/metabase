@@ -131,9 +131,7 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn- step->parts
-  "Extract AISDK parts from a step, filtering out non-message types. `:reasoning`
-  is kept for same-turn replay only (Claude requires thinking blocks echoed back);
-  prior-turn history comes from `input-message->parts`, which never carries it."
+  "Extract AISDK parts from a step, filtering out non-message types."
   [step]
   (->> (:parts step)
        (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))

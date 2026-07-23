@@ -422,8 +422,8 @@
                         (rf (format-sse-event {:type "text-start" :id id}))
                         (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
 
-              ;; lazy open: empty parts (metadata carriers, redacted blocks) emit
-              ;; nothing, so no "Thinking..." flash for reasoning with no text
+              ;; empty-text parts (signature/metadata carriers, redacted blocks) open
+              ;; no reasoning block — only parts with text do
               :reasoning
               (if (str/blank? (:text part))
                 result
