@@ -22,7 +22,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.lib.walk.util :as lib.walk.util]
-   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -353,15 +352,6 @@
      (lib.metadata/card query card-id))
    (native-query-card-ids query)))
 
-(mu/defn card-tag-slug :- :string
-  "Slug for a card name as used in `{{#id-slug}}` template tag names, matching the frontend `slugg`
-  library behavior."
-  [card-name :- :string]
-  (-> (u/slugify card-name)
-      (str/replace "_" "-")
-      (str/replace #"-{2,}" "-")
-      (str/replace #"^-|-$" "")))
-
 (defn- regex-escape
   [s]
   (str/replace s #"[.*+?^${}()|\[\]\\]" (fn [c] (str "\\" c))))
@@ -384,7 +374,8 @@
 (mu/defn replace-template-tag-names :- ::lib.schema/query
   "Apply `renames`, a map of old tag name => new tag name, across the query's native stages: each
   affected tag is renamed (a default display name follows the rename, a customized one is kept) and
-  its `{{...}}` references in the raw query text are rewritten to match."
+  its `{{...}}` references in the raw query text are rewritten to match. Tags whose names collide
+  after renaming are collapsed into one; the first occurrence wins."
   [query   :- ::lib.schema/query
    renames :- [:map-of :string :string]]
   (if (empty? renames)
@@ -398,10 +389,12 @@
            (when (seq stage-renames)
              (-> stage
                  (update :template-tags (fn [tags]
-                                          (mapv (fn [{tag-name :name, :as tag}]
-                                                  (if-let [new-name (get stage-renames tag-name)]
-                                                    (rename-tag tag new-name)
-                                                    tag))
+                                          (into []
+                                                (comp (map (fn [{tag-name :name, :as tag}]
+                                                             (if-let [new-name (get stage-renames tag-name)]
+                                                               (rename-tag tag new-name)
+                                                               tag)))
+                                                      (m/distinct-by :name))
                                                 tags)))
                  (update :native #(reduce-kv replace-tag-in-text % stage-renames))))))))))
 

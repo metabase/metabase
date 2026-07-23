@@ -5,7 +5,6 @@
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
-   [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -123,49 +122,42 @@
    :native   {:query         (str "SELECT * FROM {{" tag-name "}}")
               :template-tags {tag-name tag}}})
 
-(deftest ^:parallel canonicalize-card-template-tags-test
-  (testing "on write, a card tag whose name embeds a different card id than :card-id is rewritten to the id (#77516)"
-    (mt/with-temp [:model/Card {card-id :id} {:name "BH Population Model"}]
-      (let [stale-name (str "#" (inc card-id) "-bh-population-model")
-            new-name   (str "#" card-id "-bh-population-model")]
-        (is (=? {:stages [{:native        (str "SELECT * FROM {{" new-name "}}")
-                           :template-tags [{:type         :card
-                                            :name         new-name
-                                            :display-name (u.humanization/name->human-readable-name :simple new-name)
-                                            :card-id      card-id}]}]}
-                (write-read-query
-                 (native-card-tag-query stale-name
-                                        {:id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
-                                         :name         stale-name
-                                         :display-name (u.humanization/name->human-readable-name :simple stale-name)
-                                         :type         :card
-                                         :card-id      card-id}))))))))
-
-(deftest ^:parallel canonicalize-card-template-tags-slug-drift-test
-  (testing "a card tag whose name agrees with :card-id but has a stale slug is canonicalized to the card's current name"
-    (mt/with-temp [:model/Card {card-id :id} {:name "Totally Different Name"}]
-      (let [tag-name (str "#" card-id "-some-old-slug")
-            new-name (str "#" card-id "-totally-different-name")]
-        (is (=? {:stages [{:native        (str "SELECT * FROM {{" new-name "}}")
-                           :template-tags [{:name new-name, :card-id card-id}]}]}
-                (write-read-query
-                 (native-card-tag-query tag-name
-                                        {:id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
-                                         :name         tag-name
-                                         :display-name "Some Old Slug"
-                                         :type         :card
-                                         :card-id      card-id}))))))))
-
-(deftest ^:parallel canonicalize-card-template-tags-missing-card-test
-  (testing "a tag whose :card-id doesn't resolve to a card is untouched"
-    (let [missing-id 2147483647
-          tag-name   "#133-who-knows"]
+(deftest ^:parallel card-template-tag-names-preserved-on-save-test
+  (testing "card tag names are stored verbatim on save, whatever id or slug they embed; the FE owns
+            tag naming, and stale ids are only repaired during serdes import (#77516)"
+    (let [tag-name "#999-some_arbitrary-slug"]
       (is (=? {:stages [{:native        (str "SELECT * FROM {{" tag-name "}}")
-                         :template-tags [{:name tag-name, :card-id missing-id}]}]}
+                         :template-tags [{:type         :card
+                                          :name         tag-name
+                                          :display-name "Anything At All"
+                                          :card-id      123}]}]}
               (write-read-query
                (native-card-tag-query tag-name
                                       {:id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
                                        :name         tag-name
-                                       :display-name "Who Knows"
+                                       :display-name "Anything At All"
                                        :type         :card
-                                       :card-id      missing-id})))))))
+                                       :card-id      123})))))))
+
+(deftest ^:parallel duplicate-card-template-tags-preserved-on-save-test
+  (testing "two refs to the same card under different tag names save unchanged (#77516)"
+    (let [tag-a "#123-foo"
+          tag-b "#123-bar"
+          sql   (str "SELECT 1 FROM {{" tag-a "}} AS a, {{" tag-b "}} AS b")]
+      (is (=? {:stages [{:native        sql
+                         :template-tags [{:type :card, :name tag-a, :card-id 123}
+                                         {:type :card, :name tag-b, :card-id 123}]}]}
+              (write-read-query
+               {:database (mt/id)
+                :type     :native
+                :native   {:query         sql
+                           :template-tags {tag-a {:id           "cc000001-0000-0000-0000-000000000001"
+                                                  :name         tag-a
+                                                  :display-name "Foo"
+                                                  :type         :card
+                                                  :card-id      123}
+                                           tag-b {:id           "cc000002-0000-0000-0000-000000000002"
+                                                  :name         tag-b
+                                                  :display-name "Bar"
+                                                  :type         :card
+                                                  :card-id      123}}}}))))))

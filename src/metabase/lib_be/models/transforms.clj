@@ -4,12 +4,9 @@
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.native :as lib.native]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -84,39 +81,12 @@
       (log/errorf e "Error normalizing query %s" (pr-str query))
       {}))))
 
-(defn- card-tag-canonical-name
-  "The canonical name for a `:card` template tag - `#<card-id>-<slug of the card's name>`. The tag
-  name and the `{{#id-slug}}` query text it appears in are denormalized from `:card-id`, so the id
-  wins whenever they disagree - e.g. serialization import remapped `:card-id` to the local card's id,
-  or the referenced card was renamed. Nil when the tag isn't a card tag or its card can't be found."
-  [query {tag-type :type, :keys [card-id]}]
-  (when (and (= tag-type :card) card-id)
-    (when-let [card-name (:name (lib.metadata/card query card-id))]
-      (str "#" card-id "-" (lib.native/card-tag-slug card-name)))))
-
-(defn- canonicalize-card-template-tags
-  "Rename card template tags (and their `{{#id-slug}}` references in the query text) to the canonical
-  name derived from their `:card-id`, so stored queries stay canonical. The frontend treats a name
-  that disagrees with the card as an edit (the question opens dirty), and re-extracting tags from
-  stale text clobbers `:card-id` with the id embedded in the name."
-  [query]
-  (if (= (:lib/type query) :mbql/query)
-    (lib.native/replace-template-tag-names
-     query
-     (into {}
-           (keep (fn [{tag-name :name, :as tag}]
-                   (when-let [new-name (card-tag-canonical-name query tag)]
-                     [tag-name new-name])))
-           (lib.walk.util/all-template-tags query)))
-    query))
-
 (defn- transform-query-in [query]
   (when-not (map? query)
     (throw (ex-info (format "Query must be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query))
                     {:query query, :status-code 400})))
   (-> query
       (as-> $query (normalize-query nil $query {:strict? true}))
-      canonicalize-card-template-tags
       lib/prepare-for-serialization
       mi/json-in))
 

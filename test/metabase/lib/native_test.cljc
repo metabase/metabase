@@ -925,8 +925,25 @@
                               :card-id      1206})
              {"#133-old-card" "#1206-new-card"})))))
 
-(deftest ^:parallel card-tag-slug-test
-  (are [card-name slug] (= slug (lib.native/card-tag-slug card-name))
-    "BH Population Model" "bh-population-model"
-    "My_Table  Copy"      "my-table-copy"
-    "-- weird -- name --" "weird-name"))
+(deftest ^:parallel replace-template-tag-names-collision-test
+  (testing "tags renamed onto the same name collapse into one; the first occurrence wins"
+    (let [query (lib/query meta/metadata-provider
+                           {:lib/type :mbql/query
+                            :database (meta/id)
+                            :stages   [{:lib/type      :mbql.stage/native
+                                        :native        "select * from {{#133-foo}} a, {{#133-bar}} b"
+                                        :template-tags [{:type         :card
+                                                         :name         "#133-foo"
+                                                         :display-name "Foo"
+                                                         :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                                         :card-id      1206}
+                                                        {:type         :card
+                                                         :name         "#133-bar"
+                                                         :display-name "Bar"
+                                                         :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                                         :card-id      1206}]}]})]
+      (is (=? {:stages [{:native        "select * from {{#1206-foo}} a, {{#1206-foo}} b"
+                         :template-tags [{:name "#1206-foo", :display-name "Foo"}]}]}
+              (lib.native/replace-template-tag-names
+               query
+               {"#133-foo" "#1206-foo", "#133-bar" "#1206-foo"}))))))
