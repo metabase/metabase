@@ -302,7 +302,11 @@
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
-    (next-method provider $)
+    ;; run the whole provisioning chain (tenant creation, user create/update, group sync) in one
+    ;; transaction: a failure partway through (e.g. a tenant-group assignment rejected because the
+    ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
+    (t2/with-transaction [_]
+      (next-method provider $))
     (apply-mfa-gate provider $)
     (cond-> $
       (and (:user $) (not (:mfa/pending? $))) (create-session! provider))
@@ -348,15 +352,24 @@
                  [:provider-id {:optional true} [:maybe :string]]
                  [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
    provider :- :keyword]
-  (t2/with-transaction [_]
-    (u/prog1
-      (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
-                                     (select-keys user-data (sso-user-fields)))
-      (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
-                                        (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
-      (notification/with-skip-sending-notification true
-        (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
-                                                                   :sso_source (name provider))})))))
+  (let [insert-fields (sso-user-fields)]
+    ;; The tenant flow upstream validated the tenant claim and stamped :tenant_id into user-data. If
+    ;; the field list would strip it here (e.g. a premium-feature check flapped mid-request, or the
+    ;; enterprise implementation isn't registered yet), inserting anyway would create a non-tenant
+    ;; user that can never log in with its tenant claim again (UXW-4898) — refuse instead
+    (when (and (:tenant_id user-data)
+               (not (some #{:tenant_id} insert-fields)))
+      (throw (ex-info "Unable to provision SSO user: tenant assignment could not be applied"
+                      {:status-code 500})))
+    (t2/with-transaction [_]
+      (u/prog1
+        (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
+                                       (select-keys user-data insert-fields))
+        (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
+                                          (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+        (notification/with-skip-sending-notification true
+          (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
+                                                                     :sso_source (name provider))}))))))
 
 (methodical/defmethod login! ::create-user-if-not-exists
   [provider request]
