@@ -383,8 +383,10 @@
                                                     :type          :metric
                                                     :database_id   (mt/id)
                                                     :table_id      (mt/id :orders)
-                                                    :dataset_query (mt/mbql-query orders
-                                                                     {:aggregation [[:count]]})}]
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    {:source-table (mt/id :orders)
+                                                                               :aggregation  [[:count]]}}}]
           (is (= "Revenue"
                  (read-title (str "metabase://metric/" metric-id))))))
       (testing "a document becomes a markdown link"
