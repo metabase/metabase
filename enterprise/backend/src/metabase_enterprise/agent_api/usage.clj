@@ -11,6 +11,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -23,13 +24,6 @@
 (def ^:private operation-max-length
   "Cap on the stored operation length, matching the `agent_api_call_log.operation` column width."
   255)
-
-(defn- truncate
-  "Truncate string `s` to at most `n` characters; nil-safe."
-  [s n]
-  (when s
-    (let [s (str s)]
-      (subs s 0 (min (count s) n)))))
 
 (defenterprise record-agent-api-call!
   "EE: write one `agent_api_call_log` row per direct Agent API HTTP call. `client_name` is
@@ -48,11 +42,11 @@
                   (merge {:user_id       user-id
                           :tenant_id     tenant-id
                           :client_name   (agent-api.usage/detect-client user-agent)
-                          :operation     (truncate operation operation-max-length)
+                          :operation     (some-> operation (u/truncate operation-max-length))
                           :status        status
                           :duration_ms   duration-ms
                           :error_message (when (analytics.settings/analytics-pii-retention-enabled)
-                                           (truncate error-message error-message-max-length))}
+                                           (some-> error-message (u/truncate error-message-max-length)))}
                          pii)))
     (catch Throwable e
       (log/warn e "Failed to record Agent API call"))))

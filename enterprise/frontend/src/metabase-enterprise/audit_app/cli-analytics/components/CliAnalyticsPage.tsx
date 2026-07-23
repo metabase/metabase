@@ -123,7 +123,7 @@ export function CliAnalyticsPage({ location }: WithRouterProps) {
           .otherwise(() => (
             <Tabs
               value={tab}
-              // Unjustified type cast. FIXME
+              // tab/val _is_ a CliTab, but Mantine's Tab only deals with strings ¯\_(ツ)_/¯
               onChange={(val) => patchUrlState({ tab: val as CliTab })}
               keepMounted={false}
             >
