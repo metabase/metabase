@@ -120,7 +120,7 @@
   [{:keys [returned total more? offset limit]}]
   (cond
     (zero? total)
-    "No values — this parameter has no value list (date and free-text filters don't), or its source is empty."
+    "No values — nothing is configured behind this parameter (a free-text filter has no value list), or its source is empty."
 
     (zero? returned)
     (if more?
@@ -175,7 +175,7 @@
     [:maybe [:int {:min 0 :description "Index of the first value to return (default 0) — continue a truncated response."}]]]])
 
 (registry/deftool get-parameter-values
-  "Fetch the valid values for one filter on a dashboard or a saved question, so you filter with real values instead of guessing them. Pass target (\"dashboard\" or \"question\" — \"question\" accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id, which you get from get_content: a dashboard's `parameters` and a question's `parameters` each list `id`, `name`, and `type`. Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. Use query to search a large list rather than paging through it, and constraints (dashboards only) to chain-filter: pass the other filters' current selections keyed by their parameter ids and you get back only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. Date and free-text parameters have no value list and return none. Pair with run_saved_question, which takes these values as its `parameters`."
+  "Fetch the valid values for one filter on a dashboard or a saved question, so you filter with real values instead of guessing them. Pass target (\"dashboard\" or \"question\" — \"question\" accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id, which you get from get_content: a dashboard's `parameters` and a question's `parameters` each list `id`, `name`, and `type`. Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. Use query to search a large list rather than paging through it, and constraints (dashboards only) to chain-filter: pass the other filters' current selections keyed by their parameter ids and you get back only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it — a free-text template tag, say — returns no values; a date parameter mapped to a column returns that column's distinct dates, which is rarely what you want, so build date ranges yourself rather than picking from them. Pair with run_saved_question, which takes these values as its `parameters`."
   {:name        "get_parameter_values"
    :scope       metabot.scope/agent-resource-read
    :annotations {:readOnlyHint true :idempotentHint true}

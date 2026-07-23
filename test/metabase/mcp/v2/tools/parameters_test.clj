@@ -324,6 +324,33 @@
         (is (re-find #"does not have any Fields"
                      (params-error {:target "dashboard" :id (:id dashboard) :parameter_id "_UNMAPPED_"})))))))
 
+(defn- tool-description
+  []
+  (->> (registry/list-tools nil)
+       (some #(when (= "get_parameter_values" (:name %)) %))
+       :description))
+
+(deftest date-parameter-values-test
+  (testing "GHY-4141: a date parameter mapped to a column returns that column's distinct values"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [:model/Dashboard {dash-id :id}
+                     {:parameters [{:name "Date" :slug "date" :id "_DATE_" :type "date/all-options"}]}
+                     :model/Card {card-id :id} {:database_id   (mt/id)
+                                                :table_id      (mt/id :checkins)
+                                                :dataset_query (table-query (mt/id :checkins))}
+                     :model/DashboardCard _ {:card_id            card-id
+                                             :dashboard_id       dash-id
+                                             :parameter_mappings [{:parameter_id "_DATE_"
+                                                                   :card_id      card-id
+                                                                   :target       [:dimension (mt/$ids checkins $date)]}]}]
+        (mt/with-test-user :rasta
+          (let [{:keys [values returned]} (params-result {:target "dashboard" :id dash-id
+                                                          :parameter_id "_DATE_" :limit 3})]
+            (is (= 3 returned))
+            (is (every? #(re-find #"^\d{4}-\d{2}-\d{2}" (first %)) values)))))))
+  (testing "GHY-4141: so the description must not promise that date parameters return none"
+    (is (not (re-find #"Date and free-text parameters have no value list" (tool-description))))))
+
 (deftest permissions-test
   (testing "GHY-4141: a caller who can't read the dashboard or card gets the collapsed not-found"
     (mt/with-temp [:model/Collection collection {}
