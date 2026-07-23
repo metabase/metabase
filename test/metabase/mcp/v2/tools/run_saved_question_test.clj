@@ -9,6 +9,8 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.mcp.v2.registry :as registry]
+   ;; registers the run_saved_question tool for the call-tool seam below
+   [metabase.mcp.v2.tools.query]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
