@@ -65,8 +65,8 @@
 
 (defn create-measure!
   "Create-check and insert a new Measure whose table is derived from its `definition`; publishes
-  `:event/measure-create` and returns the hydrated Measure. The domain create path shared by the
-  `POST /api/measure` endpoint and the MCP `measure_write` tool."
+  `:event/measure-create` and returns the hydrated Measure. The shared domain create path, so
+  the create-check runs wherever a Measure is authored."
   [{:keys [name description definition], :as body}]
   (let [normalized-definition (normalize-input-definition definition)
         table-id (definition-table-id normalized-definition)]
@@ -112,8 +112,8 @@
 
 (defn write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Measure. The domain update path shared by the `PUT /api/measure/:id` endpoint
-  and the MCP `measure_write` tool."
+  event and returns updated/hydrated Measure. The shared domain update path, so the write-check runs
+  wherever a Measure is edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
         clean-body (u/select-keys-when body

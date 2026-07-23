@@ -34,8 +34,8 @@
 
 (defn create-segment!
   "Create-check and insert a new Segment whose table is derived from its `definition`; publishes
-  `:event/segment-create` and returns the hydrated Segment. The domain create path shared by the
-  `POST /api/segment` endpoint and the MCP `segment_write` tool."
+  `:event/segment-create` and returns the hydrated Segment. The shared domain create path, so
+  the create-check runs wherever a Segment is authored."
   [{:keys [name description definition], :as body}]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (let [table-id (definition-table-id definition)]
@@ -90,8 +90,8 @@
 
 (defn write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Segment. The domain update path shared by the `PUT /api/segment/:id` endpoint
-  and the MCP `segment_write` tool."
+  event and returns updated/hydrated Segment. The shared domain update path, so the write-check runs
+  wherever a Segment is edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Segment id)
         clean-body (u/select-keys-when body

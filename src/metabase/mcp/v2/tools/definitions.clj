@@ -141,7 +141,7 @@
   [definition]
   (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
     (common/throw-teaching-error
-     (str "This `definition` is a full query but not MBQL 5 — a full query must be a map with "
+     (str "This `definition` is not MBQL 5 — a full query must be a map with "
           "\"lib/type\": \"mbql/query\", \"database\", and one entry in \"stages\". "
           (accepted-shapes :measure)))))
 
