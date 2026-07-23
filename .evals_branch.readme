@@ -1,2 +1,3 @@
-.evals_branch pins metabase/evals branch. Needed for label trigger, when using other than main branch. See the
-.github/workflows/ai-benchmark.yml for details.
+.evals_branch pins the metabase/evals branch that eval-run dispatches check out. The label trigger reads the pin
+from the PR's base branch; a manual dispatch can override it with the evals_branch input. See
+.github/workflows/evals-dispatch.yml for details.

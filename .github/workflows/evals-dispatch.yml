@@ -1,6 +1,5 @@
-
 name: evals-dispatch
-run-name: "dispatch evals · ${{ github.event_name == 'pull_request' && format('smoke PR#{0}', github.event.pull_request.number) || format('PR#{0}', inputs.pr) }}"
+run-name: "dispatch evals · ${{ github.event_name == 'pull_request' && format('smoke PR#{0}', github.event.pull_request.number) || (inputs.pr != '' && format('PR#{0}', inputs.pr) || (inputs.ref != '' && inputs.ref || 'master')) }}"
 
 on:
   pull_request:
@@ -26,8 +25,8 @@ on:
         required: false
         default: "5"
       evals_branch:
-        # $ROOT/.evals_branch contents is used if input is empty
-        description: "Evals ref"
+        # Empty falls back to the pinned .evals_branch.
+        description: "Evals branch"
         required: false
         default: ""
 
@@ -76,13 +75,16 @@ jobs:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
     steps:
       - name: Read pinned evals branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.base.ref }}
           sparse-checkout: .evals_branch
           sparse-checkout-cone-mode: false
       - name: Resolve evals branch
         id: branch
-        run: echo "value=$(cat .evals_branch)" >> "$GITHUB_OUTPUT"
+        run: |
+          value="$(tr -d '\r' < .evals_branch 2>/dev/null | head -n1)"
+          echo "value=${value:-main}" >> "$GITHUB_OUTPUT"
       - name: Dispatch smoke eval-run
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -97,32 +99,23 @@ jobs:
             -f "inputs[evals_branch]=$EVALS_BRANCH" \
             -f "inputs[comment_id]=$COMMENT_ID"
 
-      - name: Locate the dispatched eval-run
-        id: evalrun
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          url=""
-          for _ in $(seq 1 20); do
-            url=$(gh api "repos/metabase/evals/actions/workflows/eval-run.yml/runs?event=workflow_dispatch&per_page=20" \
-              --jq "[.workflow_runs[] | select(.display_title | contains(\"PR#$PR\"))] | sort_by(.created_at) | last | .html_url" \
-              2>/dev/null || true)
-            [ -n "$url" ] && [ "$url" != "null" ] && break
-            sleep 5
-          done
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-      - name: Comment (running evals)
+  finalize:
+    # If the build or dispatch fell over, eval-run never took over the comment — leave a
+    # failure verdict instead of a comment stuck at "building the image…".
+    needs: [announce, uberjar, smoke]
+    if: always() && needs.announce.result == 'success' && needs.smoke.result != 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
+    steps:
+      - name: Comment (build/dispatch failed)
         uses: actions/github-script@v9
-        env:
-          EVALS_RUN_URL: ${{ steps.evalrun.outputs.url }}
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
-            // Fall back to the workflow's runs page if polling didn't catch the run in time.
-            const evalsUrl = process.env.EVALS_RUN_URL || 'https://github.com/metabase/evals/actions/workflows/eval-run.yml';
-            const body = `🤖 **Evals smoke** — ⏳ running evals… ([logs](${evalsUrl}), internal to metabase/evals)`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `🤖 **Evals smoke** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
             await github.rest.issues.updateComment({
               owner: context.repo.owner, repo: context.repo.repo,
               comment_id: Number(process.env.COMMENT_ID), body });
@@ -133,7 +126,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Read pinned evals branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           sparse-checkout: .evals_branch
           sparse-checkout-cone-mode: false
@@ -141,7 +134,9 @@ jobs:
         id: branch
         env:
           INPUT_BRANCH: ${{ inputs.evals_branch }}
-        run: echo "value=${INPUT_BRANCH:-$(cat .evals_branch)}" >> "$GITHUB_OUTPUT"
+        run: |
+          value="${INPUT_BRANCH:-$(tr -d '\r' < .evals_branch 2>/dev/null | head -n1)}"
+          echo "value=${value:-main}" >> "$GITHUB_OUTPUT"
       - name: Dispatch eval-run
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
