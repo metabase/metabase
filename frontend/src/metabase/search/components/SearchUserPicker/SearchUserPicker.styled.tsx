@@ -29,16 +29,19 @@ export const SearchUserSelectBox = styled(Stack)`
   border-radius: ${({ theme }) => theme.radius.md};
 `;
 
+// Unjustified type cast. FIXME
 export const SelectedUserButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`
   ${() => {
     return css`
-      background-color: var(--mb-color-background-brand) !important;
+      background-color: var(
+        --mb-color-background_surface-brand-subtle
+      ) !important;
       border: 0;
 
       &:hover {
-        background-color: var(--mb-color-background-hover) !important;
+        background-color: var(--mb-color-background_surface-hover) !important;
       }
     `;
   }}

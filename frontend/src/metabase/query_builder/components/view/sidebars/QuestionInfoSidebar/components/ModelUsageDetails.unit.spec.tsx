@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -18,6 +17,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -170,7 +170,7 @@ async function setup({
   setupCollectionsEndpoints({ collections });
 
   const { history } = renderWithProviders(
-    <Route path="*" component={() => <ModelUsageDetails model={model} />} />,
+    <Route path="*" element={<ModelUsageDetails model={model} />} />,
     {
       withRouter: true,
       storeInitialState,

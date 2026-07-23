@@ -15,9 +15,9 @@ const getTableBorder = () =>
 const getHeaderBackground = () =>
   `linear-gradient(
     to top,
-    color-mix(in srgb, var(--mb-color-border-neutral) 50%, var(--mb-color-background-primary) 50%) 1px,
-    var(--mb-color-background-primary) 1px,
-    var(--mb-color-background-primary) 100%
+    color-mix(in srgb, var(--mb-color-border-neutral) 50%, var(--mb-color-background_page-primary) 50%) 1px,
+    var(--mb-color-background_page-primary) 1px,
+    var(--mb-color-background_page-primary) 100%
   )`;
 
 export const PermissionsTableRoot = styled.table`
@@ -33,7 +33,7 @@ export const PermissionsTableCell = styled.td`
   box-sizing: border-box;
   min-height: 40px;
   overflow: hidden;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
 
   &:first-of-type {
     max-width: 300px;
@@ -42,7 +42,7 @@ export const PermissionsTableCell = styled.td`
     position: sticky;
     padding-left: 0;
     padding-right: 1.5rem;
-    background: var(--mb-color-background-primary);
+    background: var(--mb-color-background_page-primary);
 
     &:after {
       position: absolute;
@@ -82,7 +82,7 @@ export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;
   text-decoration: underline;
-  color: ${() => color("admin-navbar-inverse")};
+  color: ${() => color("navbar-admin-inverse")};
 `;
 
 export const HintIcon = styled(
@@ -97,7 +97,7 @@ export const HintIcon = styled(
     );
   }),
 )`
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   margin-left: 0.375rem;
   cursor: pointer;
 `;

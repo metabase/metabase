@@ -33,6 +33,78 @@
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
 
+(deftest destination-db-permissions-insert-throws-test
+  (testing "inserting a DataPermissions row for a destination database throws"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
+                   :model/Database         {router-db-id :id}  {}
+                   :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"destination database"
+           (t2/insert! :model/DataPermissions {:db_id      destination-db-id
+                                               :group_id   group-id
+                                               :perm_type  :perms/view-data
+                                               :perm_value :unrestricted}))))))
+
+(deftest destination-db-permissions-batch-insert-throws-test
+  (testing "batch-insert-permissions! throws for a destination database row"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
+                   :model/Database         {router-db-id :id}  {}
+                   :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"destination database"
+           (data-perms/batch-insert-permissions!
+            [{:db_id      destination-db-id
+              :group_id   group-id
+              :perm_type  :perms/view-data
+              :perm_value :unrestricted}]))))))
+
+(deftest assert-no-destination-db-permissions!-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}          {}
+                 :model/Database         {normal-db-id :id}      {}
+                 :model/Database         {router-db-id :id}      {}
+                 :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+    (let [dest-row   {:db_id destination-db-id :group_id group-id
+                      :perm_type :perms/view-data :perm_value :unrestricted}
+          normal-row {:db_id normal-db-id :group_id group-id
+                      :perm_type :perms/view-data :perm_value :unrestricted}]
+      (testing "a single destination-db row throws"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"destination database"
+             (data-perms/assert-no-destination-db-permissions! [dest-row]))))
+      (testing "a batch mixing a destination-db row with normal-db rows throws"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"destination database"
+             (data-perms/assert-no-destination-db-permissions! [normal-row dest-row]))))
+      (testing "an all-normal-db batch does not throw"
+        (is (nil? (data-perms/assert-no-destination-db-permissions! [normal-row normal-row]))))
+      (testing "an empty seq does not throw"
+        (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
+
+(deftest destination-db-permissions-positive-control-test
+  (testing "inserting a perm row for a normal (non-destination) db still succeeds"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}     {}
+                   :model/Database         {normal-db-id :id} {}]
+      (mt/with-restored-data-perms-for-group! group-id
+        (testing "via raw t2/insert!"
+          (is (t2/insert! :model/DataPermissions {:db_id      normal-db-id
+                                                  :group_id   group-id
+                                                  :perm_type  :perms/view-data
+                                                  :perm_value :unrestricted})))
+        (testing "via batch-insert-permissions!"
+          (t2/delete! :model/DataPermissions :db_id normal-db-id :group_id group-id)
+          (is (nil? (data-perms/batch-insert-permissions!
+                     [{:db_id      normal-db-id
+                       :group_id   group-id
+                       :perm_type  :perms/view-data
+                       :perm_value :unrestricted}])))
+          (is (t2/exists? :model/DataPermissions
+                          :db_id normal-db-id :group_id group-id
+                          :perm_type :perms/view-data)))))))
+
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
                  :model/Database         {database-id :id} {}]
@@ -821,6 +893,44 @@
                                        :perm_type :perms/download-results))
               "blocked view-data must force :no downloads"))))))
 
+(deftest set-default-database-permissions!-ignores-audit-db-test
+  (testing "A database added after the audit DB does not inherit the audit DB's restrictive create-queries level.
+            The audit DB always has create-queries :no; coalescing it as the group's lowest existing level would
+            wrongly drag every later database down to :no, leaving All Users unable to query newly added DBs."
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/Database         {audit-db-id :id} {:is_audit true}
+                   :model/Database         {new-db-id :id}   {}]
+      ;; Leave the group with only the audit DB's perms, so the audit DB is its sole source of an existing level.
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
+        (data-perms/set-default-database-permissions! {:id audit-db-id :is_audit true} [group])
+        (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions
+                                     :group_id group-id :db_id audit-db-id :perm_type :perms/create-queries))
+            "sanity: the audit DB grants :no create-queries")
+        (data-perms/set-default-database-permissions! {:id new-db-id} [group])
+        (is (= :query-builder-and-native
+               (t2/select-one-fn :perm_value :model/DataPermissions
+                                 :group_id group-id :db_id new-db-id :perm_type :perms/create-queries))
+            "the new DB gets the default create-queries level, unpolluted by the audit DB's :no")))))
+
+(deftest set-default-database-permissions!-coalesces-customer-db-but-not-audit-db-test
+  (testing "A new database coalesces the group's lowest level across real customer databases while still ignoring
+            the audit DB. A customer DB set to :query-builder must lower the new DB to :query-builder; the audit
+            DB's :no must not lower it further."
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
+                   :model/Database         {audit-db-id :id} {:is_audit true}
+                   :model/Database         {cust-db-id :id}  {}
+                   :model/Database         {new-db-id :id}   {}]
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
+        (data-perms/set-default-database-permissions! {:id audit-db-id :is_audit true} [group])
+        (data-perms/set-database-permission! group-id cust-db-id :perms/create-queries :query-builder)
+        (data-perms/set-default-database-permissions! {:id new-db-id} [group])
+        (is (= :query-builder
+               (t2/select-one-fn :perm_value :model/DataPermissions
+                                 :group_id group-id :db_id new-db-id :perm_type :perms/create-queries))
+            "new DB coalesces the customer DB's :query-builder, not the audit DB's :no")))))
+
 (deftest set-default-table-permissions!-going-granular-test
   (testing "When a group has DB-level perms but new table needs :blocked, it expands to per-table rows"
     (mt/with-temp [:model/Database         {db-id :id}      {}
@@ -857,6 +967,30 @@
           (is (= :blocked (t2/select-one-fn :perm_value :model/DataPermissions
                                             :group_id group-id :db_id db-id
                                             :table_id table-id-3 :perm_type :perms/view-data))))))))
+
+(deftest set-default-table-permissions!-blocked-db-stays-collapsed-test
+  (testing "A :blocked DB-level row already covers a new :blocked table, so we don't go granular (#76077)"
+    (mt/with-temp [:model/Database         {db-id :id}      {}
+                   :model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+      (mt/with-temp [:model/Table {table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+        (t2/delete! :model/DataPermissions :group_id group-id :table_id table-id-2 :perm_type :perms/view-data)
+        (mt/with-dynamic-fn-redefs [data-perms/new-table-view-data-permission-levels
+                                    (fn [_db-id group-ids] (zipmap group-ids (repeat :blocked)))]
+          (data-perms/set-default-table-permissions!
+           {:id table-id-2 :db_id db-id :schema "PUBLIC"}
+           [{:group-id group-id :perm-type :perms/view-data :default-value :unrestricted}]))
+        (testing "the DB-level :blocked row remains and no per-table rows were written"
+          (is (= :blocked (t2/select-one-fn :perm_value :model/DataPermissions
+                                            :group_id group-id :db_id db-id :table_id nil
+                                            :perm_type :perms/view-data)))
+          (is (zero? (t2/count :model/DataPermissions
+                               :group_id group-id :db_id db-id :perm_type :perms/view-data
+                               :table_id [:not= nil]))))
+        (testing "effective permission for the new table is still :blocked"
+          (is (= :blocked (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id-2)))
+          (is (= :blocked (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id-1))))))))
 
 (deftest set-default-table-permissions!-simple-insert-test
   (testing "When group is already table-granular, new table gets a simple insert"

@@ -7,7 +7,7 @@ import {
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
@@ -49,7 +49,7 @@ const CollectionEmptyState = ({
 const TrashEmptyState = () => {
   return (
     <EmptyStateWrapper>
-      <Icon name="trash" size={80} c="background-brand" />
+      <Icon name="trash" size={80} c="background_surface-brand-subtle" />
       <EmptyStateTitle>{t`Nothing here`}</EmptyStateTitle>
       <EmptyStateSubtitle>
         {t`Deleted items will appear here.`}

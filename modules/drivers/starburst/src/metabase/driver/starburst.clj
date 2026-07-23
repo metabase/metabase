@@ -49,7 +49,7 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
-(driver/register! :starburst, :parent #{::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :starburst, :parent #{:sql-mbql5 :sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (set! *warn-on-reflection* true)
 
@@ -109,7 +109,6 @@
 
 ;;; The Starburst JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the
 ;;; implementation doesn't try to use it.
-#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-fks :starburst
   [_driver _database & {:as _options}]
   ;; starburst does not support finding foreign key metadata tables, but some connectors support foreign keys.
@@ -293,30 +292,30 @@
   [:raw (if bool "TRUE" "FALSE")])
 
 (defmethod sql.qp/->honeysql [:starburst :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:starburst :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:starburst :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:starburst :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   ;; recent starburst versions have a `log10` function (not `log`)
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:starburst :count-where]
-  [driver [_ pred]]
+  [driver [_ _opts pred]]
   ;; starburst will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :sum-where 1.00M pred)))
 
 (defmethod sql.qp/->honeysql [:starburst :time]
-  [_ [_ t]]
+  [_ [_ _opts t]]
   ;; Convert t to locale time, then format as sql. Then add cast.
   (h2x/cast :time (u.date/format-sql (t/local-time t))))
 
@@ -362,7 +361,7 @@
      (->at-time-zone y)]))
 
 (defmethod sql.qp/->honeysql [:starburst :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
         with_timezone? (or (sql.qp.u/field-with-tz? arg)
@@ -484,10 +483,33 @@
     (let [sql (describe-catalog-sql driver catalog)
           rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
       (into []
-            (map (fn [{:keys [schema] :as _full}]
-                   (when-not (contains? excluded-schemas schema)
-                     (describe-schema driver conn catalog schema))))
+            (keep (fn [{:keys [schema] :as _full}]
+                    (when-not (contains? excluded-schemas schema)
+                      (describe-schema driver conn catalog schema))))
             (jdbc/reducible-result-set rs {})))))
+
+(defn- table-comments
+  "Returns a map of `[schema table-name] -> comment` for tables in `catalog`, with an optional `schema` filter."
+  [driver ^Connection conn catalog schema]
+  (if (str/blank? catalog)
+    {}
+    (try
+      (let [sql (str "SELECT schema_name AS schema, table_name AS name, comment
+                      FROM system.metadata.table_comments
+                      WHERE catalog_name = ?"
+                     (when schema " AND schema_name = ?"))]
+        (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
+          (.setString stmt 1 catalog)
+          (when schema (.setString stmt 2 schema))
+          (let [rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+            (into {}
+                  (keep (fn [{:keys [schema name comment]}]
+                          (when-not (str/blank? comment)
+                            [[schema name] comment])))
+                  (jdbc/reducible-result-set rs {})))))
+      (catch Throwable e
+        (log/debug e "Failed to read table comments from system.metadata.table_comments")
+        {}))))
 
 (defmethod driver/describe-database* :starburst
   [driver database]
@@ -498,9 +520,16 @@
      nil
      (fn [^Connection conn]
        (let [schemas (if schema
-                       #{(describe-schema driver conn catalog schema)}
-                       (all-schemas driver conn catalog))]
-         {:tables (reduce set/union #{} schemas)})))))
+                       [(describe-schema driver conn catalog schema)]
+                       (all-schemas driver conn catalog))
+             tables (reduce set/union #{} schemas)
+             comments (table-comments driver conn catalog schema)]
+         {:tables (into #{}
+                        (map (fn [{:keys [schema name] :as table}]
+                               (let [table-comment (get comments [schema name])]
+                                 (cond-> table
+                                   (not (str/blank? table-comment)) (assoc :description table-comment)))))
+                        tables)})))))
 
 (defmethod driver/describe-table :starburst
   [driver database {schema :schema, table-name :name}]
@@ -517,11 +546,12 @@
             :name   table-name
             :fields (into
                      #{}
-                     (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                    {:name              column
-                                     :database-type     type
-                                     :base-type         (starburst-type->base-type type)
-                                     :database-position idx}))
+                     (map-indexed (fn [idx {:keys [column type comment], :as _col}]
+                                    (cond-> {:name              column
+                                             :database-type     type
+                                             :base-type         (starburst-type->base-type type)
+                                             :database-position idx}
+                                      (not (str/blank? comment)) (assoc :field-comment comment))))
                      (jdbc/reducible-result-set rs {}))}))))))
 
 (defmethod driver/db-default-timezone :starburst
@@ -1002,5 +1032,11 @@
   (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role))
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+
+;; starburst returns line numbers in error messages which will be off by 1 if
+;; the remark is prepended (#64133)
+(defmethod sql-jdbc.execute/inject-remark :starburst
+  [_ sql remark]
+  (str sql "\n\n-- " remark))

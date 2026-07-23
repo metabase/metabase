@@ -9,12 +9,12 @@
       background-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 10%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
       border-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 40%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
     }
 
@@ -51,12 +51,12 @@
       background-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 10%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
       border-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 40%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
     }
 
@@ -79,7 +79,7 @@
   background-color: color-mix(
     in srgb,
     var(--mb-color-core-filter) 15%,
-    var(--mb-color-white)
+    var(--mb-color-core-white)
   );
 }
 
@@ -93,12 +93,12 @@
     border-color: color-mix(
       in srgb,
       var(--mb-color-core-summarize) 40%,
-      var(--mb-color-white)
+      var(--mb-color-core-white)
     );
     background-color: color-mix(
       in srgb,
       var(--mb-color-core-summarize) 15%,
-      var(--mb-color-white)
+      var(--mb-color-core-white)
     );
   }
 }
@@ -113,12 +113,12 @@
     border-color: color-mix(
       in srgb,
       var(--mb-color-core-brand) 40%,
-      var(--mb-color-white)
+      var(--mb-color-core-white)
     );
     background-color: color-mix(
       in srgb,
       var(--mb-color-core-brand) 15%,
-      var(--mb-color-white)
+      var(--mb-color-core-white)
     );
   }
 }
@@ -151,7 +151,7 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
   }
 }
 
@@ -234,7 +234,7 @@
 
     &:hover {
       color: var(--mb-color-core-brand);
-      background-color: var(--mb-color-background-tertiary);
+      background-color: var(--mb-color-background_page-tertiary);
     }
   }
 }

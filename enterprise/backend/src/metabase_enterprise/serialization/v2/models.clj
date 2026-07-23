@@ -13,9 +13,11 @@
 
 (def data-model-in-collection
   "Data model types that can be found in collections (via published tables).
-   These are extracted by ID when discovered via descendants, even if no-data-model is set."
+   These are extracted by ID when discovered via descendants, even if no-data-model is set.
+   Includes both Field (full serdes) and FieldUserSettings (user-edits-only / git sync)."
   ["Table"
    "Field"
+   "FieldUserSettings"
    "Segment"])
 
 (def content
@@ -33,11 +35,11 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          ["CuratedSearchEntry"
-           "CustomVizPlugin"
+          ["CustomVizPlugin"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
+           "OsiAiContext"
            "PythonLibrary"
            "Setting"
            "Transform"
@@ -54,6 +56,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
+   "TableIndex"
    "TimelineEvent"
    "TransformJobTransformTag"
    "TransformTransformTag"])
@@ -79,6 +82,7 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
+   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
@@ -88,7 +92,10 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "McpFeedback"
    "McpQueryHandle"
+   "McpSessionLog"
+   "McpToolCallLog"
    "MetabotConversation"
    "MetabotFeedback"
    "MetabotGroupLimit"
@@ -148,6 +155,7 @@
    "TaskHistory"
    "TaskRun"
    "Tenant"
+   "TransformDagRun"
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"

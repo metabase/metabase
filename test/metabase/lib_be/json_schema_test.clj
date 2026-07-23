@@ -8,15 +8,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.json :as json-util])
-  (:import (com.github.erosb.jsonsKema FormatValidationPolicy
-                                       JsonParser
-                                       SchemaLoader
-                                       Validator
-                                       ValidatorConfig)))
+  (:import
+   (com.github.erosb.jsonsKema FormatValidationPolicy JsonParser SchemaLoader Validator ValidatorConfig)))
 
 (set! *warn-on-reflection* true)
 
-(defn check-node [node]
+(defn- check-node [node]
   (when (map? node)
     (when (contains? node "type")
       (is (not= nil (node "type"))))
@@ -31,7 +28,7 @@
       (is (not (some empty? all-of)) (pr-str :empty-all-of all-of))))
   node)
 
-(def simple-query
+(def ^:private simple-query
   (-> (lib/query meta/metadata-provider
                  (meta/table-metadata :orders))
       (lib/aggregate (lib/count))
@@ -39,7 +36,7 @@
       (assoc-in [:stages 0 :source-table] ["hello" "schema" "tbl"])
       (assoc :database "my-db")))
 
-(deftest fix-json-schema-test
+(deftest ^:parallel fix-json-schema-test
   (let [schema-map (js/make-schema)
         schema (.load (SchemaLoader. (json-util/encode schema-map)))
         validator (Validator/create schema (ValidatorConfig. FormatValidationPolicy/ALWAYS))]

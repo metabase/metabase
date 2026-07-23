@@ -200,11 +200,11 @@ export const ComponentProvider = memo(function ComponentProvider({
   }
 
   return (
-    <MetabaseReduxProvider store={reduxStoreRef.current!}>
+    <MetabaseReduxProvider store={reduxStoreRef.current}>
       <METABOT_SDK_EE_PLUGIN.MetabotProvider>
         <ComponentProviderInternal
           {...props}
-          reduxStore={reduxStoreRef.current!}
+          reduxStore={reduxStoreRef.current}
         >
           {children}
         </ComponentProviderInternal>

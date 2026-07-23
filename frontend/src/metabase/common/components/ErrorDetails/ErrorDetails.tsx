@@ -11,6 +11,7 @@ export function ErrorDetails({
   details,
   centered,
   className,
+  errorBoxClassName,
 }: ErrorDetailsProps) {
   const [showError, setShowError] = useState(false);
 
@@ -34,7 +35,7 @@ export function ErrorDetails({
         className={cx(CS.pt3, centered ? CS.textCentered : CS.textLeft)}
       >
         <h2>{t`Here's the full error message`}</h2>
-        <ErrorBox>{details}</ErrorBox>
+        <ErrorBox className={errorBoxClassName}>{details}</ErrorBox>
       </div>
     </div>
   );

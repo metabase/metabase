@@ -1,6 +1,7 @@
 import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
+import type { RequestableIndexes } from "./index-manager";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
@@ -67,6 +68,7 @@ export type Transform = {
   table?: Table | null;
   last_run?: TransformRun | null;
   creator?: UserInfo;
+  requestable_indexes?: RequestableIndexes | null;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
@@ -128,6 +130,16 @@ export type TransformSource = QueryTransformSource | PythonTransformSource;
 export type TransformTargetAppendStrategy = {
   type: "append";
 };
+
+export type MergeKeyColumn = {
+  name?: string;
+  "field-id"?: number | null;
+};
+
+export type TransformTargetMergeStrategy = {
+  type: "merge";
+  "unique-key": MergeKeyColumn[];
+};
 export type DraftTransformSource =
   | Transform["source"]
   | PythonTransformSourceDraft;
@@ -136,7 +148,9 @@ export type DraftTransform = Partial<
   Pick<Transform, "id" | "name" | "description" | "target">
 > & { source: DraftTransformSource };
 
-export type TargetIncrementalStrategy = TransformTargetAppendStrategy;
+export type TargetIncrementalStrategy =
+  | TransformTargetAppendStrategy
+  | TransformTargetMergeStrategy;
 
 export type TransformTargetType = "table" | "table-incremental";
 
@@ -364,6 +378,79 @@ export type ListJobRunTransformRunsRequest = {
   jobId: TransformJobId;
   runId: TransformJobRunId;
 };
+
+export type CancelJobRunRequest = {
+  jobId: TransformJobId;
+  runId: TransformJobRunId;
+};
+
+export type TransformDagRunId = number;
+
+export const TRANSFORM_DAG_DIRECTIONS = ["upstream", "downstream"] as const;
+export type TransformDagDirection = (typeof TRANSFORM_DAG_DIRECTIONS)[number];
+
+export type RunTransformDagRequest = {
+  id: TransformId;
+  direction: TransformDagDirection;
+  skip_fresh_deps?: boolean;
+};
+
+export type RunTransformDagResponse = {
+  dag_run_id: TransformDagRunId | null;
+  message: string;
+};
+
+export type ListDagTransformsRequest = {
+  transformId: TransformId;
+  direction: TransformDagDirection;
+};
+
+export type DagTransform = Pick<Transform, "id" | "name">;
+
+export type ListDagRunTransformRunsRequest = {
+  dagRunId: TransformDagRunId;
+};
+
+export const TRANSFORM_GRAPH_RUN_TYPES = ["job", "dag", "transform"] as const;
+export type TransformGraphRunType = (typeof TRANSFORM_GRAPH_RUN_TYPES)[number];
+
+export const TRANSFORM_GRAPH_RUN_SORT_COLUMNS = [
+  "start_time",
+  "end_time",
+] as const;
+export type TransformGraphRunSortColumn =
+  (typeof TRANSFORM_GRAPH_RUN_SORT_COLUMNS)[number];
+
+export type TransformGraphRun = {
+  run_type: TransformGraphRunType;
+  id: number;
+  entity_id: number | null;
+  name: string | null;
+  direction: TransformDagDirection | null;
+  transform_count: number | null;
+  run_method: TransformRunMethod | null;
+  status: TransformRunStatus | null;
+  is_active: boolean | null;
+  start_time: string;
+  end_time: string | null;
+  message: string | null;
+  user_id: UserId | null;
+};
+
+export type ListTransformGraphRunsRequest = {
+  types?: TransformGraphRunType[];
+  statuses?: TransformRunStatus[];
+  "transform-ids"?: TransformId[];
+  "start-time"?: string;
+  "end-time"?: string;
+  "run-methods"?: TransformRunMethod[];
+  "sort-column"?: TransformGraphRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListTransformGraphRunsResponse = {
+  data: TransformGraphRun[];
+} & PaginationResponse;
 
 export type TestPythonTransformRequest = {
   code: string;

@@ -1,17 +1,27 @@
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
+  CancelJobRunRequest,
   CreateTransformRequest,
+  DagTransform,
   Dataset,
   GetInspectorLensRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
+  ListDagRunTransformRunsRequest,
+  ListDagTransformsRequest,
+  ListTransformGraphRunsRequest,
+  ListTransformGraphRunsResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
   RunInspectorQueryRequest,
+  RunTransformDagRequest,
+  RunTransformDagResponse,
   RunTransformResponse,
   Transform,
+  TransformDagRunId,
   TransformId,
+  TransformRunForJobRun,
   UpdateTransformRequest,
 } from "metabase-types/api";
 
@@ -68,6 +78,7 @@ export const transformApi = Api.injectEndpoints({
           tag("table"),
           listTag("table-remapping"),
           listTag("transform-run"),
+          listTag("table-index"),
         ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(
@@ -105,7 +116,11 @@ export const transformApi = Api.injectEndpoints({
         url: `/api/transform/${id}/cancel`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id), tag("table")]),
+        invalidateTags(error, [
+          idTag("transform", id),
+          tag("table"),
+          listTag("transform-run"),
+        ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(
           transformApi.util.updateQueryData("getTransform", id, (draft) => {
@@ -137,6 +152,88 @@ export const transformApi = Api.injectEndpoints({
           }
         }
       },
+    }),
+    runTransformDag: builder.mutation<
+      RunTransformDagResponse,
+      RunTransformDagRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/transform/${id}/run-dag`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          idTag("transform", id),
+          tag("transform"),
+          tag("table"),
+          listTag("table-remapping"),
+          listTag("transform-run"),
+          listTag("transform-dag-run"),
+        ]),
+    }),
+    listDagTransforms: builder.query<DagTransform[], ListDagTransformsRequest>({
+      query: ({ transformId, direction }) => ({
+        method: "GET",
+        url: `/api/transform/${transformId}/dag-transforms`,
+        params: { direction },
+      }),
+      providesTags: (_response, _error, { transformId }) => [
+        idTag("transform", transformId),
+      ],
+    }),
+    listDagRunTransformRuns: builder.query<
+      TransformRunForJobRun[],
+      ListDagRunTransformRunsRequest
+    >({
+      query: ({ dagRunId }) => ({
+        method: "GET",
+        url: `/api/transform-dag-run/${dagRunId}/transform-runs`,
+      }),
+      providesTags: (_response, _error, { dagRunId }) => [
+        idTag("transform-dag-run", dagRunId),
+      ],
+    }),
+    cancelDagRun: builder.mutation<void, TransformDagRunId>({
+      query: (runId) => ({
+        method: "POST",
+        url: `/api/transform-dag-run/${runId}/cancel`,
+      }),
+      invalidatesTags: (_, error, runId) =>
+        invalidateTags(error, [
+          idTag("transform-dag-run", runId),
+          listTag("transform-dag-run"),
+          listTag("transform-run"),
+          tag("transform"),
+        ]),
+    }),
+    cancelJobRun: builder.mutation<void, CancelJobRunRequest>({
+      query: ({ jobId, runId }) => ({
+        method: "POST",
+        url: `/api/transform-job/${jobId}/runs/${runId}/cancel`,
+      }),
+      invalidatesTags: (_, error, { jobId }) =>
+        invalidateTags(error, [
+          idTag("transform-job", jobId),
+          listTag("transform-job"),
+          listTag("transform-run"),
+          tag("transform"),
+        ]),
+    }),
+    listTransformGraphRuns: builder.query<
+      ListTransformGraphRunsResponse,
+      ListTransformGraphRunsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/transform/runs",
+        params,
+      }),
+      providesTags: [
+        listTag("transform-run"),
+        listTag("transform-dag-run"),
+        listTag("transform-job"),
+      ],
     }),
     createTransform: builder.mutation<Transform, CreateTransformRequest>({
       query: (body) => ({
@@ -189,7 +286,12 @@ export const transformApi = Api.injectEndpoints({
         url: `/api/transform/${id}`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+        invalidateTags(error, [
+          listTag("transform"),
+          idTag("transform", id),
+          listTag("transform-run"),
+          listTag("transform-dag-run"),
+        ]),
     }),
     deleteTransformTarget: builder.mutation<void, TransformId>({
       query: (id) => ({
@@ -244,6 +346,12 @@ export const {
   useGetInspectorLensQuery,
   useLazyGetInspectorLensQuery,
   useRunTransformMutation,
+  useRunTransformDagMutation,
+  useListDagTransformsQuery,
+  useListDagRunTransformRunsQuery,
+  useCancelDagRunMutation,
+  useCancelJobRunMutation,
+  useListTransformGraphRunsQuery,
   useCancelCurrentTransformRunMutation,
   useCreateTransformMutation,
   useUpdateTransformMutation,

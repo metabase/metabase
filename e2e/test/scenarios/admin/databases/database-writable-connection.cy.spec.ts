@@ -34,6 +34,7 @@ describe("scenarios > admin > databases > writable connection", () => {
     H.restore("mysql-writable");
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     createUser(READ_ONLY_USER);
     setupTableData();
   });
@@ -343,7 +344,7 @@ function expectSuccess(response: Cypress.Response<unknown>) {
 }
 
 function enableTableEditing() {
-  cy.findByLabelText("Editable tables").scrollIntoView().click();
+  cy.findByLabelText("Editable tables").scrollIntoView().click({ force: true });
 }
 
 function performTableEdit() {

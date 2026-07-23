@@ -11,14 +11,13 @@
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
@@ -26,7 +25,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private engine-cookie-name "metabase.SEARCH_ENGINE")
+;; Renamed from metabase.SEARCH_ENGINE so long-lived cookies written before engine validation existed stay inert.
+(def ^:private engine-cookie-name "metabase.SEARCH_ENGINE_OVERRIDE")
 
 (defn- cookie-expiry []
   ;; 20 years should be long enough to trial an experimental search engine
@@ -42,30 +42,75 @@
                            :path      "/"
                            :expires   (cookie-expiry)}))))
 
-(defn- process-non-temporal-dim-ids
-  "Parse and process non-temporal dimension IDs JSON string.
-  Filters out null values and sorts ascending, returning as JSON string."
-  [non-temporal-dim-ids]
-  (when non-temporal-dim-ids
-    (try
-      (->> (json/decode non-temporal-dim-ids)
-           (remove nil?)
-           sort
-           vec
-           json/encode)
-      (catch Exception e
-        (log/warn "Failed to parse non-temporal dimension IDs:" (ex-message e))
-        nil))))
+(defn- clear-engine-cookie! [respond]
+  (fn [response]
+    (respond
+     (response/set-cookie response
+                          engine-cookie-name
+                          ""
+                          {:http-only true
+                           :path      "/"
+                           :max-age   0}))))
+
+(defn- param->engine
+  "Parse a search_engine param or cookie value into an engine keyword, nil when blank.
+  Malformed non-blank values parse to an unknown engine rather than nil, so explicit requests 400."
+  [value]
+  (when-not (str/blank? value)
+    (search.engine/canonical-engine value)))
+
+(defn- check-engine-serves!
+  "400 when an explicitly requested engine cannot serve searches, naming the cause."
+  [engine]
+  (case (search.engine/engine-status engine)
+    :unknown
+    (throw (ex-info (tru "Unknown search engine: {0}" (name engine)) {:status-code 400}))
+    :unsupported
+    (throw (ex-info (tru "Search engine {0} is not supported on this instance" (name engine)) {:status-code 400}))
+    :inactive
+    (throw (ex-info (tru "Search engine {0} is not enabled; add it to additional-search-engines to use it"
+                         (name engine))
+                    {:status-code 400}))
+    :ok nil))
+
+(defn- cookie-engine
+  "The engine cookie's engine name when it can still serve, else nil.
+  Cookies outlive configuration, so a stale value degrades to the default instead of erroring."
+  [request]
+  (when-let [engine (param->engine (get-in request [:cookies engine-cookie-name :value]))]
+    (when (= :ok (search.engine/engine-status engine))
+      (name engine))))
 
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (if-let [new-engine (get-in request [:params :search_engine])]
-       (handler request (set-engine-cookie! respond new-engine) raise)
-       (handler (->> (get-in request [:cookies engine-cookie-name :value])
-                     (assoc-in request [:params :search_engine]))
-                respond
-                raise)))
+     ;; Endpoints read :query-params (string keys), so that is where the engine must be injected.
+     (let [raw (get-in request [:query-params "search_engine"])]
+       (cond
+         ;; A repeated query param parses as a vector: pass it through for schema validation to reject.
+         (and raw (not (string? raw)))
+         (handler request respond raise)
+
+         ;; An explicit blank unpins: delete the engine cookie and resolve the default.
+         (and raw (str/blank? raw))
+         (handler (assoc-in request [:query-params "search_engine"] nil)
+                  (clear-engine-cookie! respond)
+                  raise)
+
+         :else
+         (if-let [engine (param->engine raw)]
+           (try
+             (check-engine-serves! engine)
+             (handler (assoc-in request [:query-params "search_engine"] (name engine))
+                      (set-engine-cookie! respond (name engine))
+                      raise)
+             (catch Exception e
+               (raise e)))
+           (let [cookie (cookie-engine request)]
+             (handler (cond-> request
+                        cookie (assoc-in [:query-params "search_engine"] cookie))
+                      respond
+                      raise))))))
    (fn [prefix]
      (open-api/open-api-spec handler prefix))))
 
@@ -179,14 +224,17 @@
    [:model_ancestors                     {:default false} [:maybe :boolean]]
    [:search_engine                       {:optional true} [:maybe string?]]
    [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
+   ;; bounded to pgvector's GUC ranges so out-of-range values get a 400 instead of erroring the
+   ;; SET LOCAL mid-transaction (a 500)
+   [:vector_search_ef_search             {:optional true} [:maybe [:int {:min 1 :max 1000}]]]
+   [:vector_search_max_scan_tuples       {:optional true} [:maybe [:int {:min 1 :max 2147483647}]]]
+   [:vector_search_explain               {:optional true} [:maybe :boolean]]
    [:search_native_query                 {:optional true} [:maybe :boolean]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
    [:calculate_available_models          {:optional true} [:maybe true?]]
    [:include_dashboard_questions         {:default false} [:maybe :boolean]]
-   [:include_metadata                    {:default false} [:maybe :boolean]]
-   [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]
-   [:has_temporal_dim                    {:optional true} [:maybe :boolean]]])
+   [:include_metadata                    {:default false} [:maybe :boolean]]])
 
 (def ^:private search-debug-request-schema
   (conj search-request-schema
@@ -209,11 +257,12 @@
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
     vector-search-strategy              :vector_search_strategy
+    vector-search-ef-search             :vector_search_ef_search
+    vector-search-max-scan-tuples       :vector_search_max_scan_tuples
+    vector-search-explain               :vector_search_explain
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
-    include-metadata                    :include_metadata
-    non-temporal-dim-ids                :non_temporal_dim_ids
-    has-temporal-dim                    :has_temporal_dim}]
+    include-metadata                    :include_metadata}]
   (search/search-context
    {:archived                            archived
     :collection                          collection
@@ -234,6 +283,9 @@
     :offset                              (request/offset)
     :search-engine                       search-engine
     :vector-search-strategy              vector-search-strategy
+    :vector-search-ef-search             vector-search-ef-search
+    :vector-search-max-scan-tuples       vector-search-max-scan-tuples
+    :vector-search-explain?              vector-search-explain
     :search-native-query                 search-native-query
     :search-string                       (some-> q str/trim not-empty)
     :table-db-id                         table-db-id
@@ -242,8 +294,6 @@
     :calculate-available-models?         calculate-available-models
     :include-dashboard-questions?        include-dashboard-questions
     :include-metadata?                   include-metadata
-    :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
-    :has-temporal-dim                    has-temporal-dim
     :display-type                        (set display-type)}))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
@@ -265,12 +315,15 @@
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
-  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines
+  - `vector_search_strategy`: for the semantic engine: `hnsw` (approximate index search, default),
+    `brute-force` (exact filter-first search), or `hnsw-iterative-relaxed` / `hnsw-iterative-strict`
+    (index-backed iterative scans with inline filters); ignored by other engines
+  - `vector_search_ef_search`: override pgvector's `hnsw.ef_search` (1-1000) for the iterative strategies; (admin only)
+  - `vector_search_max_scan_tuples`: override pgvector's `hnsw.max_scan_tuples` for the iterative strategies; (admin only)
+  - `vector_search_explain`: set to true to record vector-scan instrumentation for this search (expensive); (admin only)
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
-  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)
-  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)
 
   Note that not all item types support all filters, and the results will include only models that support the provided
   filters. For example:
@@ -282,6 +335,12 @@
   [_route-params
    query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))
+  ;; tuning/diagnostic knobs are admin-only: explain re-executes the vector scan and counts the whole index
+  ;; table per request, and the scan-budget knobs let a request inflate its own cost
+  (when (or (:vector_search_ef_search query-params)
+            (:vector_search_max_scan_tuples query-params)
+            (some? (:vector_search_explain query-params)))
+    (api/check-superuser))
   (try
     (u/prog1 (search/search (params->search-context query-params))
       (analytics/inc! :metabase-search/response-ok)

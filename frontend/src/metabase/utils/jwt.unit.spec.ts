@@ -5,6 +5,7 @@ import { extractResourceIdFromJwtToken } from "./jwt";
 const SECRET = new TextEncoder().encode("test-secret-key-for-jwt-signing");
 
 const createJwtToken = async (payload: object): Promise<string> => {
+  // Unjustified type cast. FIXME
   return new SignJWT(payload as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .sign(SECRET);

@@ -18,6 +18,7 @@ export function getCanonicalRowKey(key: RowValue, region?: string): string {
   const normalizedKey = String(key).toLowerCase();
   // State names and codes don't overlap, so for us_states (which expects codes) we map any name to its code.
   if (region === "us_states" && stateNamesMap.has(normalizedKey)) {
+    // Unjustified type cast. FIXME
     return stateNamesMap.get(normalizedKey) as string;
   } else if (
     region === "world_countries" &&

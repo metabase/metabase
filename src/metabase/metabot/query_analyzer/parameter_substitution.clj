@@ -57,8 +57,8 @@
   "Given a native dataset_query, return a `{:query \"<SQL string>\"}` where the SQL no longer has Metabase-specific
   template tags."
   [query]
-  (if-let [name->tag (seq (lib/template-tags query))]
+  (if-let [tags (not-empty (lib/template-tags query))]
     (-> query
-        (lib/with-template-tags (update-vals name->tag tag-default))
+        (lib/with-template-tags (mapv tag-default tags))
         qp.compile/compile)
     {:query (lib/raw-native-query query)}))

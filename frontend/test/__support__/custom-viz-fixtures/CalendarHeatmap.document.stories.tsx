@@ -79,6 +79,7 @@ function DocumentProviders({
       entities: createMockEntitiesState({}),
     });
     const commonReducerNames = Object.keys(commonReducers);
+    // Unjustified type cast. FIXME
     const initialState = _.pick(
       storeInitialState,
       ...commonReducerNames,

@@ -49,7 +49,7 @@
 }
 
 .borderSuccess {
-  border-color: var(--mb-color-success) !important;
+  border-color: var(--mb-color-feedback-positive) !important;
 }
 
 .borderBrand {

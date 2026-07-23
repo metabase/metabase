@@ -918,17 +918,18 @@
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
-  `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
+  `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
   [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
    _query-params
-   {:keys          [parameters]
-    pivot-results? :pivot_results
-    format-rows?   :format_rows
-    :as            _body}
+   {:keys           [parameters]
+    pivot-results?  :pivot_results
+    format-rows?    :format_rows
+    csv-include-bom? :csv_include_bom
+    :as             _body}
    :- [:map
        [:parameters    {:optional true} [:maybe
                                          ;; support JSON-encoded parameters for backwards compatibility when with this
@@ -942,7 +943,8 @@
                                          ;; it breaks existing tests
                                          [:sequential [:map-of :keyword :any]]]]
        [:format_rows   {:default false} ms/BooleanValue]
-       [:pivot_results {:default false} ms/BooleanValue]]]
+       [:pivot_results {:default false} ms/BooleanValue]
+       [:csv_include_bom {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
    (api/check-404 (t2/select-one :model/Card card-id)) export-format
    :parameters  parameters
@@ -953,6 +955,7 @@
                  :ignore-cached-results? true
                  :format-rows?           format-rows?
                  :pivot?                 pivot-results?
+                 :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

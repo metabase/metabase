@@ -3,14 +3,16 @@
 
  :deps
  {at.yawk.lz4/lz4-java                {:mvn/version "1.10.4"} ; pin newer version because version included in JDBC driver has security warnings
-  com.databricks/databricks-jdbc-thin {:mvn/version "3.3.1"
+  com.databricks/databricks-jdbc-thin {:mvn/version "3.4.1"
                                        :exclusions  [org.apache.commons/commons-lang3  ;; dep in top-level deps.edn; exclusion fixes security warnings
                                                      org.slf4j/slf4j-jdk14]}           ;; conflicts with our log4j2 SLF4J provider
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
   org.bouncycastle/bcpkix-jdk18on     {:mvn/version "1.84"}
   org.bouncycastle/bcprov-jdk18on     {:mvn/version "1.84"}
-  ;; pinned: databricks-jdbc-thin pulls older transitive versions
-  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}
-  org.apache.httpcomponents.core5/httpcore5-h2 {:mvn/version "5.3.5"}
+  ;; pinned: databricks-jdbc-thin pulls older transitive versions with resource
+  ;; exhaustion vulns (jackson-core) and a deserialization vuln (jackson-databind)
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.5"}
+  com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.21.5"}
+  org.apache.httpcomponents.core5/httpcore5-h2 {:mvn/version "5.4.3"}
   ;; pinned: databricks-jdbc-thin 3.3.1 pulls commons-configuration2 2.11.0 (CVE-2026-45205)
   org.apache.commons/commons-configuration2 {:mvn/version "2.15.1"}}}

@@ -97,7 +97,7 @@ export function ColumnValue({
         c="text-primary"
         variant="outline"
         style={{
-          background: "var(--mb-color-background-primary)",
+          background: "var(--mb-color-background_page-primary)",
           textTransform: "capitalize",
         }}
         leftSection={
@@ -140,7 +140,7 @@ export function ColumnValue({
           size="lg"
           variant="outline"
           style={{
-            background: "var(--mb-color-background-primary)",
+            background: "var(--mb-color-background_page-primary)",
             color: "var(--mb-color-text-primary)",
           }}
           leftSection={
@@ -166,7 +166,7 @@ export function ColumnValue({
           size="lg"
           variant="outline"
           style={{
-            background: "var(--mb-color-background-primary)",
+            background: "var(--mb-color-background_page-primary)",
           }}
         >
           {value}
@@ -233,14 +233,14 @@ export function ColumnValue({
           className={styles.badge}
           variant="outline"
           style={{
-            background: "var(--mb-color-background-primary)",
+            background: "var(--mb-color-background_page-primary)",
           }}
         >
           <Text fw="bold">
             {String(value).slice(0, -1)}
             <span
               style={{
-                color: "var(--mb-color-text-tertiary)",
+                color: "var(--mb-color-text-disabled)",
                 paddingLeft: "0.25rem",
               }}
             >
@@ -265,7 +265,7 @@ export function ColumnValue({
           <Text fw="bold">
             <span
               style={{
-                color: "var(--mb-color-text-tertiary)",
+                color: "var(--mb-color-text-disabled)",
                 fontWeight: "normal",
                 paddingRight: "0.25rem",
               }}

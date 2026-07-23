@@ -2,7 +2,7 @@
   width: 100%;
   background-color: var(
     --notification-warning-bg,
-    var(--mb-color-background-secondary)
+    var(--mb-color-background_page-secondary)
   );
   padding: var(
     --notification-warning-padding,

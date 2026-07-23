@@ -56,29 +56,31 @@
 (deftest re-init-endpoint-test
   (testing "POST /api/search/re-init with semantic search support"
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-test-db! {:mode :mock-indexed}
-        (let [original-index      semantic.tu/mock-index
-              original-table-name (:table-name original-index)
-              new-index           (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix (constantly 345)]
-                                    (#'semantic.pgvector-api/fresh-index semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model :force-reset? true))
-              new-table-name      (:table-name new-index)
-              pgvector (semantic.env/get-pgvector-datasource!)]
-          (is (semantic.tu/table-exists-in-db? original-table-name))
-          (is (not (semantic.tu/table-exists-in-db? new-table-name)))
-          (let [best-index (semantic.index-metadata/find-compatible-index! pgvector semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
-            (is (=? original-index (:index best-index)))
-            (is (:active best-index)))
-          (testing "re-init creates the new index"
-            (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix (constantly 345)]
-              (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
-                (is (contains? response :message))))
-            (is (not= original-table-name new-table-name))
+      ;; Semantic is not the default engine here, so it must be activated explicitly.
+      (mt/with-temporary-setting-values [additional-search-engines ["semantic"]]
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
+          (let [original-index      semantic.tu/mock-index
+                original-table-name (:table-name original-index)
+                new-index           (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix (constantly 345)]
+                                      (#'semantic.pgvector-api/fresh-index semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model :force-reset? true))
+                new-table-name      (:table-name new-index)
+                pgvector (semantic.env/get-pgvector-datasource!)]
             (is (semantic.tu/table-exists-in-db? original-table-name))
-            (is (semantic.tu/table-exists-in-db? new-table-name))
-            (is (zero? (semantic.tu/index-count new-index))))
-          (let [best-index (semantic.index-metadata/find-compatible-index! pgvector semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
-            (is (=? new-index (:index best-index)))
-            (is (:active best-index)))
-          (testing "Index can be populated after re-init"
-            (semantic.tu/upsert-index! (semantic.tu/mock-documents) :index new-index)
-            (is (pos? (semantic.tu/index-count new-index)))))))))
+            (is (not (semantic.tu/table-exists-in-db? new-table-name)))
+            (let [best-index (semantic.index-metadata/find-compatible-index! pgvector semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
+              (is (=? original-index (:index best-index)))
+              (is (:active best-index)))
+            (testing "re-init creates the new index"
+              (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix (constantly 345)]
+                (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
+                  (is (contains? response :message))))
+              (is (not= original-table-name new-table-name))
+              (is (semantic.tu/table-exists-in-db? original-table-name))
+              (is (semantic.tu/table-exists-in-db? new-table-name))
+              (is (zero? (semantic.tu/index-count new-index))))
+            (let [best-index (semantic.index-metadata/find-compatible-index! pgvector semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
+              (is (=? new-index (:index best-index)))
+              (is (:active best-index)))
+            (testing "Index can be populated after re-init"
+              (semantic.tu/upsert-index! (semantic.tu/mock-documents) :index new-index)
+              (is (pos? (semantic.tu/index-count new-index))))))))))

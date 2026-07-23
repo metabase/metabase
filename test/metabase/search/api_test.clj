@@ -17,10 +17,12 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.revisions.models.revision :as revision]
+   [metabase.search.api :as search.api]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -40,7 +42,7 @@
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
+                                  (search.tu/with-appdb-search-if-available-otherwise-legacy (thunk)))))
 
 (def ^:private default-search-row
   {:archived                   false
@@ -87,6 +89,13 @@
 (defn- clean-result [result]
   (cond-> (dissoc (u/remove-nils result) :database_id :table_id :last_editor_id :last_edited_at
                   :creator_common_name :creator_id
+                  ;; Metabot curation signals now ride in search results: curated on every model, and
+                  ;; table data_authority/data_layer (DB-specific defaults, e.g. data_authority
+                  ;; "unconfigured" on H2/Postgres vs NULL on MySQL; data_layer nil on H2 vs "internal" on
+                  ;; MySQL/MariaDB) — all incidental to these assertions.
+                  :curated
+                  :data_authority
+                  :data_layer
                   ;; false for new search segments... not sure why
                   :created_at)
     (false? (:model_id result))
@@ -327,6 +336,133 @@
       (is (=? {:engine string?}
               (mt/user-http-request :crowberto :get 200 "search" :q "x" :context "search-app"))))))
 
+(deftest removed-temporal-params-ignored-test
+  (testing "the removed has_temporal_dim / non_temporal_dim_ids params are silently ignored"
+    ;; Stale FE bundles may still send these during rolling deploys; the request schema is an open map,
+    ;; so they pass validation and never reach the search context.
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [search/search (fn [search-ctx]
+                                                  (reset! captured search-ctx)
+                                                  {:data [] :total 0 :engine "test"})]
+        (is (=? {:engine string?}
+                (mt/user-http-request :crowberto :get 200 "search"
+                                      :q "x"
+                                      :has_temporal_dim "true"
+                                      :non_temporal_dim_ids "[1,2]"))))
+      (is (not (contains? @captured :has-temporal-dim)))
+      (is (not (contains? @captured :non-temporal-dim-ids))))))
+
+(deftest explicit-engine-validation-test
+  (testing "an explicit search_engine that cannot serve returns a 400 naming the reason"
+    (testing "unknown engine"
+      (is (= "Unknown search engine: elastic"
+             (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine "elastic"))))
+    (testing "known engine that this instance does not support"
+      (is (= "Search engine semantic is not supported on this instance"
+             (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine "semantic"))))
+    (testing "a malformed engine value is rejected, not treated as absent"
+      (is (= "Unknown search engine: search.engine/"
+             (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine "search.engine/"))))
+    (when (search.engine/supported-engine? :search.engine/appdb)
+      (testing "supported engine that is neither the default nor an additional engine"
+        ;; Checked below the HTTP layer: this namespace's :each fixture pins the default engine to appdb,
+        ;; so no engine can be made inactive in a real request here.
+        (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+          (is (thrown-with-msg? Exception
+                                #"not enabled"
+                                (#'search.api/check-engine-serves! :search.engine/appdb)))))))
+  (testing "a servable explicit engine is accepted"
+    (is (=? {:engine "search.engine/in-place"}
+            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "in-place"))))
+  (testing "a blank engine is treated as absent"
+    (is (=? {:engine string?}
+            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine ""))))
+  (testing "the fully qualified form the API returns in :engine is accepted"
+    (is (=? {:engine "search.engine/in-place"}
+            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "search.engine/in-place"))))
+  (testing "a repeated search_engine param fails validation rather than erroring"
+    (is (=? {:errors {:search_engine some?}}
+            (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine ["appdb" "in-place"])))))
+
+(def ^:private engine-cookie-name @#'search.api/engine-cookie-name)
+
+(deftest engine-cookie-staleness-test
+  (testing "a cookie engine that can still serve is honored"
+    ;; in-place serves on every app db
+    (is (= "in-place" (#'search.api/cookie-engine {:cookies {engine-cookie-name {:value "in-place"}}}))))
+  (testing "a cookie engine that cannot serve degrades to the default"
+    ;; appdb is either unsupported on this app db, or supported with no maintained index
+    (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+      (is (nil? (#'search.api/cookie-engine {:cookies {engine-cookie-name {:value "appdb"}}})))))
+  (testing "an unknown cookie engine degrades to the default"
+    (is (nil? (#'search.api/cookie-engine {:cookies {engine-cookie-name {:value "wut"}}})))))
+
+(deftest engine-cookie-request-test
+  (let [pinned {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}]
+    (testing "a pinned engine cookie selects the engine"
+      (is (=? {:engine "search.engine/in-place"}
+              (mt/user-http-request :crowberto :get 200 "search" pinned :q "x"))))
+    (testing "an explicit blank search_engine unpins: the cookie is ignored and the default serves"
+      (is (=? {:engine (u/qualified-name (search.engine/default-engine))}
+              (mt/user-http-request :crowberto :get 200 "search" pinned :q "x" :search_engine ""))))))
+
+(deftest engine-cookie-round-trip-test
+  ;; The in-process client is required here: it runs the handler on the test thread, inside the fixture's
+  ;; engine and index bindings.
+  (let [cookie-pattern (re-pattern (str (java.util.regex.Pattern/quote engine-cookie-name) "=([^;]*)"))
+        engine-cookie  (fn [response]
+                         (some #(second (re-find cookie-pattern %))
+                               (u/one-or-many (get-in response [:headers "Set-Cookie"]))))]
+    (testing "an explicit engine pins: the response sets the engine cookie"
+      (let [response (mt/user-http-request-full-response :crowberto :get 200 "search" :q "x" :search_engine "in-place")]
+        (is (= "in-place" (engine-cookie response)))
+        (is (=? {:engine "search.engine/in-place"} (:body response)))))
+    (testing "a request carrying the cookie serves the pinned engine"
+      (is (=? {:engine "search.engine/in-place"}
+              (mt/user-http-request :crowberto :get 200 "search"
+                                    {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}
+                                    :q "x"))))
+    (testing "a blank explicit engine unpins: the response deletes the cookie and the default serves"
+      (let [response (mt/user-http-request-full-response :crowberto :get 200 "search"
+                                                         {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}
+                                                         :q "x" :search_engine "")]
+        (is (= "" (engine-cookie response)))
+        (is (str/includes? (str/join " " (u/one-or-many (get-in response [:headers "Set-Cookie"])))
+                           "Max-Age=0"))
+        (is (=? {:engine (u/qualified-name (search.engine/default-engine))} (:body response)))))))
+
+(deftest vector-search-knobs-test
+  (testing "the vector-search tuning/diagnostic knobs are admin-only"
+    (doseq [[param value] {:vector_search_ef_search       100
+                           :vector_search_max_scan_tuples 50000
+                           :vector_search_explain         true}]
+      (testing param
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "search" :q "x" param value))))))
+  (testing "an admin's knobs thread through into the search context"
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [search/search (fn [search-ctx]
+                                                  (reset! captured search-ctx)
+                                                  {:data [] :total 0 :engine "test"})]
+        (mt/user-http-request :crowberto :get 200 "search" :q "x"
+                              :vector_search_strategy "hnsw-iterative-strict"
+                              :vector_search_ef_search 100
+                              :vector_search_max_scan_tuples 50000
+                              :vector_search_explain true)
+        (is (=? {:vector-search-strategy        :hnsw-iterative-strict
+                 :vector-search-ef-search       100
+                 :vector-search-max-scan-tuples 50000
+                 :vector-search-explain?        true}
+                @captured))
+        (testing "absent knobs stay absent, so the semantic engine falls back to its setting defaults"
+          (mt/user-http-request :crowberto :get 200 "search" :q "x")
+          (is (not-any? @captured [:vector-search-strategy :vector-search-ef-search
+                                   :vector-search-max-scan-tuples :vector-search-explain?
+                                   :vector-search-force-index?]))))))
+  (testing "values outside pgvector's GUC ranges are rejected up front"
+    (is (=? {:errors {:vector_search_ef_search some?}}
+            (mt/user-http-request :crowberto :get 400 "search" :q "x" :vector_search_ef_search 2000)))))
+
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
     (with-search-items-in-root-collection "test"
@@ -397,18 +533,14 @@
         (let [resp (search-request :crowberto :q "test" :search_engine "appdb" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
           (is (= "search.engine/appdb" (:engine resp))))))
-    (testing "It can use the old search engine name, e.g. for old cookies"
+    (testing "It normalizes the old search engine name, e.g. for old cookies"
       (search/init-index! {:force-reset? false :re-populate? false})
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
-          (is (= "search.engine/fulltext" (:engine resp))))))
-    (testing "It will not use an unknown search engine"
-      (search/init-index! {:force-reset? false :re-populate? false})
-      (with-search-items-in-root-collection "test"
-        (let [resp (search-request :crowberto :q "test" :search_engine "wut" :limit 1)]
-          (is (#{"search.engine/in-place"
-                 "search.engine/appdb"}
-               (:engine resp))))))))
+          (is (= "search.engine/appdb" (:engine resp))))))
+    (testing "It rejects an unknown search engine"
+      (is (= "Unknown search engine: wut"
+             (mt/user-http-request :crowberto :get 400 "search" :q "test" :search_engine "wut" :limit 1))))))
 
 (defn- get-available-models [& args]
   (disj
@@ -2033,6 +2165,16 @@
                 "Card in collection should be included")
             (is (not (contains? result-ids table-id))
                 "Published table should NOT be included in collection search in OSS")))))))
+
+(deftest collection-filter-respects-permissions-test
+  (testing "GET /api/search?collection=<id> excludes results the user cannot read, and includes them once granted (metabase#entity-picker)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       {card-id :id} {:collection_id coll-id :name "scoped one"}]
+        (is (empty? (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+        (is (= #{card-id coll-id}
+               (set (map :id (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Measure Search Tests (Phase 4)                                         |

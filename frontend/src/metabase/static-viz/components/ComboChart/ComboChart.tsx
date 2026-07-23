@@ -76,6 +76,7 @@ export const ComboChart = ({
   const option = getCartesianChartOption(
     chartModel,
     chartLayout,
+    false,
     null,
     [],
     settings,
@@ -87,11 +88,12 @@ export const ComboChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  chart.dispose();
+
   const allPointsOutOfRange = useAreAllDataPointsOutOfRange(
     chartModel,
     settings,
   );
-
   const totalHeight = fitWithinBounds ? height : height + legendHeight;
 
   return (
@@ -121,7 +123,7 @@ export const ComboChart = ({
             <rect
               x={width / 2 - DATA_OUT_OF_RANGE_RECT.width / 2}
               y={totalHeight / 2 - DATA_OUT_OF_RANGE_RECT.height / 2}
-              fill={renderingContext.getColor("background-primary")}
+              fill={renderingContext.getColor("background_page-primary")}
               stroke={renderingContext.getColor("border-neutral")}
               strokeWidth="1"
               width={DATA_OUT_OF_RANGE_RECT.width}

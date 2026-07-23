@@ -116,7 +116,7 @@
                                          (try
                                            (zipmap (or (get @dep-cache dep)
                                                        (get (swap! dep-cache assoc dep
-                                                                   (serdes/dependencies
+                                                                   (serdes/deserialization-dependencies
                                                                     (serialization/ingest-one ingestable dep)))
                                                             dep))
                                                    (repeat dep))

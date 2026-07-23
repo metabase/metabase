@@ -12,13 +12,13 @@
 }
 
 .accordionControl {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-radius: 0.5rem;
   padding: 0.625rem 1rem;
 }
 
 .accordionContent {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-top: 1px solid var(--mb-color-border-neutral-subtle);
   padding: 0.5rem 1rem 0.75rem;
 }

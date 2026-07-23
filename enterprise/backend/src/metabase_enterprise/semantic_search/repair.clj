@@ -11,6 +11,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str]
@@ -40,20 +41,24 @@
   but are not in the repair table. These represent lost deletes."
   [pgvector gate-table-name repair-table-name]
   (try
-    (let [anti-join-sql (-> (sql.helpers/select :model :model_id)
+    (let [column        semantic.util/column-keyword
+          anti-join-sql (-> (sql.helpers/select :model :model_id)
                             (sql.helpers/from (keyword gate-table-name))
                             (sql.helpers/where [:not [:exists
                                                       (-> (sql.helpers/select 1)
                                                           (sql.helpers/from (keyword repair-table-name))
                                                           (sql.helpers/where [:and
-                                                                              [:= (keyword repair-table-name "model")
-                                                                               (keyword gate-table-name "model")]
-                                                                              [:= (keyword repair-table-name "model_id")
-                                                                               (keyword gate-table-name "model_id")]]))]])
+                                                                              [:= (column repair-table-name "model")
+                                                                               (column gate-table-name "model")]
+                                                                              [:= (column repair-table-name "model_id")
+                                                                               (column gate-table-name "model_id")]]))]])
                             (sql/format :quoted true))
           results (jdbc/execute! pgvector anti-join-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (log/infof "Found %d documents in gate table that should be deleted" (count results))
       results)
+    ;; TODO (Chris 2026-07-13) -- swallowing the error reads as "no lost deletes", so a transient anti-join
+    ;; failure silently skips tombstoning that run. Tolerated because the next repair pass retries; revisit
+    ;; if lost deletes start slipping through.
     (catch Exception e
       (log/errorf e "Error finding lost deletes between gate table %s and repair table %s"
                   gate-table-name repair-table-name))))
@@ -89,18 +94,20 @@
       (log/warnf e "Failed to drop repair table: %s" repair-table-name))))
 
 (defn- repair-table-name
-  "Generates a unique name for a repair table with timestamp for cleanup.
+  "Generates a unique name for a repair table with timestamp for cleanup, qualified like the index tables
+  so it lands in the module's schema when sharing the app db.
   Format: repair_<millis-since-epoch>_<short-id>"
-  []
+  [index-metadata]
   (let [millis-since-epoch (t/to-millis-from-epoch (t/instant))
         short-id           (u/lower-case-en (u.str/random-string 6))]
-    (format "repair_%d_%s" millis-since-epoch short-id)))
+    (format (:index-table-qualifier index-metadata "%s")
+            (format "repair_%d_%s" millis-since-epoch short-id))))
 
 (defn with-repair-table!
   "Creates a repair table, executes a function with the table name, and ensures cleanup.
   Returns the result of calling f with the repair table name."
-  [pgvector f]
-  (let [repair-table (repair-table-name)]
+  [pgvector index-metadata f]
+  (let [repair-table (repair-table-name index-metadata)]
     (try
       (create-repair-table! pgvector repair-table)
       (f repair-table)

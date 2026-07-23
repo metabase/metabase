@@ -28,11 +28,11 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
   ${({ isSelected }) =>
     isSelected &&
     css`
-      background-color: var(--mb-color-background-brand);
+      background-color: var(--mb-color-background_surface-brand-subtle);
     `}
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 `;
 

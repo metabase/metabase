@@ -19,7 +19,11 @@
 }
 
 .suggestionEditorOnlyNew {
-  background: color-mix(in srgb, var(--mb-color-success) 11%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--mb-color-feedback-positive) 11%,
+    transparent
+  );
 
   :global {
     .cm-gutters {

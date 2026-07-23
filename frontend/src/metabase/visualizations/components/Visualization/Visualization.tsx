@@ -1,6 +1,5 @@
 /* eslint-disable complexity */
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import React, {
   type CSSProperties,
   type ComponentType,
@@ -16,16 +15,16 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
-import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
+import type { LocationDescriptorObject } from "metabase/router";
 import { getTokenFeature } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
@@ -93,7 +92,6 @@ import {
   VisualizationActionButtonsContainer,
   VisualizationHeader,
   VisualizationRoot,
-  VisualizationSlowSpinner,
 } from "./Visualization.styled";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
 import { Watermark } from "./Watermark";
@@ -242,6 +240,7 @@ const deriveStateFromProps = (props: VisualizationProps) => {
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
+        // Unjustified type cast. FIXME
         extractRemappings(props.rawSeries as RawSeries),
       )
     : null;
@@ -284,6 +283,7 @@ class Visualization extends PureComponent<
     width: 0,
     // prefer passing in a function that doesn't cause the application to reload
     onChangeLocation: (location: Location) => {
+      // Unjustified type cast. FIXME
       window.location = location as any;
     },
   };
@@ -714,6 +714,9 @@ class Visualization extends PureComponent<
       rowChecked,
       onAllSelectClick,
       onRowSelectClick,
+      isSortable,
+      sorting,
+      onSortingChange,
       visualizerRawSeries,
       renderEmptyMessage,
       renderLoadingView = LoadingView,
@@ -781,6 +784,7 @@ class Visualization extends PureComponent<
           }
         } catch (e: unknown) {
           error =
+            // Unjustified type cast. FIXME
             (e as Error).message ||
             t`Could not display this chart with this data.`;
           if (
@@ -818,13 +822,6 @@ class Visualization extends PureComponent<
 
     const extra = (
       <VisualizationActionButtonsContainer>
-        {isSlow && !loading && (
-          <VisualizationSlowSpinner
-            className={DashboardS.VisualizationSlowSpinner}
-            size={18}
-            isUsuallySlow={isSlow === "usually-slow"}
-          />
-        )}
         {actionButtons}
       </VisualizationActionButtonsContainer>
     );
@@ -844,6 +841,7 @@ class Visualization extends PureComponent<
       };
     }
 
+    // Unjustified type cast. FIXME
     const CardVisualization = visualization as VisualizationType;
 
     const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
@@ -974,6 +972,7 @@ class Visualization extends PureComponent<
                     metadata={metadata}
                     mode={mode}
                     queryBuilderMode={queryBuilderMode}
+                    // Unjustified type cast. FIXME
                     rawSeries={rawSeries as RawSeries}
                     visualizerRawSeries={visualizerRawSeries}
                     renderEmptyMessage={renderEmptyMessage}
@@ -1020,6 +1019,9 @@ class Visualization extends PureComponent<
                     rowChecked={rowChecked}
                     onAllSelectClick={onAllSelectClick}
                     onRowSelectClick={onRowSelectClick}
+                    isSortable={isSortable}
+                    sorting={sorting}
+                    onSortingChange={onSortingChange}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

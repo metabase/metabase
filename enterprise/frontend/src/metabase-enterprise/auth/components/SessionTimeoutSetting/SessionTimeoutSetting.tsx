@@ -147,7 +147,7 @@ export const SessionTimeoutSetting = () => {
         </Flex>
       )}
       {error && (
-        <Text c="error" size="sm">
+        <Text c="feedback-negative" size="sm">
           {error}
         </Text>
       )}

@@ -16,6 +16,7 @@ export function withMantineTheme<
   return function MantineThemeWrapper(props) {
     const theme = useMantineTheme();
 
+    // Unjustified type cast. FIXME
     return <ComposedComponent {...(props as T)} theme={theme} />;
   };
 }

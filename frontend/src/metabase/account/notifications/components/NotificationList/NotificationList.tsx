@@ -82,7 +82,7 @@ const NotificationEmptyState = ({ children }: { children?: ReactNode }) => {
       <Icon
         name="bell"
         size="3.25rem"
-        c="background-tertiary-inverse"
+        c="background_page-tertiary-inverse"
         mt="4.875rem"
         mb="1.75rem"
       />

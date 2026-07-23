@@ -105,6 +105,7 @@ export const useAction = <
           actionId,
           parameters,
         });
+        // Unjustified type cast. FIXME
         const next = raw as ActionResultForKind<TKind>;
         setResult(next);
         return next;

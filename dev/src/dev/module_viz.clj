@@ -94,7 +94,6 @@
 
 (defn reset-cache! [] (reset! cache nil))
 
-
 (defn- build-cache
   "Build the full modules cache — a map with keys :kondo, :module-nodes, :api-children, :all-edges,
   :edges-by-mod. Called once on first request and memoized via the `cache` atom."

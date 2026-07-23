@@ -65,7 +65,7 @@
   align-items: center;
   cursor: pointer;
   padding: 0.75rem 1.5rem 0.75rem 0.75rem;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .SelectionItem:hover {
@@ -169,7 +169,7 @@
   font-size: 10px;
   text-align: center;
   text-transform: uppercase;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   padding-left: var(--padding-1);
   padding-right: var(--padding-1);
   position: absolute;
@@ -194,7 +194,7 @@
   flex-direction: column;
   font-size: 0.9em;
   z-index: 2;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
 }
 
@@ -248,7 +248,7 @@
 }
 
 .GuiBuilderSectionLabel {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   position: absolute;
   top: -7px;
   left: 10px;
@@ -262,14 +262,14 @@
   max-height: 200px;
   overflow: scroll;
   padding: 1em;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 2px;
   white-space: pre-wrap;
 }
 
 .QuestionTooltipTarget {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   border: 2px solid currentColor;
   border-radius: 99px;
   width: 20px;
@@ -295,7 +295,7 @@
 .Overlay {
   background-color: color-mix(
     in srgb,
-    var(--mb-color-background-primary) 75%,
+    var(--mb-color-background_page-primary) 75%,
     transparent
   );
   transition:
@@ -309,7 +309,11 @@
       background-color: color-mix(
         in srgb,
         var(--mb-color-core-brand) 3%,
-        color-mix(in srgb, var(--mb-color-background-primary) 75%, transparent)
+        color-mix(
+          in srgb,
+          var(--mb-color-background_page-primary) 75%,
+          transparent
+        )
       );
     }
   }

@@ -99,7 +99,6 @@ serdes/meta:
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.54.4-SNAPSHOT (c6780bb)
 source_card_id: null
 type: %s
 document_id: null
@@ -194,39 +193,38 @@ width: fixed
       ;; git read-file contract).
       (get-in @files-atom [branch path])))
 
-  (write-files! [_this _message files]
-    (case fail-mode
-      :write-files-error (throw (Exception. "Failed to write files"))
-      :store-error (throw (Exception. "Store failed"))
-      :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
-      ;; Default success case - remove all files in managed dirs, then add new files
-      (let [write-entries (remove #(str/blank? (:path %)) files)
-            write-paths (into #{} (map :path) write-entries)
-            current-files (get @files-atom branch {})
-            ;; Keep files outside managed dirs or in the write set
-            kept-files (into {}
-                             (filter (fn [[path _]]
-                                       (or (not (contains? managed-dirs (top-level-dir path)))
-                                           (contains? write-paths path))))
-                             current-files)
-            ;; Add new files
-            final-files (into kept-files (map (juxt :path :content) write-entries))]
-        (swap! files-atom assoc branch final-files)))
-    "write-files-version")
-
-  (apply-changes! [_this _message upserts delete-paths]
-    (case fail-mode
-      :apply-changes-error (throw (Exception. "Failed to apply changes"))
-      :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
-      ;; Default: overwrite/add upserts, remove delete-paths, preserve every other file.
-      (let [write-entries (remove #(str/blank? (:path %)) upserts)
-            delete-set    (into #{} (remove str/blank?) delete-paths)]
-        (swap! files-atom update branch
-               (fn [current]
-                 (as-> (or current {}) files
-                   (apply dissoc files delete-set)
-                   (into files (map (juxt :path :content)) write-entries))))))
-    "apply-changes-version")
+  (open-commit [_this]
+    (let [upserts      (atom [])
+          deletes      (atom #{})
+          replace-all? (atom false)
+          apply-staged (fn [current]
+                         (let [managed (if @replace-all? (set managed-dirs) #{})]
+                           (as-> (or current {}) files
+                             (into {} (remove (fn [[p _]] (or (managed (top-level-dir p))
+                                                              (contains? @deletes p))))
+                                   files)
+                             (into files (comp (remove #(str/blank? (:path %))) (map (juxt :path :content)))
+                                   @upserts))))]
+      (reify source.p/CommitBuilder
+        (stage-upsert! [_ file-spec] (swap! upserts conj file-spec) nil)
+        (stage-delete! [_ path] (swap! deletes conj path) nil)
+        (replace-all! [_] (reset! replace-all? true) nil)
+        (empty-commit? [_]
+          (let [current (get @files-atom branch)]
+            (= current (apply-staged current))))
+        (finish-commit! [this _message]
+          (source.p/finish-commit! this _message nil))
+        (finish-commit! [_ _message report-progress]
+          (case fail-mode
+            :write-files-error   (throw (Exception. "Failed to write files"))
+            :store-error         (throw (Exception. "Store failed"))
+            :apply-changes-error (throw (Exception. "Failed to apply changes"))
+            :network-error       (throw (java.net.UnknownHostException. "Remote host not found"))
+            (swap! files-atom update branch apply-staged))
+          (when report-progress (report-progress 0.8))
+          ;; version string discriminates a wholesale replace (replace-all!) from an incremental patch
+          (if @replace-all? "write-files-version" "apply-changes-version"))
+        (abort-commit! [_] nil))))
 
   (version [_this]
     "mock-version"))
@@ -288,8 +286,8 @@ width: fixed
   Unlike [[create-mock-source]] (which always reports \"mock-version\"), this lets a test control
   versions: `:current` is the version `snapshot` reports, and `:trees` maps version -> {path content}.
   `snapshot-at` returns a snapshot for a version present in `trees`, or nil for an unknown version (to
-  model a base orphaned by a force-push/rebase). `write-files!` records the written set under a fresh
-  version, advances `:current`, and returns the new version so an export can fast-forward onto it."
+  model a base orphaned by a force-push/rebase). Committing (via `open-commit`) records the written set
+  under a fresh version, advances `:current`, and returns the new version so an export can fast-forward onto it."
   [& {:keys [current trees branch managed-dirs]
       :or   {current "v-remote" branch "main" managed-dirs ingest/legal-top-level-paths}}]
   (let [managed     (set managed-dirs)
@@ -312,30 +310,34 @@ width: fixed
                         source.p/SourceSnapshot
                         (list-files [_] (vec (keys (get-in @state [:trees version] {}))))
                         (read-file [_ path] (get-in @state [:trees version path]))
-                        (write-files! [_ _message files]
-                          (let [n           (:counter (swap! state update :counter inc))
-                                new-version (str "written-" n)
-                                kept        (into {}
-                                                  (remove (fn [[p _]] (contains? managed (top-level-dir p))))
-                                                  (get-in @state [:trees version] {}))
-                                tree        (into kept
-                                                  (comp (remove #(str/blank? (:path %)))
-                                                        (map (juxt :path :content)))
-                                                  files)]
-                            (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
-                            new-version))
-                        (apply-changes! [_ _message upserts delete-paths]
-                          (let [n           (:counter (swap! state update :counter inc))
-                                new-version (str "written-" n)
-                                delete-set  (into #{} (remove str/blank?) delete-paths)
-                                tree        (as-> (get-in @state [:trees version] {}) t
-                                              (apply dissoc t delete-set)
-                                              (into t
-                                                    (comp (remove #(str/blank? (:path %)))
-                                                          (map (juxt :path :content)))
-                                                    upserts))]
-                            (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
-                            new-version))
+                        (open-commit [_]
+                          (let [staged-upserts (atom [])
+                                staged-deletes (atom #{})
+                                replace-all?   (atom false)
+                                staged-tree    (fn []
+                                                 (let [replace-dirs (if @replace-all? managed #{})] ; `managed` = (set managed-dirs)
+                                                   (as-> (get-in @state [:trees version] {}) t
+                                                     (into {} (remove (fn [[p _]] (or (replace-dirs (top-level-dir p))
+                                                                                      (contains? @staged-deletes p)))) t)
+                                                     (into t (comp (remove #(str/blank? (:path %)))
+                                                                   (map (juxt :path :content)))
+                                                           @staged-upserts))))]
+                            (reify source.p/CommitBuilder
+                              (stage-upsert! [_ file-spec] (swap! staged-upserts conj file-spec) nil)
+                              (stage-delete! [_ path] (swap! staged-deletes conj path) nil)
+                              (replace-all! [_] (reset! replace-all? true) nil)
+                              (empty-commit? [_]
+                                (= (get-in @state [:trees version] {}) (staged-tree)))
+                              (finish-commit! [this _message]
+                                (source.p/finish-commit! this _message nil))
+                              (finish-commit! [_ _message report-progress]
+                                (let [n           (:counter (swap! state update :counter inc))
+                                      new-version (str "written-" n)
+                                      tree        (staged-tree)]
+                                  (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
+                                  (when report-progress (report-progress 0.8))
+                                  new-version))
+                              (abort-commit! [_] nil))))
                         (version [_] version)))]
     (reify source.p/Source
       (branches [_] [branch])

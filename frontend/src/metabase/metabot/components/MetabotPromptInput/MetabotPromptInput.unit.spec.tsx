@@ -1,6 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EditorState } from "@tiptap/pm/state";
+import type { Editor } from "@tiptap/react";
 import fetchMock from "fetch-mock";
 import { createRef } from "react";
 
@@ -29,6 +30,7 @@ const defaultProps = {
   onChange: jest.fn(),
   onStop: jest.fn(),
   suggestionConfig: {
+    // Unjustified type cast. FIXME
     suggestionModels: ["table", "database"] as SuggestionModel[],
   },
 };
@@ -90,10 +92,47 @@ describe("MetabotPromptInput", () => {
 
     await userEvent.type(getEditor(), "@");
 
+    // Unjustified type cast. FIXME
     const editor = ref.current as { view: { state: EditorState } } | null;
     expect(editor).toBeTruthy();
     const mentionState = MetabotMentionPluginKey.getState(editor!.view.state);
     expect(mentionState?.active).toBe(true);
+  });
+
+  it("places the caret at the end of a prompt seeded on mount", async () => {
+    const ref = createRef<MetabotPromptInputRef>();
+    setup({ ref, value: "Create a transform that " });
+
+    // The imperative handle is `Object.assign(editor, …)`, so `ref.current` is the
+    // underlying tiptap Editor at runtime; the public ref type just narrows it.
+    const editor = ref.current as unknown as Editor;
+    await waitFor(() => {
+      const { selection, doc } = editor.state;
+      expect(selection.empty).toBe(true);
+      expect(selection.from).toBe(doc.content.size - 1);
+    });
+  });
+
+  it("moves the caret to the end when the value is changed externally", async () => {
+    const ref = createRef<MetabotPromptInputRef>();
+    const { rerender } = setup({ ref, value: "" });
+
+    rerender(
+      <MetabotPromptInput
+        {...defaultProps}
+        ref={ref}
+        value="Create a transform that "
+        autoFocus
+      />,
+    );
+
+    // The imperative handle is `Object.assign(editor, …)`, so `ref.current` is the
+    // underlying tiptap Editor at runtime; the public ref type just narrows it.
+    const editor = ref.current as unknown as Editor;
+    await waitFor(() => {
+      const { selection, doc } = editor.state;
+      expect(selection.from).toBe(doc.content.size - 1);
+    });
   });
 
   it("should close mention popup if {escape} is pressed", async () => {

@@ -3,11 +3,9 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
-import {
-  getComputedSettings,
-  getSettingsWidgets,
-} from "metabase/visualizations/lib/settings";
+import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
+import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
 import {
   type FormattingColumn,
   type SettingsExtra,

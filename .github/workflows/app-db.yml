@@ -11,6 +11,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-app-db
   cancel-in-progress: true
 
+# Exposed to every job so the test-driver action can report failures to
+# ci-conductor (secrets: inherit is already set on the app-db call in
+# run-tests.yml). See DEV-2224.
+env:
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+
 jobs:
   be-tests-mariadb:
     if: ${{ !inputs.skip }}
@@ -69,7 +76,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -113,6 +120,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -124,6 +132,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -184,7 +193,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -236,6 +245,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -247,6 +257,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -300,7 +311,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -346,6 +357,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -357,6 +369,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   app-db-tests-result:
     needs:

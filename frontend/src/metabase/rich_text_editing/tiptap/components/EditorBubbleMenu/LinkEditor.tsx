@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { processUrl } from "metabase/documents/utils/processUrl";
+import { processUrl } from "metabase/rich_text_editing/tiptap/utils/processUrl";
 import {
   ActionIcon,
   Box,

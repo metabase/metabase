@@ -1,5 +1,5 @@
 {% if is_measure %}
-<measure measure_id="{{measure_id}}" name="{{measure_name}}" display_name="{{measure_display_name}}"{% if measure_portable_entity_id %} portable_entity_id="{{measure_portable_entity_id}}"{% endif %}>{% if measure_description %}
+<measure measure_id="{{measure_id}}" name="{{measure_name}}" display_name="{{measure_display_name}}"{% if measure_database_name %} database_name="{{measure_database_name}}"{% endif %}{% if measure_base_table_fqn %} base_table_fully_qualified_name="{{measure_base_table_fqn}}"{% endif %}{% if measure_portable_entity_id %} portable_entity_id="{{measure_portable_entity_id}}"{% endif %}>{% if measure_description %}
 {{measure_description}}{% endif %}{% if measure_definition %}
 <definition>
 {{measure_definition|safe}}
@@ -7,7 +7,7 @@
 </measure>
 {% endif %}
 {% if is_segment %}
-<segment id="{{segment_id}}" name="{{segment_name}}" display_name="{{segment_display_name}}"{% if segment_portable_entity_id %} portable_entity_id="{{segment_portable_entity_id}}"{% endif %}>{% if segment_description %}
+<segment id="{{segment_id}}" name="{{segment_name}}" display_name="{{segment_display_name}}"{% if segment_database_name %} database_name="{{segment_database_name}}"{% endif %}{% if segment_base_table_fqn %} base_table_fully_qualified_name="{{segment_base_table_fqn}}"{% endif %}{% if segment_portable_entity_id %} portable_entity_id="{{segment_portable_entity_id}}"{% endif %}>{% if segment_description %}
 {{segment_description}}{% endif %}{% if segment_definition %}
 <definition>
 {{segment_definition|safe}}
@@ -24,9 +24,18 @@
 <description>{{collection_description}}</description>{% endif %}</collection>
 {% endif %}
 {% if is_related_table %}
-<related-table{% if related_table_id %} id="{{related_table_id}}"{% endif %} name="{{related_table_name}}"{% if related_table_related_by %} related_by="{{related_table_related_by}}"{% endif %}{% if related_table_database_name %} database_name="{{related_table_database_name}}"{% endif %} fully_qualified_name="{{related_table_fqn}}">{% if related_table_fields_xml %}
+<related-table{% if related_table_id %} id="{{related_table_id}}"{% endif %} name="{{related_table_name}}"{% if related_table_related_by_name %} related_by_field_name="{{related_table_related_by_name}}"{% endif %}{% if related_table_related_by_id %} related_by_field_id="{{related_table_related_by_id}}"{% endif %}{% if related_table_database_name %} database_name="{{related_table_database_name}}"{% endif %} fully_qualified_name="{{related_table_fqn}}">{% if related_table_description %}
+{{related_table_description}}{% endif %}{% if related_table_fields_xml %}
 {{related_table_fields_xml|safe}}{% endif %}</related-table>
 {% endif %}
+{% if is_related_tables %}{% if related_tables_with_fields_xml %}{{related_tables_with_fields_xml|safe}}
+{% endif %}{% if related_tables_without_fields_xml %}<related-tables-fields-omitted>
+The related tables below are listed without their fields. Look them up separately if you need field details.
+{{related_tables_without_fields_xml|safe}}
+</related-tables-fields-omitted>
+{% endif %}{% if related_tables_truncated %}<related-tables-truncated surfaced="{{related_tables_surfaced}}"{% if related_tables_total %} total="{{related_tables_total}}"{% endif %}>
+This entity has more FK-related tables than the {{related_tables_surfaced}} shown here.
+</related-tables-truncated>{% endif %}{% endif %}
 {% if is_metric %}
 <metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}"{% if metric_database_name %} database_name="{{metric_database_name}}"{% endif %}{% if metric_base_table_fqn %} base_table_fully_qualified_name="{{metric_base_table_fqn}}"{% endif %}{% if metric_portable_entity_id %} portable_entity_id="{{metric_portable_entity_id}}"{% endif %}>
 {% if metric_collection_xml %}
@@ -273,7 +282,7 @@ or jargon that may be relevant to the user's questions.
 </user>
 {% endif %}
 {% if is_search_result %}
-<{{search_tag_name}} id="{{search_id}}" name="{{search_name}}"{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
+<{{search_tag_name}} id="{{search_id}}"{% if search_uri %} uri="{{search_uri}}"{% endif %} name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_has_can_write %} can_write="{{search_can_write}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
 {% if search_description %}
 {{search_description}}
 {% endif %}

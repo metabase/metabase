@@ -10,14 +10,29 @@ src/metabase/query_processor @metabase/core-backend-querying-platform
 src/metabase/graph @metabase/graphy
 enterprise/backend/src/metabase_enterprise/dependencies @metabase/graphy
 enterprise/frontend/src/metabase-enterprise/dependencies @metabase/graphy
+enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics @metabase/graphy
 
 # @metabase/embedding
-enterprise/frontend/src/embedding-sdk-package @metabase/embedding
-enterprise/frontend/src/embedding-sdk-bundle @metabase/embedding
-enterprise/frontend/src/embedding-sdk-shared @metabase/embedding
+
+frontend/src/metabase/embedding @metabase/embedding
 frontend/src/metabase/embedding-sdk @metabase/embedding
+frontend/src/embedding-sdk-bundle @metabase/embedding
+frontend/src/embedding-sdk-shared @metabase/embedding
 frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embedding
 frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding
+
+enterprise/frontend/src/embedding @metabase/embedding
+enterprise/frontend/src/embedding-sdk-ee @metabase/embedding
+enterprise/frontend/src/embedding-sdk-package @metabase/embedding
+
+enterprise/frontend/src/metabase-enterprise/embedding @metabase/embedding
+enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk @metabase/embedding
+enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk_setup @metabase/embedding
+enterprise/frontend/src/metabase-enterprise/embedding-sdk @metabase/embedding
+
+e2e/test-component @metabase/embedding
+e2e/test/scenarios/embedding @metabase/embedding
+e2e/embedding-sdk-host-apps @metabase/embedding
 
 # @metabase/tech-writers
 docs @metabase/tech-writers
@@ -35,5 +50,5 @@ docs/installation-and-operation/commands.md # auto-generated
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 
 # @metabase/metabot-frontend
-enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend 
+enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend

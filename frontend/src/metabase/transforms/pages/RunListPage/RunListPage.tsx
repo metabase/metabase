@@ -1,8 +1,6 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import type { Location } from "history";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -11,14 +9,17 @@ import {
   useListTransformsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSetting } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
+import { replace } from "metabase/router";
+import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { Center, Flex, Stack } from "metabase/ui";
+import { isActiveRunStatus } from "metabase/transforms/utils";
+import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformRun, TransformRunId } from "metabase-types/api";
 
@@ -46,7 +47,6 @@ type RunListPageProps = {
 };
 
 export function RunListPage({ location }: RunListPageProps) {
-  usePageTitle(t`Runs`);
   const params = getParsedParams(location);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -173,14 +173,20 @@ export function RunListPage({ location }: RunListPageProps) {
             <LoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack flex="0 1 auto" mih={0} gap="lg">
+          <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
             {isMeterLocked && <LockedTransformsBanner />}
-            <RunFilterBar
-              filterOptions={getFilterOptions(params)}
-              transforms={transforms}
-              tags={tags}
-              onFilterOptionsChange={handleFilterOptionsChange}
-            />
+            <Group justify="space-between" align="center" wrap="nowrap">
+              <RunFilterBar
+                filterOptions={getFilterOptions(params)}
+                transforms={transforms}
+                tags={tags}
+                onFilterOptionsChange={handleFilterOptionsChange}
+              />
+              <DetailedViewSwitch
+                detailed={true}
+                params={Urls.pickCommonRunListParams(params)}
+              />
+            </Group>
             <RunTable
               runs={runs}
               tags={tags}
@@ -212,7 +218,5 @@ export function RunListPage({ location }: RunListPageProps) {
 }
 
 export function isPollingNeeded(runs: TransformRun[] = []) {
-  return runs.some(
-    (run) => run.status === "started" || run.status === "canceling",
-  );
+  return runs.some((run) => isActiveRunStatus(run.status));
 }

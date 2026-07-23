@@ -122,8 +122,7 @@ export const QuestionDownloadWidget = ({
         last_table_download_format:
           newFormat !== "png"
             ? newFormat
-            : (formatPreference.last_table_download_format as TableExportFormat) ||
-              "csv",
+            : formatPreference.last_table_download_format || "csv",
       });
     }
   };
@@ -174,7 +173,7 @@ export const QuestionDownloadWidget = ({
         {showPivotXlsxExportHint && (
           <Flex
             p="md"
-            bg="background-secondary"
+            bg="background_page-secondary"
             align="center"
             justify="space-between"
             className={CS.rounded}

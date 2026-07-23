@@ -9,6 +9,7 @@ export default {
 export const DeLocale = () => (
   <ComponentProvider authConfig={storybookSdkAuthDefaultConfig} locale="de">
     <StaticDashboard
+      // Unjustified type cast. FIXME
       dashboardId={(window as any).DASHBOARD_ID || 1}
       withDownloads
     />

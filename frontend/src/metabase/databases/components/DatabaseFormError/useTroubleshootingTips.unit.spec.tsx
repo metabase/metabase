@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -9,10 +8,23 @@ import {
   screen,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { useTroubleshootingTips } from "./useTroubleshootingTips";
+
+function TroubleshootingTipsList() {
+  const tips = useTroubleshootingTips(false, true);
+
+  return (
+    <>
+      {tips.map(({ body, key }) => (
+        <Fragment key={key}>{body}</Fragment>
+      ))}
+    </>
+  );
+}
 
 interface SetupOptions {
   isHostAndPortError: boolean;
@@ -83,20 +95,7 @@ describe("useTroubleshootingTips", () => {
 
       // This time we render inside a Route component to more easily assert links presence
       renderWithProviders(
-        <Route
-          path="*"
-          component={() => {
-            const tips = useTroubleshootingTips(false, true);
-
-            return (
-              <>
-                {tips.map(({ body, key }) => (
-                  <Fragment key={key}>{body}</Fragment>
-                ))}
-              </>
-            );
-          }}
-        />,
+        <Route path="*" element={<TroubleshootingTipsList />} />,
         {
           withRouter: true,
           storeInitialState,

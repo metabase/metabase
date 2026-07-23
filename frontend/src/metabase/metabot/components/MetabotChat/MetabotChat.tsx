@@ -74,13 +74,34 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
+  const title = hasMessages ? metabot.title || t`New conversation` : undefined;
+
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
+  const shouldShowHeader = headerActions || title;
 
   return (
     <Box className={cx(Styles.container, className)} data-testid="metabot-chat">
-      {headerActions && (
-        <Box ref={headerRef} className={Styles.header}>
-          {headerActions}
+      {shouldShowHeader && (
+        <Box
+          ref={headerRef}
+          className={Styles.header}
+          data-testid="metabot-chat-header"
+        >
+          {title && (
+            <Text
+              className={Styles.headerTitle}
+              c={metabot.title ? "text-primary" : "text-secondary"}
+              fw={metabot.title ? "bold" : "normal"}
+              truncate
+              title={title}
+              data-testid="metabot-conversation-title"
+            >
+              {title}
+            </Text>
+          )}
+          {headerActions && (
+            <Box className={Styles.headerActions}>{headerActions}</Box>
+          )}
         </Box>
       )}
 
@@ -112,7 +133,7 @@ export const MetabotChat = ({
                     onConfigureAi={openAiProviderConfigurationModal}
                   />
                 ) : (
-                  <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
+                  <Text c="text-disabled" maw="12rem" ta="center" lh="lg">
                     {config.emptyText ??
                       (showIllustrations
                         ? t`I can help you explore your metrics and models.`
@@ -156,8 +177,13 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
+                onRefreshConversation={() => {
+                  metabot.setPrompt("");
+                  metabot.loadConversation(metabot.conversationId);
+                }}
                 isDoingScience={metabot.isDoingScience}
                 debug={metabot.debugMode}
+                conversationId={metabot.conversationId}
               />
               {/* loading */}
               {metabot.isDoingScience && (
@@ -168,7 +194,7 @@ export const MetabotChat = ({
               {/* long convo warning */}
               {metabot.isLongConversation && (
                 <MetabotResetLongChatButton
-                  onResetConversation={metabot.resetConversation}
+                  onResetConversation={metabot.createNewConversation}
                 />
               )}
             </Box>

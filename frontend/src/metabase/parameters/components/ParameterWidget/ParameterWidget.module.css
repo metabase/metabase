@@ -1,7 +1,7 @@
 .EditingParameterContainer {
   transition: all 0.2s ease-in-out;
   border: 1px solid var(--mb-color-border-neutral);
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   border-radius: var(--mantine-radius-sm);
   cursor: pointer;
   height: 32px;
@@ -9,7 +9,7 @@
 
   &:hover:not(.isEditingParameter) {
     border-color: var(--mb-color-core-brand);
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
   }
 
   &.isEditingParameter {

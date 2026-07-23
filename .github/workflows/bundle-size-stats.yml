@@ -8,6 +8,8 @@ on:
   workflow_run:
     workflows: ["Build Uberjar"]
     types: [completed]
+    # Master only: releases form non-linear lines whose deltas are meaningless,
+    # so their sizes are backfilled separately rather than logged here.
     branches: [master]
 
 concurrency:
@@ -21,6 +23,10 @@ jobs:
     timeout-minutes: 15
     env:
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      # Only record a data point when a bundle's as-served size (brotli where the
+      # build ships .br, else gzip) moved by at least this percent vs the last
+      # plotted point, keeping the chart to real changes.
+      MIN_DELTA_PERCENT: "0.5"
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -78,9 +84,30 @@ jobs:
           mkdir -p artifacts resources/embedding-sdk
           if [ -n "$STATS_ZIP" ]; then unzip -o "$STATS_ZIP" -d artifacts; fi
           if [ -n "$PKG_ZIP" ]; then unzip -o "$PKG_ZIP" -d resources/embedding-sdk; fi
+      - name: Restore last plotted bundle sizes
+        uses: actions/cache/restore@v4
+        with:
+          path: bundle-size-cache
+          key: bundle-size-last-${{ github.run_id }}
+          restore-keys: |
+            bundle-size-last-
       - name: Measure bundle sizes
         run: node ./.github/scripts/measure-bundle-sizes.js | tee artifacts/bundle-sizes.json
-      - name: Upload sizes to Stats
+      - name: Compute deltas and decide whether to record this point
+        id: prepare
+        env:
+          CURRENT: artifacts/bundle-sizes.json
+          LAST: bundle-size-cache/last.json
+          CACHE_OUT: bundle-size-cache/last.json
+          ROWS_OUT: artifacts/upload-rows.json
+          VERSION_PROPS: artifacts/version.properties
+          # Passed via env (not interpolated into the shell) so the commit
+          # message can't inject commands; the script keeps only the subject.
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+        run: node ./.github/scripts/bundle-size-stats-prepare.js
+      - name: Upload sizes (with deltas) to Stats
+        id: upload
+        if: steps.prepare.outputs.significant == 'true'
         uses: actions/github-script@v9
         env:
           API_KEY: ${{ secrets.STATS_API_KEY }}
@@ -89,43 +116,33 @@ jobs:
             const fs = require("fs");
             const { uploadCsvToMb } = require("${{ github.workspace }}/.github/scripts/csv-to-mb.js");
 
-            const measurements = JSON.parse(
-              fs.readFileSync("${{ github.workspace }}/artifacts/bundle-sizes.json", "utf8"),
+            const data = JSON.parse(
+              fs.readFileSync("${{ github.workspace }}/artifacts/upload-rows.json", "utf8"),
             );
-
-            const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-            const commit = process.env.HEAD_SHA.slice(0, 12);
-
-            // version.properties (extracted from the uberjar) carries the build's tag.
-            // Non-release (master) builds report tag=vUNKNOWN, so leave Version empty there.
-            const versionProps = "${{ github.workspace }}/artifacts/version.properties";
-            const rawVersion = fs.existsSync(versionProps)
-              ? (fs.readFileSync(versionProps, "utf8").match(/^tag=(.*)$/m)?.[1]?.trim() ?? "")
-              : "";
-            const version = rawVersion === "vUNKNOWN" ? "" : rawVersion;
-
-            const data = measurements.map(measurement => ({
-              "Date": date,
-              "Version": version,
-              "Commit": commit,
-              "Bundle": measurement.bundle,
-              "Kind": measurement.kind, // "initial" or "total"
-              "Raw bytes": measurement.rawBytes,
-              "Gzip bytes": measurement.gzipBytes,
-              "Brotli bytes": measurement.brotliBytes ?? "", // as-served; empty when no .br shipped
-              "File count": measurement.fileCount,
-            }));
 
             console.table(data);
 
-            uploadCsvToMb({
-              baseUrl: "https://stats.metabase.com",
-              tableId: 79417,
-              jsonData: data,
-              mode: "append",
-            }).then(() => {
+            try {
+              await uploadCsvToMb({
+                baseUrl: "https://stats.metabase.com",
+                tableId: 79702,
+                jsonData: data,
+                mode: "append",
+              });
               console.log("Bundle sizes uploaded successfully");
-            }).catch(error => {
-              console.error("Error uploading bundle sizes:", error);
-              process.exit(1);
-            });
+              core.setOutput("uploaded", "true");
+            } catch (error) {
+              // Stats logging is best-effort: if stats.metabase.com is still
+              // unreachable after the client's retries, keep the run green. The
+              // last-plotted cache is only saved on a successful upload (below),
+              // so this point is re-attempted on the next master build and
+              // nothing is silently dropped.
+              core.warning(`Bundle-size upload failed after retries; leaving run green: ${error.message}`);
+              core.setOutput("uploaded", "false");
+            }
+      - name: Remember this as the last plotted point
+        if: steps.upload.outputs.uploaded == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: bundle-size-cache
+          key: bundle-size-last-${{ github.run_id }}

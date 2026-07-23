@@ -493,6 +493,32 @@
              (check-coercion-fn-coverage @#'coerce/unimplemented-coercion-functions)
              (run! #(apply do-test %)))))))
 
+(deftest native-temporal-columns-output-roundtrip-test
+  (testing "execute-bulk echoes native date/timestamp columns in the same format the QP returns"
+    (mt/with-premium-features #{actions-feature-flag}
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+        (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+                                                    :d  [:date]
+                                                    :dt [:timestamp]}
+                                                   {:primary-key [:id]}]]
+          (let [qp-state (fn [] (map #(zipmap [:id :d :dt] %) (table-rows table-id)))]
+            (testing "create returns the same coerced output that the QP would return"
+              (let [{:keys [outputs]} (action-v2.tu/create-rows! table-id [{:d "2020-02-15" :dt "2020-02-15T11:35:00"}])]
+                (is (= 1 (count outputs)))
+                (is (= (qp-state) (map :row outputs)))
+                (is (=? {:d  #(re-find #"2020-02-15" (str %))
+                         :dt #(re-find #"2020-02-15T11:35:00" (str %))}
+                        (first (qp-state))))))
+            (testing "update returns the same coerced output that the QP would return"
+              (let [[{id :id}]        (map :row (:outputs (action-v2.tu/create-rows! table-id [{:d nil :dt nil}])))
+                    _                 (is (some? id))
+                    {:keys [outputs]} (action-v2.tu/update-rows! table-id [{:id id :d "2021-06-20" :dt "2021-06-20T08:15:00"}])
+                    updated-qp-row    (first (filter (comp #{id} :id) (qp-state)))]
+                (is (= [updated-qp-row] (map :row outputs)))
+                (is (=? {:d  #(re-find #"2021-06-20" (str %))
+                         :dt #(re-find #"2021-06-20T08:15:00" (str %))}
+                        updated-qp-row))))))))))
+
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)

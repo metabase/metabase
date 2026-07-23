@@ -13,13 +13,6 @@ import { t } from "ttag";
 
 import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
-import { trackDocumentAskMetabot } from "metabase/documents/analytics";
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
-import { getCurrentDocument } from "metabase/documents/selectors";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
@@ -27,9 +20,11 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
+import type { MetabotGenerateContentRequest } from "metabase-types/api";
 
+import { buildDraftCard } from "../shared/draft-card";
 import { wrapCardEmbed } from "../shared/layout";
 
 import S from "./MetabotEmbed.module.css";
@@ -153,7 +148,8 @@ export const MetabotNode = Node.create<{
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, node, extension }: NodeViewProps) => {
     const dispatch = useDispatch();
-    const document = useSelector(getCurrentDocument);
+    const host = useEditorHost();
+    const document = useSelector(host.selectors.getCurrentDocument);
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
@@ -198,41 +194,21 @@ export const MetabotComponent = memo(
         return;
       }
 
-      const newCardId = generateDraftCardId();
-      const card: Card = {
-        ...data.draft_card,
+      const newCardId = host.actions.generateDraftCardId();
+      const card = buildDraftCard({
         id: newCardId,
-        entity_id: "entity_id" as Card["entity_id"],
-        created_at: "",
-        updated_at: "",
         name: data.draft_card.name || t`Exploration`,
-        description: null,
-        type: "question",
-        public_uuid: null,
-        enable_embedding: false,
-        embedding_params: null,
-        can_write: false,
-        can_restore: false,
-        can_delete: false,
-        can_manage_db: false,
-        initially_published_at: null,
-        collection_id: null,
-        collection_position: null,
-        dashboard: null,
-        dashboard_id: null,
-        dashboard_count: null,
-        result_metadata: [],
-        last_query_start: null,
-        average_query_time: null,
-        cache_ttl: null,
-        archived: false,
-      };
+        display: data.draft_card.display,
+        dataset_query: data.draft_card.dataset_query,
+        visualization_settings: data.draft_card.visualization_settings,
+        database_id: data.draft_card.database_id,
+      });
 
-      trackDocumentAskMetabot(document);
-      await dispatch(loadMetadataForDocumentCard(card));
+      host.analytics.trackAskMetabot(document);
+      await dispatch(host.actions.loadMetadataForDocumentCard(card));
 
       dispatch(
-        createDraftCard({
+        host.actions.createDraftCard({
           originalCard: card,
           modifiedData: {},
           draftId: newCardId,
@@ -295,7 +271,7 @@ export const MetabotComponent = memo(
     return (
       <NodeViewWrapper>
         <Flex
-          bg="background-secondary"
+          bg="background_page-secondary"
           bd="1px solid var(--border-color)"
           className={S.borderRadius}
           pos="relative"

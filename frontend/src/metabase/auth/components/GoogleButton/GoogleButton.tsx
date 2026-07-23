@@ -95,7 +95,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
       {errors.length > 0 && (
         <Box mt="1rem">
           {errors.map((error, index) => (
-            <Box c="error" ta="center" key={index}>
+            <Box c="feedback-negative" ta="center" key={index}>
               {error}
             </Box>
           ))}

@@ -301,18 +301,26 @@
         nil))
 
 (mu/defn describe-database
-  "Default implementation of [[metabase.driver/describe-database]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  "Default implementation of [[metabase.driver/describe-database]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData.
+
+  `:tables` is a reducible that opens its own connection when reduced (the same pattern used by
+  [[metabase.driver.sql-jdbc.sync.describe-table]]'s `describe-fields`/`describe-fks`), so a large table
+  list streams a batch at a time instead of being realized into a set up front. Building the reducible is
+  eager -- satisfying [[metabase.driver/do-with-resilient-connection]], which requires an eager `f` -- while
+  the connection is opened lazily at reduction time (with a fresh connection, outside the resilient scope)."
   [driver           :- :keyword
    db-or-id-or-spec :- [:or :int :map]]
   {:tables
-   (sql-jdbc.execute/do-with-connection-with-options
-    driver
-    db-or-id-or-spec
-    nil
-    (fn [^Connection conn]
-      (let [schema-filter-prop   (driver.u/find-schema-filters-prop driver)
-            database             (db-or-id-or-spec->database db-or-id-or-spec)
-            [inclusion-patterns
-             exclusion-patterns] (when (some? schema-filter-prop)
-                                   (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
-        (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))))})
+   (reify clojure.lang.IReduceInit
+     (reduce [_this rf init]
+       (sql-jdbc.execute/do-with-connection-with-options
+        driver
+        db-or-id-or-spec
+        nil
+        (fn [^Connection conn]
+          (let [schema-filter-prop   (driver.u/find-schema-filters-prop driver)
+                database             (db-or-id-or-spec->database db-or-id-or-spec)
+                [inclusion-patterns
+                 exclusion-patterns] (when (some? schema-filter-prop)
+                                       (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
+            (reduce rf init (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))))))})

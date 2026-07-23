@@ -1,7 +1,7 @@
 import { addLocale, useLocale } from "ttag";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Widget } from "metabase/visualizations/types";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
@@ -58,8 +58,14 @@ describe("ChartSettings", () => {
     setup({
       widgets: [widget({ section: "Foo" }), widget({ section: "Bar" })],
     });
-    expect(screen.getByLabelText("Foo")).toBeChecked();
-    expect(screen.getByLabelText("Bar")).not.toBeChecked();
+    expect(screen.getByRole("tab", { name: "Foo" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: "Bar" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
   });
 
   it("should default to the DEFAULT_TAB_PRIORITY", () => {
@@ -70,8 +76,14 @@ describe("ChartSettings", () => {
       ],
     });
 
-    expect(screen.getByLabelText("Foo")).not.toBeChecked();
-    expect(screen.getByLabelText("Display")).toBeChecked();
+    expect(screen.getByRole("tab", { name: "Foo" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+    expect(screen.getByRole("tab", { name: "Display" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("should be able to switch sections", () => {
@@ -79,11 +91,23 @@ describe("ChartSettings", () => {
       widgets: [widget({ section: "Foo" }), widget({ section: "Bar" })],
     });
 
-    expect(screen.getByLabelText("Foo")).toBeChecked();
-    expect(screen.getByLabelText("Bar")).not.toBeChecked();
+    expect(screen.getByRole("tab", { name: "Foo" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: "Bar" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
     fireEvent.click(screen.getByText("Bar"));
-    expect(screen.getByLabelText("Foo")).not.toBeChecked();
-    expect(screen.getByLabelText("Bar")).toBeChecked();
+    expect(screen.getByRole("tab", { name: "Foo" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+    expect(screen.getByRole("tab", { name: "Bar" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("should show widget names", () => {
@@ -199,9 +223,18 @@ describe("ChartSettings", () => {
       });
 
       // Data is first in the priority order, so its localized label ("Datos") is the active tab
-      expect(screen.getByLabelText("Datos")).toBeChecked();
-      expect(screen.getByLabelText("Ejes")).not.toBeChecked();
-      expect(screen.getByLabelText("Formato")).not.toBeChecked();
+      expect(screen.getByRole("tab", { name: "Datos" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.getByRole("tab", { name: "Ejes" })).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(screen.getByRole("tab", { name: "Formato" })).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
     });
 
     it("should put unsectioned widgets into the highest-priority translated section", () => {

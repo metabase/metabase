@@ -13,6 +13,8 @@
    [metabase.api.common :as api]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.common :as api.embed.common]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing-rest.api-test :as public-test]
@@ -131,7 +133,7 @@
 
      "/csv"
      (is (= "Count\n100\n"
-            actual))
+            (u/strip-bom actual)))
 
      "/xlsx"
      (let [actual (->> (ByteArrayInputStream. actual)
@@ -545,7 +547,7 @@
       (with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card card (card-with-date-field-filter)]
           (is (= "count\n107\n"
-                 (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014")))))))))
+                 (u/strip-bom (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014"))))))))))
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
@@ -555,7 +557,7 @@
         (binding [client/*url-prefix* ""]
           (mt/with-temporary-setting-values [site-url (str "http://localhost:" (server.instance/server-port) client/*url-prefix*)]
             (is (= "count\n107\n"
-                   (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
+                   (u/strip-bom (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))))
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
 
@@ -844,10 +846,10 @@
                                                     {:name "PRICE" :fieldRef [:field (mt/id :venues :price) nil] :enabled true}]}}}]
           (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= ["Name" "ID" "Category ID" "Price"]
-                   (first (csv/read-csv results)))))
+                   (first (csv/read-csv (u/strip-bom results))))))
           (let [eid-results (client/client :get 200 (str (dashcard-url dashcard {} (dashcard->dash-eid dashcard)) "/csv"))]
             (is (= ["Name" "ID" "Category ID" "Price"]
-                   (first (csv/read-csv eid-results))))))))))
+                   (first (csv/read-csv (u/strip-bom eid-results)))))))))))
 
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "
@@ -992,6 +994,35 @@
             (is (= "completed"
                    (:status (client/client :get 202 (dashcard-url (assoc dashcard :card_id (u/the-id series-card)))))))))))))
 
+(deftest embed-dashboard-visualizer-series-card-test
+  (testing "GET /api/embed/dashboard/:token exposes visualizer viz-settings, and dashcard-query authorizes series-card queries"
+    (with-embedding-enabled-and-new-secret-key!
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card series-card {:dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                   (lib/aggregate (lib/count)))}]
+          (with-temp-dashcard
+           [dashcard {:dash     {:enable_embedding true}
+                      :dashcard {:visualization_settings
+                                 {:visualization {:columnValuesMapping {:COLUMN_1 [{:sourceId (str "card:" (u/the-id series-card))}]}}}}}]
+            (mt/with-temp [:model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard) :card_id (u/the-id series-card)}]
+              (testing "embed dashboard response exposes the visualizer viz-settings unchanged"
+                (is (=? {:columnValuesMapping {:COLUMN_1 [{:sourceId (str "card:" (u/the-id series-card))}]}}
+                        (-> (client/client :get 200 (str "embed/dashboard/" (dash-token (:dashboard_id dashcard))))
+                            :dashcards first :visualization_settings :visualization))))
+              (testing "dashcard-query endpoint authorizes the series card via a real DashboardCardSeries row"
+                (is (= "completed"
+                       (:status (client/client :get 202 (dashcard-url (assoc dashcard :card_id (u/the-id series-card)))))))))))))))
+
+(deftest non-map-token-params-are-handled-test
+  (testing "GET /api/embed/dashboard/:token/dashcard/:id/card/:id whose signed :params is a non-map yields a clean 4xx, not a 500 (#14474)"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (let [url (str "embed/dashboard/" (sign {:resource {:dashboard (:dashboard_id dashcard)} :params []})
+                       "/dashcard/" (u/the-id dashcard)
+                       "/card/" (:card_id dashcard))]
+          (is (some? (client/client-full-response :get url)))
+          (is (<= 400 (:status (client/client-full-response :get url)) 499)))))))
+
 ;;; ------------------------------- GET /api/embed/card/:token/params/:param/values --------------------------------
 
 (deftest card-param-values
@@ -1129,6 +1160,15 @@
           (is (= {:values          [["African" "Af"]]
                   :has_more_values false}
                  (client/client :get 200 (search-url {} "_STATIC_CATEGORY_LABEL_" "AF")))))))))
+
+(deftest embed-dashboard-card-source-param-values-test
+  (testing "GET /api/embed/dashboard/:token/params/:key/values works for a card-source parameter"
+    (with-chain-filter-fixtures! [{:keys [dashboard values-url]}]
+      (t2/update! :model/Dashboard (u/the-id dashboard)
+                  {:parameters       (mapv (fn [p] (cond-> p (= (:id p) "_CARD_") (assoc :slug "card")))
+                                           (:parameters dashboard))
+                   :embedding_params {"card" "enabled"}})
+      (is (seq (:values (client/client :get 200 (values-url {} "_CARD_"))))))))
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]

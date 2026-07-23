@@ -38,7 +38,9 @@ export function SortableFieldItem<T extends number | string>({
     >
       <Card
         aria-label={label}
-        bg={active ? "background-brand" : "background-primary"}
+        bg={
+          active ? "background_surface-brand-subtle" : "background_page-primary"
+        }
         c="text-secondary"
         className={cx(S.card, {
           [S.active]: active,

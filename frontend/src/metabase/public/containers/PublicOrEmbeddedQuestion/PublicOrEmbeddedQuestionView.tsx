@@ -75,6 +75,7 @@ export function PublicOrEmbeddedQuestionView({
       />
     ) : null;
 
+  // Unjustified type cast. FIXME
   const untranslatedRawSeries = [{ card, data: result?.data }] as RawSeries;
   const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
     untranslatedRawSeries,

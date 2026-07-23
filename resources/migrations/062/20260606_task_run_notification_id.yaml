@@ -64,6 +64,13 @@ databaseChangeLog:
       id: v62.2026-06-06T00:00:02
       author: qnkhuat
       comment: Backfill task_run.notification_id for the last 90 days (Postgres/MySQL; H2 ages out)
+      # Keep this changeset's body unchanged for cross-branch checksum compatibility, but never
+      # execute it. v62.2026-06-06T00:00:03 performs the safe replacement backfill.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 1
+            sql: SELECT 0;
       changes:
         - sql:
             dbms: postgresql
@@ -89,6 +96,51 @@ databaseChangeLog:
                     JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$."original-info".notification_id'))
                   ) AS UNSIGNED)
               WHERE th.task = 'notification-send'
+                AND tr.run_type IN ('alert', 'subscription')
+                AND tr.notification_id IS NULL
+                AND tr.started_at > now() - interval 90 day;
+      rollback: # nothing to do — column drop in the first changeSet covers it
+
+  # Redo of 00:00:02. Run only if task_run.notification_id has not been populated anywhere;
+  # otherwise MARK_RAN so we do not check again on later startups.
+  - changeSet:
+      id: v62.2026-06-06T00:00:03
+      author: qnkhuat
+      comment: Redo task_run.notification_id backfill, strict-mode safe (GDGT-2680)
+      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        # If any notification_id has already been written, normal app usage may have self-healed the
+        # relevant recent runs. Mark this changeset ran so future startups do not keep rechecking.
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM task_run WHERE notification_id IS NOT NULL;
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE task_run tr
+              SET notification_id = COALESCE(
+                    (th.task_details::jsonb) ->> 'notification_id',
+                    (th.task_details::jsonb) #>> '{original-info,notification_id}'
+                  )::int
+              FROM task_history th
+              WHERE th.run_id = tr.id
+                AND th.task = 'notification-send'
+                AND tr.run_type IN ('alert', 'subscription')
+                AND tr.notification_id IS NULL
+                AND tr.started_at > now() - interval '90 days';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE task_run tr
+              JOIN task_history th ON th.run_id = tr.id
+              SET tr.notification_id = CAST(COALESCE(
+                    NULLIF(JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$.notification_id')), 'null'),
+                    NULLIF(JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$."original-info".notification_id')), 'null')
+                  ) AS UNSIGNED)
+              WHERE th.task = 'notification-send'
+                AND JSON_VALID(th.task_details)
                 AND tr.run_type IN ('alert', 'subscription')
                 AND tr.notification_id IS NULL
                 AND tr.started_at > now() - interval 90 day;

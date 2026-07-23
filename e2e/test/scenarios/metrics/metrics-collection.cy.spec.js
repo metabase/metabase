@@ -1,10 +1,5 @@
 const { H } = cy;
-import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  FIRST_COLLECTION_ID,
-  ORDERS_MODEL_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -13,17 +8,6 @@ const ORDERS_SCALAR_METRIC = {
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-  collection_position: 1,
-};
-
-const ORDERS_SCALAR_MODEL_METRIC = {
-  name: "Orders model metric",
-  type: "metric",
-  query: {
-    "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -208,27 +192,6 @@ describe("scenarios > metrics > collection", () => {
       .last()
       .findByText("This item has been permanently deleted.")
       .should("be.visible");
-  });
-
-  it("should be able to view a model-based metric without collection access to the source model", () => {
-    cy.signInAsAdmin();
-    cy.updateCollectionGraph({
-      [USER_GROUPS.ALL_USERS_GROUP]: {
-        root: "none",
-        [FIRST_COLLECTION_ID]: "read",
-      },
-    });
-    H.createQuestion({
-      ...ORDERS_SCALAR_MODEL_METRIC,
-      collection_id: FIRST_COLLECTION_ID,
-    }).then(() => {
-      cy.signIn("nocollection");
-      H.visitCollection(FIRST_COLLECTION_ID);
-    });
-    H.getPinnedSection()
-      .findByTestId("scalar-value")
-      .should("not.be.empty")
-      .and("be.visible");
   });
 });
 

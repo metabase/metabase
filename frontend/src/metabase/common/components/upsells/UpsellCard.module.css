@@ -3,8 +3,8 @@
 .UpsellCardComponent {
   border-radius: 0.5rem;
   overflow: hidden;
-  border: 1px solid var(--mb-color-upsell-secondary);
-  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-background_surface-brand-subtle);
+  background-color: var(--mb-color-background_page-primary);
 
   .MainStack {
     padding-bottom: 1.5rem;

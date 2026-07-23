@@ -1,12 +1,12 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
