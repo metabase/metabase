@@ -99,14 +99,6 @@ export function DataStudioLayout() {
         showLabel={isNavbarOpened}
         isGated={!hasDependenciesFeature}
       />
-      <AreaTab
-        label={t`Dependency diagnostics`}
-        icon="search_check"
-        to={Urls.dependencyDiagnostics()}
-        isSelected={currentTab === "dependency-diagnostics"}
-        showLabel={isNavbarOpened}
-        isGated={!hasDependenciesFeature}
-      />
       {shouldShowTransforms && (
         <AreaTab
           label={t`Transforms`}
