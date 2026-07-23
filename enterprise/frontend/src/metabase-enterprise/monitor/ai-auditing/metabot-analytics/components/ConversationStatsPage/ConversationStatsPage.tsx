@@ -268,27 +268,9 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   return (
     <MonitorMain>
       <Stack gap="lg">
-        <Flex align="center" justify="space-between">
-          <MonitorHeaderTitle>
-            {hasDataComplexityFeature ? t`Usage metrics` : t`Usage stats`}
-          </MonitorHeaderTitle>
-
-          <ConversationFilters
-            date={date}
-            onDateChange={(val) => patchUrlState({ date: val })}
-            user={user}
-            onUserChange={(val) => patchUrlState({ user: val })}
-            group={group}
-            onGroupChange={(val) => patchUrlState({ group: val })}
-            groupNoFilterValue={groupNoFilterValue}
-            tenant={tenant}
-            onTenantChange={(val) => patchUrlState({ tenant: val })}
-            userOptions={userOptions}
-            groupOptions={groupOptions}
-            tenantOptions={tenantOptions}
-            hasTenants={hasTenants}
-          />
-        </Flex>
+        <MonitorHeaderTitle>
+          {hasDataComplexityFeature ? t`Usage metrics` : t`Usage stats`}
+        </MonitorHeaderTitle>
 
         <Tabs
           variant="pills"
@@ -302,6 +284,22 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             <Tabs.Tab value="messages">{t`Messages`}</Tabs.Tab>
           </Tabs.List>
         </Tabs>
+
+        <ConversationFilters
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val })}
+          group={group}
+          onGroupChange={(val) => patchUrlState({ group: val })}
+          groupNoFilterValue={groupNoFilterValue}
+          tenant={tenant}
+          onTenantChange={(val) => patchUrlState({ tenant: val })}
+          userOptions={userOptions}
+          groupOptions={groupOptions}
+          tenantOptions={tenantOptions}
+          hasTenants={hasTenants}
+        />
 
         <ConversationsByDayChart
           {...sharedChartProps}

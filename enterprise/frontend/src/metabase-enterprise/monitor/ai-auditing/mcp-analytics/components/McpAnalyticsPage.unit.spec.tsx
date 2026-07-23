@@ -344,7 +344,7 @@ describe("McpAnalyticsPage", () => {
     });
   });
 
-  it("shows a single empty state (no tabs, no charts) when there is no activity", async () => {
+  it("keeps the header, tabs, and filters visible and shows an empty state in place of the tab content when there is no activity", async () => {
     setup({ dataset: emptyDatasetResponse });
 
     expect(
@@ -352,12 +352,11 @@ describe("McpAnalyticsPage", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
 
-    // No tabs render when the view is empty — so neither the charts nor the events table can.
+    // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
+    expect(screen.getByRole("tab", { name: "Usage" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Tool calls" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("tab", { name: "Usage" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("tab", { name: "Tool calls" }),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
   });
 });

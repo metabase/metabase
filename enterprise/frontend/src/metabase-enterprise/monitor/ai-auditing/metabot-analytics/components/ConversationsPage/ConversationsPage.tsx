@@ -58,25 +58,23 @@ export function ConversationsPage({ location }: WithRouterProps) {
 
   return (
     <MonitorMain>
-      <Flex align="center" justify="space-between" mb="sm">
-        <MonitorHeaderTitle>{t`Conversations`}</MonitorHeaderTitle>
+      <MonitorHeaderTitle>{t`Conversations`}</MonitorHeaderTitle>
 
-        <ConversationFilters
-          date={date}
-          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-          group={group}
-          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-          groupNoFilterValue={groupNoFilterValue}
-          tenant={tenant}
-          onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-          userOptions={userOptions}
-          groupOptions={groupOptions}
-          tenantOptions={tenantOptions}
-          hasTenants={hasTenants}
-        />
-      </Flex>
+      <ConversationFilters
+        date={date}
+        onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+        user={user}
+        onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+        group={group}
+        onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+        groupNoFilterValue={groupNoFilterValue}
+        tenant={tenant}
+        onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
+        userOptions={userOptions}
+        groupOptions={groupOptions}
+        tenantOptions={tenantOptions}
+        hasTenants={hasTenants}
+      />
 
       <ConversationsTable
         conversations={conversations}
