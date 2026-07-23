@@ -1878,20 +1878,18 @@
                                           :name table-name
                                           :target-incremental-strategy target-strategy}})
                 merge-target  {:type "merge" :unique-key [{:name "id"}]}]
-            (testing "a lookback window on a temporal checkpoint column requires a unit"
+            (testing "a lookback window without a unit is rejected by the schema"
+              (mt/user-http-request :crowberto :post 400 "transform"
+                                    (payload "lookback_no_unit" ts-field-id
+                                             {:value 4}
+                                             merge-target)))
+            (testing "a lookback window on a numeric checkpoint column is rejected"
               (let [response (mt/user-http-request :crowberto :post 400 "transform"
-                                                   (payload "lookback_no_unit" ts-field-id
-                                                            {:value 4}
-                                                            merge-target))]
-                (is (string? response))
-                (is (re-find #"requires a unit" response))))
-            (testing "a lookback window on a numeric checkpoint column must not specify a unit"
-              (let [response (mt/user-http-request :crowberto :post 400 "transform"
-                                                   (payload "lookback_num_unit" num-field-id
+                                                   (payload "lookback_num" num-field-id
                                                             {:value 4 :unit "day"}
                                                             merge-target))]
                 (is (string? response))
-                (is (re-find #"must not specify a unit" response))))
+                (is (re-find #"only supported for temporal" response))))
             (testing "an unknown lookback unit is rejected by the schema"
               (mt/user-http-request :crowberto :post 400 "transform"
                                     (payload "lookback_bad_unit" ts-field-id
@@ -1912,14 +1910,6 @@
                                                              {:value 4 :unit "day"}
                                                              {:type "append"}))]
                   (is (= {:value 4 :unit "day"}
-                         (get-in created [:source :source-incremental-strategy :lookback]))))))
-            (testing "a valid numeric lookback (no unit) with a merge target is accepted"
-              (with-transform-cleanup! [table-name "lookback_num_ok"]
-                (let [created (mt/user-http-request :crowberto :post 200 "transform"
-                                                    (payload table-name num-field-id
-                                                             {:value 4}
-                                                             merge-target))]
-                  (is (= {:value 4}
                          (get-in created [:source :source-incremental-strategy :lookback]))))))))))))
 
 (deftest lookback-validated-on-update-test
@@ -1928,10 +1918,11 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (let [schema      (get-test-schema)
-                query       (native-query-with-table-tag
-                             "SELECT id, name, created_at FROM {{source_table}}"
-                             (mt/id :transforms_products))
-                ts-field-id (mt/id :transforms_products :created_at)]
+                query        (native-query-with-table-tag
+                              "SELECT id, name, created_at FROM {{source_table}}"
+                              (mt/id :transforms_products))
+                ts-field-id  (mt/id :transforms_products :created_at)
+                num-field-id (mt/id :transforms_products :price)]
             (with-transform-cleanup! [table-name "lookback_update"]
               (mt/with-temp [:model/Transform {transform-id :id}
                              {:name   "Append Incremental"
@@ -1953,16 +1944,16 @@
                                                                                               :lookback {:value 4 :unit "day"}}}})]
                     (is (= {:value 4 :unit "day"}
                            (get-in updated [:source :source-incremental-strategy :lookback])))))
-                (testing "an invalid lookback is rejected on update"
+                (testing "switching the checkpoint to a numeric column while a lookback is set is rejected"
                   (let [response (mt/user-http-request :crowberto :put 400
                                                        (format "transform/%d" transform-id)
                                                        {:source {:type  "query"
                                                                  :query query
                                                                  :source-incremental-strategy {:type "checkpoint"
-                                                                                               :checkpoint-filter-field-id ts-field-id
-                                                                                               :lookback {:value 4}}}})]
+                                                                                               :checkpoint-filter-field-id num-field-id
+                                                                                               :lookback {:value 4 :unit "day"}}}})]
                     (is (string? response))
-                    (is (re-find #"requires a unit" response))))
+                    (is (re-find #"only supported for temporal" response))))
                 (testing "adding a lookback together with a switch to the merge strategy is accepted"
                   (let [updated (mt/user-http-request :crowberto :put 200
                                                       (format "transform/%d" transform-id)
