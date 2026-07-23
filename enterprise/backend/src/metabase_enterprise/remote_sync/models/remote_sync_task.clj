@@ -28,7 +28,12 @@
 
 (t2/define-before-insert :model/RemoteSyncTask
   [task]
-  (when-let [existing (current-task)]
+  ;; one running task per worktree: a task tagged with a worktree only conflicts with running tasks of
+  ;; that worktree (or untagged ones, which predate worktrees and belong to the default); an untagged
+  ;; task keeps the old instance-wide check
+  (when-let [existing (if-let [worktree-id (:worktree_id task)]
+                        (current-task worktree-id)
+                        (current-task))]
     (throw (ex-info "A running task exists" {:existing-task existing})))
   task)
 
@@ -157,18 +162,25 @@
   "Gets the current active sync task.
 
   Returns the most recent RemoteSyncTask that is still running (started but not ended, and has reported progress
-  within the time limit), or nil if no active task exists."
-  []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]
-                          [:= :ended_at nil]
-                          [:<
-                           (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
-                           :last_progress_report_at]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  within the time limit), or nil if no active task exists. With `worktree-id`, considers tasks running
+  against that worktree plus main-app tasks (nil worktree_id) — a running main-app sync blocks worktree
+  operations too, since both drive the same remote repository."
+  ([]
+   (current-task nil))
+  ([worktree-id]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where (cond-> [:and
+                                   [:<> :started_at nil]
+                                   [:= :ended_at nil]
+                                   [:<
+                                    (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
+                                    :last_progress_report_at]]
+                            worktree-id (conj [:or
+                                               [:= :worktree_id worktree-id]
+                                               [:= :worktree_id nil]]))
+                   :limit 1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]})))
 
 (defn supersede-stale-tasks!
   "Marks any genuinely stale task rows as cancelled and terminated.
@@ -199,14 +211,19 @@
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
 
-  Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
-  []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist.
+  Scoped by `worktree-id`: nil means the main app (tasks with a nil worktree_id), a worktree id means
+  only that worktree's tasks."
+  ([]
+   (most-recent-task nil))
+  ([worktree-id]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where [:and
+                           [:<> :started_at nil]
+                           [:= :worktree_id worktree-id]]
+                   :limit 1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]})))
 
 (defn last-version
   "Gets the version that any changes are built off of.

@@ -18,12 +18,31 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
+(mu/defn worktree-filter-clause :- [:sequential :any]
+  "HoneySQL clause scoping a worktree_id-tagged table (remote_sync_object, remote_sync_task) to one
+   worktree's rows. Nil `worktree-id` is the main app: rows with no worktree reference (including all
+   pre-worktree history)."
+  [worktree-id :- [:maybe pos-int?]]
+  [:= :worktree_id worktree-id])
+
 (mu/defn set-base-version! :- :nil
   "Record `version` (a git SHA) as `worktree-id`'s sync base — the commit local changes are built on."
   [worktree-id :- pos-int?
    version     :- [:maybe :string]]
   (when version
     (t2/update! :model/RemoteSyncWorktree worktree-id {:base_version version}))
+  nil)
+
+(mu/defn check-branch-not-checked-out! :- :nil
+  "Throw a 400 when `branch` is checked out as a worktree. Making it the sync branch while its checkout
+   copies exist would put two materializations of the same branch side by side, so the worktree must be
+   deleted first."
+  [branch :- :string]
+  (when-let [worktree (t2/select-one :model/RemoteSyncWorktree :branch branch)]
+    (throw (ex-info (format "Branch '%s' is checked out as a worktree. Delete the worktree before syncing it as the default branch."
+                            branch)
+                    {:status-code 400
+                     :worktree_id (:id worktree)})))
   nil)
 
 (mu/defn worktree-roots :- [:sequential [:map [:id pos-int?] [:name :string]]]
@@ -37,11 +56,6 @@
                           (some-> location collection/location-path->parent-id member?)))
                 (map #(select-keys % [:id :name])))
           members)))
-
-(mu/defn worktree-dirty-rows :- [:sequential :map]
-  "RemoteSyncObject rows of `worktree-id` with local changes not yet pushed (status other than synced)."
-  [worktree-id :- pos-int?]
-  (t2/select :model/RemoteSyncObject :worktree_id worktree-id :status [:not= "synced"]))
 
 (mu/defn delete-worktree! :- :nil
   "Delete `worktree` and the collection trees it materialized. Root collections are deleted through the

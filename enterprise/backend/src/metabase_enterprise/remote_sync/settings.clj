@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -247,6 +248,9 @@
           (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
             (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
                        (not (and (= k :remote-sync-token) obfuscated?)))
+              ;; refuse to point the main app at a branch that is checked out as a worktree
+              (when (and (= k :remote-sync-branch) (some? (k settings)))
+                (remote-sync.worktree/check-branch-not-checked-out! (k settings)))
               (setting/set! k (k settings)))))))))
 
 (defn library-is-remote-synced?
