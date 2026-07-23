@@ -6,7 +6,7 @@ export type FormatValueOptions = {
   currency?: string;
   currency_style?: string;
   date_format?: string;
-  date_style?: string;
+  date_style?: string | null;
   date_separator?: string;
   date_abbreviate?: boolean;
   decimals?: number;
