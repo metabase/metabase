@@ -675,6 +675,7 @@ export type UserSettings = {
   "expand-bookmarks-in-nav"?: boolean;
   "expand-collections-in-nav"?: boolean;
   "expand-library-in-nav"?: boolean;
+  "expand-worktrees-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
@@ -756,6 +757,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
+  "remote-sync-worktrees"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

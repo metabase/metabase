@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -40,6 +41,20 @@
                        :current_branch  current})))
     requested-branch))
 
+(defn- check-worktree-id
+  "When a request addresses a worktree (non-nil `worktree-id`), the worktrees feature must be enabled.
+  The main app is not a worktree — it is addressed by omitting the param. Returns `worktree-id`."
+  [worktree-id]
+  (when worktree-id
+    (api/check-400 (settings/remote-sync-worktrees) "Remote sync worktrees are not enabled."))
+  worktree-id)
+
+(defn- fetch-worktree
+  "Fetch the worktree row for a request's non-nil `worktree-id` (404 when it does not exist), checking
+  the feature flag."
+  [worktree-id]
+  (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id (check-worktree-id worktree-id))))
+
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Import Metabase content from configured Remote Sync source.
 
@@ -53,35 +68,56 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch force merge expected_branch]}
+   {:keys [branch force merge expected_branch worktree_id]}
    :- [:map [:branch {:optional true} ms/NonBlankString]
        [:force {:optional true} :boolean]
        [:merge {:optional true} :boolean]
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
        ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
-       [:expected_branch ms/NonBlankString]]]
+       ;; Required unless worktree_id names the operation's target instead (worktrees have no ambient
+       ;; branch state to protect).
+       [:expected_branch {:optional true} ms/NonBlankString]
+       [:worktree_id {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (check-branch-matches-setting! expected_branch)
-  (let [branch-name (or branch (settings/remote-sync-branch))
-        user-id     api/*current-user-id*
-        {task-id :id}
-        (impl/async-import!
-         branch-name force {}
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
-    {:status :success
-     :task_id task-id
-     :message (when-not task-id "No changes since last import")}))
+  (if worktree_id
+    (let [worktree (fetch-worktree worktree_id)
+          user-id  api/*current-user-id*]
+      (api/check-400 (and (nil? branch) (nil? expected_branch))
+                     "branch and expected_branch cannot be combined with worktree_id.")
+      (let [{task-id :id}
+            (impl/async-worktree-pull!
+             worktree (boolean force)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                     {:branch (:branch worktree) :worktree_id (:id worktree)}
+                                                     user-id)))]
+        {:status :success :task_id task-id :message nil}))
+    (do
+      (api/check-400 expected_branch "expected_branch is required.")
+      (check-branch-matches-setting! expected_branch)
+      (let [branch-name (or branch (settings/remote-sync-branch))
+            user-id     api/*current-user-id*
+            {task-id :id}
+            (impl/async-import!
+             branch-name force {}
+             :merge?     (or merge false)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
+        {:status :success
+         :task_id task-id
+         :message (when-not task-id "No changes since last import")}))))
 
 (api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
   "Check if any remote-synced collection or collection item has local changes that have not been pushed
-  to the remote sync source."
-  []
+  to the remote sync source. With `worktree_id`, checks that worktree's ledger."
+  [_route-params
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
-  {:is_dirty (remote-sync.object/dirty?)})
+  {:is_dirty (if worktree-id
+               (remote-sync.object/dirty? (check-worktree-id worktree-id))
+               (remote-sync.object/dirty?))})
 
 (api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
   "Check if there are new changes on the remote branch that can be pulled.
@@ -93,11 +129,15 @@
    - local_version: Git SHA of last successful import (nil if never imported)
    - cached: true if result was served from cache"
   [_route-params
-   {:keys [force-refresh]} :- [:map [:force-refresh {:optional true} :boolean]]
+   {:keys [force-refresh worktree-id]} :- [:map
+                                           [:force-refresh {:optional true} :boolean]
+                                           [:worktree-id {:optional true} ms/PositiveInt]]
    _body]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
+  (let [result (if worktree-id
+                 (impl/worktree-has-remote-changes? (fetch-worktree worktree-id))
+                 (impl/has-remote-changes? {:force-refresh? force-refresh}))]
     (cond-> {:has_changes (:has-changes? result)
              :remote_version (:remote-version result)
              :local_version (:local-version result)
@@ -106,12 +146,15 @@
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return all models with changes that have not been pushed to the remote sync source in any
-  remote-synced collection."
-  []
+  remote-synced collection. With `worktree_id`, only that worktree's changes."
+  [_route-params
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
-                (remote-sync.object/dirty-objects))})
+                (if worktree-id
+                  (remote-sync.object/dirty-objects (check-worktree-id worktree-id))
+                  (remote-sync.object/dirty-objects)))})
 
 (api.macros/defendpoint :post "/export" :- remote-sync.schema/ExportResponse
   "Export the current state of the Remote Sync collection to a Source.
@@ -127,26 +170,43 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force merge]} :- [:map
-                                            [:message {:optional true} ms/NonBlankString]
-                                            [:branch ms/NonBlankString]
-                                            [:force {:optional true} :boolean]
-                                            [:merge {:optional true} :boolean]]]
+   {:keys [message branch force merge worktree_id]} :- [:map
+                                                        [:message {:optional true} ms/NonBlankString]
+                                                        ;; required unless worktree_id names the target
+                                                        [:branch {:optional true} ms/NonBlankString]
+                                                        [:force {:optional true} :boolean]
+                                                        [:merge {:optional true} :boolean]
+                                                        [:worktree_id {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
-  (let [branch-name (check-branch-matches-setting! branch)
-        user-id     api/*current-user-id*
-        {task-id :id}
-        (impl/async-export!
-         branch-name
-         (or force false)
-         (or message "Exported from Metabase")
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
-    {:message "Export task started"
-     :task_id task-id}))
+  (if worktree_id
+    (let [worktree (fetch-worktree worktree_id)
+          user-id  api/*current-user-id*]
+      (api/check-400 (nil? branch) "branch cannot be combined with worktree_id.")
+      (let [{task-id :id}
+            (impl/async-worktree-push!
+             worktree (boolean force) (or message "Exported from Metabase")
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-export task-id
+                                                     {:branch (:branch worktree) :worktree_id (:id worktree)}
+                                                     user-id)))]
+        {:message "Export task started"
+         :task_id task-id}))
+    (do
+      (api/check-400 branch "branch is required.")
+      (let [branch-name (check-branch-matches-setting! branch)
+            user-id     api/*current-user-id*
+            {task-id :id}
+            (impl/async-export!
+             branch-name
+             (or force false)
+             (or message "Exported from Metabase")
+             :merge?     (or merge false)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
+        {:message "Export task started"
+         :task_id task-id}))))
 
 (api.macros/defendpoint :get "/export-preflight" :- remote-sync.schema/ExportPreflightResponse
   "Dry-run preview of what pushing the current state would do given the live remote branch, without
@@ -177,20 +237,26 @@
      :reason                 (some-> reason name)}))
 
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
-  "Get the current sync task"
-  []
+  "Get the current sync task. With `worktree_id`, that worktree's most recent task."
+  [_route-params
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
-  (when-let [task (remote-sync.task/most-recent-task)]
+  (when-let [task (remote-sync.task/most-recent-task
+                   ;; without worktree_id this is the main app's view: worktrees' tasks are not
+                   ;; "the current task" of the main git-sync UI
+                   (check-worktree-id worktree-id))]
     (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
-  "Cancels the current task if one is running"
-  []
+  "Cancels the current task if one is running. With `worktree_id`, that worktree's running task."
+  [_route-params
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
-  (let [task (remote-sync.task/most-recent-task)]
+  (let [scope-id (check-worktree-id worktree-id)
+        task     (remote-sync.task/most-recent-task scope-id)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+    (t2/hydrate (remote-sync.task/most-recent-task scope-id) :status)))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
   "Test whether the Remote Sync credentials can reach the git repository.
@@ -246,6 +312,7 @@
        [:remote-sync-branch {:optional true} [:maybe :string]]
        [:remote-sync-auto-import {:optional true} [:maybe :boolean]]
        [:remote-sync-transforms {:optional true} [:maybe :boolean]]
+       [:remote-sync-worktrees {:optional true} [:maybe :boolean]]
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
   ;; In read-write mode, changing the branch here would flip the setting without reconciling synced
@@ -322,7 +389,10 @@
                           e)))))))
 
 (api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
-  "Create a new branch from the current remote-sync branch and switches the current remote-sync branch to it.
+  "Create a new branch from the current remote-sync branch. Only creates — the current remote-sync
+  branch is never switched; switching the main app happens through the settings save (or a
+  successful export carrying a branch).
+
   Requires superuser permissions."
   [_route
    _query
@@ -350,13 +420,13 @@
    _query
    {new-branch :new_branch message :message} :- [:map
                                                  [:new_branch ms/NonBlankString]
-                                                 [:message ms/NonBlankString]]]
+                                                 [:message {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
   (api/check-400 (source/source-from-settings) "Source not configured")
   (try
     (let [user-id       api/*current-user-id*
-          {task-id :id} (impl/stash! new-branch message
+          {task-id :id} (impl/stash! new-branch (or message "Stashed from Metabase")
                                      :on-success (fn [task-id _result]
                                                    (impl/publish-sync-event! :event/remote-sync-stash task-id {:branch new-branch} user-id)))]
       {:status "success"
@@ -365,6 +435,89 @@
     (catch Exception e
       (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                       {:status-code 400})))))
+
+;;; ------------------------------------------------ Worktrees -------------------------------------------------------
+
+(defn- check-worktrees-enabled! []
+  (api/check-superuser)
+  (api/check-400 (settings/remote-sync-worktrees) "Remote sync worktrees are not enabled.")
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured."))
+
+(defn- present-worktree [worktree]
+  {:id           (:id worktree)
+   :branch       (:branch worktree)
+   :base_version (:base_version worktree)
+   :roots        (remote-sync.worktree/worktree-roots (:id worktree))
+   :creator_id   (:creator_id worktree)
+   :created_at   (:created_at worktree)})
+
+(api.macros/defendpoint :get "/worktrees" :- remote-sync.schema/WorktreeListResponse
+  "List all remote sync worktrees (branch checkouts; the main app is not one of them).
+
+  Requires superuser permissions."
+  []
+  (check-worktrees-enabled!)
+  {:items (mapv present-worktree
+                (t2/select :model/RemoteSyncWorktree {:order-by [[:created_at :asc] [:id :asc]]}))})
+
+(api.macros/defendpoint :post "/worktrees" :- remote-sync.schema/Worktree
+  "Create a worktree for `branch` — the metadata row only; content materializes on the first pull
+  (`base_version` stays null until then). The branch must exist on the remote, unless `from_branch`
+  is given, in which case it is forked from that branch server-side first. 409 when the branch is
+  already checked out (one branch, one worktree — including the default).
+
+  Requires superuser permissions."
+  [_route
+   _query
+   {:keys [branch from_branch]} :- [:map
+                                    [:branch ms/NonBlankString]
+                                    [:from_branch {:optional true} ms/NonBlankString]]]
+  (check-worktrees-enabled!)
+  (api/check-400 (not= branch (settings/remote-sync-branch))
+                 (format "Branch '%s' is the current remote sync branch." branch))
+  (let [source (source/source-from-settings)]
+    (api/check-400 source "Source not configured")
+    (if from_branch
+      (source.p/create-branch source branch from_branch)
+      (api/check-400 (some #{branch} (source.p/branches source))
+                     (format "Branch '%s' not found on the remote. Pass from_branch to create it." branch)))
+    (try
+      (present-worktree
+       (t2/insert-returning-instance! :model/RemoteSyncWorktree
+                                      {:branch     branch
+                                       :creator_id api/*current-user-id*}))
+      (catch Exception e
+        (if-let [existing (t2/select-one :model/RemoteSyncWorktree :branch branch)]
+          (throw (ex-info (format "Branch '%s' is already checked out." branch)
+                          {:status-code 409
+                           :worktree_id (:id existing)}))
+          (throw e))))))
+
+(api.macros/defendpoint :get "/worktrees/:id" :- remote-sync.schema/Worktree
+  "Get a single worktree.
+
+  Requires superuser permissions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (check-worktrees-enabled!)
+  (present-worktree (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))))
+
+(api.macros/defendpoint :delete "/worktrees/:id" :- :nil
+  "Delete a worktree along with the collection trees it materialized. Refused, unless `force`, for a
+  worktree with unpushed local changes (400 carrying the dirty objects).
+
+  Requires superuser permissions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [force]} :- [:map [:force {:default false} [:maybe :boolean]]]]
+  (check-worktrees-enabled!)
+  (let [worktree (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))]
+    (let [dirty (remote-sync.object/dirty-rows id)]
+      (when (and (seq dirty) (not force))
+        (throw (ex-info "This worktree has changes that have not been pushed."
+                        {:status-code   400
+                         :dirty_objects (mapv #(select-keys % [:model_type :model_id :model_name :status])
+                                              dirty)}))))
+    (remote-sync.worktree/delete-worktree! worktree)
+    nil))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

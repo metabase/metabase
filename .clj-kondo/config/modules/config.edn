@@ -106,6 +106,7 @@
            parameters
            queries
            query-processor
+           remote-sync
            search
            settings
            util
@@ -602,12 +603,14 @@
            search
            util}
    :model-exports #{:model/Collection}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/CollectionBookmark
                     :model/CollectionPermissionGraphRevision
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
+                    :model/DashboardTab
                     :model/Document
                     :model/NativeQuerySnippet
                     :model/Permissions
@@ -632,6 +635,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            settings
@@ -723,6 +727,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -823,6 +828,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -1791,6 +1797,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -2397,6 +2404,7 @@
            collections
            events
            models
+           remote-sync
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -3440,6 +3448,7 @@
            events
            models
            premium-features
+           remote-sync
            search
            settings
            startup
@@ -3458,6 +3467,7 @@
                     :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/Permissions
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table

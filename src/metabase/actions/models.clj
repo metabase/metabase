@@ -8,6 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.queries.models.query :as query]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -89,12 +90,12 @@
 
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
-  (u/prog1 action
+  (u/prog1 (remote-sync/set-worktree-id-before-insert action :model/Card :model_id)
     (check-model-is-not-a-saved-question model-id)))
 
 (t2/define-before-update :model/Action
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
-  (u/prog1 changes
+  (u/prog1 (remote-sync/set-worktree-id-before-update changes :model/Card :model_id)
     (if archived?
       (t2/delete! :model/DashboardCard :action_id id)
       (check-model-is-not-a-saved-question model-id))))
@@ -108,7 +109,7 @@
 (def ^:private action-columns
   "The columns that are common to all Action types."
   [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
-   :parameters :public_uuid :type :updated_at :visualization_settings])
+   :parameters :public_uuid :remote_sync_worktree_id :type :updated_at :visualization_settings])
 
 (mu/defn- type->model
   "Returns the model from an action type.
@@ -441,7 +442,8 @@
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :description :entity_id :name :public_uuid]
-   :skip      []
+   :skip      [;; which checkout materialized this row is local state, not portable content
+               :remote_sync_worktree_id]
    :transform {:created_at             (serdes/date)
                :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)

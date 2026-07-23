@@ -19,6 +19,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as oss.remote-sync]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -698,15 +699,21 @@
    - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
    - Snippets-namespace collections (when Library is remote-synced)
 
-   Used by import cleanup to determine which collections to scope deletions to."
+   Used by import cleanup to determine which collections to scope deletions to. Collections
+   materialized by worktree checkouts are never part of the default sync set — their reconcile is
+   worktree-scoped — so they are excluded here."
   []
-  (into []
-        cat
-        [(t2/select-pks-vec :model/Collection :is_remote_synced true)
-         (when (rs-settings/remote-sync-transforms)
-           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns)))
-         (when (rs-settings/library-is-remote-synced?)
-           (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
+  (let [default-scope (oss.remote-sync/non-worktree-filter-clause)]
+    (into []
+          cat
+          [(t2/select-pks-vec :model/Collection
+                              {:where [:and [:= :is_remote_synced true] default-scope]})
+           (when (rs-settings/remote-sync-transforms)
+             (t2/select-pks-vec :model/Collection
+                                {:where [:and [:= :namespace (name collections/transforms-ns)] default-scope]}))
+           (when (rs-settings/library-is-remote-synced?)
+             (t2/select-pks-vec :model/Collection
+                                {:where [:and [:= :namespace "snippets"] default-scope]}))])))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -1031,7 +1038,12 @@
   (when (seq entity-ids)
     (let [;; Get select fields from spec, with :id always included
           select-fields (into [:id] (or (:select-fields tracking) [:name :collection_id]))
-          entities (t2/select (into [model-key] select-fields) :entity_id [:in entity-ids])]
+          ;; entity ids are only unique per worktree: resolve them within the worktree being synced
+          ;; (nil = the main app) or a checkout's copies would land in the wrong ledger
+          entities (apply t2/select (into [model-key] select-fields)
+                          :entity_id [:in entity-ids]
+                          (when (contains? serdes/worktree-scoped-models model-type)
+                            [:remote_sync_worktree_id serdes/*worktree-id*]))]
       (map (fn [entity]
              (let [;; Apply field mappings
                    field-mappings (:field-mappings tracking)
@@ -1062,7 +1074,9 @@
       ;; The query template uses alias :s for the main model (segment)
       (let [base-query (-> query-template
                            (update :select (fn [cols] (vec (concat [:s.id] cols))))
-                           (assoc :where [:in :s.entity_id entity-ids]))]
+                           (assoc :where (cond-> [:and [:in :s.entity_id entity-ids]]
+                                           (contains? serdes/worktree-scoped-models model-type)
+                                           (conj [:= :s.remote_sync_worktree_id serdes/*worktree-id*]))))]
         (->> (t2/query base-query)
              (map (fn [entity]
                     (let [field-mappings (:field-mappings tracking)
@@ -1162,28 +1176,33 @@
   [{:keys [export-scope]}]
   (case (or export-scope :derived)
     :root-collections
-    ;; Excludes archived collections - their files are handled by the removal logic
-    (concat
-     (t2/select-fn-set (juxt (constantly "Collection") :id)
-                       :model/Collection
-                       {:where [:and
-                                [:= :is_remote_synced true]
-                                [:= :location "/"]
-                                [:not :archived]]})
-     (when (rs-settings/remote-sync-transforms)
+    ;; Excludes archived collections - their files are handled by the removal logic - and worktree
+    ;; checkouts, which export only through their own worktree-scoped push
+    (let [default-scope (oss.remote-sync/non-worktree-filter-clause)]
+      (concat
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
                          {:where [:and
-                                  [:= :namespace (name collections/transforms-ns)]
+                                  [:= :is_remote_synced true]
                                   [:= :location "/"]
-                                  [:not :archived]]}))
-     (when (rs-settings/library-is-remote-synced?)
-       (t2/select-fn-set (juxt (constantly "Collection") :id)
-                         :model/Collection
-                         {:where [:and
-                                  [:= :namespace "snippets"]
-                                  [:= :location "/"]
-                                  [:not :archived]]})))
+                                  [:not :archived]
+                                  default-scope]})
+       (when (rs-settings/remote-sync-transforms)
+         (t2/select-fn-set (juxt (constantly "Collection") :id)
+                           :model/Collection
+                           {:where [:and
+                                    [:= :namespace (name collections/transforms-ns)]
+                                    [:= :location "/"]
+                                    [:not :archived]
+                                    default-scope]}))
+       (when (rs-settings/library-is-remote-synced?)
+         (t2/select-fn-set (juxt (constantly "Collection") :id)
+                           :model/Collection
+                           {:where [:and
+                                    [:= :namespace "snippets"]
+                                    [:= :location "/"]
+                                    [:not :archived]
+                                    default-scope]}))))
     :derived
     nil))
 

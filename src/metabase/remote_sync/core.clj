@@ -29,6 +29,32 @@
   []
   true)
 
+(defn non-worktree-filter-clause
+  "HoneySQL clause matching only main-app rows — those not materialized by a remote-sync worktree
+  checkout. `column` defaults to `:remote_sync_worktree_id`; pass a qualified column when the query
+  joins other tables."
+  ([] (non-worktree-filter-clause :remote_sync_worktree_id))
+  ([column]
+   [:= column nil]))
+
+(defn set-worktree-id-before-insert
+  "Derive a row's `:remote_sync_worktree_id` from its parent entity (`parent-key` on the row, a
+  `parent-model` id): rows belong to the remote-sync worktree of whatever contains them, and nil — no
+  parent, or a main-app parent — is the main app, which is not a worktree. The column is derived, never
+  client-supplied. Call from a model's `before-insert`."
+  [instance parent-model parent-key]
+  (assoc instance :remote_sync_worktree_id
+         (when-let [parent-id (get instance parent-key)]
+           (t2/select-one-fn :remote_sync_worktree_id parent-model :id parent-id))))
+
+(defn set-worktree-id-before-update
+  "Re-derive a row's `:remote_sync_worktree_id` when an update moves it to a different parent
+  (`parent-key` present in the update's changes). Call from a model's `before-update`."
+  [instance parent-model parent-key]
+  (if (contains? (t2/changes instance) parent-key)
+    (set-worktree-id-before-insert instance parent-model parent-key)
+    instance))
+
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration.
 

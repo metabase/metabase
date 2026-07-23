@@ -65,6 +65,7 @@ import {
   TRANSFORMS_KEY,
   TYPE_KEY,
   URL_KEY,
+  WORKTREES_KEY,
 } from "../../constants";
 import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
 import { SyncConflictModal } from "../SyncConflictModal";
@@ -251,6 +252,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
         [BRANCH_KEY]: values[BRANCH_KEY],
         [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
         [TRANSFORMS_KEY]: values[TRANSFORMS_KEY],
+        [WORKTREES_KEY]: values[WORKTREES_KEY],
         ...(isReadOnly || !hasCollectionChanges
           ? {}
           : {
@@ -489,16 +491,28 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     description={t`Choose which branch to sync with git.`}
                     variant={variant}
                   >
-                    <BranchSwitcher
-                      currentBranch={currentBranch}
-                      dirty={dirtyData?.dirty ?? []}
-                      disabled={settingDetails?.[BRANCH_KEY]?.is_env_setting}
-                      envVarName={
-                        settingDetails?.[BRANCH_KEY]?.is_env_setting
-                          ? settingDetails?.[BRANCH_KEY]?.env_name
-                          : undefined
-                      }
-                    />
+                    <Stack gap="md">
+                      <BranchSwitcher
+                        currentBranch={currentBranch}
+                        dirty={dirtyData?.dirty ?? []}
+                        disabled={settingDetails?.[BRANCH_KEY]?.is_env_setting}
+                        envVarName={
+                          settingDetails?.[BRANCH_KEY]?.is_env_setting
+                            ? settingDetails?.[BRANCH_KEY]?.env_name
+                            : undefined
+                        }
+                      />
+                      <FormSwitch
+                        label={t`Worktrees`}
+                        description={t`Let admins check out other branches as separate collection trees, so people can work on several branches at the same time.`}
+                        name={WORKTREES_KEY}
+                        size="sm"
+                        {...getEnvSettingProps(
+                          settingDetails?.[WORKTREES_KEY],
+                          { disabled: true },
+                        )}
+                      />
+                    </Stack>
                   </RemoteSyncSettingsSection>
                 )}
 

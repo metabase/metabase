@@ -1730,7 +1730,10 @@
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))
-        will-be-in-remote-synced? (t2/select-one-fn :is_remote_synced :model/Collection :id (parent-id* {:location new-location}))]
+        new-parent (when-let [parent-id (parent-id* {:location new-location})]
+                     (t2/select-one [:model/Collection :is_remote_synced :remote_sync_worktree_id]
+                                    :id parent-id))
+        will-be-in-remote-synced? (:is_remote_synced new-parent)]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
@@ -1768,6 +1771,66 @@
       (when (= :api-key (t2/select-one-fn :type :model/User user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
+(defn- cascade-worktree-id!
+  "Point `collection`'s descendant collections and the contents of its whole subtree — cards,
+  dashboards (plus their dashcards, tabs, and actions), documents, snippets, and timelines — at
+  `worktree-id`. Called from the collection's own before-update when it moves under a new parent (pass
+  the collection with its pre-move location: descendants still hold the old paths at that point); rows
+  follow their collection's remote-sync worktree membership, and the bulk subtree location rewrites
+  bypass the per-model hooks that normally derive it. The moved row itself is stamped by the update
+  that triggers this."
+  [collection worktree-id]
+  (let [descendant-ids (t2/select-pks-vec :model/Collection
+                                          {:where [:like :location (str (children-location collection) "%")]})
+        subtree-ids    (cons (u/the-id collection) descendant-ids)]
+    (when (seq descendant-ids)
+      (t2/update! :model/Collection
+                  {:id [:in descendant-ids]}
+                  {:remote_sync_worktree_id worktree-id}))
+    (doseq [model [:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Timeline]]
+      (t2/update! model
+                  {:collection_id [:in subtree-ids]}
+                  {:remote_sync_worktree_id worktree-id}))
+    (doseq [model [:model/DashboardCard :model/DashboardTab]]
+      (t2/update! model
+                  {:dashboard_id [:in {:select [:id]
+                                       :from   [:report_dashboard]
+                                       :where  [:in :collection_id subtree-ids]}]}
+                  {:remote_sync_worktree_id worktree-id}))
+    (t2/update! :model/Action
+                {:model_id [:in {:select [:id]
+                                 :from   [:report_card]
+                                 :where  [:in :collection_id subtree-ids]}]}
+                {:remote_sync_worktree_id worktree-id})))
+
+(defn- cascade-worktree-id-on-move!
+  "When an update moves `collection-before-updates` under a new parent, re-derive the subtree's
+  remote-sync worktree membership from that parent and return `changes` with the moved row's own
+  membership stamped. Trash moves are left alone: archived checkout content keeps its membership so
+  deleting the worktree still sweeps it."
+  [changes collection-before-updates]
+  (if-not (and (api/column-will-change? :location collection-before-updates changes)
+               (not (str/starts-with? (:location changes) (trash-path))))
+    changes
+    (let [worktree-id (some->> (location-path->parent-id (:location changes))
+                               (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id))]
+      (cascade-worktree-id! collection-before-updates worktree-id)
+      (assoc changes :remote_sync_worktree_id worktree-id))))
+
+(defn- stamp-remote-sync-worktree-id
+  "When `changes` writes `:is_remote_synced`, also write `:remote_sync_worktree_id`: the worktree being
+  loaded (during a worktree pull), else the parent's worktree when the collection sits under a worktree
+  checkout, else nil (the main app, including default-branch remote sync, is not a worktree). `location`
+  is the collection's (possibly new) location."
+  [changes location]
+  (if-not (contains? changes :is_remote_synced)
+    changes
+    (assoc changes :remote_sync_worktree_id
+           (when (:is_remote_synced changes)
+             (or serdes/*worktree-id*
+                 (when-let [parent-id (some-> location location-path->parent-id)]
+                   (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id)))))))
+
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [type] :as collection}]
   (assert-valid-location collection)
@@ -1777,10 +1840,11 @@
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type)))
+               (as-> $changes (stamp-remote-sync-worktree-id $changes (:location $changes))))
     (assert-valid-remote-synced-parent <>)))
 
-(defn- copy-collection-permissions!
+(defn copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
   and write perms for every Group with write perms for the source Collection."
   [source-collection-or-id dest-collections-or-ids]
@@ -1979,6 +2043,19 @@
     (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (3.7) Check if it's a semantic-library collection that can't be updated
     (check-library-update collection)
+    ;; (3.8) A collection cannot move between two different remote sync worktrees: the move would
+    ;; silently mean delete-from-one-ledger / create-in-another. Moving into or out of a worktree
+    ;; (from/to unsynced space) stays legal — those are ordinary checkout add/remove events.
+    (when (api/column-will-change? :location collection-before-updates collection-updates)
+      (let [before-worktree-id (:remote_sync_worktree_id collection-before-updates)
+            parent-worktree-id (when-let [parent-id (some-> (:location collection-updates)
+                                                            location-path->parent-id)]
+                                 (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id))]
+        (when (and before-worktree-id
+                   parent-worktree-id
+                   (not= before-worktree-id parent-worktree-id))
+          (throw (ex-info (tru "Cannot move a collection between remote sync worktrees.")
+                          {:status-code 400})))))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
@@ -1989,9 +2066,13 @@
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; slugify the collection name in case it's changed in the output; the results of this will get passed along
     ;; to Toucan's `update!` impl
-    (u/prog1 (cond-> collection-updates
-               (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
-               collection-name (assoc :slug (slugify collection-name)))
+    (u/prog1 (-> (cond-> collection-updates
+                   (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+                   collection-name (assoc :slug (slugify collection-name)))
+                 (as-> $changes (stamp-remote-sync-worktree-id
+                                 $changes
+                                 (or (:location $changes) (:location collection-before-updates))))
+                 (cascade-worktree-id-on-move! collection-before-updates))
       (when-not *clearing-remote-sync*
         (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
 
@@ -2198,7 +2279,9 @@
           :namespace
           :slug
           :type]
-   :skip []
+   ;; worktree membership is local state (which checkout this instance materialized the collection into),
+   ;; not portable content
+   :skip [:remote_sync_worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id

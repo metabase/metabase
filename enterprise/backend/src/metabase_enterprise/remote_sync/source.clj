@@ -173,10 +173,12 @@
 
   Returns a GitSource instance configured with the remote-sync-url, branch, and remote-sync-token from settings."
   ([branch]
+   (source-from-settings branch serialization/legal-top-level-paths))
+  ([branch managed-dirs]
    (git/git-source
     (setting/get :remote-sync-url)
     (or branch (setting/get :remote-sync-branch))
     (setting/get :remote-sync-token)
-    serialization/legal-top-level-paths))
+    managed-dirs))
   ([]
    (source-from-settings (setting/get :remote-sync-branch))))
