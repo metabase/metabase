@@ -16,7 +16,6 @@
 
 ;; `:info :name` predates generic plugins and is currently both the human-readable name and the identifier used by
 ;; `load-plugin!` and `dependencies: [{plugin: ...}]`. Plugin authors must therefore treat it as unique and stable.
-;; If we eventually need a separately editable display name, add a new manifest field rather than changing this key.
 
 (def plugin-api-version
   "Current version of the generic Metabase plugin initialization contract."
@@ -49,8 +48,7 @@
     ;; point, but assume plugin classes and their transitive dependencies remain visible for the life of the process.
     ;;
     ;; We mark a plugin loaded only after every init step succeeds. A failed activation can therefore be retried, so
-    ;; initialization steps should tolerate retry after a partially completed attempt. We deliberately keep that
-    ;; existing best-effort behavior here rather than adding rollback or lifecycle machinery.
+    ;; initialization steps should tolerate retry after a partially completed attempt.
     (locking loaded-plugin-names
       (when-not (loaded? plugin-name)
         (when add-to-classpath!

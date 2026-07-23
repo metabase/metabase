@@ -20,7 +20,7 @@
     :else     :unknown))
 
 (defmulti ^:private dependency-satisfied?
-  {:arglists '([initialized-plugin-names info dependency])}
+  {:arglists '([registered-plugin-names info dependency])}
   (fn [_ _ dep] (dependency-type dep)))
 
 (defmethod dependency-satisfied? :default [_ {{plugin-name :name} :info} dep]
@@ -58,10 +58,14 @@
       (warn-about-required-dependencies plugin-name (or message (trs "Class not found: {0}" classname)))
       false)))
 
+;; Satisfied means the other manifest is registered, not that its code is loaded — this gates
+;; registration order only. The only declarers today are driver manifests naming an abstract parent,
+;; which need that keyword in the driver hierarchy before `driver/register!` runs; their *load* order
+;; comes from the `:require` in the driver namespace itself.
 (defmethod dependency-satisfied? :plugin
-  [initialized-plugin-names {{plugin-name :name} :info} {dep-plugin-name :plugin}]
+  [registered-plugin-names {{plugin-name :name} :info} {dep-plugin-name :plugin}]
   (log-once plugin-name (trs "Plugin ''{0}'' depends on plugin ''{1}''" plugin-name dep-plugin-name))
-  ((set initialized-plugin-names) dep-plugin-name))
+  ((set registered-plugin-names) dep-plugin-name))
 
 (defmethod dependency-satisfied? :env-var
   [_ {{plugin-name :name} :info} {env-var-name :env-var}]
@@ -74,9 +78,9 @@
     true))
 
 (defn- all-dependencies-satisfied?*
-  [initialized-plugin-names {:keys [dependencies], {plugin-name :name} :info, :as info}]
+  [registered-plugin-names {:keys [dependencies], {plugin-name :name} :info, :as info}]
   (let [dep-satisfied? (fn [dep]
-                         (u/prog1 (dependency-satisfied? initialized-plugin-names info dep)
+                         (u/prog1 (dependency-satisfied? registered-plugin-names info dep)
                            (log-once plugin-name
                                      (trs "{0} dependency {1} satisfied? {2}" plugin-name (dissoc dep :message) (boolean <>)))))]
     (every? dep-satisfied? dependencies)))
@@ -86,30 +90,30 @@
   why they are not, and return falsey.
 
   For plugins that *might* have their dependencies satisfied in the near future"
-  [initialized-plugin-names info]
+  [registered-plugin-names info]
   (or
-   (all-dependencies-satisfied?* initialized-plugin-names info)
+   (all-dependencies-satisfied?* registered-plugin-names info)
    (do
      (swap! plugins-with-unsatisfied-deps conj info)
      (log-once (u/format-color 'yellow
                                (trs "Plugins with unsatisfied deps: {0}" (mapv (comp :name :info) @plugins-with-unsatisfied-deps))))
      false)))
 
-(defn- remove-plugins-with-satisfied-deps [plugins initialized-plugin-names ready-for-init-atom]
+(defn- remove-plugins-with-satisfied-deps [plugins registered-plugin-names ready-to-register-atom]
   ;; since `remove-plugins-with-satisfied-deps` could theoretically be called multiple times we need to reset the atom
-  ;; used to return the plugins ready for init so we don't accidentally include something in there twice etc.
-  (reset! ready-for-init-atom nil)
+  ;; used to return the plugins ready to register so we don't accidentally include something in there twice etc.
+  (reset! ready-to-register-atom nil)
   (set
    (for [info  plugins
-         :let  [ready? (when (all-dependencies-satisfied?* initialized-plugin-names info)
-                         (swap! ready-for-init-atom conj info))]
+         :let  [ready? (when (all-dependencies-satisfied?* registered-plugin-names info)
+                         (swap! ready-to-register-atom conj info))]
          :when (not ready?)]
      info)))
 
 (defn update-unsatisfied-deps!
   "Updates internal list of plugins that still have unmet dependencies; returns sequence of plugin infos for all plugins
-  that are now ready for initialization."
-  [initialized-plugin-names]
-  (let [ready-for-init (atom nil)]
-    (swap! plugins-with-unsatisfied-deps remove-plugins-with-satisfied-deps initialized-plugin-names ready-for-init)
-    @ready-for-init))
+  that are now ready to register."
+  [registered-plugin-names]
+  (let [ready-to-register (atom nil)]
+    (swap! plugins-with-unsatisfied-deps remove-plugins-with-satisfied-deps registered-plugin-names ready-to-register)
+    @ready-to-register))
