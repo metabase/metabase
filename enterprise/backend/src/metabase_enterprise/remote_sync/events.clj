@@ -201,10 +201,9 @@
 
 (defn- register-events-for-spec!
   "Registers event handlers for a single spec. Creates event hierarchy and registers a methodical
-   handler for the parent event. `extra-handler`, when provided, is `(fn [topic event eligible?])`
-   and runs after the standard spec handling with the same eligibility result — the mechanism for
-   piggybacking side-car tracking (TableUserSettings) on a model's events without registering a
-   conflicting second primary method."
+   handler for the parent event. `extra-handler`, `(fn [topic event eligible?])`, runs after the
+   standard spec handling — for piggybacking side-car tracking on a model's events without
+   registering a conflicting second primary method."
   ([model-spec]
    (register-events-for-spec! model-spec nil))
   ([model-spec extra-handler]
@@ -228,16 +227,12 @@
   (register-events-for-spec! model-spec))
 
 ;;; ------------------------------------- Table + TableUserSettings Tracking -------------------------------------------
-;; When a table changes, run the standard spec-based handling for the Table itself, and also track
-;; any TableUserSettings row for it. TableUserSettings has no separate event; it piggybacks on the
-;; table events (like FieldUserSettings does on :event/field-update).
 
 (def ^:private table-spec (get spec/remote-sync-specs :model/Table))
 
 (defn- hydrate-table-user-settings-details
-  "TableUserSettings RSOs are keyed by the parent table's id, so the table fills in both the model
-  fields and its own table_id/table_name self-reference (the Table spec's hydration provides only
-  name and collection_id)."
+  "Details for a TableUserSettings RSO: the parent table's fields plus its table_id/table_name
+  self-reference."
   [table-id]
   (when-let [{table-name :name, :keys [collection_id]} (t2/select-one [:model/Table :name :collection_id] :id table-id)]
     {:name          table-name
@@ -246,6 +241,9 @@
      :table_name    table-name}))
 
 (defn- handle-table-user-settings-event
+  "Piggybacks TableUserSettings RSO tracking on the table events, like FieldUserSettings rides
+  :event/field-update. A deleted/archived table transitions the RSO directly: its settings row
+  cascades away, so the generic re-hydrating path would find nothing."
   [topic {:keys [object]} eligible?]
   (let [table-id (:id object)
         status   (spec/determine-status table-spec topic object)

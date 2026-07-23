@@ -1097,15 +1097,13 @@
   [[_db-name _schema _table-name :as table-id] :- [:maybe [:tuple string? [:maybe string?] string?]]]
   (resolve/import-table-fk (import-resolver) table-id))
 
-(defn pk-column
-  "The application-db primary-key column for serdes model `model-name`. The *UserSettings mirror
-  models use their parent's FK as their PK instead of an id column; extraction by ids must select on
-  the right column or it silently matches nothing."
-  [model-name]
-  (case model-name
-    "FieldUserSettings" :field_id
-    "TableUserSettings" :table_id
-    :id))
+(defmulti pk-column
+  "The application-db primary-key column for serdes model `model-name`, `:id` by default. Mirror
+  models whose PK is their parent's FK (the *UserSettings models) override this."
+  {:arglists '([model-name])}
+  identity)
+
+(defmethod pk-column :default [_model-name] :id)
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.

@@ -38,6 +38,8 @@
   [_field-values]
   [(serdes/hydrated-hash :field)])
 
+(defmethod serdes/pk-column "FieldUserSettings" [_model-name] :field_id)
+
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
 (defmethod serdes/generate-path "FieldUserSettings" [_ {:keys [field_id]}]

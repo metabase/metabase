@@ -30,13 +30,12 @@
 (methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
 
 (defn upsert-user-settings!
-  "Record user-set values for the Tables with `table-ids`. Only keys in [[table/table-user-settings]]
-  are recorded; a key explicitly present with a `nil` value is recorded as `nil` (the user unset it)."
+  "Record user-set values for the Tables with `table-ids`; safe under concurrent first-time inserts.
+  Only keys in [[table/table-user-settings]] are recorded; a key explicitly present with a `nil`
+  value is recorded as `nil` (the user unset it)."
   [table-ids settings]
   (let [filtered-settings (u/select-keys-when settings :present table/table-user-settings)]
     (when (seq filtered-settings)
-      ;; update-or-insert! retries on a concurrent first insert of the same row, which a bare
-      ;; select-then-insert would turn into a duplicate-PK error
       (doseq [id table-ids]
         (mdb.query/update-or-insert! :model/TableUserSettings {:table_id id}
                                      (constantly filtered-settings))))))
@@ -47,6 +46,8 @@
   [_table-user-settings]
   [(serdes/hydrated-hash :table)])
 
+(defmethod serdes/pk-column "TableUserSettings" [_model-name] :table_id)
+
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
 (defmethod serdes/generate-path "TableUserSettings" [_ {:keys [table_id]}]
@@ -54,14 +55,12 @@
         {:model "TableUserSettings" :id "1"}))
 
 (defmethod serdes/deserialization-dependencies "TableUserSettings" [tus]
-  ;; The parent Table is synthesized on import if missing, so only the Database (and the target
-  ;; Collection, when one is recorded) must exist first.
+  ;; the parent Table is synthesized on import if missing, so it is not a dependency
   (let [db-path (first (serdes/path tus))]
     (cond-> [[db-path]]
       (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
 
 (defmethod serdes/load-find-local "TableUserSettings" [path]
-  ;; Delegate to finding the parent Table, then look up its corresponding TableUserSettings.
   (let [found-table (serdes/load-find-local (pop path))]
     (t2/select-one :model/TableUserSettings :table_id (:id found-table))))
 
@@ -88,8 +87,7 @@
 (def ^:private table-user-settings-slug "___tableusersettings")
 
 (defmethod serdes/storage-path "TableUserSettings" [tus _]
-  ;; [path to table dir "table-name___tableusersettings"] next to the Table's own YAML, since there's zero or one
-  ;; TableUserSettings per Table.
+  ;; stored next to the Table's own YAML as <table-name>___tableusersettings.yaml
   (let [table-path (pop (serdes/path tus))]
     (conj (serdes/storage-path-prefixes table-path)
           {:label (str (:id (peek table-path)) table-user-settings-slug)})))

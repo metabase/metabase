@@ -206,25 +206,22 @@
     :owner_email :owner_user_id})
 
 (def ^:private sync-overridable-user-settings
-  "The subset of [[table-user-settings]] the sync process writes (description and visibility from
-  metadata sync, entity_type from classification; data_layer pairs with visibility_type). The
-  merge-back overlay protects only these: the other user-settable columns are never written by sync,
-  and force-merging them would fight legitimate system writes (e.g. collection archival nulling
-  collection_id)."
+  "The subset of [[table-user-settings]] the sync process writes; the merge-back overlay protects
+  only these — force-merging the rest would fight legitimate system writes (e.g. collection
+  archival nulling collection_id)."
   #{:description :entity_type :visibility_type :data_layer})
 
-(defn- merge-user-settings [table]
-  ;; we transparently prevent updates that would override user-set values; this runs before the
-  ;; visibility_type/data_layer pair sync below so the pair stays consistent after the merge
+(defn- merge-user-settings
+  "Merge non-nil user-set values over a pending update so sync cannot override them. Must run before
+  the visibility_type/data_layer pair sync, and must be skipped during serdes import, where the
+  incoming values are authoritative regardless of Table/TableUserSettings load order."
+  [table]
   (let [user-settings (t2/select-one :model/TableUserSettings (:id table))
         updated-table (merge table (u/select-keys-when user-settings :non-nil sync-overridable-user-settings))]
     (t2.protocols/with-current table updated-table)))
 
 (t2/define-before-update :model/Table
   [table]
-  ;; During serdes import the incoming values are authoritative (the TableUserSettings row is
-  ;; imported alongside); merging local settings here would make the result depend on whether the
-  ;; Table or its TableUserSettings happens to load first.
   (let [table          (cond-> table
                          (not mi/*deserializing?*) merge-user-settings)
         changes        (t2/changes table)
@@ -240,9 +237,7 @@
                (= (keyword (:data_authority changes)) :unconfigured))
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
-    ;; System flows (collection archival/deletion, forced downstream unpublish) null collection_id /
-    ;; unset is_published directly; mirror that into any recorded user setting so the mirror doesn't
-    ;; keep claiming an archived collection or publish intent. Update-only: absent rows stay absent.
+    ;; mirror system unpublish writes (collection archival etc.) into any existing settings row
     (when-let [unpublish-mirror (not-empty
                                  (cond-> {}
                                    (and (contains? changes :collection_id) (nil? (:collection_id changes)))
@@ -510,12 +505,10 @@
      (set field-ordering)))
 
 (defn custom-order-fields!
-  "Set field order to `field-order`."
+  "Set field order to `field-order`, recording the reorder as a user edit in TableUserSettings."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
-    ;; a manual reorder is a user edit, so record it in TableUserSettings like the API update paths
-    ;; do (inline rather than via the table-user-settings namespace, which requires this one)
     (mdb.query/update-or-insert! :model/TableUserSettings {:table_id (u/the-id table)}
                                  (constantly {:field_order :custom}))
     (t2/update! :model/Table (u/the-id table) {:field_order :custom})
@@ -660,8 +653,7 @@
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
                             [["Measure" measure-id] {"Table" id}]))
-        ;; When user-edits-only (git sync), emit the Table's own user-authored metadata too; full
-        ;; exports extract TableUserSettings as a top-level model instead.
+        ;; full exports extract TableUserSettings as a top-level model instead
         table-user-settings (when (and user-edits-only
                                        (t2/exists? :model/TableUserSettings :table_id id))
                               {["TableUserSettings" id] {"Table" id}})]
