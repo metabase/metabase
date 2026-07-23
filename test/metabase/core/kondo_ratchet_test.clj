@@ -112,6 +112,9 @@
     []                  "#_:clj-kondo/ignore!"
     []                  "#_:clj-kondo/ignore+"
     []                  "#_:clj-kondo/ignore*"
+    []                  "#_:clj-kondo/ignore'"
+    []                  "#_:clj-kondo/ignore$"
+    []                  "#_:clj-kondo/ignoreλ"
     []                  "(defn foo [x] (inc x))"
     ;; ignore forms inside strings and comments don't count either
     []                  "(def s \"#_{:clj-kondo/ignore [:in-a-string]}\")"
@@ -125,7 +128,9 @@
       "(def ^{:added \"0.1\" :clj-kondo/ignore [:buried]} x 1)"
       "(ns b {:doc \"d\" :clj-kondo/ignore [:buried]})"
       "{:label :clj-kondo/ignore [:data]}"
-      "(def ^#:clj-kondo{:ignore [:namespaced-map]} x 1)")))
+      "(def ^#:clj-kondo{:ignore [:namespaced-map]} x 1)"
+      "(def ^#:clj-kondo{:doc \"x\", :ignore [:namespaced-map]} x 1)"
+      "(def ^#:clj-kondo{;; why\n :ignore [:namespaced-map]} x 1)")))
 
 (deftest ^:parallel scan-test
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory
