@@ -106,11 +106,8 @@
   (into metric-concise-keys
         [:entity_id :display :creator_id :created_at :updated_at]))
 
-(projections/register-projection!
- :metric
- {:concise  #(compact (select-keys % metric-concise-keys))
-  :detailed #(compact (select-keys % metric-detailed-keys))
-  :sample   (zipmap metric-detailed-keys (repeat "x"))})
+(projections/register-key-projection! :metric metric-concise-keys
+                                      :detailed-keys metric-detailed-keys)
 
 ;;; ------------------------------------------------ measure / segment ---------------------------------------------
 
@@ -122,11 +119,8 @@
         [:entity_id :creator_id :created_at :updated_at]))
 
 (doseq [type [:measure :segment]]
-  (projections/register-projection!
-   type
-   {:concise  #(compact (select-keys % measure-segment-concise-keys))
-    :detailed #(compact (select-keys % measure-segment-detailed-keys))
-    :sample   (zipmap measure-segment-detailed-keys (repeat "x"))}))
+  (projections/register-key-projection! type measure-segment-concise-keys
+                                        :detailed-keys measure-segment-detailed-keys))
 
 (defn- fetch-measure-or-segment
   [model id-or-eid]
@@ -182,11 +176,8 @@
   (into snippet-concise-keys
         [:entity_id :creator_id :created_at :updated_at]))
 
-(projections/register-projection!
- :snippet
- {:concise  #(compact (select-keys % snippet-concise-keys))
-  :detailed #(compact (select-keys % snippet-detailed-keys))
-  :sample   (zipmap snippet-detailed-keys (repeat "x"))})
+(projections/register-key-projection! :snippet snippet-concise-keys
+                                      :detailed-keys snippet-detailed-keys)
 
 (defn- fetch-snippet
   [id-or-eid]
@@ -202,11 +193,8 @@
   (into document-concise-keys
         [:entity_id :creator_id :created_at :updated_at]))
 
-(projections/register-projection!
- :document
- {:concise  #(compact (select-keys % document-concise-keys))
-  :detailed #(compact (select-keys % document-detailed-keys))
-  :sample   (zipmap document-detailed-keys (repeat "x"))})
+(projections/register-key-projection! :document document-concise-keys
+                                      :detailed-keys document-detailed-keys)
 
 (defn- fetch-document
   [id-or-eid]
@@ -342,11 +330,9 @@
              :handlers [{:id 1 :channel_type "x" :channel_id 1
                          :recipients [{:type "x" :user_id 1 :email "x" :permissions_group_id 1}]}])))
 
-(projections/register-projection!
- :alert
- {:concise  #(compact (select-keys % alert-concise-keys))
-  :detailed #(compact (select-keys % alert-detailed-keys))
-  :sample   alert-sample})
+(projections/register-key-projection! :alert alert-concise-keys
+                                      :detailed-keys alert-detailed-keys
+                                      :sample alert-sample)
 
 ;;; ------------------------------------------------- subscription -------------------------------------------------
 
@@ -482,46 +468,74 @@
              :table {:id 1 :name "x" :schema "x" :db_id 1}
              :tag_ids [1])))
 
-(projections/register-projection!
- :transform
- {:concise  #(compact (select-keys % transform-concise-keys))
-  :detailed #(compact (select-keys % transform-detailed-keys))
-  :sample   transform-sample})
+(projections/register-key-projection! :transform transform-concise-keys
+                                      :detailed-keys transform-detailed-keys
+                                      :sample transform-sample)
 
 ;;; ------------------------------------------------ type dispatch -------------------------------------------------
 
+;;; Include-section builders — each a `(row -> fragment-map-or-nil)`, co-located into `type->spec`
+;;; below so a type declares which sections it supports, and how, in one place.
+
+(defn- definition-include
+  "A `definition` section builder that exports `row`'s query via `export-fn`, omitting the section
+   when there is nothing to export."
+  [export-fn]
+  (fn [row]
+    (when-let [definition (export-fn row)]
+      {:definition definition})))
+
+(def ^:private card-definition-include (definition-include card-definition))
+(defn- fields-include [row] {:result_metadata (vec (:result_metadata row))})
+
 (def ^:private type->spec
-  "Per-type dispatch: the projection key and the fetch fn (id-or-eid -> permission-checked
-   content row). `:scope` is the extra runtime scope the type requires on top of the tool's
-   base `agent:resource:read`."
-  {"question"     {:proj :question   :fetch #(fetch-card "question" %)}
-   "model"        {:proj :question   :fetch #(fetch-card "model" %)}
-   "metric"       {:proj :metric     :fetch #(fetch-card "metric" %)}
-   "measure"      {:proj :measure    :fetch #(fetch-measure-or-segment :model/Measure %)}
-   "segment"      {:proj :segment    :fetch #(fetch-measure-or-segment :model/Segment %)}
-   "dashboard"    {:proj :dashboard  :fetch fetch-dashboard}
-   "document"     {:proj :document   :fetch fetch-document}
-   "collection"   {:proj :collection :fetch fetch-collection}
-   "snippet"      {:proj :snippet    :fetch fetch-snippet}
-   "alert"        {:proj :alert      :fetch #(fetch-notification "alert" :notification/card %)
+  "Per-type dispatch, co-located. Each entry carries the fetch fn (`:fetch`, id-or-eid ->
+   permission-checked row), the extra runtime `:scope` the type needs on top of the tool's base
+   `agent:resource:read`, and the `:includes` sections it supports (section name -> a
+   `(row -> fragment)` builder). `:proj` (the projection key) defaults to `(keyword type)` and is
+   only spelled out when it differs — a model reads with the question projection."
+  {"question"     {:fetch #(fetch-card "question" %)
+                   :includes {"definition" card-definition-include "fields" fields-include}}
+   "model"        {:proj :question   :fetch #(fetch-card "model" %)
+                   :includes {"definition" card-definition-include "fields" fields-include}}
+   "metric"       {:fetch #(fetch-card "metric" %)
+                   :includes {"definition" card-definition-include
+                              "dimensions" #(dimensions-section "metric" %)}}
+   "measure"      {:fetch #(fetch-measure-or-segment :model/Measure %)
+                   :includes {"definition" (definition-include #(measure-or-segment-definition :measure %))
+                              "dimensions" #(dimensions-section "measure" %)}}
+   "segment"      {:fetch #(fetch-measure-or-segment :model/Segment %)
+                   :includes {"definition" (definition-include #(measure-or-segment-definition :segment %))}}
+   "dashboard"    {:fetch fetch-dashboard
+                   :includes {"parameters" (fn [row] {:parameters (vec (get-in row [::dashboard :parameters]))})
+                              "layout"     (fn [row] {:layout (dashboard-layout row)})}}
+   "document"     {:fetch fetch-document
+                   :includes {"layout" (fn [row] {:layout (document-layout row)})}}
+   "collection"   {:fetch fetch-collection}
+   "snippet"      {:fetch fetch-snippet}
+   "alert"        {:fetch #(fetch-notification "alert" :notification/card %)
                    :scope metabot.scope/agent-notification-read}
-   "subscription" {:proj :subscription :fetch fetch-subscription
+   "subscription" {:fetch fetch-subscription
                    :scope metabot.scope/agent-notification-read}
-   "transform"    {:proj :transform  :fetch fetch-transform
-                   :scope metabot.scope/agent-transforms-read}})
+   "transform"    {:fetch fetch-transform
+                   :scope metabot.scope/agent-transforms-read
+                   :includes {"definition" (definition-include transform-definition)}}})
 
 (def ^:private content-types
   (vec (sort (keys type->spec))))
 
 (def ^:private include->types
-  "Which types each `include` section applies to. A section is applied to each batch item whose
-   type supports it and skipped for the rest, so a mixed-type batch can name a section that only
-   some items have; a section no item in the batch supports is a teaching error."
-  {"definition" #{"question" "model" "metric" "measure" "segment" "transform"}
-   "fields"     #{"question" "model"}
-   "parameters" #{"dashboard"}
-   "layout"     #{"dashboard" "document"}
-   "dimensions" #{"metric" "measure"}})
+  "Which types each `include` section applies to — derived from the `:includes` each type declares
+   in [[type->spec]], so the two never drift. A section is applied to each batch item whose type
+   supports it and skipped for the rest, so a mixed-type batch can name a section that only some
+   items have; a section no item in the batch supports is a teaching error."
+  (transduce
+   (mapcat (fn [[type {:keys [includes]}]]
+             (for [inc-name (keys includes)] [inc-name type])))
+   (completing (fn [acc [inc-name type]]
+                 (update acc inc-name (fnil conj #{}) type)))
+   {}
+   type->spec))
 
 (defn- check-type-scope!
   [token-scopes type]
@@ -547,20 +561,11 @@
                  (str/join ", " (sort applicable))))))))
 
 (defn- build-include
+  "Apply the `inc-name` section builder that `type` declares in [[type->spec]] to `row`, or nil
+   when the type does not support the section (it is simply skipped for that item)."
   [type row inc-name]
-  (case inc-name
-    "definition" (when-let [definition (case type
-                                         ("question" "model" "metric") (card-definition row)
-                                         "measure"   (measure-or-segment-definition :measure row)
-                                         "segment"   (measure-or-segment-definition :segment row)
-                                         "transform" (transform-definition row))]
-                   {:definition definition})
-    "fields"     {:result_metadata (vec (:result_metadata row))}
-    "parameters" {:parameters (vec (get-in row [::dashboard :parameters]))}
-    "layout"     {:layout (case type
-                            "dashboard" (dashboard-layout row)
-                            "document"  (document-layout row))}
-    "dimensions" (dimensions-section type row)))
+  (when-let [builder (get-in type->spec [type :includes inc-name])]
+    (builder row)))
 
 ;;; -------------------------------------------------- the handler -------------------------------------------------
 
@@ -572,7 +577,8 @@
   (try
     (check-type-scope! token-scopes type)
     (let [{:keys [proj fetch]} (type->spec type)
-          row (fetch id)]
+          proj (or proj (keyword type))
+          row  (fetch id)]
       (if fields
         (common/select-fields proj (projections/project proj :detailed row) fields
                               {:response-format (:response_format args)

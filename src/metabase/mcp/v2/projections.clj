@@ -11,6 +11,7 @@
    item-relative inside arrays."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
    [metabase.util :as u]))
@@ -70,6 +71,27 @@
     (swap! registry assoc type (assoc entry :catalog resolved-catalog))
     type))
 
+(defn register-key-projection!
+  "Register `type`'s concise/detailed projections as `select-keys` over the given key vectors —
+   the common case, replacing a hand-written `{:concise … :detailed … :sample …}` map. Options:
+
+   - `:detailed-keys` — keys for the detailed projection; defaults to `concise-keys`.
+   - `:compact?` — drop nil-valued keys from the projected row (default true). Pass false for rows
+     whose columns are always populated and where an explicit null is meaningful.
+   - `:sample` — a representative detailed row, overriding the auto `(zipmap detailed-keys \"x\")`
+     for types with nested (non-scalar) shapes the catalog must see."
+  [type concise-keys & {:keys [detailed-keys compact? sample] :or {compact? true}}]
+  (let [detailed-keys (or detailed-keys concise-keys)
+        project-fn    (fn [ks]
+                        (if compact?
+                          #(m/remove-vals nil? (select-keys % ks))
+                          #(select-keys % ks)))]
+    (register-projection!
+     type
+     {:concise  (project-fn concise-keys)
+      :detailed (project-fn detailed-keys)
+      :sample   (or sample (zipmap detailed-keys (repeat "x")))})))
+
 (defn project
   "Apply `type`'s `fmt` (`:concise` | `:detailed`) projection to `row`. Throws when no
    projection is registered for `type`."
@@ -101,11 +123,8 @@
   (into collection-concise-keys
         [:authority_level :personal_owner_id :namespace :entity_id :slug :created_at]))
 
-(register-projection!
- :collection
- {:concise  #(select-keys % collection-concise-keys)
-  :detailed #(select-keys % collection-detailed-keys)
-  :sample   (zipmap collection-detailed-keys (repeat "x"))})
+(register-key-projection! :collection collection-concise-keys
+                          :detailed-keys collection-detailed-keys :compact? false)
 
 (def ^:private table-concise-keys
   [:id :name :display_name :schema :db_id :description])
@@ -115,17 +134,8 @@
         [:entity_type :view_count :active :field_order :is_upload :visibility_type
          :initial_sync_status :created_at :updated_at]))
 
-(register-projection!
- :table
- {:concise  #(select-keys % table-concise-keys)
-  :detailed #(select-keys % table-detailed-keys)
-  :sample   (zipmap table-detailed-keys (repeat "x"))})
-
-(defn- compact
-  "Drop nil-valued keys, so a concise card projection omits what it doesn't carry rather than
-   emitting explicit nulls."
-  [m]
-  (into {} (remove (comp nil? val)) m))
+(register-key-projection! :table table-concise-keys
+                          :detailed-keys table-detailed-keys :compact? false)
 
 ;; The one canonical card projection. Shared by browse_collection's model list and get_content's
 ;; question/model reads — registered here (the namespace both load) so it has a single definition
@@ -147,13 +157,12 @@
    (`list_models`, browse rows) can't fetch them, so they drop these before selecting."
   #{:query_summary :template_tags})
 
-(register-projection!
- :question
- {:concise  #(compact (select-keys % question-concise-keys))
-  :detailed #(compact (select-keys % question-detailed-keys))
-  :sample   (-> (zipmap question-detailed-keys (repeat "x"))
-                (assoc :template_tags {}
-                       :parameters [{:id "x" :name "x" :type "x" :target ["x"] :slug "x"}]))})
+(register-key-projection!
+ :question question-concise-keys
+ :detailed-keys question-detailed-keys
+ :sample (-> (zipmap question-detailed-keys (repeat "x"))
+             (assoc :template_tags {}
+                    :parameters [{:id "x" :name "x" :type "x" :target ["x"] :slug "x"}])))
 
 ;;; ----------------------------------------------- dashboard ------------------------------------------------------
 
@@ -176,7 +185,8 @@
 
 (defn- dashcard-summary
   [{:keys [visualization_settings] :as dc}]
-  (compact
+  (m/remove-vals
+   nil?
    {:id                (:id dc)
     :kind              (dashcard-kind dc)
     :card              (dashcard-card-ref dc)
@@ -201,7 +211,8 @@
   [dash]
   (let [resolved (dashboard/dashboard->resolved-params dash)]
     (mapv (fn [{param-id :id :as param}]
-            (compact
+            (m/remove-vals
+             nil?
              {:id           param-id
               :name         (:name param)
               :type         (:type param)
@@ -239,8 +250,7 @@
                           :row 0 :col 0 :size_x 1 :size_y 1 :series [{:id 1 :name "x"}]
                           :inline_parameters ["x"]}])))
 
-(register-projection!
- :dashboard
- {:concise  #(compact (select-keys % dashboard-concise-keys))
-  :detailed #(compact (select-keys % dashboard-detailed-keys))
-  :sample   dashboard-sample})
+(register-key-projection!
+ :dashboard dashboard-concise-keys
+ :detailed-keys dashboard-detailed-keys
+ :sample dashboard-sample)
