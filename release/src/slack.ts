@@ -21,10 +21,12 @@ const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 const SLACK_CHANNEL_NAME = process.env.SLACK_RELEASE_CHANNEL ?? "bot-testing";
 
 export function mentionUserByGithubLogin(githubLogin?: string | null) {
-  if (githubLogin && githubLogin in githubSlackMap) {
+  if (!githubLogin) {
+    return '';
+  } else if (githubLogin in githubSlackMap) {
     return `<@${githubSlackMap[githubLogin]}>`;
   }
-  return `@${githubLogin ?? 'unassigned'}`;
+  return `@${githubLogin}`;
 }
 
 export function mentionSlackTeam(teamName: string) {
@@ -42,7 +44,7 @@ export function getChannelTopic(channelName: string) {
 
 function formatBackportItem(issue: Omit<Issue, 'labels'>,) {
   const age = dayjs(issue.created_at).fromNow();
-  return `${mentionUserByGithubLogin(issue.assignee?.login)} - ${slackLink(issue.title, issue.html_url)} - ${age}`;
+  return `${issue.assignee?.login ? mentionUserByGithubLogin(issue.assignee?.login) : '@unassigned'} - ${slackLink(issue.title, issue.html_url)} - ${age}`;
 }
 
 export async function sendBackportReminder({
@@ -112,7 +114,7 @@ export async function sendPreReleaseStatus({
   milestoneId: number,
 }) {
   const blockerText = `* ${openIssues.length } Blockers*
-    ${openIssues.map(issue => `  • <${issue.html_url}|#${issue.number} - ${issue.title}> - ${mentionUserByGithubLogin(issue.assignee?.login)}`).join("\n")}`;
+    ${openIssues.map(issue => `  • <${issue.html_url}|#${issue.number} - ${issue.title}> - ${issue.assignee?.login ? mentionUserByGithubLogin(issue.assignee?.login) : '@unassigned'}`).join("\n")}`;
 
   const blocks = [
     {
