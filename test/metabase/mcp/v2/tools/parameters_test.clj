@@ -235,6 +235,18 @@
                (:values (params-result {:target "question" :id (:id native-card)
                                         :parameter_id "_CARD_NAME_" :query "Steak"}))))))))
 
+(deftest blank-query-test
+  (testing "GHY-4141: a whitespace-only query is a teaching error on both targets — the backends
+            reject it as a non-blank string, and uninstrumented it would match nothing at all"
+    (with-fixtures [{:keys [dashboard native-card]}]
+      (mt/with-test-user :rasta
+        (is (re-find #"`query` .* blank"
+                     (params-error {:target "dashboard" :id (:id dashboard)
+                                    :parameter_id "_CATEGORY_NAME_" :query "   "})))
+        (is (re-find #"`query` .* blank"
+                     (params-error {:target "question" :id (:id native-card)
+                                    :parameter_id "_CARD_NAME_" :query "   "})))))))
+
 (deftest question-values-test
   (testing "GHY-4141: target \"question\" resolves a card's parameters, including native template tags"
     (with-fixtures [{:keys [native-card]}]

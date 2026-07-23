@@ -181,6 +181,9 @@
    :annotations {:readOnlyHint true :idempotentHint true}
    :args        get-parameter-values-args-schema}
   [{:keys [target id parameter_id query constraints limit offset]} _context]
+  (when (and query (str/blank? query))
+    (common/throw-teaching-error
+     "`query` is the text to match, so it can't be blank — pass a search string, or omit `query` to list every value."))
   (when (and (seq constraints) (= target "question"))
     (common/throw-teaching-error
      "`constraints` chain-filters a dashboard's filters against each other, so it needs target: \"dashboard\" — a question's parameters are independent and take none."))
