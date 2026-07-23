@@ -865,6 +865,8 @@ export const loadConversation = createAsyncThunk(
         agentId,
         conversationId: detail.conversation_id,
         title: detail.title ?? undefined,
+        forkedFromConversationId:
+          detail.forked_from_conversation_id ?? undefined,
         messages: normalizeFetchedChatMessages(detail.messages),
         state: detail.state,
         activeToolCalls: [],
@@ -895,6 +897,8 @@ export const forkConversation = createAsyncThunk(
         agentId,
         conversationId: conversation.conversation_id,
         title: conversation.title ?? undefined,
+        forkedFromConversationId:
+          conversation.forked_from_conversation_id ?? undefined,
         messages: normalizeFetchedChatMessages(conversation.messages),
         state: conversation.state,
         activeToolCalls: [],

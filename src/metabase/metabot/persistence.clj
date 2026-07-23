@@ -805,6 +805,7 @@
        :created_at      (:created_at conv)
        :title           (:title conv)
        :user_id         (:user_id conv)
+       :forked_from_conversation_id (:forked_from_conversation_id conv)
        :state           (conversation-state messages)
        :saved_entities  (mapv (fn [{:keys [id metabot_chart_id]}]
                                 {:card_id  id

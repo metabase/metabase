@@ -110,6 +110,7 @@ export const createConversation = (
   return {
     isProcessing: false,
     title: undefined,
+    forkedFromConversationId: undefined,
     messages: [],
     visible: false,
     state: {},
