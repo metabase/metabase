@@ -18,6 +18,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
+   [metabase.parameters.params :as params]
    [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
@@ -87,13 +88,29 @@
           (parameters.dashboard/param-values dash parameter-id constraints query))
         (parameters.dashboard/param-values dash parameter-id constraints)))))
 
+(def ^:private no-values
+  {:values [] :has_more_values false})
+
+(defn- valueless-param?
+  "True when a card parameter has nothing behind it to fetch values from: no values source, and no
+   field under its target. A free-text template tag is the common case."
+  [card param]
+  (and (nil? (:values_source_type param))
+       (nil? (params/param-target->field-id (:target param) card))))
+
 (defn- question-values
   [id-or-eid parameter-id query]
-  (let [card (common/resolve-and-read :model/Card id-or-eid
-                                      (fn [id] (api/read-check (t2/select-one :model/Card :id id))))]
-    (check-parameter-id! "question" parameter-id (card-parameters card))
-    (binding [qp.perms/*param-values-query* true]
-      (queries/card-param-values card parameter-id query))))
+  (let [card   (common/resolve-and-read :model/Card id-or-eid
+                                        (fn [id] (api/read-check (t2/select-one :model/Card :id id))))
+        params (card-parameters card)]
+    (check-parameter-id! "question" parameter-id params)
+    (let [param (some #(when (= parameter-id (u/qualified-name (:id %))) %) params)]
+      ;; `card-param-values` answers nil for a valueless parameter, which its own output schema
+      ;; rejects — so the tool decides this case rather than calling and catching.
+      (if (valueless-param? card param)
+        no-values
+        (binding [qp.perms/*param-values-query* true]
+          (queries/card-param-values card parameter-id query))))))
 
 ;;; --------------------------------------------------- Response ---------------------------------------------------
 
@@ -167,8 +184,8 @@
   (let [result (if (= target "dashboard")
                  (dashboard-values id parameter_id query constraints)
                  (question-values id parameter_id query))]
-    ;; The card path returns nil when the parameter maps to no field at all; an empty value list
-    ;; is the honest answer, and the steering line says so.
-    (values-content (or result {:values [] :has_more_values false})
+    ;; The card path still answers nil when a parameter's source card was archived and its target
+    ;; has no field to fall back to; an empty value list is the honest answer there too.
+    (values-content (or result no-values)
                     (or limit default-limit)
                     (or offset 0))))

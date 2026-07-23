@@ -232,6 +232,26 @@
           (is (= [["African"] ["American"] ["Artisan"]] values))
           (is (true? has_more_values)))))))
 
+(deftest valueless-question-parameter-test
+  (testing "GHY-4141: a question parameter with neither a values source nor a field behind it returns an
+            empty list rather than an error — `card-param-values` answers nil here, which its own output
+            schema rejects under dev/test instrumentation"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:name          "Free text"
+                    :database_id   (mt/id)
+                    :query_type    :native
+                    :dataset_query {:database (mt/id)
+                                    :type     :native
+                                    :native   {:query         "SELECT 1 WHERE 1 = {{x}}"
+                                               :template-tags {"x" {:name         "x"
+                                                                    :display-name "X"
+                                                                    :id           "_X_"
+                                                                    :type         :text}}}}}]
+      (mt/with-test-user :rasta
+        (let [args {:target "question" :id card-id :parameter_id "_X_"}]
+          (is (= {:values [] :returned 0 :has_more_values false} (params-result args)))
+          (is (re-find #"No values" (steering-line args))))))))
+
 (deftest constraints-test
   (testing "GHY-4141: constraints chain-filter this parameter against another filter's selection"
     (with-fixtures [{:keys [dashboard]}]
