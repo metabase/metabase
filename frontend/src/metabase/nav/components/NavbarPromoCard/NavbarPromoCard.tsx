@@ -37,7 +37,7 @@ export function NavbarPromoCard({
           <Flex gap="sm">
             {icon ? <span className={S.IconWrapper}>{icon}</span> : null}
             {title && (
-              <Text fw="bold" size="md">
+              <Text fw="bold" size="md" lh={1.1}>
                 {title}
               </Text>
             )}
