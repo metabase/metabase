@@ -14,7 +14,7 @@ import { LighthouseIllustration } from "metabase/common/components/LighthouseIll
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
-import type { Location } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 import { Button, Center, Stack, Text } from "metabase/ui";
 
@@ -38,17 +38,16 @@ const SUBSCRIPTION = {
 
 type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 
-export const UnsubscribePage = ({
-  location,
-}: UnsubscribeProps): JSX.Element => {
+export const UnsubscribePage = (): JSX.Element => {
+  const { location } = useRouter();
   const [subscriptionChange, setSubscriptionChange] = useState<Subscription>(
     SUBSCRIPTION.UNSUBSCRIBE,
   );
 
-  const hash = location?.query?.hash;
-  const email = location?.query?.email;
-  const pulseId = location?.query?.["pulse-id"];
-  const notificationHandlerId = location?.query?.["notification-handler-id"];
+  const hash = location.query?.hash;
+  const email = location.query?.email;
+  const pulseId = location.query?.["pulse-id"];
+  const notificationHandlerId = location.query?.["notification-handler-id"];
 
   const { data, isLoading, error } = useUnsubscribeRequest({
     hash,
@@ -260,17 +259,6 @@ function ErrorDisplay() {
       <Text fz="md">{t`Please give it a minute and try again`}</Text>
     </Stack>
   );
-}
-
-type UnsubscribeQueryString = Partial<{
-  hash: string;
-  email: string;
-  "pulse-id": string;
-  "notification-handler-id": string;
-}>;
-
-interface UnsubscribeProps {
-  location: Location<UnsubscribeQueryString>;
 }
 
 interface SubscriptionDetailProps {

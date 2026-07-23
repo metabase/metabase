@@ -38,13 +38,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import {
-  type Location,
-  Outlet,
-  type Route,
-  push,
-  replace,
-} from "metabase/router";
+import { Outlet, push, replace, useParams, useRouter } from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
@@ -118,19 +112,12 @@ const DocumentPrintContextProvider = ({
   );
 };
 
-export const DocumentPage = ({
-  params,
-  route,
-  location,
-}: {
-  params: {
-    entityId?: string;
-    childTargetId?: string;
-  };
-  location: Location;
-  route: Route;
-}) => {
-  const { entityId, childTargetId: paramsChildTargetId } = params;
+export const DocumentPage = () => {
+  const { location } = useRouter();
+  const { entityId, childTargetId: paramsChildTargetId } = useParams<{
+    entityId: string;
+    childTargetId: string;
+  }>();
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
@@ -633,7 +620,6 @@ export const DocumentPage = ({
               // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
               key={location.key}
               isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
-              route={route}
               onOpenChange={(open) => {
                 if (open) {
                   trackDocumentUnsavedChangesWarningDisplayed(documentData);

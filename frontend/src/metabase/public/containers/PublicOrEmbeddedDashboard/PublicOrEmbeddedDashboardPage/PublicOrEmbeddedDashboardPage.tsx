@@ -8,7 +8,7 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -17,23 +17,22 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 
-const PublicOrEmbeddedDashboardPageInner = ({
-  location,
-  router,
-}: WithRouterProps) => {
+const PublicOrEmbeddedDashboardPageInner = () => {
+  const { location, router } = useRouter();
+
   useDashboardLocationSync({ location });
   useDashboardUrlQuery(router, location);
 
   return <PublicOrEmbeddedDashboardView />;
 };
 
-export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
+export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
 
-  const { location, params } = props;
+  const { location, params } = useRouter();
   const { uuid, token } = params;
 
-  const parameterQueryParams = props.location.query;
+  const parameterQueryParams = location.query;
 
   const dashboardId = uuid || token;
 
@@ -89,7 +88,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
           }
           dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
         >
-          <PublicOrEmbeddedDashboardPageInner {...props} />
+          <PublicOrEmbeddedDashboardPageInner />
         </DashboardContextProvider>
       </EmbeddingEntityContextProvider>
     </LocaleProvider>
