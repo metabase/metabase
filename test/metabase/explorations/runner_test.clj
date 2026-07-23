@@ -369,7 +369,10 @@
         sr-id (first
                (t2/insert-returning-pks!
                 :model/StoredResult
-                {:result_data bytes}))]
+                {:result_data   bytes
+                 :database_id   (mt/id)
+                 :dataset_query (let [mp (mt/metadata-provider)]
+                                  (lib/query mp (lib.metadata/table mp (mt/id :venues))))}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
                  :stored_result_id     sr-id})))

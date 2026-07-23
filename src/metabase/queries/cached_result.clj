@@ -17,44 +17,44 @@
   compatible with the lens the `stored-result` blob was computed under — i.e. the viewer may be
   served the creator's snapshot. See [[metabase.permissions.data-access-token]].
 
-  A `nil` `:data_access_token` (a pre-token snapshot, or a write that failed to capture one)
-  means no lens comparison is possible at all; the deliberate fallback is admin-only.
-  (This branch never consults `:dataset_query` — there is no token to compare it against.)
+  When both the token and the query are present we compare lenses strictly. Two degenerate cases
+  make that comparison impossible: a `nil` `:data_access_token` (a pre-token snapshot, or a write
+  that failed to capture one) and token computation throwing (the viewer is missing a
+  routing/impersonation attribute the snapshot's database requires, or the query's source-card
+  chain can no longer be resolved to its underlying tables). Both fall back to admin-only: a
+  superuser is never sandboxed or impersonated and resolves to the router db itself, so serving
+  them cannot leak; everyone else is denied.
 
-  When a token IS present we are in strict lens-comparison land, and admins get no exemption —
-  an admin's own lens isn't necessarily neutral (database routing applies to admins too). So a
-  `nil` `:dataset_query`, which makes the viewer's sandbox lens uncomputable, denies everyone
-  including admins — deny rather than guess. Token computation throwing — the viewer is missing
-  a routing/impersonation attribute the snapshot's database requires — likewise means deny."
+  A missing `:dataset_query` is not a degenerate case but a caller bug — the schema forbids NULL —
+  and [[cached-result-blocked-reason]] throws on it before we get here."
   [stored-result]
-  (cond
-    (nil? (:data_access_token stored-result))
+  (if (nil? (:data_access_token stored-result))
     (boolean api/*is-superuser?*)
-
-    (nil? (:dataset_query stored-result))
-    false
-
-    :else
     (try
       (perms/data-access-compatible?
        (:data_access_token stored-result)
        (perms/data-access-token {:database-id (:database_id stored-result)
-                                 :table-ids   (query-perms/query->source-table-ids
+                                 :table-ids   (query-perms/query->resolved-source-table-ids
                                                (:dataset_query stored-result))}))
-      (catch Throwable _ false))))
+      (catch Throwable _
+        (boolean api/*is-superuser?*)))))
 
 (defn- cached-result-blocked-reason
   "If the current user must NOT be served the cached blob for `stored-result`, return a keyword
   describing why. Returns nil when the cached blob is safe to stream.
+
+  Throws when `stored-result` has no `:dataset_query` (this should never happen).
 
   Reasons (in priority order):
     `:no-data-perms`        — current user lacks the data perms required to run the underlying query.
     `:incompatible-context` — current user's sandbox/impersonation/routing lens differs from the
                               lens the snapshot was computed under."
   [stored-result]
+  (when (nil? (:dataset_query stored-result))
+    (throw (ex-info "stored-result is missing its dataset_query"
+                    {:stored-result-id (:id stored-result)})))
   (cond
-    (and (:dataset_query stored-result)
-         (not (query-perms/can-run-query? (:dataset_query stored-result))))
+    (not (query-perms/can-run-query? (:dataset_query stored-result)))
     :no-data-perms
 
     (not (viewer-lens-compatible? stored-result))
