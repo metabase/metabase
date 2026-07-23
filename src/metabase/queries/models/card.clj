@@ -1609,7 +1609,4 @@
              [:= :report_card.enable_embedding false])
            (when (setting/get :enable-public-sharing)
              [:= :report_card.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_card.collection_id nil])
-            [:in :report_card.collection_id (-> args :collection-ids)]]]})
+           (staleness/collection-filter :report_card.collection_id args)]})

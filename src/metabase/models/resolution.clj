@@ -32,6 +32,7 @@
     :model/Comment                           metabase.comments.models.comment
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
+    :model/ContentDiagnosticsFinding         metabase-enterprise.content-diagnostics.models.finding
     :model/ContentTranslation                metabase.content-translation.models
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/DataApp                           metabase-enterprise.data-apps.models.data-app

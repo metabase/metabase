@@ -18,7 +18,7 @@
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
-   [metabase.transforms.models.transform-tag :as transform-tag]
+   [metabase.transforms.models.transform-schedule :as transform-schedule]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
@@ -416,7 +416,7 @@
   (let [tagged    (job-transform-ids job-id)
         plan      (:order (get-plan tagged))
         dep-ids   (into #{} (comp (map :id) (remove tagged)) plan)
-        scheduled (set (keys (transform-tag/schedules-for-transforms dep-ids)))]
+        scheduled (set (keys (transform-schedule/schedules-for-transforms dep-ids)))]
     (map (fn [{:keys [id] :as transform}]
            (cond-> transform
              (contains? dep-ids id) (assoc :dependency true

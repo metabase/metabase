@@ -15,8 +15,10 @@
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
+   [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -560,3 +562,27 @@
    :search-terms [:name :description]
    :render-terms {:transform-name :name
                   :transform-id   :id}})
+
+;;; ------------------------------------------------- Staleness ------------------------------------------------
+
+(defmethod staleness/find-stale-query :model/Transform
+  [_model args]
+  ;; Run-based: a transform is stale when it has never run and was created on/before the cutoff,
+  ;; or when its most recent run started on/before the cutoff (failed runs still count). Transforms
+  ;; between fires of a slower-than-threshold schedule are not stale.
+  (let [schedule-fresh-ids (freshness/schedule-fresh-transform-ids (java.time.Instant/now))]
+    {:select    [:transform.id
+                 [[:inline "Transform"] :model]
+                 [:transform.name :name]
+                 [:latest_run.last_start :last_used_at]]
+     :from      :transform
+     :left-join [[(transform-run/latest-run-start-times-query) :latest_run]
+                 [:= :latest_run.transform_id :transform.id]]
+     :where     [:and
+                 [:or
+                  [:and
+                   [:= :latest_run.last_start nil]
+                   [:<= :transform.created_at (:cutoff-date args)]]
+                  [:<= :latest_run.last_start (:cutoff-date args)]]
+                 (when (seq schedule-fresh-ids)
+                   [:not [:in :transform.id schedule-fresh-ids]])]}))

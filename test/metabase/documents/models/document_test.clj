@@ -8,6 +8,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.stale-test :as stale-test]
+   [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -805,3 +807,21 @@
             (binding [mi/*deserializing?* true]
               (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
             (is (empty? @events-published))))))))
+
+(deftest never-viewed-document-reports-null-activity-anchor
+  (testing "a never-viewed document's activity anchor is NULL, not its last_viewed_at storage default
+            (NOT NULL default current_timestamp) — the never-used arm (view_count = 0) stays
+            distinguishable downstream"
+    (mt/with-temp [:model/Document {viewed-id :id} (stale-test/stale-document {:name       "viewed long ago"
+                                                                               :view_count 5})
+                   :model/Document {never-id :id} {:name       "never viewed"
+                                                   :created_at (stale-test/datetime-months-ago 7)}]
+      (let [rows   (t2/query (staleness/find-stale-query
+                              :model/Document
+                              {:collection-ids #{nil}
+                               :cutoff-date    (stale-test/date-months-ago 6)}))
+            anchor (fn [id] (:last_used_at (first (filter #(= id (:id %)) rows))))]
+        (testing "a viewed-but-stale document keeps its real anchor"
+          (is (some? (anchor viewed-id))))
+        (testing "a never-viewed document (flagged via the never-used arm) reports NULL"
+          (is (nil? (anchor never-id))))))))

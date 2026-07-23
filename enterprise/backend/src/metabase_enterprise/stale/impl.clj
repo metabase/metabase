@@ -8,13 +8,19 @@
 
 (def ^:private FindStaleContentArgs
   [:map
-   [:collection-ids [:set {:doc "The set of collection IDs to search for stale content."} [:maybe :int]]]
+   [:collection-ids [:or
+                     {:doc "Collection IDs to search: a set (a nil member means the root), or :all for instance-wide."}
+                     [:= :all]
+                     [:set [:maybe :int]]]]
    [:cutoff-date [:time/local-date {:doc "The cutoff date for stale content."}]]
    [:limit  [:maybe {:doc "The limit for pagination."} :int]]
    [:offset [:maybe {:doc "The offset for pagination."} :int]]
    [:sort-column  [:enum {:doc "The column to sort by."} :name :last_used_at]]
    [:sort-direction  [:enum {:doc "The direction to sort by."} :asc :desc]]
-   [:models {:optional true} [:set {:doc "The set of models to search for stale content."} :keyword]]])
+   [:models {:optional true} [:set {:doc "The set of models to search for stale content."} :keyword]]
+   [:include-columns {:optional true}
+    [:set {:doc "Extra union columns to return on each row (rows carry only :id and :model by default)."}
+     [:enum :name :last_used_at]]]])
 
 (defn- sort-column [column]
   (case column
@@ -30,7 +36,7 @@
   (map #(staleness/find-stale-query % args) models))
 
 (mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
-  (cond-> {:select [:id :model]
+  (cond-> {:select (into [:id :model] (sort (:include-columns args)))
            :from [[{:union-all (queries args)} :dummy_alias]]
            :order-by [[(sort-column (:sort-column args))
                        (:sort-direction args)]]}
@@ -52,8 +58,8 @@
 
   Arguments are defined by [[FindStaleContentArgs]]:
 
-  - `collection-ids`: the set of collection IDs to look for stale content in. Non-recursive, the exact set you pass in
-  will be searched
+  - `collection-ids`: the set of collection IDs to look for stale content in (a nil member means root-level
+  content), or `:all` to search the whole instance. Non-recursive, the exact set you pass in will be searched
 
   - `cutoff-date`: if something was last accessed before this date, it is 'stale'
 
@@ -63,6 +69,9 @@
 
   - `sort-direction`: `:asc` or `:desc`
 
+  - `include-columns`: extra union columns (`:name`, `:last_used_at`) to return on each row; rows carry
+  only `:id` and `:model` by default
+
   Returns a map containing two keys,
 
   - `:rows` (a collection of maps containing an `:id` and `:model` field, like `{:id 1 :model :model/Card}`), and
@@ -70,10 +79,11 @@
   - `:total` (the total count of stale elements that could be found if you iterated through all pages)
   "
   [{:keys [collection-ids] :as args} :- FindStaleContentArgs]
-  (when (contains? collection-ids :root) (throw (ex-info "not implemented." {:collection-ids collection-ids})))
+  (when (and (set? collection-ids) (contains? collection-ids :root))
+    (throw (ex-info "not implemented." {:collection-ids collection-ids})))
   {:rows (into []
                (comp
-                (map #(select-keys % [:id :model]))
+                (map #(select-keys % (into [:id :model] (:include-columns args))))
                 (map (fn [v] (update v :model #(keyword "model" %)))))
                (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})

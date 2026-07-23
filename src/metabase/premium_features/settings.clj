@@ -243,6 +243,10 @@
   "Should we enable Collection Cleanup?"
   :collection-cleanup)
 
+(define-premium-feature ^{:added "0.64.0"} enable-content-diagnostics?
+  "Should we enable Content Diagnostics?"
+  :content-diagnostics)
+
 (define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?
   "Should we enable database auth-providers?"
   :database-auth-providers)
@@ -394,6 +398,7 @@
    :cloud_custom_smtp              (cloud-custom-smtp?)
    :collection_cleanup             (enable-collection-cleanup?)
    :config_text_file               (enable-config-text-file?)
+   :content_diagnostics            (enable-content-diagnostics?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)

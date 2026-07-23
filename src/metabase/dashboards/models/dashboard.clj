@@ -577,7 +577,4 @@
              [:= :report_dashboard.enable_embedding false])
            (when (setting/get :enable-public-sharing)
              [:= :report_dashboard.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_dashboard.collection_id nil])
-            [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+           (staleness/collection-filter :report_dashboard.collection_id args)]})

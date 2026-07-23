@@ -247,6 +247,28 @@
                                  [:= :status [:inline "succeeded"]]]
                       :group-by [:transform_id]}))))
 
+(defn latest-run-start-times-query
+  "HoneySQL map selecting each transform's most recent run `start_time` (any status) as
+  `:last_start`, one row per `:transform_id`; optionally restricted to `transform-ids`. The single
+  definition of the \"most recent run\" anchor — embedded as the staleness method's join subquery
+  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by
+  [[last-run-start-times]] for the schedule-freshness check, so the two can't drift apart."
+  ([]
+   (latest-run-start-times-query nil))
+  ([transform-ids]
+   (cond-> {:select   [:transform_id [[:max :start_time] :last_start]]
+            :from     [:transform_run]
+            :group-by [:transform_id]}
+     (seq transform-ids) (assoc :where [:in :transform_id transform-ids]))))
+
+(defn last-run-start-times
+  "Map each id in `transform-ids` to its most recent run's `start_time`, regardless of run status.
+  Ids with no runs are absent."
+  [transform-ids]
+  (when (seq transform-ids)
+    (t2/select-fn->fn :transform_id :last_start :model/TransformRun
+                      (latest-run-start-times-query transform-ids))))
+
 (defn- paged-runs-join-clause
   "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
   [{:keys [sort-column]}]

@@ -10,6 +10,8 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
@@ -162,6 +164,33 @@
                   :collection-position        true
                   :collection-type            :collection.type
                   :archived-directly          true}})
+
+;;; ------------------------------------------------- Staleness ---------------------------------------------------
+
+(defmethod staleness/find-stale-query :model/Document
+  [_model args]
+  {:select [:document.id
+            [[:inline "Document"] :model]
+            [:document.name :name]
+            ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
+            ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
+            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]]
+   :from :document
+   :left-join [:collection [:= :collection.id :document.collection_id]]
+   :where [:and
+           [:= :document.archived false]
+           ;; stale = not viewed since the cutoff, OR never viewed and created before the cutoff.
+           [:or
+            [:<= :document.last_viewed_at (-> args :cutoff-date)]
+            [:and
+             [:= :document.view_count 0]
+             [:<= :document.created_at (-> args :cutoff-date)]]]
+           ;; only regular user collections (type nil), not system collections like
+           ;; `instance-analytics`, `trash`, or the `library` collections.
+           [:= :collection.type nil]
+           (when (setting/get :enable-public-sharing)
+             [:= :document.public_uuid nil])
+           (staleness/collection-filter :document.collection_id args)]})
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 

@@ -10,6 +10,7 @@
    [metabase-enterprise.advanced-config.init]
    [metabase-enterprise.audit-app.init]
    [metabase-enterprise.cache.init]
+   [metabase-enterprise.content-diagnostics.init]
    [metabase-enterprise.custom-viz-plugin.init]
    [metabase-enterprise.data-apps.init]
    [metabase-enterprise.data-complexity-score.init]
