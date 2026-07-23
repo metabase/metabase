@@ -201,7 +201,8 @@ describe("issue 52411", { tags: "@external" }, () => {
     // Opening the table picker fetches the raw databases and the saved-questions
     // database in parallel; the latter resolving re-renders the database list and
     // detaches "Writable Postgres12" mid-click. Wait for it to settle first.
-    cy.intercept("GET", {
+    cy.intercept({
+      method: "GET",
       pathname: "/api/database",
       query: { saved: "true" },
     }).as("savedQuestionsDatabase");
