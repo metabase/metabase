@@ -902,10 +902,6 @@
                                                                         :where  [:= :card_id id]}]))]
     (t2/delete! :model/Notification :id [:in notification-ids])))
 
-(defmethod serdes/hash-fields :model/Card
-  [_card]
-  [:name (serdes/hydrated-hash :collection) :created_at])
-
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
   [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])

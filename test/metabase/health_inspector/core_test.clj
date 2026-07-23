@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.health-inspector.core :as hi]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -21,19 +23,22 @@
       (is (= 100 (-> report :validate-queries :health))))))
 
 (deftest validate-queries*-works
-  (let [bad-query {"database" 1
-                   "query" {"expressions" "extremely invalid"
-                            "source-table" 2}
-                   "type" "query"}
-        bad-card (assoc (dissoc (t2/select-one :report_card) :id :entity_id)
-                        :dataset_query (json/encode bad-query)
-                        :description "bad query")
-        bad (t2/insert! :report_card bad-card)]
-    (try
-      (let [{:keys [health message]} (hi/validate-queries)]
-        (is (< 0 health 100))
-        (is (= "Some queries are invalid." message)))
-      (finally (t2/delete! :report_card bad)))))
+  ;; the raw :report_card copy below clones this template, so the test works in isolation
+  (mt/with-temp [:model/Card template {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+    (let [bad-query {"database" 1
+                     "query" {"expressions" "extremely invalid"
+                              "source-table" 2}
+                     "type" "query"}
+          bad-card (assoc (dissoc (t2/select-one :report_card :id (:id template)) :id)
+                          :entity_id (u/generate-nano-id)
+                          :dataset_query (json/encode bad-query)
+                          :description "bad query")
+          bad (t2/insert! :report_card bad-card)]
+      (try
+        (let [{:keys [health message]} (hi/validate-queries)]
+          (is (< 0 health 100))
+          (is (= "Some queries are invalid." message)))
+        (finally (t2/delete! :report_card bad))))))
 
 (deftest report-db-test
   (t2/delete! :health_inspector_runs)
