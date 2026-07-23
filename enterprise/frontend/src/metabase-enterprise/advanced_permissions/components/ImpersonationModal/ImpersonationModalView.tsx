@@ -97,7 +97,7 @@ export const ImpersonationModalView = ({
       </Text>
       {roleRequired ? (
         <>
-          <Alert icon={<Icon name="warning" />} color="warning">
+          <Alert size="compact" icon={<Icon name="warning" />} color="warning">
             {t`Connection impersonation requires specifying a user role on the database connection.`}{" "}
             <Link
               variant="brand"
@@ -143,7 +143,7 @@ export const ImpersonationModalView = ({
         </FormProvider>
       ) : (
         <>
-          <Alert icon={<Icon name="warning" />} color="warning">
+          <Alert size="compact" icon={<Icon name="warning" />} color="warning">
             {t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
             <Link
               variant="brand"

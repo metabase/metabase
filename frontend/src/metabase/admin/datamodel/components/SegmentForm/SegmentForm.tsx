@@ -67,6 +67,7 @@ export const SegmentForm = ({
       <FormBody>
         {isReadOnly && (
           <Alert
+            size="compact"
             color="warning"
             display="inline-flex"
             mb="md"

@@ -126,6 +126,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
         />
         {isReadOnly && (
           <Alert
+            size="compact"
             className={S.flexStart}
             color="warning"
             title={

@@ -42,7 +42,11 @@ export const EmbeddedEngineDocContent = ({ engineKey }: Props) => {
 
   return (
     <Box ref={markdownRef} w="100%">
-      {loadingError && <Alert mt="xl">{loadingError}</Alert>}
+      {loadingError && (
+        <Alert size="compact" variant="light" mt="xl">
+          {loadingError}
+        </Alert>
+      )}
       {isLoading ? (
         <Loader mx="auto" mt="xl" display="block" data-testid="loader" />
       ) : (

@@ -50,6 +50,7 @@ export const DatabaseRoutingWarning = ({
 
   return (
     <Alert
+      size="compact"
       variant="light"
       color="warning"
       icon={<Icon name="warning" />}

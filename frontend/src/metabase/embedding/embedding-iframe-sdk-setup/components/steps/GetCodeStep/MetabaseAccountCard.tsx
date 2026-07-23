@@ -63,7 +63,11 @@ export const MetabaseAccountCard = () => {
         </Radio.Group>
 
         {!isSsoEnabledAndConfigured && !!settings.useExistingUserSession && (
-          <Alert icon={<Icon name="warning_triangle_filled" />} color="warning">
+          <Alert
+            size="compact"
+            icon={<Icon name="warning_triangle_filled" />}
+            color="warning"
+          >
             {jt`The code below will only work for local testing. To get production ready code, configure ${(
               <Anchor
                 key="configure-sso"

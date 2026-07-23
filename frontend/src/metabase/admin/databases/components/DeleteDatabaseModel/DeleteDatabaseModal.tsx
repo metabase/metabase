@@ -161,7 +161,7 @@ export const DeleteDatabaseModal = ({
           <DeleteDatabaseModalSection
             isHidden={!isContentRemovalConfirmed && hasContent}
           >
-            <Alert icon={<Icon name="warning" />} color="error">
+            <Alert size="compact" icon={<Icon name="warning" />} color="error">
               {defaultDatabaseRemovalMessage}
             </Alert>
           </DeleteDatabaseModalSection>

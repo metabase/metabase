@@ -91,7 +91,7 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
           </Button>
         </Flex>
         <Stack gap="sm">
-          <Alert color="warning">
+          <Alert size="compact" color="warning">
             {t`Make sure you copy this key now and save it in a safe place.`}
             <br />
             <Text fw="bold" component="strong">
@@ -99,7 +99,7 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
             </Text>
           </Alert>
           {!!currentValue && (
-            <Alert color="warning" mt="md">
+            <Alert size="compact" color="warning" mt="md">
               <Text component="strong" fw="bold">
                 {t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`}
               </Text>

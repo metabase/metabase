@@ -15,6 +15,7 @@ export const DevInstanceUpsell = UpsellWrapperDismissible(
     );
     return (
       <Alert
+        size="compact"
         color="core-brand"
         title={t`Need a dedicated development environment?`}
         icon={<UpsellGem.New />}

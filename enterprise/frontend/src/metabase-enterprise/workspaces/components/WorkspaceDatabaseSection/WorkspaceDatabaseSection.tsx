@@ -99,7 +99,12 @@ export function WorkspaceDatabaseSection({
       {isDbRoutingEnabled && (
         <>
           <DatabaseInfoSectionDivider />
-          <Alert variant="light" icon={<FixedSizeIcon name="info" />} mb="md">
+          <Alert
+            size="compact"
+            variant="light"
+            icon={<FixedSizeIcon name="info" />}
+            mb="md"
+          >
             {t`Workspaces can't be enabled when database routing is enabled.`}
           </Alert>
         </>

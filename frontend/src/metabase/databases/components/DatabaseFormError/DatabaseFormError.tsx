@@ -34,7 +34,12 @@ export const DatabaseFormError = () => {
   return (
     <Paper className={S.paper} ref={ref}>
       <Box p="md" pb={0}>
-        <Alert color="warning" icon={<Icon name="warning" />} title={title}>
+        <Alert
+          size="compact"
+          color="warning"
+          icon={<Icon name="warning" />}
+          title={title}
+        >
           {errorMessage}
         </Alert>
         {troubleshootingTips.map((tipProps, index) => (

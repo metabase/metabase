@@ -254,7 +254,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
       message: (
         <Flex direction="column" gap="lg">
           <Text>{coreMessage}</Text>
-          <Alert color="warning" icon={<Icon name="warning" />}>
+          <Alert size="compact" color="warning" icon={<Icon name="warning" />}>
             {resetGranularSettingsWarnging}
           </Alert>
         </Flex>

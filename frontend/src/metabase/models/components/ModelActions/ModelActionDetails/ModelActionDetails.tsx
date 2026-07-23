@@ -148,7 +148,12 @@ function ModelActionDetails({ model }: Props) {
         </ActionsHeader>
       )}
       {database && !hasActionsEnabled && (
-        <Alert w="70%" icon={<Icon name="warning" />} color="error">
+        <Alert
+          size="compact"
+          w="70%"
+          icon={<Icon name="warning" />}
+          color="error"
+        >
           {t`Running Actions is not enabled for database ${database.displayName()}`}
         </Alert>
       )}

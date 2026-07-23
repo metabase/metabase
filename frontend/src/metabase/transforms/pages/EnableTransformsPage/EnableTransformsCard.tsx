@@ -73,6 +73,7 @@ export function EnableTransformsCard({
                   )}
                   {!hasDbThatSupportsTransforms && (
                     <Alert
+                      size="compact"
                       color="warning"
                       variant="light"
                       icon={<Icon name="warning" />}

@@ -8,7 +8,7 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
 
   return (
     <Box mt="md" mb="sm" style={{ marginInlineEnd: "2.5rem" }}>
-      <Alert icon={<Icon name="warning" />}>
+      <Alert size="compact" variant="light" icon={<Icon name="warning" />}>
         <Text fw="bold" c="text-secondary">
           {t`The “No self-service” access level for View data is going away.`}
           {!isExpanded && (

@@ -40,7 +40,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
 function AuthorizedOriginsNote() {
   return (
     <Box data-testid="authorized-origins-note" w="22rem">
-      <Alert className={S.SameSiteAlert} color="warning">
+      <Alert size="compact" className={S.SameSiteAlert} color="warning">
         <Center>
           <Text component="span" ta="center">
             {jt`You should probably change this setting to ${(

@@ -16,6 +16,7 @@ export const TransformDisconnectedDatabaseBanner = ({
 
   return (
     <Alert
+      size="compact"
       color="error"
       icon={<Icon name="warning" />}
       data-testid="disconnected-database-banner"

@@ -166,7 +166,12 @@ export const DatabaseRoutingSection = ({
       {disabledFeatMsg != null && (
         <>
           <DatabaseInfoSectionDivider />
-          <Alert variant="light" icon={<Icon name="info" />} mb="md">
+          <Alert
+            size="compact"
+            variant="light"
+            icon={<Icon name="info" />}
+            mb="md"
+          >
             {disabledFeatMsg}
           </Alert>
         </>
@@ -177,7 +182,12 @@ export const DatabaseRoutingSection = ({
           <DatabaseInfoSectionDivider />
 
           {hasDbRoutingEnabled(database) && (
-            <Alert variant="light" icon={<Icon name="info" />} mb="md">
+            <Alert
+              size="compact"
+              variant="light"
+              icon={<Icon name="info" />}
+              mb="md"
+            >
               {t`In guest embeds, database queries will always be routed to the router database.`}
             </Alert>
           )}

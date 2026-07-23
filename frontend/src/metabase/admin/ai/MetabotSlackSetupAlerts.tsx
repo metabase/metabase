@@ -50,7 +50,11 @@ export function MissingScopesAlert({
 
 export function MetabotSetupRequiredAlert() {
   return (
-    <Alert color="core-brand" title={t`This feature requires an AI model`}>
+    <Alert
+      size="compact"
+      color="core-brand"
+      title={t`This feature requires an AI model`}
+    >
       <Link
         to="/admin/metabot#setup"
         variant="brand"
@@ -68,6 +72,7 @@ export function EncryptionRequiredAlert({
 }: EncryptionRequiredAlertProps) {
   return (
     <Alert
+      size="compact"
       color="core-brand"
       title={t`You must enable encryption for your instance in order to use this feature`}
     >

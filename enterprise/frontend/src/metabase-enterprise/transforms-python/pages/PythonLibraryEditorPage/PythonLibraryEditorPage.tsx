@@ -106,6 +106,7 @@ export function PythonLibraryEditorPage({
 
           {isRemoteSyncReadOnly && (
             <Alert
+              size="compact"
               className={S.flexStart}
               color="warning"
               title={t`The Python library is not editable because Remote Sync is in read-only mode.`}

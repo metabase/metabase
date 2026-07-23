@@ -90,7 +90,12 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
     .exhaustive();
 
   return (
-    <Alert icon={<Icon name="info" />} maw={CONTENT_MAX_WIDTH}>
+    <Alert
+      size="compact"
+      variant="light"
+      icon={<Icon name="info" />}
+      maw={CONTENT_MAX_WIDTH}
+    >
       {getAlertCopy}
     </Alert>
   );

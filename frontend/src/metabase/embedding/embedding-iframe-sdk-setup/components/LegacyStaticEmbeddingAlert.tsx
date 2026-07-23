@@ -38,7 +38,7 @@ export const LegacyStaticEmbeddingAlert = () => {
   }
 
   return (
-    <Alert icon={<Icon name="info" />}>
+    <Alert size="compact" variant="light" icon={<Icon name="info" />}>
       {t`This embed was originally published with static embedding. We recommend using this new, modular embedding code snippet. Your embed won't change; you'll just have better theming options.`}
       <Anchor
         key="anchor"

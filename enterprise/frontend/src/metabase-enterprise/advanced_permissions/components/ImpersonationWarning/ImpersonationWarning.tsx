@@ -58,7 +58,7 @@ export const ImpersonationWarning = ({
 
   return (
     <Box mb="md">
-      <Alert icon={<Icon name="warning" />} color="warning">
+      <Alert size="compact" icon={<Icon name="warning" />} color="warning">
         {isEmpty(databaseUser) ? emptyText : warningText}{" "}
         <Link
           className={CS.link}

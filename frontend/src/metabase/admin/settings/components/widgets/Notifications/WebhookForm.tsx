@@ -223,7 +223,7 @@ export const WebhookForm = ({
     >
       {({ dirty, values, setFieldError, setFieldValue }) => (
         <Form>
-          <Alert variant="light" mb="1.5rem">
+          <Alert size="compact" variant="light" mb="1.5rem">
             {jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
               <ExternalLink key="link" href={docsUrl}>
                 {t`Learn about Alerts`}

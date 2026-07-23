@@ -30,6 +30,7 @@ export const PermissionsEditorSplitPermsMessage = () => {
       }}
     >
       <Alert
+        size="compact"
         icon={<Icon name="info" />}
         color="core-brand"
         withCloseButton

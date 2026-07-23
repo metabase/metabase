@@ -19,7 +19,11 @@ export const SetupSsoAlert = () => {
   });
 
   return (
-    <Alert icon={<Icon name="warning_triangle_filled" />} color="warning">
+    <Alert
+      size="compact"
+      icon={<Icon name="warning_triangle_filled" />}
+      color="warning"
+    >
       {jt`This embed will only work for local testing. To get production ready code, configure ${(
         <Anchor
           key="configure-sso"

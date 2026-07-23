@@ -59,6 +59,8 @@ export function EmbeddingSettingsCard({
 
         {alertInfoText && (
           <Alert
+            size="compact"
+            variant="light"
             data-testid="sdk-settings-alert-info"
             mt="md"
             icon={<Icon name="info" />}

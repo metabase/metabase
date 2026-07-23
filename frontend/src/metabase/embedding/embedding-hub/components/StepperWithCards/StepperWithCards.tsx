@@ -237,6 +237,7 @@ const StepAlert = ({
   message: string;
 }) => (
   <Alert
+    size="compact"
     icon={<Icon name={type === "success" ? "check" : "info"} />}
     mt="xl"
     color={type === "info" ? "core-brand" : type}

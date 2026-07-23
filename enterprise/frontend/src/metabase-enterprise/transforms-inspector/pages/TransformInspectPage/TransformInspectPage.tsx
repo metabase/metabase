@@ -57,7 +57,11 @@ export const TransformInspectPage = ({
         ))
         .with({ hasSucceeded: false }, () => (
           <>
-            <Alert color="core-brand" icon={<Icon name="info" />}>
+            <Alert
+              size="compact"
+              color="core-brand"
+              icon={<Icon name="info" />}
+            >
               {t`To inspect the transform you need to run it first.`}
             </Alert>
             <RunSection
