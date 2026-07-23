@@ -32,7 +32,7 @@
 ;; Defining the boundary by delimiters keeps every other character -- including Unicode -- in a
 ;; lookalike keyword such as `:clj-kondo/ignoreλ` rather than mistaking its prefix for the marker.
 (def ^:private ignore-marker-boundary
-  "(?=$|[\\s,()\\[\\]{}\";@^`~\\\\])")
+  "(?=$|[\\p{javaWhitespace},()\\[\\]{}\";@^`~\\\\])")
 
 ;; Canonical map form: the ignore must be the first key. This covers reader-discard maps, metadata maps,
 ;; and prefix-less attr maps such as `(ns foo {...})`. Keeping one deliberately narrow spelling lets the
@@ -53,7 +53,7 @@
 ;; Any explicit `#:clj-kondo{...}` map can spell the real ignore key as `:ignore`, including after
 ;; arbitrary values or comments. Reserve the whole spelling rather than parsing inside the map.
 (def ^:private namespaced-ignore-map-re
-  #"#:clj-kondo\s*\{")
+  #"#:clj-kondo[\p{javaWhitespace},]*\{")
 
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.

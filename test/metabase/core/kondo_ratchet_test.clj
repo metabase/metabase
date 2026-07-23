@@ -105,6 +105,7 @@
     ;; vector-less forms suppress everything -> :all
     [:all]              "  #_:clj-kondo/ignore"
     [:all]              "  #_ :clj-kondo/ignore (foo)"
+    [:all]              "  #_:clj-kondo/ignore\u2003(foo)"
     [:all]              "  ^:clj-kondo/ignore (foo)"
     ;; lookalikes that must NOT count
     []                  "#_:clj-kondo/ignore-my-advice"
@@ -130,6 +131,7 @@
       "{:label :clj-kondo/ignore [:data]}"
       "(def ^#:clj-kondo{:ignore [:namespaced-map]} x 1)"
       "(def ^#:clj-kondo{:doc \"x\", :ignore [:namespaced-map]} x 1)"
+      "(def ^#:clj-kondo,{:ignore [:namespaced-map]} x 1)"
       "(def ^#:clj-kondo{;; why\n :ignore [:namespaced-map]} x 1)")))
 
 (deftest ^:parallel scan-test
