@@ -219,13 +219,15 @@
 
 (defn- render-template
   "Render a template with given permission flags and optional setting overrides."
-  [template-name perms]
-  (binding [scope/*current-user-metabot-permissions* perms]
-    (prompts/build-system-message-content
-     {:prompt-template template-name}
-     {:current_time "2026-03-25T12:00:00Z"}
-     {}
-     [])))
+  ([template-name perms]
+   (render-template template-name perms nil))
+  ([template-name perms profile-name]
+   (binding [scope/*current-user-metabot-permissions* perms]
+     (prompts/build-system-message-content
+      {:name profile-name :prompt-template template-name}
+      {:current_time "2026-03-25T12:00:00Z"}
+      {}
+      []))))
 
 (deftest custom-chat-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
@@ -281,8 +283,8 @@
 
 (deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
   (testing "surfaces with a reasoning timeline skip the narration guidance"
-    (let [rendered (render-template "internal.selmer" all-yes-perms)]
+    (let [rendered (render-template "internal.selmer" all-yes-perms :internal)]
       (is (not (re-find #"silent between tool calls" rendered)))))
   (testing "the embedding SDK surface (loader only) keeps the narration guidance"
-    (let [rendered (render-template "embedding-next.selmer" all-yes-perms)]
+    (let [rendered (render-template "embedding-next.selmer" all-yes-perms :embedding_next)]
       (is (re-find #"silent between tool calls" rendered)))))

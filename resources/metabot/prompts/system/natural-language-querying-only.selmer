@@ -26,6 +26,9 @@ So: start from `retrieve_library_entities` to find the best entity for the user'
 {% include "metabot/prompts/shared/prompt_snippets/mbql-shape.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/communication.selmer" %}
+{% if not shows_reasoning %}
+You don't need to be silent between tool calls — short thinking-out-loud is fine and sometimes helpful. But keep the final message to the user focused on results and decisions, not on your process.
+{% endif %}
 
 {% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
 
