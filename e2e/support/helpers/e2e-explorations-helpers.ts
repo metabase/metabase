@@ -20,6 +20,10 @@ export function enableExplorations(): void {
     "llm-anthropic-api-base-url",
     `http://localhost:${MOCK_LLM_PORT}`,
   );
+  cy.intercept({
+    method: "GET",
+    pathname: "/api/exploration/dimensions",
+  }).as("getDimensions");
 }
 
 export function explorationsMetabotPromptInput(): Cypress.Chainable<
@@ -63,12 +67,9 @@ export function addMetricsAndDimensions({
   metrics,
   dimensions = [],
 }: AddMetricsAndDimensionsOptions): void {
-  cy.intercept({ method: "GET", pathname: "/api/exploration/dimensions" }).as(
-    "explorationsHelperGetDimensions",
-  );
   cy.findByRole("button", { name: /Data/ }).click();
   cy.findByRole("menuitem", { name: "Metrics" }).click();
-  cy.wait("@explorationsHelperGetDimensions");
+  cy.wait("@getDimensions");
   selectAllMetricsTab();
   for (const name of metrics) {
     cy.findByRole("checkbox", { name }).check({ force: true });

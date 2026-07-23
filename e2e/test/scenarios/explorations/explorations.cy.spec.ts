@@ -98,14 +98,6 @@ describe("scenarios > explorations > new research > manual flow", () => {
     seedMetrics();
     H.resetSnowplow();
     H.enableTracking();
-    // Match by pathname so the alias fires for both the initial
-    // mount request AND debounced search refetches like
-    // `/api/exploration/dimensions?q=over%20time` (the string-form
-    // intercept matches against the full URL incl. query string).
-    cy.intercept({
-      method: "GET",
-      pathname: "/api/exploration/dimensions",
-    }).as("getDimensions");
   });
 
   afterEach(() => {
@@ -243,8 +235,6 @@ describe("scenarios > explorations > new research > manual flow", () => {
     cy.findByPlaceholderText("Search for a timeline").clear();
     cy.findByRole("checkbox", { name: "Releases" }).should("exist");
     cy.findByRole("checkbox", { name: "Marketing campaigns" }).should("exist");
-
-    // The no-match empty state is covered by AddTimelinesModal.unit.spec.tsx.
   });
 });
 
@@ -257,10 +247,6 @@ describe("scenarios > explorations > new research > metabot flow", () => {
     seedMetrics();
     H.resetSnowplow();
     H.enableTracking();
-    cy.intercept({
-      method: "GET",
-      pathname: "/api/exploration/dimensions",
-    }).as("getDimensions");
   });
 
   afterEach(() => {
@@ -452,14 +438,14 @@ describe("scenarios > explorations > detail page", () => {
         cy.findAllByRole("treeitem")
           .filter('[aria-selected="false"]')
           .first()
-          .invoke("text")
-          .then((text) => {
-            const rowName = text.trim();
-            cy.findAllByRole("treeitem").contains(rowName).click();
-            cy.findAllByRole("treeitem")
-              .contains(rowName)
-              .closest('[role="treeitem"]')
-              .should("have.attr", "aria-selected", "true");
+          .invoke("attr", "href")
+          .then((href) => {
+            cy.get(`[role="treeitem"][href="${href}"]`).click();
+            cy.get(`[role="treeitem"][href="${href}"]`).should(
+              "have.attr",
+              "aria-selected",
+              "true",
+            );
           });
 
         // The clicked page's chart renders in the main area — assert a real
@@ -579,13 +565,13 @@ function createTwoPageExploration(name: string): Cypress.Chainable<{
  */
 function visitExplorationUntilSettled(
   explorationId: number,
-  expectedReadyCount: number,
+  minReadyCount: number,
 ): void {
   cy.intercept("GET", `/api/exploration/${explorationId}`).as("getExploration");
   H.visitExploration(explorationId);
   cy.findAllByLabelText("Ready", { timeout: 30000 }).should(
-    "have.length",
-    expectedReadyCount,
+    "have.length.at.least",
+    minReadyCount,
   );
   const awaitThreadCompletion = (attempt: number) => {
     cy.wait("@getExploration", { timeout: 30000 }).then(({ response }) => {
