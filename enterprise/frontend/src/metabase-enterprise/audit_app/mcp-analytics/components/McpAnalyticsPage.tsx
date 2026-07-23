@@ -6,7 +6,7 @@ import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
@@ -31,7 +31,8 @@ import { McpEventsTable } from "./McpEventsTable";
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
-export function McpAnalyticsPage({ location, router }: WithRouterProps) {
+export function McpAnalyticsPage() {
+  const { location, router } = useRouter();
   const [
     { date, user, group, tenant, tab, page, sortColumn, sortDirection },
     { patchUrlState },

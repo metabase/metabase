@@ -14,18 +14,10 @@ function setup({ database }: { database: Database }) {
   setupDatabaseEndpoints(database);
 
   renderWithProviders(
-    <Route
-      path="*"
-      element={
-        <AdminConnectionInfoPage
-          params={{ databaseId: String(database.id) }}
-          // Unjustified type cast. FIXME
-          route={{ path: "/" } as unknown as Route}
-        />
-      }
-    />,
+    <Route path=":databaseId/admin" element={<AdminConnectionInfoPage />} />,
     {
       withRouter: true,
+      initialRoute: `/${database.id}/admin`,
       storeInitialState: {
         settings: createMockSettingsState(createMockSettings()),
       },

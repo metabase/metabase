@@ -8,6 +8,7 @@ import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { useParams } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
@@ -22,10 +23,6 @@ import { isCrossOriginError } from "../../lib/is-cross-origin-error";
 import { isDataAppMessage } from "../../lib/is-data-app-message";
 
 import S from "./DataAppView.module.css";
-
-interface AppViewProps {
-  params: { name: string };
-}
 
 /**
  * /apps/:name(/*) — renders the requested data-app inside an isolated
@@ -43,9 +40,9 @@ interface AppViewProps {
  * The data-app bundle itself knows nothing about either direction —
  * it just uses React Router as if it were the top-level app.
  */
-export function DataAppView({ params }: AppViewProps) {
-  const name = params.name;
-  const validName = typeof name === "string" && name.length > 0;
+export function DataAppView() {
+  const { name = "" } = useParams<{ name: string }>();
+  const validName = name.length > 0;
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);

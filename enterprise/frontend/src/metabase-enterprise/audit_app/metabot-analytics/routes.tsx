@@ -1,22 +1,18 @@
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { ConversationDetailPage } from "./components/ConversationDetailPage";
 import { ConversationStatsPage } from "./components/ConversationStatsPage";
 import { ConversationsPage } from "./components/ConversationsPage";
 import { MetabotAnalyticsUpsellPage } from "./components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage";
 
-const RoutedConversationStatsPage = withRouteProps(ConversationStatsPage);
-const RoutedConversationsPage = withRouteProps(ConversationsPage);
-const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
-
 export function getAiAnalyticsRoutes() {
   return (
     <Route key="usage-auditing" path="usage-auditing">
-      <Route index element={<RoutedConversationStatsPage />} />
-      <Route path="conversations" element={<RoutedConversationsPage />} />
+      <Route index element={<ConversationStatsPage />} />
+      <Route path="conversations" element={<ConversationsPage />} />
       <Route
         path="conversations/:convoId"
-        element={<RoutedConversationDetailPage />}
+        element={<ConversationDetailPage />}
       />
     </Route>
   );
