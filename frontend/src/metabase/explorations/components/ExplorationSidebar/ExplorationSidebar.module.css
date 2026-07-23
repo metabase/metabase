@@ -156,9 +156,8 @@
   color: var(--mb-color-brand);
 }
 
-/* Animated gradient swept across the glyphs to signal a still-generating item. */
 .shimmerText {
-  --shimmer-spread: 48px;
+  --shimmer-spread: 3rem;
 
   color: transparent;
   background-clip: text;
