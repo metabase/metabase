@@ -356,11 +356,11 @@
                (#'read-resource/read-resource-display
                 {:uris [(str "metabase://table/" table-id)]}))))
       (testing "a sub-resource appends its aspect, so fields reads differently than the entity"
-        (is (= (str "[Orders](metabase://table/" table-id ") columns")
+        (is (= (str "[Orders](metabase://table/" table-id ") fields")
                (#'read-resource/read-resource-display
                 {:uris [(str "metabase://table/" table-id "/fields")]}))))
       (testing "a trailing field id is dropped from the aspect"
-        (is (= (str "[Orders](metabase://table/" table-id ") columns")
+        (is (= (str "[Orders](metabase://table/" table-id ") fields")
                (#'read-resource/read-resource-display
                 {:uris [(str "metabase://table/" table-id "/fields/99")]}))))
       (testing "dashboard items read as cards, matching product copy"

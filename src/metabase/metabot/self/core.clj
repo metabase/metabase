@@ -238,15 +238,15 @@
 
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
-  optional `:display-fn`. A throwing display-fn leaves the part untitled."
+  optional `:title-fn`. A throwing title-fn leaves the part untitled."
   [tools]
   (map (fn [part]
-         (if-let [display-fn (and (= :tool-input (:type part))
-                                  (:display-fn (get tools (:function part))))]
+         (if-let [title-fn (and (= :tool-input (:type part))
+                                (:title-fn (get tools (:function part))))]
            (let [title (try
-                         (display-fn (:arguments part))
+                         (title-fn (:arguments part))
                          (catch Throwable e
-                           (log/debug e "tool display-fn failed" {:tool (:function part)})
+                           (log/debug e "tool title-fn failed" {:tool (:function part)})
                            nil))]
              (cond-> part
                (string? title) (assoc :title title)))

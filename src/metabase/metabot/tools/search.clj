@@ -88,8 +88,6 @@
                   :verified    verified?
                   :official    official?
                   :collection  collection-info})
-          ;; :display (a question's viz type) + :moderated_status drive the exact
-          ;; entity icon in the chain-of-thought search results on the client
           (m/assoc-some :curated curated
                         :display (:display result)
                         :moderated_status moderated_status)))))
@@ -579,7 +577,7 @@
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
-           :display-fn search-display}
+           :title-fn   search-display}
   search-tool
   "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
@@ -596,7 +594,7 @@
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
-           :display-fn search-display}
+           :title-fn   search-display}
   sql-search-tool
   "Find SQL-queryable data sources (tables and models) within a specific database by topic."
   [{:keys [database_id] :as args} :- sql-search-schema]
@@ -613,7 +611,7 @@
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
-           :display-fn search-display}
+           :title-fn   search-display}
   nlq-search-tool
   "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
   [{:keys [entity_types] :as args} :- nlq-search-schema]
@@ -634,7 +632,7 @@
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
-           :display-fn search-display}
+           :title-fn   search-display}
   transform-search-tool
   "Find transforms, plus the tables and models around them, by topic."
   [{:keys [search_native_query] :as args} :- transform-search-schema]
