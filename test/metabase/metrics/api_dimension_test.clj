@@ -1,5 +1,6 @@
 (ns metabase.metrics.api-dimension-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -496,13 +497,23 @@
                              dims)
              fields    (into #{} (comp (mapcat :sources)
                                        (map :field-id))
-                             dims)]
+                             dims)
+             field-names (into {}
+                               (map (juxt #(-> % :sources first :field-id) :display-name))
+                               dims)]
          (testing "the modernized set spans the own-table AND joined columns"
            (is (contains? groups "main")       "own-table (main) dimensions are present")
            (is (contains? groups "connection") "FK-joined (connection) dimensions are present"))
          (testing "a joined column that an existing dashboard filter targets exists as a dimension"
            (is (contains? fields cat-field)
-               "implicitly-joined PRODUCTS.CATEGORY is a live dimension after modernization")))))))
+               "implicitly-joined PRODUCTS.CATEGORY is a live dimension after modernization"))
+         (testing "connected dimensions use table-prefixed display names (UXW-4896)"
+           (doseq [{:keys [display-name group]} dims
+                   :when (= "connection" (:type group))]
+             (is (str/starts-with? display-name (str (:display-name group) " - "))))
+           (is (= "ID" (field-names (mt/id :orders :id))))
+           (is (= "Product - ID" (field-names (mt/id :products :id))))
+           (is (= "User - ID" (field-names (mt/id :people :id))))))))))
 
 (deftest pre-curation-metric-dashboard-filter-on-joined-column-works-test
   (testing (str "UXW-4808: a dashboard filter bound to an implicitly-joined column of a pre-curation metric "
