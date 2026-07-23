@@ -167,7 +167,9 @@ databaseChangeLog:
   ## current value cannot be attributed: description (database comments), entity_type
   ## (classification), data_source (transforms).
   ## The audit/instance-analytics database is excluded: its display names are curated by Metabase
-  ## itself. created_at/updated_at are omitted so their current_timestamp defaults apply.
+  ## itself. The exclusion uses NOT EXISTS rather than NOT IN (SELECT ...) — NOT IN's null semantics
+  ## keep the planner from using an anti-join and degrade quadratically on large instances (#78271).
+  ## created_at/updated_at are omitted so their current_timestamp defaults apply.
   ## The three sql blocks are identical except for the reserved setting.key column, which each
   ## database quotes differently (bare on postgres, "KEY" on h2, backticks on mysql/mariadb) — same
   ## dbms-split precedent as the enable-public-sharing preconditions in 001_update_migrations.yaml.
@@ -202,7 +204,7 @@ databaseChangeLog:
                 CASE WHEN t.data_authority <> 'unconfigured' THEN t.data_authority END,
                 CASE WHEN t.field_order = 'custom' THEN t.field_order END
               FROM metabase_table t
-              WHERE t.db_id NOT IN (SELECT d.id FROM metabase_database d WHERE d.is_audit = TRUE)
+              WHERE NOT EXISTS (SELECT 1 FROM metabase_database d WHERE d.id = t.db_id AND d.is_audit = TRUE)
                 AND (t.caveats IS NOT NULL
                   OR t.points_of_interest IS NOT NULL
                   OR t.collection_id IS NOT NULL
@@ -244,7 +246,7 @@ databaseChangeLog:
                 CASE WHEN t.data_authority <> 'unconfigured' THEN t.data_authority END,
                 CASE WHEN t.field_order = 'custom' THEN t.field_order END
               FROM metabase_table t
-              WHERE t.db_id NOT IN (SELECT d.id FROM metabase_database d WHERE d.is_audit = TRUE)
+              WHERE NOT EXISTS (SELECT 1 FROM metabase_database d WHERE d.id = t.db_id AND d.is_audit = TRUE)
                 AND (t.caveats IS NOT NULL
                   OR t.points_of_interest IS NOT NULL
                   OR t.collection_id IS NOT NULL
@@ -286,7 +288,7 @@ databaseChangeLog:
                 CASE WHEN t.data_authority <> 'unconfigured' THEN t.data_authority END,
                 CASE WHEN t.field_order = 'custom' THEN t.field_order END
               FROM metabase_table t
-              WHERE t.db_id NOT IN (SELECT d.id FROM metabase_database d WHERE d.is_audit = TRUE)
+              WHERE NOT EXISTS (SELECT 1 FROM metabase_database d WHERE d.id = t.db_id AND d.is_audit = TRUE)
                 AND (t.caveats IS NOT NULL
                   OR t.points_of_interest IS NOT NULL
                   OR t.collection_id IS NOT NULL
