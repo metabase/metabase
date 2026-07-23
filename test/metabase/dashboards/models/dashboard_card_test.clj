@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.models.serialization :as serdes]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -283,22 +282,6 @@
                                                        :visualization_settings original}]
            (is (= expected
                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id (u/the-id dashcard))))))))))
-
-(deftest ^:parallel identity-hash-test
-  (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Collection    c1       {:name "top level" :location "/" :created_at now}
-                     :model/Dashboard     dash     {:name "my dashboard"  :collection_id (:id c1) :created_at now}
-                     :model/Card          card     {:name "some question" :collection_id (:id c1) :created_at now}
-                     :model/DashboardCard dashcard {:card_id                (:id card)
-                                                    :dashboard_id           (:id dash)
-                                                    :visualization_settings {}
-                                                    :row                    6
-                                                    :col                    3
-                                                    :created_at             now}]
-        (is (= "1311d6dc"
-               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 (:created_at dashcard)])
-               (serdes/identity-hash dashcard)))))))
 
 (deftest ^:parallel from-decoded-json-test
   (testing "Dashboard Cards should remain the same if they are serialized to JSON,

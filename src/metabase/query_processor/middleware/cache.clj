@@ -80,9 +80,9 @@
   "Add `object` (e.g. a result row or metadata) to the current cache entry."
   [object]
   (when *in-fn*
-    (*in-fn* (cond-> object
-               (map? object) (-> (m/update-existing :json_query lib/prepare-for-serialization)
-                                 (m/update-existing :preprocessed_query lib/prepare-for-serialization))))))
+    (*in-fn* (if (map? object)
+               (m/update-existing object :json_query lib/prepare-for-serialization)
+               object))))
 
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."
@@ -93,24 +93,27 @@
     (*result-fn*)))
 
 (defn- cache-results!
-  "Save the final results of a query."
-  [query-hash]
+  "Save the final results of a query. Returns true if the results were saved successfully."
+  [result-fn query-hash]
   (log/infof "Caching results for next time for query with hash %s. %s"
              (pr-str (i/short-hex-hash query-hash)) (u/emoji "💾"))
   (try
-    (let [bytez (serialized-bytes)]
+    (let [bytez (result-fn)]
       (if-not (instance? (Class/forName "[B") bytez)
-        (log/errorf "Cannot cache results: expected byte array, got %s" (class bytez))
+        (do
+          (log/errorf "Cannot cache results: expected byte array, got %s" (class bytez))
+          false)
         (do
           (log/trace "Got serialized bytes; saving to cache backend")
           (i/save-results! *backend* query-hash bytez)
           (log/debug "Successfully cached results for query.")
-          (schedule-purge! *backend*))))
-    :done
+          (schedule-purge! *backend*)
+          true)))
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
         (log/debugf e "Not caching results: results are larger than %s KB" (cache/query-caching-max-kb))
-        (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
+        (log/errorf e "Error saving query results to cache: %s" (ex-message e)))
+      false)))
 
 (defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
   (add-object-to-cache! (assoc metadata
@@ -133,10 +136,14 @@
                   (u/format-milliseconds duration-ms)
                   (u/format-milliseconds min-duration-ms)
                   (if eligible? "eligible" "not eligible"))
-       (when eligible?
-         (cache-results! query-hash))
-       (rf (cond-> result
-             (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?))))))
+       (let [stored? (boolean (when eligible?
+                                (cache-results! serialized-bytes query-hash)))]
+         ;; fresh results weren't saved (too large, save error, or no longer cache-eligible): any existing entry is
+         ;; outdated and the refresh lease is still held, so delete it rather than let it keep being served stale
+         (when-not stored?
+           (i/delete-entry! *backend* query-hash))
+         (rf (cond-> result
+               (map? result) (update :cache/details assoc :hash query-hash :stored stored?))))))
 
     ([acc row]
      (add-object-to-cache! row)

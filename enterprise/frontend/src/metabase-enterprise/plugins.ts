@@ -21,6 +21,7 @@ import { initializePlugin as initializeContentTranslation } from "./content_tran
 import { initializePlugin as initializeContentVerification } from "./content_verification";
 import { initializePlugin as initializeCustomViz } from "./custom_viz";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
+import { initializePlugin as initializeDataApps } from "./data_apps";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -33,6 +34,7 @@ import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
+import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
 import { initializePlugin as initializeTools } from "./monitor/tools";
 import { initializePlugin as initializeMultiFactorAuth } from "./multi_factor_auth";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
@@ -60,53 +62,56 @@ import { initializePlugin as initializeWritableConnection } from "./writable_con
 /**
  * Initialize all enterprise plugins that use hasPremiumFeature.
  * Must be called after token features are available.
+ * (Let's try to keep the list sorted alphabetically).
  */
 export function initializePlugins() {
-  initializeTools();
-  initializeSandboxes();
+  initializeAdvancedPermissions();
+  initializeAiControls();
+  initializeApplicationPermissions();
+  initializeAuditApp();
   initializeAuth();
   initializeCaching();
+  initializeCleanUp();
   initializeCollections();
   initializeContentTranslation();
   initializeContentVerification();
   initializeCustomViz();
+  initializeDataApps();
+  initializeDatabaseReplication();
   initializeDatabaseRouting();
-  initializeRemoteSync();
-  initializeReplacement();
-  initializeWhitelabel();
+  initializeDependencies();
   initializeEmbedding();
-  initializeEmbeddingSdk();
   initializeEmbeddingIframeSdk();
   initializeEmbeddingIframeSdkSetup();
-  initializeSnippets();
-  initializeSmtpOverride();
-  initializeSharing();
-  initializeModeration();
-  initializeAdvancedPermissions();
-  initializeAuditApp();
-  initializeMetabot();
-  initializeModelPersistence();
-  initializeMultiFactorAuth();
+  initializeEmbeddingSdk();
   initializeFeatureLevelPermissions();
-  initializeApplicationPermissions();
   initializeGroupManagers();
   initializeLibrary();
-  initializeUploadManagement();
+  initializeMetabot();
+  initializeModelPersistence();
+  initializeModeration();
+  initializeMonitorDependencyDiagnostics();
+  initializeMultiFactorAuth();
+  initializeRemoteSync();
+  initializeReplacement();
   initializeResourceDownloads();
-  initializeUserProvisioning();
-  initializeCleanUp();
-  initializeDatabaseReplication();
-  initializeTableEditing();
-  initializeDependencies();
+  initializeSandboxes();
   initializeSchemaViewer();
   initializeSecurityCenter();
   initializeSemanticSearch();
+  initializeSharing();
+  initializeSmtpOverride();
+  initializeSnippets();
+  initializeSupport();
+  initializeTableEditing();
+  initializeTenants?.();
+  initializeTools();
   initializeTransforms();
   initializeTransformsInspector();
   initializeTransformsPython();
-  initializeSupport();
-  initializeTenants?.();
-  initializeWritableConnection();
+  initializeUploadManagement();
+  initializeUserProvisioning();
+  initializeWhitelabel();
   initializeWorkspaces();
-  initializeAiControls();
+  initializeWritableConnection();
 }

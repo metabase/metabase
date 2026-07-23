@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
@@ -182,6 +183,10 @@ width: fixed
       ;; Default success case - return files from atom
       (keys (get @files-atom branch {}))))
 
+  ;; Derived from `list-files` (which propagates this mock's failure modes), as the non-git snapshots do.
+  (list-dir [this path]
+    (source/paths->children (source.p/list-files this) path))
+
   (read-file [_this path]
     (case fail-mode
       :read-file-error (throw (Exception. "Failed to read file"))
@@ -212,13 +217,16 @@ width: fixed
         (empty-commit? [_]
           (let [current (get @files-atom branch)]
             (= current (apply-staged current))))
-        (finish-commit! [_ _message]
+        (finish-commit! [this _message]
+          (source.p/finish-commit! this _message nil))
+        (finish-commit! [_ _message report-progress]
           (case fail-mode
             :write-files-error   (throw (Exception. "Failed to write files"))
             :store-error         (throw (Exception. "Store failed"))
             :apply-changes-error (throw (Exception. "Failed to apply changes"))
             :network-error       (throw (java.net.UnknownHostException. "Remote host not found"))
             (swap! files-atom update branch apply-staged))
+          (when report-progress (report-progress 0.8))
           ;; version string discriminates a wholesale replace (replace-all!) from an incremental patch
           (if @replace-all? "write-files-version" "apply-changes-version"))
         (abort-commit! [_] nil))))
@@ -306,6 +314,8 @@ width: fixed
 
                         source.p/SourceSnapshot
                         (list-files [_] (vec (keys (get-in @state [:trees version] {}))))
+                        (list-dir [_ path]
+                          (source/paths->children (keys (get-in @state [:trees version] {})) path))
                         (read-file [_ path] (get-in @state [:trees version path]))
                         (open-commit [_]
                           (let [staged-upserts (atom [])
@@ -325,11 +335,14 @@ width: fixed
                               (replace-all! [_] (reset! replace-all? true) nil)
                               (empty-commit? [_]
                                 (= (get-in @state [:trees version] {}) (staged-tree)))
-                              (finish-commit! [_ _message]
+                              (finish-commit! [this _message]
+                                (source.p/finish-commit! this _message nil))
+                              (finish-commit! [_ _message report-progress]
                                 (let [n           (:counter (swap! state update :counter inc))
                                       new-version (str "written-" n)
                                       tree        (staged-tree)]
                                   (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
+                                  (when report-progress (report-progress 0.8))
                                   new-version))
                               (abort-commit! [_] nil))))
                         (version [_] version)))]

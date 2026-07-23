@@ -573,6 +573,20 @@
                                (:name (perms/data-analyst-group)))
                           {:status-code 400})))))))
 
+(defn- check-transforms-permissions!
+  [graph current-perms]
+  (doseq [[group-id db-updates] graph
+          [db-id db-changes] db-updates
+          :when (= (:transforms db-changes) :yes)]
+    (let [create-queries (if (contains? db-changes :create-queries)
+                           (:create-queries db-changes)
+                           (some (fn [{:keys [table_id perm_value]}]
+                                   (when (nil? table_id) perm_value))
+                                 (get current-perms [group-id db-id :perms/create-queries])))]
+      (when (not= create-queries :query-builder-and-native)
+        (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
+                        {:status-code 400}))))))
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions implicitly via collection permissions."
@@ -600,6 +614,7 @@
          desired-state       (compute-desired-state graph tables-by-db-schema)
          {:keys [to-delete to-insert]} (compute-diff desired-state current-perms tables-by-db)]
      (validate-blocked-permissions! graph)
+     (check-transforms-permissions! graph current-perms)
      (when (seq to-delete)
        (perms/batch-delete-permissions! to-delete))
      (when (seq to-insert)

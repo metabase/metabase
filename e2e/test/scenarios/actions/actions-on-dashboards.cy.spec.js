@@ -22,10 +22,9 @@ const MODEL_NAME = "Test Action Model";
         cy.intercept("PUT", "/api/action/*").as("updateAction");
         cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
-        cy.intercept(
-          "GET",
-          "/api/dashboard/*/dashcard/*/execute?parameters=*",
-        ).as("prefetchValues");
+        cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute/values").as(
+          "prefetchValues",
+        );
 
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
           "executeAction",
@@ -1086,7 +1085,7 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
 
     cy.intercept("GET", "/api/action").as("getActions");
     cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-    cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute/values").as(
       "prefetchValues",
     );
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
@@ -1137,10 +1136,9 @@ describe(
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
-      cy.intercept(
-        "GET",
-        "/api/dashboard/*/dashcard/*/execute?parameters=*",
-      ).as("executePrefetch");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute/values").as(
+        "executePrefetch",
+      );
     });
 
     describe("Inline action edit", () => {

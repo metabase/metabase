@@ -90,8 +90,6 @@ export const DataSelectorFieldPicker = ({
           maxHeight={Infinity}
           width="100%"
           searchable={hasFiltering}
-          // keep the search box + "no results" state visible when a search matches no fields
-          globalSearch={hasFiltering}
           onChange={(item: { field: Field }) => onChangeField(item.field)}
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={(item: FieldWithName) => Boolean(item.field)}

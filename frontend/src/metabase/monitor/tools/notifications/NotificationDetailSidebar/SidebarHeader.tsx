@@ -41,7 +41,7 @@ export const SidebarHeader = ({
   const dispatch = useDispatch();
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}${Urls.adminToolsNotificationDetail(notificationId)}`;
+    const url = `${window.location.origin}${Urls.monitorNotificationDetail(notificationId)}`;
     await navigator.clipboard.writeText(url);
     trackAlertsManagementLinkCopied(notificationId);
     dispatch(addUndo({ message: t`Link copied to clipboard` }));
@@ -50,7 +50,7 @@ export const SidebarHeader = ({
   const handleNavigate = (id: NotificationId | undefined) => {
     if (id !== undefined) {
       trackAlertsManagementAlertOpened(id, "sidebar_navigation");
-      dispatch(push(Urls.adminToolsNotificationDetail(id)));
+      dispatch(push(Urls.monitorNotificationDetail(id)));
     }
   };
 

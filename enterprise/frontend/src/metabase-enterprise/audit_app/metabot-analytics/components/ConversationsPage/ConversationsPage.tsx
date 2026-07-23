@@ -8,7 +8,7 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import type { WithRouterProps } from "metabase/router";
 import { Card, Flex, Title } from "metabase/ui";
 
-import { useListMetabotConversationsQuery } from "../../api";
+import { useListMetabotAnalyticsConversationsQuery } from "../../api";
 import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
@@ -35,7 +35,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
     data: conversationsData,
     isLoading,
     error,
-  } = useListMetabotConversationsQuery(
+  } = useListMetabotAnalyticsConversationsQuery(
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
@@ -80,7 +80,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
           />
         </Flex>
 
-        <Card withBorder shadow="none" p={0}>
+        <Card withBorder shadow="none" p={0} style={{ overflowX: "auto" }}>
           <ConversationsTable
             conversations={conversations}
             isLoading={isLoading}

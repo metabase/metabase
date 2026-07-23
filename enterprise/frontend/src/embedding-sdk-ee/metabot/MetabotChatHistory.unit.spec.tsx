@@ -19,7 +19,7 @@ const makeVisibleState = (messages: MetabotChatMessage[]) =>
   );
 
 describe("MetabotChatHistory", () => {
-  it("should not render navigate_to data_part messages in the message list", () => {
+  it("should not render generated_entity card data_part messages in the message list", () => {
     setup({
       ui: <MetabotChatHistory />,
       metabotInitialState: makeVisibleState([
@@ -27,7 +27,23 @@ describe("MetabotChatHistory", () => {
           id: "1",
           role: "agent",
           type: "data_part",
-          part: { type: "data-navigate_to", data: "/question#abc" },
+          part: {
+            type: "data-generated_entity",
+            data: {
+              type: "card",
+              id: "card-1",
+              title: "Orders",
+              query: {
+                id: "q-1",
+                query: {
+                  database: 1,
+                  type: "query",
+                  query: { "source-table": 1 },
+                },
+              },
+              display: "table",
+            },
+          },
         },
       ]),
     });

@@ -36,6 +36,8 @@
   model-set]
  [search.impl
   search
+  ranked-results
+  search-results
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
  [search.ingestion

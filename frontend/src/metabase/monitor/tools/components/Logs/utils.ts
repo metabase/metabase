@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import orderBy from "lodash.orderby";
 import _ from "underscore";
 
@@ -7,6 +6,7 @@ import {
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
+import { createLogFormatter } from "metabase/monitor/components/LogsViewer/utils";
 import type { Log } from "metabase-types/api";
 
 const MAX_LOGS = 50000;
@@ -93,26 +93,3 @@ export function filterLogs(
     return matchesProcessFilter && matchesQueryFilter;
   });
 }
-
-export function getAllProcessUUIDs(logs: Log[]) {
-  const uuids = new Set<string>();
-  logs.forEach((log) => uuids.add(log.process_uuid));
-  return [...uuids].filter(Boolean).sort();
-}
-
-// date formatting is expensive for megabytes of logs
-const formatTs = (ts: string) => dayjs(ts).format();
-const memoedFormatTs = _.memoize(formatTs);
-
-export const createLogFormatter =
-  (process: string, processUUIDs: string[]) => (log: Log) => {
-    const timestamp = memoedFormatTs(log.timestamp);
-    const uuid =
-      process === "ALL" && processUUIDs.length > 1
-        ? `[${log.process_uuid}]`
-        : undefined;
-    return [
-      [uuid, timestamp, log.level, log.fqns, log.msg].filter(Boolean).join(" "),
-      ...(log.exception || []),
-    ];
-  };

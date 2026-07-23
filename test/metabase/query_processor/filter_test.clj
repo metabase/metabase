@@ -176,15 +176,20 @@
 (deftest between-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing ":between with dates"
-      (mt/with-temporary-setting-values [report-timezone "UTC"]
-        (is (=? {:rows [[29]]
-                 :cols [(qp.test-util/aggregate-col :count)]}
-                (qp.test-util/rows-and-cols
-                 (mt/format-rows-by
-                  [int]
-                  (mt/run-mbql-query checkins
-                    {:aggregation [[:count]]
-                     :filter      [:between !day.date "2015-04-01" "2015-05-01"]})))))))))
+      ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
+      ;; test's results
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+      (when (= driver/*driver* :snowflake)
+        (driver/notify-database-updated driver/*driver* (mt/id)))
+      (is (=? {:rows [[29]]
+               :cols [(qp.test-util/aggregate-col :count)]}
+              (qp.test-util/rows-and-cols
+               (mt/format-rows-by
+                [int]
+                (mt/run-mbql-query checkins
+                  {:aggregation [[:count]]
+                   :filter      [:between !day.date "2015-04-01" "2015-05-01"]}))))))))
 
 (defn- timezone-arithmetic-drivers []
   (set/intersection

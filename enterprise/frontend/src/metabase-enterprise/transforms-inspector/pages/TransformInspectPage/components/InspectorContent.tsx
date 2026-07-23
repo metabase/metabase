@@ -1,8 +1,8 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 
 import { useGetInspectorDiscoveryQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { Location } from "metabase/router";
 import { trackTransformInspectDrillLensClosed } from "metabase/transforms/analytics";
 import { Center } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
