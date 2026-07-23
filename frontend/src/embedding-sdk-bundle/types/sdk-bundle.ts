@@ -1,6 +1,7 @@
 import type { JSXElementConstructor } from "react";
 
 import type { MetabotSubscriber } from "embedding-sdk-bundle/components/private/MetabotSubscriber/MetabotSubscriber";
+import type { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
@@ -12,10 +13,23 @@ import type { StaticQuestion } from "embedding-sdk-bundle/components/public/Stat
 import type { EditableDashboard } from "embedding-sdk-bundle/components/public/dashboard/EditableDashboard";
 import type { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
+import type { ResolveDatasetQuery } from "embedding-sdk-bundle/lib/create-metabase-query";
+import type {
+  DataAppLink,
+  DataAppRouter,
+} from "embedding-sdk-bundle/lib/data-app/router";
 import type {
   ExecuteActionParams,
   ExecuteActionResult,
 } from "embedding-sdk-bundle/lib/execute-action";
+import type {
+  QueryDatasetParams,
+  QueryDatasetResult,
+} from "embedding-sdk-bundle/lib/query-dataset";
+import type {
+  QueryQuestionParams,
+  QueryQuestionResult,
+} from "embedding-sdk-bundle/lib/query-question";
 import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type {
   CreateDashboardValues,
@@ -45,12 +59,15 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   ReduxStoreSelectorsExports &
   InternalHooksExports &
   SchemaValidationUtils &
-  InternalComponentExports;
+  InternalComponentExports &
+  DataAppRoutingExports;
 
 type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
+  DataAppLink: typeof DataAppLink;
+  DataAppRouter: typeof DataAppRouter;
   EditableDashboard: InternalComponent<typeof EditableDashboard>;
   InteractiveDashboard: InternalComponent<typeof InteractiveDashboard>;
   InteractiveQuestion: InternalComponent<typeof InteractiveQuestion>;
@@ -61,13 +78,30 @@ type PublicExports = {
   StaticQuestion: InternalComponent<typeof StaticQuestion>;
 };
 
+type DataAppRoutingExports = {
+  dataAppRouting: {
+    getBasename: () => string;
+    navigate: (to: string) => void;
+    subscribe: (callback: () => void) => () => void;
+  };
+};
+
 type ReduxStoreExports = {
   getSdkStore: ReduxStoreFactory;
 };
 
 type ReduxStoreUtilityFunctionExports = {
+  resolveDatasetQuery: ReduxStoreUtilityFunction<
+    ReturnType<ResolveDatasetQuery>
+  >;
   createDashboard: ReduxStoreUtilityFunction<
     (params: CreateDashboardValues) => Promise<MetabaseDashboard>
+  >;
+  queryQuestion: ReduxStoreUtilityFunction<
+    (params: QueryQuestionParams) => Promise<QueryQuestionResult>
+  >;
+  queryDataset: ReduxStoreUtilityFunction<
+    (params: QueryDatasetParams) => Promise<QueryDatasetResult>
   >;
   executeAction: ReduxStoreUtilityFunction<
     (params: ExecuteActionParams) => Promise<ExecuteActionResult>
@@ -94,4 +128,5 @@ type SchemaValidationUtils = {
 
 type InternalComponentExports = {
   MetabotSubscriber: typeof MetabotSubscriber;
+  SdkThemeProvider: typeof SdkThemeProvider;
 };

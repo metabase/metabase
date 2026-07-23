@@ -32,7 +32,7 @@
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target owner_user_id creator_id] :as transform}
-    {:keys [run-method on-start user-id job-run-id]}]
+    {:keys [run-method on-start user-id parent-run]}]
    ;; `:target` is already workspace-rewritten — `resolve-transform-target` runs in
    ;; `metabase.transforms.execute/execute!` before dispatch.
    (try
@@ -42,7 +42,8 @@
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
-           {run-id :id} (transforms.u/try-start-unless-already-running id run-method run-user-id :job-run-id job-run-id)]
+           {run-id :id} (transforms.u/try-start-unless-already-running id run-method run-user-id
+                                                                       :parent-run parent-run)]
        (when on-start (on-start run-id))
        (driver.conn/with-write-connection
          (log/info "Executing transform" id "with target" (pr-str target)
@@ -82,6 +83,5 @@
          (log/error t "Error executing transform"))
        (throw t)))))
 
-#_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :query [transform opts]
   (run-mbql-transform! transform opts))

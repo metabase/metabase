@@ -59,6 +59,8 @@
 
 (use-fixtures :once (fixtures/initialize :test-users :db :web-server))
 
+(use-fixtures :each (fn [thunk] (api.pivots/do-with-pivot-parity-check thunk)))
+
 (deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
     (let [id->new-card {123 {:id 456}
@@ -4144,7 +4146,7 @@
                         {:keys [action-id model-id]} {:type                   :implicit
                                                       :visualization_settings {:fields {"name" {:id     "name"
                                                                                                 :hidden true}}}}]
-        (testing "Supplying a hidden parameter value should fail gracefully for GET /api/dashboard/:id/dashcard/:id/execute"
+        (testing "Supplying a hidden parameter value should fail gracefully for POST /api/dashboard/:id/dashcard/:id/execute"
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
                                                                  :action_id    action-id
@@ -4310,16 +4312,16 @@
                          :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
                                                                  :card_id model-id
                                                                  :action_id action-id}]
-            (let [path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+            (let [path (format "dashboard/%s/dashcard/%s/execute/values" dashboard-id dashcard-id)]
               (testing "It succeeds with appropriate parameters"
                 (is (partial= {:id 1 :name "African"}
-                              (mt/user-http-request :crowberto :get 200
-                                                    path :parameters (json/encode {"id" 1})))))
+                              (mt/user-http-request :crowberto :post 200
+                                                    path {:parameters {"id" 1}}))))
               (testing "Missing pk parameter should fail gracefully"
                 (is (partial= "Missing primary key parameter: \"id\""
                               (mt/user-http-request
-                               :crowberto :get 400
-                               path :parameters (json/encode {"name" 1}))))))))))))
+                               :crowberto :post 400
+                               path {:parameters {"name" 1}})))))))))))
 
 (deftest dashcard-implicit-action-only-expose-and-allow-model-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -4334,9 +4336,10 @@
             (testing "Dashcard should only have id and name params"
               (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
-            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
+                  values-path  (format "dashboard/%s/dashcard/%s/execute/values" dashboard-id dashcard-id)]
               (testing "Prefetch should limit to id and name"
-                (let [values (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1}))]
+                (let [values (mt/user-http-request :crowberto :post 200 values-path {:parameters {"id" 1}})]
                   (is (= {:id 1 :name "Red Medicine"} values))))
               (testing "Update should only allow name"
                 (is (= {:rows-updated 1}
@@ -4364,10 +4367,11 @@
             (testing "Dashcard should only have id and name params"
               (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
-            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
+                  values-path  (format "dashboard/%s/dashcard/%s/execute/values" dashboard-id dashcard-id)]
               (testing "Prefetch should only return non-hidden fields"
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
-                       (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
+                       (mt/user-http-request :crowberto :post 200 values-path {:parameters {"id" 1}}))))
               (testing "Update should only allow name"
                 (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
@@ -4634,11 +4638,12 @@
                                       :type  "string/="
                                       :value ["LinkedIn"]}],
                       :dashboard_id dash-id}]
-                    (#'api.dashboard/broken-pulses dash-id {param-id param}))))
+                    ;; `broken-pulses` doesn't order its results, so sort them for a stable comparison
+                    (sort-by :id (#'api.dashboard/broken-pulses dash-id {param-id param})))))
           (testing "We can gather all needed data regarding broken params"
             (let [bad-pulses    (mapv
                                  #(update % :affected-users (partial sort-by :email))
-                                 (#'api.dashboard/broken-subscription-data dash-id {param-id param}))
+                                 (sort-by :pulse-id (#'api.dashboard/broken-subscription-data dash-id {param-id param})))
                   bad-pulse-ids (set (map :pulse-id bad-pulses))]
               (testing "We only detect the bad pulse and not the good one"
                 (is (true? (contains? bad-pulse-ids bad-pulse-id)))

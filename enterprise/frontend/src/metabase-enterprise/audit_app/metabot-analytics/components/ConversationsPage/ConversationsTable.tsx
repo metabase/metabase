@@ -51,6 +51,7 @@ export function ConversationsTable({
     <table className={cx(AdminS.ContentTable, S.table)}>
       <thead>
         <tr>
+          <th>{t`Title`}</th>
           <SortableColumnHeader
             name="user"
             sortingOptions={sortingOptions}
@@ -100,7 +101,7 @@ export function ConversationsTable({
       <tbody>
         {showLoadingAndError && (
           <tr>
-            <td colSpan={9}>
+            <td colSpan={10}>
               <LoadingAndErrorWrapper loading={isLoading} error={error} />
             </td>
           </tr>
@@ -110,7 +111,7 @@ export function ConversationsTable({
           <>
             {conversations.length === 0 && (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={10}>
                   <Flex c="text-disabled" justify="center">
                     {t`No conversations found`}
                   </Flex>
@@ -124,6 +125,11 @@ export function ConversationsTable({
                 className={CS.cursorPointer}
                 onClick={() => handleRowClick(convo)}
               >
+                <td>
+                  <Ellipsified style={{ maxWidth: 280 }}>
+                    {convo.title ?? t`Untitled`}
+                  </Ellipsified>
+                </td>
                 <td>{convo.user ? getUserName(convo.user) : t`Unknown`}</td>
                 <td>
                   {convo.profile_id && (

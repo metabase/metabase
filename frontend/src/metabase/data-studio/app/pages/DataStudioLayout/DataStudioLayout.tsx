@@ -15,6 +15,7 @@ import {
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import {
@@ -36,11 +37,7 @@ import type { IconName } from "metabase-types/api";
 import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
 
-type DataStudioLayoutProps = {
-  children?: ReactNode;
-};
-
-export function DataStudioLayout({ children }: DataStudioLayoutProps) {
+export function DataStudioLayout() {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
@@ -72,7 +69,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         onNavbarToggle={setIsNavbarOpened}
       />
       <Box h="100%" flex={1} miw={0}>
-        {children}
+        <Outlet />
       </Box>
     </Flex>
   );
@@ -236,7 +233,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             <DataStudioTab
               label={t`Runs`}
               icon="play_outlined"
-              to={Urls.transformRunList()}
+              to={Urls.transformGraphRunList()}
               isSelected={currentTab === "runs"}
               showLabel={isNavbarOpened}
             />

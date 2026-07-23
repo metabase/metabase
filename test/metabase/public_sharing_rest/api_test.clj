@@ -36,6 +36,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each (fn [thunk] (api.pivots/do-with-pivot-parity-check thunk)))
+
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn- shared-obj []
@@ -769,10 +771,11 @@
                 (testing "Dashcard should only have id and name params"
                   (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "public/dashboard/%s" dashboard-uuid)))))
-                (let [execute-path (format "public/dashboard/%s/dashcard/%s/execute" dashboard-uuid (:id dashcard))]
+                (let [execute-path (format "public/dashboard/%s/dashcard/%s/execute" dashboard-uuid (:id dashcard))
+                      values-path  (format "public/dashboard/%s/dashcard/%s/execute/values" dashboard-uuid (:id dashcard))]
                   (testing "Prefetch should only return non-hidden fields"
                     (is (= {:id 1 :name "Red Medicine"} ; price is hidden
-                           (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
+                           (mt/user-http-request :crowberto :post 200 values-path {:parameters {"id" 1}}))))
                   (testing "Update should not allow hidden fields to be updated"
                     (is (= {:rows-updated 1}
                            (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
@@ -780,7 +783,7 @@
                            (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
 
 (deftest public-dashboard-action-prefill-validates-dashcard-belongs-to-dashboard-test
-  (testing "GET prefill should validate that the dashcard belongs to the dashboard"
+  (testing "prefill should validate that the dashcard belongs to the dashboard"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
         (mt/with-actions-test-data-tables #{"venues" "categories"}
@@ -797,10 +800,10 @@
                                                                     :card_id      card-id}]
                   (testing "dashcard from a different dashboard should 404"
                     (is (= "Not found."
-                           (client/client :get 404
-                                          (format "public/dashboard/%s/dashcard/%s/execute"
+                           (client/client :post 404
+                                          (format "public/dashboard/%s/dashcard/%s/execute/values"
                                                   public-uuid (:id other-dashcard))
-                                          :parameters (json/encode {:id 1}))))))))))))))
+                                          {:parameters {"id" 1}})))))))))))))
 
 (deftest get-public-dashboard-actions-test
   (testing "GET /api/public/dashboard/:uuid"
@@ -1667,9 +1670,9 @@
                                                                  :card_id model-id}]
             (is (partial= {:id 1 :name "African"}
                           (client/client
-                           :get 200
-                           (format "public/dashboard/%s/dashcard/%s/execute" (:public_uuid dash) dashcard-id)
-                           :parameters (json/encode {:id 1}))))))))))
+                           :post 200
+                           (format "public/dashboard/%s/dashcard/%s/execute/values" (:public_uuid dash) dashcard-id)
+                           {:parameters {"id" 1}})))))))))
 
 ;;; --------------------------------- POST /api/public/action/:uuid/execute ----------------------------------
 

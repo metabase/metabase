@@ -84,6 +84,7 @@
                               :index/fetch                    true
                               :index/standalone-create        true
                               :metadata/table-existence-check true
+                              :native-pivot-tables            true
                               :now                            true
                               :persist-models                 true
                               :rename                         true
@@ -1667,17 +1668,17 @@
 
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
-  (let [schema-name   (driver.u/workspace-isolation-namespace-name workspace)
-        read-user     {:user     (driver.u/workspace-isolation-user-name workspace)
-                       :password (driver.u/random-workspace-password)}
-        quoted-schema (quote-schema schema-name)
-        quoted-user   (quote-field (:user read-user))]
+  (let [schema-name      (:schema workspace)
+        read-user        (:database_details workspace)
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)
+        quoted-schema    (quote-schema schema-name)
+        quoted-user      (quote-field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       ;; Create user if not exists, otherwise update password
       ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
       (let [user-sql (if (user-exists? t-conn (:user read-user))
-                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user (:password read-user))
-                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user (:password read-user)))]
+                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user escaped-password)
+                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
                        (format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
@@ -1693,9 +1694,8 @@
           (try
             (.executeBatch ^Statement stmt)
             (catch Throwable t
-              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
-    {:schema           schema-name
-     :database_details read-user}))
+              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database workspace]
@@ -1710,7 +1710,10 @@
                       (into [(format "DROP OWNED BY %s" quoted-user)
                              (format "DROP USER IF EXISTS %s" quoted-user)]))]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/batch-exception t))))))))
 
 (defn- grant-workspace-read-access-sqls
   "Build the sequence of SQL statements that grant `username` read access to every
@@ -1730,7 +1733,7 @@
             source-schemas)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         source-schemas (set schemas)
         ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
@@ -1738,18 +1741,25 @@
         ;; isolation hole this catches. We probe per-schema so only the schemas
         ;; actually used as inputs need to be locked down — schemas the workspace
         ;; never touches can keep their default ACLs.
-        _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-                         (doseq [s source-schemas]
-                           (assert-no-public-create-grant!       check-conn s)
-                           (assert-has-usage-grant-option!       check-conn s)
-                           (assert-has-grant-option!             check-conn s)
-                           (assert-can-alter-default-privileges! check-conn s)))
+        ;; read-only probes — one connection, no transaction needed
+        _              (sql-jdbc.execute/do-with-connection-with-options
+                        driver database nil
+                        (fn [^Connection conn]
+                          (let [check-conn {:connection conn}]
+                            (doseq [s source-schemas]
+                              (assert-no-public-create-grant!       check-conn s)
+                              (assert-has-usage-grant-option!       check-conn s)
+                              (assert-has-grant-option!             check-conn s)
+                              (assert-can-alter-default-privileges! check-conn s)))))
         sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/batch-exception t))))))))
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")

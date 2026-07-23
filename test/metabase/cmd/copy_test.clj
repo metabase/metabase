@@ -34,6 +34,7 @@
     :model/CloudMigration
     :model/ContentTranslation
     :model/DashboardFavorite
+    :model/DataApp
     :model/DataComplexityScore
     :model/DatabaseRouter
     :model/Dependency
@@ -73,6 +74,7 @@
     :model/Transform
     :model/TransformRun
     :model/TransformRunCancelation
+    :model/TransformDagRun
     :model/TransformJob
     :model/TransformJobRun
     :model/TransformJobTransformTag

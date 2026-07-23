@@ -1,11 +1,14 @@
 (ns metabase.search.engine-test
   (:require
    [clojure.test :refer :all]
+   [environ.core :as env]
+   [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    ;; Loaded for side effects: registers the engine implementations.
    [metabase.search.init]
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
+   [metabase.startup.core :as startup]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as tu]))
@@ -19,7 +22,6 @@
   the additional-search-engines setting value."
   [{:keys [supported configured additional]} & body]
   ;; with-redefs is required: supported-engine? is a multimethod, which with-dynamic-fn-redefs cannot proxy.
-  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
   `(with-redefs [search.engine/supported-engine?            ~supported
                  search.engine/known-engine?                all-engines
                  search.settings/configured-search-engine   (constantly ~configured)
@@ -48,6 +50,56 @@
   (testing "a legacy engine name is canonicalized"
     (with-engines {:supported all-engines :configured :fulltext}
       (is (= :search.engine/appdb (search.engine/default-engine))))))
+
+(deftest check-for-removed-env-vars-test
+  (testing "the removed MB_SEMANTIC_SEARCH_ENABLED kill switch fails startup"
+    (with-redefs [env/env {:mb-semantic-search-enabled "false"}]
+      (testing "naming the exact fallback engine when semantic is serving search"
+        (with-engines {:supported all-engines}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"To keep semantic search off, set MB_SEARCH_ENGINE=appdb"
+               (search/check-for-removed-env-vars!))))
+        (testing "the fallback follows precedence, not a hardcoded engine"
+          (with-engines {:supported #{:search.engine/semantic :search.engine/in-place}}
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"set MB_SEARCH_ENGINE=in-place"
+                 (search/check-for-removed-env-vars!)))))
+        (testing "when semantic is the only supported engine there is nothing to fall back to"
+          (with-engines {:supported #{:search.engine/semantic}}
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"only supported engine and cannot be disabled"
+                 (search/check-for-removed-env-vars!))))))
+      (testing "naming both settings when semantic is the default and also force-enabled as additional"
+        (with-engines {:supported all-engines :additional ["semantic"]}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"set MB_SEARCH_ENGINE=appdb and remove semantic from additional-search-engines"
+               (search/check-for-removed-env-vars!)))))
+      (testing "pointing at additional-search-engines when semantic is only force-enabled through it"
+        (with-engines {:supported all-engines :configured :appdb :additional ["semantic"]}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"To keep semantic search off, remove semantic from additional-search-engines"
+               (search/check-for-removed-env-vars!)))))
+      (testing "startup proceeds with just a warning when another engine already serves search"
+        (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}}
+          (is (=? [{:level   :warn
+                    :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. Remove it from your configuration."}]
+                  (mt/with-log-messages-for-level [messages :warn]
+                    (search/check-for-removed-env-vars!)
+                    (messages))))))
+      (testing "the check runs as a startup validation so a throw aborts the boot"
+        (is (contains? (methods startup/def-startup-validation!)
+                       :metabase.search.core/check-for-removed-env-vars)))))
+  (testing "startup proceeds when the kill switch is absent"
+    (with-redefs [env/env {}]
+      (is (nil? (search/check-for-removed-env-vars!)))))
+  (testing "an empty value counts as unset, not a leftover"
+    (with-redefs [env/env {:mb-semantic-search-enabled ""}]
+      (is (nil? (search/check-for-removed-env-vars!))))))
 
 (deftest search-engine-setting-test
   (testing "the setting computes the resolved engine when no value is configured"

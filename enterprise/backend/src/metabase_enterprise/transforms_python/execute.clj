@@ -97,7 +97,7 @@
   "Execute a Python transform by calling the python runner.
 
   Blocks until the transform returns."
-  [transform {:keys [run-method on-start user-id job-run-id]}]
+  [transform {:keys [run-method on-start user-id parent-run]}]
   (try
     (let [message-log                                                (base/empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
@@ -105,7 +105,8 @@
           run-user-id                                                (if (and (= run-method :manual) user-id)
                                                                        user-id
                                                                        (or owner_user_id creator_id))
-          {run-id :id}                                               (transforms.u/try-start-unless-already-running transform-id run-method run-user-id :job-run-id job-run-id)]
+          {run-id :id}                                               (transforms.u/try-start-unless-already-running transform-id run-method run-user-id
+                                                                                                                    :parent-run parent-run)]
       (when on-start (on-start run-id))
       (with-open [_ (open-python-message-update-future! run-id message-log)]
         (driver.conn/with-write-connection

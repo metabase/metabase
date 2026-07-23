@@ -259,7 +259,13 @@ function getSidebar(
     );
   }
   if (isShowingDataReference) {
-    return <DataReference {...props} onClose={toggleDataReference} />;
+    return (
+      <DataReference
+        {...props}
+        databaseId={question.databaseId() ?? undefined}
+        onClose={toggleDataReference}
+      />
+    );
   }
   if (isShowingSnippetSidebar) {
     return <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />;

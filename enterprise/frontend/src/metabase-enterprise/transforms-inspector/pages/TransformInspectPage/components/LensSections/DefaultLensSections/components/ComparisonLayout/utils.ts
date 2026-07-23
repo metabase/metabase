@@ -1,4 +1,4 @@
-import { interestingFields } from "metabase/transforms/lib/transforms-inspector";
+import { interestingFields } from "metabase-enterprise/transforms-inspector/lib/transforms-inspector";
 import type {
   InspectorCard,
   InspectorSource,
