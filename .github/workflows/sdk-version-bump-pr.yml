@@ -159,7 +159,7 @@ jobs:
                        --assignee "${GITHUB_ACTOR}" \
                        --reviewer metabase/embedding \
                        --label sdk-release-trigger \
-                       --title "chore(sdk): bump SDK version on ${{ github.ref_name }} to ${{ steps.metadata.outputs.new_version }}" \
+                       --title "chore(sdk): bump SDK version on $BRANCH to ${{ steps.metadata.outputs.new_version }}" \
                        --body "$(cat <<'BODY'
           Bumps the Embedding SDK version in `package.template.json` and updates its `sdkRelease` metadata.
 
