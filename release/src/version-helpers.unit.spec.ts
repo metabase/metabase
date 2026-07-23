@@ -897,17 +897,17 @@ describe("version-helpers", () => {
 
     it("should add an lts tag for a major LTS version", () => {
       expect(
-        getExtraTagsForVersion({ version: "v1.75.0", isLts: true }),
+        getExtraTagsForVersion({ version: "v1.75.0", tagLts: true }),
       ).toEqual(["v0.75.x", "v1.75.x", "lts"]);
 
       expect(
-        getExtraTagsForVersion({ version: "v0.75.0", isLts: true }),
+        getExtraTagsForVersion({ version: "v0.75.0", tagLts: true }),
       ).toEqual(["v0.75.x", "v1.75.x", "lts"]);
     });
 
     it("should add an lts tag for a minor/patch LTS version", () => {
       expect(
-        getExtraTagsForVersion({ version: "v1.75.1", isLts: true }),
+        getExtraTagsForVersion({ version: "v1.75.1", tagLts: true }),
       ).toEqual([
         "v0.75.x",
         "v1.75.x",
@@ -917,7 +917,7 @@ describe("version-helpers", () => {
       ]);
 
       expect(
-        getExtraTagsForVersion({ version: "v0.75.1.3", isLts: true }),
+        getExtraTagsForVersion({ version: "v0.75.1.3", tagLts: true }),
       ).toEqual([
         "v0.75.x",
         "v1.75.x",
@@ -932,7 +932,7 @@ describe("version-helpers", () => {
         getExtraTagsForVersion({
           version: "v0.58.1",
           latestMajorVersion: "58",
-          isLts: true,
+          tagLts: true,
         }),
       ).toEqual([
         "v0.58.x",

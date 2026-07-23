@@ -12,6 +12,7 @@ import {
   isEnterpriseVersion,
   isPatchVersion,
   getMajorVersion,
+  versionSort,
 } from "./version-helpers";
 
 const generateVersionInfo = ({
@@ -185,24 +186,52 @@ export async function getSupportedMajors(
   return getSupportedMajorVersions(await fetchOssVersionInfo(), today);
 }
 
-export const checkIsVersionActiveLts = (
+// Get the latest patch/minor version recorded in the version info file for a given major version
+const getLatestVersionForMajor = (
+  versionInfo: VersionInfoFile,
+  major: number,
+): string | undefined =>
+  [versionInfo.latest, ...(versionInfo.older ?? [])]
+    .map(entry => entry?.version)
+    .filter(
+      (v): v is string => Boolean(v) && getMajorVersion(v) === String(major),
+    )
+    .sort(versionSort)
+    .at(-1);
+
+// Determines if a version is part of an active LTS major release and if it is the latest version for that LTS version.
+export const isVersionActiveLatestLts = (
   version: string,
   versionInfo: VersionInfoFile,
   today: string = new Date().toISOString().slice(0, 10),
 ): boolean => {
-  const match = getActiveMajorVersions(versionInfo, today).find(
+  const activeVersion = getActiveMajorVersions(versionInfo, today).find(
     line => String(line.major) === getMajorVersion(version),
   );
 
-  return match?.lts || false;
+  if (!activeVersion?.lts) {
+    return false;
+  }
+
+  const latestVersion = getLatestVersionForMajor(
+    versionInfo,
+    activeVersion.major,
+  );
+
+  // no latest version means this is a new LTS release
+  if (!latestVersion) {
+    return true;
+  };
+
+  return versionSort(version, latestVersion) >= 0;
 };
 
-// Checks version-info.json for if a version is an LTS version that is still actively supported.
-export async function isVersionActiveLts(
+// Checks version-info.json for if a version is the latest version for an active LTS version.
+export async function isLatestActiveLts(
   version: string,
   today: string = new Date().toISOString().slice(0, 10),
 ): Promise<boolean> {
-  return checkIsVersionActiveLts(version, await fetchOssVersionInfo(), today);
+  return isVersionActiveLatestLts(version, await fetchOssVersionInfo(), today);
 }
 
 // for promoting a released version to `latest` in version-info.json

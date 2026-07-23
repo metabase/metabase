@@ -157,11 +157,11 @@ const shouldAddLatestTag = ({
 export const getExtraTagsForVersion = ({
   version,
   latestMajorVersion,
-  isLts = false,
+  tagLts = false,
 }: {
   version: string;
   latestMajorVersion?: string;
-  isLts?: boolean;
+  tagLts?: boolean;
 }) => {
   const ossVersion = getOSSVersion(version);
   const eeVersion = getEnterpriseVersion(version);
@@ -179,7 +179,7 @@ export const getExtraTagsForVersion = ({
     ...baseTags,
     ...minorTags,
     ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
-    ...(isLts ? ["lts"] : [])
+    ...(tagLts ? ["lts"] : [])
   ];
 };
 
