@@ -26,7 +26,7 @@ import {
 } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
-  MetricDimension,
+  AddableMetricDimension,
   MetricDimensionGroup,
   MetricId,
 } from "metabase-types/api";
@@ -60,7 +60,7 @@ export function AddDimensionsPanel({
 
   const handleAdd = async (
     group: MetricDimensionGroup,
-    dimension: MetricDimension,
+    dimension: AddableMetricDimension,
   ) => {
     try {
       await addDimensions({

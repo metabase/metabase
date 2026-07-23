@@ -1,5 +1,6 @@
 import type {
   AddableDimensionGroup,
+  AddableMetricDimension,
   Metric,
   MetricDimension,
   MetricDimensionGroup,
@@ -18,6 +19,14 @@ export const createMockMetricDimension = (
   ...opts,
 });
 
+export const createMockAddableMetricDimension = (
+  opts?: Partial<AddableMetricDimension>,
+): AddableMetricDimension => ({
+  ...createMockMetricDimension(),
+  mapping_target: ["field", {}, 1],
+  ...opts,
+});
+
 export const createMockMetricDimensionGroup = (
   opts?: Partial<MetricDimensionGroup>,
 ): MetricDimensionGroup => ({
@@ -31,7 +40,7 @@ export const createMockAddableDimensionGroup = (
   opts?: Partial<AddableDimensionGroup>,
 ): AddableDimensionGroup => ({
   group: createMockMetricDimensionGroup(),
-  dimensions: [createMockMetricDimension()],
+  dimensions: [createMockAddableMetricDimension()],
   ...opts,
 });
 

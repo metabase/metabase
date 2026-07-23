@@ -369,16 +369,18 @@
 
 (api.macros/defendpoint :post "/:id/dimension/add"
   :- [:sequential :map]
-  "Add dimensions to a metric. Each entry is a full dimension object (carrying its UUID and a single `sources` field
-  id); the column-derived fields and mapping are recomputed server-side.
+  "Add dimensions to a metric. Each entry carries its UUID and mapping target; the column-derived fields and mapping
+  are recomputed server-side.
 
   Returns the updated list of dimensions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dimensions]} :- [:map
                             [:dimensions [:sequential [:map
-                                                       [:id      ms/NonBlankString]
-                                                       [:sources [:sequential [:map [:field-id ms/PositiveInt]]]]]]]]]
+                                                       [:id             ms/NonBlankString]
+                                                       [:display_name   {:optional true} ms/NonBlankString]
+                                                       [:description    {:optional true} [:maybe :string]]
+                                                       [:mapping_target ::lib-metric.schema/dimension-mapping.target]]]]]]
   (write-check-metric! id)
   (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
     (notify-dimensions-changed! id)))

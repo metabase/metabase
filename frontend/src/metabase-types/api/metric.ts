@@ -2,6 +2,7 @@ import type { Collection, CollectionId } from "./collection";
 import type { DatasetColumn, RowValue } from "./dataset";
 import type { FieldValue } from "./field";
 import type {
+  AddableMetricDimension,
   DimensionId,
   DimensionMapping,
   MetricDimension,
@@ -10,6 +11,7 @@ import type {
 } from "./measure";
 
 export type {
+  AddableMetricDimension,
   DimensionMapping,
   MetricDimension,
   MetricDimensionGroup,
@@ -128,7 +130,7 @@ export type ListMetricDimensionsRequest = {
 
 export type AddableDimensionGroup = {
   group: MetricDimensionGroup;
-  dimensions: MetricDimension[];
+  dimensions: AddableMetricDimension[];
 };
 
 export type ListMetricDimensionsResponse = {
@@ -138,7 +140,7 @@ export type ListMetricDimensionsResponse = {
 
 export type AddMetricDimensionsRequest = {
   metricId: MetricId;
-  dimensions: MetricDimension[];
+  dimensions: AddableMetricDimension[];
 };
 
 export type RemoveMetricDimensionsRequest = {

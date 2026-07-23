@@ -222,11 +222,12 @@
    return the API `[{:group ... :dimensions [...]}]` shape."
   [pairs]
   (->> pairs
-       (map (fn [{:keys [dimension]}] (assoc dimension :id (str (random-uuid)))))
-       (group-by :group)
-       (mapv (fn [[group dims]]
+       (map (fn [{:keys [dimension] :as pair}]
+              (assoc pair :dimension (assoc dimension :id (str (random-uuid))))))
+       (group-by (comp :group :dimension))
+       (mapv (fn [[group dimension-pairs]]
                {:group      (metrics.dimension/->api-group group)
-                :dimensions (mapv metrics.dimension/->api-dimension dims)}))))
+                :dimensions (mapv metrics.dimension/->api-addable-dimension dimension-pairs)}))))
 
 (defn list-dimensions
   "List a metric/measure's curated (`:added`) dimensions and, when `with-addable?`, the columns still
@@ -246,18 +247,24 @@
                 [])}))
 
 (defn add-dimensions!
-  "Add the given dimensions (full API dimension objects, each carrying its UUID and a single
-   `:sources` field id) to a metric/measure. The column-derived fields and mapping are recomputed
-   server-side from the entity's columns; only the UUID, display name, and description come from the
-   request. Returns the updated `:added` list."
+  "Add the given dimensions to a metric/measure. The column-derived fields and mapping are recomputed
+   server-side from the submitted mapping target; only the UUID, display name, and description come
+   from the request. Returns the updated `:added` list."
   [metadata-type id api-dims]
   (let [entity             (dimension-entity metadata-type id)
-        pair-by-field-id   (into {} (keep (fn [p] (when-let [fid (pair->field-id p)] [fid p])))
-                                 (entity-computed-pairs entity))
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
         persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
+        pair-by-target     (into {}
+                                 (map (fn [pair]
+                                        [(lib-metric/field-ref->key (-> pair :mapping :target)) pair]))
+                                 (lib-metric/addable-pairs
+                                  (entity-computed-pairs entity)
+                                  persisted-mappings))
         pairs              (keep (fn [d]
-                                   (when-let [pair (get pair-by-field-id (-> d :sources first :field-id))]
+                                   (when-let [pair (get pair-by-target
+                                                        (lib-metric/field-ref->key
+                                                         (metrics.transforms/normalize-target-ref
+                                                          (:mapping_target d))))]
                                      {:dimension (cond-> (assoc (:dimension pair) :id (:id d))
                                                    (:display_name d)             (assoc :display-name (:display_name d))
                                                    (contains? d :description)    (assoc :description (:description d)))

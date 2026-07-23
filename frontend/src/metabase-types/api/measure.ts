@@ -31,7 +31,15 @@ export type MetricDimension = {
   sources?: MetricDimensionSource[];
 };
 
-export type DimensionMappingTarget = ["field", Record<string, unknown>, number];
+export type AddableMetricDimension = MetricDimension & {
+  mapping_target: DimensionMappingTarget;
+};
+
+export type DimensionMappingTarget = [
+  "field",
+  Record<string, unknown>,
+  number | string,
+];
 
 export type DimensionMapping = {
   dimension_id: DimensionId;

@@ -39,6 +39,12 @@
     (:group dim)   (assoc :group (->api-group (:group dim)))
     (:sources dim) (assoc :sources (mapv ->api-source (:sources dim)))))
 
+(defn ->api-addable-dimension
+  "Convert a computed dimension/mapping pair to the API shape used when adding dimensions."
+  [{:keys [dimension mapping]}]
+  (assoc (->api-dimension dimension)
+         :mapping_target (lib-metric/field-ref->key (:target mapping))))
+
 (mu/defn dimension-values :- ms/FieldValuesResult
   "Fetch values for a dimension given its UUID.
    Uses the same logic as the field values API."

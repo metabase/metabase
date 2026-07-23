@@ -20,6 +20,12 @@
     (-> (lib/query mp table-metadata)
         (lib/aggregate (lib/count)))))
 
+(defn- orders-metric-query []
+  (let [mp (mt/metadata-provider)
+        table-metadata (lib.metadata/table mp (mt/id :orders))]
+    (-> (lib/query mp table-metadata)
+        (lib/aggregate (lib/count)))))
+
 (defn- get-dimension-id [metric dimension-name]
   (let [dim (first (filter #(= (:name %) dimension-name) (:dimensions metric)))]
     (:id dim)))
@@ -312,6 +318,49 @@
               "the addition is persisted")
           (is (= [default-id] (mapv :id (filter :default resp)))
               "the existing default is preserved"))))))
+
+(deftest add-dimension-through-one-of-multiple-foreign-key-paths-test
+  (testing "adding a dimension reached through duplicate foreign key paths preserves the selected path"
+    (let [product-id-field-id (mt/id :orders :product_id)
+          user-id-field-id    (mt/id :orders :user_id)
+          product-title-id    (mt/id :products :title)]
+      (mt/with-temp-vals-in-db :model/Field user-id-field-id
+                               {:fk_target_field_id (mt/id :products :id)}
+        (mt/with-temp [:model/Card metric {:name          "Duplicate FK Metric"
+                                           :type          :metric
+                                           :database_id   (mt/id)
+                                           :table_id      (mt/id :orders)
+                                           :dataset_query (orders-metric-query)}]
+          (metrics/sync-dimensions! :metadata/metric (:id metric))
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (str "metric/" (:id metric) "/dimension")
+                                               :with-addable true)
+                title-dimensions (->> (:addable response)
+                                      (mapcat :dimensions)
+                                      (filter #(= product-title-id (-> % :sources first :field-id))))
+                source-field     #(get (second (:mapping_target %)) :source-field)
+                by-source-field  (m/index-by source-field
+                                             title-dimensions)
+                selected         (get by-source-field product-id-field-id)]
+            (is (= #{product-id-field-id user-id-field-id}
+                   (set (keys by-source-field))))
+            (is (some? selected))
+            (when selected
+              (mt/user-http-request :crowberto :post 200
+                                    (str "metric/" (:id metric) "/dimension/add")
+                                    {:dimensions [selected]})
+              (let [stored-mapping (->> (t2/select-one-fn :dimension_mappings
+                                                          :model/Card :id (:id metric))
+                                        (m/find-first #(= (:id selected) (:dimension-id %))))
+                    remaining     (->> (mt/user-http-request :crowberto :get 200
+                                                             (str "metric/" (:id metric) "/dimension")
+                                                             :with-addable true)
+                                       :addable
+                                       (mapcat :dimensions)
+                                       (filter #(= product-title-id (-> % :sources first :field-id))))]
+                (is (= product-id-field-id (get-in stored-mapping [:target 1 :source-field])))
+                (is (= [user-id-field-id]
+                       (mapv source-field remaining)))))))))))
 
 (deftest add-first-dimension-assigns-default-test
   (testing "adding a dimension to an empty curated list makes it the default"

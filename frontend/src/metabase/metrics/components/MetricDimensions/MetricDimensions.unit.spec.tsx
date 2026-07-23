@@ -18,6 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   createMockAddableDimensionGroup,
+  createMockAddableMetricDimension,
   createMockMetricDimension,
   createMockMetricDimensionGroup,
 } from "metabase-types/api/mocks/metric";
@@ -65,20 +66,22 @@ const SUSPEND_AT = createMockMetricDimension({
   sources: [{ type: "field", "field-id": 103 }],
 });
 
-const BILLED_AT = createMockMetricDimension({
+const BILLED_AT = createMockAddableMetricDimension({
   id: "44444444-4444-4444-8444-444444444444",
   display_name: "Billed At",
   effective_type: "type/DateTime",
   semantic_type: null,
   sources: [{ type: "field", "field-id": 201 }],
+  mapping_target: ["field", { "source-field": 105 }, 201],
 });
 
-const PLAN_NAME = createMockMetricDimension({
+const PLAN_NAME = createMockAddableMetricDimension({
   id: "55555555-5555-4555-8555-555555555555",
   display_name: "Plan Name",
   effective_type: "type/Text",
   semantic_type: null,
   sources: [{ type: "field", "field-id": 202 }],
+  mapping_target: ["field", { "source-field": 105 }, 202],
 });
 
 const ADDABLE_GROUP = createMockAddableDimensionGroup({
@@ -90,12 +93,13 @@ const ADDABLE_GROUP = createMockAddableDimensionGroup({
   dimensions: [BILLED_AT, PLAN_NAME],
 });
 
-const SELF_ADDABLE_COLUMN = createMockMetricDimension({
+const SELF_ADDABLE_COLUMN = createMockAddableMetricDimension({
   id: "66666666-6666-4666-8666-666666666666",
   display_name: "Plan Updated At",
   effective_type: "type/DateTime",
   semantic_type: null,
   sources: [{ type: "field", "field-id": 104 }],
+  mapping_target: ["field", {}, 104],
 });
 
 const SELF_ADDABLE_GROUP = createMockAddableDimensionGroup({
