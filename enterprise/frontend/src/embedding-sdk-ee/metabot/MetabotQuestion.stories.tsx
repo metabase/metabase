@@ -8,6 +8,7 @@ import { MetabaseProvider } from "embedding-sdk-package/components/public/Metaba
 import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
 import {
   MOCK_AD_HOC_QUESTION_ID,
+  mockGeneratedCardChunk,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
 import { Flex, Stack } from "metabase/ui";
@@ -53,7 +54,7 @@ export const Centered = {
   },
 };
 
-export const RedirectReaction = {
+export const GeneratedChart = {
   render: Template,
   parameters: {
     msw: {
@@ -66,7 +67,7 @@ export const RedirectReaction = {
             delta: `Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})`,
           },
           { type: "text-end", id: "t1" },
-          { type: "data-navigate_to", data: MOCK_AD_HOC_QUESTION_ID },
+          mockGeneratedCardChunk(),
           { type: "finish", finishReason: "stop" },
         ]),
       ],

@@ -108,9 +108,7 @@
                :query-hash        (codec/base64-encode (qp.util/query-hash {:database 1, :type :native}))
                :query-string      "toucans"
                :question-filter   "bird sales"
-               :collection-filter "coin collection"
-               :error-filter      "a"
-               :db-filter         "PU"
+               :search-term       "toucans"
                :sort-column       "card.id"
                :sort-direction    "desc"
                :dashboard-name    "wow"
@@ -152,9 +150,35 @@
                                            {:limit 1
                                             :type :internal,
                                             :fn "metabase-enterprise.audit-app.pages.queries/bad-table",
-                                            :args [nil nil nil "last_run_at" "desc"],
+                                            :args [nil "last_run_at" "desc"],
                                             :offset 0,
                                             :parameters []})]
         (is (=? {:status "completed"
                  :row_count integer?}
                 response))))))
+
+(deftest bad-table-total-count-over-dataset-api-test
+  (testing "the bad-table :total_count survives the real streaming path over POST /api/dataset"
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Card {bad-id :id} {:name "Toucan dataset card"}
+                       :model/QueryExecution _ {:card_id      bad-id
+                                                :executor_id  (mt/user->id :crowberto)
+                                                :hash         (qp.util/query-hash {})
+                                                :result_rows  0
+                                                :running_time 0
+                                                :native       false
+                                                :started_at   #t "2026-05-05T10:00:00Z"
+                                                :context      :ad-hoc
+                                                :error        "dataset-total-marker-uvw not found"}]
+          ;; a unique error marker isolates exactly one erroring card, so total_count is deterministic
+          (let [response (mt/user-http-request :crowberto :post 202
+                                               "dataset"
+                                               {:type       :internal
+                                                :fn         "metabase-enterprise.audit-app.pages.queries/bad-table"
+                                                :args       ["dataset-total-marker-uvw" "last_run_at" "desc"]
+                                                :parameters []})]
+            (is (=? {:status      "completed"
+                     :row_count   1
+                     :total_count 1}
+                    response))))))))

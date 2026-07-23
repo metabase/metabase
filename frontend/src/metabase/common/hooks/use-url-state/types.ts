@@ -1,3 +1,3 @@
-import type { Query } from "history";
+import type { Query } from "metabase/router";
 
 export type QueryParam = Query[keyof Query];

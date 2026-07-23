@@ -132,7 +132,14 @@ function renderFacade(
     <Route path={facadePath} component={Mounted} />
   );
 
-  renderWithProviders(tree, { withRouter: true, initialRoute });
+  // These suites exist to prove the facade *on v3* behaves like real v7, and the
+  // tree above is raw v3 route config, so pin the engine rather than following
+  // the harness default (now v7). Retired with the v3 engine.
+  renderWithProviders(tree, {
+    withRouter: true,
+    initialRoute,
+    routerEngine: "v3",
+  });
 }
 
 function renderV7(
@@ -265,7 +272,8 @@ function renderDynamicFacade(
   );
   renderWithProviders(
     <Route component={Passthrough}>{dynamicSiblings(leaf, scenario)}</Route>,
-    { withRouter: true, initialRoute },
+    // Raw v3 route config, same as `renderFacade`: pin the engine.
+    { withRouter: true, initialRoute, routerEngine: "v3" },
   );
 }
 
