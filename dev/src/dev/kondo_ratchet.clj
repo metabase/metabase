@@ -50,10 +50,10 @@
 (def ^:private ignore-marker-re
   (re-pattern (str ignore-marker ignore-marker-boundary)))
 
-;; Any explicit `#:clj-kondo{...}` map can spell the real ignore key as `:ignore`, including after
-;; arbitrary values or comments. Reserve the whole spelling rather than parsing inside the map.
-(def ^:private namespaced-ignore-map-re
-  #"#:clj-kondo[\p{javaWhitespace},]*\{")
+;; Any explicit `#:clj-kondo` map can spell the real ignore key as `:ignore`, including after arbitrary
+;; values or comments. Reserve the namespace prefix itself rather than parsing what separates it from the map.
+(def ^:private namespaced-ignore-prefix-re
+  (re-pattern (str "#:clj-kondo" ignore-marker-boundary)))
 
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
@@ -147,7 +147,7 @@
                 (if (.find m)
                   (recur (conj acc (.start m)))
                   acc))))
-          [ignore-marker-re namespaced-ignore-map-re]))
+          [ignore-marker-re namespaced-ignore-prefix-re]))
 
 (defn- unsupported-ignore-lines
   "Lines containing an ignore marker outside one of `matches`' canonical spans."
@@ -198,7 +198,7 @@
                     (some #(str/ends-with? (.getPath f) %) source-extensions))
          :let  [content (slurp f)]
          :when (or (str/includes? content ignore-marker)
-                   (re-find namespaced-ignore-map-re content))
+                   (re-find namespaced-ignore-prefix-re content))
          m     (ignore-matches content)]
      {:file       (.getPath f)
       :line       (:line m)

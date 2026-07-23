@@ -132,6 +132,7 @@
       "(def ^#:clj-kondo{:ignore [:namespaced-map]} x 1)"
       "(def ^#:clj-kondo{:doc \"x\", :ignore [:namespaced-map]} x 1)"
       "(def ^#:clj-kondo,{:ignore [:namespaced-map]} x 1)"
+      "(def ^#:clj-kondo ;; why\n {:ignore [:namespaced-map]} x 1)"
       "(def ^#:clj-kondo{;; why\n :ignore [:namespaced-map]} x 1)")))
 
 (deftest ^:parallel scan-test
