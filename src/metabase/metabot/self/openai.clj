@@ -178,7 +178,9 @@
   (into []
         (keep (fn [part]
                 (case (:type part)
-                  ;; display-only; the Responses API reconstructs its own reasoning context
+                  ;; summaries are display-only and can't be replayed without the
+                  ;; encrypted reasoning content we don't persist; the Responses API
+                  ;; reconstructs its own reasoning context instead
                   :reasoning   nil
                   :text        {:type    "message"
                                 :role    "assistant"

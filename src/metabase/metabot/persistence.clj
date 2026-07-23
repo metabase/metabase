@@ -101,9 +101,8 @@
 
 (defn parts->storable-content
   "Drop transient/lifecycle parts and convert what remains to the v2 at-rest format.
-  Stream metadata (`:usage`/`:finish`/`:error`), live-only `:reasoning`, and `state`
-  data parts (persisted separately into the row's `state` column) carry no history
-  value."
+  Stream metadata (`:usage`/`:finish`/`:error`), `:reasoning`, and `state` data parts
+  (persisted separately into the row's `state` column) carry no history value."
   [parts]
   (->> parts
        (remove #(#{:usage :finish :error :reasoning} (:type %)))
