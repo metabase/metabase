@@ -204,14 +204,14 @@ export interface CreateCollectionRequest {
   is_shared_tenant_collection?: boolean;
 }
 
-export interface ListCollectionsRequest {
+export type ListCollectionsRequest = {
   archived?: boolean;
   namespace?: CollectionNamespace;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
   collection_type?: CollectionType;
-}
-export interface ListCollectionsTreeRequest {
+};
+export type ListCollectionsTreeRequest = {
   "exclude-archived"?: boolean;
   "exclude-other-user-collections"?: boolean;
   "include-library"?: boolean;
@@ -221,7 +221,7 @@ export interface ListCollectionsTreeRequest {
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;
-}
+};
 
 export interface DeleteCollectionRequest {
   id: RegularCollectionId;

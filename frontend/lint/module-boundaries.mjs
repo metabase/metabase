@@ -384,17 +384,6 @@ const rules = [
     from: ["app/*"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },
-  // TEMP(content-optimizer): the Monitor space is mid-migration — source files are
-  // being relocated here from admin/ and data-studio/ before their routes and
-  // dependencies are moved, so monitor currently imports heavily from feature
-  // modules (admin, etc.). We allow it to import from anywhere until the migration
-  // is complete.
-  // TODO (@stasgavrylov 24/06/26): remove this rule and give monitor proper boundaries once the
-  // Monitor migration is complete.
-  {
-    from: ["shared/monitor"],
-    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
-  },
   // Whitelisted cross-tier edges. Keep this list short; every entry should
   // eventually be removed.
   // Window-bridge ABI: the payload shapes are owned by the bundle.
