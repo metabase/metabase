@@ -138,16 +138,11 @@ export const getSteps = createSelector(
         "db_connection",
         shouldShowDBConnectionStep && !isEmbeddingUseCase,
       ),
-      // The AI step can precede license_token because nothing it offers is
-      // unlocked by a self-hosted license: BYOK providers are not
-      // license-gated, and the managed-AI offer (offer-metabase-ai-managed)
-      // only exists on cloud plans, whose token is already present at boot and
-      // which never see the license step. If managed AI is ever offered
-      // through self-hosted licenses, this step must move after license_token
-      // AND the "Metabase" provider option must start reacting to token
-      // features at render time — PLUGIN_METABOT.isEnabled is computed once at
-      // plugin init, so a token entered mid-wizard never surfaces the managed
-      // option without a page reload.
+      // Safe before license_token: BYOK providers aren't license-gated, and
+      // the managed-AI offer only exists on cloud plans (token present at
+      // boot). If a self-hosted license ever unlocks managed AI, move this
+      // after license_token — PLUGIN_METABOT.isEnabled is frozen at plugin
+      // init, so a token entered mid-wizard can't surface the managed option.
       ...maybeAddStep(
         "ai_config",
         shouldShowAiConfigStep && !isEmbeddingUseCase,
