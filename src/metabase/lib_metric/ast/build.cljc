@@ -39,10 +39,7 @@
 
 (defn dimension-node
   "Create a dimension node from a persisted dimension."
-  [{:keys [id name status]
-    display-name   :display_name
-    effective-type :effective_type
-    semantic-type  :semantic_type}]
+  [{:keys [id name display-name effective-type semantic-type status]}]
   (cond-> {:node/type :ast/dimension
            :id        id}
     name           (assoc :name name)
@@ -53,9 +50,7 @@
 
 (defn dimension-mapping-node
   "Create a dimension mapping node from a persisted mapping."
-  [{:keys [target]
-    dimension-id :dimension_id
-    table-id     :table_id}]
+  [{:keys [dimension-id table-id target]}]
   (let [[_field opts field-id] target
         source-field (:source-field opts)
         base-type    (:base-type opts)]

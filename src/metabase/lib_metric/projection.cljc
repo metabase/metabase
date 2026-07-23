@@ -205,7 +205,7 @@
   "Get available temporal buckets for a dimension based on its effective-type."
   [definition :- ::lib-metric.schema/metric-definition
    dimension  :- ::lib-metric.schema/metadata-dimension]
-  (let [effective-type (or (:effective_type dimension) (:base-type dimension))
+  (let [effective-type (or (:effective-type dimension) (:base-type dimension))
         flat-projs    (lib-metric.definition/flat-projections (or (:projections definition) []))
         selected-unit (perf/some (fn [proj]
                                    (when (= (:id dimension) (projection-dimension-id proj))
@@ -282,8 +282,8 @@
   "Get available binning strategies for a dimension based on its type and sources."
   [definition :- ::lib-metric.schema/metric-definition
    dimension  :- ::lib-metric.schema/metadata-dimension]
-  (let [effective-type (:effective_type dimension)
-        semantic-type  (:semantic_type dimension)
+  (let [effective-type (:effective-type dimension)
+        semantic-type  (:semantic-type dimension)
         sources        (:sources dimension)
         has-binning?   (and (seq sources) (perf/some :field-id sources))
         flat-projs     (lib-metric.definition/flat-projections (or (:projections definition) []))

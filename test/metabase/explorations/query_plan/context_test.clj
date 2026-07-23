@@ -54,21 +54,21 @@
     (mt/with-temp [:model/Card metric {:type :metric :name "Revenue"
                                        :dataset_query (count-metric-query)}]
       (let [cid      (:id metric)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+            mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}
-                      {:dimension_id "d2" :table_id (mt/id :venues)
+                      {:dimension-id "d2" :table-id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :name)]}]
             ;; Two blocks sharing the same metric. Block A pairs it with d1 only;
             ;; block B with d2 only — even though the metric's dimension_mappings
             ;; resolve BOTH dims. Applicability must stay within each block.
             block-a  {:id 1
                       :metrics    [{:card_id cid :dimension_mappings mappings}]
-                      :dimensions [{:dimension_id "d1" :display_name "Price"
-                                    :effective_type :type/Number}]}
+                      :dimensions [{:dimension-id "d1" :display-name "Price"
+                                    :effective-type :type/Number}]}
             block-b  {:id 2
                       :metrics    [{:card_id cid :dimension_mappings mappings}]
-                      :dimensions [{:dimension_id "d2" :display_name "Name"
-                                    :effective_type :type/Text}]}
+                      :dimensions [{:dimension-id "d2" :display-name "Name"
+                                    :effective-type :type/Text}]}
             result   (qp.context/metric-and-dim-context [block-a block-b])
             blocks   (:blocks result)
             [ba bb]  blocks]
@@ -99,10 +99,10 @@
             card-dq   (t2/select-one-fn :dataset_query :model/Card :id cid)
             block     {:id 1
                        :metrics    [{:card_id cid
-                                     :dimension_mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                                     :dimension_mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                                                            :target ["field" {} (mt/id :venues :price)]}]}]
-                       :dimensions [{:dimension_id "d1" :display_name "Price"
-                                     :effective_type :type/Number}]}
+                       :dimensions [{:dimension-id "d1" :display-name "Price"
+                                     :effective-type :type/Number}]}
             builds    (atom 0)
             real-query lib/query]
         (with-redefs [lib/query (fn [mp q]
@@ -122,10 +122,10 @@
             m   (-> (qp.context/metric-and-dim-context
                      [{:id 1
                        :metrics    [{:card_id cid
-                                     :dimension_mappings [{:dimension_id "d1" :table_id (mt/id :orders)
+                                     :dimension_mappings [{:dimension-id "d1" :table-id (mt/id :orders)
                                                            :target ["field" {} (mt/id :orders :created_at)]}]}]
-                       :dimensions [{:dimension_id "d1" :display_name "Created At"
-                                     :effective_type :type/DateTimeWithLocalTZ}]}])
+                       :dimensions [{:dimension-id "d1" :display-name "Created At"
+                                     :effective-type :type/DateTimeWithLocalTZ}]}])
                     :blocks first :metrics first)]
         (is (= cid (:metric-id m)))
         (is (= "Orders" (:name m)))
@@ -141,14 +141,14 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid      (:id metric)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+            mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}]
             block    (first (t2/insert-returning-instances!
                              :model/ExplorationBlock
                              {:exploration_thread_id (:id t)
                               :metrics               [{:card_id cid :dimension_mappings mappings}]
-                              :dimensions            [{:dimension_id "d1" :display_name "Price"
-                                                       :effective_type "type/Number"}]
+                              :dimensions            [{:dimension-id "d1" :display-name "Price"
+                                                       :effective-type "type/Number"}]
                               :position              0}))
             page-id  (t2/insert-returning-pk! :model/ExplorationPage
                                               {:exploration_block_id (:id block)
@@ -160,8 +160,8 @@
         (is (some? ctx))
         (is (some? (:target ctx)) "dimension target resolved from the block's metric mappings")
         (is (= "Price" (:dim-label ctx)))
-        (is (= "d1" (-> ctx :dim :dimension_id)))
-        (is (= :type/Number (-> ctx :dim :effective_type)) "dim type keywordized by the model transform")))))
+        (is (= "d1" (-> ctx :dim :dimension-id)))
+        (is (= :type/Number (-> ctx :dim :effective-type)) "dim type keywordized by the model transform")))))
 
 (deftest build-row-context-applies-explore-filters-test
   (testing "build-row-context scopes the metric Card to a single explore filter"
@@ -169,7 +169,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid      (:id metric)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+            mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}]
             page-id  (insert-block-page-row!
                       (:id t) cid
@@ -177,8 +177,8 @@
                                      :dimension_mappings mappings
                                      :explore_filters    [{:field_ref ["field" {} (mt/id :venues :price)]
                                                            :value     2}]}]
-                       :dimensions [{:dimension_id "d1" :display_name "Price"
-                                     :effective_type "type/Number"}]}
+                       :dimensions [{:dimension-id "d1" :display-name "Price"
+                                     :effective-type "type/Number"}]}
                       "d1")
             ctx      (qp.context/build-row-context {:card_id cid :dimension_id "d1"
                                                     :page_id page-id :params {}})]
@@ -192,9 +192,9 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid      (:id metric)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+            mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}
-                      {:dimension_id "d2" :table_id (mt/id :venues)
+                      {:dimension-id "d2" :table-id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :name)]}]
             page-id  (insert-block-page-row!
                       (:id t) cid
@@ -204,10 +204,10 @@
                                                            :value     2}
                                                           {:field_ref ["field" {} (mt/id :venues :name)]
                                                            :value     "Smallville"}]}]
-                       :dimensions [{:dimension_id "d1" :display_name "Price"
-                                     :effective_type "type/Number"}
-                                    {:dimension_id "d2" :display_name "Name"
-                                     :effective_type "type/Text"}]}
+                       :dimensions [{:dimension-id "d1" :display-name "Price"
+                                     :effective-type "type/Number"}
+                                    {:dimension-id "d2" :display-name "Name"
+                                     :effective-type "type/Text"}]}
                       "d1")
             names    (card-filter-display-names
                       (:card (qp.context/build-row-context {:card_id cid :dimension_id "d1"
@@ -223,7 +223,7 @@
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid        (:id metric)
             created-at (mt/id :orders :created_at)
-            mappings   [{:dimension_id "d1" :table_id (mt/id :orders)
+            mappings   [{:dimension-id "d1" :table-id (mt/id :orders)
                          :target ["field" {} created-at]}]
             page-id    (insert-block-page-row!
                         (:id t) cid
@@ -231,8 +231,8 @@
                                        :dimension_mappings mappings
                                        :explore_filters    [{:field_ref ["field" {:temporal-unit :month} created-at]
                                                              :value     "2020-01-01T00:00:00Z"}]}]
-                         :dimensions [{:dimension_id "d1" :display_name "Created At"
-                                       :effective_type "type/DateTimeWithLocalTZ"}]}
+                         :dimensions [{:dimension-id "d1" :display-name "Created At"
+                                       :effective-type "type/DateTimeWithLocalTZ"}]}
                         "d1")
             ctx        (qp.context/build-row-context {:card_id cid :dimension_id "d1"
                                                       :page_id page-id :params {}})
@@ -254,7 +254,7 @@
                        :model/ExplorationThread t {:exploration_id (:id e)}]
           (let [cid        (:id metric)
                 created-at (mt/id :orders :created_at)
-                mappings   [{:dimension_id "d1" :table_id (mt/id :orders)
+                mappings   [{:dimension-id "d1" :table-id (mt/id :orders)
                              :target ["field" {} created-at]}]
                 page-id    (insert-block-page-row!
                             (:id t) cid
@@ -262,8 +262,8 @@
                                            :dimension_mappings mappings
                                            :explore_filters    [{:field_ref ["field" {:temporal-unit unit} created-at]
                                                                  :value     value}]}]
-                             :dimensions [{:dimension_id "d1" :display_name "Created At"
-                                           :effective_type "type/DateTimeWithLocalTZ"}]}
+                             :dimensions [{:dimension-id "d1" :display-name "Created At"
+                                           :effective-type "type/DateTimeWithLocalTZ"}]}
                             "d1")
                 ctx        (qp.context/build-row-context {:card_id cid :dimension_id "d1"
                                                           :page_id page-id :params {}})
@@ -279,7 +279,7 @@
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid      (:id metric)
             price-id (mt/id :venues :price)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+            mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                        :target ["field" {} price-id]}]
             page-id  (insert-block-page-row!
                       (:id t) cid
@@ -287,8 +287,8 @@
                                      :dimension_mappings mappings
                                      :explore_filters    [{:field_ref ["field" {:binning {:strategy :default}} price-id]
                                                            :value     10}]}]
-                       :dimensions [{:dimension_id "d1" :display_name "Price"
-                                     :effective_type "type/Number"}]}
+                       :dimensions [{:dimension-id "d1" :display-name "Price"
+                                     :effective-type "type/Number"}]}
                       "d1")
             ctx      (qp.context/build-row-context {:card_id cid :dimension_id "d1"
                                                     :page_id page-id :params {}})
@@ -314,16 +314,16 @@
                                       :creator_id    (:id u)
                                       :dataset_query (count-metric-query)}
                                      :dimensions
-                                     [{:id users-created  :name "LATITUDE"  :display_name "Created At"
-                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}
-                                      {:id orders-created :name "LONGITUDE" :display_name "Created At"
-                                       :group {:id "g-orders" :type "connection" :display_name "Orders"}}])]
+                                     [{:id users-created  :name "LATITUDE"  :display-name "Created At"
+                                       :group {:id "g-users"  :type "main"       :display-name "Users"}}
+                                      {:id orders-created :name "LONGITUDE" :display-name "Created At"
+                                       :group {:id "g-orders" :type "connection" :display-name "Orders"}}])]
           (let [mp              (lib-be/application-database-metadata-provider (mt/id))
-                block           {:dimensions [{:dimension_id users-created  :display_name "Created At"}
-                                              {:dimension_id orders-created :display_name "Created At"}]}
-                metric-selection {:dimension_mappings [{:dimension_id users-created  :table_id (mt/id :venues)
+                block           {:dimensions [{:dimension-id users-created  :display-name "Created At"}
+                                              {:dimension-id orders-created :display-name "Created At"}]}
+                metric-selection {:dimension_mappings [{:dimension-id users-created  :table-id (mt/id :venues)
                                                         :target ["field" {} users-field]}
-                                                       {:dimension_id orders-created :table_id (mt/id :venues)
+                                                       {:dimension-id orders-created :table-id (mt/id :venues)
                                                         :target ["field" {} orders-field]}]}
                 filter          {:field_ref ["field" {} users-field] :value 40.7}
                 [enriched]      (qp.context/enrich-explore-filters mp metric block metric-selection [filter])]
@@ -344,7 +344,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid      (:id metric)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+            mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :name)]}]
             page-id  (insert-block-page-row!
                       (:id t) cid
@@ -353,8 +353,8 @@
                                      ;; a column from another table — not resolvable on this query
                                      :explore_filters    [{:field_ref ["field" {} (mt/id :orders :total)]
                                                            :value     10}]}]
-                       :dimensions [{:dimension_id "d1" :display_name "Name"
-                                     :effective_type "type/Text"}]}
+                       :dimensions [{:dimension-id "d1" :display-name "Name"
+                                     :effective-type "type/Text"}]}
                       "d1")]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Could not resolve explore filter field ref"
@@ -369,12 +369,12 @@
     ;; filter scopes the actual column (`Name = "Smallville"`), not an unresolvable expression.
     (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}]
       (let [name-id    (mt/id :venues :name)
-            mappings   [{:dimension_id "d1" :table_id (mt/id :venues)
+            mappings   [{:dimension-id "d1" :table-id (mt/id :venues)
                          :target ["field" {} name-id]}]
             metric-sel {:card_id (:id metric) :dimension_mappings mappings}
             block      {:metrics    [metric-sel]
-                        :dimensions [{:dimension_id "d1" :display_name "Name"
-                                      :effective_type "type/Text"}]}
+                        :dimensions [{:dimension-id "d1" :display-name "Name"
+                                      :effective-type "type/Text"}]}
             filters    [{:field_ref ["expression" "Name"] :value "Smallville"}]
             [enriched] (qp.context/enrich-explore-filters (mt/metadata-provider) metric block metric-sel filters)]
         (testing "field_ref no longer references the synthetic expression"
@@ -399,7 +399,7 @@
     (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}]
       (let [metric-sel {:card_id (:id metric) :dimension_mappings []}
             block      {:metrics    [metric-sel]
-                        :dimensions [{:dimension_id "d1" :display_name "Name"}]}
+                        :dimensions [{:dimension-id "d1" :display-name "Name"}]}
             filters    [{:field_ref ["expression" "Nonexistent"] :value "x"}]
             enriched   (qp.context/enrich-explore-filters (mt/metadata-provider) metric block metric-sel filters)]
         (is (= 1 (count enriched)))
@@ -418,15 +418,15 @@
                      :model/ExplorationThread t {:exploration_id (:id e)}]
         (let [cid      (:id metric)
               filters  [{:field_ref ["field" {} (mt/id :venues :name)] :value "foo"}]
-              mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+              mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                          :target ["field" {} (mt/id :venues :name)]}]
               page-id  (insert-block-page-row!
                         (:id t) cid
                         {:metrics    [{:card_id cid
                                        :dimension_mappings mappings
                                        :explore_filters    filters}]
-                         :dimensions [{:dimension_id "d1" :display_name "Name"
-                                       :effective_type "type/Text"}]}
+                         :dimensions [{:dimension-id "d1" :display-name "Name"
+                                       :effective-type "type/Text"}]}
                         "d1")
               build!   #(qp.context/build-row-context {:card_id cid :dimension_id "d1"
                                                        :page_id page-id :params {}})

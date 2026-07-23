@@ -15,16 +15,16 @@
 
 (defn- text-dim
   ([dim-id]                (text-dim dim-id nil))
-  ([dim-id distinct-count] {:dimension_id   dim-id
-                            :display_name   dim-id
-                            :effective_type :type/Text
-                            :semantic_type  :type/Category
+  ([dim-id distinct-count] {:dimension-id   dim-id
+                            :display-name   dim-id
+                            :effective-type :type/Text
+                            :semantic-type  :type/Category
                             :fingerprint    (when distinct-count
                                               {:global {:distinct-count distinct-count}})}))
 
-(defn- date-dim     [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/Date})
-(defn- datetime-dim [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/DateTime})
-(defn- numeric-dim  [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/Float})
+(defn- date-dim     [dim-id] {:dimension-id dim-id :display-name dim-id :effective-type :type/Date})
+(defn- datetime-dim [dim-id] {:dimension-id dim-id :display-name dim-id :effective-type :type/DateTime})
+(defn- numeric-dim  [dim-id] {:dimension-id dim-id :display-name dim-id :effective-type :type/Float})
 
 (defn- metric-with-dims
   "Build a metric-context entry matching `qp.context/metric-and-dim-context`

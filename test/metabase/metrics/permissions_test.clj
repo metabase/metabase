@@ -20,12 +20,19 @@
   (:dimensions (mt/user-http-request user-kw :get 200 (str "metric/" metric-id))))
 
 (defn- dimension-names
-  "Extract the set of display_name (or name) values from a seq of dimensions."
+  "Extract the set of display_name (or name) values from a seq of wire-form (snake_case)
+   dimensions, as served by the HTTP API."
   [dims]
   (into #{} (map #(or (:display_name %) (:name %))) dims))
 
+(defn- internal-dimension-names
+  "Extract the set of display-name (or name) values from a seq of internal (kebab-case)
+   dimensions, as returned by `filter-dimensions-for-user` and friends."
+  [dims]
+  (into #{} (map #(or (:display-name %) (:name %))) dims))
+
 (defn- dimension-group-names
-  "Extract the set of group display-names from a seq of dimensions."
+  "Extract the set of group display_names from a seq of wire-form (snake_case) dimensions."
   [dims]
   (into #{} (map #(get-in % [:group :display_name])) dims))
 
@@ -169,31 +176,32 @@
 
 (deftest unresolvable-dimension-kept-test
   (testing "Dimensions without a resolvable field ID are conservatively kept"
-    (let [fake-metric {:dimensions         [{:id "resolvable" :display_name "Tax"
+    (let [fake-metric {:dimensions         [{:id "resolvable" :display-name "Tax"
                                              :sources [{:field-id (mt/id :orders :tax)}]}
-                                            {:id "unresolvable" :display_name "Mystery"
+                                            {:id "unresolvable" :display-name "Mystery"
                                              :sources []}]
-                       :dimension_mappings [{:dimension_id "resolvable"
+                       :dimension_mappings [{:dimension-id "resolvable"
                                              :target [:field {} (mt/id :orders :tax)]}
-                                            {:dimension_id "unresolvable"
+                                            {:dimension-id "unresolvable"
                                              :target [:some-other-ref {}]}]}
           result      (mt/with-test-user :rasta
                         (metrics.perms/filter-dimensions-for-user fake-metric))]
       (testing "unresolvable dimension is preserved"
-        (is (= #{"Tax" "Mystery"} (dimension-names (:dimensions result)))))
+        (is (= #{"Tax" "Mystery"}
+               (internal-dimension-names (:dimensions result)))))
       (testing "both mappings are preserved"
         (is (= #{"resolvable" "unresolvable"}
-               (into #{} (map :dimension_id) (:dimension_mappings result))))))))
+               (into #{} (map :dimension-id) (:dimension_mappings result))))))))
 
 ;;; ------------------------------------------------- Batch Variant -------------------------------------------------
 
 (deftest filter-dimensions-for-user-batch-preserves-order-and-filters-per-metric-test
   (testing "batch returns one result per input metric, in order, filtered independently"
-    (let [m1 {:dimensions         [{:id "tax" :display_name "Tax"
+    (let [m1 {:dimensions         [{:id "tax" :display-name "Tax"
                                     :sources [{:field-id (mt/id :orders :tax)}]}]
-              :dimension_mappings [{:dimension_id "tax" :target [:field {} (mt/id :orders :tax)]}]}
-          m2 {:dimensions         [{:id "mystery" :display_name "Mystery" :sources []}]
-              :dimension_mappings [{:dimension_id "mystery" :target [:some-other-ref {}]}]}
+              :dimension_mappings [{:dimension-id "tax" :target [:field {} (mt/id :orders :tax)]}]}
+          m2 {:dimensions         [{:id "mystery" :display-name "Mystery" :sources []}]
+              :dimension_mappings [{:dimension-id "mystery" :target [:some-other-ref {}]}]}
           batched (mt/with-test-user :rasta
                     (metrics.perms/filter-dimensions-for-user-batch [m1 m2]))]
       (is (= 2 (count batched)))
@@ -212,8 +220,8 @@
           fid-total (mt/id :orders :total)
           mk        (fn [] {:dimensions         [{:id "d-tax" :sources [{:field-id fid-tax}]}
                                                  {:id "d-total" :sources [{:field-id fid-total}]}]
-                            :dimension_mappings [{:dimension_id "d-tax" :target [:field {} fid-tax]}
-                                                 {:dimension_id "d-total" :target [:field {} fid-total]}]})
+                            :dimension_mappings [{:dimension-id "d-tax" :target [:field {} fid-tax]}
+                                                 {:dimension-id "d-total" :target [:field {} fid-total]}]})
           calls     (atom 0)]
       ;; Two metrics × two dimensions all live on the Orders table -> a single distinct
       ;; (db, table), so the access check must fire exactly once.

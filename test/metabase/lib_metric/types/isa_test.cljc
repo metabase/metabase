@@ -6,74 +6,74 @@
 ;;; -------------------------------------------------- Test Fixtures --------------------------------------------------
 
 (def ^:private temporal-dimension
-  {:effective_type :type/DateTime
+  {:effective-type :type/DateTime
    :base-type      :type/DateTime})
 
 (def ^:private date-dimension
-  {:effective_type :type/Date
+  {:effective-type :type/Date
    :base-type      :type/Date})
 
 (def ^:private time-dimension
-  {:effective_type :type/Time
+  {:effective-type :type/Time
    :base-type      :type/Time})
 
 (def ^:private numeric-dimension
-  {:effective_type :type/Integer
+  {:effective-type :type/Integer
    :base-type      :type/Integer})
 
 (def ^:private float-dimension
-  {:effective_type :type/Float
+  {:effective-type :type/Float
    :base-type      :type/Float})
 
 (def ^:private boolean-dimension
-  {:effective_type :type/Boolean
+  {:effective-type :type/Boolean
    :base-type      :type/Boolean})
 
 (def ^:private string-dimension
-  {:effective_type :type/Text
+  {:effective-type :type/Text
    :base-type      :type/Text})
 
 (def ^:private string-like-dimension
-  {:effective_type :type/IPAddress
+  {:effective-type :type/IPAddress
    :base-type      :type/IPAddress})
 
 (def ^:private coordinate-dimension
-  {:effective_type :type/Float
+  {:effective-type :type/Float
    :base-type      :type/Float
-   :semantic_type  :type/Coordinate})
+   :semantic-type  :type/Coordinate})
 
 (def ^:private latitude-dimension
-  {:effective_type :type/Float
+  {:effective-type :type/Float
    :base-type      :type/Float
-   :semantic_type  :type/Latitude})
+   :semantic-type  :type/Latitude})
 
 (def ^:private longitude-dimension
-  {:effective_type :type/Float
+  {:effective-type :type/Float
    :base-type      :type/Float
-   :semantic_type  :type/Longitude})
+   :semantic-type  :type/Longitude})
 
 (def ^:private location-dimension
-  {:effective_type :type/Text
+  {:effective-type :type/Text
    :base-type      :type/Text
-   :semantic_type  :type/Address})
+   :semantic-type  :type/Address})
 
 (def ^:private city-dimension
-  {:effective_type :type/Text
+  {:effective-type :type/Text
    :base-type      :type/Text
-   :semantic_type  :type/City})
+   :semantic-type  :type/City})
 
 (def ^:private foreign-key-dimension
-  {:effective_type :type/Integer
+  {:effective-type :type/Integer
    :base-type      :type/Integer
-   :semantic_type  :type/FK})
+   :semantic-type  :type/FK})
 
 (def ^:private primary-key-dimension
-  {:effective_type :type/Integer
+  {:effective-type :type/Integer
    :base-type      :type/Integer
-   :semantic_type  :type/PK})
+   :semantic-type  :type/PK})
 
 (def ^:private base-type-only-dimension
-  "Dimension with only :base-type, no :effective_type"
+  "Dimension with only :base-type, no :effective-type"
   {:base-type :type/Text})
 
 ;;; -------------------------------------------------- column-type tests --------------------------------------------------

@@ -203,7 +203,7 @@
                                          :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
         (let [hydrated (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
               dim-name (some-> hydrated :dimensions first :display_name)]
-          (is (some? dim-name) "metric should have at least one hydrated dimension with a display_name")
+          (is (some? dim-name) "metric should have at least one hydrated dimension with a display-name")
           (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions"
                                                :q (subs dim-name 0 (min 3 (count dim-name))))]
             (is (some #(= (:id metric) (:id %)) (:metrics response))
@@ -240,23 +240,23 @@
                                          :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
         (let [good-id "11111111-1111-1111-1111-111111111111"
               bad-id  "22222222-2222-2222-2222-222222222222"
-              good-mapping {:dimension_id good-id
+              good-mapping {:dimension-id good-id
                             :type         :table
                             :target       [:field {} (mt/id :venues :name)]
-                            :table_id     (mt/id :venues)}
-              bad-mapping  {:dimension_id bad-id
+                            :table-id     (mt/id :venues)}
+              bad-mapping  {:dimension-id bad-id
                             :type         :table
                             :target       [:field {} 999999999]
-                            :table_id     (mt/id :venues)}]
+                            :table-id     (mt/id :venues)}]
           ;; Replace whatever sync wrote with a minimal pair: one resolvable, one not.
           ;; Suppress the after-update auto-sync so it can't reconcile our hand-crafted
           ;; row back to the computed dimensions.
           (with-redefs [card/*syncing-metric-dimensions* true]
             (t2/update! :model/Card (:id metric)
-                        {:dimensions         [{:id good-id :name "NAME" :display_name "Good"
-                                               :effective_type :type/Text}
-                                              {:id bad-id  :name "ZZZ"  :display_name "Unresolvable"
-                                               :effective_type :type/Text}]
+                        {:dimensions         [{:id good-id :name "NAME" :display-name "Good"
+                                               :effective-type :type/Text}
+                                              {:id bad-id  :name "ZZZ"  :display-name "Unresolvable"
+                                               :effective-type :type/Text}]
                          :dimension_mappings [good-mapping bad-mapping]}))
           (let [response   (mt/user-http-request :rasta :get 200 "exploration/dimensions")
                 the-metric (first (filter #(= (:id metric) (:id %)) (:metrics response)))]
@@ -266,7 +266,7 @@
             (is (not (contains? (set (:dimension_ids the-metric)) bad-id))
                 "dimension whose target field doesn't exist should be silently dropped")
             (is (= [good-id] (mapv :dimension_id (:dimension_mappings the-metric)))
-                "matching mapping should be dropped too")))))))
+                "matching mapping should be dropped too (mapping contents are snake_case on the wire)")))))))
 
 (defn- valid-metric-card [user-id]
   {:type          :metric
@@ -300,6 +300,12 @@
         (is (not (contains? thread :query_plan_transcript))
             "the internal query-plan transcript is not exposed on the wire")
         (is (= 1 (t2/count :model/ExplorationBlock :exploration_thread_id (:id thread))))
+        (testing "snake_case API payloads are persisted in the internal kebab-case shape"
+          (let [block (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id thread))]
+            (is (= "d1" (-> block :dimensions first :dimension-id)))
+            (is (= "Price" (-> block :dimensions first :display-name)))
+            (is (= "d1" (-> block :metrics first :dimension_mappings first :dimension-id)))
+            (is (= (mt/id :venues) (-> block :metrics first :dimension_mappings first :table-id)))))
         (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id (:id thread))))
         (is (= 1 (count (:queries thread))))
         (is (= "d1" (:dimension_id q)))
@@ -384,10 +390,10 @@
            :model/Card revenue (assoc (valid-metric-card (:id u))
                                       :name "Revenue"
                                       :dimensions
-                                      [{:id users-created  :name "CREATED_AT" :display_name "Created At"
-                                        :group {:id "g-users"  :type "main"       :display_name "Users"}}
-                                       {:id orders-created :name "CREATED_AT" :display_name "Created At"
-                                        :group {:id "g-orders" :type "connection" :display_name "Orders"}}])]
+                                      [{:id users-created  :name "CREATED_AT" :display-name "Created At"
+                                        :group {:id "g-users"  :type "main"       :display-name "Users"}}
+                                       {:id orders-created :name "CREATED_AT" :display-name "Created At"
+                                        :group {:id "g-orders" :type "connection" :display-name "Orders"}}])]
           (let [mapping  (fn [dim-id field-id]
                            [{:dimension_id dim-id :table_id 1 :target ["field" {} field-id]}])
                 dim-grp  (fn [dim-id field-id]
@@ -443,7 +449,7 @@
         (is (= [0 1] (map :position blocks)))
         (testing "each block keeps its own metrics + dimensions selection"
           (is (= [(:id metric) (:id metric)] (map #(-> % :metrics first :card_id) blocks)))
-          (is (= ["d1" "d2"] (map #(-> % :dimensions first :dimension_id) blocks))))
+          (is (= ["d1" "d2"] (map #(-> % :dimensions first :dimension-id) blocks))))
         (testing "timelines are thread-scoped, stored once"
           (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid))))))))
 
@@ -577,9 +583,19 @@
    :creator_id    user-id
    :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))})
 
-(defn- venues-dimension-mappings []
+(defn- venues-dimension-mappings
+  "Wire-shape (snake_case) dimension mappings for HTTP request payloads. The API edge converts
+  these to the internal kebab-case shape (`metabase.metrics.dimension/api->dimension-mapping`)."
+  []
   [{:dimension_id "category" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
    {:dimension_id "price"    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
+
+(defn- stored-venues-dimension-mappings
+  "Internal-shape (kebab-case) dimension mappings for direct t2 block fixtures — the canonical
+  stored shape, bypassing the API edge conversion."
+  []
+  [{:dimension-id "category" :table-id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+   {:dimension-id "price"    :table-id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
 
 (defn- segment-filters
   "Extract :segment filter clauses (as `[:segment {} <id>]`) from a snapshot dataset_query at stage 0."
@@ -879,7 +895,7 @@
             (let [blocks (t2/select :model/ExplorationBlock :exploration_thread_id orig-tid)]
               (is (= 1 (count blocks)) "the Research-plan block survives the restart")
               (is (= 1 (count (:metrics (first blocks)))) "its metric selection is preserved")
-              (is (= ["d1"] (mapv :dimension_id (:dimensions (first blocks))))
+              (is (= ["d1"] (mapv :dimension-id (:dimensions (first blocks))))
                   "its dimension selection is preserved"))
             (is (= 1 (count (:timelines rerun)))))
           (testing "the planner regenerates queries for the same thread"
@@ -1002,12 +1018,12 @@
            :model/Card revenue (assoc (valid-metric-card (:id u))
                                       :name "Revenue"
                                       :dimensions
-                                      [{:id users-created  :name "CREATED_AT" :display_name "Created At"
-                                        :group {:id "g-users"  :type "main"       :display_name "Users"}}
-                                       {:id orders-created :name "CREATED_AT" :display_name "Created At"
-                                        :group {:id "g-orders" :type "connection" :display_name "Orders"}}
-                                       {:id users-country  :name "COUNTRY"    :display_name "Country"
-                                        :group {:id "g-users"  :type "main"       :display_name "Users"}}])]
+                                      [{:id users-created  :name "CREATED_AT" :display-name "Created At"
+                                        :group {:id "g-users"  :type "main"       :display-name "Users"}}
+                                       {:id orders-created :name "CREATED_AT" :display-name "Created At"
+                                        :group {:id "g-orders" :type "connection" :display-name "Orders"}}
+                                       {:id users-country  :name "COUNTRY"    :display-name "Country"
+                                        :group {:id "g-users"  :type "main"       :display-name "Users"}}])]
           (testing "two dims sharing a display_name → both dimension_names get the group prefix"
             (let [body {:name "ambig"
                         :metrics    [{:card_id (:id revenue)
@@ -1095,12 +1111,12 @@
           [:model/User u {:email "dim-name-ambig@example.com"}
            :model/Card metric (assoc (valid-metric-card (:id u))
                                      :dimensions
-                                     [{:id users-created  :name "CREATED_AT" :display_name "Created At"
-                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}
-                                      {:id orders-created :name "CREATED_AT" :display_name "Created At"
-                                       :group {:id "g-orders" :type "connection" :display_name "Orders"}}
-                                      {:id users-country  :name "COUNTRY"    :display_name "Country"
-                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}])]
+                                     [{:id users-created  :name "CREATED_AT" :display-name "Created At"
+                                       :group {:id "g-users"  :type "main"       :display-name "Users"}}
+                                      {:id orders-created :name "CREATED_AT" :display-name "Created At"
+                                       :group {:id "g-orders" :type "connection" :display-name "Orders"}}
+                                      {:id users-country  :name "COUNTRY"    :display-name "Country"
+                                       :group {:id "g-users"  :type "main"       :display-name "Users"}}])]
           (testing "shared display_name → both :dimension_names carry the group prefix"
             (let [body   {:name "ambig"
                           :metrics    [{:card_id (:id metric)
@@ -1400,7 +1416,7 @@
         (testing "new block copies type/dimensions and appends explore_filters onto metrics"
           (let [persisted (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new))]
             (is (= "metric" (:type new-block)))
-            (is (= ["category" "price"] (mapv :dimension_id (:dimensions persisted))))
+            (is (= ["category" "price"] (mapv :dimension-id (:dimensions persisted))))
             (let [persisted-filters (:explore_filters (first (:metrics persisted)))]
               (is (= 1 (count persisted-filters)))
               (is (= filter-value (:value (first persisted-filters))))
@@ -2146,8 +2162,8 @@
                   :database-id   (mt/id)
                   :dimension-id  "price"
                   :metrics       [{:card_id (:id metric)
-                                   :dimension_mappings (venues-dimension-mappings)}]
-                  :dimensions    [{:dimension_id "price" :display_name "Price"}]})]
+                                   :dimension_mappings (stored-venues-dimension-mappings)}]
+                  :dimensions    [{:dimension-id "price" :display-name "Price"}]})]
         ;; Mark the source thread as a follow-up so the next drill is nested.
         (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id 999})
         (mt/user-http-request :crowberto :post 200
@@ -2179,9 +2195,9 @@
                     :database-id   (mt/id)
                     :dimension-id  "category"
                     :metrics       [{:card_id (:id metric)
-                                     :dimension_mappings (venues-dimension-mappings)}]
-                    :dimensions    [{:dimension_id "category" :display_name "Category"}
-                                    {:dimension_id "price" :display_name "Price"}]})]
+                                     :dimension_mappings (stored-venues-dimension-mappings)}]
+                    :dimensions    [{:dimension-id "category" :display-name "Category"}
+                                    {:dimension-id "price" :display-name "Price"}]})]
           (mt/user-http-request :crowberto :post 200
                                 (str "exploration/" (:exploration-id src) "/explore-further")
                                 {:page_id         (:page-id src)
@@ -2207,10 +2223,10 @@
            :model/Card metric (assoc (venues-metric-card (:id u))
                                      :name "Revenue"
                                      :dimensions
-                                     [{:id users-created  :name "LATITUDE"  :display_name "Created At"
-                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}
-                                      {:id orders-created :name "LONGITUDE" :display_name "Created At"
-                                       :group {:id "g-orders" :type "connection" :display_name "Orders"}}])]
+                                     [{:id users-created  :name "LATITUDE"  :display-name "Created At"
+                                       :group {:id "g-users"  :type "main"       :display-name "Users"}}
+                                      {:id orders-created :name "LONGITUDE" :display-name "Created At"
+                                       :group {:id "g-orders" :type "connection" :display-name "Orders"}}])]
           (let [body      {:name       "ambig drill"
                            :metrics    [{:card_id (:id metric)
                                          :dimension_mappings

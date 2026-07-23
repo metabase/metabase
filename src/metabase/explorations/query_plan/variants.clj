@@ -168,7 +168,7 @@
   empty result is a real answer — the metric has no rows — and stays cached."
   [{:keys [mp card target dim params explore-filters]}]
   (let [card-id   (:id card)
-        dim-id    (or (:dimension_id dim) (:id dim))
+        dim-id    (or (:dimension-id dim) (:id dim))
         k         (:k params)
         ;; Include the "Explore further" filter chain in the key: two threads sharing a
         ;; (card, dim, k) but scoped to different segments must not share top-N discovery results.
@@ -370,7 +370,7 @@
             [ref-clause field-ref] (resolve-target base-query target)
             pairs                  (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) v]) top-values)
             case-expr              (lib/case pairs other-bucket-label)
-            expr-name              (or (:display_name dim) (:dimension_id dim) "value")
+            expr-name              (or (:display-name dim) (:dimension-id dim) "value")
             with-expr              (lib/expression base-query expr-name case-expr)
             with-bo                (lib/breakout with-expr (lib/expression-ref with-expr expr-name))]
         ;; Order by metric desc within the named buckets. One note: `(Other)`

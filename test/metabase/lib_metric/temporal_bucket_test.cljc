@@ -15,9 +15,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-datetime
    :name           "created_at"
-   :display_name   "Created At"
-   :effective_type :type/DateTime
-   :semantic_type  :type/CreationTimestamp
+   :display-name   "Created At"
+   :effective-type :type/DateTime
+   :semantic-type  :type/CreationTimestamp
    :source-type    :metric
    :source-id      1})
 
@@ -25,9 +25,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-date
    :name           "order_date"
-   :display_name   "Order Date"
-   :effective_type :type/Date
-   :semantic_type  nil
+   :display-name   "Order Date"
+   :effective-type :type/Date
+   :semantic-type  nil
    :source-type    :metric
    :source-id      1})
 
@@ -35,9 +35,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-time
    :name           "time_of_day"
-   :display_name   "Time of Day"
-   :effective_type :type/Time
-   :semantic_type  nil
+   :display-name   "Time of Day"
+   :effective-type :type/Time
+   :semantic-type  nil
    :source-type    :metric
    :source-id      1})
 
@@ -45,9 +45,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-text
    :name           "category"
-   :display_name   "Category"
-   :effective_type :type/Text
-   :semantic_type  :type/Category
+   :display-name   "Category"
+   :effective-type :type/Text
+   :semantic-type  :type/Category
    :source-type    :metric
    :source-id      1})
 

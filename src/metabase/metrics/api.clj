@@ -88,7 +88,10 @@
   Returns the metric with hydrated dimensions and dimension mappings."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [metric (hydrated-metric id)]
-    (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
+    (-> metric
+        (assoc :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))
+        (update :dimensions metrics/->api-dimensions)
+        (update :dimension_mappings metrics/->api-dimension-mappings))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |

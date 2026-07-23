@@ -74,7 +74,7 @@
 (defn- build-dim->field-id
   "Build a map of {dimension-id -> field-id} from dimensions and their mappings."
   [dimensions dimension-mappings]
-  (let [mappings-by-dim-id (into {} (map (juxt :dimension_id identity)) dimension-mappings)]
+  (let [mappings-by-dim-id (into {} (map (juxt :dimension-id identity)) dimension-mappings)]
     (into {}
           (keep (fn [dim]
                   (let [field-id (or (some-> dim :sources first :field-id)
@@ -128,7 +128,7 @@
                 (let [kept-ids (into #{} (comp (filter #(allowed? dim->field-id %)) (map :id)) dimensions)]
                   (assoc metric
                          :dimensions         (filterv #(contains? kept-ids (:id %)) dimensions)
-                         :dimension_mappings (filterv #(contains? kept-ids (:dimension_id %)) dimension_mappings)))))
+                         :dimension_mappings (filterv #(contains? kept-ids (:dimension-id %)) dimension_mappings)))))
             metrics
             dim->fids))))
 

@@ -121,7 +121,7 @@
   [block cards mp-by-db]
   (let [block-metrics (:metrics block)
         block-dims    (:dimensions block)
-        dim-by-id     (u/index-by :dimension_id block-dims)
+        dim-by-id     (u/index-by :dimension-id block-dims)
         metrics       (into []
                             (keep (fn [tm]
                                     (when-let [card (get cards (:card_id tm))]
@@ -147,17 +147,17 @@
                              (keys dim-by-id))
         dimensions    (vec
                        (for [td block-dims
-                             :let [dim-id   (:dimension_id td)
+                             :let [dim-id   (:dimension-id td)
                                    dim      (get enriched-by-id dim-id)
                                    [k _]    (qp.mbql/default-bucket-for-dim dim)
                                    binned?  (= k :binning)]
                              :when dim]
                          {:dimension-id   dim-id
                           :dim            dim
-                          :display-name   (or (:display_name dim) dim-id)
-                          :group-label    (some-> dim :group :display_name)
-                          :effective-type (:effective_type dim)
-                          :semantic-type  (:semantic_type dim)
+                          :display-name   (or (:display-name dim) dim-id)
+                          :group-label    (some-> dim :group :display-name)
+                          :effective-type (:effective-type dim)
+                          :semantic-type  (:semantic-type dim)
                           ;; effective-cardinality returns the bin count for auto-binned
                           ;; numerics (so a planner sees the chart-width number, not the
                           ;; raw fingerprint distinct-count which can be huge).
@@ -218,7 +218,7 @@
 
 (defn- dim-base-display-name
   [dim]
-  (or (:display_name dim) (:dimension_id dim)))
+  (or (:display-name dim) (:dimension-id dim)))
 
 (defn- explore-filter-dimension-label
   "Display label for an explore filter's matched dimension snapshot. Qualifies with the dim's
@@ -227,7 +227,7 @@
   (let [base        (dim-base-display-name matched-dim)
         name-counts (frequencies (map dim-base-display-name block-dimensions))
         ambiguous?  (> (get name-counts base 0) 1)
-        group-dn    (some-> matched-dim :group :display_name)]
+        group-dn    (some-> matched-dim :group :display-name)]
     (if (and ambiguous? (not (str/blank? group-dn)))
       (str group-dn " → " base)
       base)))
@@ -239,7 +239,7 @@
   [block-dimensions target-by-dim-id]
   (into {}
         (for [dim block-dimensions
-              :let [fid (some-> (get target-by-dim-id (:dimension_id dim))
+              :let [fid (some-> (get target-by-dim-id (:dimension-id dim))
                                 qp.mbql/target-field-id)]
               :when fid]
           [fid dim])))
@@ -289,8 +289,8 @@
   [block-dimensions target-by-dim-id field-ref]
   (when-let [expr-name (expression-ref-name field-ref)]
     (some (fn [dim]
-            (when (= expr-name (or (:display_name dim) (:dimension_id dim) "value"))
-              (get target-by-dim-id (:dimension_id dim))))
+            (when (= expr-name (or (:display-name dim) (:dimension-id dim) "value"))
+              (get target-by-dim-id (:dimension-id dim))))
           block-dimensions)))
 
 (defn enrich-explore-filters
@@ -366,7 +366,7 @@
                                              [:= :p.exploration_block_id :exploration_block.id]]
                                      :where [:= :p.id page_id]}))
         metric     (some #(when (= card_id (:card_id %)) %) (:metrics block))
-        dim-by-id  (u/index-by :dimension_id (:dimensions block))
+        dim-by-id  (u/index-by :dimension-id (:dimensions block))
         thread-dim (get dim-by-id dimension_id)]
     (when (and card block metric thread-dim)
       (let [mp              (lib-be/application-database-metadata-provider (:database_id card))
@@ -391,7 +391,7 @@
          :card            card
          :target          target
          :dim             thread-dim
-         :dim-label       (or (:display_name thread-dim) dimension_id)
+         :dim-label       (or (:display-name thread-dim) dimension_id)
          :segment         segment
          :params          params
          :explore-filters explore-filters

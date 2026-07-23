@@ -20,7 +20,15 @@
   annotate-dimensions-with-field-data
   dimension-values
   dimension-search-values
-  dimension-remapped-value]
+  dimension-remapped-value
+  ->api-dimension
+  ->api-dimensions
+  ->api-dimension-mapping
+  ->api-dimension-mappings
+  api->dimension
+  api->dimensions
+  api->dimension-mapping
+  api->dimension-mappings]
  [metrics.perms
   filter-dimensions-for-user
   filter-dimensions-for-user-batch]

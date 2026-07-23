@@ -17,9 +17,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-numeric
    :name           "amount"
-   :display_name   "Amount"
-   :effective_type :type/Number
-   :semantic_type  nil
+   :display-name   "Amount"
+   :effective-type :type/Number
+   :semantic-type  nil
    :sources        [{:type :field, :field-id 1, :binning true}]
    :source-type    :metric
    :source-id      1})
@@ -28,9 +28,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-latitude
    :name           "latitude"
-   :display_name   "Latitude"
-   :effective_type :type/Number
-   :semantic_type  :type/Latitude
+   :display-name   "Latitude"
+   :effective-type :type/Number
+   :semantic-type  :type/Latitude
    :sources        [{:type :field, :field-id 2, :binning true}]
    :source-type    :metric
    :source-id      1})
@@ -39,9 +39,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-longitude
    :name           "longitude"
-   :display_name   "Longitude"
-   :effective_type :type/Number
-   :semantic_type  :type/Longitude
+   :display-name   "Longitude"
+   :effective-type :type/Number
+   :semantic-type  :type/Longitude
    :sources        [{:type :field, :field-id 3, :binning true}]
    :source-type    :metric
    :source-id      1})
@@ -50,9 +50,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-no-fingerprint
    :name           "score"
-   :display_name   "Score"
-   :effective_type :type/Number
-   :semantic_type  nil
+   :display-name   "Score"
+   :effective-type :type/Number
+   :semantic-type  nil
    :sources        []
    :source-type    :metric
    :source-id      1})
@@ -61,9 +61,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-text
    :name           "category"
-   :display_name   "Category"
-   :effective_type :type/Text
-   :semantic_type  :type/Category
+   :display-name   "Category"
+   :effective-type :type/Text
+   :semantic-type  :type/Category
    :source-type    :metric
    :source-id      1})
 
@@ -71,9 +71,9 @@
   {:lib/type       :metadata/dimension
    :id             uuid-fk
    :name           "user_id"
-   :display_name   "User ID"
-   :effective_type :type/Integer
-   :semantic_type  :type/FK
+   :display-name   "User ID"
+   :effective-type :type/Integer
+   :semantic-type  :type/FK
    :sources        [{:type :field, :field-id 6, :binning true}]
    :source-type    :metric
    :source-id      1})

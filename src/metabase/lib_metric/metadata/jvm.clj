@@ -63,7 +63,7 @@
   [entity source-type]
   (let [dims         (:dimensions entity)
         mappings     (:dimension-mappings entity)
-        mappings-by-dim-id (m/index-by :dimension_id mappings)]
+        mappings-by-dim-id (m/index-by :dimension-id mappings)]
     (for [dim dims]
       (-> dim
           lib-metric.dimension/normalize-persisted-dimension
