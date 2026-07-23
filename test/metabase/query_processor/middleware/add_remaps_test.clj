@@ -187,8 +187,8 @@
                          (lib/with-fields [(meta/field-metadata :venues :category-id)]))
         dimension-id (get-in (lib.metadata/field category-id-remap-metadata-provider (meta/id :venues :category-id))
                              [:lib/external-remap :id])]
-    ;; The `lib/append-stage` models the sandbox behaviour where there is an extra
-    ;; stage and the remapped column info refs are name based instead of id based
+    ;; The `lib/append-stage` models the sandbox behaviour where an extra stage is added
+    ;; and the `remap-column-infos` become name based instead of id based
     (is (=? {:stages [{}
                       {:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
                                  (meta/id :venues :category-id)]

@@ -159,17 +159,21 @@
                                                        :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))
            (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)))))
 
+(mu/defn- original-fields->new-fields
+  [remap-infos :- [:maybe [:sequential ::remap-info]]]
+  (into {}
+        (mapcat (fn [{:keys [original-field-clause new-field-clause dimension]}]
+                  (let [original-with-id (assoc original-field-clause 2 (:field-id dimension))]
+                    [[(simplify-ref-options original-field-clause) new-field-clause]
+                     [(simplify-ref-options original-with-id) new-field-clause]])))
+        remap-infos))
+
 (mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- ::lib.schema/fields
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
   remapped-from."
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- ::lib.schema/fields]
-  (let [field->remapped-col (into {}
-                                  (mapcat (fn [{:keys [original-field-clause new-field-clause dimension]}]
-                                            (let [original-with-id (assoc original-field-clause 2 (:field-id dimension))]
-                                              [[(simplify-ref-options original-field-clause) new-field-clause]
-                                               [(simplify-ref-options original-with-id) new-field-clause]])))
-                                  infos)]
+  (let [field->remapped-col (original-fields->new-fields infos)]
     (mapv
      (fn [field-ref]
        (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name]
@@ -268,10 +272,7 @@
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
       (let [new-fields         (add-fk-remaps-to-fields infos fields)
             ;; make a map of field-id-clause -> fk-clause from the tuples
-            original->remapped (into {}
-                                     (map (fn [{:keys [original-field-clause new-field-clause]}]
-                                            [(simplify-ref-options original-field-clause) new-field-clause]))
-                                     infos)
+            original->remapped (original-fields->new-fields infos)
             ;; PERF: More indexing on the same stuff! This really needs to be poured into a common context.
             new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)
