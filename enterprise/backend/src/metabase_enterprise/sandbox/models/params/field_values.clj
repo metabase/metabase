@@ -90,8 +90,12 @@
   the same enforcement guard (`field-is-sandboxed?`) and attribute-extraction as the FieldValues
   cache, so superusers and users with full access via another group correctly get no token (and
   thus see any creator's snapshot), and two genuinely-sandboxed users \"share a sandbox\" iff
-  they'd see the same rows. The card's `:updated_at` is stringified so the token is EDN-safe for
-  storage on `stored_result.data_access_token`.
+  they'd see the same rows. The card's `:updated_at` is stringified to give it a printed form that
+  is stable across processes and versions: the caller digests this value rather than storing it, and
+  a digest is only comparable if the bytes going into it are reproducible.
+
+  The raw attribute values in here never reach storage — [[metabase.permissions.data-access-token]]
+  replaces this whole value with a SHA-256 of it before returning a token.
 
   When the enforcement guard says the user IS sandboxed but the attribute lookup finds nothing
   (the guard and the lookup consult different subsystems), we must not return nil — the
