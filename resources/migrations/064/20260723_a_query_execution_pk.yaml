@@ -1,0 +1,39 @@
+# Partition the query_execution table when using Postgres AppDB.
+#
+# The `query_execution` table gets very big on large installs and poses
+# performance problems. Partitioning it will allow us to get those under control.
+# This will only apply when using Postgres as the AppDB. If you have an H2 AppDB,
+# it's probably not big, and if you have a MySQL AppDD, then, uh, well, too bad.
+#
+# The basic plan is to rename the existing `query_execution` to
+# `query_execution_old` and then create a new `query_execution` partitioned table
+# with the same schema. Once that's done, we can attach `query_execution_old` as
+# a partition to the main table, and all the data should be available transparently.
+#
+# The partitioned table must not have a primary key that doesn't include the
+# partition key. In order to do this, we have to stop using `id` as the primary
+# key and replace it with a composite key of `id, started_at`.
+#
+# This migration swaps the primary keys around, dropping the ones based on the
+# id alone and replacing them with ones based on `id` and `started_at`.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-23T11:39:52
+      author: technomancy
+      comment: Change primary key to include partition key
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE query_execution
+               DROP CONSTRAINT query_execution_pkey;
+              ALTER TABLE query_execution
+                ADD CONSTRAINT query_execution_pkey_compound PRIMARY KEY(id, started_at);
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE query_execution
+               DROP CONSTRAINT query_execution_pkey_compound;
+              ALTER TABLE query_execution
+                ADD CONSTRAINT query_execution_pkey PRIMARY KEY(ID);
