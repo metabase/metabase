@@ -2,7 +2,6 @@
   "name": "ci-conductor",
   "version": "1.0.0",
   "description": "Shared CI Conductor test-failure reporting. Adapter pattern: each test suite (be/fe/e2e) transforms its source data into one canonical shape, and the shared core posts it to ci-conductor. This round ships the backend (JUnit) adapter + the /webhooks/failed-tests transport.",
-  "type": "module",
   "private": true,
   "scripts": {
     "test": "bun test",
