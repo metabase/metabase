@@ -16,7 +16,7 @@ import {
 } from "./utils";
 
 describe("metabot > tool calls", () => {
-  it("should show list each tool being called as it comes in and cleared when finished", async () => {
+  it("should stream each tool call into the chain of thought, settling when finished", async () => {
     setup();
 
     const [pause1, pause2] = createPauses(2);
@@ -46,31 +46,34 @@ describe("metabot > tool calls", () => {
 
     await enterChatMessage("Analyze this query");
 
-    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+    // the current step always reads in the present tense while the turn is live
+    expect(
+      (await screen.findAllByText("Analyzing the data")).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.queryByText("Inspecting the visualization"),
     ).not.toBeInTheDocument();
 
     pause1.resolve();
 
-    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
     expect(
-      await screen.findByText("Inspecting the visualization"),
-    ).toBeInTheDocument();
+      (await screen.findAllByText("Inspecting the visualization")).length,
+    ).toBeGreaterThan(0);
 
     pause2.resolve();
 
+    // once settled the chain collapses and every label flips to the past tense
+    // (a fast turn rolls up to "Worked briefly")
+    expect(
+      await screen.findByText(/Worked (briefly|for|on)/),
+    ).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
+      expect(screen.getByText("Analyzed the data")).not.toBeVisible();
     });
-    await waitFor(() => {
-      expect(
-        screen.queryByText("Inspecting the visualization"),
-      ).not.toBeInTheDocument();
-    });
+    expect(screen.getByText("Inspected the visualization")).not.toBeVisible();
   });
 
-  it("should clear out list of tool calls when new text comes in", async () => {
+  it("should settle the chain when answer text arrives and start a fresh one for later tools", async () => {
     setup();
 
     const [pause1, pause2, pause3] = createPauses(3);
@@ -102,30 +105,25 @@ describe("metabot > tool calls", () => {
 
     await enterChatMessage("Analyze this query");
 
-    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText("Analyzing the data")).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.queryByText("Inspecting the visualization"),
     ).not.toBeInTheDocument();
 
     pause1.resolve();
-
-    await waitFor(() => {
-      expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
-    });
-    expect(screen.getByText("Hey.")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(
-        screen.queryByText("Inspecting the visualization"),
-      ).not.toBeInTheDocument();
-    });
-
     pause2.resolve();
 
+    // answer text settles the first chain (its label flips to past tense); a
+    // fresh chain previews the next tool in the present tense
     expect(await screen.findByText("Hey.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Analyzed the data")).not.toBeVisible();
+    });
     expect(
-      await screen.findByText("Inspecting the visualization"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
+      (await screen.findAllByText("Inspecting the visualization")).length,
+    ).toBeGreaterThan(0);
 
     pause3.resolve();
 
@@ -158,11 +156,13 @@ describe("metabot > tool calls", () => {
     });
     await enterChatMessage("Request");
 
-    await assertConversation([
-      ["user", "Request"],
-      ["agent", "Response 1"],
-      ["agent", "Response 2"],
-    ]);
+    await waitFor(async () => {
+      await assertConversation([
+        ["user", "Request"],
+        ["agent", "Response 1"],
+        ["agent", "Response 2"],
+      ]);
+    });
   });
 
   it("should be able to stop a response via stop button", async () => {

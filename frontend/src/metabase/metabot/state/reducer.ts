@@ -2,6 +2,7 @@ import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
+import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
@@ -16,15 +17,24 @@ import type { MetabotProfileId } from "../constants";
 import { sendAgentRequest } from "./actions";
 import {
   type ConvoPayloadAction,
+  addChainTool,
   appendAgentTurnAborted,
   appendAgentTurnErrored,
+  appendChainReasoning,
+  closeChain,
   convoReducer,
   createConversation,
+  endChainTool,
+  finalizeChain,
   findLastToolCallMessage,
   getMetabotInitialState,
   getRequestConversation,
+  openChain,
   pushNewToolCall,
   resetReactionState,
+  setChainToolSearchResults,
+  setChainToolTitle,
+  startChainReasoning,
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
@@ -112,6 +122,7 @@ export const metabot = createSlice({
         >,
       ) => {
         convo.activeToolCalls = [];
+        closeChain(convo);
         const externalId = convo.pendingMessageExternalId;
         // Unjustified type cast. FIXME
         convo.messages.push({
@@ -125,8 +136,18 @@ export const metabot = createSlice({
         } as any);
       },
     ),
+    reasoningStart: convoReducer(
+      (convo, action: ConvoPayloadAction<{ nowMs?: number }>) => {
+        startChainReasoning(convo, action.payload.nowMs);
+      },
+    ),
+    reasoningDelta: convoReducer(
+      (convo, action: ConvoPayloadAction<{ text: string; nowMs?: number }>) => {
+        appendChainReasoning(convo, action.payload.text, action.payload.nowMs);
+      },
+    ),
     addAgentTextDelta: convoReducer(
-      (convo, action: ConvoPayloadAction<{ text: string }>) => {
+      (convo, action: ConvoPayloadAction<{ text: string; nowMs?: number }>) => {
         const hasToolCalls = convo.activeToolCalls.length > 0;
         const lastMessage = _.last(convo.messages);
         const canAppend =
@@ -137,6 +158,8 @@ export const metabot = createSlice({
         if (canAppend) {
           lastMessage.message = lastMessage.message + action.payload.text;
         } else {
+          // the answer is starting — settle the chain of thought
+          closeChain(convo, action.payload.nowMs);
           const externalId = convo.pendingMessageExternalId;
           convo.messages.push({
             id: createMessageId(),
@@ -176,10 +199,13 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<{
           toolCallId: string;
           toolName: string;
+          title?: string;
           args?: string;
+          nowMs?: number;
         }>,
       ) => {
-        const { toolCallId, toolName, args } = action.payload;
+        const { toolCallId, toolName, title, args, nowMs } = action.payload;
+        addChainTool(convo, { id: toolCallId, name: toolName, title, nowMs });
         // idempotent: both tool-input-start and tool-input-available are
         // able to signal the start of a tool call
         if (convo.activeToolCalls.some((tc) => tc.id === toolCallId)) {
@@ -194,10 +220,13 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<{
           toolCallId: string;
           toolName: string;
+          title?: string;
           args: string;
+          nowMs?: number;
         }>,
       ) => {
-        const { toolCallId, toolName, args } = action.payload;
+        const { toolCallId, toolName, title, args, nowMs } = action.payload;
+        addChainTool(convo, { id: toolCallId, name: toolName, title, nowMs });
         const existingMsg = findLastToolCallMessage(convo, toolCallId);
         if (existingMsg) {
           // if toolCallStart was called (tool-input-start event is optional)
@@ -215,11 +244,13 @@ export const metabot = createSlice({
           toolCallId: string;
           result?: string;
           isError?: boolean;
+          nowMs?: number;
         }>,
       ) => {
         convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
         );
+        endChainTool(convo, action.payload.toolCallId, action.payload.nowMs);
 
         // Update the message in messages array with result for debug history
         const message = findLastToolCallMessage(
@@ -233,6 +264,28 @@ export const metabot = createSlice({
             message.is_error = true;
           }
         }
+      },
+    ),
+    toolCallSearchResults: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          totalCount: number;
+          results: SearchResultItem[];
+        }>,
+      ) => {
+        const { toolCallId, totalCount, results } = action.payload;
+        setChainToolSearchResults(convo, toolCallId, { totalCount, results });
+      },
+    ),
+    toolCallSaved: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{ toolCallId: string; title: string }>,
+      ) => {
+        const { toolCallId, title } = action.payload;
+        setChainToolTitle(convo, toolCallId, title);
       },
     ),
     // only the last turn is rewindable (retry), so a single pre-turn snapshot
@@ -369,10 +422,15 @@ export const metabot = createSlice({
         convo.messages = castDraft(messages ?? []);
         convo.state = snapshotState ?? {};
         convo.activeToolCalls = activeToolCalls ?? [];
+        convo.activeChainId = undefined;
         convo.conversationId = conversationId ?? uuid();
         convo.loadId = nanoid();
         convo.title = title;
         convo.isProcessing = hasInProgressMessage(messages ?? []);
+        if (convo.isProcessing) {
+          // resuming a mid-response conversation — show the "Thinking…" shell
+          openChain(convo);
+        }
         convo.stateBeforeTurn = undefined;
         convo.pendingMessageExternalId = undefined;
 
@@ -390,6 +448,8 @@ export const metabot = createSlice({
         if (convo) {
           convo.isProcessing = true;
           convo.stateBeforeTurn = convo.state;
+          convo.activeChainId = undefined;
+          openChain(convo);
           convo.pendingMessageExternalId = action.meta.arg.assistant_message_id;
         }
       })
@@ -400,6 +460,7 @@ export const metabot = createSlice({
             convo.state = { ...action.payload.state };
           }
           convo.activeToolCalls = [];
+          finalizeChain(convo);
           convo.isProcessing = false;
           convo.experimental.developerMessage = "";
           convo.pendingMessageExternalId = undefined;
@@ -443,6 +504,7 @@ export const metabot = createSlice({
 
           convo.pendingMessageExternalId = undefined;
           convo.activeToolCalls = [];
+          finalizeChain(convo);
           convo.isProcessing = false;
         }
       });

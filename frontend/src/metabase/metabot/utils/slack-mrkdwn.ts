@@ -35,6 +35,7 @@ export function convertSlackChatMessage(
     }))
     .with({ role: "agent", type: "data_part" }, (m) => m)
     .with({ role: "agent", type: "tool_call" }, (m) => m)
+    .with({ role: "agent", type: "chain_of_thought" }, (m) => m)
     .with({ role: "agent", type: "turn_aborted" }, (m) => m)
     .with({ role: "agent", type: "turn_errored" }, (m) => m)
     .with({ role: "agent", type: "turn_in_progress" }, (m) => m)
