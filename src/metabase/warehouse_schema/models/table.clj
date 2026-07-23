@@ -588,19 +588,27 @@
     collection_id (conj [{:model "Collection" :id collection_id}])
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
-(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
-  (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
-                            {["Field" field-id] {"Table" id}}))
+(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived user-edits-only]}]
+  (let [;; When user-edits-only, emit only fields that have user-authored metadata (FieldUserSettings rows).
+        ;; On import the parent Field row is synthesized if missing, so FieldUserSettings is self-sufficient.
+        ;; Otherwise emit all Field ids for a full serdes backup/restore.
+        fields   (if user-edits-only
+                   (into {} (for [fus-field-id (t2/select-fn-set :field_id :model/FieldUserSettings
+                                                                 {:join  [[:metabase_field :f] [:= :f.id :field_id]]
+                                                                  :where [:= :f.table_id id]})]
+                              [["FieldUserSettings" fus-field-id] {"Table" id}]))
+                   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
+                              [["Field" field-id] {"Table" id}])))
         segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Segment" segment-id] {"Table" id}}))
+                            [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Measure" measure-id] {"Table" id}}))]
+                            [["Measure" measure-id] {"Table" id}]))]
     (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]

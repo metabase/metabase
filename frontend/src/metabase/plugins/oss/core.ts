@@ -87,14 +87,6 @@ const getDefaultAdminAllowedPathGetters = (): ((
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS =
   getDefaultAdminAllowedPathGetters();
 
-const getDefaultAdminTools = () => ({
-  COMPONENT: null,
-});
-
-export const PLUGIN_ADMIN_TOOLS: {
-  COMPONENT: ComponentType | null;
-} = getDefaultAdminTools();
-
 const getDefaultSelectors = () => ({
   canWhitelabel: (_state: State) => false,
   getLoadingMessageFactory: (_state: State) => getLoadingMessage,
@@ -194,7 +186,6 @@ export function reinitialize() {
     ...getDefaultAdminAllowedPathGetters(),
   );
 
-  Object.assign(PLUGIN_ADMIN_TOOLS, getDefaultAdminTools());
   Object.assign(PLUGIN_SELECTORS, getDefaultSelectors());
   Object.assign(PLUGIN_FORM_WIDGETS, getDefaultFormWidgets());
 

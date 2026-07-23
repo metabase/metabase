@@ -1,10 +1,9 @@
-import type { Location } from "history";
 import type { ComponentType } from "react";
 
 import { useRoute } from "./Outlet";
 import type { InjectedRouter, PlainRoute } from "./react-router";
 import type { Route } from "./route";
-import type { Params } from "./types";
+import type { Location, Params } from "./types";
 import { useRouter } from "./use-router";
 
 /**

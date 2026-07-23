@@ -78,14 +78,14 @@ describe("router/redirect", () => {
   it("interpolates params into a relative target", async () => {
     const history = mountRoutes(
       <Route path="browse" element={<Parent />}>
-        <Route path=":dbId-:slug" element={redirect("databases/:dbId-:slug")} />
+        <Route path=":dbId/:slug" element={redirect("databases/:dbId/:slug")} />
       </Route>,
-      "/browse/5-orders",
+      "/browse/5/orders",
     );
 
     await waitFor(() =>
       expect(history?.getCurrentLocation().pathname).toBe(
-        "/browse/databases/5-orders",
+        "/browse/databases/5/orders",
       ),
     );
   });

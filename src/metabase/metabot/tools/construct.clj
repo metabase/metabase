@@ -15,7 +15,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -482,14 +481,12 @@
                         "<instructions>\n" instruction-text "\n</instructions>")
            :data-parts        (when results-url
                                 [(streaming/viz-part
-                                  {:inline?     (shared/inline-viz-capable?)
-                                   :entity-id   (:chart-id chart-result)
+                                  {:entity-id   (:chart-id chart-result)
                                    :query-id    (:query-id structured)
                                    :query       (links/->legacy-mbql (:query structured))
                                    :display     chart-type
                                    :title       title
-                                   :description description
-                                   :link        results-url})])
+                                   :description description})])
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output

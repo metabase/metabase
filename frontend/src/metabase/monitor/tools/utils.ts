@@ -117,7 +117,11 @@ export const toBackendStartedAt = (
   }
   // A trailing "~" makes the date range open-ended on the upper bound,
   // extending it through today so the current day's runs are included.
-  return includeToday ? `${value}~` : value;
+  // The backend grammar only accepts "~" on the relative "past*" forms;
+  // appending it to "this*" values (e.g. "thisday~") is a parse error, so
+  // includeToday is ignored for those.
+  const supportsIncludeToday = value.startsWith("past");
+  return includeToday && supportsIncludeToday ? `${value}~` : value;
 };
 
 export const guardTaskRunStartedAtRange = (

@@ -175,7 +175,7 @@
   "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
    is about to be SET NULL by the FK action survive the delete (so the analyst can read the
    SQL/Python and rebuild against a new DB), but their dependency-analysis findings need to
-   be re-run so they surface on `/data-studio/dependency-diagnostics/broken`. OSS is a no-op
+   be re-run so they surface on `/monitor/dependency-diagnostics/broken`. OSS is a no-op
    (no dependencies module)."
   metabase-enterprise.dependencies.events
   [_db-id]

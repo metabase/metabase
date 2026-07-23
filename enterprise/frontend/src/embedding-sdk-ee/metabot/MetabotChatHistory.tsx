@@ -10,7 +10,9 @@ import { Stack } from "metabase/ui";
 import S from "./MetabotQuestion.module.css";
 
 const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
-  message.type === "data_part" && message.part.type === "data-navigate_to";
+  message.type === "data_part" &&
+  message.part.type === "data-generated_entity" &&
+  message.part.data.type === "card";
 
 const AGENT_ID = "omnibot";
 
