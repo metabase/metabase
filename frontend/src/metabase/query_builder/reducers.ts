@@ -639,9 +639,6 @@ type NestedCardPayloadAction = {
   };
 };
 
-// Extracted to a standalone typed function (rather than an inline arrow) so its type is
-// resolved once, instead of being re-inferred inline inside addCase's generic instantiation —
-// see the note below on why that inline form tips TS2589 over the edge.
 const handleQueryCompleted = (
   state: Card | null,
   action: NestedCardPayloadAction,
