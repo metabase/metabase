@@ -1665,9 +1665,7 @@
                                   (t2/select-one :model/Collection :id new-parent-id)
                                   root-collection)
         new-parent-is-remote-synced? (:is_remote_synced new-parent)
-        new-parent-worktree-id  (when new-parent-is-remote-synced?
-                                  (or (:remote_sync_worktree_id new-parent)
-                                      (remote-sync/default-worktree-id)))
+        new-parent-worktree-id  (:remote_sync_worktree_id new-parent)
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
         new-children-location   (children-location (assoc collection :location new-location))
@@ -1738,9 +1736,7 @@
                      (t2/select-one [:model/Collection :is_remote_synced :remote_sync_worktree_id]
                                     :id parent-id))
         will-be-in-remote-synced? (:is_remote_synced new-parent)
-        new-worktree-id (when will-be-in-remote-synced?
-                          (or (:remote_sync_worktree_id new-parent)
-                              (remote-sync/default-worktree-id)))]
+        new-worktree-id (:remote_sync_worktree_id new-parent)]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
@@ -1781,16 +1777,15 @@
 
 (defn- stamp-remote-sync-worktree-id
   "When `changes` writes `:is_remote_synced`, also write `:remote_sync_worktree_id`: the parent's worktree
-  when the collection sits under a synced parent, else the default worktree. `location` is the collection's
-  (possibly new) location."
+  when the collection sits under a worktree checkout, else nil (the main app, including default-branch
+  remote sync, is not a worktree). `location` is the collection's (possibly new) location."
   [changes location]
   (if-not (contains? changes :is_remote_synced)
     changes
     (assoc changes :remote_sync_worktree_id
            (when (:is_remote_synced changes)
-             (or (when-let [parent-id (some-> location location-path->parent-id)]
-                   (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id))
-                 (remote-sync/default-worktree-id))))))
+             (when-let [parent-id (some-> location location-path->parent-id)]
+               (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id))))))
 
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [type] :as collection}]

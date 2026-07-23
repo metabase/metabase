@@ -1,8 +1,9 @@
 ## Remote sync worktrees: branch checkouts materialized as collection trees.
 ## The remote_sync_worktree table holds one row per checked-out branch; the
-## default worktree is the row whose branch matches the remote-sync-branch
-## setting. Collections, remote_sync_object, and remote_sync_task gain a
-## worktree reference so sync state can be scoped per worktree.
+## main app (including default-branch remote sync) is NOT a worktree — its
+## content simply has a NULL worktree reference. Collections, remote_sync_object,
+## and remote_sync_task gain a worktree reference so sync state can be scoped
+## per worktree.
 
 databaseChangeLog:
   - changeSet:
@@ -85,7 +86,7 @@ databaseChangeLog:
               - column:
                   name: remote_sync_worktree_id
                   type: int
-                  remarks: Worktree this collection belongs to; null for content not under remote sync
+                  remarks: Worktree this collection belongs to; null for main-app content (including default-branch remote sync)
                   constraints:
                     nullable: true
 
@@ -100,7 +101,7 @@ databaseChangeLog:
             referencedTableName: remote_sync_worktree
             referencedColumnNames: id
             constraintName: fk_collection_remote_sync_worktree_id
-            onDelete: SET NULL
+            deleteCascade: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:05
@@ -194,247 +195,649 @@ databaseChangeLog:
               - column:
                   name: worktree_id
 
-  ## Worktree copies carry a prefixed entity id - "<worktree-id>/<entity-id>", with "/"
-  ## as a separator that cannot appear in the NanoID alphabet - so the canonical (git)
-  ## identity is parseable from the local id and the two can never collide. Widen
-  ## entity_id on every table a worktree checkout can materialize.
 
+  ## Worktree checkouts materialize rows whose entity_id equals the canonical (git) id, so the same
+  ## entity_id exists once per worktree. Uniqueness becomes per-worktree (composite constraints added
+  ## below); the original inline uniques are auto-named per dialect, hence the dbms-split SQL.
   - changeSet:
       id: v64.2026-07-22T10:00:12
       author: ranquild
-      comment: Widen collection.entity_id for worktree-prefixed ids
+      comment: Drop entity_id unique constraints on worktree-materializable tables (postgres)
       changes:
-        - modifyDataType:
-            tableName: collection
-            columnName: entity_id
-            newDataType: varchar(254)
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "collection" DROP CONSTRAINT IF EXISTS "collection_entity_id_key";
+              ALTER TABLE "report_card" DROP CONSTRAINT IF EXISTS "report_card_entity_id_key";
+              ALTER TABLE "report_dashboard" DROP CONSTRAINT IF EXISTS "report_dashboard_entity_id_key";
+              ALTER TABLE "report_dashboardcard" DROP CONSTRAINT IF EXISTS "report_dashboardcard_entity_id_key";
+              ALTER TABLE "dashboard_tab" DROP CONSTRAINT IF EXISTS "dashboard_tab_entity_id_key";
+              ALTER TABLE "document" DROP CONSTRAINT IF EXISTS "document_entity_id_key";
+              ALTER TABLE "native_query_snippet" DROP CONSTRAINT IF EXISTS "native_query_snippet_entity_id_key";
+              ALTER TABLE "timeline" DROP CONSTRAINT IF EXISTS "timeline_entity_id_key";
+              ALTER TABLE "segment" DROP CONSTRAINT IF EXISTS "segment_entity_id_key";
+              ALTER TABLE "measure" DROP CONSTRAINT IF EXISTS "measure_entity_id_key";
+              ALTER TABLE "action" DROP CONSTRAINT IF EXISTS "action_entity_id_key";
       rollback:
-        - modifyDataType:
+        - addUniqueConstraint:
             tableName: collection
-            columnName: entity_id
-            newDataType: char(21)
+            columnNames: entity_id
+            constraintName: unique_collection_entity_id
+        - addUniqueConstraint:
+            tableName: report_card
+            columnNames: entity_id
+            constraintName: unique_report_card_entity_id
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: entity_id
+            constraintName: unique_report_dashboard_entity_id
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: entity_id
+            constraintName: unique_report_dashboardcard_entity_id
+        - addUniqueConstraint:
+            tableName: dashboard_tab
+            columnNames: entity_id
+            constraintName: unique_dashboard_tab_entity_id
+        - addUniqueConstraint:
+            tableName: document
+            columnNames: entity_id
+            constraintName: unique_document_entity_id
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            columnNames: entity_id
+            constraintName: unique_native_query_snippet_entity_id
+        - addUniqueConstraint:
+            tableName: timeline
+            columnNames: entity_id
+            constraintName: unique_timeline_entity_id
+        - addUniqueConstraint:
+            tableName: segment
+            columnNames: entity_id
+            constraintName: unique_segment_entity_id
+        - addUniqueConstraint:
+            tableName: measure
+            columnNames: entity_id
+            constraintName: unique_measure_entity_id
+        - addUniqueConstraint:
+            tableName: action
+            columnNames: entity_id
+            constraintName: unique_action_entity_id
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:50
+      author: ranquild
+      comment: Drop entity_id unique indexes on worktree-materializable tables (mysql, mariadb)
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `collection` DROP INDEX `entity_id`;
+              ALTER TABLE `report_card` DROP INDEX `entity_id`;
+              ALTER TABLE `report_dashboard` DROP INDEX `entity_id`;
+              ALTER TABLE `report_dashboardcard` DROP INDEX `entity_id`;
+              ALTER TABLE `dashboard_tab` DROP INDEX `entity_id`;
+              ALTER TABLE `document` DROP INDEX `entity_id`;
+              ALTER TABLE `native_query_snippet` DROP INDEX `entity_id`;
+              ALTER TABLE `timeline` DROP INDEX `entity_id`;
+              ALTER TABLE `segment` DROP INDEX `entity_id`;
+              ALTER TABLE `measure` DROP INDEX `entity_id`;
+              ALTER TABLE `action` DROP INDEX `entity_id`;
+      rollback:
+        - addUniqueConstraint:
+            tableName: collection
+            columnNames: entity_id
+            constraintName: unique_collection_entity_id
+        - addUniqueConstraint:
+            tableName: report_card
+            columnNames: entity_id
+            constraintName: unique_report_card_entity_id
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: entity_id
+            constraintName: unique_report_dashboard_entity_id
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: entity_id
+            constraintName: unique_report_dashboardcard_entity_id
+        - addUniqueConstraint:
+            tableName: dashboard_tab
+            columnNames: entity_id
+            constraintName: unique_dashboard_tab_entity_id
+        - addUniqueConstraint:
+            tableName: document
+            columnNames: entity_id
+            constraintName: unique_document_entity_id
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            columnNames: entity_id
+            constraintName: unique_native_query_snippet_entity_id
+        - addUniqueConstraint:
+            tableName: timeline
+            columnNames: entity_id
+            constraintName: unique_timeline_entity_id
+        - addUniqueConstraint:
+            tableName: segment
+            columnNames: entity_id
+            constraintName: unique_segment_entity_id
+        - addUniqueConstraint:
+            tableName: measure
+            columnNames: entity_id
+            constraintName: unique_measure_entity_id
+        - addUniqueConstraint:
+            tableName: action
+            columnNames: entity_id
+            constraintName: unique_action_entity_id
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:51
+      author: ranquild
+      comment: Drop entity_id unique constraints on worktree-materializable tables (h2, dev-grade; names from the bundled H2's deterministic DDL replay, IF EXISTS tolerates drift)
+      changes:
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE "ACTION" DROP CONSTRAINT IF EXISTS "CONSTRAINT_72C";
+              ALTER TABLE "COLLECTION" DROP CONSTRAINT IF EXISTS "CONSTRAINT_B";
+              ALTER TABLE "DASHBOARD_TAB" DROP CONSTRAINT IF EXISTS "CONSTRAINT_90";
+              ALTER TABLE "DOCUMENT" DROP CONSTRAINT IF EXISTS "CONSTRAINT_62";
+              ALTER TABLE "MEASURE" DROP CONSTRAINT IF EXISTS "CONSTRAINT_62B";
+              ALTER TABLE "NATIVE_QUERY_SNIPPET" DROP CONSTRAINT IF EXISTS "CONSTRAINT_4B3";
+              ALTER TABLE "REPORT_CARD" DROP CONSTRAINT IF EXISTS "CONSTRAINT_73";
+              ALTER TABLE "REPORT_DASHBOARD" DROP CONSTRAINT IF EXISTS "CONSTRAINT_97";
+              ALTER TABLE "REPORT_DASHBOARDCARD" DROP CONSTRAINT IF EXISTS "CONSTRAINT_1";
+              ALTER TABLE "SEGMENT" DROP CONSTRAINT IF EXISTS "CONSTRAINT_A";
+              ALTER TABLE "TIMELINE" DROP CONSTRAINT IF EXISTS "CONSTRAINT_B2";
+      rollback:
+        - addUniqueConstraint:
+            tableName: collection
+            columnNames: entity_id
+            constraintName: unique_collection_entity_id
+        - addUniqueConstraint:
+            tableName: report_card
+            columnNames: entity_id
+            constraintName: unique_report_card_entity_id
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: entity_id
+            constraintName: unique_report_dashboard_entity_id
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: entity_id
+            constraintName: unique_report_dashboardcard_entity_id
+        - addUniqueConstraint:
+            tableName: dashboard_tab
+            columnNames: entity_id
+            constraintName: unique_dashboard_tab_entity_id
+        - addUniqueConstraint:
+            tableName: document
+            columnNames: entity_id
+            constraintName: unique_document_entity_id
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            columnNames: entity_id
+            constraintName: unique_native_query_snippet_entity_id
+        - addUniqueConstraint:
+            tableName: timeline
+            columnNames: entity_id
+            constraintName: unique_timeline_entity_id
+        - addUniqueConstraint:
+            tableName: segment
+            columnNames: entity_id
+            constraintName: unique_segment_entity_id
+        - addUniqueConstraint:
+            tableName: measure
+            columnNames: entity_id
+            constraintName: unique_measure_entity_id
+        - addUniqueConstraint:
+            tableName: action
+            columnNames: entity_id
+            constraintName: unique_action_entity_id
 
   - changeSet:
       id: v64.2026-07-22T10:00:13
       author: ranquild
-      comment: Widen report_card.entity_id for worktree-prefixed ids
+      comment: Add report_card.remote_sync_worktree_id
       changes:
-        - modifyDataType:
+        - addColumn:
             tableName: report_card
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: report_card
-            columnName: entity_id
-            newDataType: char(21)
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:14
       author: ranquild
-      comment: Widen report_dashboard.entity_id for worktree-prefixed ids
+      comment: FK report_card.remote_sync_worktree_id -> remote_sync_worktree
       changes:
-        - modifyDataType:
-            tableName: report_dashboard
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: report_dashboard
-            columnName: entity_id
-            newDataType: char(21)
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_report_card_remote_sync_worktree_id
+            deleteCascade: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:15
       author: ranquild
-      comment: Widen report_dashboardcard.entity_id for worktree-prefixed ids
+      comment: Add report_dashboard.remote_sync_worktree_id
       changes:
-        - modifyDataType:
-            tableName: report_dashboardcard
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: report_dashboardcard
-            columnName: entity_id
-            newDataType: char(21)
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:16
       author: ranquild
-      comment: Widen dashboard_tab.entity_id for worktree-prefixed ids
+      comment: FK report_dashboard.remote_sync_worktree_id -> remote_sync_worktree
       changes:
-        - modifyDataType:
-            tableName: dashboard_tab
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: dashboard_tab
-            columnName: entity_id
-            newDataType: char(21)
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_report_dashboard_remote_sync_worktree_id
+            deleteCascade: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:17
       author: ranquild
-      comment: Widen document.entity_id for worktree-prefixed ids
+      comment: Add report_dashboardcard.remote_sync_worktree_id
       changes:
-        - modifyDataType:
-            tableName: document
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: document
-            columnName: entity_id
-            newDataType: char(21)
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:18
       author: ranquild
-      comment: Widen native_query_snippet.entity_id for worktree-prefixed ids
+      comment: FK report_dashboardcard.remote_sync_worktree_id -> remote_sync_worktree
       changes:
-        - modifyDataType:
-            tableName: native_query_snippet
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: native_query_snippet
-            columnName: entity_id
-            newDataType: char(21)
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_remote_sync_worktree_id
+            deleteCascade: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:19
       author: ranquild
-      comment: Widen timeline.entity_id for worktree-prefixed ids
+      comment: Add dashboard_tab.remote_sync_worktree_id
       changes:
-        - modifyDataType:
-            tableName: timeline
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: timeline
-            columnName: entity_id
-            newDataType: char(21)
+        - addColumn:
+            tableName: dashboard_tab
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:20
       author: ranquild
-      comment: Widen segment.entity_id for worktree-prefixed ids
+      comment: FK dashboard_tab.remote_sync_worktree_id -> remote_sync_worktree
       changes:
-        - modifyDataType:
-            tableName: segment
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: segment
-            columnName: entity_id
-            newDataType: char(21)
+        - addForeignKeyConstraint:
+            baseTableName: dashboard_tab
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_dashboard_tab_remote_sync_worktree_id
+            deleteCascade: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:21
       author: ranquild
-      comment: Widen measure.entity_id for worktree-prefixed ids
+      comment: Add document.remote_sync_worktree_id
       changes:
-        - modifyDataType:
-            tableName: measure
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: measure
-            columnName: entity_id
-            newDataType: char(21)
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:22
       author: ranquild
-      comment: Widen transform.entity_id for worktree-prefixed ids
+      comment: FK document.remote_sync_worktree_id -> remote_sync_worktree
       changes:
-        - modifyDataType:
-            tableName: transform
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: transform
-            columnName: entity_id
-            newDataType: char(21)
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_document_remote_sync_worktree_id
+            deleteCascade: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:23
       author: ranquild
-      comment: Widen transform_tag.entity_id for worktree-prefixed ids
+      comment: Add native_query_snippet.remote_sync_worktree_id
       changes:
-        - modifyDataType:
-            tableName: transform_tag
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: transform_tag
-            columnName: entity_id
-            newDataType: char(21)
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:24
       author: ranquild
-      comment: Widen transform_job.entity_id for worktree-prefixed ids
+      comment: FK native_query_snippet.remote_sync_worktree_id -> remote_sync_worktree
       changes:
-        - modifyDataType:
-            tableName: transform_job
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: transform_job
-            columnName: entity_id
-            newDataType: char(21)
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_native_query_snippet_remote_sync_worktree_id
+            deleteCascade: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:25
       author: ranquild
-      comment: Widen transform_transform_tag.entity_id for worktree-prefixed ids
+      comment: Add timeline.remote_sync_worktree_id
       changes:
-        - modifyDataType:
-            tableName: transform_transform_tag
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: transform_transform_tag
-            columnName: entity_id
-            newDataType: char(21)
+        - addColumn:
+            tableName: timeline
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:26
       author: ranquild
-      comment: Widen transform_job_transform_tag.entity_id for worktree-prefixed ids
+      comment: FK timeline.remote_sync_worktree_id -> remote_sync_worktree
       changes:
-        - modifyDataType:
-            tableName: transform_job_transform_tag
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: transform_job_transform_tag
-            columnName: entity_id
-            newDataType: char(21)
+        - addForeignKeyConstraint:
+            baseTableName: timeline
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_timeline_remote_sync_worktree_id
+            deleteCascade: true
 
   - changeSet:
       id: v64.2026-07-22T10:00:27
       author: ranquild
-      comment: Widen python_library.entity_id for worktree-prefixed ids
+      comment: Add segment.remote_sync_worktree_id
       changes:
-        - modifyDataType:
-            tableName: python_library
-            columnName: entity_id
-            newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: python_library
-            columnName: entity_id
-            newDataType: char(21)
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:28
+      author: ranquild
+      comment: FK segment.remote_sync_worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: segment
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_segment_remote_sync_worktree_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:29
+      author: ranquild
+      comment: Add measure.remote_sync_worktree_id
+      changes:
+        - addColumn:
+            tableName: measure
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:30
+      author: ranquild
+      comment: FK measure.remote_sync_worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_measure_remote_sync_worktree_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:31
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for collection (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: collection
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_collection_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:32
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for report_card (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: report_card
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_report_card_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:33
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for report_dashboard (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_report_dashboard_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:34
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for report_dashboardcard (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_report_dashboardcard_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:35
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for dashboard_tab (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: dashboard_tab
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_dashboard_tab_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:36
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for document (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: document
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_document_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:37
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for native_query_snippet (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_native_query_snippet_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:38
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for timeline (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: timeline
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_timeline_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:39
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for segment (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: segment
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_segment_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:40
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for measure (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: measure
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_measure_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:41
+      author: ranquild
+      comment: Add action.remote_sync_worktree_id
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:42
+      author: ranquild
+      comment: FK action.remote_sync_worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_action_remote_sync_worktree_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:43
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for action (null worktree rows are not mutually constrained - NanoIDs are app-generated)
+      changes:
+        - addUniqueConstraint:
+            tableName: action
+            columnNames: entity_id, remote_sync_worktree_id
+            constraintName: unique_action_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:44
+      author: ranquild
+      comment: Add glossary.remote_sync_worktree_id
+      changes:
+        - addColumn:
+            tableName: glossary
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:45
+      author: ranquild
+      comment: FK glossary.remote_sync_worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: glossary
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_glossary_remote_sync_worktree_id
+            deleteCascade: true
+
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:47
+      author: ranquild
+      comment: Add parameter_card.remote_sync_worktree_id
+      changes:
+        - addColumn:
+            tableName: parameter_card
+            columns:
+              - column:
+                  name: remote_sync_worktree_id
+                  type: int
+                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-22T10:00:48
+      author: ranquild
+      comment: FK parameter_card.remote_sync_worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: parameter_card
+            baseColumnNames: remote_sync_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_parameter_card_remote_sync_worktree_id
+            deleteCascade: true
+

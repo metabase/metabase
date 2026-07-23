@@ -1,7 +1,6 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
    [metabase-enterprise.remote-sync.guards :as guards]
-   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as remote-sync.worktree]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -67,13 +66,6 @@
   (or (not (settings/remote-sync-enabled))
       (= (settings/remote-sync-type) :read-write)))
 
-(defenterprise default-worktree-id
-  "ID of the default remote sync worktree — the row tracking the branch in the `remote-sync-branch`
-  setting — creating it if needed. Nil when remote sync is not configured."
-  :feature :none
-  []
-  (remote-sync.worktree/default-worktree-id))
-
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration."
   :feature :none
@@ -113,8 +105,7 @@
     (t2/with-transaction [_]
       (when (seq sync-on)
         (t2/query {:update (t2/table-name :model/Collection)
-                   :set {:is_remote_synced true
-                         :remote_sync_worktree_id (remote-sync.worktree/default-worktree-id)}
+                   :set {:is_remote_synced true}
                    :where [:and
                            [:= :is_remote_synced false]
                            (into [:or [:in :id (map :id sync-on)]]
@@ -130,8 +121,7 @@
                                                   [:like :location (str (collections/location-path collection) "%")]))]})]
           (when (seq affected-collection-ids)
             (t2/query {:update (t2/table-name :model/Collection)
-                       :set {:is_remote_synced false
-                             :remote_sync_worktree_id nil}
+                       :set {:is_remote_synced false}
                        :where [:in :id affected-collection-ids]})
             (t2/delete! :model/RemoteSyncObject
                         :model_type "Collection"
