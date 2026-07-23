@@ -212,6 +212,18 @@
                          (steering-line {:target "dashboard" :id (:id dashboard)
                                          :parameter_id "_CARD_" :limit 2})))))))))
 
+(deftest offset-past-end-of-capped-list-test
+  (testing "GHY-4141: past the end of a source-capped list the steering line stays a floor — naming a
+            flat total would contradict the has_more_values the payload still carries, and would read
+            as an exhausted list when the source holds more"
+    (with-fixtures [{:keys [dashboard]}]
+      (mt/with-test-user :rasta
+        (binding [custom-values/*max-rows* 3]
+          (let [args {:target "dashboard" :id (:id dashboard) :parameter_id "_CARD_" :offset 10}]
+            (is (true? (:has_more_values (params-result args))))
+            (is (re-find #"narrow with `query`" (steering-line args)))
+            (is (not (re-find #"3 available" (steering-line args))))))))))
+
 (deftest query-search-test
   (testing "GHY-4141: query narrows the value list on both targets"
     (with-fixtures [{:keys [dashboard native-card]}]

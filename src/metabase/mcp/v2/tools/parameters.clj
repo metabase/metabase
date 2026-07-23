@@ -123,7 +123,10 @@
     "No values — this parameter has no value list (date and free-text filters don't), or its source is empty."
 
     (zero? returned)
-    (format "No values at offset %d — %d available." offset total)
+    (if more?
+      (format "No values at offset %d — the source stopped at %d before returning everything; narrow with `query` rather than paging further."
+              offset total)
+      (format "No values at offset %d — %d available." offset total))
 
     :else
     (or (common/truncation-line {:param :query :offset offset :limit limit
