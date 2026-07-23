@@ -65,7 +65,7 @@ jobs:
       # workspace makes both agree regardless of cwd.
       QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
       # Cypress records video for every spec but the passing specs' videos are
-      # deleted in after:spec, so recording is ~5-10% CPU per shard that almost
+      # deleted in after:spec so recording is ~5-10% slowdown per shard and almost
       # never yields an artifact. Failure screenshots are unaffected, and the
       # stress-test workflows have their own config and keep video.
       CYPRESS_VIDEO: "false"
