@@ -10,11 +10,11 @@
 
 (mr/def ::lookback
   "A lookback window: each run re-reads source rows up to `value` `unit`s behind the checkpoint,
-  so late-arriving rows older than the watermark still get picked up. `unit` is required for
-  temporal checkpoint columns and must be omitted for numeric ones."
+  so late-arriving rows older than the watermark still get picked up. Only supported for
+  temporal checkpoint columns."
   [:map
    [:value pos-int?]
-   [:unit {:optional true} [:maybe (into [:enum] (map name) (sort u.date/add-units))]]])
+   [:unit (into [:enum] (map name) (sort u.date/add-units))]])
 
 (mr/def ::checkpoint-strategy
   [:map

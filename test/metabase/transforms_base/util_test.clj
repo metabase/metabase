@@ -109,19 +109,16 @@
              (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 2 :unit "hour"})))
       (is (= (t/local-date 2026 1 24)
              (apply-lookback (t/local-date 2026 1 31) :type/Date {:value 1 :unit "week"}))))
-    (testing "numeric checkpoints subtract the value directly"
-      (is (= (biginteger 38) (apply-lookback (biginteger 42) :type/Integer {:value 4})))
-      (is (= 195.99M (apply-lookback 199.99M :type/Float {:value 4}))))
-    (testing "a temporal lookback without a unit throws a user-facing error"
+    (testing "a lookback on a non-temporal checkpoint throws a user-facing error"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"only supported for temporal"
+           (apply-lookback (biginteger 42) :type/Integer {:value 4 :unit "day"}))))
+    (testing "a lookback without a unit throws a user-facing error"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"requires a unit"
-           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 4}))))
-    (testing "a numeric lookback with a unit throws a user-facing error"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"must not specify a unit"
-           (apply-lookback (biginteger 42) :type/Integer {:value 4 :unit "day"}))))))
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 4}))))))
 
 (deftest ^:parallel checkpoint-compare-test
   (let [checkpoint-compare @#'transforms-base.u/checkpoint-compare]

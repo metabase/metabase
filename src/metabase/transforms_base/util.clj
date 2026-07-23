@@ -313,21 +313,20 @@
 (declare ->instant)
 
 (defn- apply-lookback
-  "Push a checkpoint lower bound back by the lookback window: `value` `unit`s for temporal
-  columns, `value` itself for numeric ones."
+  "Push a checkpoint lower bound back by the lookback window (`value` `unit`s). Only supported
+  for temporal checkpoint columns."
   [checkpoint base-type {:keys [value unit] :as lookback}]
   (cond
-    (isa? base-type :type/Temporal)
-    (if unit
-      (u.date/add checkpoint (keyword unit) (- value))
-      (let [msg (i18n/tru "A lookback window on a temporal checkpoint column requires a unit.")]
-        (throw (ex-info msg {:transform-message msg, :lookback lookback}))))
+    (not (isa? base-type :type/Temporal))
+    (let [msg (i18n/tru "A lookback window is only supported for temporal checkpoint columns.")]
+      (throw (ex-info msg {:transform-message msg, :lookback lookback})))
 
-    (isa? base-type :type/Number)
-    (if unit
-      (let [msg (i18n/tru "A lookback window on a numeric checkpoint column must not specify a unit.")]
-        (throw (ex-info msg {:transform-message msg, :lookback lookback})))
-      (- checkpoint value))))
+    (nil? unit)
+    (let [msg (i18n/tru "A lookback window requires a unit.")]
+      (throw (ex-info msg {:transform-message msg, :lookback lookback})))
+
+    :else
+    (u.date/add checkpoint (keyword unit) (- value))))
 
 (defn- checkpoint-compare
   "Compare two parsed checkpoint values. Temporal values compare as instants, since the stored
