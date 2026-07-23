@@ -321,7 +321,7 @@
   [dataset-query db-id]
   (try
     (perms/data-access-token {:database-id db-id
-                              :table-ids   (query-perms/query->source-table-ids dataset-query)})
+                              :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)})
     (catch Throwable e
       (log/warn e "Failed to compute data-access token for exploration query result")
       nil)))

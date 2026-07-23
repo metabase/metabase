@@ -91,7 +91,7 @@ function DocumentProviders({
 
   // Unjustified type cast. FIXME
   const mockRouterContext = {
-    location: { pathname: "/document/1", query: {} },
+    location: { pathname: "/document/1", search: "", query: {} },
   } as WithRouterProps;
 
   return (

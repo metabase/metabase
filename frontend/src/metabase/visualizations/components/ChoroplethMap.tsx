@@ -410,9 +410,10 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const highlightedDimension = highlighted?.dimensions?.find(
     (d) => d.columnName === dimensionColumn?.name,
   );
-  const highlightedKey = highlightedDimension
-    ? getCanonicalRowKey(highlightedDimension.value, settings["map.region"])
-    : null;
+  const highlightedKey =
+    isSeriesHighlighted && highlightedDimension
+      ? getCanonicalRowKey(highlightedDimension.value, settings["map.region"])
+      : null;
 
   const isFeatureHighlighted = (feature: Feature): boolean | null => {
     if (!isSeriesHighlighted || !highlightedDimension) {

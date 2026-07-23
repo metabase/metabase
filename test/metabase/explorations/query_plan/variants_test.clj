@@ -201,6 +201,32 @@
       (is (= [["Widget" 54] ["Gadget" 53] ["Gizmo" 51] ["Doohickey" 42]]
              (run-top-n-other {:card-id 9000002 :k 4}))))))
 
+(def ^:private product-id-fk-dim
+  {:dimension_id   "d-product-id"
+   :display_name   "Product ID"
+   :effective_type :type/Integer
+   :semantic_type  :type/FK})
+
+(deftest top-n-other-numeric-fk-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "top-n-other on a numeric FK dim stringifies the bucket labels, so the CASE
+              expression is single-typed — a mixed CASE (numeric THEN arms, string (Other)
+              ELSE arm) is rejected by strict warehouses (UXW-4757)"
+      (let [ctx  {:mp      (mt/metadata-provider)
+                  :card    (orders-count-card 9000005)
+                  :target  [:field (mt/id :orders :product_id) nil]
+                  :dim     product-id-fk-dim
+                  :segment nil
+                  :params  {:k 2}}
+            rows (-> (variants/pin-other-last
+                      "top-n-other"
+                      (qp/process-query (variants/dataset-query "top-n-other" ctx)))
+                     :data :rows)]
+        (is (= 3 (count rows)) "top 2 ids + (Other)")
+        (is (every? string? (map first rows))
+            "every bucket label — discovered ids and (Other) — is a string")
+        (is (= "(Other)" (first (last rows))))))))
+
 (deftest pin-other-last-test
   (testing "pin-other-last stably moves the (Other) row to the end, preserving the
             metric-desc order of the named buckets"

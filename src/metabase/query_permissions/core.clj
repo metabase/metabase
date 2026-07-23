@@ -17,6 +17,7 @@
   check-run-permissions-for-query
   has-perm-for-query?
   perms-exception
+  query->resolved-source-table-ids
   query->source-ids
   query->source-table-ids
   required-perms-for-query])

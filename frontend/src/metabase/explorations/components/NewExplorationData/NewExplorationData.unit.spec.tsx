@@ -89,6 +89,9 @@ describe("NewExplorationData (Research plan)", () => {
       expect(
         screen.getByRole("button", { name: /Events/ }),
       ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Start research/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("opens the metrics modal from the +Data menu", async () => {
@@ -371,6 +374,31 @@ describe("NewExplorationData (Research plan)", () => {
         buildCreateExplorationRequest("n", "   ", [], [], null).prompt,
       ).toBeNull();
     });
+
+    it("drops empty blocks so only pairings with selections are persisted", () => {
+      const request = buildCreateExplorationRequest(
+        "n",
+        "",
+        [
+          mockMetricBlock(revenueMetric, [dimCreatedAt], new Set()),
+          mockDimensionBlock(dimPlan, [churnMetric]),
+          mockDimensionBlock(
+            dimCreatedAt,
+            [revenueMetric],
+            [dimCreatedAt],
+            new Set(),
+          ),
+        ],
+        [],
+        null,
+      );
+
+      expect(request.blocks).toHaveLength(1);
+      expect(request.blocks[0].type).toBe("dimension");
+      expect(request.blocks[0].metrics.map((m) => m.card_id)).toEqual([
+        churnMetric.id,
+      ]);
+    });
   });
 
   describe("mixed Research plan", () => {
@@ -383,6 +411,71 @@ describe("NewExplorationData (Research plan)", () => {
       });
 
       expect(screen.getAllByLabelText("Remove area")).toHaveLength(2);
+      expect(
+        screen.getByRole("button", { name: "Start research" }),
+      ).toBeEnabled();
+    });
+  });
+
+  describe("Start research", () => {
+    it("is disabled when there are no blocks", () => {
+      setup();
+
+      expect(
+        screen.getByRole("button", { name: "Start research" }),
+      ).toBeDisabled();
+    });
+
+    it("is disabled when a metric block has no selected dimensions", () => {
+      setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt], new Set())],
+      });
+
+      expect(screen.getByText("Revenue")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Start research" }),
+      ).toBeDisabled();
+    });
+
+    it("is disabled when a dimension block has no selected metrics", () => {
+      setup({
+        blocks: [
+          mockDimensionBlock(dimPlan, [revenueMetric], [dimPlan], new Set()),
+        ],
+      });
+
+      expect(screen.getByText("Plan")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Start research" }),
+      ).toBeDisabled();
+    });
+
+    it("is disabled when every block is empty", () => {
+      setup({
+        blocks: [
+          mockMetricBlock(revenueMetric, [dimCreatedAt], new Set()),
+          mockDimensionBlock(
+            dimPlan,
+            [revenueMetric, churnMetric],
+            [dimPlan],
+            new Set(),
+          ),
+        ],
+      });
+
+      expect(
+        screen.getByRole("button", { name: "Start research" }),
+      ).toBeDisabled();
+    });
+
+    it("is enabled when at least one block has a selection", () => {
+      setup({
+        blocks: [
+          mockMetricBlock(revenueMetric, [dimCreatedAt], new Set()),
+          mockDimensionBlock(dimPlan, [churnMetric]),
+        ],
+      });
+
       expect(
         screen.getByRole("button", { name: "Start research" }),
       ).toBeEnabled();

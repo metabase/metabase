@@ -661,7 +661,11 @@
                                                    :id src-thread-id :exploration_id id))
           metric-selection (first (:metrics block))
           card-id       (:card_id metric-selection)
-          card          (api/check-404 (when card-id (t2/select-one :model/Card :id card-id)))
+          ;; Copying the block re-attaches its metric card into the new thread, and attach time
+          ;; is the permission boundary (see `POST /`) — so the caller must still be able to
+          ;; read the card, even though the source block passed this check when it was created.
+          card          (api/read-check
+                         (api/check-404 (when card-id (t2/select-one :model/Card :id card-id))))
           card-name     (:name card)
           mp            (lib-be/application-database-metadata-provider (:database_id card))
           enriched-filters (qp.context/enrich-explore-filters mp card block metric-selection explore_filters)

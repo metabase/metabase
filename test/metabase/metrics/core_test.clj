@@ -109,6 +109,32 @@
           (is (nil? (:dimension_mappings reloaded))
               "Dimension mappings should remain nil when query is empty"))))))
 
+(deftest metric-sync-dimensions-sql-model-test
+  (testing "sync-dimensions! computes dimensions for a metric built on a native-SQL model (UXW-4475)"
+    (with-bindings {#'card/*syncing-metric-dimensions* true}
+      (mt/with-temp [:model/Card model {:name            "SQL Model"
+                                        :type            :model
+                                        :database_id     (mt/id)
+                                        :dataset_query   (mt/native-query
+                                                          {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES"})
+                                        :result_metadata [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
+                                                          {:name "NAME" :display_name "Name" :base_type :type/Text}
+                                                          {:name "CATEGORY_ID" :display_name "Category ID" :base_type :type/Integer}]}
+                     :model/Card metric {:name          "Metric on SQL model"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :dataset_query (let [mp (mt/metadata-provider)]
+                                                          (-> (lib/query mp (lib.metadata/card mp (:id model)))
+                                                              (lib/aggregate (lib/count))))}]
+        (is (nil? (:table_id (t2/select-one :model/Card :id (:id model))))
+            "sanity check: native-SQL model has no table_id")
+        (metrics/sync-dimensions! :metadata/metric (:id metric))
+        (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+          (is (= #{"ID" "NAME" "CATEGORY_ID"}
+                 (into #{} (map :name) (:dimensions reloaded)))
+              "dimensions come from the model's result_metadata")
+          (is (= (count (:dimensions reloaded)) (count (:dimension_mappings reloaded)))))))))
+
 ;;; ------------------------------------------------ Measure Dimension Sync Tests ------------------------------------------------
 
 (deftest measure-sync-dimensions-basic-test

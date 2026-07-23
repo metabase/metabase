@@ -58,10 +58,6 @@
   opacity: 1;
 }
 
-.overflowPill {
-  background: var(--mb-color-background-secondary);
-}
-
 .togglePill {
   display: inline-flex;
   align-items: center;

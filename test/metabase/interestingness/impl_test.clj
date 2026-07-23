@@ -22,8 +22,14 @@
       :type/Name
       :type/CreationTimestamp
       :type/Number
-      :type/FK
+      :type/FK ; no effective/base type in the map, so the numeric-FK gate can't fire
       nil))
+  (testing "numeric FKs score 0.0 (opaque unbinnable ids); non-numeric FKs keep their data meaning"
+    (is (= 0.0 (impl/type-penalty {:semantic-type :type/FK :effective-type :type/Integer})))
+    (is (= 0.0 (impl/type-penalty {:semantic-type :type/FK :base-type :type/BigInteger}))
+        "base-type is the fallback when effective-type is absent")
+    (is (nil? (impl/type-penalty {:semantic-type :type/FK :effective-type :type/Text}))
+        "a text FK (e.g. country code referencing a lookup table) is not penalized"))
   (testing "nil semantic type scores nil (no signal)"
     (is (nil? (impl/type-penalty {})))))
 

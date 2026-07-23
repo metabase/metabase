@@ -20,12 +20,16 @@ export function enableExplorations(): void {
     "llm-anthropic-api-base-url",
     `http://localhost:${MOCK_LLM_PORT}`,
   );
+  cy.intercept({
+    method: "GET",
+    pathname: "/api/exploration/dimensions",
+  }).as("getDimensions");
 }
 
 export function explorationsMetabotPromptInput(): Cypress.Chainable<
   JQuery<HTMLElement>
 > {
-  return cy.get(".ProseMirror[contenteditable=true]");
+  return cy.findByTestId("exploration-prompt-input");
 }
 
 export function visitNewExploration(): void {
@@ -43,14 +47,12 @@ export function startManualExploration(): void {
 
 /**
  * The metrics picker opens on the "Library" tab whenever the metrics library is
- * enabled (it is, under the pro token these specs activate).
+ * enabled — which it always is under the pro token these specs activate, so
+ * the tabs are unconditionally present. (A one-shot existence check here would
+ * silently skip the click when the tabs render a tick after the dialog.)
  */
 export function selectAllMetricsTab(): void {
-  cy.findByRole("dialog").then(($dialog) => {
-    if ($dialog.find('[role="tab"]').length > 0) {
-      cy.findByRole("tab", { name: "All" }).click();
-    }
-  });
+  cy.findByRole("dialog").findByRole("tab", { name: "All" }).click();
 }
 
 export interface AddMetricsAndDimensionsOptions {

@@ -26,7 +26,7 @@ jest.mock("metabase/metabot/hooks", () => ({
 }));
 
 jest.mock("metabase/metabot/components/MetabotPromptInput", () => ({
-  MetabotPromptInput: () => null,
+  MetabotPromptInput: () => <div data-testid="exploration-prompt-input" />,
 }));
 
 function mockMyExplorationsQuery({
@@ -81,6 +81,15 @@ function setup({
 describe("NewExplorationEntry", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("renders the research landing with its prompt input", () => {
+    setup();
+
+    expect(
+      screen.getByText("What do you want to research?"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("exploration-prompt-input")).toBeInTheDocument();
   });
 
   describe("banner and past projects list", () => {

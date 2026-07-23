@@ -11,6 +11,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { trackExplorationVisualizationChanged } from "metabase/explorations/analytics";
 import {
   DEFAULT_SORT_ORDER,
   type ExplorationSortOrder,
@@ -36,6 +37,8 @@ import {
   getExplorationSidebarTree,
   isHiddenTreeItem,
 } from "./utils";
+
+jest.mock("metabase/explorations/analytics");
 
 function getSidebarTestContext(
   exploration: ReturnType<typeof createExploration>,
@@ -210,6 +213,77 @@ function getRow(name: string): HTMLElement {
 }
 
 describe("ExplorationSidebar", () => {
+  describe("keyboard navigation", () => {
+    it("moves selection to the next page with ArrowRight", () => {
+      const { setSelectedPageId } = setup({
+        queries: [doneQuery, errorQuery],
+        selectedQueryId: 2,
+      });
+
+      fireEvent.keyDown(document.body, { key: "ArrowRight" });
+
+      expect(setSelectedPageId).toHaveBeenCalledWith("3");
+      expect(trackExplorationVisualizationChanged).toHaveBeenCalledWith(
+        expect.any(Number),
+        "keyboard",
+      );
+    });
+
+    it("moves selection to the previous page with ArrowLeft", () => {
+      const { setSelectedPageId } = setup({
+        queries: [doneQuery, errorQuery],
+        selectedQueryId: 3,
+      });
+
+      fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+
+      expect(setSelectedPageId).toHaveBeenCalledWith("2");
+    });
+  });
+
+  it("collapses and re-expands a heading on click, hiding and revealing its pages", async () => {
+    setup({
+      queries: [doneQuery, errorQuery],
+      blocks: [
+        createBlock({
+          id: 10,
+          name: "Revenue group",
+          position: 0,
+          pages: [
+            createPage({
+              id: 2,
+              name: "Revenue by region",
+              position: 0,
+              query_ids: [2],
+            }),
+            createPage({
+              id: 3,
+              name: "Revenue by source",
+              position: 1,
+              query_ids: [3],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const heading = () => screen.getByRole("group", { name: /Revenue group/ });
+
+    expect(heading()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Revenue by region")).toBeInTheDocument();
+    expect(screen.getByText("Revenue by source")).toBeInTheDocument();
+
+    await userEvent.click(heading());
+    expect(heading()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Revenue by region")).not.toBeInTheDocument();
+    expect(screen.queryByText("Revenue by source")).not.toBeInTheDocument();
+
+    await userEvent.click(heading());
+    expect(heading()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Revenue by region")).toBeInTheDocument();
+    expect(screen.getByText("Revenue by source")).toBeInTheDocument();
+  });
+
   it("marks pending queries as busy (shimmering text, no spinner)", () => {
     setup({ queries: [pendingQuery] });
 

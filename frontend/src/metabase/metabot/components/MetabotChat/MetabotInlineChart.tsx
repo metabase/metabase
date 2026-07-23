@@ -15,7 +15,6 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useSetting } from "metabase/common/hooks";
-import { serializeCardForUrl } from "metabase/common/utils/card";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -50,7 +49,7 @@ import S from "./MetabotInlineChart.module.css";
  * result; the title bar links out to the full question.
  */
 export function MetabotInlineChart({
-  value: { id: chartId, title, description, display, query },
+  value,
   readonly = false,
   conversationId,
 }: {
@@ -58,6 +57,7 @@ export function MetabotInlineChart({
   readonly?: boolean;
   conversationId: string;
 }) {
+  const { id: chartId, title, description, display, query } = value;
   const datasetQuery = query.query;
   const clipboard = useClipboard();
   const recordedCardId = useSelector((state) =>
@@ -107,8 +107,8 @@ export function MetabotInlineChart({
     () =>
       savedCardId != null
         ? Urls.question(question.setId(savedCardId))
-        : `/question#${serializeCardForUrl(card, { includeDisplayIsLocked: true })}`,
-    [card, question, savedCardId],
+        : Urls.generatedCard(value),
+    [question, savedCardId, value],
   );
 
   const { data: dataset, error } = useGetAdhocQueryQuery(datasetQuery);

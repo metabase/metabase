@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
@@ -25,6 +24,7 @@ import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import type { LocationDescriptorObject } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";

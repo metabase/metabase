@@ -96,9 +96,9 @@
       variants, not categorical rollups.
    2. Dim has no default bucket/binning — auto-binned numerics are already
       capped at `default-binning-max-bins` by `default`, so a top-K rollup
-      would be redundant. Mechanical stays conservative here: the LLM
-      planner allows numerics via `semantic_type`, but mechanical has no
-      semantic signal to lean on.
+      would be redundant. Key-typed numerics (PK/FK) have no default binning
+      (the QP refuses to bin `:Relation/*` columns), so high-cardinality ids
+      route here and get the bounded top-K + Other rollup.
    3. Dim's raw distinct-count is unknown OR > `top-n-other-min-cardinality`.
       Missing fingerprints fail *safe* into top-n-other (bounded by K) so a
       high-cardinality dim with no fingerprint doesn't fall through to the

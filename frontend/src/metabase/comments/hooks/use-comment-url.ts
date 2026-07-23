@@ -1,4 +1,5 @@
 import { useRouter } from "metabase/router";
+import { isExplorationUrl } from "metabase/urls";
 import type { EntityId } from "metabase-types/api/comments";
 
 interface UseCommentUrlOptions {
@@ -10,6 +11,11 @@ export function useCommentUrl({ childTargetId }: UseCommentUrlOptions) {
   const { pathname } = location;
   if (!pathname) {
     return "";
+  }
+  if (isExplorationUrl(pathname)) {
+    const search = new URLSearchParams(location.search);
+    search.set("comments", "true");
+    return `${pathname}?${search.toString()}`;
   }
   const existingCommentIndex = pathname.lastIndexOf("/comments");
   const nextPathname =

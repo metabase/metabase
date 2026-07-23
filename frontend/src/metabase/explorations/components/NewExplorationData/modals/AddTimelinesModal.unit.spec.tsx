@@ -90,6 +90,18 @@ describe("AddTimelinesModal", () => {
     expect(screen.queryByText("Empty")).not.toBeInTheDocument();
   });
 
+  it("shows the empty-state copy when the search matches no timeline", async () => {
+    setup();
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Search for a timeline"),
+      "zzz",
+    );
+
+    expect(screen.getByText("No results")).toBeInTheDocument();
+    expect(screen.queryByText("Releases")).not.toBeInTheDocument();
+  });
+
   it("pre-checks timelines already in the selection", () => {
     setup({ timelines: [releases] });
 

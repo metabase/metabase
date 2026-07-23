@@ -1,8 +1,6 @@
 import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import dayjs from "dayjs";
-import type { Location } from "history";
 import {
   type ReactNode,
   useCallback,
@@ -29,6 +27,7 @@ import {
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyModal } from "metabase/common/components/CopyModal";
+import { getFormattedTime } from "metabase/common/components/DateTime";
 import {
   LeaveConfirmModal,
   LeaveRouteConfirmModal,
@@ -39,8 +38,13 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import type { Route } from "metabase/router";
-import { Outlet, push, replace } from "metabase/router";
+import {
+  type Location,
+  Outlet,
+  type Route,
+  push,
+  replace,
+} from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
@@ -356,7 +360,7 @@ export const DocumentPage = ({
         const documentAst = editorInstance.getJSON();
         const name =
           documentTitle ||
-          t`Untitled document - ${dayjs().local().format("MMMM D, YYYY")}`;
+          t`Untitled document - ${getFormattedTime(new Date(), "day", { local: true })}`;
 
         const newDocumentData = {
           name,

@@ -206,7 +206,7 @@ export function AddEntitiesModal({
                       className={cx(S.card, {
                         [S.cardSelected]: checked.has(item.key),
                       })}
-                      data-interestingness={item.interestingness || "null"}
+                      data-interestingness={item.interestingness ?? "null"}
                       style={positioning}
                     >
                       <Checkbox

@@ -490,4 +490,81 @@ describe("NewExplorationChat", () => {
       "dimensions",
     );
   });
+
+  it("does not re-apply tool calls that survive a conversation rewind/retry", async () => {
+    const { selection, rerender } = setup();
+
+    const secondUserMessage: MetabotChatMessage = {
+      id: "user-2",
+      role: "user",
+      type: "text",
+      message: "Remove the churn block",
+    };
+    const secondAgentMessage: MetabotChatMessage = {
+      id: "agent-2",
+      role: "agent",
+      type: "text",
+      message: "Removed.",
+    };
+
+    // Turn 1: name tool call is applied when the agent finishes.
+    rerender({
+      messages: [userMessage, setNameToolCallMessage, agentMessage],
+      isDoingScience: false,
+    });
+    await waitFor(() => {
+      expect(selection.setName).toHaveBeenCalledTimes(1);
+    });
+
+    // Turn 2: a later tool call is applied.
+    rerender({
+      messages: [
+        userMessage,
+        setNameToolCallMessage,
+        agentMessage,
+        secondUserMessage,
+        removeFromResearchPlanToolCallMessage,
+        secondAgentMessage,
+      ],
+      isDoingScience: false,
+    });
+    await waitFor(() => {
+      expect(selection.removeBlock).toHaveBeenCalledTimes(2);
+    });
+
+    // Retrying turn 2 rewinds to that prompt — messages shrink, but turn 1's
+    // tool-call id remains. The regenerated turn 2 uses a fresh tool-call id.
+    const retriedRemoveToolCallMessage: MetabotDebugToolCallMessage = {
+      ...removeFromResearchPlanToolCallMessage,
+      id: "tool-call-4-retry",
+      result: JSON.stringify({ block_ids: ["metric:1"] }),
+    };
+    const retriedSecondAgentMessage: MetabotChatMessage = {
+      ...secondAgentMessage,
+      id: "agent-2-retry",
+    };
+
+    rerender({
+      messages: [userMessage, setNameToolCallMessage, agentMessage],
+      isDoingScience: true,
+    });
+    rerender({
+      messages: [
+        userMessage,
+        setNameToolCallMessage,
+        agentMessage,
+        secondUserMessage,
+        retriedRemoveToolCallMessage,
+        retriedSecondAgentMessage,
+      ],
+      isDoingScience: false,
+    });
+
+    await waitFor(() => {
+      expect(selection.removeBlock).toHaveBeenCalledTimes(3);
+    });
+    expect(selection.removeBlock).toHaveBeenLastCalledWith("metric:1");
+    // Turn 1's surviving tool call must not run again after the rewind.
+    expect(selection.setName).toHaveBeenCalledTimes(1);
+  });
 });

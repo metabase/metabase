@@ -206,6 +206,55 @@
               (recur (conj files (.getPathString tree-walk)))
               files)))))
 
+(defn- tree-children
+  "Paths of the entries at the walk's current depth, consuming the walk. `next` climbs back out of a
+  subtree once it's exhausted, so a drop in depth is what marks the end of the children.
+
+  Sorted rather than left in tree order: git orders a tree's entries as if directories ended in `/`, so
+  raw order puts a sibling `a-b` before the directory `a` (`\\-` < `\\/`). Sorting gives plain
+  lexicographic order instead — the one rule the flat snapshots can honour too, since they have no tree
+  order to inherit."
+  [^TreeWalk tree-walk]
+  (let [depth (.getDepth tree-walk)]
+    (loop [paths []]
+      (if (and (.next tree-walk) (= depth (.getDepth tree-walk)))
+        (recur (conj paths (.getPathString tree-walk)))
+        (vec (sort paths))))))
+
+(defn list-dir
+  "Lists the immediate children of one directory in the git repository at the snapshot.
+
+  Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to read, and a
+  repo-root relative directory path (no trailing slash).
+
+  Resolves the commit's root tree, looks `path` up in it and reads that single tree object, iterating its
+  entries non-recursively — so the cost is proportional to the depth of `path` plus the number of entries
+  it holds, not to the size of the repository. The clone is bare (git objects, no working tree), which is
+  exactly what this walks.
+
+  `.isSubtree` is what makes a non-directory return `[]`: a symlink and a submodule are entries with
+  their own modes, not trees, so neither can be descended into (and a submodule's tree isn't in this
+  repository at all).
+
+  See [[metabase-enterprise.remote-sync.source.protocol/list-dir]] for the contract this implements and
+  why it takes the shape it does."
+  [{:keys [^Git git ^String version]} ^String path]
+  (let [repo (.getRepository git)]
+    (with-open [rev-walk (RevWalk. repo)]
+      (or (when-let [commit-id (.resolve repo version)]
+            (let [tree (.getTree (.parseCommit rev-walk commit-id))]
+              (if (str/blank? path)
+                (with-open [^TreeWalk tree-walk (TreeWalk. repo)]
+                  (.addTree tree-walk tree)
+                  (tree-children tree-walk))
+                ;; one binary search per path segment down to the entry, then a single tree object read
+                (when-let [found (TreeWalk/forPath repo path tree)]
+                  (with-open [^TreeWalk tree-walk found]
+                    (when (.isSubtree tree-walk)
+                      (.enterSubtree tree-walk)
+                      (tree-children tree-walk)))))))
+          []))))
+
 (defn read-file
   "Reads the contents of a specific file from the git snapshot.
 
@@ -499,6 +548,9 @@
 
   (list-files [this]
     (list-files this))
+
+  (list-dir [this path]
+    (list-dir this path))
 
   (read-file [this path]
     (read-file this path))

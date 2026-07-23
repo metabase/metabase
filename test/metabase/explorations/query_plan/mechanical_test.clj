@@ -26,6 +26,17 @@
 (defn- datetime-dim [dim-id] {:dimension-id dim-id :display-name dim-id :effective-type :type/DateTime})
 (defn- numeric-dim  [dim-id] {:dimension-id dim-id :display-name dim-id :effective-type :type/Float})
 
+(defn- fk-dim
+  "Numeric FK dim. Keys never auto-bin (the QP refuses to bin :Relation/*
+  columns), so cardinality banding uses the raw distinct count."
+  ([dim-id]                (fk-dim dim-id nil))
+  ([dim-id distinct-count] {:dimension_id   dim-id
+                            :display_name   dim-id
+                            :effective_type :type/Integer
+                            :semantic_type  :type/FK
+                            :fingerprint    (when distinct-count
+                                              {:global {:distinct-count distinct-count}})}))
+
 (defn- metric-with-dims
   "Build a metric-context entry matching `qp.context/metric-and-dim-context`
   shape, just enough for the mechanical planner: id, applicability map,
@@ -135,6 +146,29 @@
   (testing "top-n-other skipped for auto-binned numeric dim (default already caps at bin count)"
     (let [r (plan! (metric-with-dims 1 {"n" (numeric-dim "n")}))]
       (is (not (contains? (set (map :variant (:plan r))) "top-n-other"))))))
+
+(deftest numeric-key-eligibility-test
+  (testing "numeric keys never auto-bin, so they band by raw distinct count like categoricals (UXW-4757)"
+    (testing "high-cardinality numeric FK → top-n-other only, never the unbounded default"
+      (let [r (plan! (metric-with-dims 1 {"fk" (fk-dim "fk" 1000)}))]
+        (is (= #{"top-n-other"} (set (map :variant (:plan r)))))))
+    (testing "unknown-cardinality numeric FK → top-n-other only (fail-safe)"
+      (let [r (plan! (metric-with-dims 1 {"fk" (fk-dim "fk")}))]
+        (is (= #{"top-n-other"} (set (map :variant (:plan r)))))))
+    (testing "low-cardinality numeric FK (≤20) → default only"
+      (let [r (plan! (metric-with-dims 1 {"fk" (fk-dim "fk" 10)}))]
+        (is (= #{"default"} (set (map :variant (:plan r)))))))
+    (testing "mid-cardinality numeric FK (21-100) → both"
+      (let [r (plan! (metric-with-dims 1 {"fk" (fk-dim "fk" 50)}))]
+        (is (= #{"default" "top-n-other"} (set (map :variant (:plan r)))))))
+    (testing "numeric PK bands the same way as a numeric FK"
+      (let [pk (assoc (fk-dim "pk" 1000) :semantic_type :type/PK)
+            r  (plan! (metric-with-dims 1 {"pk" pk}))]
+        (is (= #{"top-n-other"} (set (map :variant (:plan r)))))))
+    (testing "high-cardinality numeric FK is NOT time-facet eligible — raw count, not bin count,
+              is the series budget now"
+      (let [r (plan! (metric-with-dims 1 {"fk" (fk-dim "fk" 1000)} true))]
+        (is (not (contains? (set (map :variant (:plan r))) "time-facet")))))))
 
 (deftest segment-fan-out-test
   (testing "Each non-time-facet variant is fanned out across [nil + segments]"

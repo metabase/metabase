@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useGetMyExplorationsQuery } from "metabase/api";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
@@ -109,6 +109,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
               placeholder={t`Ex. What recent events might be impacting our signups?`}
               suggestionConfig={{ suggestionModels: ["metric"] }}
               disabled={false}
+              data-testid="exploration-prompt-input"
             />
           ) : (
             <AIProviderConfigurationNotice
@@ -141,7 +142,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
               </Button>
               <Button
                 variant="filled"
-                disabled={prompt.length === 0}
+                disabled={prompt.trim().length === 0}
                 onClick={handleSubmit}
               >
                 {t`Create plan`}
@@ -254,7 +255,8 @@ function ExplorationList({ explorations }: ExplorationListProps) {
                 label={getFormattedTime(lastTouchedAt)}
               >
                 <Text component="time" c="text-secondary" fz="sm">
-                  {`Last activity - ${getRelativeTime(lastTouchedAt)}`}
+                  {c("{0} is a relative time like '2 hours ago'")
+                    .t`Last activity - ${getRelativeTime(lastTouchedAt)}`}
                 </Text>
               </Tooltip>
             </Box>

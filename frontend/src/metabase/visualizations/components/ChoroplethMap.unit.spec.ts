@@ -49,8 +49,11 @@ describe("buildFeatureClickObject", () => {
     expect(
       buildFeatureClickObject(
         undefined,
-        // Unjustified type cast. FIXME
-        { type: "Feature" } as any,
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [0, 0] },
+          properties: null,
+        },
         clickContext,
       ),
     ).toMatchObject({

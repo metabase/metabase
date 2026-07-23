@@ -553,6 +553,25 @@ describe("buildSeriesGroup", () => {
     expect(group.legendItems.map((item) => item.name)).toEqual(["US", "EU"]);
   });
 
+  it("builds series and legend items for non-empty datasets only", () => {
+    const emptyDataset = makeDataset([STATE_COL, COUNT_COL], []);
+    const seriesGroup = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 1, segment_id: 1, segment_name: "US" }),
+          dataset: emptyDataset,
+        },
+        {
+          ...makeQuery({ id: 2, segment_id: 2, segment_name: "EU" }),
+          dataset: stateDataset,
+        },
+      ],
+    });
+
+    expect(seriesGroup.series).toHaveLength(1);
+    expect(seriesGroup.legendItems.map((item) => item.name)).toEqual(["EU"]);
+  });
+
   it("falls back to row for a small timeseries dataset", () => {
     const group = buildSeriesGroupFor(makeQuery({ id: 1 }), smallTsDataset);
     expect(group.series[0].card.display).toBe("row");

@@ -92,14 +92,17 @@ jest.mock("metabase/comments/components/Comments", () => ({
   Comments: ({
     renderExtra,
     disableAutoFocus,
+    onCloseComments,
   }: {
     renderExtra?: (comment: Comment) => React.ReactNode;
     disableAutoFocus?: boolean;
+    onCloseComments?: () => void;
   }) => (
     <div
       data-testid="comments-stub"
       data-disable-autofocus={disableAutoFocus ? "true" : "false"}
     >
+      <button data-testid="comments-stub-close" onClick={onCloseComments} />
       {mockComments.map((comment) => (
         <div key={comment.id}>{renderExtra?.(comment)}</div>
       ))}
@@ -706,6 +709,17 @@ describe("ExplorationGroupVisualization", () => {
       setup(timeseriesSetup);
 
       expect(screen.queryByTestId("comments-stub")).not.toBeInTheDocument();
+    });
+
+    it("wires the sidebar close callback into Comments (Escape / close can dismiss it)", async () => {
+      const { onCloseCommentsSidebar } = setup({
+        ...timeseriesSetup,
+        isCommentsSidebarOpen: true,
+      });
+
+      await userEvent.click(screen.getByTestId("comments-stub-close"));
+
+      expect(onCloseCommentsSidebar).toHaveBeenCalled();
     });
 
     it("passes disableAutoFocus when the sidebar was already open", () => {

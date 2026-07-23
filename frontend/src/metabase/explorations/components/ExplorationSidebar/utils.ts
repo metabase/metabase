@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
@@ -281,7 +281,6 @@ function latestTimestamp(
   return latest;
 }
 
-/** Compact "time ago" for sidebar headings: `now`, `5m`, `3h`, `2d`, `4w`, `6mo`, `1y`. */
 export function getCompactRelativeTime(timestamp: string): string {
   const now = dayjs();
   const then = dayjs(timestamp);
@@ -290,25 +289,27 @@ export function getCompactRelativeTime(timestamp: string): string {
     return t`now`;
   }
   if (minutes < 60) {
-    return `${minutes}m`;
+    return c("Compact relative time; {0} is a number of minutes")
+      .t`${minutes}m`;
   }
   const hours = now.diff(then, "hour");
   if (hours < 24) {
-    return `${hours}h`;
+    return c("Compact relative time; {0} is a number of hours").t`${hours}h`;
   }
   const days = now.diff(then, "day");
   if (days < 7) {
-    return `${days}d`;
-  }
-  const weeks = now.diff(then, "week");
-  if (weeks < 4) {
-    return `${weeks}w`;
+    return c("Compact relative time; {0} is a number of days").t`${days}d`;
   }
   const months = now.diff(then, "month");
-  if (months < 12) {
-    return `${months}mo`;
+  if (months < 1) {
+    const weeks = now.diff(then, "week");
+    return c("Compact relative time; {0} is a number of weeks").t`${weeks}w`;
   }
-  return `${now.diff(then, "year")}y`;
+  if (months < 12) {
+    return c("Compact relative time; {0} is a number of months").t`${months}mo`;
+  }
+  const years = now.diff(then, "year");
+  return c("Compact relative time; {0} is a number of years").t`${years}y`;
 }
 
 function getExplorationQueryTree(

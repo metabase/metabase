@@ -8,6 +8,8 @@ import { dismissUndo } from "metabase/redux/undo";
 import { canAccessSettings } from "metabase/selectors/user";
 import { Anchor, Flex, Text, type TextProps } from "metabase/ui";
 
+import { useUserMetabotPermissions } from "../hooks";
+
 import { AIProviderConfigurationModal } from "./AIProviderConfigurationModal";
 
 export function AIProviderConfigurationNotice({
@@ -24,6 +26,11 @@ export function AIProviderConfigurationNotice({
   hasFeatureAccess?: boolean;
 } & TextProps) {
   const canConfigureAi = useSelector(canAccessSettings);
+  const { isLoading: isLoadingPermissions } = useUserMetabotPermissions();
+
+  if (isLoadingPermissions) {
+    return null;
+  }
 
   const content = match({ hasFeatureAccess, canConfigureAi })
     .with(

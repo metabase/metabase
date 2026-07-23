@@ -368,7 +368,10 @@
     (when (seq top-values)
       (let [base-query             (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
             [ref-clause field-ref] (resolve-target base-query target)
-            pairs                  (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) v]) top-values)
+            ;; THEN values are stringified so the CASE is single-typed: the ELSE arm is the string
+            ;; `other-bucket-label`, and a mixed CASE (numeric THEN, string ELSE) is rejected by
+            ;; Postgres and other strict warehouses. No-op for text dims.
+            pairs                  (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) (str v)]) top-values)
             case-expr              (lib/case pairs other-bucket-label)
             expr-name              (or (:display-name dim) (:dimension-id dim) "value")
             with-expr              (lib/expression base-query expr-name case-expr)

@@ -2067,20 +2067,6 @@
       [:not= (maybe-alias :namespace) [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
 
-(defn- parent-identity-hash [coll]
-  (let [parent-id (-> coll
-                      (t2/hydrate :parent_id)
-                      :parent_id)
-        parent    (when parent-id (t2/select-one :model/Collection :id parent-id))]
-    (cond
-      (not parent-id) "ROOT"
-      (not parent)    (throw (ex-info (format "Collection %s is an orphan" (:id coll)) {:parent-id parent-id}))
-      :else           (serdes/identity-hash parent))))
-
-(defmethod serdes/hash-fields :model/Collection
-  [_collection]
-  [:name :namespace parent-identity-hash :created_at])
-
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]

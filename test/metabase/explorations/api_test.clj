@@ -2164,8 +2164,9 @@
                   :metrics       [{:card_id (:id metric)
                                    :dimension_mappings (stored-venues-dimension-mappings)}]
                   :dimensions    [{:dimension-id "price" :display-name "Price"}]})]
-        ;; Mark the source thread as a follow-up so the next drill is nested.
-        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id 999})
+        ;; Mark the source thread as a follow-up so the next drill is nested. Any real page works;
+        ;; a made-up id would violate the source_page_id FK.
+        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id (:page-id src)})
         (mt/user-http-request :crowberto :post 200
                               (str "exploration/" (:exploration-id src) "/explore-further")
                               {:page_id         (:page-id src)
@@ -2293,6 +2294,32 @@
                                 (assoc base :timeline_ids [Integer/MAX_VALUE])))
         (testing "nothing was persisted by the rejected requests"
           (is (zero? (t2/count :model/Exploration :name "tl perm check"))))))))
+
+(deftest explore-further-checks-card-permissions-test
+  (testing "POST /:id/explore-further read-checks the metric card it re-attaches into the new thread"
+    (mt/with-temp [:model/User owner {:email "ef-card-perms@example.com"}
+                   :model/Collection hidden {:name "hidden-drill-metrics"}
+                   :model/Card metric (assoc (venues-metric-card (mt/user->id :crowberto))
+                                             :collection_id (:id hidden))]
+      ;; Temp collections auto-grant All Users read-write, so creating the exploration passes the
+      ;; attach-time read-check; the revoke below then makes the card unreadable for the drill.
+      (let [resp           (create-exploration! owner
+                                                {:name          "drill perm check"
+                                                 :collection_id (:id (collection/user->personal-collection (:id owner)))
+                                                 :metrics       [{:card_id (:id metric)
+                                                                  :dimension_mappings (venues-dimension-mappings)}]
+                                                 :dimensions    [{:dimension_id "category" :display_name "Category"}]})
+            expl-id        (:id resp)
+            page-id        (-> resp :threads first :blocks first :pages first :id)
+            body           {:page_id         page-id
+                            :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)]
+                                               :value     1}]}
+            threads-before (t2/count :model/ExplorationThread :exploration_id expl-id)]
+        (perms/revoke-collection-permissions! (perms-group/all-users) (:id hidden))
+        (testing "an unreadable card is a 403"
+          (mt/user-http-request owner :post 403 (format "exploration/%d/explore-further" expl-id) body))
+        (testing "no follow-up thread was persisted by the rejected request"
+          (is (= threads-before (t2/count :model/ExplorationThread :exploration_id expl-id))))))))
 
 (deftest create-dedupes-timeline-ids-test
   (testing "POST / dedupes repeated timeline_ids instead of 500ing on the unique constraint"
