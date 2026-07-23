@@ -1,9 +1,10 @@
-;; Per-linter budgets for inline `:clj-kondo/ignore` forms.
-;; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts, or when an
+;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts),
+;; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude
+;; entries). metabase.core.kondo-ratchet-test fails when either drifts from reality, or when an
 ;; ignore outside :comment-exempt lacks an explanatory comment directly above or trailing on its line.
 ;; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it
-;; automatically. Raising a budget, adding one for a new linter (`--seed`), or widening the
-;; exemptions is a hand edit to defend in your PR.
+;; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or
+;; widening the exemptions is a hand edit to defend in your PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts  {:aliased-namespace-symbol                                            3
                   :all                                                                 50
@@ -47,6 +48,24 @@
                   :unused-namespace                                                    1
                   :unused-private-var                                                  8
                   :unused-value                                                        1}
+ :config-counts  {:deprecated-namespace                    7
+                  :deprecated-var                          16
+                  :discouraged-namespace                   13
+                  :discouraged-var                         14
+                  :inline-def                              1
+                  :main-without-gen-class                  1
+                  :metabase/defsetting-must-specify-export 1
+                  :metabase/defsetting-namespace           1
+                  :metabase/prefer-with-dynamic-fn-redefs  3
+                  :missing-docstring                       1
+                  :private-call                            1
+                  :redundant-ignore                        1
+                  :redundant-primitive-coercion            1
+                  :refer-all                               1
+                  :unexpected-recur                        1
+                  :unresolved-symbol                       19
+                  :unresolved-var                          1
+                  :unused-referred-var                     4}
  :comment-exempt #{:aliased-namespace-symbol
                    :all
                    :case-symbol-test

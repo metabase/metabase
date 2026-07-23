@@ -66,6 +66,15 @@
       (is (= #{}
              (kondo-ratchet/stale-exemptions comment-exempt (tree-scan)))))))
 
+(deftest ^:parallel config-budgets-match-actual-test
+  (testing (str "\nConfig-level suppression budgets in " kondo-ratchet/ratchets-file " must match\n"
+                ".clj-kondo/config.edn (:off switches and :exclude entries, per linter).\n"
+                "Budget too low: remove the new config suppression, or raise the budget by hand and\n"
+                "defend it in the PR. Budget too high: run `./bin/mage fix-kondo-ratchets`.")
+    (is (= {}
+           (kondo-ratchet/config-drift (:config-counts (kondo-ratchet/read-ratchets))
+                                       (kondo-ratchet/config-suppressions))))))
+
 (deftest ^:parallel ratchets-file-normalized-test
   (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
                 " writes it.\nAfter a hand edit, run `./bin/mage fix-kondo-ratchets` to normalize the formatting.")
@@ -175,18 +184,21 @@
 (deftest ^:parallel render-test
   (testing "keys come out sorted, values aligned, and the text round-trips losslessly"
     (let [ratchets {:ignore-counts  {:discouraged-var 3, :all 1, :metabase/modules 2}
+                    :config-counts  {:unresolved-symbol 18, :inline-def 1}
                     :comment-exempt #{:metabase/modules :discouraged-var}}
           text     (kondo-ratchet/render ratchets)]
       (is (str/ends-with? text (str "{:ignore-counts  {:all              1\n"
                                     "                  :discouraged-var  3\n"
                                     "                  :metabase/modules 2}\n"
+                                    " :config-counts  {:inline-def        1\n"
+                                    "                  :unresolved-symbol 18}\n"
                                     " :comment-exempt #{:discouraged-var\n"
                                     "                   :metabase/modules}}\n")))
       (is (= ratchets (edn/read-string text)))
       (is (= text (kondo-ratchet/render (edn/read-string text))))))
   (testing "empty ratchets"
-    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :comment-exempt #{}})
-                        "{:ignore-counts  {}\n :comment-exempt #{}}\n"))))
+    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
+                        "{:ignore-counts  {}\n :config-counts  {}\n :comment-exempt #{}}\n"))))
 
 (deftest ^:parallel lowered-counts-test
   (is (= {:lower 3, :over-budget 5}
@@ -242,6 +254,35 @@
            (kondo-ratchet/stale-exemptions #{:a :b} occurrences))
         ":a still has an unjustified ignore; :b's are all justified so its exemption is stale")))
 
+(deftest ^:parallel config-suppressions-test
+  (is (= {:redundant-ignore    1
+          :unresolved-symbol   4
+          :missing-docstring   2
+          :discouraged-var     1
+          :unused-referred-var 4
+          :deprecated-var      1}
+         (kondo-ratchet/config-suppressions
+          '{:linters           {:redundant-ignore    {:level :off}
+                                :unresolved-symbol   {:exclude [a b c]}
+                                :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
+                                :deprecated-var      {:exclude {some.ns/old-var {:namespaces [caller.*]}}}
+                                :discouraged-var     {clojure.core/println {:message "no"}}
+                                :equals-true         {:level :warning}}
+            :config-in-comment {:linters {:unresolved-symbol {:level :off}}}
+            :config-in-ns      {tests {:linters {:missing-docstring {:level :off}
+                                                 :discouraged-var   {clojure.core/println {:level :off}}}}
+                                lib   {:linters {:missing-docstring {:level :off}}}}}))
+      "an :off is 1, :exclude items count each (map values count their elements; a scoping map is one
+       var), per-var re-allows count, discouragements and enablements count nothing; groups and
+       :config-in-comment sum per linter"))
+
+(deftest ^:parallel config-drift-test
+  (is (= {:gone {:recorded 2, :actual 0}
+          :new  {:recorded 0, :actual 1}
+          :up   {:recorded 1, :actual 3}}
+         (kondo-ratchet/config-drift {:gone 2, :same 5, :up 1}
+                                     {:same 5, :new 1, :up 3}))))
+
 (deftest ^:parallel change-report-test
   (let [occurrences (concat (for [[linter n] {:lower 3, :over 7, :new 9, :same 4}
                                   i          (range n)]
@@ -252,9 +293,14 @@
             "dropped :gone (no ignores left)"
             "lowered :lower 5 -> 3"
             "WARNING: :over is over budget (5 recorded, 7 actual) -- remove ignores, or accept them all with `--seed :over`"
+            "dropped config :cfg-gone (no suppressions left)"
+            "lowered config :cfg-lower 4 -> 2"
+            "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
             "unexempted :polite (all its ignores are justified now)"]
            (kondo-ratchet/change-report {:ignore-counts  {:lower 5, :over 5, :gone 5, :same 4, :polite 1}
+                                         :config-counts  {:cfg-lower 4, :cfg-over 1, :cfg-gone 2, :cfg-same 6}
                                          :comment-exempt #{:lower :polite}}
                                         occurrences
+                                        {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
                                         [:new :void]))
-        "an untouched budget (:same) and a still-needed exemption (:lower) earn no line")))
+        "untouched budgets (:same, :cfg-same) and a still-needed exemption (:lower) earn no line")))
