@@ -1,14 +1,26 @@
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Lib from "metabase-lib";
+import { columnFinder } from "metabase-lib/test-helpers";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
+  createMockFingerprint,
+  createMockNumberFieldFingerprint,
+} from "metabase-types/api/mocks";
+import {
   PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { TableColumnFingerprintInfo } from "./ColumnFingerprintInfo";
+import {
+  QueryColumnFingerprintInfo,
+  TableColumnFingerprintInfo,
+} from "./ColumnFingerprintInfo";
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -175,5 +187,69 @@ describe("FieldFingerprintInfo", () => {
       setup(field);
       expect(screen.getByTestId("container")).toBeEmptyDOMElement();
     });
+  });
+});
+
+const NUMBER_FINGERPRINT = createMockFingerprint({
+  type: {
+    "type/Number": createMockNumberFieldFingerprint({
+      avg: 5000,
+      min: 1,
+      max: 10000,
+    }),
+  },
+});
+
+const sampleDatabase = createSampleDatabase();
+const fingerprintedIdState = createMockState({
+  entities: createMockEntitiesState({
+    databases: [
+      {
+        ...sampleDatabase,
+        tables: sampleDatabase.tables?.map((table) => ({
+          ...table,
+          fields: table.fields?.map((field) =>
+            field.id === PRODUCTS.ID
+              ? { ...field, fingerprint: NUMBER_FINGERPRINT }
+              : field,
+          ),
+        })),
+      },
+    ],
+  }),
+});
+
+const setupLib = (columnName: string) => {
+  setupFieldsValuesEndpoints([]);
+
+  const provider = Lib.metadataProvider(
+    SAMPLE_DB_ID,
+    getMetadata(fingerprintedIdState),
+  );
+  const tableMetadata = Lib.tableOrCardMetadata(provider, PRODUCTS_ID);
+  const query = Lib.queryFromTableOrCardMetadata(provider, tableMetadata!);
+  const findColumn = columnFinder(query, Lib.returnedColumns(query, -1));
+
+  return renderWithProviders(
+    <QueryColumnFingerprintInfo
+      query={query}
+      stageIndex={-1}
+      column={findColumn("PRODUCTS", columnName)}
+    />,
+    { storeInitialState: fingerprintedIdState },
+  );
+};
+
+describe("QueryColumnFingerprintInfo", () => {
+  it("should render the number fingerprint for a non-ID numeric column", async () => {
+    setupLib("RATING");
+
+    expect(await screen.findByText("Average")).toBeInTheDocument();
+  });
+
+  it("should not render the number fingerprint for a numeric ID column", () => {
+    setupLib("ID");
+
+    expect(screen.queryByText("Average")).not.toBeInTheDocument();
   });
 });

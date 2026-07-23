@@ -32,7 +32,7 @@ export function TableColumnInfo({
   showFingerprintInfo,
 }: TableColumnInfoProps) {
   return (
-    <InfoContainer className={className}>
+    <InfoContainer className={className} data-testid="column-info">
       <ColumnDescription description={field.description} />
       <Small>
         <SemanticTypeLabel semanticType={field.semantic_type} />

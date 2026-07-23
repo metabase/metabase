@@ -1,19 +1,30 @@
-import { createMockMetadata } from "__support__/metadata";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase/redux/store/mocks";
+import { getMetadata } from "metabase/selectors/metadata";
+import {
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { FieldList } from "./FieldList";
 
-const database = createSampleDatabase();
-
-const metadata = createMockMetadata({
-  databases: [database],
+const state = createMockState({
+  entities: createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  }),
 });
 
-function setup() {
-  const fields = [Object.values(metadata.fields)[0]];
-  renderWithProviders(<FieldList fields={fields} onFieldClick={jest.fn()} />);
-}
+const metadata = getMetadata(state);
+
+const setup = () => {
+  const table = metadata.table(PRODUCTS_ID)!;
+  const fields = [table.fields![0]];
+  renderWithProviders(
+    <FieldList table={table} fields={fields} onFieldClick={jest.fn()} />,
+    { storeInitialState: state },
+  );
+};
 
 describe("FieldList", () => {
   it("should render the info icon", () => {
