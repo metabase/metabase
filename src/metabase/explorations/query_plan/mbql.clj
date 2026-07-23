@@ -38,13 +38,17 @@
     `nil`               — no bucket; use a bare breakout.
 
   Resolution order matters: DateTime first (it derives from both HasDate and
-  HasTime), then Date, then Time. Coordinates come before generic numbers
-  because Coordinate also derives from Number."
+  HasTime), then Date, then Time. Keys (PK/FK) are checked before the binning
+  branches — lib offers no binning strategies for `:Relation/*` columns (see
+  `metabase.lib.field`), so treating a numeric key as binnable would make the
+  planner assume a ≤20-bar chart the QP can't actually produce. Coordinates
+  come before generic numbers because Coordinate also derives from Number."
   [dim]
   (cond
     (dim-type-isa? dim :type/DateTime)   [:temporal :month]
     (dim-type-isa? dim :type/Date)       [:temporal :day]
     (dim-type-isa? dim :type/Time)       [:temporal :hour]
+    (dim-type-isa? dim :Relation/*)      nil
     (dim-type-isa? dim :type/Coordinate) [:binning {:strategy :default}]
     (dim-type-isa? dim :type/Number)     [:binning {:strategy :default}]
     :else                                nil))
