@@ -507,6 +507,13 @@
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:valid false}
+               (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
+    (testing "Check that a valid, unexpired token for an inactive user returns false"
+      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
+        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token,
+                                                      :reset_triggered (dec (System/currentTimeMillis))
+                                                      :is_active false})
+        (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
 (deftest reset-token-ttl-hours-test
