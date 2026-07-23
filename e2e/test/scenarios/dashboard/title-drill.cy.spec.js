@@ -529,42 +529,57 @@ describe("scenarios > dashboard > title drill", () => {
           .findByRole("link", { name: "Funnel chart" })
           .as("funnel-chart-title");
 
-        assertTitleHrefOnFocus({
-          elementAlias: "@line-chart-title",
-          href: `/question/${questions[0].id}-line-chart`,
+        const titles = [
+          {
+            alias: "@line-chart-title",
+            href: `/question/${questions[0].id}-line-chart`,
+            interact: (alias) => cy.get(alias).focus(),
+          },
+          {
+            alias: "@row-chart-title",
+            href: `/question/${questions[1].id}-row-chart`,
+            interact: (alias) => cy.get(alias).focus(),
+          },
+          {
+            alias: "@map-chart-title",
+            href: `/question/${questions[2].id}-map-chart`,
+            interact: (alias) => cy.get(alias).realHover(),
+          },
+          {
+            alias: "@funnel-chart-title",
+            href: `/question/${questions[3].id}-funnel-chart`,
+            interact: (alias) => cy.get(alias).realHover(),
+          },
+        ];
+
+        // Assert the behavioral contract the test name promises: before any
+        // interaction a title's href is an inert placeholder (computed lazily
+        // on focus/hover and cached — see LegendCaption), and becomes the
+        // question URL once focused/hovered.
+        //
+        // Do *all* the "before" assertions first, while the cursor is still
+        // parked on the sidebar toggle and nothing has been interacted with.
+        // realHover() physically moves the cursor and can cross a sibling
+        // card's title en route, firing its onMouseEnter and permanently
+        // caching that card's question URL — so a per-card "before" assertion
+        // interleaved after an earlier realHover() flakily sees the URL
+        // already present. The "after" state is monotonic (cached once
+        // computed), so incidental cross-card hovers can only satisfy a later
+        // "after" assertion, never break it.
+        //
+        // Asserting the exact placeholder value ("#") up front would also be
+        // flaky: react-router's <Link to="#"> serializes it inconsistently
+        // ("#" vs the resolved current path), so assert "not the question URL".
+        titles.forEach(({ alias, href }) => {
+          cy.get(alias).should("not.have.attr", "href", href);
         });
-        assertTitleHrefOnFocus({
-          elementAlias: "@row-chart-title",
-          href: `/question/${questions[1].id}-row-chart`,
-        });
-        assertTitleHrefOnHover({
-          elementAlias: "@map-chart-title",
-          href: `/question/${questions[2].id}-map-chart`,
-        });
-        assertTitleHrefOnHover({
-          elementAlias: "@funnel-chart-title",
-          href: `/question/${questions[3].id}-funnel-chart`,
+
+        titles.forEach(({ alias, href, interact }) => {
+          interact(alias);
+          cy.get(alias).should("have.attr", "href", href);
         });
       });
     });
-
-    // Assert the behavioral contract the test name promises: the title is not
-    // yet the question anchor before interaction (its href is an inert
-    // placeholder, computed lazily on focus/hover — see LegendCaption), then
-    // becomes the question URL once focused/hovered. Asserting the exact
-    // placeholder value up front is flaky: react-router's <Link to="#">
-    // serializes it inconsistently ("#" vs the resolved current path).
-    function assertTitleHrefOnFocus({ elementAlias, href }) {
-      cy.get(elementAlias).should("not.have.attr", "href", href);
-      cy.get(elementAlias).focus();
-      cy.get(elementAlias).should("have.attr", "href", href);
-    }
-
-    function assertTitleHrefOnHover({ elementAlias, href }) {
-      cy.get(elementAlias).should("not.have.attr", "href", href);
-      cy.get(elementAlias).realHover();
-      cy.get(elementAlias).should("have.attr", "href", href);
-    }
   });
 
   describe("multiple series", () => {
