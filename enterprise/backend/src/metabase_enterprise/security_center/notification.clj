@@ -36,7 +36,7 @@
   {:channel_type :channel/email
    :details      {:type           "email/handlebars-resource"
                   :subject        "[{{payload.custom.severity_label}}] Security Advisory: {{payload.event_info.object.title}}"
-                  :path           "metabase/channel/email/security_advisory.hbs"
+                  :path           "security_advisory"
                   :recipient-type "bcc"}})
 
 (defn- sends-to-all-admins?

@@ -12,9 +12,12 @@
    Matches Python AI Service patterns exactly for consistency."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -110,6 +113,17 @@
   (when s
     (str/replace s "|" "\\u007c")))
 
+(defn- truncate
+  "Cap `s` at `max-len` characters, appending an ellipsis when truncated.
+  Useful to ensure long free text values (e.g. table descriptions) don't bloat the LLM context.
+  Returns nil for nil input."
+  [s max-len]
+  (when s
+    (let [s (str s)]
+      (if (> (count s) max-len)
+        (str (subs s 0 max-len) "...")
+        s))))
+
 (defn- database-type-or-unknown
   "Return database type or 'unknown' if nil."
   [database-type]
@@ -128,6 +142,7 @@
    :is_field (= type :field)
    :is_collection (= type :collection)
    :is_related_table (= type :related_table)
+   :is_related_tables (= type :related_tables)
    :is_metric (= type :metric)
    :is_table (= type :table)
    :is_model (= type :model)
@@ -228,45 +243,97 @@
     :collection_description     description
     :collection_authority_level authority_level}))
 
+(defn- drill-in-location-context
+  "The `<pfx>_database_name` / `<pfx>_base_table_fqn` keys a standalone measure/segment drill-in carries so
+  the LLM knows the table to query it against. Omitted when absent, so a nested (definition-only)
+  measure/segment doesn't emit blank location fields."
+  [pfx {:keys [database_name base_table_portable_fk]}]
+  (cond-> {}
+    database_name (assoc (keyword (str pfx "_database_name")) database_name)
+    (vector? base_table_portable_fk)
+    (assoc (keyword (str pfx "_base_table_fqn"))
+           (let [[_db schema table] base_table_portable_fk] (fully-qualified-name schema table)))))
+
 (defn measure->xml
-  "Format a measure for LLM consumption."
+  "Format a measure for LLM consumption.
+   Nested table/model measures carry only definition fields; a standalone drill-in
+   (read_resource) also carries `:database_name` / `:base_table_portable_fk` so the LLM knows the
+   table to query the measure against."
   [{:keys [id name display-name description definition definition-description
-           portable-entity-id portable_entity_id]}]
+           portable-entity-id portable_entity_id] :as m}]
   (render-llm-template
    :measure
-   {:measure_id                 (str id)
-    :measure_name               (or name "")
-    :measure_display_name       (or display-name name "")
-    :measure_description        description
-    :measure_portable_entity_id (or portable-entity-id portable_entity_id)
-    :measure_definition         (repr-data->llm-block definition)
-    :measure_definition_description definition-description}))
+   (merge {:measure_id                 (str id)
+           :measure_name               (or name "")
+           :measure_display_name       (or display-name name "")
+           :measure_description        description
+           :measure_portable_entity_id (or portable-entity-id portable_entity_id)
+           :measure_definition         (repr-data->llm-block definition)
+           :measure_definition_description definition-description}
+          (drill-in-location-context "measure" m))))
 
 (defn segment->xml
-  "Format a segment for LLM consumption."
+  "Format a segment for LLM consumption.
+   Nested table/model segments carry only definition fields; a standalone drill-in
+   (read_resource) also carries `:database_name` / `:base_table_portable_fk` so the LLM knows the
+   table to query the segment against."
   [{:keys [id name display-name description definition definition-description
-           portable-entity-id portable_entity_id]}]
+           portable-entity-id portable_entity_id] :as m}]
   (render-llm-template
    :segment
-   {:segment_id                 (str id)
-    :segment_name               (or name "")
-    :segment_display_name       (or display-name name "")
-    :segment_description        description
-    :segment_portable_entity_id (or portable-entity-id portable_entity_id)
-    :segment_definition         (repr-data->llm-block definition)
-    :segment_definition_description definition-description}))
+   (merge {:segment_id                 (str id)
+           :segment_name               (or name "")
+           :segment_display_name       (or display-name name "")
+           :segment_description        description
+           :segment_portable_entity_id (or portable-entity-id portable_entity_id)
+           :segment_definition         (repr-data->llm-block definition)
+           :segment_definition_description definition-description}
+          (drill-in-location-context "segment" m))))
+
+(def ^:private max-related-table-description-length
+  "Cap on a related table's description."
+  512)
 
 (defn- related-table->xml
-  "Format a related table for LLM consumption."
-  [{:keys [id name related_by database_name fully_qualified_name fields]}]
+  "Format a related table for LLM consumption.
+  Used for both :related_tables and :related_tables_without_columns."
+  [{:keys [id name related_by database_name database_schema description fields]}]
   (render-llm-template
    :related_table
-   {:related_table_id            (when (some? id) (str id))
-    :related_table_name          name
-    :related_table_related_by    related_by
-    :related_table_database_name database_name
-    :related_table_fqn           fully_qualified_name
-    :related_table_fields_xml    (when (seq fields) (str/join "\n" (map field->xml fields)))}))
+   {:related_table_id              (when (some? id) (str id))
+    :related_table_name            name
+    :related_table_related_by_name (:name related_by)
+    :related_table_related_by_id   (str (:id related_by))
+    :related_table_database_name   database_name
+    :related_table_fqn             (fully-qualified-name database_schema name)
+    :related_table_description     (when (not-empty description)
+                                     (truncate description max-related-table-description-length))
+    :related_table_fields_xml      (when (seq fields) (str/join "\n" (map field->xml fields)))}))
+
+(defn- related-tables->xml
+  "Render the related-tables block for a table/model.
+
+  `related-tables` carry their fields; `without-fields` do not.  They are rendered as the same `<related-table>`
+  element, but grouped under a note that their columns were omitted, so the LLM can fetch them individually if
+  needed. `total` is the full related-tables count before any cap.  When it exceeds the surfaced set we tell the LLM
+  the list is truncated.
+
+  Returns nil when there is nothing to render."
+  [related-tables without-fields total]
+  (let [with-fields-xml    (when (seq related-tables)
+                             (str/join "" (map related-table->xml related-tables)))
+        without-fields-xml (when (seq without-fields)
+                             (str/join "" (map related-table->xml without-fields)))
+        surfaced           (+ (count related-tables) (count without-fields))
+        truncated?         (boolean (and total (> total surfaced)))]
+    (when (or with-fields-xml without-fields-xml)
+      (render-llm-template
+       :related_tables
+       {:related_tables_with_fields_xml    with-fields-xml
+        :related_tables_without_fields_xml without-fields-xml
+        :related_tables_surfaced           surfaced
+        :related_tables_truncated          truncated?
+        :related_tables_total              total}))))
 
 (defn- dimension-source-table
   "Human-readable `schema.table` for a queryable dimension, derived from its portable FK, plus
@@ -336,10 +403,11 @@
   "Format table for LLM consumption.
    Matches Python Table.get_llm_representation exactly, except we additionally surface
    `database_name` as a tag attribute so the LLM has the human-readable DB name available
-   without a separate `entity_details` call — it's the first slot of every portable FK in
+   without a separate `read_resource` call — it's the first slot of every portable FK in
    the representations-format `construct_notebook_query` tool."
   [{:keys [id name database_id database_name database_engine database_schema
-           description fields related_tables measures segments]}]
+           description fields related_tables related_tables_total
+           related_tables_without_fields measures segments]}]
   (let [fqn (fully-qualified-name database_schema name)]
     (render-llm-template
      :table
@@ -352,8 +420,9 @@
       :table_description        description
       :table_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
-      :table_related_tables_xml (when (seq related_tables)
-                                  (str/join "" (map related-table->xml related_tables)))
+      :table_related_tables_xml (related-tables->xml related_tables
+                                                     related_tables_without_fields
+                                                     related_tables_total)
       :table_measures_xml       (when (seq measures)
                                   (str/join "\n" (map measure->xml measures)))
       :table_segments_xml       (when (seq segments)
@@ -381,7 +450,8 @@
    representations form used elsewhere. Note: Python uses <metabase-model> tag but closes
    with </model>."
   [{:keys [id name description verified fields database_id database_name database_engine
-           related_tables measures segments portable_entity_id query_json]}]
+           related_tables related_tables_total related_tables_without_fields
+           measures segments portable_entity_id query_json]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
      :model
@@ -397,8 +467,9 @@
       :model_query_json         (repr-data->llm-block query_json)
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
-      :model_related_tables_xml (when (seq related_tables)
-                                  (str/join "\n" (map related-table->xml related_tables)))
+      :model_related_tables_xml (related-tables->xml related_tables
+                                                     related_tables_without_fields
+                                                     related_tables_total)
       :model_measures_xml       (when (seq measures)
                                   (str/join "\n" (map measure->xml measures)))
       :model_segments_xml       (when (seq segments)
@@ -542,6 +613,8 @@
    Matches Python Dashboard.llm_representation exactly."
   [{:keys [id name description verified collection dashcards]}]
   ;; Group cards by tab and sort
+  ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
+  ;; resources/fetch-dashboard-items; align on position
   (let [tabs (group-by :dashboard_tab_id dashcards)
         sorted-tabs (sort-by first tabs)
         tabs-xml (when (seq dashcards)
@@ -622,12 +695,27 @@
       (clojure.core/name result-type)
       "item")))
 
+(defn- search-result-uri-type
+  "Map a search-result type to the entity-type segment of its `read_resource` URI, or nil
+   when the type has no URI form (i.e. no dispatch clause in `metabot.tools.resources`)."
+  [result-type]
+  (let [t (some-> result-type clojure.core/name)]
+    (case t
+      ("model" "dataset") "model"
+      ("card" "question") "question"
+      ("database" "collection" "table" "metric"
+                  "measure" "segment" "transform" "dashboard") t
+      nil)))
+
 (defn search-result->xml
   "Format a single search result as XML element.
+   Emits a `uri` attribute (the numeric-id `read_resource` URI) for every type that has a
+   URI form, so the LLM feeds it back verbatim instead of assembling URIs by hand — the
+   failure mode there is pasting the `portable_entity_id` NanoID into the id slot.
    Includes database_id, database_engine, and fully_qualified_name for table/model results
    to match Python AI Service search output. For saved-question and model results also
    includes `portable_entity_id` so the LLM can paste it verbatim into `source-card:`
-   without an extra `entity_details` call, and (when available) `database_name` — the
+   without an extra `read_resource` call, and (when available) `database_name` — the
    human-readable name the LLM needs as the first slot of every portable FK in
    `construct_notebook_query`.
 
@@ -635,8 +723,8 @@
    `schema.table` of the table the metric aggregates). Combined with `database_name` this
    gives the LLM the full portable FK `[database_name, schema, table]` it must put in
    `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
-   without a separate `entity_details` round-trip."
-  [{:keys [id type name description verified collection
+   without a separate `read_resource` round-trip."
+  [{:keys [id type name description verified official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
            base_table_portable_fk]}]
   (let [fqn (cond
@@ -656,9 +744,21 @@
      :search_result
      {:search_tag_name (search-result-tag-name type)
       :search_id (str id)
+      :search_uri (when id
+                    (when-let [uri-type (search-result-uri-type type)]
+                      (metabase-uri uri-type id)))
       :search_name name
       :search_has_verified (some? verified)
       :search_verified verified
+      :search_has_official (some? official)
+      :search_official official
+      :search_has_curated (some? curated)
+      :search_curated curated
+      :search_has_can_write (some? can_write)
+      :search_can_write can_write
+      :search_data_layer (some-> data_layer clojure.core/name)
+      :search_data_authority (when (and data_authority (not= "unconfigured" (clojure.core/name data_authority)))
+                               (clojure.core/name data_authority))
       :search_description description
       :search_collection_name (:name collection)
       :search_database_id (when database_id (str database_id))
@@ -759,6 +859,8 @@
 (def formatters
   "XML formatters for different entity types"
   {:metric     metric->xml
+   :measure    measure->xml
+   :segment    segment->xml
    :table      table->xml
    :model      model->xml
    :question   question->xml
@@ -782,7 +884,7 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :name :uri :database_id :collection_id :table_id
+  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id :can_write
    :schema :display_name :authority_level :is_personal :path :location
    :engine :timestamp])
 
@@ -790,8 +892,9 @@
   [item]
   (->> item-attr-keys
        (keep (fn [k]
-               (when-let [v (get item k)]
-                 (str (clojure.core/name k) "=\"" (escape-xml v) "\""))))
+               (let [v (get item k)]
+                 (when (if (= k :can_write) (contains? item k) v)
+                   (str (clojure.core/name k) "=\"" (escape-xml (str v)) "\"")))))
        (str/join " ")))
 
 (defn- list-item->xml
@@ -812,13 +915,22 @@
       :page      1
       :pages     1}
 
+   An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
+   block ahead of the items; items reference tabs via their `tab_id` attribute.
+
    Output shape:
      <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total page pages]}]
+  [{:keys [list-type items total page pages tabs]}]
   (let [type-attr (clojure.core/name (or list-type :items))
+        tabs-xml  (when (seq tabs)
+                    (str "<tabs>\n"
+                         (str/join "\n" (map (fn [{:keys [id name]}]
+                                               (str "  <tab tab_id=\"" id "\" name=\"" (escape-xml name) "\"/>"))
+                                             tabs))
+                         "\n</tabs>"))
         item-xml  (str/join "\n" (map list-item->xml items))
         showing   (count items)
         truncated (< page pages)
@@ -830,6 +942,7 @@
          "\" pages=\"" (or pages 1)
          "\" showing=\"" showing
          "\" truncated=\"" (boolean truncated) "\">\n"
+         (when tabs-xml (str tabs-xml "\n"))
          (when (seq items) (str item-xml "\n"))
          (when note (str note "\n"))
          "</list>")))
@@ -843,3 +956,28 @@
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) ">"
            (escape-xml description) "</" tag ">")
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) "/>"))))
+
+(defn export-query-for-llm
+  "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
+  map with a `:database` is normalized and exported to the portable representations form
+  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
+  sources pass through; a `pprint`'d map is the last-resort fallback."
+  [query]
+  (cond
+    (string? query) query
+    (string? (:query-content query)) (:query-content query)
+    (and (map? query) (:database query))
+    (try
+      (let [normalized (lib-be/normalize-query query)
+            database-id (:database normalized)
+            mp (when database-id
+                 (lib-be/application-database-metadata-provider database-id))
+            exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
+        (if exported
+          (str "```json\n" (json/encode exported {:pretty true}) "\n```")
+          (u/pprint-to-str normalized)))
+      (catch Exception _
+        (u/pprint-to-str query)))
+    (string? (get-in query [:native :query])) (get-in query [:native :query])
+    (map? query) (u/pprint-to-str query)
+    :else (some-> query str)))

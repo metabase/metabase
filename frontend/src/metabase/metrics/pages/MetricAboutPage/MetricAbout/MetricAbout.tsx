@@ -1,6 +1,6 @@
+import { MetricCardVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
+import { useCardQueryData } from "metabase/common/data-studio/hooks/use-card-query-data";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { MetricCardVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
-import { useCardQueryData } from "metabase/data-studio/common/hooks/use-card-query-data";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { Box, Flex, Stack } from "metabase/ui";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";

@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
@@ -11,6 +9,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
@@ -81,7 +80,7 @@ export const setup = ({
   }
 
   renderWithProviders(
-    <Route path="/" component={() => <CollectionHeader {...props} />} />,
+    <Route path="/" element={<CollectionHeader {...props} />} />,
     {
       storeInitialState: state,
       initialRoute: "/",

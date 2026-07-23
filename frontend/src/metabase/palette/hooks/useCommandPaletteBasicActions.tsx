@@ -1,15 +1,13 @@
 import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
-import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
+import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";
@@ -18,6 +16,8 @@ import {
   setOpenModal,
   setOpenModalWithProps,
 } from "metabase/redux/ui";
+import type { WithRouterProps } from "metabase/router";
+import { push } from "metabase/router";
 import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,
@@ -33,6 +33,12 @@ import {
   useRegisterShortcut,
 } from "./useRegisterShortcut";
 
+/**
+ * Default ordering for the basic actions. kbar ranks matches by search
+ * relevance; we use this order only to break ties between equally-relevant
+ * matches (e.g. typing "New" matches every "New …" action equally) to keep
+ * them in stable order.
+ */
 export const BASIC_ACTION_ORDER = [
   "create-new-question",
   "create-new-native-query",
@@ -53,6 +59,17 @@ export const BASIC_ACTION_ORDER = [
   "navigate-browse-database",
   "navigate-browse-metric",
 ];
+
+// Small enough that it only orders actions whose relevance scores are equal,
+// without ever overriding a meaningfully better match.
+const PRIORITY_EPSILON = 0.0001;
+
+const getActionPriority = (id: string) => {
+  const index = BASIC_ACTION_ORDER.indexOf(id);
+  return index === -1
+    ? 0
+    : (BASIC_ACTION_ORDER.length - index) * PRIORITY_EPSILON;
+};
 
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
@@ -222,8 +239,7 @@ export const useCommandPaletteBasicActions = ({
         id: "navigate-embed-js",
         section: "basic",
         icon: "embed",
-        keywords:
-          "embed flow, new embed, embed js, modular embedding, guest embed",
+        keywords: "embed flow, embed js, modular embedding, guest embed",
         perform: () =>
           openNewModalWithProps({
             id: "embed",
@@ -297,7 +313,10 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    return [...actions, ...browseActions];
+    return [...actions, ...browseActions].map((action) => ({
+      ...action,
+      priority: getActionPriority(action.id),
+    }));
   }, [
     dispatch,
     hasDataAccess,

@@ -1631,7 +1631,6 @@
         (migrate!)
         (is (= users-before (get-users)))))))
 
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:mb/old-migrations-test data-permissions-migration-rollback-test
   (testing "Data permissions are correctly rolled back from `data_permissions` to `permissions`"
     (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-19T21:32:04"] [migrate!]
@@ -2893,8 +2892,8 @@
   (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test
-  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02-updated: backfill canonical Library root entity IDs"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02-updated-2: backfill canonical Library root entity IDs"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id (insert-legacy-library-collection! {:name      "Library"
                                                            :slug      "library"
                                                            :type      "library"
@@ -2917,9 +2916,42 @@
         (is (= "librarylibrarymetrics"
                (collection-entity-id metrics-id)))))))
 
+(deftest backfill-legacy-library-root-collection-entity-ids-mysql-utf8mb3-test
+  (testing "Library root entity ID backfill handles utf8mb3 MySQL app DB sessions (#76510)"
+    (mt/test-driver :mysql
+      (impl/with-temp-empty-app-db [conn :mysql]
+        (impl/run-migrations-in-range! conn
+                                       [(str "v" "00.00-000") "v62.2026-05-13T12:00:00"]
+                                       {:inclusive-end? false})
+        (jdbc/execute! {:connection conn}
+                       "ALTER TABLE collection CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci")
+        (let [library-id (insert-legacy-library-collection! {:name      "Library"
+                                                             :slug      "library"
+                                                             :type      "library"
+                                                             :entity_id "legacy-library-root"})
+              data-id    (insert-legacy-library-collection! {:name      "Data"
+                                                             :slug      "data"
+                                                             :type      "library-data"
+                                                             :location  (str "/" library-id "/")
+                                                             :entity_id "legacy-library-data"})
+              metrics-id (insert-legacy-library-collection! {:name      "Metrics"
+                                                             :slug      "metrics"
+                                                             :type      "library-metrics"
+                                                             :location  (str "/" library-id "/")
+                                                             :entity_id "legacy-library-metric"})]
+          (jdbc/execute! {:connection conn} "SET NAMES utf8 COLLATE utf8_general_ci")
+          (impl/run-migrations-in-range! conn
+                                         ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"])
+          (is (= "librarylibrarylibrary"
+                 (collection-entity-id library-id)))
+          (is (= "librarylibrarydatadat"
+                 (collection-entity-id data-id)))
+          (is (= "librarylibrarymetrics"
+                 (collection-entity-id metrics-id))))))))
+
 (deftest backfill-legacy-library-root-collection-entity-ids-test-2
   (testing "ambiguous Library Data direct children are not modified"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id        (insert-legacy-library-collection! {:name      "Library"
                                                                   :slug      "library"
                                                                   :type      "library"
@@ -2951,7 +2983,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-3
   (testing "Library Data collections outside Library root do not count as ambiguous"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id      (insert-legacy-library-collection! {:name      "Library"
                                                                 :slug      "library"
                                                                 :type      "library"
@@ -2979,7 +3011,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-4
   (testing "pre-existing canonical Library rows with missing types prevent entity_id collisions"
-    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [canonical-library-id (insert-legacy-library-collection! {:name      "Pre-existing canonical Library"
                                                                      :slug      "canonical-library"
                                                                      :type      nil
@@ -3163,14 +3195,29 @@
               too-old   (new-run! old    "alert"        "success")   ; outside the 90-day window
               chan-only (new-run! recent "alert"        "success")   ; only a channel-send child, no notification-send
               subscript (new-run! recent "subscription" "success")   ; dashboard subscription, also attributed
+              jnull     (new-run! recent "alert"        "success")   ; JSON-null id top-level (GDGT-2680)
+              jnull-orig (new-run! recent "alert"       "failed")    ; JSON-null id under original-info (GDGT-2680)
+              no-id     (new-run! recent "alert"        "success")   ; no notification_id key at all
+              no-id-orig (new-run! recent "alert"       "failed")    ; original-info present but no notification_id key
+              invalid   (new-run! recent "alert"        "success")   ; non-JSON task_details — MySQL only (GDGT-2680)
               other     (new-run! recent "sync"         "success")]  ; neither alert nor subscription
-          (new-th! success   "notification-send" "success" "{\"notification_id\":101}")
-          (new-th! failed    "notification-send" "failed"  "{\"status\":\"failed\",\"message\":\"boom\",\"original-info\":{\"notification_id\":102}}")
+          (new-th! success    "notification-send" "success" "{\"notification_id\":101}")
+          (new-th! failed     "notification-send" "failed"  "{\"status\":\"failed\",\"message\":\"boom\",\"original-info\":{\"notification_id\":102}}")
           ;; `abandoned` intentionally has NO task_history (the run was killed before writing one)
-          (new-th! too-old   "notification-send" "success" "{\"notification_id\":104}")
-          (new-th! chan-only "channel-send"      "success" "{\"notification_id\":105,\"channel_type\":\"channel/email\"}")
-          (new-th! subscript "notification-send" "success" "{\"notification_id\":107}")
-          (new-th! other     "notification-send" "success" "{\"notification_id\":106}")
+          (new-th! too-old    "notification-send" "success" "{\"notification_id\":104}")
+          (new-th! chan-only  "channel-send"      "success" "{\"notification_id\":105,\"channel_type\":\"channel/email\"}")
+          (new-th! subscript  "notification-send" "success" "{\"notification_id\":107}")
+          ;; a JSON-null value (not an absent key) made MySQL strict mode reject CAST('null' AS UNSIGNED)
+          (new-th! jnull      "notification-send" "success" "{\"notification_id\":null}")
+          (new-th! jnull-orig "notification-send" "failed"  "{\"status\":\"failed\",\"original-info\":{\"notification_id\":null}}")
+          ;; valid JSON, but the notification_id key is simply absent (top-level, and inside original-info)
+          (new-th! no-id      "notification-send" "success" "{\"status\":\"skipped\"}")
+          (new-th! no-id-orig "notification-send" "failed"  "{\"status\":\"failed\",\"original-info\":{\"status\":\"started\"}}")
+          (new-th! other      "notification-send" "success" "{\"notification_id\":106}")
+          ;; MySQL-only: invalid JSON is skipped by the JSON_VALID guard. Postgres' ::jsonb cast has no
+          ;; such guard and would throw on a non-JSON row, so this case can't run there.
+          (when (= :mysql (mdb/db-type))
+            (new-th! invalid "notification-send" "success" "not-json"))
           (migrate!)
           (let [nid #(t2/select-one-fn :notification_id :task_run :id %)]
             (testing "attributed from a notification-send child in the window"
@@ -3188,4 +3235,89 @@
               (testing "channel-send-only run (no notification-send)"
                 (is (nil? (nid chan-only))))
               (testing "neither alert nor subscription"
-                (is (nil? (nid other)))))))))))
+                (is (nil? (nid other))))
+              (testing "JSON-null notification_id stays null instead of crashing the migration (GDGT-2680)"
+                (is (nil? (nid jnull)))
+                (is (nil? (nid jnull-orig))))
+              (testing "task_details with no notification_id key stays null"
+                (is (nil? (nid no-id)))
+                (is (nil? (nid no-id-orig))))
+              (when (= :mysql (mdb/db-type))
+                (testing "invalid JSON task_details is skipped by JSON_VALID, run stays null (GDGT-2680)"
+                  (is (nil? (nid invalid))))))))))))
+
+(deftest delete-destination-db-permissions-test
+  (testing "v63.destperm-cleanup: data_permissions rows for destination dbs (router_database_id set) are deleted; rows for normal dbs remain"
+    (impl/test-migrations ["v63.destperm-cleanup" "v63.destperm-cleanup"] [migrate!]
+      (let [new-db!      (fn [name & {:as extra}]
+                           (t2/insert-returning-pk! :metabase_database
+                                                    (merge {:name       name
+                                                            :engine     "postgres"
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :details    "{}"}
+                                                           extra)))
+            group-id     (t2/insert-returning-pk! :permissions_group {:name "Destperm Test Group"})
+            router-id    (new-db! "Router DB")
+            dest-id      (new-db! "Destination DB" :router_database_id router-id)
+            normal-id    (new-db! "Normal DB")
+            new-perm!    (fn [db-id]
+                           (t2/insert-returning-pk! :data_permissions
+                                                    {:group_id   group-id
+                                                     :perm_type  "perms/view-data"
+                                                     :db_id      db-id
+                                                     :perm_value "unrestricted"}))
+            dest-perm    (new-perm! dest-id)
+            normal-perm  (new-perm! normal-id)]
+        (testing "seeded rows exist before the migration"
+          (is (some? (t2/select-one-fn :id :data_permissions :id dest-perm)))
+          (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm))))
+        (migrate!)
+        (testing "destination db permissions are deleted"
+          (is (nil? (t2/select-one-fn :id :data_permissions :id dest-perm)))
+          (is (zero? (t2/count :data_permissions :db_id dest-id))))
+        (testing "normal db permissions are untouched"
+          (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm)))
+          (is (= 1 (t2/count :data_permissions :db_id normal-id))))))))
+
+(deftest move-metabot-conversation-state-to-messages-test
+  (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
+    (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "State"
+                                                              :last_name     "Mover"
+                                                              :email         "state-mover@test.com"
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            blob         "{\"queries\":{\"q1\":{\"database\":1}},\"todos\":[{\"id\":\"a\"}]}"
+            conv-a       (str (random-uuid))
+            conv-b       (str (random-uuid))
+            new-message! (fn [conversation-id role & {:as extra}]
+                           (t2/insert-returning-pk! :metabot_message
+                                                    (merge {:conversation_id conversation-id
+                                                            :created_at      :%now
+                                                            :profile_id      "internal"
+                                                            :role            role
+                                                            :data            "[]"
+                                                            :total_tokens    0
+                                                            :data_version    2}
+                                                           extra)))
+            _            (t2/insert! :metabot_conversation {:id conv-a :user_id user-id :state blob})
+            _            (t2/insert! :metabot_conversation {:id conv-b :user_id user-id})
+            a-user       (new-message! conv-a "user")
+            a-deleted    (new-message! conv-a "assistant" :deleted_at :%now)
+            a-earliest   (new-message! conv-a "assistant")
+            a-later      (new-message! conv-a "assistant")
+            b-assistant  (new-message! conv-b "assistant")]
+        (migrate!)
+        (is (= blob (t2/select-one-fn :state :metabot_message :id a-earliest))
+            "the blob lands on the earliest live assistant row")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-deleted))
+            "soft-deleted rows are skipped")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-later)))
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-user))
+            "user rows are skipped")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id b-assistant))
+            "conversations without a blob are untouched")
+        (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
+            "metabot_conversation.state is gone")))))

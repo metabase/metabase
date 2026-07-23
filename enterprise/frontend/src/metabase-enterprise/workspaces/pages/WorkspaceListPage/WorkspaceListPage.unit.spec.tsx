@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCreateWorkspaceEndpoint,
@@ -7,6 +6,7 @@ import {
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { Workspace } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -20,12 +20,13 @@ const ELIGIBLE_DATABASE = createMockDatabase({
   settings: { "database-enable-workspaces": true },
 });
 
+// Unjustified type cast. FIXME
 function setup({ workspaces = [] as Workspace[] } = {}) {
   setupListWorkspacesEndpoint(workspaces);
   setupDatabasesEndpoints([ELIGIBLE_DATABASE]);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));
 
-  renderWithProviders(<Route path="*" component={WorkspaceListPage} />, {
+  renderWithProviders(<Route path="*" element={<WorkspaceListPage />} />, {
     withRouter: true,
   });
 }

@@ -11,7 +11,7 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
-import { useSelector, useStore } from "metabase/redux";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
@@ -20,7 +20,6 @@ import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/C
 import { CommandSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
-import DropCursorS from "metabase/rich_text_editing/tiptap/extensions/DropCursor/DropCursor.module.css";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { HandleEditorDrop } from "metabase/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
 import { LinkHoverMenu } from "metabase/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
@@ -41,7 +40,11 @@ import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/exte
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Center, Loader } from "metabase/ui";
 
+import { DocumentBlockShell } from "./DocumentBlockShell";
+import { DocumentEditorHostProvider } from "./DocumentEditorHost";
+import DropCursorS from "./DropCursor.module.css";
 import S from "./Editor.module.css";
+import { createChartPasteExtension } from "./chart-paste-extension";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
@@ -106,6 +109,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
+    const dispatch = useDispatch();
 
     const extensions = useMemo(
       () => [
@@ -115,6 +119,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
             width: 2,
             class: DropCursorS.dropCursor,
           },
+          blockShell: DocumentBlockShell,
         }),
         Image.configure({
           inline: false,
@@ -161,8 +166,9 @@ export const Editor: React.FC<EditorProps> = React.memo(
         }),
         ResizeNode,
         HandleEditorDrop,
+        createChartPasteExtension(dispatch),
       ],
-      [siteUrl, getState],
+      [siteUrl, getState, dispatch],
     );
 
     const editor = useEditor(
@@ -230,61 +236,63 @@ export const Editor: React.FC<EditorProps> = React.memo(
     }
 
     return (
-      <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
-        <Box
-          className={S.editorContent}
-          ref={editorContainerRef}
-          onClick={(e) => {
-            // Focus editor when clicking on empty space
-            const target = e.target;
-            if (!(target instanceof HTMLElement)) {
-              return;
-            }
+      <DocumentEditorHostProvider>
+        <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
+          <Box
+            className={S.editorContent}
+            ref={editorContainerRef}
+            onClick={(e) => {
+              // Focus editor when clicking on empty space
+              const target = e.target;
+              if (!(target instanceof HTMLElement)) {
+                return;
+              }
 
-            if (
-              target.classList.contains(S.editorContent) ||
-              target.classList.contains("ProseMirror")
-            ) {
-              const clickY = e.clientY;
-              const proseMirrorElement = target.querySelector(".ProseMirror");
+              if (
+                target.classList.contains(S.editorContent) ||
+                target.classList.contains("ProseMirror")
+              ) {
+                const clickY = e.clientY;
+                const proseMirrorElement = target.querySelector(".ProseMirror");
 
-              if (proseMirrorElement) {
-                const proseMirrorRect =
-                  proseMirrorElement.getBoundingClientRect();
-                const isClickBelowContent = clickY > proseMirrorRect.bottom;
+                if (proseMirrorElement) {
+                  const proseMirrorRect =
+                    proseMirrorElement.getBoundingClientRect();
+                  const isClickBelowContent = clickY > proseMirrorRect.bottom;
 
-                if (isClickBelowContent) {
-                  // Only move to end if clicking below the actual content
-                  editor.commands.focus("end");
+                  if (isClickBelowContent) {
+                    // Only move to end if clicking below the actual content
+                    editor.commands.focus("end");
+                  } else {
+                    // Just focus without changing cursor position for clicks in padding areas
+                    editor.commands.focus();
+                  }
                 } else {
-                  // Just focus without changing cursor position for clicks in padding areas
+                  // Fallback: just focus without position change
                   editor.commands.focus();
                 }
-              } else {
-                // Fallback: just focus without position change
-                editor.commands.focus();
               }
-            }
-          }}
-        >
-          <EditorContent data-testid="document-content" editor={editor} />
+            }}
+          >
+            <EditorContent data-testid="document-content" editor={editor} />
 
-          {editable && (
-            <EditorBubbleMenu
-              editor={editor}
-              disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-              disallowedFullySelectedNodes={
-                BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES
-              }
-            />
-          )}
-          <Box pos="absolute" top={0} left={0} w="100%">
-            <Box className={S.editorContentInner} pos="relative">
-              <LinkHoverMenu editor={editor} editable={editable} />
+            {editable && (
+              <EditorBubbleMenu
+                editor={editor}
+                disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+                disallowedFullySelectedNodes={
+                  BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES
+                }
+              />
+            )}
+            <Box pos="absolute" top={0} left={0} w="100%">
+              <Box className={S.editorContentInner} pos="relative">
+                <LinkHoverMenu editor={editor} editable={editable} />
+              </Box>
             </Box>
           </Box>
         </Box>
-      </Box>
+      </DocumentEditorHostProvider>
     );
   },
 );

@@ -16,8 +16,12 @@ import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
-import { NavbarLibrarySection } from "metabase/data-studio/nav/components/NavbarLibrarySection";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
+import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
@@ -302,6 +306,10 @@ export function MainNavbarView({
               </CollapseSection>
             </ErrorBoundary>
           </SidebarSection>
+
+          {PLUGIN_DATA_APPS.isEnabled && (
+            <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
+          )}
 
           <SidebarSection>
             <ErrorBoundary>

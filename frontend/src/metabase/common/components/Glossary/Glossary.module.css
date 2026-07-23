@@ -4,7 +4,7 @@
 
 .table {
   table-layout: fixed;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border: none;
 
   th {
@@ -62,5 +62,5 @@
 .inputError {
   border: none;
   padding-inline: 0 !important;
-  color: var(--mb-color-error) !important;
+  color: var(--mb-color-feedback-negative) !important;
 }

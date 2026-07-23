@@ -35,6 +35,7 @@ const storeInitialState = createMockState({
   settings,
   entities: createMockEntitiesState({}),
 });
+// Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {
@@ -70,6 +71,7 @@ export default {
         http.post("/api/card/114/query", () =>
           HttpResponse.json(
             createMockDataset({
+              // Unjustified type cast. FIXME
               data: Data.card114Query.data as unknown as DatasetData,
             }),
           ),
@@ -96,6 +98,7 @@ export default {
         http.post("/api/card/115/query", () =>
           HttpResponse.json(
             createMockDataset({
+              // Unjustified type cast. FIXME
               data: Data.card114Query.data as unknown as DatasetData,
             }),
           ),

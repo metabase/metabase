@@ -1,25 +1,22 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
-import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
-import type { Route } from "react-router";
-import { goBack, push } from "react-router-redux";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import type { MetricUrls } from "metabase/common/metrics/types";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
-import { getResultMetadata } from "metabase/data-studio/common/utils";
+} from "metabase/common/data-studio/components/PaneHeader";
+import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
+import { type Location, type Route, goBack, push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";

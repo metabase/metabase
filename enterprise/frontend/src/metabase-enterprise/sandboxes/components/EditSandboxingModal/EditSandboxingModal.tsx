@@ -18,11 +18,21 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { QuestionLoader } from "metabase/common/components/QuestionLoader";
 import { QuestionName } from "metabase/common/components/QuestionName";
-import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { Button, Center, Icon, Loader } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Center,
+  Icon,
+  Loader,
+  Menu,
+  Radio,
+  Stack,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
 import type {
   GroupTableAccessPolicyDraft,
@@ -43,6 +53,8 @@ import {
   DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
 
+import S from "./EditSandboxingModal.module.css";
+
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
 
@@ -50,6 +62,7 @@ const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
   shouldUseSavedQuestion: boolean,
 ): GroupTableAccessPolicy => {
+  // Unjustified type cast. FIXME
   return {
     ...policy,
     card_id: shouldUseSavedQuestion ? policy.card_id : null,
@@ -65,8 +78,8 @@ const getDraftPolicy = ({
   groupId,
 }: GroupTableAccessPolicyParams): GroupTableAccessPolicyDraft => {
   return {
-    table_id: parseInt(tableId),
-    group_id: parseInt(groupId),
+    table_id: parseInt(String(tableId)),
+    group_id: parseInt(String(groupId)),
     card_id: null,
     attribute_remappings: { "": null },
   };
@@ -148,7 +161,7 @@ const EditSandboxingModal = ({
   if (loadingCard || loadingTabe) {
     return (
       <Center p="2rem">
-        <Loader data-testid="loading-indicator" />
+        <Loader />
       </Center>
     );
   }
@@ -172,20 +185,23 @@ const EditSandboxingModal = ({
               <h4
                 className={CS.pb1}
               >{t`How do you want to filter this table?`}</h4>
-              <Radio
-                value={!shouldUseSavedQuestion}
-                options={[
-                  { name: t`Filter by a column in the table`, value: true },
-                  {
-                    name: t`Use a saved question to create a custom view for this table`,
-                    value: false,
-                  },
-                ]}
-                onChange={(shouldUseSavedQuestion) =>
-                  setShouldUseSavedQuestion(!shouldUseSavedQuestion)
+              <Radio.Group
+                value={shouldUseSavedQuestion ? "saved-question" : "column"}
+                onChange={(value) =>
+                  setShouldUseSavedQuestion(value === "saved-question")
                 }
-                vertical
-              />
+              >
+                <Stack gap="sm">
+                  <Radio
+                    value="column"
+                    label={t`Filter by a column in the table`}
+                  />
+                  <Radio
+                    value="saved-question"
+                    label={t`Use a saved question to create a custom view for this table`}
+                  />
+                </Stack>
+              </Radio.Group>
             </div>
           ) : (
             <div>
@@ -201,20 +217,50 @@ const EditSandboxingModal = ({
             <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            <Button
-              data-testid="custom-view-picker-button"
-              onClick={showModal}
-              fullWidth
-              rightSection={<Icon name="ellipsis" />}
-              styles={{
-                inner: {
-                  justifyContent: "space-between",
-                },
-                root: { "&:active": { transform: "none" } },
-              }}
-            >
-              {policyCard?.name ?? t`Select a question`}
-            </Button>
+            <Box pos="relative">
+              <Button
+                data-testid="custom-view-picker-button"
+                onClick={showModal}
+                fullWidth
+                rightSection={policyCard ? undefined : <Icon name="ellipsis" />}
+                classNames={{
+                  root: S.policyCardButton,
+                  inner: S.policyCardButtonInner,
+                  label: policyCard ? S.policyCardLabel : undefined,
+                }}
+              >
+                {policyCard?.name ?? t`Select a question`}
+              </Button>
+              {policyCard && (
+                <Menu position="bottom-end">
+                  <Menu.Target>
+                    <ActionIcon
+                      aria-label={t`Question options`}
+                      className={S.optionsButton}
+                    >
+                      <Icon name="ellipsis" />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      component="a"
+                      href={Urls.card(policyCard)}
+                      target="_blank"
+                      rel="noreferrer"
+                      leftSection={<Icon name="external" />}
+                    >
+                      {t`Go to question`}
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={showModal}
+                      leftSection={<Icon name="refresh" />}
+                    >
+                      {t`Replace`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+            </Box>
             {showPickerModal && (
               <QuestionPickerModal
                 value={

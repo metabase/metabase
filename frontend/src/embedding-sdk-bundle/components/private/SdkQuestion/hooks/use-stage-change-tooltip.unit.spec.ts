@@ -8,6 +8,7 @@ jest.mock("../context", () => ({
   useSdkQuestionContext: jest.fn(() => ({ lastVisibleStageIndex: 1 })),
 }));
 
+// Unjustified type cast. FIXME
 const mockContext = useSdkQuestionContext as jest.MockedFunction<
   typeof useSdkQuestionContext
 >;
@@ -17,6 +18,7 @@ const setup = ({
 }: {
   lastVisibleStageIndex: number;
 }) => {
+  // Unjustified type cast. FIXME
   mockContext.mockReturnValue({
     lastVisibleStageIndex,
   } as ReturnType<typeof useSdkQuestionContext>);

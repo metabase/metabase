@@ -184,7 +184,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
             <Menu.Item
               leftSection={<Icon name="archive" />}
               onClick={onArchiveClick}
-              c="error"
+              c="feedback-negative"
             >
               {t`Archive`}
             </Menu.Item>

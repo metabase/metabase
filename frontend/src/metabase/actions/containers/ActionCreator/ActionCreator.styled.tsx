@@ -6,7 +6,6 @@ import SidebarContentS from "metabase/common/components/SidebarContent/SidebarCo
 export const ActionCreatorBodyContainer = styled.div`
   display: grid;
   grid-template-columns: 4fr 3fr;
-  border-top: 1px solid var(--mb-color-border-neutral);
 
   .react-resizable-handle {
     display: none;
@@ -19,7 +18,7 @@ export const ActionCreatorBodyContainer = styled.div`
 export const EditorContainer = styled.div`
   flex: 1 1 0;
   overflow-y: auto;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 
   .ace_editor {
     margin-left: var(--mantine-spacing-md);
@@ -38,7 +37,11 @@ export const ModalActions = styled.div`
 export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
-  height: 90vh;
+  /**
+   * Compensate 2px for border on .Modal-module__content
+   * Otherwise vertical scrollbar is shown even though there is no overflow.
+   **/
+  height: calc(90dvh - 2px);
 `;
 
 export const ModalLeft = styled.div`
@@ -68,7 +71,7 @@ export const ModalRight = styled.div`
     top: 0;
     padding: 1.5rem 1.5rem 0.5rem 1.5rem;
     margin: 0;
-    background-color: var(--mb-color-background-primary);
+    background-color: var(--mb-color-background_page-primary);
     z-index: 5;
   }
 `;

@@ -210,9 +210,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
     cy.intercept("POST", "/api/action/*/execute").as("executeAction");
-    cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
-      "prefetchValues",
-    );
+    cy.intercept("POST", "/api/action/*/execute/values").as("prefetchValues");
 
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: TEST_TABLE });
@@ -258,7 +256,7 @@ describe("issue 51020", () => {
       cy.findByText("Update a dashboard filter").click();
       cy.findByTestId("click-target-column").click();
     });
-    H.popover().findByText(columnName).click();
+    H.selectDropdown().findByText(columnName).click();
     cy.button("Done").click();
 
     cy.findByLabelText("Add action").click();
@@ -266,9 +264,9 @@ describe("issue 51020", () => {
     H.modal().within(() => {
       cy.findByText(modelName).click();
       cy.findByText("Update").click();
-      cy.findAllByText("Ask the user").eq(0).click();
+      cy.findAllByDisplayValue("Ask the user").eq(0).click();
     });
-    H.popover().findByText("ID").click();
+    H.selectDropdown().findByText("ID").click();
     cy.button("Done").click();
 
     H.saveDashboard();

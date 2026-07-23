@@ -24,6 +24,7 @@ export default {
 
 registerVisualization(BarChart);
 
+// Unjustified type cast. FIXME
 const MOCK_SERIES = [
   {
     card: createMockCard({ name: "Card", display: "bar" }),

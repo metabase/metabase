@@ -1,6 +1,4 @@
-import type { LocationDescriptor } from "history";
 import { useEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import {
@@ -17,6 +15,8 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { fetchTableForeignKeys } from "metabase/redux/tables";
+import type { LocationDescriptor } from "metabase/router";
+import { Outlet, replace } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -28,7 +28,6 @@ type OwnProps = {
   params: {
     slug: string;
   };
-  children: React.ReactNode;
 };
 
 type EntityLoadersProps = {
@@ -51,7 +50,6 @@ const mapDispatchToProps = {
 
 function ModelActions({
   model,
-  children,
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeLocation,
@@ -111,15 +109,14 @@ function ModelActions({
         model={model}
         shouldShowActionsUI={shouldShowActionsUI}
       />
-      {/* Required for rendering child `ModalRoute` elements */}
-      {children}
+      {/* Required for rendering child modal routes */}
+      <Outlet />
     </>
   );
 }
 
 function ModelActionsLoader({
   params,
-  children,
   ...dispatchProps
 }: OwnProps & DispatchProps) {
   const modelId = Urls.extractEntityId(params.slug);
@@ -134,15 +131,11 @@ function ModelActionsLoader({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return (
-    <ModelActions model={model} params={params} {...dispatchProps}>
-      {children}
-    </ModelActions>
-  );
+  return <ModelActions model={model} params={params} {...dispatchProps} />;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<null, DispatchProps, OwnProps, State>(
+export default connect<unknown, DispatchProps, OwnProps, State>(
   null,
   mapDispatchToProps,
 )(ModelActionsLoader);

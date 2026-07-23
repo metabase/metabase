@@ -4,19 +4,24 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.parameters.shared :as shared.params]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -507,6 +512,62 @@
                                        :verbatim true}}
                                {:type "section" :text {:type "plain_text" :text "1,000"}}]}
                     message)))))}})))
+
+(deftest dashboard-filter-with-empty-default-test
+  (tests!
+   {:pulse     {:skip_if_empty false}
+    :dashboard (update pulse.test-util/test-dashboard :parameters
+                       (fn [params]
+                         (for [param params]
+                           (cond-> param
+                             (= "State" (:name param)) (assoc :default [])))))}
+   "Dashboard subscription whose text filter had its default value cleared to [] still sends (#76854)"
+   {:card (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [_ thunk]
+      (thunk))
+
+    :assert
+    {:email
+     (fn [_ [email]]
+       (testing "The subscription is delivered and the empty filter is left out"
+         (is (some? email))
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"      true
+                                                   "Quarter and Year" true
+                                                   "State"            false}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email
+                                                     #"Aviary KPIs"
+                                                     #"Quarter and Year"
+                                                     #"State")))))}}))
+
+(deftest filter-render-failure-doesnt-fail-subscription-test
+  (tests!
+   {:pulse     {:skip_if_empty false}
+    :dashboard pulse.test-util/test-dashboard}
+   "A filter that fails to render is skipped instead of failing the whole subscription"
+   {:card (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [_ thunk]
+      (with-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
+        (thunk)))
+
+    :assert
+    {:email
+     (fn [_ [email]]
+       (testing "email is still delivered, with the broken filters left out"
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true
+                                                   "State"       false}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email #"Aviary KPIs" #"State")))))
+
+     :slack
+     (fn [_ [message]]
+       (testing "slack message is still delivered, with the broken filters left out"
+         (is (some? message))
+         (is (not (str/includes? (pr-str message) "*State*")))))}}))
 
 (deftest dashboard-with-header-filters-test
   (tests!
@@ -1230,6 +1291,45 @@
               (mt/summarize-multipart-single-email email
                                                    #"Aviary KPIs"))))}}))
 
+(deftest dashboard-sub-pivot-csv-attachment-test
+  (testing "PulseCard.pivot_results true produces a pivoted (not flat) CSV attachment (#49525)"
+    (let [{:keys [dataset_query visualization_settings]} (api.pivots/pivot-card)
+          header-col-count (fn [pivot?]
+                             (let [col-count (atom nil)]
+                               (do-test!
+                                {:card       {:dataset_query          dataset_query
+                                              :display                :pivot
+                                              :visualization_settings visualization_settings}
+                                 :dashcard   {:visualization_settings visualization_settings}
+                                 :pulse-card {:include_csv   true
+                                              :pivot_results pivot?}
+                                 :assert
+                                 {:email
+                                  (fn [_ [email]]
+                                    (let [csv-part (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+                                      (reset! col-count (-> csv-part :content slurp str/split-lines first (str/split #",") count))))}})
+                               @col-count))]
+      (is (not= (header-col-count true) (header-col-count false))
+          "the pivoted CSV header shape must differ from the flat CSV header shape"))))
+
+(deftest dashboard-subscription-email-branding-respects-whitelabel-test
+  (testing "the 'Made with Metabase' footer in dashboard subscription emails respects the :whitelabel premium feature"
+    (let [mp            (mt/metadata-provider)
+          query         (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          has-branding? (fn [email] (str/includes? (-> email :message first :content) "Made with"))]
+      (mt/with-premium-features #{}
+        (do-test!
+         {:card   {:dataset_query query}
+          :assert {:email (fn [_ [email]] (is (true? (has-branding? email))))}}))
+      ;; Whitelabeling is only wired up in EE builds (`enable-whitelabeling?` is gated on
+      ;; `config/ee-available?`), so `:whitelabel` can never hide the footer on OSS builds.
+      ;; The EE app-db jobs run this same file with EE on the classpath and cover the hidden case.
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:whitelabel}
+         (do-test!
+          {:card   {:dataset_query query}
+           :assert {:email (fn [_ [email]] (is (false? (has-branding? email))))}}))))))
+
 (deftest multi-series-test
   (mt/with-temp
     [:model/Card                {card-1 :id}      {:name          "Source card"
@@ -1390,15 +1490,142 @@
               #"Aviary KPIs"
               #"Dashboard content available in attached files"))))))
 
+(defn- do-with-executed-card-ids
+  "Run `f` while recording the :card_id of every dashcard that actually executes, returning the atom of ids."
+  [f]
+  (let [executed (atom [])
+        orig     (mt/original-fn #'notification.payload.execute/execute-dashboard-subscription-card)]
+    (mt/with-dynamic-fn-redefs [notification.payload.execute/execute-dashboard-subscription-card
+                                (fn [dashcard parameters opts]
+                                  (swap! executed conj (:card_id dashcard))
+                                  (orig dashcard parameters opts))]
+      (f))
+    executed))
+
+(deftest dashboard-sub-attachment-only-skips-unattached-cards-test
+  (mt/with-temp [:model/Card          {attached-id :id} {:name          "Attached Card"
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                 :model/Card          {other-id :id}    {:name          "Other Card"
+                                                         :dataset_query (mt/mbql-query venues {:limit 1})}
+                 :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                 :model/DashboardCard _ {:dashboard_id dashboard-id :card_id attached-id}
+                 :model/DashboardCard _ {:dashboard_id dashboard-id :card_id other-id}
+                 :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                      :dashboard_id dashboard-id}
+                 :model/PulseCard     _ {:pulse_id    pulse-id
+                                         :card_id     attached-id
+                                         :position    0
+                                         :include_csv true}
+                 :model/PulseCard     _ {:pulse_id pulse-id
+                                         :card_id  other-id
+                                         :position 1}]
+    (testing "attachment-only subscriptions only execute the cards selected for attachment (GDGT-2772)"
+      (mt/with-temp [:model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                       :channel_type "email"
+                                                       :details      {:attachment_only true}}
+                     :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                     :pulse_channel_id pc-id}]
+        (let [executed      (do-with-executed-card-ids
+                             #(pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+          (is (= [attached-id] @executed)))))
+    (testing "attachment-only + include_pdf still executes every card, since the PDF renders the whole dashboard"
+      (mt/with-temp [:model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                       :channel_type "email"
+                                                       :details      {:attachment_only true
+                                                                      :include_pdf     true}}
+                     :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                     :pulse_channel_id pc-id}]
+        (let [executed (do-with-executed-card-ids
+                        #(pulse.test-util/with-captured-channel-send-messages!
+                           (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+          (is (= #{attached-id other-id} (set @executed))))))
+    (testing "a slack channel executes every card"
+      (mt/with-temp [:model/PulseChannel _ {:pulse_id     pulse-id
+                                            :channel_type "slack"
+                                            :details      {:channel "#general"}}]
+        (let [executed (do-with-executed-card-ids
+                        #(pulse.test-util/with-captured-channel-send-messages!
+                           (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+          (is (= #{attached-id other-id} (set @executed))))))))
+
+(deftest dashboard-sub-body-only-cards-use-display-limit-test
+  (testing "cards not selected for attachment get the interactive display limit; attached cards keep the attachment limit (GDGT-2773)"
+    (mt/with-temp [:model/Card          {attached-id :id}  {:name          "Attached Card"
+                                                            :dataset_query (mt/mbql-query orders)}
+                   :model/Card          {body-only-id :id} {:name          "Body Only Card"
+                                                            :dataset_query (mt/mbql-query orders)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id attached-id}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id body-only-id}
+                   :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                        :dashboard_id dashboard-id}
+                   :model/PulseCard     _ {:pulse_id    pulse-id
+                                           :card_id     attached-id
+                                           :position    0
+                                           :include_csv true}
+                   :model/PulseCard     _ {:pulse_id pulse-id
+                                           :card_id  body-only-id
+                                           :position 1}
+                   :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                     :channel_type "email"}
+                   :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                   :pulse_channel_id pc-id}]
+      (let [row-counts (atom {})
+            orig       (mt/original-fn #'notification.payload.execute/execute-dashboard-subscription-card)]
+        (mt/with-dynamic-fn-redefs [notification.payload.execute/execute-dashboard-subscription-card
+                                    (fn [dashcard parameters opts]
+                                      (u/prog1 (orig dashcard parameters opts)
+                                        (swap! row-counts assoc (:card_id dashcard) (-> <> :result :row_count))))]
+          (pulse.test-util/with-captured-channel-send-messages!
+            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))
+        (is (< 2000 (get @row-counts attached-id)) "attached card runs to the attachment limit")
+        (is (= 2000 (get @row-counts body-only-id)) "body-only card gets the interactive display limit")))))
+
+(defn- pdf->text
+  "All text extracted from the rendered PDF `bytes`. Card titles/headings are drawn as native, selectable text, so a
+  card that was rendered leaves its title here and an omitted card leaves nothing."
+  ^String [^bytes pdf-bytes]
+  (with-open [doc (org.apache.pdfbox.Loader/loadPDF pdf-bytes)]
+    (.getText (org.apache.pdfbox.text.PDFTextStripper.) doc)))
+
+(deftest dashboard-pdf-hides-empty-cards-test
+  (testing "PDF export omits a dashcard with `card.hide_empty` when it has no results, leaving its grid space blank (UXW-4706)"
+    (mt/with-temp [:model/Card          {full-id :id}  {:name "Has Data Card" :dataset_query (mt/mbql-query venues)}
+                   :model/Card          {empty-id :id} {:name          "Hidden Empty Card"
+                                                        :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Hide-empty PDF"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id full-id  :row 0 :col 0 :size_x 8 :size_y 4}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 8 :size_x 8 :size_y 4
+                                           :visualization_settings {:card.hide_empty true}}
+                   :model/User          {user-id :id} {}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+        (is (str/includes? text "Has Data Card")
+            "the card with results is rendered")
+        (is (not (str/includes? text "Hidden Empty Card"))
+            "the empty card with card.hide_empty is omitted from the PDF"))))
+  (testing "an empty card WITHOUT card.hide_empty is still rendered (shows the no-results placeholder)"
+    (mt/with-temp [:model/Card          {empty-id :id} {:name          "Shown Empty Card"
+                                                        :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Show-empty PDF"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 0 :size_x 8 :size_y 4}
+                   :model/User          {user-id :id} {}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+        (is (str/includes? text "Shown Empty Card")
+            "without the setting, the empty card still appears")
+        (is (str/includes? text "No results")
+            "and shows the no-results placeholder rather than being hidden")))))
+
 (deftest dashboard-sub-include-pdf-test
   (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
     (let [render-args (atom nil)]
       ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
       (with-redefs [channel.render/render-dashboard-to-pdf
-                    (fn [dashboard-id user-id parameters]
+                    (fn [dashboard-id user-id parameters & [_paper-key parts]]
                       (reset! render-args {:dashboard-id dashboard-id
                                            :user-id      user-id
-                                           :parameters   parameters})
+                                           :parameters   parameters
+                                           :parts        parts})
                       (.getBytes "%PDF-1.4 stub" "UTF-8"))]
         (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
                                                            :dataset_query (mt/mbql-query orders {:limit 1})}
@@ -1420,6 +1647,9 @@
             (testing "renderer is called with the subscription's dashboard id and resolved parameters"
               (is (= dashboard-id (:dashboard-id @render-args)))
               (is (= [] (:parameters @render-args))))
+            (testing "the already-executed dashboard parts are handed to the renderer so queries aren't re-run"
+              (is (some #(= :card (:type %))
+                        (:parts @render-args))))
             (let [message  (:message (first (:channel/email pulse-results)))
                   pdf-part (some #(when (= "application/pdf" (:content-type %)) %) message)]
               (testing "the PDF attachment is named after the dashboard"
@@ -1473,8 +1703,9 @@
                                              :details      {:channel "#general" :include_pdf true}}]
         (let [render-args (atom nil)]
           (with-redefs [channel.render/render-dashboard-to-pdf
-                        (fn [dashboard-id user-id parameters]
-                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id :parameters parameters})
+                        (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id
+                                               :parameters parameters :parts parts})
                           (.getBytes "%PDF-1.4 stub" "UTF-8"))]
             (pulse.test-util/slack-test-setup!
              (let [results (pulse.test-util/with-captured-channel-send-messages!

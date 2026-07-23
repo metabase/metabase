@@ -3,7 +3,6 @@ import { useDisclosure } from "@mantine/hooks";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useContext, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -21,6 +20,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
@@ -45,7 +45,7 @@ import type {
 import S from "./MetabotAgentSuggestionMessage.module.css";
 
 export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
-  part: Extract<MetabotDataPart, { type: "transform_suggestion" }>;
+  part: Extract<MetabotDataPart, { type: "data-transform_suggestion" }>;
 };
 
 const PreviewContent = ({
@@ -126,7 +126,7 @@ export const AgentSuggestionMessage = ({
   const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
   const suggestedTransform: MetabotSuggestedTransform = {
-    ...message.part.value,
+    ...message.part.data,
     active: true,
     suggestionId: message.metadata?.suggestionId ?? message.id,
   };
@@ -190,6 +190,7 @@ export const AgentSuggestionMessage = ({
       return;
     }
 
+    // Unjustified type cast. FIXME
     dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
   };
 
@@ -197,7 +198,7 @@ export const AgentSuggestionMessage = ({
     <Paper
       shadow="none"
       radius="md"
-      bg="background-primary"
+      bg="background_page-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
@@ -213,7 +214,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          <Text size="sm" c={isNew ? "saturated-blue" : "text-secondary"}>
+          <Text size="sm" c={isNew ? "core-blue-saturated" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
           <Flex align="center" justify="center" h="md" w="md">
@@ -231,18 +232,21 @@ export const AgentSuggestionMessage = ({
           .with({ error: P.not(P.nullish) }, () => (
             <Flex
               p="md"
-              bg="background-secondary"
+              bg="background_page-secondary"
               justify="center"
               align="center"
               gap="sm"
             >
-              <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
+              <Text
+                mb="1px"
+                c="feedback-negative"
+              >{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
             <Flex
               p="md"
-              bg="background-secondary"
+              bg="background_page-secondary"
               justify="center"
               align="center"
               gap="sm"
@@ -278,7 +282,9 @@ export const AgentSuggestionMessage = ({
                 variant="subtle"
                 fw="normal"
                 fz="sm"
-                c={canApply && !readonly ? "success" : "text-tertiary"}
+                c={
+                  canApply && !readonly ? "feedback-positive" : "text-disabled"
+                }
                 disabled={!canApply || readonly}
                 onClick={handleApply}
               >

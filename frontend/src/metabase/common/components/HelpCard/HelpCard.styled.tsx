@@ -11,8 +11,8 @@ const CardRootMixin = css`
   padding: 1.5rem;
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.375rem;
-  background-color: var(--mb-color-background-primary);
-  box-shadow: 0 1px 6px var(--mb-color-shadow);
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: 0 1px 6px var(--mb-color-shadow-default);
   box-sizing: border-box;
 `;
 
@@ -30,7 +30,7 @@ export const CardRootLink = styled(ExternalLink)`
   ${CardRootMixin};
 
   &:hover {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
   }
 `;
 

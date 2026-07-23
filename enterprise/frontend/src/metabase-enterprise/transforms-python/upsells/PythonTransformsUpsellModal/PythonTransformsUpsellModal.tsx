@@ -99,7 +99,7 @@ export function PythonTransformsUpsell({
             p={shouldShowLeftColumn ? "3rem 1.5rem" : "3rem"}
             flex={1}
             gap="md"
-            bg={shouldShowLeftColumn ? "background-secondary" : undefined}
+            bg={shouldShowLeftColumn ? "background_page-secondary" : undefined}
           >
             {!shouldShowLeftColumn && (
               <>

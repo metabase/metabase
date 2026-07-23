@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { Box, FixedSizeIcon, Group, Text } from "metabase/ui";
 import type { Database, TableRemapping } from "metabase-types/api";
 

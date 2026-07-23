@@ -1,0 +1,33 @@
+## Create the v_mcp_tool_calls view for MCP usage analytics.
+##
+## Filename intentionally sorts after 20260623_mcp_usage_analytics.yaml (the table-creation
+## migration) so Liquibase — which processes change-log files alphabetically — creates the
+## mcp_tool_call_log / mcp_session_log tables before this view references them.
+##
+## Client identity + PII are denormalized onto each tool-call row, so v_mcp_tool_calls reads them
+## straight off mcp_tool_call_log (no session join) and stays valid once the MCP RC drops sessions.
+## It LEFT JOINs core_user (for the display name) and the tenant table (for tenant_name).
+
+databaseChangeLog:
+  - logicalFilePath: migrations/064_update_migrations.yaml
+
+  - changeSet:
+      id: v64.2026-06-23T00:00:10
+      author: sfragnaud
+      runOnChange: true
+      comment: Create v_mcp_tool_calls view for MCP usage analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/mcp_tool_calls/v1/postgres-mcp_tool_calls.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/mcp_tool_calls/v1/mysql-mcp_tool_calls.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/mcp_tool_calls/v1/h2-mcp_tool_calls.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql: DROP VIEW IF EXISTS v_mcp_tool_calls

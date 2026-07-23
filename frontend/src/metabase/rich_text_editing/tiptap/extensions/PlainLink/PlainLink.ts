@@ -8,7 +8,7 @@ import { Link } from "@tiptap/extension-link";
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { processUrl } from "metabase/documents/utils/processUrl";
+import { processUrl } from "metabase/rich_text_editing/tiptap/utils/processUrl";
 
 import S from "./PlainLink.module.css";
 

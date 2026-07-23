@@ -33,6 +33,7 @@ registerVisualization(ComboChart);
 registerVisualization(LineChart);
 registerVisualization(Table);
 
+// Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {

@@ -81,6 +81,7 @@ export function isValueOperator(node: Lib.ExpressionParts) {
  * dimension (internal use only).
  */
 export function isDimensionOperator(node: Lib.ExpressionParts) {
+  // Unjustified type cast. FIXME
   return (
     Lib.isExpressionParts(node) && (node.operator as string) === "dimension"
   );

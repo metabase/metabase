@@ -47,7 +47,7 @@ export function RevisionHistoryTimeline({
       dispatch(
         addUndo({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message: getErrorMessage(
             error,
             t`Failed to revert to previous version.`,
@@ -128,9 +128,9 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
         h={24}
         className={S.iconCircle}
         bd="1px solid var(--mb-color-border-neutral)"
-        bg="background-primary"
+        bg="background_page-primary"
       >
-        <Icon name={icon} c="text-tertiary" size={12} />
+        <Icon name={icon} c="text-disabled" size={12} />
       </Center>
     );
   }
@@ -141,7 +141,7 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
 
   return (
     <Center w={24} h={24} className={S.iconCircle} bg="core-brand">
-      <Icon name={icon.name} c="white" size={12} />
+      <Icon name={icon.name} c="core-white" size={12} />
     </Center>
   );
 }

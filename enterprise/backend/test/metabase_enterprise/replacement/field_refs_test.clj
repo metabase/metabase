@@ -247,6 +247,32 @@
                                                       :value_field [:field 1 nil]}}]}
                 (t2/select-one :model/Card card-id)))))))
 
+(deftest card-upgrade-field-refs!-join-alias-suffix-test
+  (testing "should correctly resolve a name ref disambiguated by a join-alias-derived numeric suffix (e.g. ID_2)"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/join (lib.metadata/table mp (mt/id :products)))
+                    lib/append-stage
+                    (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/BigInteger} "ID_2"]))))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+        (replacement.field-refs/upgrade-field-refs! [:card card-id])
+        (is (=? {:dataset_query {:stages [{:source-table (mt/id :orders)}
+                                          {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}}
+                (t2/select-one :model/Card card-id)))))))
+
+(deftest card-upgrade-field-refs!-nested-card-source-test
+  (testing "should upgrade a numeric field-id ref in a card sourced from another card (nested indirection)"
+    (let [mp           (mt/metadata-provider)
+          parent-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {parent-id :id} {:dataset_query parent-query}]
+        (let [child-query (-> (lib/query mp (lib.metadata/card mp parent-id))
+                              (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 1)))]
+          (mt/with-temp [:model/Card {child-id :id} {:dataset_query child-query}]
+            (replacement.field-refs/upgrade-field-refs! [:card child-id])
+            (is (=? {:dataset_query {:stages [{:source-card parent-id
+                                               :filters [[:= {} [:field {} "ID"] 1]]}]}}
+                    (t2/select-one :model/Card child-id)))))))))
+
 (deftest card-upgrade-field-refs!-no-changes-test
   (testing "should not update a card when there are no changes"
     (let [mp    (mt/metadata-provider)

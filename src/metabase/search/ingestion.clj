@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
@@ -74,10 +75,16 @@
 
   Note: Unlike searchable-text, transformation functions in search-terms
   (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
-  explosion are specific to full-text search optimization."
+  explosion are specific to full-text search optimization.
+
+  Fields listed in the spec's `:embedding-exclude` set are kept out of the
+  embedding text entirely (but remain in `searchable-text`)."
   [m]
-  (let [search-terms (:search-terms (search.spec/spec (:model m)))
-        field-keys   (cond-> search-terms (map? search-terms) keys)
+  (let [spec         (search.spec/spec (:model m))
+        search-terms (:search-terms spec)
+        excluded     (:embedding-exclude spec #{})
+        field-keys   (->> (cond-> search-terms (map? search-terms) keys)
+                          (remove excluded))
         header       (str "[" (:model m) "]")
         fields        (keep (fn [k]
                               (let [v (get m k)]
@@ -95,7 +102,8 @@
   (perf/select-keys m [:name :display_name :description :collection_name]))
 
 (defn- execute-function-attr
-  "Execute a single function attribute and return the result"
+  "Execute a single function attribute and return the result, or nil if the function throws.
+  nil is valid for every column type, so a failure can never poison the document's insert batch."
   [attr-key attr-def record]
   (try
     (let [f (:fn attr-def)
@@ -106,27 +114,18 @@
       (f input))
     (catch Exception e
       (log/warn e "Function execution failed for attribute" attr-key)
-      false)))
+      nil)))
 
 (defn- execute-all-function-attrs
   "Execute all function attributes for a given spec and return computed values.
-  If a function returns a map, its entries are merged directly into the result —
-  this allows a single function to populate multiple document keys (e.g. :temporal-info
-  returns both :has_temporal_dim and :non_temporal_dim_ids in one call).
-
-  When a function attr declares `:provides`, the attr-key itself is not a column in
-  the index — it's a logical grouping whose `:provides` keys are the real columns.
-  In that case, on non-map results (e.g. when the function threw and `false` was
-  returned), skip writing instead of poisoning the document with an unknown column."
+  Each function's result is written under the attr key (snake_case) — the attr's index column."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
-       (let [result (execute-function-attr attr-key attr-def record)]
-         (cond
-           (map? result)                          (merge acc result)
-           (seq (search.spec/function-attr-provides attr-def)) acc
-           :else                                  (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
+       (assoc acc
+              (keyword (u/->snake_case_en (name attr-key)))
+              (execute-function-attr attr-key attr-def record))
        acc))
    {}
    (:attrs spec)))
@@ -140,10 +139,17 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (json/encode (apply dissoc m search.spec/legacy-input-excluded-keys))
                          :searchable_text (searchable-text m)
-                         :embeddable_text (embeddable-text m)))]
-    (merge fn-results sql-results)))
+                         :embeddable_text (embeddable-text m)))
+        document (merge fn-results sql-results)
+        curated  (collections.curation/curated? document)]
+    ;; Both production engines reconstruct results from legacy_input (appdb rehydrate, semantic
+    ;; legacy-input-with-score), so curated must live there to reach the search response, not just in the
+    ;; search_index column used for filtering. data_layer rides along once it leaves the excluded set.
+    (assoc document
+           :curated curated
+           :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
+                                             :curated curated)))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs

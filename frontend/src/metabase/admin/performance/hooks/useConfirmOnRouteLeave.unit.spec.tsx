@@ -1,7 +1,6 @@
-import type { History } from "history";
-import { Route } from "react-router";
-
 import { act, renderWithProviders, screen } from "__support__/ui";
+import type { History } from "metabase/router";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";
@@ -26,10 +25,10 @@ describe("useConfirmOnRouteLeave", () => {
     const PageA = () => <div>Page A</div>;
 
     const { history, ...rest } = renderWithProviders(
-      <div>
-        <Route path="/a" component={PageA} />
-        <Route path="/b" component={PageB} />
-      </div>,
+      <>
+        <Route path="/a" element={<PageA />} />
+        <Route path="/b" element={<PageB />} />
+      </>,
       { withRouter: true, initialRoute: "/a" },
     );
     const guardedHistory = checkNotNull(history);

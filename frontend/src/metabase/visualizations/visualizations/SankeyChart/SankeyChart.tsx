@@ -15,7 +15,7 @@ import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-br
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
-import { SANKEY_CHART_DEFINITION } from "./chart-definition";
+import { SANKEY_CHART_DEFINITION } from "./definition";
 import { useChartEvents } from "./events";
 
 const SankeyChartComponent = ({

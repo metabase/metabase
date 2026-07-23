@@ -208,10 +208,6 @@
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
-(defmethod serdes/hash-fields :model/TransformJob
-  [_job]
-  [:name :built_in_type])
-
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
   {:copy [:entity_id :built_in_type :schedule :ui_display_type :active]
@@ -222,7 +218,7 @@
                :created_at (serdes/date)
                :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :created_at)} opts))}})
 
-(defmethod serdes/dependencies "TransformJob"
+(defmethod serdes/deserialization-dependencies "TransformJob"
   [{:keys [job_tags]}]
   (set
    (for [{tag-id :tag_id} job_tags]

@@ -45,7 +45,7 @@ export const ActionsList = styled(OptionsList)`
 export const ToggleContainer = styled.div`
   display: flex;
   align-items: center;
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   padding: 0.5rem 1rem;
   justify-content: flex-end;
 `;
@@ -70,12 +70,12 @@ export const WarningIcon = styled(
   ),
 )`
   margin-right: 0.25rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 `;
 
 export const DisabledPermissionOption = styled(PermissionsSelectOption)<{
   isHighlighted: boolean;
 }>`
   color: ${(props) =>
-    props.isHighlighted ? color("text-secondary") : color("text-tertiary")};
+    props.isHighlighted ? color("text-secondary") : color("text-disabled")};
 `;

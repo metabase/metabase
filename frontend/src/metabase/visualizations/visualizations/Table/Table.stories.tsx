@@ -18,15 +18,14 @@ import {
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { RawSeries } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import * as data from "./stories-data";
 
-registerVisualization(Table);
+registerVisualizations();
 
 const settings = mockSettings();
 
@@ -34,6 +33,7 @@ const storeInitialState = createMockState({
   settings,
   entities: createMockEntitiesState({}),
 });
+// Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 export default {
@@ -47,7 +47,7 @@ const DefaultTemplate: StoryFn<{
 }> = ({
   series,
   isDashboard,
-  bgColor = "white",
+  bgColor = "core-white",
   theme,
   hasDevWatermark,
 }: {

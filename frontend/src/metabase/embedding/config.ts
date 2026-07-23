@@ -1,6 +1,15 @@
-import { api } from "metabase/api/client";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
+import {
+  EMBEDDING_SDK_CONFIG,
+  isDataApp,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
+
+import { setEmbedPreviewHeader } from "./lib/auth/set-embed-preview-header";
+import { setReactSdkEmbedReferrerHeader } from "./lib/auth/set-react-sdk-embed-referrer-header";
+import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";
 
 type InternalEmbeddingConfig = {
   isPublicEmbedding: boolean;
@@ -13,7 +22,10 @@ const EMBEDDING_CONFIG: InternalEmbeddingConfig = {
 };
 
 export function setIsPublicEmbedding() {
-  api.requestClient = "embedding-public";
+  PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+    setRequestClientHeaders({ name: "embedding-public" });
+  PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
+    setEmbedPreviewHeader;
 
   EMBEDDING_CONFIG.isPublicEmbedding = true;
 }
@@ -25,9 +37,37 @@ export function setIsStaticEmbedding() {
    * embedding iframe (only for Documents at the time of this comment)
    */
   if (!isEmbedPreview()) {
-    api.requestClient = "embedding-iframe-static";
+    PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+      setRequestClientHeaders({ name: "embedding-iframe-static" });
   }
+
   EMBEDDING_CONFIG.isStaticEmbedding = true;
+}
+
+export function setDataApp(
+  dataAppName: string,
+  { isDev = false }: { isDev?: boolean } = {},
+) {
+  const sdkPackageVersion = getSdkPackageVersion();
+
+  EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+  EMBEDDING_SDK_CONFIG.isDataApp = true;
+  EMBEDDING_SDK_CONFIG.isDataAppDev = isDev;
+  EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
+  EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppName;
+
+  PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+    setRequestClientHeaders({
+      name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      version: sdkPackageVersion,
+      identifier: EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier,
+    });
+
+  PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
+    setEmbedPreviewHeader;
+
+  PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.reactSdkEmbedReferrer =
+    setReactSdkEmbedReferrerHeader;
 }
 
 export function isPublicEmbedding() {
@@ -43,9 +83,9 @@ export function isEmbedding() {
 }
 
 /**
- * Detect if this page is embedded in itself, i.e. it's an embed preview.
- * It will need to do something different if we ever embed Metabase in itself for another reason.
+ * Detect if this page is self embed within Metabase (embed preview).
+ * As data apps are also rendered inside metabase, we check that it's not the data app environment
  */
 export function isEmbedPreview() {
-  return IFRAMED_IN_SELF;
+  return IFRAMED_IN_SELF && !isDataApp();
 }

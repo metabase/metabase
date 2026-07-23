@@ -1,7 +1,7 @@
 .TableContainer {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   overflow: hidden;
 }
 
@@ -12,7 +12,7 @@
 }
 
 .HeaderCell {
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   border-bottom: 1px solid var(--mb-color-border-neutral);
   box-sizing: border-box;
   color: var(--mb-color-text-primary);

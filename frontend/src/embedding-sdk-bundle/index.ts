@@ -1,16 +1,8 @@
 /* eslint-disable import/order */
 
-// Dynamic chunks (e.g. await import("./sandbox")) must load from the Metabase
-// origin, not the host page. This chunk is served at
-// `<metabase>/app/embedding-sdk/chunks/embedding-sdk-chunked.<hash>.js`; its
-// parent directory is the publicPath webpack needs for sibling chunks.
-// eslint-disable-next-line no-var
-declare var __webpack_public_path__: string;
-const currentScriptUrl = (document.currentScript as HTMLScriptElement | null)
-  ?.src;
-if (currentScriptUrl) {
-  __webpack_public_path__ = new URL("../", currentScriptUrl).href;
-}
+// Must run before any dynamic import(): sets webpack's runtime publicPath so
+// on-demand chunks load from the Metabase-hosted SDK asset directory.
+import "./lib/sdk-public-path";
 
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
@@ -29,67 +21,12 @@ initializePlugins();
 // Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
 import "sdk-specific-imports";
 
-import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
+import { sdkBundleExports } from "./sdk-bundle-exports";
 
-import { MetabotSubscriber } from "./components/private/MetabotSubscriber/MetabotSubscriber";
-import { CollectionBrowser } from "./components/public/CollectionBrowser";
-import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
-import { CreateQuestion } from "./components/public/CreateQuestion";
-import { InteractiveQuestion } from "./components/public/InteractiveQuestion";
-import { ComponentProvider } from "./components/public/ComponentProvider";
-import { MetabotQuestion } from "./components/public/MetabotQuestion";
-import { StaticQuestion } from "./components/public/StaticQuestion";
-import {
-  EditableDashboard,
-  InteractiveDashboard,
-  StaticDashboard,
-} from "./components/public/dashboard";
-import { SdkDebugInfo } from "./components/public/SdkDebugInfo";
-import { getApplicationName } from "metabase/selectors/whitelabel";
-import { getSdkStore } from "./store/index";
-import {
-  getAvailableFonts,
-  getLoginStatus,
-} from "embedding-sdk-bundle/store/selectors";
-import { getUser } from "metabase/selectors/user";
-import { useInitData } from "./hooks/private/use-init-data";
-import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
-import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
-import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
-import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
+import { SDK_BUNDLE_LOADED } from "embedding-sdk-shared/constants/event-names";
 
 defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
-
-/**
- * IMPORTANT!
- * Any rename/removal change for object is a breaking change between the SDK Bundle and the SDK NPM package,
- * and should be done via the deprecation of the field first.
- */
-const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
-  CollectionBrowser,
-  CreateDashboardModal,
-  CreateQuestion,
-  EditableDashboard,
-  InteractiveDashboard,
-  InteractiveQuestion,
-  ComponentProvider,
-  MetabotQuestion,
-  SdkDebugInfo,
-  StaticDashboard,
-  StaticQuestion,
-  getSdkStore,
-  createDashboard,
-  getApplicationName,
-  getAvailableFonts,
-  getLoginStatus,
-  getUser,
-  useInitData,
-  useLogVersionInfo,
-  validateFunctionSchema,
-  MetabotSubscriber,
-  executeAction,
-};
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
@@ -97,4 +34,4 @@ window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 // Signal that the bundle is ready. In the bootstrap flow (chunked loading),
 // rspack defers entry execution until all chunks are registered, so this event
 // fires only after everything is ready.
-document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-loaded"));
+document.dispatchEvent(new CustomEvent(SDK_BUNDLE_LOADED));

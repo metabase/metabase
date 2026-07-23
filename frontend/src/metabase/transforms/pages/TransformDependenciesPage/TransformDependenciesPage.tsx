@@ -1,9 +1,8 @@
-import type { ReactNode } from "react";
-
 import { skipToken, useGetTransformQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Outlet } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Card, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -17,12 +16,10 @@ export type TransformDependenciesPageParams = {
 
 type TransformDependenciesPageProps = {
   params?: TransformDependenciesPageParams;
-  children?: ReactNode;
 };
 
 export function TransformDependenciesPage({
   params,
-  children,
 }: TransformDependenciesPageProps) {
   const id = Urls.extractEntityId(params?.transformId);
   const {
@@ -54,7 +51,7 @@ export function TransformDependenciesPage({
         }}
       >
         <Card flex={1} p={0} withBorder>
-          {children}
+          <Outlet />
         </Card>
       </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
     </PageContainer>

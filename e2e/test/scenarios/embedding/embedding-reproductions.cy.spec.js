@@ -326,16 +326,11 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     });
 
     H.modal().within(() => {
-      // select the dropdown next to the Text parameter so that we can set the value to "Locked"
-      cy.findByText("Text")
-        .parent()
-        .within(() => {
-          cy.findByText("Disabled").click();
-        });
+      // open the visibility dropdown for the Text parameter so that we can set the value to "Locked"
+      cy.findByLabelText("Text").click();
     });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Locked").click();
+    H.selectDropdown().findByText("Locked").click();
 
     H.modal().within(() => {
       // set a parameter value
@@ -1408,16 +1403,22 @@ describe("issue 51934 (EMB-189)", () => {
     const QA_DB_NAME = "QA Postgres12";
     const DATA_SOURCE_NAME = "Orders";
 
-    // The data/join pickers re-render while their collection list loads, AND
-    // clicking a menu item itself triggers a re-render (card metadata fetch +
-    // selection state change) that detaches Cypress's actionability retry on
-    // `.click()`. Wait for the list to be stable (loader gone), then click
-    // with `{ force: true }` to skip the post-find actionability re-check —
-    // we already know the item is visible; we don't want to retry-and-detach
-    // when clicking it causes its own re-render.
+    // Before the picker can auto-navigate into the data source's collection it
+    // resolves the target path asynchronously: a card-metadata fetch plus one
+    // `listCollectionItems` request per collection level (root -> Model
+    // Collection). On a throttled CI runner that serial chain routinely outlasts
+    // Cypress's default 4 s command timeout, so the picker is still showing the
+    // parent (root) collections when a default-timeout query gives up — the
+    // dominant "cannot find menuitem '...' (only the root collections are
+    // present)" flake. Wait for the loader to clear, then give the item lookup a
+    // generous timeout so it waits for the path to finish resolving, and assert
+    // it is visible (positive anchor) before clicking.
+    const PICKER_ITEM_TIMEOUT = 15000;
     const clickPickerItem = (name) => {
       cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
-      cy.findByRole("menuitem", { name }).click();
+      cy.findByRole("menuitem", { name }, { timeout: PICKER_ITEM_TIMEOUT })
+        .should("be.visible")
+        .click();
     };
 
     // The data-source picker and the join picker are both rendered by the same

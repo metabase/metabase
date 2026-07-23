@@ -21,7 +21,3 @@ export const trackCustomVizPluginToggled = (
 export const trackCustomVizPluginRefreshed = () => {
   trackSimpleEvent({ event: "custom_viz_plugin_refreshed" });
 };
-
-export const trackCustomVizSelected = () => {
-  trackSimpleEvent({ event: "custom_viz_selected" });
-};

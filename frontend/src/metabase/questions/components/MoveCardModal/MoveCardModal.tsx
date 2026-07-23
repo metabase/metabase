@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -16,9 +15,9 @@ import { DashboardName } from "metabase/common/components/DashboardName";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";
 import { MoveModal } from "metabase/common/components/Pickers";
 import { useDispatch } from "metabase/redux";
-import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/redux/entities/questions-reducer";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
+import { push } from "metabase/router";
 import { Box, Icon, Radio, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
@@ -58,7 +57,8 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   ) => {
     const update =
       destination.model === "dashboard"
-        ? { dashboard_id: destination.id as number }
+        ? // Unjustified type cast. FIXME
+          { dashboard_id: destination.id as number }
         : {
             dashboard_id: null,
             collection_id: canonicalCollectionId(destination.id),
@@ -74,10 +74,6 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         // HACK: entity framework would previously keep the qb in sync
         // with changing where the question lived
         dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
-        dispatch({
-          type: INJECT_RTK_QUERY_QUESTION_VALUE,
-          payload: updatedCard,
-        });
 
         dispatch(
           addUndo({

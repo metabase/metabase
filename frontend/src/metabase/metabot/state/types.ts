@@ -3,12 +3,15 @@ import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
-  MetabotHistory,
+  MetabotStateContext,
   MetabotSuggestedTransform,
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-export type MetabotDataPart = Exclude<KnownDataPart, { type: "state" }>;
+export type MetabotDataPart = Exclude<
+  KnownDataPart,
+  { type: "data-state" } | { type: "data-conversation-title" }
+>;
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
@@ -27,6 +30,7 @@ export type MetabotUserTextChatMessage = {
   role: "user";
   type: "text";
   message: string;
+  externalId?: string;
 };
 
 export type MetabotAgentTextChatMessage = {
@@ -78,12 +82,20 @@ export type MetabotAgentTurnErroredMessage = {
   externalId?: string;
 };
 
+export type MetabotAgentTurnInProgressMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_in_progress";
+  externalId?: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
   | MetabotDebugToolCallMessage
   | MetabotAgentTurnAbortedMessage
-  | MetabotAgentTurnErroredMessage;
+  | MetabotAgentTurnErroredMessage
+  | MetabotAgentTurnInProgressMessage;
 
 export type MetabotUserChatMessage = MetabotUserTextChatMessage;
 
@@ -111,11 +123,13 @@ export type MetabotReactionsState = {
 
 export interface MetabotConverstationState {
   conversationId: string;
+  loadId: string;
+  title: string | undefined;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;
-  history: MetabotHistory;
-  state: any;
+  state: MetabotStateContext;
+  stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;
@@ -133,7 +147,9 @@ export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;
 export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
+  titlePollingConversationIds: string[];
   debugMode: boolean;
+  savedChartCardIds: Record<string, number>;
 }
 
 export interface SlashCommand {

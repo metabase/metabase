@@ -16,7 +16,13 @@ concurrency:
 jobs:
   detect-changed-specs:
     name: Detect changed e2e specs
-    if: contains(github.event.pull_request.labels.*.name, 'flaky-test-fix')
+    # The PR must carry the `flaky-test-fix` label (covers opened/reopened/synchronize), AND
+    # when this is a `labeled` event we only proceed if the label *just added* is
+    # `flaky-test-fix` — otherwise adding any unrelated label to an already-labelled
+    # PR would needlessly re-burn the whole stress matrix.
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'flaky-test-fix') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'flaky-test-fix')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:

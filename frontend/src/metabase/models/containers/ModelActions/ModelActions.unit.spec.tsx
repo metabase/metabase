@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -19,11 +18,12 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route, redirect, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -55,6 +55,8 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import ModelActions from "./ModelActions";
+
+const RoutedModelActions = withRouteProps(ModelActions);
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -222,21 +224,17 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <IndexRedirect to="actions" />
-        <Route path="actions" component={ModelActions}>
-          <ModalRoute
-            path="new"
-            modal={ActionCreator}
-            modalProps={{ transitionProps: { duration: 0 } }}
-          />
-          <ModalRoute
-            path=":actionId"
-            modal={ActionCreator}
-            modalProps={{ transitionProps: { duration: 0 } }}
-          />
+        <Route index element={redirect("actions")} />
+        <Route path="actions" element={<RoutedModelActions />}>
+          {modalRoute("new", ActionCreator, {
+            modalProps: { transitionProps: { duration: 0 } },
+          })}
+          {modalRoute(":actionId", ActionCreator, {
+            modalProps: { transitionProps: { duration: 0 } },
+          })}
         </Route>
       </Route>
-      <Route path="/question/:slug" component={() => null} />
+      <Route path="/question/:slug" element={null} />
     </>,
     { withRouter: true, initialRoute: baseUrl, storeInitialState },
   );
@@ -712,6 +710,7 @@ describe("ModelActions", () => {
       const { model } = await setup({
         model: createStructuredModelCard({ archived: true }),
       });
+      // Unjustified type cast. FIXME
       const modelName = model.displayName() as string;
 
       expect(screen.queryByText(modelName)).not.toBeInTheDocument();

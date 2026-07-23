@@ -1,30 +1,8 @@
-import { t } from "ttag";
-
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
-import {
-  COMBO_CHARTS_SETTINGS_DEFINITIONS,
-  getCartesianChartDefinition,
-} from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type { VisualizationDefinition, VisualizationProps } from "../../types";
+import type { VisualizationProps } from "../../types";
 
-const AreaViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
-  {
-    getUiName: () => t`Area`,
-    identifier: "area",
-    iconName: "area",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`area chart`,
-    minSize: getMinSize("area"),
-    defaultSize: getDefaultSize("area"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    },
-  };
+import { AREA_CHART_DEFINITION } from "./definition";
 
 function AreaChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
@@ -32,5 +10,5 @@ function AreaChartComponent(props: VisualizationProps) {
 
 export const AreaChart = Object.assign(
   AreaChartComponent,
-  getCartesianChartDefinition(AreaViz),
+  AREA_CHART_DEFINITION,
 );

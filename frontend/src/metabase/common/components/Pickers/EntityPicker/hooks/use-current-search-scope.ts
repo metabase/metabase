@@ -19,7 +19,8 @@ export const useGetLastCollection = ():
       (item) => item.model === "collection",
     );
     return lastCollectionIndex !== -1
-      ? (previousPath[lastCollectionIndex] as OmniPickerCollectionItem)
+      ? // Unjustified type cast. FIXME
+        (previousPath[lastCollectionIndex] as OmniPickerCollectionItem)
       : null;
   }, [previousPath]);
 

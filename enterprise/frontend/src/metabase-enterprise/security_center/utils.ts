@@ -1,7 +1,26 @@
-import { compareVersions } from "metabase/utils/version";
-import type { Advisory, AdvisorySeverity } from "metabase-types/api";
+import { compareVersions, getMajorVersion } from "metabase/utils/version";
+import type {
+  Advisory,
+  AdvisoryDownloadJarUrl,
+  AdvisorySeverity,
+} from "metabase-types/api";
 
 import type { AdvisoryFilter } from "./types";
+
+export const getDownloadJarForInstance = (
+  advisory: Advisory,
+  currentVersion: string,
+): AdvisoryDownloadJarUrl | null => {
+  const currentMajor = getMajorVersion(currentVersion);
+  if (currentMajor == null) {
+    return null;
+  }
+  return (
+    advisory.download_jar_urls.find(
+      (jar) => getMajorVersion(jar.version) === currentMajor,
+    ) ?? null
+  );
+};
 
 const SEVERITY_ORDER: Record<AdvisorySeverity, number> = {
   critical: 0,

@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   fireEvent,
   render,
@@ -7,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import type { PaletteActionImpl } from "../types";
 
@@ -14,6 +13,7 @@ import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";
 
 const mockPaletteActionImpl = (opts: Partial<PaletteActionImpl>) =>
+  // Unjustified type cast. FIXME
   ({
     name: "test action",
     id: "action-1",
@@ -48,7 +48,7 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
     <>
       <Route
         path="/"
-        component={() => (
+        element={
           <PaletteResultList
             items={items.map((item) => mockPaletteActionImpl(item))}
             maxHeight={580}
@@ -68,9 +68,9 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
               return <PaletteResultItem item={item} active={active} />;
             }}
           />
-        )}
+        }
       />
-      <Route path="search" component={() => null} />
+      <Route path="search" element={null} />
     </>,
     { withRouter: true, withKBar: true },
   );
@@ -83,10 +83,10 @@ describe("Mouse/keyboard interactions", () => {
     pathname: "/",
   };
 
-  describe("The 'Search documentation for...' command palette item", () => {
+  describe("The 'Search Metabase's docs for...' command palette item", () => {
     const searchDocs: Partial<PaletteActionImpl> = {
       id: "search_docs",
-      name: 'Search documentation for "hedgehogs"',
+      name: 'Search Metabase\'s docs for "hedgehogs"',
       section: "docs",
       keywords: "hedgehogs",
       icon: "document",
@@ -105,7 +105,7 @@ describe("Mouse/keyboard interactions", () => {
 
   describe("The 'View and filter all N results' command palette item", () => {
     const searchLocation = {
-      pathname: "search",
+      pathname: "/search",
       query: {
         q: "hedgehogs",
       },

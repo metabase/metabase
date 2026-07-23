@@ -83,7 +83,7 @@ const EmbeddingThemeActionMenu = ({
         </Menu.Item>
 
         <Menu.Item
-          c="error"
+          c="feedback-negative"
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             onDelete(theme.id);

@@ -1461,7 +1461,7 @@
     [:aggregation-options ag {:name name}]
     (->honeysql driver (h2x/identifier :field-alias name))
 
-    [:aggregation-options ag options]
+    [:aggregation-options ag _]
     (&recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
@@ -2043,7 +2043,6 @@
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [f apply-joins-honey-sql-2]
     (f driver honeysql-form joins)))
 
@@ -2111,7 +2110,9 @@
     {:source-table 0, :breakout 1, ...}"
   (into {} (map-indexed
             #(vector %2 %1)
-            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :page :limit])))
+            ;; `:pivot` runs AFTER `:order-by` so it can prepend its `GROUPING(...) ASC` primary sort to the existing
+            ;; ORDER BY entries.
+            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :pivot :page :limit])))
 
 (defn- query->keys-in-application-order
   "Return the keys present in an MBQL `inner-query` in the order they should be processed."

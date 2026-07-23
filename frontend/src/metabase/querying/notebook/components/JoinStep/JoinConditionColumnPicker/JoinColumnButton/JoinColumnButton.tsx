@@ -5,8 +5,8 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Text } from "metabase/ui";
 import { isTouchDevice } from "metabase/utils/browser";

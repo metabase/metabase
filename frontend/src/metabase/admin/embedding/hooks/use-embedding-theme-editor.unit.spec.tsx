@@ -36,7 +36,8 @@ function setup(themeId: ThemeEditorId = 1, applicationColors?: ColorSettings) {
   }
 
   const storeInitialState = applicationColors
-    ? createMockState({
+    ? // Unjustified type cast. FIXME
+      createMockState({
         settings: { values: { "application-colors": applicationColors } },
       } as Partial<State>)
     : undefined;

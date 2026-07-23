@@ -1,5 +1,5 @@
 .pill {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--border-radius-xl);
   padding: 0.25rem 0.5rem;
@@ -9,7 +9,7 @@
     cursor: pointer;
 
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
   }
 }

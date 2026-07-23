@@ -219,9 +219,10 @@
 ;;; EXIST ANYMORE, BUT MAYBE YOU CAN GO LOOKING FOR IT IF YOU NEED TO?)
 ;;;
 ;;; This is only running against Postgres since we're just testing general behavior for formatting different types
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)"
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-driver :postgres
       (let [query     (mt/dataset attempted-murders
                         (mt/mbql-query attempts
@@ -393,7 +394,7 @@
   [results]
   (if (map? results)
     (throw (ex-info "Error in CSV export" results))
-    (csv/read-csv results)))
+    (csv/read-csv (u/strip-bom results))))
 
 (deftest basic-export-test
   (do-test!

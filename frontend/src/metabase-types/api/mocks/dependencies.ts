@@ -202,6 +202,7 @@ export function createMockSegmentDependencyNode(
 export function createMockDashboardDependencyNodeData(
   opts?: Partial<DashboardDependencyNodeData>,
 ): DashboardDependencyNodeData {
+  // Unjustified type cast. FIXME
   return {
     name: "Dashboard",
     description: null,
@@ -227,6 +228,7 @@ export function createMockDashboardDependencyNode(
 export function createMockDocumentDependencyNodeData(
   opts?: Partial<DocumentDependencyNodeData>,
 ): DocumentDependencyNodeData {
+  // Unjustified type cast. FIXME
   return {
     name: "Document",
     created_at: "2020-01-01T00:00:00Z",

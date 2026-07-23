@@ -76,7 +76,7 @@ export const ButtonBar = ({
         <NewDashboardDialog />
       </Flex>
       {error && (
-        <Text c="error" px="md" lh="1rem">
+        <Text c="feedback-negative" px="md" lh="1rem">
           {error}
         </Text>
       )}

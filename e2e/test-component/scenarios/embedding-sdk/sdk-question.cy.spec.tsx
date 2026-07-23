@@ -750,7 +750,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
 
       cy.log("back to previous result button should not be visible");
-      cy.findByText("No results!").should("be.visible");
+      cy.findByText("No results").should("be.visible");
       cy.findByText("Back to previous results").should("not.exist");
     });
   });

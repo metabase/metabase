@@ -19,6 +19,7 @@ export function GoogleAuthCard() {
 
   const handleDeactivate = () => {
     return updateSettings(
+      // Unjustified type cast. FIXME
       GOOGLE_SCHEMA.getDefault() as Partial<EnterpriseSettings>,
     );
   };

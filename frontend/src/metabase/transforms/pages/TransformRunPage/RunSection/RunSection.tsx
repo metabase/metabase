@@ -1,25 +1,46 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
+import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
+  skipToken,
   useCancelCurrentTransformRunMutation,
+  useListDagRunTransformRunsQuery,
+  useRunTransformDagMutation,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
+import { Link } from "metabase/router";
+import { POLLING_INTERVAL } from "metabase/transforms/constants";
+import { isActiveRunStatus } from "metabase/transforms/utils";
+import {
+  Anchor,
+  Box,
+  Card,
+  Divider,
+  Group,
+  Icon,
+  Menu,
+  Stack,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import type { Transform, TransformTagId } from "metabase-types/api";
+import type {
+  Transform,
+  TransformDagDirection,
+  TransformDagRunId,
+  TransformTagId,
+} from "metabase-types/api";
 
 import {
   trackTransformRunTagsUpdated,
+  trackTransformTriggerDagRun,
   trackTransformTriggerManualRun,
 } from "../../../analytics";
 import { RunButton } from "../../../components/RunButton";
@@ -27,6 +48,7 @@ import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 
 import { LogOutput } from "./LogOutput";
+import { RunDagConfirmModal } from "./RunDagConfirmModal";
 
 type RunSectionProps = {
   transform: Transform;
@@ -34,17 +56,65 @@ type RunSectionProps = {
   noTitle?: boolean;
 };
 
+function useScheduledDagRun(transform: Transform) {
+  const [scheduledDagRunId, setScheduledDagRunId] =
+    useState<TransformDagRunId | null>(null);
+
+  const { data: members, error } = useListDagRunTransformRunsQuery(
+    scheduledDagRunId != null ? { dagRunId: scheduledDagRunId } : skipToken,
+    {
+      pollingInterval: scheduledDagRunId != null ? POLLING_INTERVAL : undefined,
+    },
+  );
+
+  const dagFinished =
+    members != null &&
+    members.length > 0 &&
+    !members.some((run) => isActiveRunStatus(run.status));
+
+  const dagUnavailable = error != null;
+
+  useEffect(() => {
+    if (scheduledDagRunId != null && (dagFinished || dagUnavailable)) {
+      setScheduledDagRunId(null);
+    }
+  }, [scheduledDagRunId, dagFinished, dagUnavailable]);
+
+  const hasRunThisCycle = members?.some(
+    (run) => run.transform_id === transform.id,
+  );
+
+  const schedule = useCallback(
+    (dagRunId: TransformDagRunId) => setScheduledDagRunId(dagRunId),
+    [],
+  );
+
+  return {
+    isScheduled:
+      scheduledDagRunId != null &&
+      !dagFinished &&
+      !dagUnavailable &&
+      !hasRunThisCycle,
+    schedule,
+  };
+}
+
 export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const { isScheduled, schedule } = useScheduledDagRun(transform);
 
   const content = (
     <>
       <Stack>
         <Group p="lg" justify="space-between">
-          <RunStatusSection transform={transform} />
-          <RunButtonSection transform={transform} readOnly={readOnly} />
+          <RunStatusSection transform={transform} isScheduled={isScheduled} />
+          <RunButtonSection
+            transform={transform}
+            readOnly={readOnly}
+            onScheduled={schedule}
+          />
         </Group>
         <RunOutputSection transform={transform} />
       </Stack>
@@ -82,9 +152,10 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
 
 type RunStatusSectionProps = {
   transform: Transform;
+  isScheduled: boolean;
 };
 
-function RunStatusSection({ transform }: RunStatusSectionProps) {
+function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
   const { id, last_run } = transform;
 
   const status = last_run?.status;
@@ -92,10 +163,19 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
-      c="text-tertiary"
+      c="text-disabled"
       ml="lg"
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );
+
+  if (isScheduled) {
+    return (
+      <Group gap="sm" data-testid="run-status">
+        <Icon c="text-secondary" name="clock" />
+        <Box>{t`Scheduled to run as part of a reprocess run.`}</Box>
+      </Group>
+    );
+  }
 
   return (
     <Stack gap={0}>
@@ -107,6 +187,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
             key="link"
             component={Link}
             to={Urls.transformRunList({ transformIds: [id] })}
+            lh="inherit"
           >
             {t`See all runs`}
           </Anchor>
@@ -120,22 +201,55 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 type RunButtonSectionProps = {
   transform: Transform;
   readOnly?: boolean;
+  onScheduled: (dagRunId: TransformDagRunId) => void;
 };
 
-function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
+function RunButtonSection({
+  transform,
+  readOnly,
+  onScheduled,
+}: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
+  const [runTransformDag, { isLoading: isSubmittingDag }] =
+    useRunTransformDagMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [
     isConfirmCancellationModalOpen,
     { close: closeConfirmModal, open: openConfirmModal },
   ] = useDisclosure(false);
+  const [dagDirection, setDagDirection] =
+    useState<TransformDagDirection | null>(null);
 
   const handleRun = async () => {
     trackTransformTriggerManualRun({ transformId: transform.id });
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
+    }
+  };
+
+  const handleRunDag = async () => {
+    const direction = dagDirection;
+    if (direction == null) {
+      return;
+    }
+    trackTransformTriggerDagRun({ transformId: transform.id, direction });
+    const { data, error } = await runTransformDag({
+      id: transform.id,
+      direction,
+    });
+    setDagDirection(null);
+    if (error) {
+      sendErrorToast(t`Failed to run transforms`);
+      return;
+    }
+    if (data?.dag_run_id != null) {
+      onScheduled(data.dag_run_id);
+    } else {
+      sendSuccessToast(
+        t`A reprocess run for this transform is already in progress.`,
+      );
     }
   };
 
@@ -155,16 +269,37 @@ function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
         onRun={handleRun}
         onCancel={openConfirmModal}
         isDisabled={readOnly}
+        menuItems={
+          readOnly ? undefined : (
+            <>
+              <Menu.Item onClick={() => setDagDirection("upstream")}>
+                {t`Run this and all upstream transforms`}
+              </Menu.Item>
+              <Menu.Item onClick={() => setDagDirection("downstream")}>
+                {t`Run this and all downstream transforms`}
+              </Menu.Item>
+            </>
+          )
+        }
+      />
+      <RunDagConfirmModal
+        transformId={transform.id}
+        direction={dagDirection}
+        isConfirming={isSubmittingDag}
+        onClose={() => setDagDirection(null)}
+        onConfirm={handleRunDag}
       />
       <ConfirmModal
         title={t`Cancel this run?`}
+        message={t`This requests the run to stop; it may take a moment to finish canceling.`}
+        confirmButtonText={t`Cancel run`}
+        closeButtonText={t`Keep running`}
         opened={isConfirmCancellationModalOpen}
         onClose={closeConfirmModal}
         onConfirm={() => {
           void handleCancel();
           closeConfirmModal();
         }}
-        closeButtonText={t`No`}
       />
     </>
   );

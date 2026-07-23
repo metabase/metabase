@@ -32,7 +32,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
@@ -41,7 +41,7 @@
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Statement Types)
+   (java.sql Array Connection ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
@@ -60,7 +60,7 @@
 ;; default `LIKE` escape character is already `\`, so an explicit `ESCAPE '\'` clause is
 ;; redundant *and* the literal `'\'` is unparseable by the PG JDBC driver when the server has
 ;; `standard_conforming_strings = off` (#73721).
-(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
+(driver/register! :postgres, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -81,7 +81,10 @@
                               :expressions/integer            true
                               :expressions/text               true
                               :identifiers-with-spaces        true
+                              :index/fetch                    true
+                              :index/standalone-create        true
                               :metadata/table-existence-check true
+                              :native-pivot-tables            true
                               :now                            true
                               :persist-models                 true
                               :rename                         true
@@ -316,9 +319,7 @@
 
 (defmethod driver/describe-database* :postgres
   [_driver database]
-  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
-  ;; memory in a set like this
-  {:tables (into #{} (describe-syncable-tables database))})
+  {:tables (describe-syncable-tables database)})
 
 (defn- nullable-in
   "Build a HoneySQL clause that handles nil values in `xs` correctly.
@@ -1336,6 +1337,114 @@
     (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (quote-schema schema))]]]
       (driver/execute-raw-queries! driver conn-spec sql))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :postgres
+  [_driver _database]
+  ;; btree is the only method that supports UNIQUE; gin/gist/brin are containment/range methods. The niche methods
+  ;; (hash, spgist) and partial/expression indexes are intentionally left out.
+  (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
+    ;; btree is the only method where column order direction matters, so it opts into the asc/desc picker.
+    {:btree {:lifecycle    :standalone
+             :display-name (deferred-tru "B-Tree")
+             :description  (deferred-tru "Default. Best for equality and range queries on sortable data; use it for most columns you filter, sort, or join by.")
+             :fields       [driver.common/index-name-field
+                            driver.common/index-unique-field
+                            (assoc driver.common/index-columns-field :directions true)]}
+     :gin   {:lifecycle    :standalone
+             :display-name (deferred-tru "GIN")
+             :description  (deferred-tru "For values with multiple components. Best for full-text search, JSONB, and arrays—when you''re searching inside a value.")
+             :fields       name+cols}
+     :gist  {:lifecycle    :standalone
+             :display-name (deferred-tru "GiST")
+             :description  (deferred-tru "For geometric, spatial, and range data. Best for \"nearest neighbor\" and overlap queries, like geographic data (PostGIS) or range types.")
+             :fields       name+cols}
+     :brin  {:lifecycle    :standalone
+             :display-name (deferred-tru "BRIN")
+             :description  (deferred-tru "Tiny and low-overhead. Best for large tables where values correlate with physical row order, like timestamps in an append-only log.")
+             :fields       name+cols}}))
+
+(defn- pg-index-column-sql
+  "Quote one indexed column; append its `ASC`/`DESC` direction only for btree, the one method where ordering matters."
+  [driver btree? {col-name :name :keys [direction]}]
+  (cond-> (sql.u/quote-name driver :field col-name)
+    (and btree? direction) (str " " (u/upper-case-en (name direction)))))
+
+(defmethod driver/compile-create-index :postgres
+  [driver schema table {index-name :name, :keys [kind columns unique if-not-exists]}]
+  (let [btree? (= kind :btree)
+        target (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))
+        cols   (str/join ", " (map #(pg-index-column-sql driver btree? %) columns))]
+    ;; btree is the default access method, so we omit `USING btree` and emit `USING <method>` only for the others.
+    ;; UNIQUE is btree-only.
+    [[(format "CREATE %sINDEX %s%s ON %s %s(%s)"
+              (if (and btree? unique) "UNIQUE " "")
+              (if if-not-exists "IF NOT EXISTS " "")
+              (sql.u/quote-name driver :field index-name)
+              target
+              (if btree? "" (format "USING %s " (name kind)))
+              cols)]]))
+
+(defmethod driver/refresh-table-stats! :postgres
+  [driver database schema table _transform-type]
+  (let [qtable (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))]
+    (driver/execute-raw-queries! driver
+                                 (driver/connection-spec driver database)
+                                 [[(format "ANALYZE %s" qtable)]])))
+
+(defn- index-array->vec
+  [^Array a]
+  (when a (vec (.getArray a))))
+
+(defn- pg-index-row->index
+  [{:keys [index_name access_method is_unique is_primary is_valid
+           key_columns include_columns partial_predicate definition]}]
+  {:name              index_name
+   ;; On Postgres the access method is the kind: a btree index is kind :btree.
+   :kind              (keyword access_method)
+   :access-method     access_method
+   :is-unique         is_unique
+   :is-primary        is_primary
+   :is-valid          is_valid
+   :key-columns       (index-array->vec key_columns)
+   :include-columns   (index-array->vec include_columns)
+   :partial-predicate partial_predicate
+   :definition        definition})
+
+;; `indkey` is a 0-based `int2vector`; `indnkeyatts` (PG 11+) splits the key columns from the trailing INCLUDE
+;; columns. A blank schema falls back to the connection's `current_schema()`. The arrays are read into Clojure vectors
+;; via `:row-fn` while the result set is still open, so we never touch a `PgArray` after the connection closes.
+(defmethod driver/fetch-table-indexes :postgres
+  [_driver database schema table]
+  (jdbc/query
+   (sql-jdbc.conn/db->pooled-connection-spec database)
+   ["SELECT i.relname                              AS index_name,
+                 am.amname                              AS access_method,
+                 ix.indisunique                         AS is_unique,
+                 ix.indisprimary                        AS is_primary,
+                 ix.indisvalid                          AS is_valid,
+                 pg_get_expr(ix.indpred, ix.indrelid)   AS partial_predicate,
+                 pg_get_indexdef(ix.indexrelid)         AS definition,
+                 ARRAY(SELECT COALESCE(a.attname, pg_get_indexdef(ix.indexrelid, k.ord::int, true))
+                       FROM unnest(ix.indkey[0:ix.indnkeyatts - 1]) WITH ORDINALITY AS k(attnum, ord)
+                       LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
+                       ORDER BY k.ord)                  AS key_columns,
+                 ARRAY(SELECT a.attname
+                       FROM unnest(ix.indkey[ix.indnkeyatts : ix.indnatts - 1]) WITH ORDINALITY AS k(attnum, ord)
+                       LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
+                       ORDER BY k.ord)                  AS include_columns
+          FROM pg_index ix
+          JOIN pg_class     c  ON c.oid  = ix.indrelid
+          JOIN pg_class     i  ON i.oid  = ix.indexrelid
+          JOIN pg_namespace n  ON n.oid  = c.relnamespace
+          JOIN pg_am        am ON am.oid = i.relam
+          WHERE n.nspname = COALESCE(?, current_schema()) AND c.relname = ?
+          ORDER BY i.relname"
+    (not-empty schema) table]
+   {:row-fn pg-index-row->index}))
+
 (defmethod driver/extra-info :postgres
   [_driver]
   {:providers [{:name "Aiven" :pattern "\\.aivencloud\\.com$"}
@@ -1559,36 +1668,34 @@
 
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
-  (let [schema-name   (driver.u/workspace-isolation-namespace-name workspace)
-        read-user     {:user     (driver.u/workspace-isolation-user-name workspace)
-                       :password (driver.u/random-workspace-password)}
-        quoted-schema (quote-schema schema-name)
-        quoted-user   (quote-field (:user read-user))]
+  (let [schema-name      (:schema workspace)
+        read-user        (:database_details workspace)
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)
+        quoted-schema    (quote-schema schema-name)
+        quoted-user      (quote-field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       ;; Create user if not exists, otherwise update password
       ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
       (let [user-sql (if (user-exists? t-conn (:user read-user))
-                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user (:password read-user))
-                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user (:password read-user)))]
+                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user escaped-password)
+                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
                        (format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
                        user-sql
-                       ;; grant schema access (CREATE to create tables, USAGE to access them)
-                       ;; GRANT is idempotent in PostgreSQL
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" quoted-schema quoted-user)
-                       ;; grant all privileges on future tables created in this schema (by admin)
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s"
-                               quoted-schema quoted-user)
-                       ;; grant role membership to admin so DROP OWNED BY works during cleanup
+                       ;; Schema-level grant only (Postgres' two schema privileges):
+                       ;;   USAGE  - access the schema
+                       ;;   CREATE - create tables in it
+                       ;; Table DML comes from ownership (the user owns the tables it creates).
+                       (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)
+                       ;; role membership to admin so DROP OWNED BY works during cleanup
                        (format "GRANT %s TO CURRENT_USER" quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try
             (.executeBatch ^Statement stmt)
             (catch Throwable t
-              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
-    {:schema           schema-name
-     :database_details read-user}))
+              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database workspace]
@@ -1603,7 +1710,10 @@
                       (into [(format "DROP OWNED BY %s" quoted-user)
                              (format "DROP USER IF EXISTS %s" quoted-user)]))]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/batch-exception t))))))))
 
 (defn- grant-workspace-read-access-sqls
   "Build the sequence of SQL statements that grant `username` read access to every
@@ -1623,7 +1733,7 @@
             source-schemas)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         source-schemas (set schemas)
         ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
@@ -1631,18 +1741,25 @@
         ;; isolation hole this catches. We probe per-schema so only the schemas
         ;; actually used as inputs need to be locked down — schemas the workspace
         ;; never touches can keep their default ACLs.
-        _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-                         (doseq [s source-schemas]
-                           (assert-no-public-create-grant!       check-conn s)
-                           (assert-has-usage-grant-option!       check-conn s)
-                           (assert-has-grant-option!             check-conn s)
-                           (assert-can-alter-default-privileges! check-conn s)))
+        ;; read-only probes — one connection, no transaction needed
+        _              (sql-jdbc.execute/do-with-connection-with-options
+                        driver database nil
+                        (fn [^Connection conn]
+                          (let [check-conn {:connection conn}]
+                            (doseq [s source-schemas]
+                              (assert-no-public-create-grant!       check-conn s)
+                              (assert-has-usage-grant-option!       check-conn s)
+                              (assert-has-grant-option!             check-conn s)
+                              (assert-can-alter-default-privileges! check-conn s)))))
         sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/batch-exception t))))))))
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")

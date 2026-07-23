@@ -141,7 +141,7 @@ const AddFilterButton = forwardRef(function AddFilterButton(
   return (
     <Button
       ref={ref}
-      c="text-tertiary"
+      c="text-disabled"
       p={compact ? undefined : 0}
       variant={compact ? "default" : "subtle"}
       size={compact ? "compact-md" : "md"}

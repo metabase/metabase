@@ -9,6 +9,7 @@ import {
 } from "./embed";
 
 const defineMetabaseConfig = (config: unknown) => {
+  // Unjustified type cast. FIXME
   (window as any).metabaseConfig = config;
 };
 
@@ -124,6 +125,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   it.each(authErrorTestCases)(
     "reports an error when auth methods are not mutually exclusive for %p",
     (settings) => {
+      // Unjustified type cast. FIXME
       const { questionId, dashboardId, ...config } = settings as Partial<
         typeof settings
       > & {
@@ -166,6 +168,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   it.each(singleAuthTestCases)(
     "does not report an error when only one auth method is provided for %p",
     (settings) => {
+      // Unjustified type cast. FIXME
       const { questionId, dashboardId, ...config } = settings as Partial<
         typeof settings
       > & {
@@ -195,7 +198,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       defineMetabaseConfig({
         invalidKey1: "value1",
         invalidKey2: "value2",
-      } as any);
+      });
     }).toThrow("invalidKey1 is not a valid configuration name");
   });
 
@@ -247,6 +250,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       }
       document.body.appendChild(embed);
 
+      // Unjustified type cast. FIXME
       const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
@@ -516,12 +520,14 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     const setupDashboard = () => {
       defineMetabaseConfig({ instanceUrl: "http://localhost:3000" });
 
+      // Unjustified type cast. FIXME
       const embed = document.createElement(
         "metabase-dashboard",
       ) as MetabaseDashboardElement;
       embed.setAttribute("dashboard-id", "1");
       document.body.appendChild(embed);
 
+      // Unjustified type cast. FIXME
       const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
@@ -658,6 +664,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       iframePostMessageSpy.mockClear();
 
       expect(() => {
+        // Unjustified type cast. FIXME
         (embed as unknown as { parameters: unknown }).parameters = null;
       }).not.toThrow();
 
@@ -688,6 +695,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
+      // Unjustified type cast. FIXME
       const event = handler.mock.calls[0][0] as CustomEvent;
       expect(event.detail).toEqual(payload);
     });
@@ -697,12 +705,14 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     const setupQuestion = () => {
       defineMetabaseConfig({ instanceUrl: "http://localhost:3000" });
 
+      // Unjustified type cast. FIXME
       const embed = document.createElement(
         "metabase-question",
       ) as MetabaseQuestionElement;
       embed.setAttribute("question-id", "1");
       document.body.appendChild(embed);
 
+      // Unjustified type cast. FIXME
       const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
@@ -774,6 +784,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
+      // Unjustified type cast. FIXME
       const event = handler.mock.calls[0][0] as CustomEvent;
       expect(event.detail).toEqual(payload);
     });

@@ -1,10 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
-import { Link as RouterLink } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { RouterLink } from "metabase/router";
 import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -136,7 +136,7 @@ function ModelActionListItem({
               <Tooltip label={t`Run`}>
                 <ActionIcon
                   variant="subtle"
-                  bg="background-primary"
+                  bg="background_page-primary"
                   c="text-primary"
                   aria-label={t`Run`}
                   onClick={openExecuteModal}

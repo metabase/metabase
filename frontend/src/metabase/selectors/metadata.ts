@@ -237,12 +237,7 @@ function createTable(table: NormalizedTable, metadata: Metadata): Table {
 }
 
 function createField(field: NormalizedField, metadata: Metadata): Field {
-  // We need a way to distinguish field objects that come from the server
-  // vs. those that are created client-side to handle lossy transformations between
-  // Field instances and FieldDimension instances.
-  // There are scenarios where we are failing to convert FieldDimensions back into Fields,
-  // and as a safeguard we instantiate a new Field that is missing most of its properties.
-  const instance = new Field({ ...field, _comesFromEndpoint: true });
+  const instance = new Field(field);
   instance.metadata = metadata;
   return instance;
 }

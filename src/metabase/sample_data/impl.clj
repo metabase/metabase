@@ -3,9 +3,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.config.core :as config]
+   [metabase.driver.util :as driver.u]
    [metabase.plugins.core :as plugins]
-   [metabase.sample-data.example-content :as example-content]
    [metabase.sync.core :as sync]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
@@ -111,71 +110,63 @@
     (catch Throwable e
       (log/error e "Failed to load sample database"))))
 
-(defn- sample-database-dashboard-ids
-  "IDs of Dashboards holding at least one card backed by `database-id`. Captured before the sample
-  database is deleted so the dashboards it empties out can be pruned afterward."
-  [database-id]
-  (t2/select-fn-set :dashboard_id :model/DashboardCard
-                    :card_id [:in {:select [:id]
-                                   :from   [(t2/table-name :model/Card)]
-                                   :where  [:= :database_id database-id]}]))
+(defn- table-schema-for-engine
+  "The schema value the sync process assigns to the sample database's tables for a given engine: H2 puts
+  everything in the PUBLIC schema, SQLite reports no schema."
+  [engine]
+  (case engine
+    :h2     "PUBLIC"
+    :sqlite nil))
 
-(defn- delete-emptied-dashboards!
-  "Delete whichever of `dashboard-ids` no longer have any dashcards. A sample dashboard whose cards
-  were all removed with the sample database is deleted; a dashboard that still has cards (e.g. mixes
-  in cards from another database) is left alone."
-  [dashboard-ids]
-  (when (seq dashboard-ids)
-    (let [non-empty (t2/select-fn-set :dashboard_id :model/DashboardCard :dashboard_id [:in dashboard-ids])
-          empty-ids (remove (or non-empty #{}) dashboard-ids)]
-      (when (seq empty-ids)
-        (t2/delete! :model/Dashboard :id [:in empty-ids])))))
+(defn- settings-sans-unsupported-features
+  "The database's settings with feature-gated toggles the new `engine` can't support turned off, or nil when
+  nothing needs to change. Leaving one enabled would make the Database model's before-update reject the
+  engine change (e.g. `:database-enable-actions` when migrating to SQLite, which doesn't support actions)."
+  [engine database]
+  (let [disabled (into {}
+                       (keep (fn [[setting feature]]
+                               (when (and (get-in database [:settings setting])
+                                          (not (driver.u/supports? engine feature database)))
+                                 [setting false])))
+                       {:database-enable-actions       :actions
+                        :database-enable-table-editing :actions/data-editing})]
+    (when (seq disabled)
+      (log/warnf "Disabling %s on the sample database: not supported by engine %s"
+                 (str/join ", " (map name (keys disabled))) engine)
+      (merge (:settings database) disabled))))
 
-(defn- replace-sample-database!
-  "The bundled sample database's engine changed (e.g. H2 -> SQLite on upgrade). The old sample
-  Database's tables, fields, and connection details are incompatible with the new engine, so rather
-  than remapping content we drop the old sample Database wholesale and extract + sync the new one.
-  Deleting the Database cascades to its Cards and those cards' dashcards; Dashboards left empty as a
-  result are deleted too.
-
-  The cleanup runs unconditionally (an incompatible sample database should never linger), but the new
-  Sample Database and its Example collection are only recreated when sample content is enabled - and
-  the Example collection is skipped under test endpoints, matching fresh-install seeding.
-
-  The Example collection itself is left in place: [[example-content/recreate-example-content!]] reuses it
-  (matching by entity id) and replaces only the bundled cards/dashboards, so any content a user filed into
-  the Example collection survives the engine swap."
+(defn- migrate-sample-database-engine-in-place!
+  "The only app-db differences between the H2 and
+  SQLite sample databases are the Database record's engine/details and the tables' schema (H2 = \"PUBLIC\",
+  SQLite = nil). So instead of deleting and rebuilding the database, edit those two things in place and
+  re-sync to reconcile the remaining sync-derived field metadata. Every Database/Table/Field id is kept,
+  so sample content, user-created content, permissions, and the Example collection all survive with no
+  remapping, deletion, or re-seeding."
   [engine old-sample-db]
-  (log/infof "Bundled sample database engine changed from %s to %s; replacing the sample database"
-             (:engine old-sample-db) engine)
-  ;; Extract the bundled DB file (a multi-MB copy out of the JAR) before opening the transaction, so the file IO
-  ;; doesn't hold the app-DB transaction open.
-  (let [new-db-details (when (config/load-sample-content?)
-                         (try-to-extract-sample-database! engine))
-        new-db (t2/with-transaction [_conn]
-                 (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
-                   (t2/delete! :model/Database (:id old-sample-db))
-                   (delete-emptied-dashboards! dashboard-ids))
-                 (when new-db-details
-                   (first (t2/insert-returning-instances! :model/Database
-                                                          :name sample-database-name
-                                                          :details new-db-details
-                                                          :engine engine
-                                                          :is_sample true))))]
-    (when new-db
-      (when (and (try
-                   (sync/sync-database! new-db)
-                   true
-                   (catch Throwable e
-                     (log/error e "Failed to sync the replacement sample database")
-                     false))
-                 (not (config/config-bool :mb-enable-test-endpoints)))
-        (example-content/recreate-example-content! (:id new-db))))))
+  (log/infof "Migrating sample database engine from %s to %s in place" (:engine old-sample-db) engine)
+  (let [details  (try-to-extract-sample-database! engine)
+        settings (settings-sans-unsupported-features engine old-sample-db)]
+    (t2/with-transaction [_conn]
+      (t2/update! :model/Database (:id old-sample-db)
+                  (cond-> {:engine engine, :details details}
+                    settings (assoc :settings settings)))
+      (t2/update! :model/Table :db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)})
+      ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
+      ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Raw table update:
+      ;; the model's before-update rejects all updates, and delete+reinsert would churn ids for a rename that
+      ;; doesn't change any permission value.
+      (t2/query {:update (t2/table-name :model/DataPermissions)
+                 :set    {:schema_name (table-schema-for-engine engine)}
+                 :where  [:and
+                          [:= :db_id (:id old-sample-db)]
+                          [:not= :table_id nil]]}))
+    (sync/sync-database! (t2/select-one :model/Database :id (:id old-sample-db)))))
 
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed
-  (H2 <-> SQLite) the old sample database is replaced (see [[replace-sample-database!]]); otherwise
-  we just refresh its connection details in case the JAR has moved."
+  (H2 <-> SQLite) the existing sample database is migrated in place to the new engine (see
+  [[migrate-sample-database-engine-in-place!]]); otherwise we just refresh its connection details in case
+  the JAR has moved."
   ([]
    (update-sample-database-if-needed! (t2/select-one :model/Database :is_sample true)))
 
@@ -183,7 +174,7 @@
    (when sample-db
      (let [engine (sample-database-engine)]
        (if (not= (:engine sample-db) engine)
-         (replace-sample-database! engine sample-db)
+         (migrate-sample-database-engine-in-place! engine sample-db)
          (let [intended (try-to-extract-sample-database! engine)]
            (when (not= (:details sample-db) intended)
              (t2/update! :model/Database (:id sample-db) {:details intended}))))))))

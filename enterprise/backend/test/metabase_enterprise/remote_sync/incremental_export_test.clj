@@ -203,6 +203,9 @@
 (deftest delete-without-stored-path-falls-back-test
   (with-exported-collection!
     (fn [{:keys [mock card-b]}]
+      ;; A real delete (archive) with no stored file_path can't resolve its path incrementally, so it
+      ;; falls back to full — which drops the archived entity's file, producing a real commit.
+      (t2/update! :model/Card card-b {:archived true})
       (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id card-b {:file_path nil})
       (set-status! "Card" card-b "delete")
       (let [task   (new-task!)
@@ -320,12 +323,52 @@
       ;; fresh "create" whose target path already holds THIS same entity is a safe overwrite, so it must
       ;; stay incremental rather than fall back (the path is occupied, but by us).
       (let [a-eid (t2/select-one-fn :entity_id :model/Card :id card-a)]
+        ;; A real content change keeps the staged commit non-empty, isolating the path-selection behavior
+        ;; under test from the empty-commit skip.
+        (t2/update! :model/Card card-a {:description "re-created A"})
         (set-status! "Card" card-a "create")
         (let [task (new-task!)]
           (impl/export! (source.p/snapshot mock) task "re-create A")
           (is (= "apply-changes-version" (written-version task))
               "a create whose path already holds the same entity stays incremental")
           (is (entity-exported? mock a-eid) "card A is still exported"))))))
+
+;;; ----------------------------------- Empty-commit suppression (GHY-3934) -----------------------------------
+;;; A dirty row whose serialized content already matches the repo stages no net tree change. The export must
+;;; succeed without pushing an empty commit, and still clear the stale dirty flag.
+
+(deftest incremental-no-op-skips-empty-commit-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-a]}]
+      ;; Re-"create" an already-exported card without touching its content: the staged upsert is identical
+      ;; to the repo, so the incremental commit would be empty.
+      (let [files-before (files mock)]
+        (set-status! "Card" card-a "create")
+        (let [task   (new-task!)
+              result (impl/export! (source.p/snapshot mock) task "re-create A unchanged")]
+          (is (= :success (:status result)))
+          (is (= {:kind "push-skipped"} (:outcome result)) "no empty commit is pushed")
+          (is (nil? (written-version task)) "the task version is not advanced")
+          (is (= files-before (files mock)) "the repo is left untouched")
+          (is (not (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
+              "the false-dirty flag is cleared"))))))
+
+(deftest full-export-no-op-skips-empty-commit-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-b]}]
+      ;; A delete with no stored file_path forces a full export, but the entity still exists and
+      ;; re-serializes identically — the full re-export matches the repo, so the empty commit is skipped.
+      (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id card-b {:file_path nil})
+      (set-status! "Card" card-b "delete")
+      (let [files-before (files mock)
+            task         (new-task!)
+            result       (impl/export! (source.p/snapshot mock) task "no-op full")]
+        (is (= :success (:status result)))
+        (is (= {:kind "push-skipped"} (:outcome result)) "no empty commit is pushed")
+        (is (nil? (written-version task)) "the task version is not advanced")
+        (is (= files-before (files mock)) "the repo is left untouched")
+        (is (not (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
+            "the false-dirty flag is cleared")))))
 
 ;;; ------------------------------------ Disabled content cleanup (GHY-3725) ------------------------------------
 ;;; When a content type is disabled (transforms is off in `with-exported-collection!`), stale files left

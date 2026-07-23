@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { Fragment } from "react";
-import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
+import { Link } from "metabase/router";
 import { Box, Group, type GroupProps } from "metabase/ui";
 
 import type { NodeLink } from "../../../types";

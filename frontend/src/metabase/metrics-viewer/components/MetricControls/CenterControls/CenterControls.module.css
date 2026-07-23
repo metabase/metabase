@@ -14,7 +14,7 @@
 }
 
 .centerControls {
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   border-radius: 0.75rem;
   border: 1px solid var(--mb-color-border-neutral);
   box-sizing: border-box;
@@ -39,7 +39,7 @@
 
   &.controlButton:hover {
     color: var(--mb-color-text-primary);
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -52,7 +52,7 @@
 }
 
 .xAxisButton {
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   border-radius: 0.75rem;
   border: 1px solid var(--mb-color-border-neutral);
   color: var(--mb-color-text-primary);
@@ -61,7 +61,7 @@
   width: 100%;
 
   &.xAxisButton:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 

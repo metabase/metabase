@@ -18,11 +18,11 @@ const _AddBadgeListItem = (
     classNames={{
       label: CS.cursorPointer,
     }}
-    bg="background-secondary"
+    bg="background_page-secondary"
     tt="capitalize"
-    size="lg"
+    size="sm"
     variant="transparent"
-    c="text-brand"
+    color="brand"
     pr="sm"
     pl="xs"
     leftSection={

@@ -53,7 +53,7 @@ describe("RevisionHistoryTimeline", () => {
       expect(store.getState().undo).toHaveLength(1);
     });
     expect(store.getState().undo[0]).toMatchObject({
-      toastColor: "error",
+      toastColor: "feedback-negative",
       icon: "warning",
       message: "Cannot revert: missing card",
     });
@@ -72,7 +72,7 @@ describe("RevisionHistoryTimeline", () => {
       expect(store.getState().undo).toHaveLength(1);
     });
     expect(store.getState().undo[0]).toMatchObject({
-      toastColor: "error",
+      toastColor: "feedback-negative",
       icon: "warning",
       message: "Failed to revert to previous version.",
     });

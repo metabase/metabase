@@ -19,9 +19,9 @@ export const AlertSubRow = ({ alerts, severity }: AlertSubRowProps) => {
         p="sm"
         bdrs="sm"
         bg={match(severity)
-          .with("error", () => "background-error" as const)
-          .with("warning", () => "background-warning" as const)
-          .with("info", () => "background-secondary" as const)
+          .with("error", () => "background_surface-error" as const)
+          .with("warning", () => "background_surface-warning" as const)
+          .with("info", () => "background_page-secondary" as const)
           .exhaustive()}
       >
         <List>

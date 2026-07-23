@@ -5,14 +5,12 @@ import {
   getCustomPluginIdentifier,
   loadCustomVizPlugin,
 } from "metabase-enterprise/custom_viz/custom-viz-plugins";
-import type { RowValues, VisualizationDisplay } from "metabase-types/api";
+import type { RowValues } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 export const PLUGIN_BASE_URL = "/custom-viz-fixtures/calendar-heatmap";
 export const PLUGIN_IDENTIFIER = "calendar-heatmap";
-export const HEATMAP_DISPLAY = getCustomPluginIdentifier(
-  PLUGIN_IDENTIFIER,
-) as VisualizationDisplay;
+export const HEATMAP_DISPLAY = getCustomPluginIdentifier(PLUGIN_IDENTIFIER);
 
 export const HEATMAP_COLS = [
   createMockColumn(DateTimeColumn({ name: "date", display_name: "Date" })),

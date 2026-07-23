@@ -1,5 +1,5 @@
 .info {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-radius: var(--default-border-radius);
 }
 
@@ -44,7 +44,7 @@
 .ModalErrorMessage {
   color: var(--mb-color-text-secondary);
   padding: 1rem;
-  border: 1px solid var(--mb-color-error);
+  border: 1px solid var(--mb-color-feedback-negative);
   border-radius: 0.5rem;
 }
 
@@ -56,7 +56,7 @@
   padding: 2rem;
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   color: var(--mb-color-text-secondary);
   font-weight: bold;
   line-height: 1.5rem;

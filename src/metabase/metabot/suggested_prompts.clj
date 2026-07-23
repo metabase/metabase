@@ -54,8 +54,14 @@
      {:status :ai-produced-no-prompts}           ; LLM returned 0 questions for the inputs
 
    Throws a 402 via [[metabot.usage/check-metabase-managed-free-limit!]] when the managed AI cap is hit.
-   Best-effort callers (e.g. PUT /:id) pre-guard with [[metabot.usage/managed-free-limit-reached?]]
-   and catch the 402 to handle the rare TOCTOU race where the limit flips between the two checks."
+   Best-effort callers (e.g. the suggested-prompts-refresh job) pre-guard with
+   [[metabot.usage/managed-free-limit-reached?]] and catch the 402 to handle the rare TOCTOU race where
+   the limit flips between the two checks."
+  ;; TODO (Chris 2026-06-09) -- include warehouse tables (esp. library/published) in prompt inputs, not
+  ;; just metric/model cards. Needs a `table_id` column on metabot_prompt (+ serdes + API + FE rendering
+  ;; of table-backed prompts), then fetch curated tables in scope and feed them to the table generator.
+  ;; TODO (Chris 2026-06-09) -- @mentioned entities should seed prompts and bypass the curated filter
+  ;; (the user picked them deliberately); wire once the agent's @mention context assembly is settled.
   [metabot-id & {:as opts}]
   (metabot.usage/check-metabase-managed-free-limit!)
   (let [opts (merge default-opts opts)]
