@@ -9,12 +9,12 @@ import {
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
-import { Button } from "metabase/ui";
+import { Box, Button } from "metabase/ui";
 import { parseNumberParam } from "metabase/urls";
 
-import { ErrorBox } from "./ModelCacheRefreshJobs.styled";
+import S from "./ModelCacheRefreshJobs.module.css";
 
 export function ModelCacheRefreshJobModal({
   params,
@@ -61,7 +61,9 @@ export function ModelCacheRefreshJobModal({
 
   return (
     <ModalContent title={t`Oh oh…`} onClose={onClose} footer={footer}>
-      {persistedModel?.error && <ErrorBox>{persistedModel.error}</ErrorBox>}
+      {persistedModel?.error && (
+        <Box className={S.errorBox}>{persistedModel.error}</Box>
+      )}
     </ModalContent>
   );
 }

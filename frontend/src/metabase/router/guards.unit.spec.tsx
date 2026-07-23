@@ -1,19 +1,22 @@
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { setBasename } from "metabase/utils/basename";
 import { replaceLocation } from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {
+  CanAccessAlertsManagement,
+  CanAccessMonitor,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
   isBackendOnlyPath,
 } from "./guards";
-import { Route } from "./react-router";
+import { Route } from "./route";
 
 jest.mock("metabase/utils/dom", () => ({
   ...jest.requireActual("metabase/utils/dom"),
@@ -37,11 +40,11 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsAuthenticated}>
-            <Route path="/dashboard/:slug" component={Dashboard} />
+          <Route element={<IsAuthenticated />}>
+            <Route path="/dashboard/:slug" element={<Dashboard />} />
           </Route>
-          <Route component={IsNotAuthenticated}>
-            <Route path="/auth/login" component={LoginPage} />
+          <Route element={<IsNotAuthenticated />}>
+            <Route path="/auth/login" element={<LoginPage />} />
           </Route>
         </>,
         {
@@ -72,10 +75,10 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsAdmin}>
-            <Route path="/admin/settings" component={Protected} />
+          <Route element={<IsAdmin />}>
+            <Route path="/admin/settings" element={<Protected />} />
           </Route>
-          <Route path="/unauthorized" component={Unauthorized} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
         </>,
         {
           storeInitialState: state,
@@ -100,10 +103,10 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsNotAuthenticated}>
-            <Route path="/auth/login" component={LoginPage} />
+          <Route element={<IsNotAuthenticated />}>
+            <Route path="/auth/login" element={<LoginPage />} />
           </Route>
-          <Route path="/" component={Home} />
+          <Route path="/" element={<Home />} />
         </>,
         {
           storeInitialState: state,
@@ -136,8 +139,8 @@ describe("route-guards", () => {
       });
 
       const { history } = renderWithProviders(
-        <Route component={IsNotAuthenticated}>
-          <Route path="/auth/login" component={LoginPage} />
+        <Route element={<IsNotAuthenticated />}>
+          <Route path="/auth/login" element={<LoginPage />} />
         </Route>,
         {
           storeInitialState: state,
@@ -154,6 +157,7 @@ describe("route-guards", () => {
       window.history.replaceState({}, "", "/");
       // reset the global MetabaseSettings singleton mutated by mockSettings
       mockSettings();
+      setBasename("");
     });
 
     it("does a full-page redirect for a relative backend-only path", async () => {
@@ -210,6 +214,197 @@ describe("route-guards", () => {
         );
       });
       expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+    });
+
+    describe("when Metabase is hosted under a subpath (GIT-10551)", () => {
+      beforeEach(() => {
+        setBasename("/metabase");
+      });
+
+      it("prefixes the subpath on a full-page redirect to a backend-only path", async () => {
+        const { history } = setup("/oauth/authorize?client_id=abc");
+
+        await waitFor(() => {
+          expect(replaceLocationMock).toHaveBeenCalledWith(
+            `${ORIGIN}/metabase/oauth/authorize?client_id=abc`,
+          );
+        });
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      it("does not double the subpath when navigating in-app", async () => {
+        const { history } = setup("/dashboard/1");
+
+        await waitFor(() => {
+          expect(history?.getCurrentLocation().pathname).toBe("/dashboard/1");
+        });
+        expect(replaceLocationMock).not.toHaveBeenCalled();
+      });
+
+      it("recognizes a backend-only path behind the subpath in an absolute URL", async () => {
+        const { history } = setup(`${ORIGIN}/metabase/oauth/authorize`);
+
+        await waitFor(() => {
+          expect(replaceLocationMock).toHaveBeenCalledWith(
+            `${ORIGIN}/metabase/oauth/authorize`,
+          );
+        });
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      it("does not strip a lookalike path prefix that is not the basename", async () => {
+        const { history } = setup(`${ORIGIN}/metabase-docs/foo`);
+
+        await waitFor(() => {
+          expect(history?.getCurrentLocation().pathname).toBe(
+            "/metabase-docs/foo",
+          );
+        });
+        expect(replaceLocationMock).not.toHaveBeenCalled();
+      });
+
+      it("handles a nested subpath basename", async () => {
+        setBasename("/bi/metabase");
+        const { history } = setup("/oauth/authorize?client_id=abc");
+
+        await waitFor(() => {
+          expect(replaceLocationMock).toHaveBeenCalledWith(
+            `${ORIGIN}/bi/metabase/oauth/authorize?client_id=abc`,
+          );
+        });
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+    });
+  });
+
+  describe("CanAccessMonitor", () => {
+    interface SetupOpts {
+      currentUser?: ReturnType<typeof createMockUser>;
+    }
+
+    const setup = ({ currentUser }: SetupOpts = {}) => {
+      return renderWithProviders(
+        <>
+          <Route element={<CanAccessMonitor />}>
+            <Route path="/monitor" element={<div>monitor page</div>} />
+          </Route>
+          <Route path="/auth/login" element={<div>login page</div>} />
+          <Route path="/unauthorized" element={<div>unauthorized</div>} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser,
+            settings: createMockSettingsState({ "has-user-setup": true }),
+          }),
+          withRouter: true,
+          initialRoute: "/monitor",
+        },
+      );
+    };
+
+    it("redirects unauthenticated users to login with redirect back", async () => {
+      const { history } = setup({ currentUser: undefined });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      expect(history?.getCurrentLocation().query).toEqual(
+        expect.objectContaining({ redirect: "/monitor" }),
+      );
+    });
+
+    it("redirects users without monitor access to unauthorized", async () => {
+      const { history } = setup({
+        currentUser: createMockUser({
+          is_data_analyst: false,
+          is_superuser: false,
+        }),
+      });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+      });
+
+      expect(history?.getCurrentLocation().query).toEqual({});
+    });
+
+    it("renders for analysts", () => {
+      setup({
+        currentUser: createMockUser({
+          is_data_analyst: true,
+          is_superuser: false,
+        }),
+      });
+
+      expect(screen.getByText("monitor page")).toBeInTheDocument();
+    });
+  });
+
+  describe("CanAccessAlertsManagement", () => {
+    interface SetupOpts {
+      currentUser?: ReturnType<typeof createMockUser>;
+    }
+
+    const setup = ({ currentUser }: SetupOpts = {}) => {
+      return renderWithProviders(
+        <>
+          <Route element={<CanAccessAlertsManagement />}>
+            <Route
+              path="/monitor/notifications"
+              element={<div>alerts page</div>}
+            />
+          </Route>
+          <Route path="/unauthorized" element={<div>unauthorized</div>} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser,
+            settings: createMockSettingsState({ "has-user-setup": true }),
+          }),
+          withRouter: true,
+          initialRoute: "/monitor/notifications",
+        },
+      );
+    };
+
+    it("renders the page for superusers", async () => {
+      setup({ currentUser: createMockUser({ is_superuser: true }) });
+
+      expect(await screen.findByText("alerts page")).toBeInTheDocument();
+    });
+
+    it("redirects a non-admin with monitoring permission to unauthorized without redirect-back", async () => {
+      const { history } = setup({
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: false,
+          permissions: { can_access_monitoring: true },
+        }),
+      });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+      });
+
+      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
+    });
+
+    it("redirects an analyst to unauthorized without redirect-back", async () => {
+      const { history } = setup({
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: true,
+        }),
+      });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+      });
+
+      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
     });
   });
 

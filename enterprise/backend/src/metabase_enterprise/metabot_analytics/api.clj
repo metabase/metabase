@@ -31,7 +31,7 @@
   [:map
    [:conversation_id         ms/UUIDString]
    [:created_at              ms/TemporalInstant]
-   [:summary                 [:maybe :string]]
+   [:title                   [:maybe :string]]
    [:message_count           ms/IntGreaterThanOrEqualToZero]
    [:user_message_count      ms/IntGreaterThanOrEqualToZero]
    [:assistant_message_count ms/IntGreaterThanOrEqualToZero]
@@ -98,18 +98,25 @@
    [:created_at        ms/TemporalInstant]
    [:updated_at        ms/TemporalInstant]])
 
+(def ^:private ConversationMessage
+  [:map
+   [:id                :string]
+   [:parent_message_id [:maybe :string]]
+   [:role              [:enum "user" "agent"]]
+   [:type              :string]])
+
 (def ^:private ConversationDetail
   "Schema for full conversation detail response."
   [:map
    [:conversation_id ms/UUIDString]
    [:created_at      ms/TemporalInstant]
-   [:summary         [:maybe :string]]
+   [:title           [:maybe :string]]
    [:user            [:maybe UserInfo]]
    [:message_count   ms/IntGreaterThanOrEqualToZero]
    [:total_tokens    ms/IntGreaterThanOrEqualToZero]
    [:profile_id      [:maybe :string]]
    [:slack_permalink [:maybe :string]]
-   [:chat_messages   [:sequential :map]]
+   [:messages        [:sequential ConversationMessage]]
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]
    [:query_count     ms/IntGreaterThanOrEqualToZero]

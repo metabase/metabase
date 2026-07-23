@@ -309,9 +309,7 @@ const TableSectionBase = ({
           <Tabs.Panel value="field">
             <Stack gap="md">
               <Group gap="md" justify="flex-start" wrap="nowrap">
-                {isUpdatingSorting && (
-                  <Loader data-testid="loading-indicator" size="xs" />
-                )}
+                {isUpdatingSorting && <Loader size="xs" />}
 
                 {!isSorting && hasFields && (
                   <ResponsiveButton

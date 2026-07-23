@@ -1,5 +1,6 @@
-import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -94,7 +95,6 @@ describe("query builder code edits from omnibot", () => {
         aborted: false,
         toolCalls: [],
         data: [],
-        history: [],
       };
     });
 
@@ -108,7 +108,11 @@ describe("query builder code edits from omnibot", () => {
         databases: [TEST_DB],
         questions: [TEST_NATIVE_CARD],
       }),
-      metabot: getMetabotInitialState(),
+      metabot: assocIn(
+        getMetabotInitialState(),
+        ["conversations", "omnibot", "title"],
+        "SQL edit",
+      ),
     } as any);
 
     const metadata = getMetadata(storeInitialState);
@@ -124,22 +128,21 @@ describe("query builder code edits from omnibot", () => {
     );
     // Unjustified type cast. FIXME
     const typedStore = store as Omit<typeof store, "dispatch" | "getState"> & {
-      dispatch: ThunkDispatch<State, void, AnyAction>;
+      dispatch: ThunkDispatch<State, void, UnknownAction>;
       getState: () => State;
     };
 
-    const conversationId =
-      typedStore.getState().metabot.conversations.omnibot?.conversationId;
-
-    expect(conversationId).toBeDefined();
+    const convo = checkNotNull(
+      typedStore.getState().metabot.conversations.omnibot,
+    );
 
     await act(async () => {
       await typedStore.dispatch(
         sendAgentRequest({
           agentId: "omnibot",
           message: "Please rewrite this query",
-          // Unjustified type cast. FIXME
-          conversation_id: conversationId as string,
+          conversation_id: convo.conversationId,
+          loadId: convo.loadId,
           context: {
             user_is_viewing: [
               {
@@ -160,8 +163,6 @@ describe("query builder code edits from omnibot", () => {
             current_time_with_timezone: "2026-03-04T00:00:00Z",
             capabilities: [],
           },
-          history: [],
-          state: {},
         }),
       );
     });

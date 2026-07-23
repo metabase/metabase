@@ -13,7 +13,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
@@ -23,6 +23,8 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import ActionCreatorModal from "./ActionCreatorModal";
+
+const RoutedActionCreatorModal = withRouteProps(ActionCreatorModal);
 
 const MODEL = createMockCard({ id: 1, type: "model" });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
@@ -56,16 +58,15 @@ async function setup({
     <>
       <Route
         path="/model/:slug/detail/actions/:actionId"
-        component={(routeProps) => (
-          <ActionCreatorModal
-            {...routeProps}
+        element={
+          <RoutedActionCreatorModal
             onClose={() => history?.push(`/model/${MODEL.id}/detail/actions`)}
           />
-        )}
+        }
       />
       <Route
         path="/model/:slug/detail/actions"
-        component={() => <div data-testid="mock-model-detail" />}
+        element={<div data-testid="mock-model-detail" />}
       />
     </>,
     {

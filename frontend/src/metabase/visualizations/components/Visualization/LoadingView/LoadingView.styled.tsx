@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
-
 export const Root = styled.div`
   display: flex;
   flex: 1 0 auto;
@@ -26,8 +24,4 @@ export const ShortMessage = styled.span`
 
 export const Duration = styled.span`
   white-space: nowrap;
-`;
-
-export const StyledLoadingSpinner = styled(LoadingSpinner)`
-  color: var(--mb-color-text-secondary);
 `;

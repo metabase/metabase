@@ -1,8 +1,7 @@
-import {
-  NotFoundPlaceholder,
-  PluginPlaceholder,
-} from "metabase/plugins/components/PluginPlaceholder";
-import type { User } from "metabase-types/api";
+import type { ComponentType } from "react";
+
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { User, UserId } from "metabase-types/api";
 
 import type { GetAuthProviders } from "../types";
 
@@ -18,10 +17,10 @@ export type AuthSettingsPageProps = {
 const getDefaultPluginAuthProviders = () => ({
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder<AuthSettingsPageProps>,
-  UserProvisioningSettings: NotFoundPlaceholder,
-  SettingsSAMLForm: NotFoundPlaceholder,
-  SettingsJWTForm: NotFoundPlaceholder,
-  SettingsOIDCForm: NotFoundPlaceholder,
+  UserProvisioningSettings: PluginPlaceholder,
+  SettingsSAMLForm: PluginPlaceholder,
+  SettingsJWTForm: PluginPlaceholder,
+  SettingsOIDCForm: PluginPlaceholder,
   // Unjustified type cast. FIXME
   providers: [] as GetAuthProviders[],
 });
@@ -39,7 +38,9 @@ const getDefaultPluginIsPasswordUser = (): ((user: User) => boolean)[] => [];
 
 export const PLUGIN_IS_PASSWORD_USER = getDefaultPluginIsPasswordUser();
 
-const getDefaultPluginAdminUserFormFields = () => ({
+const getDefaultPluginAdminUserFormFields = (): {
+  FormLoginAttributes: ComponentType<{ userId?: UserId | null }>;
+} => ({
   FormLoginAttributes: PluginPlaceholder,
 });
 

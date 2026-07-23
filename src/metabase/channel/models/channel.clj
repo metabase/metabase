@@ -70,8 +70,6 @@
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
-(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
-
 (defmethod serdes/load-find-local "Channel"
   [path]
   (t2/select-one :model/Channel :name (:id (last path))))
@@ -126,7 +124,7 @@
     [:channel/email
      [:map
       [:details ::ChannelTemplateEmailDetails]]]
-    [::mc/default :any]]])
+    [::mc/default [:map]]]])
 
 (mr/def ::ChannelTemplateEmailDetailsUserProvided
   "Email template details schema for API-provided templates. Only handlebars-text is allowed;
@@ -146,7 +144,7 @@
     [:channel/email
      [:map
       [:details ::ChannelTemplateEmailDetailsUserProvided]]]
-    [::mc/default :any]]])
+    [::mc/default [:map]]]])
 
 (defn- check-valid-channel-template
   [channel-template]

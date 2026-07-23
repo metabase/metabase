@@ -84,24 +84,18 @@
    "ip_address"        [:c.ip_address]})
 
 (def ^:private list-query
-  "HoneySQL query that selects one row per conversation with the aggregate
-   message stats the frontend needs. Filters, sorting, and paging are applied
-   by [[list-conversations]]."
+  "Conversation rows with aggregate stats, including deleted attempts."
   {:select    [:c.*
                [[:count :m.id] :message_count]
                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
                [[:max :m.created_at] :last_message_at]
-               ;; First assistant message's profile_id, matching the
-               ;; `v_metabot_conversations` analytics view. User messages carry
-               ;; a placeholder `profile_id` and are excluded.
                [{:select   [:mm.profile_id]
                  :from     [[:metabot_message :mm]]
                  :where    [:and
                             [:= :mm.conversation_id :c.id]
-                            [:= :mm.role "assistant"]
-                            [:= :mm.deleted_at nil]]
+                            [:= :mm.role "assistant"]]
                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
                  :limit    1}
                 :profile_id]
@@ -117,9 +111,7 @@
                  0]
                 :cache_read_tokens]]
    :from      [[:metabot_conversation :c]]
-   :left-join [[:metabot_message :m] [:and
-                                      [:= :m.conversation_id :c.id]
-                                      [:= :m.deleted_at nil]]
+   :left-join [[:metabot_message :m] [:= :m.conversation_id :c.id]
                [:core_user :u]       [:= :u.id :c.user_id]]
    :group-by  [:c.id]})
 
@@ -130,7 +122,7 @@
   [row]
   {:conversation_id         (:id row)
    :created_at              (:created_at row)
-   :summary                 (:summary row)
+   :title                   (:title row)
    :message_count           (:message_count row)
    :user_message_count      (:user_message_count row)
    :assistant_message_count (:assistant_message_count row)
@@ -156,8 +148,7 @@
   (let [conversation-ids (map :id rows)
         messages-by-conv (when (seq conversation-ids)
                            (->> (t2/select [:model/MetabotMessage :conversation_id :data :data_version]
-                                           :conversation_id [:in conversation-ids]
-                                           {:where [:= :deleted_at nil]})
+                                           :conversation_id [:in conversation-ids])
                                 (group-by :conversation_id)))]
     (map (fn [row]
            (let [msgs (get messages-by-conv (:id row) [])]
@@ -230,31 +221,28 @@
     (t2/hydrate rows :user)))
 
 (defn fetch-conversation-detail
-  "Fetch a conversation with its user info, the frontend-ready flattened
-   chat messages, the queries the bot generated, and any user-submitted feedback.
-   404s via `api/check-404` if no conversation matches `conversation-id`."
+  "Fetch a conversation detail or throw a 404."
   [conversation-id]
   (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-404 conversation)
-    (let [messages (t2/select :model/MetabotMessage
-                              :conversation_id conversation-id
-                              {:where    [:= :deleted_at nil]
-                               :order-by [[:created_at :asc] [:id :asc]]})
-          hydrated (t2/hydrate conversation :user)]
+    (let [all-messages (t2/select :model/MetabotMessage
+                                  :conversation_id conversation-id
+                                  {:order-by [[:created_at :asc] [:id :asc]]})
+          hydrated     (t2/hydrate conversation :user)]
       {:conversation_id (:id conversation)
        :created_at      (:created_at conversation)
-       :summary         (:summary conversation)
+       :title           (:title conversation)
        :user            (trim-user (:user hydrated))
-       :message_count   (count messages)
-       :total_tokens    (transduce (keep :total_tokens) + 0 messages)
-       :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
+       :message_count   (count all-messages)
+       :total_tokens    (transduce (keep :total_tokens) + 0 all-messages)
+       :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) all-messages)
        :slack_permalink (slack-permalink conversation)
-       :chat_messages   (metabot-persistence/messages->chat-messages
-                         messages {:include-errored? true})
-       :queries         (analytics.queries/messages->generated-queries messages)
-       :search_count    (analytics.queries/count-tool-invocations messages "search")
+       :messages        (metabot-persistence/messages->flat-messages
+                         all-messages {:include-rewound-errors? true})
+       :queries         (analytics.queries/messages->generated-queries all-messages)
+       :search_count    (analytics.queries/count-tool-invocations all-messages "search")
        :query_count     (analytics.queries/count-tool-invocations
-                         messages metabot.tools/query-generation-tool-names)
+                         all-messages metabot.tools/query-generation-tool-names)
        :ip_address           (:ip_address conversation)
        :embedding_hostname   (:embedding_hostname conversation)
        :embedding_path       (:embedding_path conversation)

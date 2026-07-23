@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    ;; TODO: extract schema code to go under db.migration
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
@@ -73,12 +74,28 @@
         (update :table-name qualify))))
 
 (def default-index-metadata
-  "The default index metadata configuration that will be used for the search engine integration."
+  "The index metadata configuration for a dedicated pgvector database (MB_PGVECTOR_DB_URL)."
   {:version                   "2"
    :metadata-table-name       "index_metadata"
    :control-table-name        "index_control"
    :gate-table-name           "index_gate"
    :index-table-qualifier     "%s"})
+
+(def app-db-index-metadata
+  "The index metadata configuration used when semantic search shares the application database.
+  Every table lives inside a dedicated schema, so destructive maintenance (see
+  [[metabase-enterprise.semantic-search.db.migration.impl]]) is structurally incapable of touching
+  application tables.
+  Table names are stored and threaded around schema-qualified; derive identifiers and query catalogs via
+  [[metabase-enterprise.semantic-search.util/table-name-part]]."
+  ;; HoneySQL renders the dotted keywords as schema-qualified identifiers, quoted or not.
+  (let [schema semantic.db.datasource/app-db-schema]
+    {:version                   "2"
+     :schema                    schema
+     :metadata-table-name       (str schema ".index_metadata")
+     :control-table-name        (str schema ".index_control")
+     :gate-table-name           (str schema ".index_gate")
+     :index-table-qualifier     (str schema ".%s")}))
 
 (defn- create-index-metadata-table-if-not-exists-sql [index-metadata]
   (let [{:keys [metadata-table-name]} index-metadata
@@ -151,7 +168,7 @@
      pgvector
      (sql/format
       (sql.helpers/create-index
-       [(keyword (str (:gate-table-name index-metadata) "_gated_at")) :if-not-exists]
+       [(keyword (str (semantic.util/table-name-part (:gate-table-name index-metadata)) "_gated_at")) :if-not-exists]
        [(keyword (:gate-table-name index-metadata)) :gated_at :id])
       :quoted true))
     (log/info "Creating gate table tombstone cleanup index if not exists")
@@ -160,7 +177,7 @@
      pgvector
      (sql/format
       {:create-index
-       [[(keyword (str (:gate-table-name index-metadata) "_tombstone_cleanup")) :if-not-exists]
+       [[(keyword (str (semantic.util/table-name-part (:gate-table-name index-metadata)) "_tombstone_cleanup")) :if-not-exists]
         [(keyword (:gate-table-name index-metadata)) :gated_at]]
        :where [:and [:= :document nil] [:= :document_hash nil]]}
       :quoted true))

@@ -27,6 +27,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -1031,7 +1032,6 @@
                                        (get-in (-> drill-thru-query
                                                    qp.preprocess/preprocess
                                                    ;; legacy usage -- don't do things like this going forward
-                                                   #_{:clj-kondo/ignore [:discouraged-var]}
                                                    lib/->legacy-MBQL)
                                                [:query :filter])))))]
                         (testing "As an admin"
@@ -1217,6 +1217,30 @@
                       :breakout [&P.people.source
                                  $product_id->products.category]
                       :limit 5}))))))))))
+
+(deftest pivot-query-without-limit-test
+  (testing "Pivot table queries under sandboxing return identical results from the multi-query and native paths"
+    (mt/test-drivers (sandboxing-fk-drivers)
+      (met/with-gtaps! {:gtaps      (mt/$ids
+                                      {:orders   {:remappings {:user_id  [:dimension $orders.user_id]}}
+                                       :products {:remappings {:user_cat [:dimension $products.category]}}})
+                        :attributes {:user_id 1, :user_cat "Widget"}}
+        (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+        (let [mp     (mt/metadata-provider)
+              orders (lib.metadata/table mp (mt/id :orders))
+              ;; Some drivers (e.g. Oracle, Vertica) prefix table names with "Test Data " — match the joined
+              ;; "People" table/group with an optional prefix to stay portable. The "Product" group is an
+              ;; implicit join and isn't prefixed.
+              query  (-> (lib/query mp orders)
+                         (lib.tu.notebook/add-join {:display-name #"(Test Data )?People"} "User ID" "ID")
+                         (lib/aggregate (lib/count))
+                         (lib.tu.notebook/add-breakout {:display-name #"(Test Data )?People"} "Source")
+                         (lib.tu.notebook/add-breakout "Product" "Category")
+                         (merge {:pivot-rows [0] :pivot-cols [1]}))]
+          (qp.pivot.test-util/with-pivot-parity-check
+            (is (=? {:status :completed}
+                    (qp.pivot/run-pivot-query query)))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
@@ -2093,3 +2117,60 @@
                              (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                                  (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :products :id)))])
                                  (lib/limit 20)))))))))))))
+
+(deftest fk-remapping-with-sandboxing-and-specific-field-test
+  (testing "FK remapping should work for questions against sandboxed tables that select specific fields (#78187)"
+    (met/with-gtaps! {:gtaps {:people {:query (mt/native-query
+                                               {:query "SELECT * FROM PEOPLE WHERE STATE = {{state}}"
+                                                :template-tags {"state" {:display-name "State"
+                                                                         :id           "1"
+                                                                         :name         "state"
+                                                                         :type         :text}}})
+                                       :remappings {"state" [:variable [:template-tag "state"]]}}
+                              :orders {:query (mt/native-query
+                                               {:query (str "SELECT ORDERS.* FROM ORDERS "
+                                                            "LEFT JOIN PEOPLE ON PEOPLE.ID = ORDERS.USER_ID "
+                                                            "WHERE PEOPLE.STATE = {{state}}")
+                                                :template-tags {"state" {:display-name "State"
+                                                                         :id           "2"
+                                                                         :name         "state"
+                                                                         :type         :text}}})
+                                       :remappings {"state" [:variable [:template-tag "state"]]}}}
+                      :attributes {"state" "CA"}}
+      (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
+      (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+      (let [mp (lib.tu/remap-metadata-provider
+                (mt/metadata-provider)
+                (mt/id :orders :user_id)    (mt/id :people :name)
+                (mt/id :orders :product_id) (mt/id :products :title))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders :user_id))
+                                        (lib.metadata/field mp (mt/id :orders :product_id))])
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :people))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders :user_id))
+                                                             (lib.metadata/field mp (mt/id :people :id)))])
+                                    (lib/with-join-fields [(lib.metadata/field mp (mt/id :people :state))])))
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                             (lib.metadata/field mp (mt/id :products :id)))])
+                                    (lib/with-join-fields [(lib.metadata/field mp (mt/id :products :category))])))
+                      (lib/order-by (lib.metadata/field mp (mt/id :people :name)) :asc)
+                      (lib/order-by (lib.metadata/field mp (mt/id :products :title)) :asc)
+                      (lib/limit 3))
+            result (qp/process-query query)
+            cols (mt/cols result)
+            col-by-name (m/index-by :name cols)]
+        (is (= [[624 144 "CA" "Widget" "Abbie Parisian" "Aerodynamic Bronze Hat"]
+                [624 94 "CA" "Widget" "Abbie Parisian" "Awesome Bronze Plate"]
+                [624 101 "CA" "Gadget" "Abbie Parisian" "Durable Cotton Bench"]]
+               (mt/rows result)))
+        (is (= "NAME" (:remapped_to (col-by-name "USER_ID"))))
+        (is (= "USER_ID" (:remapped_from (col-by-name "NAME"))))
+        (is (= "TITLE" (:remapped_to (col-by-name "PRODUCT_ID"))))
+        (is (= "PRODUCT_ID" (:remapped_from (col-by-name "TITLE"))))
+        (testing "every column with :remapped_from must point at a column with a matching :remapped_to (the FE errors otherwise)"
+          (doseq [col cols
+                  :when (:remapped_from col)
+                  :let [source-col (col-by-name (:remapped_from col))]]
+            (is (= (:name col)
+                   (:remapped_to source-col)))))))))

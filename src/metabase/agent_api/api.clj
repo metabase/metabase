@@ -5,9 +5,11 @@
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
+   [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.urls :as channel.urls]
@@ -254,7 +256,7 @@
                 "`{\"query\": <object>}`; returns `{\"query_handle\": \"<uuid>\"}` to feed "
                 "`execute_query` or `visualize_query`.\n"
                 "\n"
-                "Workflow: use search / entity_details first to discover the exact database, "
+                "Workflow: use search / read_resource first to discover the exact database, "
                 "schema, table, and column NAMES (not numeric IDs). Never invent identifiers.\n"
                 "\n"
                 "Shape: every clause is `[\"op\", {}, ...args]` with a MANDATORY empty options "
@@ -291,6 +293,11 @@
    _query-params
    {:keys [prompt] :as body} :- ::construct-query-request]
   (let [query (evaluate-external-query-for-execution body)]
+    ;; Record the resolved query for eval tracing (inert unless capturing). The MCP `construct_query`
+    ;; tool only returns an opaque handle, so this span attribute is how an eval harness recovers the
+    ;; agent's actual query off the trace to grade it. `query` is already serialization-ready (no
+    ;; `:lib/metadata`), so it stays small.
+    (ait/record! {:ai/query query})
     (cond-> {:query (-> query json/encode u/encode-base64)}
       prompt (assoc :prompt prompt))))
 
@@ -330,11 +337,11 @@
   ;; target database so a bogus/inaccessible database_id fails here rather than at save time.
   (api/read-check :model/Database database_id)
   ;; Emit MBQL 5 (via `lib/native-query` + `prepare-for-serialization`, same as `construct_query`)
-  (let [mp (lib-be/application-database-metadata-provider database_id)]
-    {:query (-> (lib/native-query mp sql)
-                lib/prepare-for-serialization
-                json/encode
-                u/encode-base64)}))
+  (let [mp    (lib-be/application-database-metadata-provider database_id)
+        query (-> (lib/native-query mp sql) lib/prepare-for-serialization)]
+    ;; See /v2/construct-query: record the resolved query so an eval harness can grade it off the trace.
+    (ait/record! {:ai/query query})
+    {:query (-> query json/encode u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
@@ -1113,6 +1120,8 @@
   "Update a saved question (card). Patch semantics - only fields that you pass are changed.
 
   Set `collection_id` to move the card to a different collection. Set `archived: true` to archive.
+  Archiving is a soft delete - there is no delete endpoint. It can be reversed by setting
+  `archived: false`.
   Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query
   string) to replace the underlying query. Replacing it with a native (raw SQL) query requires
   native-query permission on the target database."
@@ -1120,7 +1129,9 @@
    :tool  {:name "update_question"
            :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
                              "To move a card to a different collection, set collection_id. "
-                             "To archive, set archived true. To replace the underlying query, pass query "
+                             "Archiving (archived true) is a soft delete - use it when asked to "
+                             "delete or remove a question; set archived false to restore. "
+                             "To replace the underlying query, pass query "
                              "(a query_handle from construct_query or construct_native_query).")}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
@@ -1519,15 +1530,18 @@
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
   "Update a dashboard. Patch semantics - only fields you pass are changed.
 
-  Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations
-  are submitted under `dashcards` as a list of
+  Metadata: `name`, `description`, `collection_id`, `archived`. Archiving is a soft delete - there
+  is no delete endpoint. It can be reversed by setting `archived: false`.
+  Dashcard mutations are submitted under `dashcards` as a list of
   `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in
   order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown
   for text cards); `update_text`, `remove`, and `move` require `dashcard_id`."
   {:scope metabot/agent-dashboard-update
    :tool  {:name "update_dashboard"
            :description (str "Update a dashboard. Patch semantics - only fields you pass are changed. "
-                             "Set collection_id to move it. Set archived true to archive. "
+                             "Set collection_id to move it. "
+                             "Archiving (archived true) is a soft delete - use it when asked to "
+                             "delete or remove a dashboard; set archived false to restore. "
                              "Use dashcards to add, remove, or move cards: "
                              "[{\"action\":\"add\",\"card_id\":42},{\"action\":\"remove\",\"dashcard_id\":101}]. "
                              "add_heading adds a full-width section heading and add_text adds a "
@@ -1792,6 +1806,47 @@
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
+(def ^:private base-routes
+  (api.macros/ns-handler *ns* +auth))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
-  (api.macros/ns-handler *ns* +auth))
+  ;; Wrapped in `handler-with-open-api-spec` so the handler still implements `OpenAPISpec` for
+  ;; full-API spec generation (openapi.json, endpoint-dox); the spec is delegated to `base-routes`,
+  ;; the underlying `ns-handler`, since the eval-tracing wrapper below carries no route metadata.
+  (open-api/handler-with-open-api-spec
+   ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE). Direct callers get a fresh session;
+   ;; the synthetic in-process call from MCP inherits the MCP session and nests under it.
+   ;; Agent-API endpoints are synchronous, so `respond` fires inside the span and the span
+   ;; closes after the handler returns.
+   (fn [request respond raise]
+     (ait/with-eval-session nil
+       (ait/eval-span (str "agent-api." (some-> (:request-method request) name) " " (:uri request))
+                      {:http/method  (some-> (:request-method request) name)
+                       :http/uri     (:uri request)
+                       :http/request (:body request)
+                       :http/user-id (or (:metabase-user-id request) api/*current-user-id*)}
+                      (base-routes request
+                                   ;; Relies on `respond` firing synchronously on this thread (see
+                                   ;; above): if an endpoint ever responds async, `*parent*` is
+                                   ;; unbound there and this `record!` no-ops, so the span captures
+                                   ;; no status/response. Both fail soft; the trace is just incomplete
+                                   ;; for async agent-api responses.
+                                   (fn eval-traced-respond [response]
+                                     (when (ait/capture-active?)
+                                       ;; `+auth` binds `*current-user-id*` inside `base-routes`, so it
+                                       ;; is unbound when the span opened above but set by the time this
+                                       ;; respond fires — record the user id here so direct HTTP callers
+                                       ;; (not just the MCP path, which carries `:metabase-user-id`) get it.
+                                       (ait/record! {:http/status   (:status response)
+                                                     ;; Only record a plain data body. A streaming/opaque
+                                                     ;; body (not a coll) would otherwise be stringified
+                                                     ;; by the log sink into a useless `#object[…]`, so
+                                                     ;; skip it — the trace just omits the response there.
+                                                     :http/response (when (coll? (:body response))
+                                                                      (:body response))
+                                                     :http/user-id  (or (:metabase-user-id request)
+                                                                        api/*current-user-id*)}))
+                                     (respond response))
+                                   raise))))
+   (fn [prefix] (open-api/open-api-spec base-routes prefix))))

@@ -1,6 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { ThemeProvider } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 import {

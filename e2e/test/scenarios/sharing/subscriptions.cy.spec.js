@@ -117,8 +117,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByPlaceholderText("Enter user names or email addresses");
 
         // Change the schedule to "Monthly"
-        cy.findByDisplayValue("Hourly").click();
-        H.popover().findByText("Monthly").click();
+        cy.findByTestId("select-frequency").click();
+        H.popover().findByText("monthly").click();
 
         H.sidebar().button("Done").should("be.disabled");
       });
@@ -184,9 +184,10 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions();
 
         H.sidebar().within(() => {
-          cy.findByPlaceholderText("Enter user names or email addresses")
-            .click()
-            .type(`${normal.first_name} ${normal.last_name}{enter}`);
+          cy.findByPlaceholderText(
+            "Enter user names or email addresses",
+          ).click();
+          H.popover().contains(normal.first_name).click();
           clickButton("Done");
 
           cy.findByLabelText("add icon").click();
@@ -402,14 +403,14 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       H.sidebar().findByText("To:").click();
 
-      cy.findByDisplayValue("Hourly").click();
-      H.popover().findByText("Monthly").click();
+      cy.findByTestId("select-frequency").click();
+      H.popover().findByText("monthly").click();
 
-      cy.findByDisplayValue("First").click();
-      H.popover().findByText("15th (Midpoint)").click();
+      cy.findByTestId("select-frame").click();
+      H.popover().findByText("15th").click();
 
-      cy.findByDisplayValue("15th (Midpoint)").click();
-      H.popover().findByText("First").click();
+      cy.findByTestId("select-frame").click();
+      H.popover().findByText("first").click();
 
       clickButton("Done");
       // Implicit assertion (word mustn't contain string "null")
@@ -774,7 +775,11 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       cy.get(".container").within(() => {
         cy.findByText("Total Orders");
-        cy.findAllByText("18,760").should("have.length", 2);
+        // the scalar counts all orders, but the body-only Orders table is
+        // capped at the 2,000-row display limit so its truncation note no
+        // longer says 18,760 (GDGT-2773)
+        cy.findAllByText("18,760").should("have.length", 1);
+        cy.findByText("2,000");
       });
     });
 
@@ -940,9 +945,9 @@ function assignRecipient({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .type(`${user.first_name} ${user.last_name}{enter}`)
-    .blur();
+  cy.findByPlaceholderText("Enter user names or email addresses").click();
+  H.popover().contains(user.first_name).click();
+  cy.realPress("Escape");
 }
 
 function assignRecipients({

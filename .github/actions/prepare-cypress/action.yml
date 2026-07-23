@@ -15,6 +15,10 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # e2e/support/config.js imports the reporter, so it has to be in place before Cypress bundles.
+    - name: Prepare CI Conductor
+      uses: ./.github/actions/prepare-ci-conductor
+
     - name: Install Chrome v144
       uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd # v2.1.2
       with:

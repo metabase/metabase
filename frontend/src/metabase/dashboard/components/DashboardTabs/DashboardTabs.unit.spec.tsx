@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import type { Location } from "history";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
@@ -13,9 +12,10 @@ import type { DashboardState } from "metabase/redux/store";
 import {
   type InjectedRouter,
   Link,
+  type Location,
   Route,
   type WithRouterProps,
-  withRouter,
+  withRouteProps,
 } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -53,21 +53,19 @@ function setup({
     },
   };
 
-  const RoutedDashboardComponent = withRouter(
-    ({ location }: { location: Location }) => {
-      const { selectedTabId } = useDashboardTabs();
-      useDashboardUrlQuery(createMockRouter(), location);
-      return (
-        <>
-          <DashboardTabs />
-          <span>Selected tab id is {selectedTabId}</span>
-          <br />
-          <span>Path is {location.pathname + location.search}</span>
-          <Link to="/someotherpath">Navigate away</Link>
-        </>
-      );
-    },
-  );
+  const RoutedDashboardComponent = ({ location }: { location: Location }) => {
+    const { selectedTabId } = useDashboardTabs();
+    useDashboardUrlQuery(createMockRouter(), location);
+    return (
+      <>
+        <DashboardTabs />
+        <span>Selected tab id is {selectedTabId}</span>
+        <br />
+        <span>Path is {location.pathname + location.search}</span>
+        <Link to="/someotherpath">Navigate away</Link>
+      </>
+    );
+  };
 
   const OtherComponent = () => {
     const selectedTabId = useSelector(getSelectedTabId);
@@ -81,32 +79,31 @@ function setup({
     );
   };
 
+  const DashboardRoute = withRouteProps((props: WithRouterProps) => {
+    return (
+      <MockDashboardContext
+        dashboardId={1}
+        dashboard={{
+          ...TEST_DASHBOARD_STATE.dashboards[1],
+          dashcards: dashcards
+            ? Object.values(dashcards)
+            : TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
+                (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
+              ),
+          tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
+        }}
+        navigateToNewCardFromDashboard={null}
+        isEditing={isEditing}
+      >
+        <RoutedDashboardComponent {...props} />
+      </MockDashboardContext>
+    );
+  });
+
   const { store } = renderWithProviders(
     <>
-      <Route
-        path="dashboard/:slug(/:tabSlug)"
-        component={(props: WithRouterProps) => {
-          return (
-            <MockDashboardContext
-              dashboardId={1}
-              dashboard={{
-                ...TEST_DASHBOARD_STATE.dashboards[1],
-                dashcards: dashcards
-                  ? Object.values(dashcards)
-                  : TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
-                      (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
-                    ),
-                tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
-              }}
-              navigateToNewCardFromDashboard={null}
-              isEditing={isEditing}
-            >
-              <RoutedDashboardComponent {...props} />
-            </MockDashboardContext>
-          );
-        }}
-      />
-      <Route path="someotherpath" component={OtherComponent} />
+      <Route path="dashboard/:slug" element={<DashboardRoute />} />
+      <Route path="someotherpath" element={<OtherComponent />} />
     </>,
     {
       storeInitialState: { dashboard },

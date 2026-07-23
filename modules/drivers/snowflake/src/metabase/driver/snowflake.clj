@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys empty? not-empty mapv])
+  (:refer-clojure :exclude [select-keys not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -38,12 +38,12 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [empty? mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
    (java.net URI URLDecoder)
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (net.snowflake.client.api.exception SnowflakeSQLException)))
 
@@ -233,12 +233,11 @@
         (and (not use-password) password-details)
         (conj password-details)))))
 
-(defn- set-put-get [additional-options]
-  (cond (empty? additional-options) "enablePutGet=false"
-        (re-find #"(?i)enablePutGet=" additional-options) (str/replace additional-options
-                                                                       #"enablePutGet=[^&]+"
-                                                                       "enablePutGet=false")
-        :else (str additional-options "&enablePutGet=false")))
+(defn- normalize-additional-options [additional-options]
+  (when-not (str/blank? additional-options)
+    (not-empty
+     (str/join "&" (remove #(re-matches #"(?i)enablePutGet(=.*)?" %)
+                           (str/split additional-options #"&"))))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
@@ -292,10 +291,11 @@
                    resolve-private-key
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options (update details
-                                                           :additional-options set-put-get))
+                                                           :additional-options normalize-additional-options))
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
-        (maybe-add-role-to-spec-url details))))
+        (maybe-add-role-to-spec-url details)
+        (assoc :enablePutGet "false"))))
 
 (mu/defn- database-type->base-type
   [database-type :- string?
@@ -424,8 +424,8 @@
 
 (defmethod driver/insert-into! :snowflake
   [driver db-id table-name column-names values]
-  ;; Snowflake's fast bulk path (`PUT` + `COPY INTO` from a stage) is unavailable because [[set-put-get]]
-  ;; enforces `enablePutGet=false` on every connection (#73578), so use the generic multi-row `INSERT`.
+  ;; Snowflake's fast bulk path (`PUT` + `COPY INTO` from a stage) is unavailable because Metabase's
+  ;; Snowflake connections set `enablePutGet=false`, so use the generic multi-row `INSERT`.
   ((get-method driver/insert-into! :sql-jdbc)
    driver db-id table-name column-names
    (map #(mapv temporal-bind->string %) values)))
@@ -1169,16 +1169,22 @@
   [workspace]
   (format "MB_ISOLATION_ROLE_%s" (:id workspace)))
 
+(defmethod driver/workspace-isolation-details :snowflake
+  [driver database workspace]
+  (-> ((get-method driver/workspace-isolation-details :sql-jdbc) driver database workspace)
+      (update :database_details assoc
+              :role         (isolation-role-name workspace)
+              :use-password true)))
+
 (defmethod driver/init-workspace-isolation! :snowflake
-  [_driver database workspace]
+  [driver database workspace]
   (let [details          (driver.conn/effective-details database)
-        schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        schema-name      (:schema workspace)
         db-name          (:db details)
         warehouse        (:warehouse details)
-        role-name        (isolation-role-name workspace)
-        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
-                          :password (driver.u/random-workspace-password)}
-        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        role-name        (-> workspace :database_details :role)
+        read-user        (select-keys (:database_details workspace) [:user :password])
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)]
     (when-not db-name
       (throw (ex-info (tru "Cannot initialize workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
                       {:database-id (:id database) :step :init})))
@@ -1193,30 +1199,37 @@
           quoted-user      (quote-field (:user read-user))]
       ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
       (try
-        (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" qualified-schema)
-                     (format "CREATE ROLE IF NOT EXISTS %s" quoted-role)
-                     (format "GRANT USAGE ON DATABASE %s TO ROLE %s" quoted-db quoted-role)
-                     (format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" quoted-warehouse quoted-role)
-                     (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
-                     (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
-                     (format "GRANT ALL ON FUTURE TABLES IN SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
-                     (format "CREATE USER IF NOT EXISTS %s PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
-                             quoted-user (:password read-user) quoted-role)
-                     (format "GRANT ROLE %s TO USER %s" quoted-role quoted-user)]]
-          (jdbc/execute! conn-spec [sql]))
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver database {:write? true}
+         (fn [^Connection conn]
+           (with-open [^Statement stmt (.createStatement conn)]
+             (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" qualified-schema)
+                          (format "CREATE ROLE IF NOT EXISTS %s" quoted-role)
+                          (format "GRANT USAGE ON DATABASE %s TO ROLE %s" quoted-db quoted-role)
+                          (format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" quoted-warehouse quoted-role)
+                          (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                          (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                          (format "GRANT ALL ON FUTURE TABLES IN SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                          (format "CREATE USER IF NOT EXISTS %s PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
+                                  quoted-user escaped-password quoted-role)
+                          ;; the user may survive a failed teardown; without this it would keep
+                          ;; its old password while the new one gets persisted
+                          (format "ALTER USER %s SET PASSWORD = '%s'"
+                                  quoted-user escaped-password)
+                          (format "GRANT ROLE %s TO USER %s" quoted-role quoted-user)]]
+               (.addBatch ^Statement stmt ^String sql))
+             (.executeBatch ^Statement stmt))))
         (catch Throwable t
-          (throw (driver.u/scrub-exceptions t [(:password read-user)])))))
-    {:schema           schema-name
-     :database_details (assoc read-user :role role-name :use-password true)}))
+          (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :snowflake
-  [_driver database workspace]
+  [driver database workspace]
   (let [details     (driver.conn/effective-details database)
-        schema-name (or (:schema workspace) (driver.u/workspace-isolation-namespace-name workspace))
+        schema-name (:schema workspace)
         db-name     (:db details)
-        role-name   (isolation-role-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
-        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        role-name   (-> workspace :database_details :role)
+        username    (-> workspace :database_details :user)]
     (when-not db-name
       (throw (ex-info (tru "Cannot destroy workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
                       {:database-id (:id database) :step :destroy})))
@@ -1224,15 +1237,22 @@
           quoted-user      (quote-field username)
           quoted-role      (quote-field role-name)]
       ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
-      (doseq [sql [(format "DROP SCHEMA IF EXISTS %s CASCADE" qualified-schema)
-                   (format "DROP USER IF EXISTS %s" quoted-user)
-                   (format "DROP ROLE IF EXISTS %s" quoted-role)]]
-        (jdbc/execute! conn-spec [sql])))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver database {:write? true}
+       (fn [^Connection conn]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (doseq [sql [(format "DROP SCHEMA IF EXISTS %s CASCADE" qualified-schema)
+                        (format "DROP USER IF EXISTS %s" quoted-user)
+                        (format "DROP ROLE IF EXISTS %s" quoted-role)]]
+             (.addBatch ^Statement stmt ^String sql))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
 
 (defmethod driver/grant-workspace-read-access! :snowflake
-  [_driver database workspace schemas]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        db-name   (:db (driver.conn/effective-details database))
+  [driver database workspace schemas]
+  (let [db-name   (:db (driver.conn/effective-details database))
         role-name (-> workspace :database_details :role)]
     (when-not role-name
       (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no role — initialization may have failed. Re-run workspace initialization and retry.")
@@ -1248,15 +1268,24 @@
       (doseq [schema schemas]
         (when (str/blank? schema)
           (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
-                          {:database-id (:id database) :step :grant})))
-        (let [qualified-schema (str quoted-db "." (quote-schema schema))]
-          (doseq [sql [(format "GRANT USAGE ON DATABASE %s TO ROLE %s" quoted-db quoted-role)
-                       (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
-                       (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO ROLE %s"
-                               qualified-schema quoted-role)
-                       (format "GRANT SELECT ON FUTURE TABLES IN SCHEMA %s TO ROLE %s"
-                               qualified-schema quoted-role)]]
-            (jdbc/execute! conn-spec [sql])))))))
+                          {:database-id (:id database) :step :grant}))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver database {:write? true}
+       (fn [^Connection conn]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (doseq [schema schemas
+                   :let [qualified-schema (str quoted-db "." (quote-schema schema))]
+                   sql [(format "GRANT USAGE ON DATABASE %s TO ROLE %s" quoted-db quoted-role)
+                        (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                        (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO ROLE %s"
+                                qualified-schema quoted-role)
+                        (format "GRANT SELECT ON FUTURE TABLES IN SCHEMA %s TO ROLE %s"
+                                qualified-schema quoted-role)]]
+             (.addBatch ^Statement stmt ^String sql))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
   "metabot/prompts/dialects/snowflake.md")

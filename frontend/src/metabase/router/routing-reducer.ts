@@ -1,5 +1,6 @@
 import type { Action } from "@reduxjs/toolkit";
-import type { Location } from "history";
+
+import type { Location } from "./types";
 
 /**
  * Re-owned equivalent of react-router-redux's `routerReducer`.

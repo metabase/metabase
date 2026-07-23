@@ -60,3 +60,20 @@ export type InviteToViewOpenedEvent = ValidateEvent<{
   triggered_from: "dashboard" | "question";
   target_id: number | null;
 }>;
+
+export type MonitorOpenedEvent = ValidateEvent<{
+  event: "monitor_opened";
+  triggered_from: "nav_menu";
+}>;
+
+export type MonitorSectionClickedEvent = ValidateEvent<{
+  event: "monitor_section_clicked";
+  event_detail:
+    | "diagnostics"
+    | "erroring-questions"
+    | "alerts"
+    | "tasks"
+    | "jobs"
+    | "logs"
+    | "model-caching";
+}>;
