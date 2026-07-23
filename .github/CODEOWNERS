@@ -49,5 +49,8 @@ docs/installation-and-operation/commands.md # auto-generated
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 
 # @metabase/metabot-frontend
-enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend 
+enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend
+
+# @salsakran
+.github/data/notifications.json @salsakran
