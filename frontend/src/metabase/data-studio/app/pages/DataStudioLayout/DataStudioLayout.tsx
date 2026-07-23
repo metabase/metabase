@@ -1,14 +1,11 @@
-import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
-import { ForwardRefLink } from "metabase/common/components/Link";
-import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
@@ -18,23 +15,8 @@ import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
-import {
-  ActionIcon,
-  Box,
-  Center,
-  FixedSizeIcon,
-  Flex,
-  Group,
-  Loader,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { isMac } from "metabase/utils/browser";
-import type { IconName } from "metabase-types/api";
 
-import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
 
 export function DataStudioLayout() {
@@ -48,39 +30,6 @@ export function DataStudioLayout() {
   });
   const isNavbarOpened = _isNavbarOpened !== false;
 
-  useRegisterShortcut(
-    [
-      {
-        id: "toggle-navbar",
-        perform: () => setIsNavbarOpened(!isNavbarOpened),
-      },
-    ],
-    [isNavbarOpened],
-  );
-
-  return isLoadingNavbarKey ? (
-    <Center h="100%">
-      <Loader />
-    </Center>
-  ) : (
-    <Flex h="100%">
-      <DataStudioNav
-        isNavbarOpened={isNavbarOpened}
-        onNavbarToggle={setIsNavbarOpened}
-      />
-      <Box h="100%" flex={1} miw={0}>
-        <Outlet />
-      </Box>
-    </Flex>
-  );
-}
-
-type DataStudioNavProps = {
-  isNavbarOpened: boolean;
-  onNavbarToggle: (isOpened: boolean) => void;
-};
-
-function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
@@ -110,276 +59,153 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
   const currentTab = getCurrentTab(pathname);
 
-  return (
+  const upperNav = (
     <>
-      <Stack
-        className={cx(S.nav, { [S.opened]: isNavbarOpened })}
-        h="100%"
-        p="0.75rem"
-        justify="space-between"
-        data-testid="data-studio-nav"
-      >
-        <Stack gap="0.75rem" flex={1} mih={0} className={S.upperGroup}>
-          <DataStudioNavbarToggle
-            isNavbarOpened={isNavbarOpened}
-            onNavbarToggle={onNavbarToggle}
-          />
-          <DataStudioTab
-            label={t`Library`}
-            icon="repository"
-            to={Urls.dataStudioLibrary()}
-            isSelected={currentTab === "library"}
-            showLabel={isNavbarOpened}
-            isGated={!hasLibraryFeature}
-            rightSection={
-              hasDirtyChanges &&
-              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-              ) : null
-            }
-          />
-
-          {canAccessDataModel && (
-            <DataStudioTab
-              label={t`Tables`}
-              icon="open_folder"
-              to={Urls.dataStudioData()}
-              isSelected={currentTab === "data"}
-              showLabel={isNavbarOpened}
-            />
-          )}
-          <DataStudioTab
-            label={t`Schema viewer`}
-            icon="network"
-            to={Urls.dataStudioSchemaViewer()}
-            isSelected={currentTab === "schema-viewer"}
-            showLabel={isNavbarOpened}
-            isGated={!hasSchemaViewerFeature}
-          />
-          <DataStudioTab
-            label={t`Dependency graph`}
-            icon="dependencies"
-            to={Urls.dependencyGraph()}
-            isSelected={currentTab === "dependencies"}
-            showLabel={isNavbarOpened}
-            isGated={!hasDependenciesFeature}
-          />
-          <DataStudioTab
-            label={t`Dependency diagnostics`}
-            icon="search_check"
-            to={Urls.dependencyDiagnostics()}
-            isSelected={currentTab === "dependency-diagnostics"}
-            showLabel={isNavbarOpened}
-            isGated={!hasDependenciesFeature}
-          />
-          {shouldShowTransforms && (
-            <DataStudioTab
-              label={t`Transforms`}
-              icon="transform"
-              to={Urls.transformList()}
-              isSelected={currentTab === "transforms"}
-              showLabel={isNavbarOpened}
-              rightSection={
-                hasTransformDirtyChanges &&
-                PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-                  <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-                ) : null
-              }
-            />
-          )}
-          <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
-            showLabel={isNavbarOpened}
-          />
-        </Stack>
-        <Stack gap="0.75rem">
-          {hasRemoteSyncFeature ? (
-            <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
-              isNavbarOpened={isNavbarOpened}
-              onClick={() => setIsGitSettingsOpen(true)}
-            />
-          ) : (
-            <DataStudioTab
-              label={t`Set up remote sync`}
-              icon="gear"
-              to={Urls.dataStudioGitSync()}
-              isSelected={currentTab === "git-sync"}
-              showLabel={isNavbarOpened}
-              isGated
-            />
-          )}
-          {canManageWorkspaces && (
-            <DataStudioTab
-              label={t`Workspaces`}
-              icon="workspace"
-              to={Urls.workspaces()}
-              isSelected={currentTab === "workspaces"}
-              showLabel={isNavbarOpened}
-            />
-          )}
-          {canUseTransforms && (
-            <DataStudioTab
-              label={t`Jobs`}
-              icon="clock"
-              to={Urls.transformJobList()}
-              isSelected={currentTab === "jobs"}
-              showLabel={isNavbarOpened}
-            />
-          )}
-          {canUseTransforms && (
-            <DataStudioTab
-              label={t`Runs`}
-              icon="play_outlined"
-              to={Urls.transformRunList()}
-              isSelected={currentTab === "runs"}
-              showLabel={isNavbarOpened}
-            />
-          )}
-          {settings.length > 0 && (
-            <DataStudioTab
-              label={t`Settings`}
-              icon="gear"
-              to={Urls.dataStudioSettings()}
-              isSelected={currentTab === "settings"}
-              showLabel={isNavbarOpened}
-            />
-          )}
-        </Stack>
-        <PLUGIN_REMOTE_SYNC.GitSettingsModal
-          isOpen={isGitSettingsOpen}
-          onClose={() => setIsGitSettingsOpen(false)}
+      <AreaTab
+        label={t`Library`}
+        icon="repository"
+        to={Urls.dataStudioLibrary()}
+        isSelected={currentTab === "library"}
+        showLabel={isNavbarOpened}
+        isGated={!hasLibraryFeature}
+        rightSection={
+          hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+            <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+          ) : null
+        }
+      />
+      {canAccessDataModel && (
+        <AreaTab
+          label={t`Tables`}
+          icon="open_folder"
+          to={Urls.dataStudioData()}
+          isSelected={currentTab === "data"}
+          showLabel={isNavbarOpened}
         />
-      </Stack>
+      )}
+      <AreaTab
+        label={t`Schema viewer`}
+        icon="network"
+        to={Urls.dataStudioSchemaViewer()}
+        isSelected={currentTab === "schema-viewer"}
+        showLabel={isNavbarOpened}
+        isGated={!hasSchemaViewerFeature}
+      />
+      <AreaTab
+        label={t`Dependency graph`}
+        icon="dependencies"
+        to={Urls.dependencyGraph()}
+        isSelected={currentTab === "dependencies"}
+        showLabel={isNavbarOpened}
+        isGated={!hasDependenciesFeature}
+      />
+      {shouldShowTransforms && (
+        <AreaTab
+          label={t`Transforms`}
+          icon="transform"
+          to={Urls.transformList()}
+          isSelected={currentTab === "transforms"}
+          showLabel={isNavbarOpened}
+          rightSection={
+            hasTransformDirtyChanges &&
+            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+            ) : null
+          }
+        />
+      )}
+      <AreaTab
+        label={t`Glossary`}
+        icon="glossary"
+        to={Urls.dataStudioGlossary()}
+        isSelected={currentTab === "glossary"}
+        showLabel={isNavbarOpened}
+      />
     </>
   );
-}
 
-type DataStudioTabProps = {
-  label: string;
-  icon: IconName;
-  to: string;
-  isSelected?: boolean;
-  showLabel: boolean;
-  rightSection?: ReactNode;
-  isGated?: boolean;
-};
-
-const TOOLTIP_OPEN_DELAY = 1000;
-
-function DataStudioTab({
-  label,
-  icon,
-  to,
-  isSelected,
-  showLabel,
-  rightSection,
-  isGated,
-}: DataStudioTabProps) {
-  const upsellGem = isGated ? <UpsellGem.New size={14} /> : null;
-  const effectiveRightSection = rightSection ?? upsellGem;
-
-  return (
-    <Tooltip
-      label={label}
-      position="right"
-      openDelay={TOOLTIP_OPEN_DELAY}
-      disabled={showLabel}
-    >
-      <Flex
-        className={cx(S.tab, { [S.selected]: isSelected })}
-        component={ForwardRefLink}
-        to={to}
-        p="sm"
-        gap="sm"
-        bdrs="md"
-        aria-label={label}
-        justify={showLabel ? "start" : "center"}
-      >
-        <FixedSizeIcon name={icon} display="block" className={S.icon} />
-        {showLabel && <Text lh="sm">{label}</Text>}
-        {effectiveRightSection && (
-          <Box
-            className={showLabel ? undefined : S.badgeOverlay}
-            ml={showLabel ? "auto" : undefined}
-          >
-            {effectiveRightSection}
-          </Box>
-        )}
-      </Flex>
-    </Tooltip>
-  );
-}
-
-const getSidebarTooltipLabel = (isNavbarOpened: boolean) => {
-  const message = isNavbarOpened ? t`Close sidebar` : t`Open sidebar`;
-  const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
-  return `${message} ${shortcut}`;
-};
-
-type DataStudioNavbarToggleProps = {
-  isNavbarOpened: boolean;
-  onNavbarToggle: (isOpened: boolean) => void;
-};
-
-function DataStudioNavbarToggle({
-  isNavbarOpened,
-  onNavbarToggle,
-}: DataStudioNavbarToggleProps) {
-  return (
-    <Flex
-      align="center"
-      justify={isNavbarOpened ? "space-between" : "center"}
-      mb="0.75rem"
-      mt="sm"
-    >
-      <Group gap="sm">
-        <Box
-          className={cx(S.logoWrapper, { [S.navbarClosed]: !isNavbarOpened })}
-        >
-          <img
-            alt={t`Data Studio Logo`}
-            className={S.logo}
-            src={DataStudioLogo}
+  const lowerNav = (
+    <>
+      {hasRemoteSyncFeature ? (
+        <>
+          <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
+            isNavbarOpened={isNavbarOpened}
+            onClick={() => setIsGitSettingsOpen(true)}
           />
-          {!isNavbarOpened && (
-            <ToggleActionIcon
-              isNavbarOpened={isNavbarOpened}
-              onNavbarToggle={onNavbarToggle}
-            />
-          )}
-        </Box>
-        {isNavbarOpened && <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
-      </Group>
-      {isNavbarOpened && (
-        <ToggleActionIcon isNavbarOpened onNavbarToggle={onNavbarToggle} />
+          <PLUGIN_REMOTE_SYNC.GitSettingsModal
+            isOpen={isGitSettingsOpen}
+            onClose={() => setIsGitSettingsOpen(false)}
+          />
+        </>
+      ) : (
+        <AreaTab
+          label={t`Set up remote sync`}
+          icon="gear"
+          to={Urls.dataStudioGitSync()}
+          isSelected={currentTab === "git-sync"}
+          showLabel={isNavbarOpened}
+          isGated
+        />
       )}
-    </Flex>
+      {canManageWorkspaces && (
+        <AreaTab
+          label={t`Workspaces`}
+          icon="workspace"
+          to={Urls.workspaces()}
+          isSelected={currentTab === "workspaces"}
+          showLabel={isNavbarOpened}
+        />
+      )}
+      {canUseTransforms && (
+        <AreaTab
+          label={t`Jobs`}
+          icon="clock"
+          to={Urls.transformJobList()}
+          isSelected={currentTab === "jobs"}
+          showLabel={isNavbarOpened}
+        />
+      )}
+      {canUseTransforms && (
+        <AreaTab
+          label={t`Runs`}
+          icon="play_outlined"
+          to={Urls.transformGraphRunList()}
+          isSelected={currentTab === "runs"}
+          showLabel={isNavbarOpened}
+        />
+      )}
+      {settings.length > 0 && (
+        <AreaTab
+          label={t`Settings`}
+          icon="gear"
+          to={Urls.dataStudioSettings()}
+          isSelected={currentTab === "settings"}
+          showLabel={isNavbarOpened}
+        />
+      )}
+    </>
   );
-}
-
-type ToggleActionIconProps = DataStudioNavbarToggleProps & {
-  className?: string;
-};
-
-function ToggleActionIcon(props: ToggleActionIconProps) {
-  const { isNavbarOpened, onNavbarToggle } = props;
-  const label = getSidebarTooltipLabel(isNavbarOpened);
 
   return (
-    <Tooltip label={label} openDelay={1000}>
-      <ActionIcon
-        aria-label={label}
-        className={S.toggle}
-        onClick={() => onNavbarToggle(!isNavbarOpened)}
-      >
-        <FixedSizeIcon
-          name={isNavbarOpened ? "sidebar_closed" : "sidebar_open"}
-          c="text-secondary"
+    <AreaLayout
+      logo={
+        <img
+          alt={t`Data Studio Logo`}
+          src={DataStudioLogo}
+          width={32}
+          height={32}
+          style={{ display: "block" }}
         />
-      </ActionIcon>
-    </Tooltip>
+      }
+      testId="data-studio-nav"
+      isLoading={isLoadingNavbarKey}
+      isNavbarOpened={isNavbarOpened}
+      onNavbarToggle={setIsNavbarOpened}
+      headerControls={<PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
+      upperNav={upperNav}
+      lowerNav={lowerNav}
+    >
+      <Outlet />
+    </AreaLayout>
   );
 }

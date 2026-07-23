@@ -1,17 +1,23 @@
 import type { PropsWithChildren } from "react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
-  unstable_HistoryRouter as HistoryRouter,
+  type HistoryRouterProps,
   Routes,
   UNSAFE_createBrowserHistory as createBrowserHistory,
   UNSAFE_createMemoryHistory as createMemoryHistory,
 } from "react-router-v7";
 
+import { useDispatch } from "metabase/redux";
 import { getBasename } from "metabase/utils/basename";
 
+import { LOCATION_CHANGE } from "../routing-reducer";
+
+import { SyncHistoryRouter } from "./SyncHistoryRouter";
 import { V7ReduxBridge } from "./V7ReduxBridge";
 import { withBlocking } from "./blocking-history";
+import { toV3Location } from "./location";
 import { mapToV7 } from "./map-to-v7";
+import { notifyLocationListeners } from "./navigator";
 
 /**
  * The v7 route tree: the facade tree mapped to real v7 routes and rendered by
@@ -19,12 +25,37 @@ import { mapToV7 } from "./map-to-v7";
  * and lets `dispatch(push(...))` drive the router. Kept separate from the history
  * provider below so tests can host the same tree under a `<MemoryRouter>`.
  */
-export function V7RouterTree({ children }: PropsWithChildren): JSX.Element {
+export function V7RouterTree({
+  children,
+  history,
+}: PropsWithChildren<{
+  history?: HistoryRouterProps["history"];
+}>): JSX.Element {
   return (
     <>
-      <V7ReduxBridge />
+      <V7ReduxBridge history={history} />
       <Routes>{mapToV7(children)}</Routes>
     </>
+  );
+}
+
+/**
+ * Mirrors each location into `state.routing` (and the `router.listen`
+ * subscribers) from inside the history subscription, so the store is current
+ * before any thunk reads it. Replaces v3's `syncHistoryWithStore`.
+ */
+function useLocationMirror() {
+  const dispatch = useDispatch();
+  return useCallback(
+    (
+      location: Parameters<typeof toV3Location>[0],
+      action: Parameters<typeof toV3Location>[1],
+    ) => {
+      const v3Location = toV3Location(location, action);
+      dispatch({ type: LOCATION_CHANGE, payload: v3Location });
+      notifyLocationListeners(v3Location);
+    },
+    [dispatch],
   );
 }
 
@@ -40,30 +71,57 @@ export function RouterProviderV7({ children }: PropsWithChildren): JSX.Element {
   const [history] = useState(() =>
     withBlocking(createBrowserHistory({ v5Compat: true })),
   );
+  const onLocationChange = useLocationMirror();
   return (
-    <HistoryRouter history={history} basename={getBasename() || undefined}>
-      <V7RouterTree>{children}</V7RouterTree>
-    </HistoryRouter>
+    <SyncHistoryRouter
+      history={history}
+      basename={getBasename() || undefined}
+      onLocationChange={onLocationChange}
+    >
+      <V7RouterTree history={history}>{children}</V7RouterTree>
+    </SyncHistoryRouter>
   );
 }
 
 /**
+ * The in-memory blocking history the test engine runs on. Exposed so the test
+ * harness can own the instance and hand tests a handle on it, rather than it
+ * being created (and trapped) inside the provider.
+ */
+export function createMemoryTestHistory(initialRoute: string) {
+  // history@3 resolved a relative initial entry against the root; v7 keeps it
+  // relative, and a location without a leading slash then matches no route. Specs
+  // written against v3 pass both forms, so normalize.
+  const entry = initialRoute.startsWith("/")
+    ? initialRoute
+    : `/${initialRoute}`;
+  return withBlocking(
+    createMemoryHistory({ initialEntries: [entry], v5Compat: true }),
+  );
+}
+
+export type MemoryTestHistory = ReturnType<typeof createMemoryTestHistory>;
+
+/**
  * The v7 engine hosted on an in-memory history, for tests. Mirrors what
  * `renderWithProviders({ routerEngine: "v7" })` mounts, including navigation
- * blocking.
+ * blocking. Pass `history` to drive and inspect it from outside the tree.
  */
 export function RouterProviderV7Memory({
   children,
   initialRoute,
-}: PropsWithChildren<{ initialRoute: string }>): JSX.Element {
-  const [history] = useState(() =>
-    withBlocking(
-      createMemoryHistory({ initialEntries: [initialRoute], v5Compat: true }),
-    ),
+  history: providedHistory,
+}: PropsWithChildren<{
+  initialRoute: string;
+  history?: MemoryTestHistory;
+}>): JSX.Element {
+  const [history] = useState(
+    () => providedHistory ?? createMemoryTestHistory(initialRoute),
   );
+  const onLocationChange = useLocationMirror();
   return (
-    <HistoryRouter history={history}>
-      <V7RouterTree>{children}</V7RouterTree>
-    </HistoryRouter>
+    <SyncHistoryRouter history={history} onLocationChange={onLocationChange}>
+      <V7RouterTree history={history}>{children}</V7RouterTree>
+    </SyncHistoryRouter>
   );
 }

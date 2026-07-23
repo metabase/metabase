@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { push, replace } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { MeasureId } from "metabase-types/api";
