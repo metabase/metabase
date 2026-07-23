@@ -83,10 +83,12 @@
    the target tab."
   [state {:keys [position size]} tab-id display-type]
   (let [siblings   (filterv #(= tab-id (:dashboard_tab_id %)) (:dashcards state))
-        ;; The 2-arity resolves the display's default size from `dashboards.constants`.
-        autoplaced (autoplace/get-position-for-new-dashcard siblings display-type)
-        size_x     (or (:size_x size) (:size_x autoplaced))
-        size_y     (or (:size_y size) (:size_y autoplaced))]
+        ;; The display's default size, from `dashboards.constants` via the 2-arity. Resolved
+        ;; against no siblings so it always yields a size — the search below can come up empty on
+        ;; a full tab, and the default size must not vanish with it.
+        default    (autoplace/get-position-for-new-dashcard [] display-type)
+        size_x     (or (:size_x size) (:size_x default))
+        size_y     (or (:size_y size) (:size_y default))]
     (if position
       {:row (:row position) :col (:col position) :size_x size_x :size_y size_y}
       ;; Re-run placement at the caller's size — the default-size slot may not fit it.
@@ -189,8 +191,9 @@
 ;;; ------------------------------------------------- Edit ops ------------------------------------------------------
 
 (def ^:private patch-rejected-keys
-  "Keys `patch_dashcard` refuses, mapped to the op that owns them. A patch is a content merge;
-   silently dropping a layout key would let a caller believe a move took effect."
+  "Layout and identity keys `patch_dashcard` refuses, mapped to the op that owns them. A patch is a
+   content merge; silently dropping one would let a caller believe a move or replace took effect.
+   `:id` has no owning op — it is caught generically by the [[patchable-keys]] allowlist."
   {:row              "move"
    :col              "move"
    :dashboard_tab_id "move"
@@ -198,8 +201,13 @@
    :size_y           "resize"
    :card_id          "replace_card"
    :action_id        "replace_card"
-   :series           "set_series"
-   :id               nil})
+   :series           "set_series"})
+
+(def ^:private patchable-keys
+  "The dashcard content keys a patch may carry. An existing dashcard's update allowlists these
+   anyway, but a new (negative-id) dashcard is inserted with an open schema, so an unlisted key
+   would reach the DB as a raw error — reject it here instead, symmetrically for both."
+  #{:visualization_settings :parameter_mappings :inline_parameters})
 
 (defmethod apply-op "replace_card"
   [state idx {:keys [dashcard_id card_id]}]
@@ -246,12 +254,14 @@
 (defmethod apply-op "patch_dashcard"
   [state idx {:keys [dashcard_id patch]}]
   (resolve-dashcard! state idx dashcard_id)
-  (doseq [[k owner] patch-rejected-keys]
-    (when (contains? patch k)
-      (op-error! idx (if owner
-                       (format "patch_dashcard): `%s` is not patchable — use the `%s` op."
-                               (name k) owner)
-                       (format "patch_dashcard): `%s` is not patchable." (name k))))))
+  (doseq [k (keys patch)]
+    (cond
+      (contains? patch-rejected-keys k)
+      (op-error! idx (format "patch_dashcard): `%s` is not patchable — use the `%s` op."
+                             (name k) (get patch-rejected-keys k)))
+
+      (not (contains? patchable-keys k))
+      (op-error! idx (format "patch_dashcard): `%s` is not a patchable property." (name k)))))
   (update-dashcard state dashcard_id
                    (fn [dc]
                      (cond-> (merge dc (dissoc patch :visualization_settings))

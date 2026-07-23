@@ -249,6 +249,20 @@
                            (dash-with [a-dashcard])
                            [{:op "patch_dashcard" :dashcard_id 7 :patch {:card_id 1}}])))))
 
+(deftest patch-dashcard-rejects-unknown-keys-test
+  (testing "GHY-4147: a patch key that is neither a layout key nor a content column is rejected —
+            on a new dashcard it would otherwise reach the insert as a raw DB error"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*`nonsense`.*not a patchable property"
+                          (dashboard-ops/compile-ops
+                           (dash-with [a-dashcard])
+                           [{:op "patch_dashcard" :dashcard_id 7 :patch {:nonsense "x"}}])))
+    (testing "including on a card added in the same batch"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 1.*not a patchable property"
+                            (dashboard-ops/compile-ops
+                             empty-dash
+                             [{:op "add_card" :id -1 :card_id 42}
+                              {:op "patch_dashcard" :dashcard_id -1 :patch {:bogus 1}}]))))))
+
 (deftest ops-apply-in-order-test
   (testing "GHY-4147: a later op sees the effect of an earlier one — add then move the same new card"
     (let [{:keys [dashcards]} (dashboard-ops/compile-ops
