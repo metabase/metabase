@@ -4,8 +4,8 @@
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase-enterprise.serialization.v2.dependency-validation :as dependency-validation]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -71,19 +71,6 @@
         (into (map :id) roots)
         (into (mapcat collection/descendant-ids) roots))))
 
-(defn- collection-label [coll-id]
-  (if coll-id
-    (let [collection (t2/hydrate (t2/select-one :model/Collection :id coll-id) :ancestors)
-          names      (->> (conj (:ancestors collection) collection)
-                          (map :name)
-                          (str/join " > "))]
-      (format "%d: %s" coll-id names))
-    "[no collection]"))
-
-(defn- entity-label [{:keys [model id]}]
-  (let [entity (t2/select-one [model :collection_id :name] :id id)]
-    (format "%s %d (%s from collection %s)" (name model) id (:name entity) (collection-label (:collection_id entity)))))
-
 (defn- parse-target [[model-name id :as target]]
   (if (string? id)
     (if-let [resolved-id (serdes/eid->id model-name id)]
@@ -103,68 +90,21 @@
           (mapcat collection/descendant-ids)
           analytics-roots)))
 
-(defn- escape-analysis
-  "Analyzes the dependency graph to find cards that are outside the collection set (escapees).
-   Returns a map with:
-   - :reportable-escaped - escapees that should trigger warnings (non-analytics)
-   - :analytics-card-ids - card IDs in analytics collections (should be removed from extraction but not block export)
-
-   Cards that depend on analytics cards are allowed to be exported - the references will be converted
-   to entity_ids during export and resolved on import since analytics cards have stable entity_ids."
-  [{colls "Collection" cards "Card" :as _by-model} nodes]
-  (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
-  (when-let [colls (-> colls set not-empty)]
-    (let [clause           {:where [:or
-                                    [:in :collection_id colls]
-                                    (when (contains? colls nil)
-                                      [:= :collection_id nil])]}
-          possible-pks     (t2/select-pks-set :model/Card clause)
-          escaped-card-ids (set/difference (set cards) possible-pks)]
-      (when (seq escaped-card-ids)
-        ;; Analytics cards have stable entity_ids across instances, so cards that depend on them
-        ;; can still be exported: the references will be resolved on import
-        (let [analytics-colls      (analytics-collection-ids)
-              escaped-in-analytics (if (seq analytics-colls)
-                                     (t2/select-pks-set :model/Card {:where [:and
-                                                                             [:in :id escaped-card-ids]
-                                                                             [:in :collection_id analytics-colls]]})
-                                     #{})
-              reportable-escaped   (set/difference escaped-card-ids escaped-in-analytics)]
-          {:reportable-escaped (->> reportable-escaped
-                                    (mapv (fn [id]
-                                            (-> (get nodes ["Card" id])
-                                                (assoc :escapee {:model :model/Card
-                                                                 :id    id})))))
-           :analytics-card-ids escaped-in-analytics})))))
-
-(defn- handle-escapees!
-  "Reports cards that are referenced from inside the requested collections but saved outside them.
-
-  Logs a per-entity warning for each escapee.
-
-  Throws if `continue-on-error?` is false."
-  [escaped continue-on-error?]
-  (let [dashboards (group-by #(get % "Dashboard") escaped)]
-    (doseq [[dash-id escapes] (dissoc dashboards nil)]
-      (log/warnf "Failed to export Dashboard %d (%s) containing Card saved outside requested collections: %s"
-                 dash-id
-                 (t2/select-one-fn :name :model/Dashboard :id dash-id)
-                 (str/join ", " (map #(entity-label (:escapee %)) escapes))))
-    (when-let [other (not-empty (get dashboards nil))]
-      (log/warnf "Failed to export Cards based on questions outside requested collections: %s"
-                 (str/join ", " (for [item other]
-                                  (format "%s -> %s"
-                                          (if (get item "Card")
-                                            (entity-label {:model :model/Card :id (get item "Card")})
-                                            (dissoc item :escapee))
-                                          (entity-label (:escapee item))))))))
-  (when-not continue-on-error?
-    (throw (ex-info (format (str "Serialization failed: %d card(s) referenced by the requested collections "
-                                 "are saved outside them, which would produce an incomplete export. See the "
-                                 "warnings above for the affected entities. Pass continue-on-error to export "
-                                 "anyway, skipping the affected dashboards and cards.")
-                            (count (distinct (map (comp :id :escapee) escaped))))
-                    {:status-code 400}))))
+(defn- analytics-card-ids
+  "Of `card-ids`, the subset living in an 'analytics' namespace collection. These are removed from extraction (they
+   have stable entity_ids across instances) and references to them stay valid, resolving on import. `card-ids` is
+   queried in bounded `:in` batches so a large closure doesn't blow past database parameter limits."
+  [card-ids]
+  (let [analytics-colls (analytics-collection-ids)]
+    (if (and (seq card-ids) (seq analytics-colls))
+      (into #{}
+            (comp (partition-all serdes/query-batch-size)
+                  (mapcat (fn [batch]
+                            (t2/select-pks-set :model/Card {:where [:and
+                                                                    [:in :id (vec batch)]
+                                                                    [:in :collection_id (vec analytics-colls)]]}))))
+            card-ids)
+      #{})))
 
 (defn- resolve-targets
   "Returns all targets (for either supplied initial `targets` or for supplied `user-id`)."
@@ -200,16 +140,15 @@
                        (resolve-targets opts user-id))
         ;; `by-model` is a map of `{model-name [ids ...]}`
         by-model (u/group-by first second (keys nodes))
-        ;; Escape analysis only matters when exporting collection content — it checks whether
-        ;; cards referenced by dashboards live outside the target collections.
-        {:keys [reportable-escaped analytics-card-ids]} (when has-content?
-                                                          (escape-analysis by-model nodes))]
-    ;; A card referenced from inside the requested collections but living outside them would produce an incomplete
-    ;; export.
-    (when (seq reportable-escaped)
-      (handle-escapees! reportable-escaped (:continue-on-error opts))) ;; may throw
-    (let [coll-set        (get by-model "Collection")
-          ;; When targets are specified, also include Tables found via descendants
+        ;; Cards in analytics collections aren't extracted (stable entity_ids), but references to them stay valid.
+        analytics-cards (when has-content?
+                          (analytics-card-ids (get by-model "Card")))
+        coll-set        (get by-model "Collection")]
+    ;; Validate that every entity to be extracted has all its references satisfied; aborts (unless
+    ;; continue-on-error) before any archive is produced, so incomplete exports fail fast and loudly.
+    (when has-content?
+      (dependency-validation/validate-dependencies! by-model coll-set analytics-cards opts)) ;; may throw
+    (let [;; When targets are specified, also include Tables found via descendants
           ;; (published tables in target collections). These are extracted by ID, not all.
           targeted-data-model (when (seq targets)
                                 (select-keys by-model serdes.models/data-model-in-collection))
@@ -218,11 +157,13 @@
                             (seq targeted-data-model) (merge targeted-data-model)
                             ;; Remove analytics cards from extraction - they have stable entity_ids across instances
                             ;; so cards that reference them can still be exported and imported correctly
-                            (and analytics-card-ids (contains? by-model "Card"))
-                            (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
+                            (and analytics-cards (contains? by-model "Card"))
+                            (update "Card" (fn [ids] (vec (remove analytics-cards ids)))))
+          ;; FieldUserSettings has a non-standard PK (field_id, not id) — use the right column.
+          pk-col          (fn [model] (if (= model "FieldUserSettings") :field_id :id))
           extract-by-ids  (fn [[model ids]]
                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                   :where          [:in :id ids]})))
+                                                                   :where          [:in (pk-col model) ids]})))
           extract-all     (fn [model]
                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
       (eduction cat
@@ -243,6 +184,8 @@
                (merge
                 (u/traverse colls #(serdes/ascendants (first %) (second %)))
                 (u/traverse colls #(serdes/descendants (first %) (second %) {})))))
-  (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
-  ;; continue-on-error? true so this just logs in the REPL instead of throwing
-  (handle-escapees! (:reportable-escaped escaped) true))
+  (def by-model (u/group-by first second (keys nodes)))
+  ;; continue-on-error so this just logs in the REPL instead of throwing
+  (dependency-validation/validate-dependencies! by-model (get by-model "Collection")
+                                                (analytics-card-ids (get by-model "Card"))
+                                                {:continue-on-error true}))

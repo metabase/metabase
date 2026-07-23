@@ -16,6 +16,7 @@ const mockResponse = ({
   json = () => Promise.resolve({}),
   text = () => Promise.resolve(""),
 }: MockResponseOptions): Response =>
+  // Unjustified type cast. FIXME
   ({
     ok,
     status,

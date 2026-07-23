@@ -162,8 +162,11 @@ describe("scenarios > alert", () => {
       const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 
       function addEmailRecipient(email) {
-        // Mantine Select has the role `textbox` 🤦
-        cy.findAllByRole("textbox").first().click().type(`${email}`).blur();
+        cy.findByTestId("token-field")
+          .findByRole("combobox")
+          .click()
+          .type(`${email}`)
+          .blur();
       }
 
       function setAllowedDomains() {
@@ -187,9 +190,7 @@ describe("scenarios > alert", () => {
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
-          cy.findByTestId("token-field").within(() => {
-            addEmailRecipient(deniedEmail);
-          });
+          addEmailRecipient(deniedEmail);
 
           cy.findByText(adminAlertError);
           cy.button("Done").should("be.disabled");
@@ -220,14 +221,12 @@ describe("scenarios > alert", () => {
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
-          cy.findByTestId("token-field").within(() => {
-            addEmailRecipient(deniedEmail);
-          });
+          addEmailRecipient(deniedEmail);
 
           cy.button("Done").click();
         });
         cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.attr", "color", "error");
+          cy.root().should("have.attr", "color", "feedback-negative");
           cy.root().should("have.text", normalUserAlertError);
         });
 
@@ -240,7 +239,7 @@ describe("scenarios > alert", () => {
           cy.button("Done").click();
         });
         cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.attr", "color", "error");
+          cy.root().should("have.attr", "color", "feedback-negative");
           cy.root().should("have.text", normalUserSubscriptionError);
         });
       });

@@ -224,7 +224,8 @@ export class ApiClient extends EventEmitter<EventMap> {
       data: options.params ?? {},
       body: bodyIsRaw
         ? undefined
-        : (options.body as Record<string, unknown> | undefined),
+        : // Unjustified type cast. FIXME
+          (options.body as Record<string, unknown> | undefined),
     });
 
     let body: BodyInit | undefined = undefined;
@@ -239,6 +240,7 @@ export class ApiClient extends EventEmitter<EventMap> {
         appendQueryParameters(url, resolvedBody);
       }
     } else if (bodyIsRaw) {
+      // Unjustified type cast. FIXME
       body = options.body as BodyInit;
 
       // Let the browser set Content-Type with the multipart boundary
@@ -268,6 +270,7 @@ export class ApiClient extends EventEmitter<EventMap> {
     } & RequestOptions<Raw>,
   ): Promise<ResponseFor<Raw>> {
     const init = await this._prepareRequest(options);
+    // Unjustified type cast. FIXME
     return this._send(init, options.retry ?? false) as ResponseFor<Raw>;
   }
 

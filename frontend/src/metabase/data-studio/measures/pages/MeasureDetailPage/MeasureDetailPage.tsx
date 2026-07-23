@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateMeasureMutation } from "metabase/api";
@@ -9,6 +8,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";

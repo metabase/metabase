@@ -1,6 +1,4 @@
 import { act } from "@testing-library/react";
-import type { Location } from "history";
-import { push, replace } from "react-router-redux";
 
 import { renderHookWithProviders } from "__support__/ui";
 import { isEmbedPreview } from "metabase/embedding/config";
@@ -11,6 +9,8 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
+import { push, replace } from "metabase/router";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -21,8 +21,8 @@ import { useDashboardUrlQuery } from "./use-dashboard-url-query";
 // tab subscription. The react-router migration re-plumbs both of these, and
 // router.listen has no direct v7 equivalent, so this locks current behavior.
 
-jest.mock("react-router-redux", () => ({
-  ...jest.requireActual("react-router-redux"),
+jest.mock("metabase/router", () => ({
+  ...jest.requireActual("metabase/router"),
   push: jest.fn((descriptor) => ({ type: "MOCK_PUSH", payload: descriptor })),
   replace: jest.fn((descriptor) => ({
     type: "MOCK_REPLACE",
@@ -65,6 +65,7 @@ function setup({
     }),
   };
 
+  // Unjustified type cast. FIXME
   const location = {
     pathname,
     query,
@@ -80,6 +81,7 @@ function setup({
           [dashboardId]: createMockStoreDashboard({
             id: dashboardId,
             parameters,
+            // Unjustified type cast. FIXME
             tabs: tabs?.map((tab) => ({ ...tab }) as any),
           }),
         };
@@ -95,6 +97,7 @@ function setup({
   });
 
   const { store, unmount } = renderHookWithProviders(
+    // Unjustified type cast. FIXME
     () => useDashboardUrlQuery(router as any, location),
     { storeInitialState },
   );
@@ -104,8 +107,11 @@ function setup({
 
 describe("useDashboardUrlQuery", () => {
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     (push as jest.Mock).mockClear();
+    // Unjustified type cast. FIXME
     (replace as jest.Mock).mockClear();
+    // Unjustified type cast. FIXME
     (isEmbedPreview as jest.Mock).mockReturnValue(false);
   });
 
@@ -135,6 +141,7 @@ describe("useDashboardUrlQuery", () => {
 
     // The mount sync (previous query params were undefined) uses replace.
     (push as jest.Mock).mockClear();
+    // Unjustified type cast. FIXME
     (replace as jest.Mock).mockClear();
 
     act(() => {
@@ -151,6 +158,7 @@ describe("useDashboardUrlQuery", () => {
   });
 
   it("does not sync when isEmbedPreview() is true", () => {
+    // Unjustified type cast. FIXME
     (isEmbedPreview as jest.Mock).mockReturnValue(true);
 
     setup({
@@ -183,7 +191,7 @@ describe("useDashboardUrlQuery", () => {
         listeners[0]({
           ...location,
           query: { tab: "5-tab-5" },
-        } as unknown as Location);
+        });
       });
 
       // selectTab is the only reducer that sets selectedTabId, so this pins that
@@ -199,7 +207,7 @@ describe("useDashboardUrlQuery", () => {
           ...location,
           pathname: "/dashboard/999",
           query: { tab: "5-tab-5" },
-        } as unknown as Location);
+        });
       });
 
       expect(store.getState().dashboard.selectedTabId).toBe(null);

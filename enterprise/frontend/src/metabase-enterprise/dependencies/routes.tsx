@@ -1,7 +1,9 @@
-import { IndexRoute } from "react-router";
+import { Route, withRouteProps } from "metabase/router";
 
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
+const RoutedDependencyGraphPage = withRouteProps(DependencyGraphPage);
+
 export function getDataStudioDependencyRoutes() {
-  return <IndexRoute component={DependencyGraphPage} />;
+  return <Route index element={<RoutedDependencyGraphPage />} />;
 }

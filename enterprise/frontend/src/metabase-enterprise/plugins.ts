@@ -21,6 +21,7 @@ import { initializePlugin as initializeContentTranslation } from "./content_tran
 import { initializePlugin as initializeContentVerification } from "./content_verification";
 import { initializePlugin as initializeCustomViz } from "./custom_viz";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
+import { initializePlugin as initializeDataApps } from "./data_apps";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -35,6 +36,7 @@ import { initializePlugin as initializeModelPersistence } from "./model_persiste
 import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
 import { initializePlugin as initializeTools } from "./monitor/tools";
+import { initializePlugin as initializeMultiFactorAuth } from "./multi_factor_auth";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
@@ -74,6 +76,7 @@ export function initializePlugins() {
   initializeContentTranslation();
   initializeContentVerification();
   initializeCustomViz();
+  initializeDataApps();
   initializeDatabaseReplication();
   initializeDatabaseRouting();
   initializeDependencies();
@@ -88,6 +91,7 @@ export function initializePlugins() {
   initializeModelPersistence();
   initializeModeration();
   initializeMonitorDependencyDiagnostics();
+  initializeMultiFactorAuth();
   initializeRemoteSync();
   initializeReplacement();
   initializeResourceDownloads();

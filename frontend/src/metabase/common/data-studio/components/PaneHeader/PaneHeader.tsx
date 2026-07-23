@@ -1,8 +1,8 @@
-import type { FC, ReactNode } from "react";
-import { Link } from "react-router";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
+import { LinkTab } from "metabase/common/components/LinkTab";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
@@ -17,7 +17,6 @@ import {
   Stack,
   type StackProps,
   Tabs,
-  type TabsTabProps,
   Tooltip,
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
@@ -138,15 +137,6 @@ type PaneHeaderTabsProps = {
   tabs: PaneHeaderTab[];
 };
 
-/**
- * Mantine's `Tabs.Tab` is built with the non-polymorphic `factory`, so
- * `component`/`to` aren't in its prop types. However it still accepts the
- * prop and it works as expected, thus type casting.
- */
-const LinkTab = Tabs.Tab as FC<
-  TabsTabProps & { component: typeof Link; to: string }
->;
-
 function isTabSelected(tab: PaneHeaderTab, pathname: string) {
   const { to, isSelected } = tab;
   return typeof isSelected === "function"
@@ -165,7 +155,6 @@ export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
           <LinkTab
             key={label}
             value={to}
-            component={Link}
             to={to}
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
             rightSection={isGated ? <UpsellGem.New size={14} /> : null}

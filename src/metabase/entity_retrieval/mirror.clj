@@ -4,14 +4,15 @@
   The appdb (`osi_ai_context` + library membership) is authoritative; the index carries one embedding
   per value-document and serves the `retrieve_library_entities` Metabot tool's similarity search.
   These `defenterprise` shims route to [[metabase-enterprise.entity-retrieval.core]] when an enterprise
-  license with semantic search is present; otherwise they no-op or return empty."
+  license with library retrieval is present; otherwise they no-op or return empty."
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise entity-retrieval-available?
-  "Whether the library entity index can serve a query right now: a pgvector store is configured and the
-  license includes semantic search. `false` in OSS (no index). Re-evaluated per use — pgvector config is
-  boot-fixed but the feature can flip at runtime."
+  "Whether the library entity index can serve a query right now: pgvector configured, the `:library` and
+  `:library-retrieval` features licensed, an embedding backend available, and the index built for the
+  current model and populated. `false` in OSS (no index). Re-evaluated per use — pgvector config is
+  boot-fixed but license/settings can flip at runtime."
   metabase-enterprise.entity-retrieval.core
   []
   false)

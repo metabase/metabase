@@ -24,6 +24,7 @@ export const setupListNotificationEndpoints = (
 
 export const setupCreateNotificationEndpoint = () => {
   fetchMock.post("path:/api/notification", ({ options }) => {
+    // Unjustified type cast. FIXME
     return createMockNotification(JSON.parse(options.body as string));
   });
 };

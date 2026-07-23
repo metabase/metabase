@@ -14,7 +14,6 @@ import {
   formatPreviousPeriodOptionName,
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { ClickObject } from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
@@ -127,6 +126,7 @@ export function computeTrend(
     };
   } catch (error) {
     return {
+      // Unjustified type cast. FIXME
       error: error as Error,
     };
   }
@@ -247,7 +247,6 @@ function getCurrentMetricData({
 }): MetricData {
   const [
     {
-      card,
       data: { rows, cols },
     },
   ] = series;
@@ -280,6 +279,7 @@ function getCurrentMetricData({
   if (latestRowIndex === -1) {
     throw Error("No rows contain a valid value.");
   }
+  // Unjustified type cast. FIXME
   const date = rows[latestRowIndex][dimensionColIndex] as string;
   const value = rows[latestRowIndex][metricColIndex];
 
@@ -291,8 +291,7 @@ function getCurrentMetricData({
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
 
-  const question = new Question(card);
-  const isNative = question.isNative();
+  const isNative = cols.some((col) => col.source === "native");
 
   const dateColumnWithUnit = { ...dateColumn };
   if (!isNative) {
@@ -457,6 +456,7 @@ function computeComparisonPreviousValue({
     return null;
   }
 
+  // Unjustified type cast. FIXME
   const prevDate = rows[previousRowIndex][dimensionColIndex] as string;
   const prevValue = rows[previousRowIndex][metricColIndex];
 
@@ -557,7 +557,8 @@ function computeComparisonPeriodsAgo({
   };
 
   const prevDate = !isEmpty(rowPeriodsAgo)
-    ? (rowPeriodsAgo?.[dimensionColIndex] as string)
+    ? // Unjustified type cast. FIXME
+      (rowPeriodsAgo?.[dimensionColIndex] as string)
     : computedPrevDate;
   const comparisonDescStr =
     dateUnitsAgo === 1
@@ -617,6 +618,7 @@ function getRowOfPeriodsAgo({
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
     const candidateRow = rows[i];
     const candidateDate = dayjs.parseZone(
+      // Unjustified type cast. FIXME
       candidateRow?.[dimensionColIndex] as string | undefined,
     );
     const candidateValue = candidateRow[metricColIndex];
@@ -796,12 +798,12 @@ function getArrowColor(
 ) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-positive"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-negative"),
       }
     : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-negative"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-positive"),
       };
 
   return arrowIconColorNames[changeArrowIconName];

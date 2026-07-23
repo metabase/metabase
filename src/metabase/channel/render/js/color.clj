@@ -1,26 +1,13 @@
 (ns metabase.channel.render.js.color
-  "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
-  the background color of pulse table cells"
+  "Determines the background colors of pulse table cells by delegating to the shared color-selector javascript through
+  [[metabase.channel.render.js.protocol]]. All the colors for a table are computed in a single batched JS call."
   (:require
-   [clojure.java.io :as io]
-   [metabase.channel.render.js.engine :as js.engine]
+   [metabase.channel.render.js.protocol :as js.protocol]
+   [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
-   [metabase.util.i18n :refer [trs]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private js-file-path "frontend_shared/color_selector.js")
-
-(def ^:private ^{:arglists '([])} js-engine
-  (js.engine/threadlocal-fifo-memoizer
-   (fn []
-     (let [file-url (io/resource js-file-path)]
-       (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
-       (doto (js.engine/context)
-         (js.engine/load-resource  js-file-path))))
-   5))
 
 (def ^:private QueryResults
   "This is a pretty loose schema, more as a safety net as we have a long feedback loop for this being broken as it's
@@ -31,8 +18,13 @@
                         [:name :string]]]]
    [:rows [:sequential [:sequential :any]]]])
 
+(def ^:private Cell
+  "One cell to color: its value (possibly a formatter wrapper), its row index (row-highlight rules read the whole row
+  from the `:rows` passed alongside), and its column name."
+  [:tuple :any :int [:maybe :string]])
+
 (defn- ->js-number
-  "Coerce BigDecimal/BigInteger to primitive double/long so Graal's JS context sees them as numbers, not host objects.
+  "Coerce BigDecimal/BigInteger to primitive double/long so the JSON handed to the JS side carries plain numbers.
    Returns nil when the value would overflow — BigInteger too wide for long, or BigDecimal magnitude beyond Double's
    finite range — since silently truncating would feed wrong values into gradient/comparison logic."
   [v]
@@ -47,31 +39,35 @@
 
     :else v))
 
-(mu/defn make-color-selector
-  "Returns a curried javascript function (object) that can be used with `get-background-color` for delegating to JS
-  code to pick out the correct color for a given cell in a pulse table. The logic for picking a color is somewhat
-  complex, but defined in a set of rules in `viz-settings`. There are some colors that are picked based on a
-  particular cell value, others affect the row, so it's necessary to call this once for the resultset and then
-  `get-background-color` on each cell."
+(defn- ->js-value
+  "Unwrap a formatter wrapper to the raw cell value the coloring rules should see."
+  [cell]
+  (cond
+    (formatter/NumericWrapper? cell)
+    (->js-number (:num-value cell))
+
+    (formatter/TextWrapper? cell)
+    (:original-value cell)
+
+    :else
+    (->js-number cell)))
+
+(mu/defn cell-background-colors :- [:sequential [:maybe :string]]
+  "Compute the background colors for table `cells` in one batched JS call; returns colors positionally — a CSS color
+  string (hex or `rgba()`) or nil for cells no rule matches. The coloring rules come from `:table.column_formatting`
+  in `viz-settings` (row-highlight rules are disabled when `:table.pivot` is set)."
   [{:keys [cols rows]} :- QueryResults
-   viz-settings]
-  (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
-                             (json/encode rows)
-                             (json/encode cols)
-                             (json/encode viz-settings)))
-
-(defn get-background-color
-  "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
-  `rgba()` string. This is intended to be invoked on each cell of every row in the table. See `make-color-selector`
-  for more info."
-  ^String [color-selector cell-value column-name row-index]
-  (let [cell-value (cond
-                     (formatter/NumericWrapper? cell-value)
-                     (->js-number (:num-value cell-value))
-
-                     (formatter/TextWrapper? cell-value)
-                     (:original-value cell-value)
-
-                     :else
-                     (->js-number cell-value))]
-    (.asString (js.engine/execute-fn color-selector cell-value row-index column-name))))
+   viz-settings
+   cells :- [:sequential Cell]]
+  (if (or (empty? cells)
+          (empty? (or (:table.column_formatting viz-settings)
+                      (get viz-settings "table.column_formatting"))))
+    (vec (repeat (count cells) nil))
+    (js.protocol/cell-background-colors
+     (renderer/renderer)
+     {:rows     rows
+      :cols     cols
+      :settings viz-settings
+      :cells    (mapv (fn [[value row-index column-name]]
+                        [(->js-value value) row-index column-name])
+                      cells)})))

@@ -17,6 +17,7 @@ describe("getInfoPopoversDisabled", () => {
   // metabase#55637: clicking a header cell sets `clicked` and the
   // header-info popover must stop appearing on subsequent hovers.
   it("returns true when a click action is open", () => {
+    // Unjustified type cast. FIXME
     const clicked = { element: document.createElement("div") } as ClickObject;
     expect(getInfoPopoversDisabled({ ...baseArgs, clicked })).toBe(true);
   });

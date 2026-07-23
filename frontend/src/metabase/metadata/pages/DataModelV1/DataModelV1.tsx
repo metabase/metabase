@@ -1,6 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,8 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import type { Location } from "metabase/router";
+import { Outlet } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -32,12 +33,11 @@ import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
-  children?: ReactNode;
   location: Location;
   params: RouteParams;
 }
 
-export const DataModelV1 = ({ children, location, params }: Props) => {
+export const DataModelV1 = ({ location, params }: Props) => {
   const parsedParams = parseRouteParams(params);
   const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =
@@ -117,7 +117,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
         </Box>
       </Stack>
 
-      {isSegments && children}
+      {isSegments && <Outlet />}
 
       {!isSegments && (
         <>

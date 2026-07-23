@@ -50,6 +50,7 @@ export function ModelCachingControl({ database, disabled }: Props) {
         await persistDatabase(databaseId).unwrap();
       }
     } catch (error) {
+      // Unjustified type cast. FIXME
       const response = error as ErrorResponse;
       if (isLackPermissionsError(response)) {
         setError(

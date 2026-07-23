@@ -1,7 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import type { Route, RouteProps } from "react-router";
-import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -20,6 +18,8 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Route, RouteProps } from "metabase/router";
+import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -304,6 +304,7 @@ function TransformQueryPageBody({
         onClose={closeTurnOffIncremental}
       />
       <LeaveRouteConfirmModal
+        // Unjustified type cast. FIXME
         route={route as Route}
         isEnabled={isDirty && !isSaving}
         onConfirm={rejectProposed}

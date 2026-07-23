@@ -877,9 +877,9 @@
         (execute! (str
                    (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
                    (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
-        (let [init-result    (driver/init-workspace-isolation! :redshift (mt/db) workspace)
-              iso-user       (-> init-result :database_details :user)
-              workspace+det  (merge workspace init-result)]
+        (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
+              _              (driver/init-workspace-isolation! :redshift (mt/db) workspace+det)
+              iso-user       (-> workspace+det :database_details :user)]
           (try
             ;; Seed the foreign-grantor default-priv: connect as the foreign role
             ;; and issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
@@ -917,3 +917,35 @@
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
           (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                  grantor))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""            grantor)))))))
+
+(deftest ^:synchronized workspace-destroy-revokes-schema-only-grants-test
+  ;; `DROP USER` fails with `user ... cannot be dropped because the user has a
+  ;; privilege on some object` when the iso-user holds a schema-level USAGE
+  ;; grant on a schema with no relations: destroy used to discover schemas to
+  ;; revoke via `svv_relation_privileges` only, which cannot surface
+  ;; schema-level grants when the schema has no tables. The production grant
+  ;; path (`grant-workspace-read-access!`) issues `GRANT USAGE` per input
+  ;; schema, so any input schema without tables (or whose tables were dropped
+  ;; after provisioning) reproduces this.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          schema     (str "ws_empty_schema_" suffix)
+          workspace  {:id   (rand-int Integer/MAX_VALUE)
+                      :name (str "wsd-dest-empty-" suffix)}]
+      (try
+        (execute! (format "CREATE SCHEMA \"%s\"" schema))
+        (let [workspace (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
+              _         (driver/init-workspace-isolation! :redshift (mt/db) workspace)
+              iso-user  (-> workspace :database_details :user)]
+          (try
+            (jdbc/execute! admin-spec [(format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" schema iso-user)])
+            (testing "destroy completes despite a schema-level-only grant on an empty schema"
+              (is (some? (driver/destroy-workspace-isolation! :redshift (mt/db) workspace))))
+            (testing "iso-user is gone from pg_user after destroy"
+              (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user]))))
+            (finally
+              (try-execute! admin-spec (format "DROP OWNED BY \"%s\""       iso-user))
+              (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))

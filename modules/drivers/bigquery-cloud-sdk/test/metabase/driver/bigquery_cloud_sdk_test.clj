@@ -227,7 +227,6 @@
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
-             #_:clj-kondo/ignore
              (calculate-bird-scarcity $count))))))
 
 (deftest ^:parallel nulls-and-zeroes-test-2
@@ -334,6 +333,24 @@
                               (apply orig-describe-dataset-fields-reducible args))]
                 (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
                 (is (<= 20 @invocation-count))))))))))
+
+(deftest ^:parallel describe-fields-truncates-data-type-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "describe-fields truncates data_type in SQL: a STRUCT's data_type spells out its whole nested schema and
+              the COLUMN_FIELD_PATHS join repeats it on every nested-leaf row, which OOMs sync on dynamic-key schemas"
+      (let [captured-sql    (atom nil)
+            captured-params (atom nil)]
+        (binding [bigquery/*process-native* (fn [respond _database sql params _cancel-chan]
+                                              (reset! captured-sql sql)
+                                              (reset! captured-params params)
+                                              (respond {:cols []} []))]
+          (is (= [] (into [] (#'bigquery/describe-dataset-fields-reducible
+                              :bigquery-cloud-sdk nil "some-project" "some_dataset" ["some_table"]))))
+          (let [sql (-> @captured-sql u/lower-case-en (str/replace "`" ""))]
+            (is (str/includes? sql "substr(c.data_type, ?, ?)"))
+            (is (str/includes? sql "substr(p.data_type, ?, ?)"))
+            ;; the "YES" between the pairs is the is_partitioning_column comparison
+            (is (= [1 200 "YES" 1 200] (take 5 @captured-params)))))))))
 
 (def ^:private native-dataset
   (tx/native-dataset-definition
@@ -1545,3 +1562,13 @@
                                          :value "Gadget"}]))]
       (is (= ["Aerodynamic Leather Computer" "Gadget"]
              (mt/first-row (qp/process-query query)))))))
+
+(deftest ^:parallel clustering-clause-test
+  (testing "clustering renders an inline CLUSTER BY with backtick-quoted columns, in order"
+    (is (= "CLUSTER BY `category`, `price`"
+           (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "category"} {:name "price"}]}]))))
+  (testing "no clustering index -> no clause"
+    (is (nil? (#'bigquery/clustering-clause [{:kind :btree :columns [{:name "category"}]}]))))
+  (testing "a SQL-injection payload in a clustering column is backtick-escaped, so it can only ever be an identifier"
+    (is (= "CLUSTER BY `c``; DROP TABLE x; --`"
+           (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "c`; DROP TABLE x; --"}]}])))))

@@ -257,6 +257,12 @@ export interface TreeTableProps<
   isRowDisabled?: (row: Row<TData>) => boolean;
 
   /**
+   * Callback to determine if a row has an operation in progress. When true,
+   * the row's selection checkbox is replaced by a loading spinner.
+   */
+  isRowLoading?: (row: Row<TData>) => boolean;
+
+  /**
    * Callback to get additional props for each row element.
    * Useful for adding test IDs or custom data attributes.
    */
@@ -303,6 +309,7 @@ export interface TreeTableRowProps<
   onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
   isDisabled?: boolean;
   isChildrenLoading?: boolean;
+  isLoading?: boolean;
   getSelectionState?: (row: Row<TData>) => SelectionState;
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
   getRowProps?: (row: Row<TData>) => Record<string, unknown>;

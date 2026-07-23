@@ -379,6 +379,10 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save").click();
+      cy.wait("@updateTransform");
+      // Saving returns to read-only view mode; the "Run" tab only exists there,
+      // so wait for the navigation off /edit before clicking it.
+      cy.url().should("not.include", "/edit");
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
@@ -1915,7 +1919,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getCancelButton().click();
-      H.modal().button("Yes").click();
+      H.modal().button("Cancel run").click();
 
       getRunButton().should("have.text", "Canceling…");
       getRunStatus().should("have.text", "Canceling…");
@@ -1934,6 +1938,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getRunsNavLink().click();
+      getDetailedViewSwitch().click();
       getTransformRunTable().findByText("In progress").click();
       cy.findByTestId("run-list-sidebar").button("Cancel run").click();
       H.modal().button("Yes").click();
@@ -1952,7 +1957,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getCancelButton().click();
-      H.modal().button("Yes").click();
+      H.modal().button("Cancel run").click();
 
       getRunButton().should("have.text", "Canceling…");
       getRunStatus().should("have.text", "Canceling…");
@@ -3106,6 +3111,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("be.visible");
 
       getRunsNavLink().click();
+      getDetailedViewSwitch().click();
       getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
@@ -3647,6 +3653,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     createInitialData();
     getRunsNavLink().click();
+    getDetailedViewSwitch().click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
@@ -3696,6 +3703,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     createInitialData();
     getRunsNavLink().click();
+    getDetailedViewSwitch().click();
 
     // ascending: "MBQL transform" < "SQL transform"
     testSorting({
@@ -4029,7 +4037,11 @@ function openBulkActionsMenu() {
 }
 
 function visitRunListPage() {
-  return cy.visit("/data-studio/transforms/runs");
+  return cy.visit("/data-studio/transforms/runs/individual");
+}
+
+function getDetailedViewSwitch() {
+  return cy.findByTestId("detailed-view-switch");
 }
 
 function runTransformAndWaitForSuccess() {
@@ -4055,6 +4067,7 @@ function runJobAndWaitForFailure() {
 function createMbqlTransform(
   opts: {
     sourceTable?: string;
+    sourceSchema?: string | null;
     targetTable?: string;
     targetSchema?: string | null;
     tagIds?: TransformTagId[];
@@ -4066,6 +4079,11 @@ function createMbqlTransform(
 ) {
   return H.createMbqlTransform({
     sourceTable: SOURCE_TABLE,
+    // "Animals" exists in every schema of the many_schemas fixture, so pin the
+    // source schema to keep the resolved source table (and its compiled SQL)
+    // deterministic. Only for the default table: custom source tables (e.g.
+    // composite_pk_table, mysql ORDERS) don't live in "Schema A".
+    sourceSchema: opts.sourceTable == null ? TARGET_SCHEMA : undefined,
     targetTable: TARGET_TABLE,
     targetSchema: TARGET_SCHEMA,
     name: "MBQL transform",
@@ -4304,9 +4322,7 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
         .should("not.exist");
 
       cy.log("transform permissions should still not");
-      H.goToAdmin();
-      H.appBar().findByRole("link", { name: "Permissions" }).click();
-      cy.findByRole("menuitem", { name: "All Users" }).click();
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
       //Check that a known header is present
       cy.findByRole("columnheader", { name: "Database name" }).should(
@@ -4369,9 +4385,7 @@ describe(
         cy.button("Create a transform").should("be.visible");
 
         cy.log("transform permissions should now be visible");
-        H.goToAdmin();
-        H.appBar().findByRole("link", { name: "Permissions" }).click();
-        cy.findByRole("menuitem", { name: "All Users" }).click();
+        cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
         //Check that a known header is present
         cy.findByRole("columnheader", { name: "Database name" }).should(

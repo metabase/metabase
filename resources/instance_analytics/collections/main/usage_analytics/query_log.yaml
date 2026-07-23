@@ -76,6 +76,9 @@ dataset_query:
       - {base-type: type/Text, effective-type: type/Text}
       - [Internal Metabase Database, public, v_query_log, embedding_client]
     - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_query_log, embedding_client_identifier]
+    - - field
       - {base-type: type/Boolean, effective-type: type/Boolean}
       - [Internal Metabase Database, public, v_query_log, is_preview]
     - - field
@@ -422,6 +425,21 @@ result_metadata:
   semantic_type: type/Category
   settings: null
   visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Client Identifier
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_client_identifier]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_client_identifier]
+  name: embedding_client_identifier
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
 - base_type: type/Boolean
   coercion_strategy: null
   description: null
@@ -656,6 +674,7 @@ visualization_settings:
   - {enabled: true, name: action_qualified_id}
   - {enabled: true, name: query}
   - {enabled: true, name: embedding_client}
+  - {enabled: true, name: embedding_client_identifier}
   - {enabled: true, name: is_preview}
   - {enabled: true, name: embedding_sdk_version}
   - {enabled: true, name: metabase_version}

@@ -50,9 +50,9 @@ export const getAdminPaths: () => AdminPath[] = () => {
       key: "performance",
     },
     {
-      name: t`Tools`,
-      path: "/admin/tools",
-      key: "tools",
+      name: t`Help`,
+      path: "/admin/help",
+      key: "help",
     },
   ];
 

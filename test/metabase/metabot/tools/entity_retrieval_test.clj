@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest tool-shape-oss-fallback-test
-  (testing "without the semantic-search feature the tool returns the standard empty result shape"
+  (testing "without the library-retrieval feature the tool returns the standard empty result shape"
     ;; Pin the feature off so the defenterprise call takes its OSS fallback regardless of any ambient
     ;; premium token (e.g. an all-features dev token) or rows left in a local pgvector store.
     (mt/with-premium-features #{}

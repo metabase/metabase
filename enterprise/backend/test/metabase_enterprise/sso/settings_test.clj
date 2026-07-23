@@ -328,3 +328,17 @@
             "sso-enabled? should be true when OIDC is the only provider")
         (is (false? (session/enable-password-login))
             "enable-password-login should be honored when OIDC is enabled")))))
+
+(deftest saml-settings-clear-flips-configured-flag-test
+  (testing "clearing the SAML idp settings bundle flips saml-configured and saml-enabled back to false"
+    (mt/with-premium-features #{:sso-saml}
+      (tu/with-temporary-setting-values [saml-identity-provider-uri         default-idp-uri
+                                         saml-identity-provider-certificate default-idp-cert
+                                         saml-enabled                       true]
+        (is (true? (sso-settings/saml-configured)))
+        (is (true? (sso-settings/saml-enabled))))
+      (tu/with-temporary-setting-values [saml-identity-provider-uri         nil
+                                         saml-identity-provider-certificate nil
+                                         saml-enabled                       true]
+        (is (false? (sso-settings/saml-configured)))
+        (is (false? (sso-settings/saml-enabled)))))))

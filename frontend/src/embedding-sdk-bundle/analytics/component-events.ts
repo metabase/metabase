@@ -161,10 +161,12 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
     const sdkVersion = getSdkPackageVersion();
 
     const definedProperties = Object.fromEntries(
+      // Unjustified type cast. FIXME
       Object.entries(properties as Record<string, unknown>).filter(
         ([, value]) => value !== undefined,
       ),
     );
+    // Unjustified type cast. FIXME
     const mergedProperties = {
       ...SDK_COMPONENT_DEFAULT_PROPERTIES[componentName],
       ...definedProperties,
@@ -172,6 +174,7 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
 
     const serializedProperties = Object.fromEntries(
       Object.entries(
+        // Unjustified type cast. FIXME
         mergedProperties as Record<string, boolean | string | null | undefined>,
       ).map(([key, value]) => [key, value == null ? null : String(value)]),
     );

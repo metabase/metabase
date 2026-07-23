@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -14,6 +13,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { getShallowTables } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button } from "metabase/ui";

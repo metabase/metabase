@@ -1,8 +1,6 @@
 import Image from "@tiptap/extension-image";
 import { Link } from "@tiptap/extension-link";
-import type { JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import type { Location } from "history";
 import { useEffect, useMemo } from "react";
 import { useAsync, useMount } from "react-use";
 
@@ -25,6 +23,7 @@ import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeN
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
+import type { Location } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
@@ -59,6 +58,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
       dispatch,
       publicApi.endpoints.getPublicDocument,
     );
+    // Unjustified type cast. FIXME
     return doc as Document;
   }, [uuid, dispatch]);
 
@@ -102,7 +102,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
   const editor = useEditor(
     {
       extensions,
-      content: (document?.document as JSONContent) || "",
+      content: document?.document || "",
       editable: false,
       immediatelyRender: false,
     },
@@ -111,7 +111,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
 
   useEffect(() => {
     if (editor && document?.document) {
-      editor.commands.setContent(document.document as JSONContent);
+      editor.commands.setContent(document.document);
     }
   }, [editor, document?.document]);
 

@@ -35,6 +35,7 @@
     :model/ContentDiagnosticsFinding         metabase-enterprise.content-diagnostics.models.finding
     :model/ContentTranslation                metabase.content-translation.models
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
+    :model/DataApp                           metabase-enterprise.data-apps.models.data-app
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
@@ -57,8 +58,12 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/McpFeedback                       metabase.mcp.models.mcp-feedback
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
+    :model/McpSessionLog                     metabase.mcp.models.mcp-session-log
+    :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
     :model/Measure                           metabase.measures.models.measure
+    :model/TableIndex                        metabase.indexes.models.table-index
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
@@ -126,6 +131,7 @@
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase.transforms.models.transform
+    :model/TransformDagRun                   metabase.transforms.models.dag-run
     :model/TransformJob                      metabase.transforms.models.transform-job
     :model/TransformJobRun                   metabase.transforms.models.job-run
     :model/TransformJobTransformTag          metabase.transforms.models.transform-job-transform-tag
@@ -157,13 +163,12 @@
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't
   need to require the model namespaces in order to use it."
   [x]
-  (when (and (keyword? x)
-             (= (namespace x) "model")
-             ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
-             ;; been required
-             (not (isa? x :metabase/model)))
-    ;; [[classloader/require]] for thread safety
-    (classloader/require (model->namespace x)))
+  (when (keyword? x)
+    ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
+    ;; before side effects like `deftransforms` and `define-before-insert` have run
+    (when-let [nspace (get model->namespace x)]
+      ;; [[classloader/require]] for thread safety
+      (classloader/require nspace)))
   x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol

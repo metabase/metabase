@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Link } from "metabase/router";
 import { Button, Flex, Loader, UnstyledButton } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database, Engine } from "metabase-types/api";

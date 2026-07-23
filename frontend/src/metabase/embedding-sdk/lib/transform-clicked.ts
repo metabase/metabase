@@ -14,6 +14,7 @@ export function transformClickedDataPoint(
   question: Question,
 ): MetabaseDataPointObject {
   return {
+    // Unjustified type cast. FIXME
     raw: clicked as Record<string, unknown>,
 
     column: clicked.column
@@ -24,14 +25,13 @@ export function transformClickedDataPoint(
       : undefined,
     value: clicked.value,
     question: transformSdkQuestion(question),
-    data: clicked.data?.reduce(
-      (acc, curr) => {
-        if (curr.col) {
-          acc[curr.col.name] = curr.value;
-        }
-        return acc;
-      },
-      {} as Record<string, string | number | null | boolean | object>,
-    ),
+    data: clicked.data?.reduce<
+      Record<string, string | number | null | boolean | object>
+    >((acc, curr) => {
+      if (curr.col) {
+        acc[curr.col.name] = curr.value;
+      }
+      return acc;
+    }, {}),
   };
 }

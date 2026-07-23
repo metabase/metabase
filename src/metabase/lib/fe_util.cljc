@@ -631,15 +631,15 @@
                    :get-quarter :quarter-of-year}]
     (match/match-one filter-clause
       ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?) & (args :len 0 :guard (every? int? args))]
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; without `mode`
-      [(_ :guard #{:!= :not-in}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
+      [#{:!= :not-in} _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
 
       ;; with `:mode`
-      [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
+      [#{:!= :not-in} _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
 
       ;; do not match inner clauses
@@ -856,7 +856,7 @@
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (concat
         ;; Extract field dependencies from dimension template tags
-        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
+        (for [{tag-type :type, [dim-tag _opts id] :dimension} (:template-tags base-stage)
               :when                                           (and (= tag-type :dimension)
                                                                    (= dim-tag :field)
                                                                    (integer? id))]
@@ -872,7 +872,7 @@
                (query-dependents-snippets metadata-providerable snippet-id #{})
                ;; If we don't have a real metadata provider, just return the direct dependency
                [{:type :native-query-snippet, :id snippet-id}])))
-         (vals (:template-tags base-stage)))))
+         (:template-tags base-stage))))
      (when-let [card-id (:source-card base-stage)]
        (let [card       (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]

@@ -18,6 +18,28 @@
   Other types (e.g. reasoning summaries) are ignored."
   #{:text :function_call})
 
+(defn- openai-usage->aisdk-usage
+  "Convert an OpenAI Responses API `usage` block into the AISDK `:usage` shape.
+
+  Unlike Anthropic's disjoint input buckets (see [[metabase.metabot.self.claude/claude-usage->aisdk-usage]]), OpenAI
+  reports cached tokens as a subset breakdown of the input total:
+
+      input_tokens                             — total input, cached portion included
+      input_tokens_details.cached_tokens       — the cached subset of input_tokens
+      input_tokens_details.cache_write_tokens  — should always be 0 (see below)
+      output_tokens                            — completion tokens
+
+  cache_write_tokens is absent from the Responses API docs, but present in live responses. We pass it through
+  as :cacheCreationTokens so a count would surface in usage tracking if OpenAI ever starts populating it.
+
+  Nested *_details maps are otherwise dropped: the result must stay flat so downstream `merge-with +` usage
+  accumulation is safe."
+  [u]
+  {:promptTokens        (:input_tokens u 0)
+   :completionTokens    (:output_tokens u 0)
+   :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
+   :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)})
+
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.
 
@@ -119,9 +141,7 @@
              ;; still has valid partial output, so we record its usage rather than treating it as an error.
              (contains? #{"response.completed" "response.incomplete"} t)
              (rf {:type  :usage
-                  :usage (let [u (:usage response)]
-                           {:promptTokens     (:input_tokens u 0)
-                            :completionTokens (:output_tokens u 0)})
+                  :usage (openai-usage->aisdk-usage (:usage response))
                   ;; non-standard extension, not in AISDK5
                   :id    (:id response)
                   :model @model-name})
@@ -199,14 +219,16 @@
       (tru "OpenAI API error (HTTP {0})" status))))
 
 (def ^:private supported-models
-  "OpenAI chat models offered in the Metabot model picker.
-  `list-models` returns the intersection of this set with the account's `/v1/models` catalog."
-  #{"gpt-5.5"
-    "gpt-5.5-pro"
-    "gpt-5.4"
-    "gpt-5.4-pro"
-    "gpt-5.4-mini"
-    "gpt-5"})
+  "OpenAI chat models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
+  {"gpt-5.6-sol"   "GPT-5.6 Sol"
+   "gpt-5.6-terra" "GPT-5.6 Terra"
+   "gpt-5.6-luna"  "GPT-5.6 Luna"
+   "gpt-5.5"       "GPT-5.5"
+   "gpt-5.5-pro"   "GPT-5.5 Pro"
+   "gpt-5.4"       "GPT-5.4"
+   "gpt-5.4-pro"   "GPT-5.4 Pro"
+   "gpt-5.4-mini"  "GPT-5.4 Mini"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -219,8 +241,6 @@
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
-  (when (and credentials (str/blank? (:api-key credentials)))
-    (throw (core/missing-api-key-ex "OpenAI")))
   (try
     (let [auth (core/resolve-auth "openai" "OpenAI"
                                   (when-let [k (or (not-empty (:api-key credentials))
@@ -246,7 +266,7 @@
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]
-                         {:id id :display_name id})))}))
+                         {:id id :display_name (supported-models id)})))}))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.

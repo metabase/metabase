@@ -1,5 +1,4 @@
 import { type ComponentType, useEffect, useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -24,6 +23,7 @@ import {
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { connect, useSelector } from "metabase/redux";
+import { Outlet, useRouter } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
@@ -35,8 +35,6 @@ import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
-  children: React.ReactNode;
-  params: { databaseId: string };
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
@@ -49,11 +47,10 @@ const mapDispatchToProps = {
 };
 
 function DatabaseEditAppInner({
-  children,
-  params,
   updateDatabase,
   deleteDatabase,
 }: DatabaseEditAppProps) {
+  const { params } = useRouter();
   const isAdmin = useSelector(getUserIsAdmin);
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
@@ -99,6 +96,7 @@ function DatabaseEditAppInner({
 
   return (
     <>
+      {/* Unjustified type cast. FIXME */}
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
         <Box w="100%" maw="64.25rem" mx="auto" px="2rem">
           <Breadcrumbs className={CS.py4} crumbs={crumbs} />
@@ -156,7 +154,7 @@ function DatabaseEditAppInner({
           </LoadingAndErrorWrapper>
         </Box>
       </ErrorBoundary>
-      {children}
+      <Outlet />
       {fromEmbeddingSetupGuide && (
         <ReturnToSetupGuideModal
           opened={showReturnModal}
@@ -169,7 +167,13 @@ function DatabaseEditAppInner({
   );
 }
 
-export const DatabaseEditApp = _.compose(
-  withRouter,
-  connect(undefined, mapDispatchToProps),
-)(DatabaseEditAppInner);
+// Dropping the `withRouter` HOC left a single `connect`, which surfaced a
+// pre-existing prop mismatch the old two-HOC `compose` hid (the dispatch thunks
+// want a full `DatabaseData`, the sections pass a partial). Widen to keep the
+// original loose behavior without introducing `any`.
+const DatabaseEditAppComponent = DatabaseEditAppInner as ComponentType;
+
+export const DatabaseEditApp = connect(
+  undefined,
+  mapDispatchToProps,
+)(DatabaseEditAppComponent);

@@ -39,8 +39,8 @@ describe("Remote Sync", () => {
           query: {
             "source-table": PRODUCTS_ID,
           },
-          collection_id: (syncedCollection as unknown as Collection)
-            .id as number,
+          // Unjustified type cast. FIXME
+          collection_id: (syncedCollection as unknown as Collection).id,
         });
       });
 
@@ -191,12 +191,13 @@ describe("Remote Sync", () => {
         cy.findByText("Remote Sync Test Question");
       });
 
-      H.clickSwitchBranchOption();
-      H.popover().findByRole("option", { name: "main" }).click();
-
+      // Switch back to main from Settings (local is synced after stashing, so it switches directly)
+      H.switchBranchViaSettings("main");
       H.waitForTask({ taskName: "import" });
 
       // Upstream change will get pulled when switching branches
+      cy.visit("/collection/root");
+      H.goToSyncedCollection();
       H.collectionTable()
         .findByText("Sloan for Frontend Emperor")
         .should("exist");
@@ -209,15 +210,10 @@ describe("Remote Sync", () => {
         branchCount = 0;
       });
 
+      // Branch switching moved to the instance Settings panel; these helpers drive it there.
       const createNewBranch = (newBranchName: string) => {
         branchCount++;
-        H.clickSwitchBranchOption();
-        H.popover()
-          .findByPlaceholderText("Find or create a branch...")
-          .type(newBranchName);
-        H.popover()
-          .findByRole("option", { name: /Create branch/ })
-          .click();
+        H.createBranchViaSettings(newBranchName);
 
         H.expectUnstructuredSnowplowEvent(
           {
@@ -227,15 +223,12 @@ describe("Remote Sync", () => {
           branchCount,
         );
 
-        H.getGitSyncControls().should("contain.text", newBranchName);
+        H.getSettingsBranchSwitcher().should("contain.text", newBranchName);
       };
 
+      // Only for a clean instance — with unsaved changes the switcher opens the choice modal instead.
       const switchToExistingBranch = (branch: string) => {
-        H.clickSwitchBranchOption();
-        H.popover()
-          .findByPlaceholderText("Find or create a branch...")
-          .type(branch);
-        cy.findByRole("option", { name: branch }).click();
+        H.switchBranchViaSettings(branch);
       };
 
       const pushUpdates = () => {
@@ -271,6 +264,7 @@ describe("Remote Sync", () => {
         createNewBranch(NEW_BRANCH_1);
 
         // Move something into synced collection for the new branch
+        cy.visit("/collection/root");
         H.moveCollectionItemToSyncedCollection(
           "Orders, Count",
           "Test Synced Collection",
@@ -278,9 +272,10 @@ describe("Remote Sync", () => {
 
         pushUpdates();
 
-        // Go back to the main branch
+        // Create a second branch (off the first) and add different content
         createNewBranch(NEW_BRANCH_2);
 
+        cy.visit("/collection/root");
         H.moveCollectionItemToSyncedCollection(
           "Orders Model",
           "Test Synced Collection",
@@ -290,14 +285,17 @@ describe("Remote Sync", () => {
         H.collectionTable().findByText("Orders Model").should("exist");
         pushUpdates();
 
-        // Go back to the first branch
+        // Go back to the first branch (clean, so it switches directly)
         switchToExistingBranch(NEW_BRANCH_1);
+        H.waitForTask({ taskName: "import" });
 
         H.expectUnstructuredSnowplowEvent({
           event: "remote_sync_branch_switched",
-          triggered_from: "app-bar",
+          triggered_from: "admin-settings",
         });
 
+        cy.visit("/collection/root");
+        H.goToSyncedCollection("Test Synced Collection");
         H.collectionTable().findByText("Orders, Count").should("exist");
         // The second item should not exist in the first branch
         H.collectionTable().findByText("Orders Model").should("not.exist");
@@ -323,16 +321,26 @@ describe("Remote Sync", () => {
         createNewBranch(NEW_BRANCH);
 
         // Move something into synced collection for the new branch
+        cy.visit("/collection/root");
         H.moveCollectionItemToSyncedCollection(
           "Orders, Count",
           "Test Synced Collection",
         );
 
-        // Attempt to go back to main
-        switchToExistingBranch("main");
+        // Attempt to go back to main from Settings. Wait for the unsaved-changes indicator so the switch
+        // opens the choose-what-to-do modal rather than switching directly.
+        H.visitRemoteSyncSettings();
+        cy.findByTestId("branch-switcher-dirty-warning")
+          .scrollIntoView()
+          .should("be.visible");
+        H.getSettingsBranchSwitcher().click();
+        H.popover()
+          .findByPlaceholderText("Find or create a branch...")
+          .type("main");
+        H.popover().findByRole("option", { name: "main" }).click();
 
-        // Check that we haven't switched to main
-        H.getGitSyncControls().should("not.contain.text", "main");
+        // Check that we haven't switched to main yet
+        H.getSettingsBranchSwitcher().should("not.contain.text", "main");
 
         H.modal().should("exist");
         H.modal().within(() => {
@@ -351,8 +359,10 @@ describe("Remote Sync", () => {
           cy.button(/Delete unsynced changes/).click();
         });
 
+        H.waitForTask({ taskName: "import" });
+
         // Now we switched to main
-        H.getGitSyncControls().should("contain.text", "main");
+        H.getSettingsBranchSwitcher().should("contain.text", "main");
       });
     });
 
@@ -411,10 +421,12 @@ describe("Remote Sync", () => {
           // waitForTask above already closed the sync confirmation modal.
           H.modal().should("not.exist");
 
-          H.clickSwitchBranchOption();
-          H.popover().findByRole("option", { name: "main" }).click();
+          // Switch back to main from Settings (clean after stashing, so it switches directly)
+          H.switchBranchViaSettings("main");
 
           H.waitForTask({ taskName: "import" }).then(() => {
+            cy.visit("/collection/root");
+            H.goToSyncedCollection();
             H.collectionTable().within(() => {
               cy.findByText("Orders").should("not.exist");
               cy.findByText(REMOTE_QUESTION_NAME).should("exist");
@@ -642,6 +654,26 @@ describe("Remote Sync", () => {
         .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
       H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
+    });
+
+    it("keeps the Embed sharing option available for a question in a read-only synced collection (metabase#72752)", () => {
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
+      // Enable static embedding instance-wide so the Embed option is offered.
+      H.updateSetting("enable-embedding-static", true);
+      H.configureGitAndPullChanges("read-only");
+
+      cy.visit("/");
+
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Synced Collection/ })
+        .click();
+      H.collectionTable().findByText(REMOTE_QUESTION_NAME).click();
+
+      // The Embed option stays available on a read-only synced question; the
+      // Publish button inside the modal is disabled instead (unit-tested).
+      H.openSharingMenu();
+      H.sharingMenu().findByText("Embed").should("be.visible");
     });
   });
 

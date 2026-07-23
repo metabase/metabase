@@ -1,9 +1,10 @@
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -11,17 +12,14 @@ import {
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
 import { getCurrentTab } from "./utils";
 
-type DataStudioLayoutProps = {
-  children?: ReactNode;
-};
-
-export function DataStudioLayout({ children }: DataStudioLayoutProps) {
+export function DataStudioLayout() {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
@@ -49,6 +47,15 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
+
+  const isTransformsSetupComplete = useSetting("transforms-setup-complete");
+  const areTransformsEnabled = useSetting("transforms-enabled");
+
+  const canUseTransforms = canAccessTransforms && areTransformsEnabled;
+  // if transform setup isn't complete, we still show transforms - that's where the upsell/enable pages are
+  const shouldShowTransforms = canUseTransforms || !isTransformsSetupComplete;
+
+  const settings = useDataStudioSettings();
 
   const currentTab = getCurrentTab(pathname);
 
@@ -92,7 +99,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         showLabel={isNavbarOpened}
         isGated={!hasDependenciesFeature}
       />
-      {canAccessTransforms && (
+      {shouldShowTransforms && (
         <AreaTab
           label={t`Transforms`}
           icon="transform"
@@ -149,7 +156,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
           showLabel={isNavbarOpened}
         />
       )}
-      {canAccessTransforms && (
+      {canUseTransforms && (
         <AreaTab
           label={t`Jobs`}
           icon="clock"
@@ -158,12 +165,21 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
           showLabel={isNavbarOpened}
         />
       )}
-      {canAccessTransforms && (
+      {canUseTransforms && (
         <AreaTab
           label={t`Runs`}
           icon="play_outlined"
-          to={Urls.transformRunList()}
+          to={Urls.transformGraphRunList()}
           isSelected={currentTab === "runs"}
+          showLabel={isNavbarOpened}
+        />
+      )}
+      {settings.length > 0 && (
+        <AreaTab
+          label={t`Settings`}
+          icon="gear"
+          to={Urls.dataStudioSettings()}
+          isSelected={currentTab === "settings"}
           showLabel={isNavbarOpened}
         />
       )}
@@ -189,7 +205,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
       upperNav={upperNav}
       lowerNav={lowerNav}
     >
-      {children}
+      <Outlet />
     </AreaLayout>
   );
 }

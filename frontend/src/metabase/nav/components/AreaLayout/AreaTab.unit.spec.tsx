@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import { AreaTab } from "./AreaTab";
 
@@ -19,7 +19,7 @@ const setup = ({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <AreaTab
           label="Dependency diagnostics"
           icon="search_check"
@@ -29,7 +29,7 @@ const setup = ({
           rightSection={rightSection}
           showLabel
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

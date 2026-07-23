@@ -1,7 +1,6 @@
 import { Fragment, memo, useState } from "react";
 
-import { Toggle } from "metabase/common/components/Toggle";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import { Icon, Popover, Switch, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
@@ -32,8 +31,11 @@ interface PermissionSelectProps extends PermissionSectionConfig {
 // we shouldn't ever show this, but rather than throw an error, let the user pick an option to recover
 const defaultOption = {
   label: "Missing",
+  // Unjustified type cast. FIXME
   value: "missing" as DataPermissionValue,
+  // Unjustified type cast. FIXME
   icon: "empty" as IconName,
+  // Unjustified type cast. FIXME
   iconColor: "text-disabled" as ColorName,
 };
 
@@ -147,10 +149,10 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           {hasChildren && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
-              <Toggle
-                small
-                value={toggleState || false}
-                onChange={onToggleChange}
+              <Switch
+                size="sm"
+                checked={toggleState || false}
+                onChange={(e) => onToggleChange(e.currentTarget.checked)}
                 disabled={toggleDisabled ?? false}
               />
             </ToggleContainer>

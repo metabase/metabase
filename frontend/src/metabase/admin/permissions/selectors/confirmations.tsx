@@ -295,6 +295,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     const allTableEntityIds = database.getTables().map((table) => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
+      // Unjustified type cast. FIXME
       tableId: table.id as ConcreteTableId,
     }));
 

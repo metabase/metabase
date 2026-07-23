@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.core-test
   "Tests for the workspace programmatic API and lifecycle rules."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -10,6 +11,8 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -22,8 +25,9 @@
 ;;; Stub provisioner: records calls but doesn't hit real drivers.
 (defn- stub-provisioner []
   (reify provisioning/Provisioner
-    (init! [_ _ _ _]
+    (details [_ _ _ _]
       {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
+    (init! [_ _ _ _] nil)
     (grant! [_ _ _ _ _] nil)
     (destroy! [_ _ _ _] nil)))
 
@@ -71,8 +75,9 @@
                                 (ws/create-workspace! {:name         "Nope"
                                                        :creator_id   (mt/user->id :crowberto)
                                                        :database_ids [Integer/MAX_VALUE]}))))
-        (testing "provisioning failure rolls back the workspace and its database rows"
+        (testing "provisioning failure cleans up: databases torn down, workspace and rows deleted"
           (let [failing-provisioner (reify provisioning/Provisioner
+                                      (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                                       (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
                                       (grant!   [_ _ _ _ _] nil)
                                       (destroy! [_ _ _ _]   nil))]
@@ -85,6 +90,29 @@
                 "the failed create must not leave a Workspace row behind")
             (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
                 "the failed create must not leave WorkspaceDatabase rows behind")))
+        (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
+          (let [wedged (reify provisioning/Provisioner
+                         (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                         (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
+                         (grant!   [_ _ _ _ _] nil)
+                         (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
+            (with-redefs [provisioning/dispatching-provisioner wedged]
+              (is (=? {:name      "Wedged"
+                       :databases [{:status :unprovisioned}]}
+                      (ws/create-workspace! {:name         "Wedged"
+                                             :creator_id   (mt/user->id :crowberto)
+                                             :database_ids [db-id]}))
+                  "the created workspace is returned even though provisioning failed and cleanup could not finish"))
+            (let [ws (t2/select-one :model/Workspace :name "Wedged")]
+              (is (some? ws)
+                  "the workspace must be kept while any database row remains")
+              (is (=? [{:status :unprovisioned}]
+                      (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
+                  "the row whose teardown failed is kept, forced :unprovisioned")
+              ;; retry the teardown via delete once the warehouse is back
+              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                (is (nil? (ws/delete-workspace! (:id ws)))))
+              (is (nil? (ws/get-workspace (:id ws)))))))
         (testing "success: the attached database comes back :provisioned"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
             (let [ws (ws/create-workspace! {:name         "Provisioned"
@@ -122,11 +150,11 @@
   (testing "delete workspace with no databases"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Empty WS" :creator_id (mt/user->id :crowberto)})]
-        (is (= {:deleted true} (ws/delete-workspace! (:id ws))))
+        (is (nil? (ws/delete-workspace! (:id ws))))
         (is (nil? (ws/get-workspace (:id ws))))))))
 
 (deftest delete-workspace-with-pending-status-test
-  (testing "GHY-3954: a workspace with a database still :provisioning/:deprovisioning"
+  (testing "a workspace database still :provisioning/:deprovisioning is torn down like any other state"
     (doseq [pending-status [:provisioning :deprovisioning]]
       (testing (str "status " pending-status)
         (mt/with-model-cleanup [:model/Workspace]
@@ -141,53 +169,78 @@
                         (cond-> {:status pending-status}
                           (= pending-status :provisioning)
                           (assoc :output_namespace "" :database_details {})))
-            (testing "is refused by default, listing the pending databases"
-              (is (thrown-with-msg?
-                   ExceptionInfo #"still provisioning or deprovisioning"
-                   (ws/delete-workspace! (:id ws))))
-              (is (=? {:status-code       409
-                       :pending_databases [{:database_id (mt/id) :status pending-status}]}
-                      (try (ws/delete-workspace! (:id ws))
-                           (catch ExceptionInfo e (ex-data e)))))
-              (is (some? (ws/get-workspace (:id ws)))
-                  "the workspace is left intact when the delete is refused"))
-            (testing "is deleted when ignore-pending? is true; the warehouse is left untouched"
-              ;; destroy! must NOT be called for a pending row — fail loudly if it is.
-              (let [exploding (reify provisioning/Provisioner
-                                (init!    [_ _ _ _]   nil)
-                                (grant!   [_ _ _ _ _] nil)
-                                (destroy! [_ _ _ _]   (throw (ex-info "destroy! must not run for a pending row" {}))))]
-                (with-redefs [provisioning/dispatching-provisioner exploding]
-                  (is (= {:deleted true} (ws/delete-workspace! (:id ws) true)))))
+            (let [destroyed? (atom false)
+                  recording  (reify provisioning/Provisioner
+                               (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                               (init!    [_ _ _ _]   nil)
+                               (grant!   [_ _ _ _ _] nil)
+                               (destroy! [_ _ _ _]   (reset! destroyed? true) nil))]
+              (with-redefs [provisioning/dispatching-provisioner recording]
+                (is (nil? (ws/delete-workspace! (:id ws)))))
+              (is (true? @destroyed?)
+                  "pending rows get a real warehouse teardown, not an app-DB-only removal")
               (is (nil? (ws/get-workspace (:id ws))))
               (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))))
 
-(deftest delete-workspace-warehouse-unreachable-test
-  (testing "GHY-3954: delete still succeeds when warehouse teardown fails; the result"
-    (testing "names the orphaned schema/user and why they were left behind"
+(deftest delete-workspace-teardown-failure-test
+  (testing "when teardown fails, nothing is deleted: the row and the workspace are kept for retry"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [ws     (ws/create-workspace! {:name "Unreachable WS" :creator_id (mt/user->id :crowberto)})
+            _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                     (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+            wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
+            boom   (reify provisioning/Provisioner
+                     (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                     (init!    [_ _ _ _]   nil)
+                     (grant!   [_ _ _ _ _] nil)
+                     (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))]
+        (with-redefs [provisioning/dispatching-provisioner boom]
+          (is (thrown-with-msg? ExceptionInfo #"Connection refused"
+                                (ws/delete-workspace! (:id ws)))
+              "the combined teardown failure is thrown, carrying what the database returned"))
+        (is (some? (ws/get-workspace (:id ws)))
+            "the workspace must be kept when any teardown fails")
+        (is (=? {:status :unprovisioned}
+                (t2/select-one :model/WorkspaceDatabase :id wsd-id))
+            "the failed row is kept, forced :unprovisioned")
+        (testing "retrying the delete once the warehouse is reachable finishes the job"
+          (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+            (is (nil? (ws/delete-workspace! (:id ws)))))
+          (is (nil? (ws/get-workspace (:id ws))))
+          (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))
+
+(deftest delete-workspace-combines-teardown-failures-test
+  (testing "every database gets its teardown attempt and all failures come back as one combined exception"
+    (mt/with-temp [:model/Database {db2-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (let [ws     (ws/create-workspace! {:name "Unreachable WS" :creator_id (mt/user->id :crowberto)})
-              _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                       (add-database! (:id ws) (mt/id) ["PUBLIC"]))
-              wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
-              boom   (reify provisioning/Provisioner
-                       (init!    [_ _ _ _]   nil)
-                       (grant!   [_ _ _ _ _] nil)
-                       (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))
-              result (with-redefs [provisioning/dispatching-provisioner boom]
-                       (ws/delete-workspace! (:id ws)))]
-          (is (true? (:deleted result)))
-          (is (nil? (ws/get-workspace (:id ws)))
-              "the workspace is deleted even though warehouse cleanup failed")
-          (is (=? [{:status                :failure
-                    :workspace_database_id wsd-id
-                    :database_id           (mt/id)
-                    :schema                "mb_iso_stub"
-                    :user                  "stub_user"
-                    :reason                "Connection refused"}]
-                  (:orphaned_resources result)))
-          (is (re-find #"was deleted, but warehouse cleanup failed" (:message result)))
-          (is (re-find #"Connection refused" (:message result))))))))
+        (let [ws   (ws/create-workspace! {:name "Multi fail" :creator_id (mt/user->id :crowberto)})
+              _    (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                     (add-database! (:id ws) (mt/id) ["PUBLIC"])
+                     (add-database! (:id ws) db2-id ["public"]))
+              boom (reify provisioning/Provisioner
+                     (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                     (init!    [_ _ _ _]   nil)
+                     (grant!   [_ _ _ _ _] nil)
+                     (destroy! [_ _ db _]  (throw (ex-info (str "down: " (:id db)) {}))))
+              e    (with-redefs [provisioning/dispatching-provisioner boom]
+                     (try
+                       (ws/delete-workspace! (:id ws))
+                       nil
+                       (catch Throwable t t)))]
+          (is (some? e))
+          (is (= #{(str "down: " (mt/id)) (str "down: " db2-id)}
+                 (set (str/split (ex-message e) #"; ")))
+              "the message joins what each database returned")
+          (is (some? (ex-cause e))
+              "the first failure is the cause")
+          (is (= 1 (count (.getSuppressed ^Throwable e)))
+              "the remaining failures are suppressed")
+          (is (= 2 (t2/count :model/WorkspaceDatabase :workspace_id (:id ws)))
+              "both rows are kept for retry")
+          (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+            (is (nil? (ws/delete-workspace! (:id ws))))))))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 

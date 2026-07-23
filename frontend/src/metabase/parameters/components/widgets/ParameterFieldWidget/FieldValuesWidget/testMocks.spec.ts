@@ -67,6 +67,7 @@ const database = createSampleDatabase({
           has_more_values: true,
         }),
         createMockField({
+          // Unjustified type cast. FIXME
           id: EXPRESSION_FIELD_ID as any,
           field_ref: ["expression", "CC"],
         }),

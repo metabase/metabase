@@ -8,6 +8,7 @@ import {
 } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
@@ -16,11 +17,7 @@ import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButto
 import { TenantsDocsButton } from "../TenantsDocsButton";
 import { TenantsListing } from "../components/TenantsListing";
 
-export const TenantsListingApp = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+export const TenantsListingApp = () => {
   const isAdmin = useSelector(getUserIsAdmin);
 
   const [searchInputValue, setSearchInputValue] = useState("");
@@ -43,6 +40,7 @@ export const TenantsListingApp = ({
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
+      // Unjustified type cast. FIXME
       setStatus(tab as ActiveStatus);
     }
   };
@@ -96,7 +94,7 @@ export const TenantsListingApp = ({
           />
         </LoadingAndErrorWrapper>
 
-        {children}
+        <Outlet />
       </SettingsSection>
     </Box>
   );

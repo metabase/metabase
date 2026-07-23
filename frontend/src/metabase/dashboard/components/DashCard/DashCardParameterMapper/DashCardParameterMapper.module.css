@@ -51,8 +51,8 @@
   }
 
   &.invalid {
-    border-color: var(--mb-color-error);
-    background-color: var(--mb-color-error);
+    border-color: var(--mb-color-feedback-negative);
+    background-color: var(--mb-color-feedback-negative);
     color: var(--mb-color-text-primary-inverse);
   }
 }

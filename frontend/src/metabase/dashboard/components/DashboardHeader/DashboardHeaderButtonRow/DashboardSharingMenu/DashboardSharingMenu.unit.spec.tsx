@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
-import { createMockDashboardTab } from "metabase-types/api/mocks";
+import type { Dashboard } from "metabase-types/api";
+import {
+  createMockDashboardTab,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
@@ -104,6 +109,35 @@ describe("DashboardSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
+      // Creating a public link is a write; on a read-only remote-synced dashboard
+      // (can_write=false) the "Create" action is hidden (MB #72752)...
+      it("should hide 'Create a public link' when the dashboard is not writable", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: false,
+          dashboard: { can_write: false },
+        });
+        await openMenu();
+        expect(
+          screen.queryByText("Create a public link"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Public link")).not.toBeInTheDocument();
+      });
+
+      // ...but an existing public link stays visible so it can still be
+      // viewed/copied/revoked, which are reads.
+      it("should keep an existing 'Public link' visible when the dashboard is not writable", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+          dashboard: { can_write: false },
+        });
+        await openMenu();
+        expect(screen.getByText("Public link")).toBeInTheDocument();
+      });
+
       it("should hide the public link option if public sharing is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: true,
@@ -163,6 +197,29 @@ describe("DashboardSharingMenu", () => {
         await waitFor(() =>
           expect(screen.queryByTestId("sharing-menu")).not.toBeInTheDocument(),
         );
+      });
+
+      it("should show the 'Embed' option for a writable dashboard", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+          dashboard: { can_write: true },
+        });
+        await openMenu();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
+      });
+
+      // The Embed option stays available even on a read-only remote-synced
+      // dashboard (can_write=false); the Publish button inside the modal is
+      // disabled instead of hiding the entry point (MB #72752).
+      it("should still show the 'Embed' option when the dashboard is not writable", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+          dashboard: { can_write: false },
+        });
+        await openMenu();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
       });
 
       // note: if public sharing is disabled, the dashboard object provided by the backend should not have a UUID
@@ -292,6 +349,82 @@ describe("DashboardSharingMenu", () => {
         await openMenu();
         expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("invite to view", () => {
+    const inviteAndGetRequestBody = async (dashboard: Partial<Dashboard>) => {
+      fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.post("path:/api/user", createMockUser({ id: 99 }));
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        isEmailSetup: true,
+        dashboard,
+      });
+      await openMenu();
+      await userEvent.click(screen.getByText("Invite someone to view this"));
+      await userEvent.type(
+        await screen.findByLabelText(/Email/),
+        "newbie@metabase.com",
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send invitation" }),
+      );
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/user", { method: "POST" }),
+        ).toHaveLength(1),
+      );
+      const call = fetchMock.callHistory.calls("path:/api/user", {
+        method: "POST",
+      })[0];
+      return JSON.parse(
+        // Unjustified type cast. FIXME
+        await (call.options?.body as unknown as Promise<string>),
+      );
+    };
+
+    it("shows the invite item for admins", async () => {
+      setupDashboardSharingMenu({ isAdmin: true });
+      await openMenu();
+      expect(
+        screen.getByText("Invite someone to view this"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show the invite item for non-admins", async () => {
+      setupDashboardSharingMenu({ isAdmin: false });
+      await openMenu();
+      expect(
+        screen.queryByText("Invite someone to view this"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the invite modal for the dashboard", async () => {
+      fetchMock.get("path:/api/permissions/group", []);
+      setupDashboardSharingMenu({ isAdmin: true });
+      await openMenu();
+      await userEvent.click(screen.getByText("Invite someone to view this"));
+      expect(
+        await screen.findByText("Invite someone to view this dashboard"),
+      ).toBeInTheDocument();
+    });
+
+    it("sends the dashboard as the invite_target", async () => {
+      const body = await inviteAndGetRequestBody({ id: 42, name: "Q3 KPIs" });
+      expect(body.invite_target).toEqual({
+        type: "dashboard",
+        id: 42,
+        name: "Q3 KPIs",
+      });
+    });
+
+    it("omits the invite_target for an x-ray dashboard (string id)", async () => {
+      const body = await inviteAndGetRequestBody({
+        id: "10-12345",
+        name: "An x-ray",
+      });
+      expect(body.invite_target).toBeUndefined();
     });
   });
 });

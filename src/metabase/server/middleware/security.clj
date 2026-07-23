@@ -9,9 +9,11 @@
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.mcp.core :as mcp]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -98,6 +100,20 @@
   [url]
   (or (try-parse-url url)
       (do (log/errorf "Invalid URL: %s" url) nil)))
+
+(def ^:private url-authority-pattern
+  ;;                  _________________________________$1_____________________________________
+  (re-pattern (str "^((?:" url-scheme-pattern "://)?(?:" url-host-pattern ")(?::(?:\\d+|\\*))?)(?:/.*)?$")))
+
+(defn- strip-origin-path
+  "Strips a trailing `/path` from a URL. Used both for admin-entered CORS origin entries and for deriving
+   the map tile server origin. Origins have no path component by definition (just scheme + host + port),
+   so a bare trailing slash pasted into an allowlist setting (e.g. `http://localhost:6274/`) shouldn't
+   silently make that entry fail to parse and drop out of the allowlist. Entries with a real path are
+   rejected at save time (see the setting's `:setter`); this only needs to normalize bare trailing
+   slashes and any non-trivial paths saved before that validation existed."
+  [url]
+  (str/replace url url-authority-pattern "$1"))
 
 (defn- add-wildcard-entries
   "Adds a wildcard prefix `.*` to the domain part of the given `domain-or-url` string.
@@ -191,13 +207,36 @@
        distinct
        vec))
 
+(defn- map-tile-server->hosts
+  "Origin of the configured `map-tile-server-url` (OpenStreetMap or a custom server), so that `img-src`
+  allows map visualizations to load their tiles. The `{s}` subdomain placeholder becomes a `*` wildcard
+  and the `{z}/{x}/{y}` path is dropped; blank or relative templates yield no host."
+  []
+  (let [origin (some-> (setting/get-value-of-type :string :map-tile-server-url)
+                       not-empty
+                       (str/replace "{s}" "*")
+                       strip-origin-path)]
+    (if (and origin (try-parse-url origin))
+      [origin]
+      [])))
+
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 (def ^:private cljs-dev-port (or (env/env :mb-cljs-dev-port) "9630"))
 
+(defenterprise data-app-connect-src-hosts
+  "Origins the data app identified by `slug` may reach (its `allowed_hosts`),
+   added to the data-app iframe document's CSP `connect-src` so the sandboxed
+   bundle can `fetch`/XHR them. Returns `[]` in OSS, when the `:data-apps`
+   feature is absent, or when there's no enabled app for `slug`. EE
+   implementation: [[metabase-enterprise.data-apps.csp]]."
+  metabase-enterprise.data-apps.csp
+  [_slug]
+  [])
+
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce]
+  [nonce data-app-iframe? data-app-connect-hosts]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -223,14 +262,26 @@
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
                                     (str "http://localhost:" cljs-dev-port)])
+                                 ;; Custom data apps run their uploaded bundle inside a Near-Membrane
+                                 ;; sandbox, which executes the bundle source via `eval` (its sandbox
+                                 ;; lives in a same-origin child iframe that inherits this document's
+                                 ;; CSP). So the data-app entrypoint must allow 'unsafe-eval' — scoped
+                                 ;; to this route only; the main app CSP stays strict.
+                                 (when data-app-iframe?
+                                   ["'unsafe-eval'"])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 ;; See [[generate-nonce]]
-                                 (when nonce
+                                 ;; See [[generate-nonce]].
+                                 (when (and nonce (not data-app-iframe?))
                                    (format "'nonce-%s'" nonce))
+                                 ;; Custom data apps render into an isolated iframe whose outer document only owns
+                                 ;; the iframe boundary. Allowing inline styles here lets single-file uploaded apps
+                                 ;; style their own sandboxed document without relaxing the main app CSP.
+                                 (when data-app-iframe?
+                                   "'unsafe-inline'")
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
                                    frontend-address)
@@ -239,43 +290,93 @@
                                    (str "http://localhost:" cljs-dev-port))
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
-                  :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
+                  :frame-src    (if (some? data-app-connect-hosts)
+                                  ;; Data-app docs get a per-app framing allowlist:
+                                  ;; only `'self'` and the origins the app declared
+                                  ;; in `allowed_hosts` — NOT the instance-wide iframe
+                                  ;; hosts, so a data app can't frame those unless it
+                                  ;; lists them itself.
+                                  (into ["'self'"] data-app-connect-hosts)
+                                  (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
-                  :img-src      (if (server.settings/csp-img-enabled)
-                                  (cond-> (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
-                                    config/is-dev? (conj frontend-address))
-                                  (into ["*"] always-allowed-resource-hosts))
-                  :connect-src  ["'self'"
-                                 ;; Google Identity Services
-                                 "https://accounts.google.com"
-                                 ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
-                                 "metabase.us10.list-manage.com"
-                                 ;; Snowplow analytics
-                                 (when (analytics/anon-tracking-enabled)
-                                   (setting/get-value-of-type :string :snowplow-url))
-                                 (when (analytics/anon-tracking-enabled)
-                                   (setting/get-value-of-type :string :metaplow-url))
-                                 ;; Webpack dev server
-                                 (when config/is-dev?
-                                   (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
-                                 ;; CLJS REPL
-                                 (when config/is-dev?
-                                   (str "ws://*:" cljs-dev-port))]
+                  :img-src      (cond-> (if (server.settings/csp-img-enabled)
+                                          (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                                        (map-tile-server->hosts))
+                                            config/is-dev? (conj frontend-address))
+                                          (into ["*"] always-allowed-resource-hosts))
+                                  ;; Data apps need blob: to load icons for custom viz
+                                  data-app-iframe? (conj "blob:"))
+                  :connect-src  (into
+                                 ["'self'"
+                                  ;; Google Identity Services
+                                  "https://accounts.google.com"
+                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
+                                  "metabase.us10.list-manage.com"
+                                  ;; Snowplow analytics
+                                  (when (analytics/anon-tracking-enabled)
+                                    (setting/get-value-of-type :string :snowplow-url))
+                                  (when (analytics/anon-tracking-enabled)
+                                    (setting/get-value-of-type :string :metaplow-url))
+                                  ;; Webpack dev server
+                                  (when config/is-dev?
+                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
+                                  ;; CLJS REPL
+                                  (when config/is-dev?
+                                    (str "ws://*:" cljs-dev-port))]
+                                 ;; Per-app `allowed_hosts` for the data-app iframe document, so its
+                                 ;; sandboxed bundle can fetch/XHR the origins the app declared. Added
+                                 ;; separately from `'self'` (which stays for the host-side SDK calls).
+                                 (when data-app-iframe? data-app-connect-hosts))
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
+(defn- interactive-embedding-origins
+  "The configured interactive-embedding app origins, when interactive embedding is
+   enabled; otherwise nil."
+  []
+  (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
+       (setting/get-value-of-type :string :embedding-app-origins-interactive)))
+
+(defn- frame-ancestors-value
+  "The `frame-ancestors` CSP source-list for a given framing `mode`:
+   `:any` (open embedding), `:self` (same-origin only, e.g. the internal data-app
+   iframe), or `:none` (no framing, unless interactive embedding is configured)."
+  [mode]
+  (case mode
+    :any  "*"
+    :self "'self'"
+    (or (interactive-embedding-origins) "'none'")))
+
 (defn- content-security-policy-header-with-frame-ancestors
-  [allow-iframes? nonce]
-  (update (content-security-policy-header nonce)
-          "Content-Security-Policy"
-          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
-                                                  (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
-                                                                    (setting/get-value-of-type :string :embedding-app-origins-interactive))]
-                                                    eao
-                                                    "'none'")))))
+  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts]
+  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
+                  "Content-Security-Policy"
+                  #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
+    ;; Restrict native `<form action="…">` submissions to the app's declared
+    ;; `allowed_hosts` (mirroring `connect-src`); with none declared this is
+    ;; `'none'`, blocking every native submit. `form-action` does not fall back to
+    ;; `default-src`, so it must be set explicitly. Client-side `onSubmit` handlers
+    ;; are unaffected — they `preventDefault`, so no submission is ever checked.
+    data-app-iframe? (update "Content-Security-Policy"
+                             #(str % " form-action "
+                                   (if (seq data-app-connect-hosts)
+                                     (str/join " " data-app-connect-hosts)
+                                     "'none'")
+                                   ";"))))
+
+(defn- x-frame-options-header
+  "Legacy `X-Frame-Options` companion to the CSP `frame-ancestors` (for browsers
+   that don't honor the latter). Omitted for `:any` (open embedding)."
+  [mode]
+  (case mode
+    :any  nil
+    :self {"X-Frame-Options" "SAMEORIGIN"}
+    {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
+                         (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
+                         "DENY")}))
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
@@ -301,20 +402,6 @@
   (or
    (= reference-port "*")
    (= port reference-port)))
-
-(def ^:private url-authority-pattern
-  ;;                  _________________________________$1_____________________________________
-  (re-pattern (str "^((?:" url-scheme-pattern "://)?(?:" url-host-pattern ")(?::(?:\\d+|\\*))?)(?:/.*)?$")))
-
-(defn- strip-origin-path
-  "Strips a trailing `/path` from an admin-entered CORS origin entry. Origins have no path component by
-   definition (just scheme + host + port), so a bare trailing slash pasted into an allowlist setting
-   (e.g. `http://localhost:6274/`) shouldn't silently make that entry fail to parse and drop out of the
-   allowlist. Entries with a real path are rejected at save time (see the setting's `:setter`); this
-   only needs to normalize bare trailing slashes and any non-trivial paths saved before that validation
-   existed."
-  [url]
-  (str/replace url url-authority-pattern "$1"))
 
 (defn parse-approved-origins
   "Parses the space separated string of approved origins"
@@ -375,20 +462,19 @@
         "Access-Control-Max-Age"  "60"}))))
 
 (defn security-headers
-  "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [origin nonce allow-iframes? allow-cache?]
-      :or   {allow-iframes? false, allow-cache? false}}]
+  "Fetch a map of security headers that should be added to a response based on the passed options.
+   `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
+   `:self` (same-origin only), or `:none` (default — no framing unless interactive
+   embedding is configured)."
+  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts]
+      :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
-   (when-not allow-iframes?
-     ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
-     {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
-                                                          (setting/get-value-of-type :string :embedding-app-origins-interactive))]
-                                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
-                                          "DENY")})
+   ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
+   (x-frame-options-header frame-ancestors)
    {;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
@@ -407,13 +493,67 @@
        (or (= (:request-method request) :options)
            (contains? #{400 402} (:status response)))))
 
+(defn- data-app-iframe-request?
+  [request]
+  (str/starts-with? (:uri request) (str request/data-app-embed-prefix "/")))
+
+(def ^:private data-app-slug-regex
+  (re-pattern (str "/(?:embed/)?" request/data-app-url-segment "/([^/]+).*")))
+
+(defn- data-app-slug
+  "Slug of the data-app document being served, parsed from the top-level
+   `/apps/<slug>` page or the internal `/embed/apps/<slug>` iframe (and
+   any deeper sub-route), or nil. The top page needs it too: its `frame-src`
+   governs what the iframe below it may navigate to."
+  [request]
+  (second (re-matches data-app-slug-regex (:uri request))))
+
+(defn- site-origin
+  "This Metabase instance's origin as `{:protocol :domain :port}` (parsed from
+   `site-url`), or nil. Matches the shape [[parse-url]] returns so origins compare
+   with `=`."
+  []
+  (when-let [url (not-empty (system/site-url))]
+    (try
+      (let [^URI uri (URI. ^String url)]
+        (when-let [host (.getHost uri)]
+          {:protocol (.getScheme uri)
+           :domain   host
+           :port     (let [p (.getPort uri)] (when-not (neg? p) (str p)))}))
+      (catch Exception _ nil))))
+
+(defn- drop-instance-origin
+  "Removes any `allowed_hosts` entry that resolves to this Metabase instance's own
+   origin. A native `<form>` submit or frame to the instance would carry the
+   user's session cookies, and the SDK is the only sanctioned way to reach
+   Metabase — so we keep the instance out of the app's `form-action`/`frame-src`/
+   `connect-src` even when an app mistakenly lists it (mirroring the JS fetch/XHR
+   sandbox, which blocks the instance origin regardless)."
+  [hosts]
+  (if-let [self (site-origin)]
+    (remove #(= self (parse-url %)) hosts)
+    hosts))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
-                 :origin         (get (:headers request) "origin")
-                 :nonce          (:nonce request)
-                 :allow-iframes? ((some-fn request/public? request/embed?) request)
-                 :allow-cache?   (request/cacheable? request))
+                 :origin                      (get (:headers request) "origin")
+                 :nonce                       (:nonce request)
+                 ;; The internal data-app iframe is only ever framed by the
+                 ;; same-origin Metabase app, so restrict it to `'self'` rather
+                 ;; than the open embedding `*`. Check it before the broader
+                 ;; `embed?`, which `/embed/apps/...` also matches.
+                 :frame-ancestors             (cond
+                                                (request/data-app? request)                       :self
+                                                ((some-fn request/public? request/embed?) request) :any
+                                                :else                                              :none)
+                 :allow-cache?                (request/cacheable? request)
+                 :data-app-iframe?            (data-app-iframe-request? request)
+                 ;; Per-app `allowed_hosts` → `connect-src`/`form-action` (iframe
+                 ;; doc) and `frame-src` (both the iframe doc and the top page,
+                 ;; whose `frame-src` gates the iframe's own navigations).
+                 :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
+                                                (drop-instance-origin (data-app-connect-src-hosts slug))))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"

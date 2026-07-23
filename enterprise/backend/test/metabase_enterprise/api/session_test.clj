@@ -25,11 +25,13 @@
                               :config-text-file
                               :content-translation
                               :content-verification
+                              :data-apps
                               :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
                               :library
+                              :library-retrieval
                               :development-mode
                               :email-allow-list
                               :email-restrict-recipients
@@ -40,6 +42,7 @@
                               :hosting
                               :metabase-ai-managed
                               :metabot-v3
+                              :multi-factor-auth
                               :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
@@ -78,11 +81,13 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
+            :data-apps                      true
             :data-complexity-score          true
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
             :library                        true
+            :library_retrieval              true
             :development_mode               true
             :email_allow_list               true
             :email_restrict_recipients      true
@@ -92,6 +97,7 @@
             :hosting                        true
             :metabase-ai-managed            true
             :metabot-v3                     true
+            :multi-factor-auth              true
             :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true

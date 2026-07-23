@@ -38,7 +38,9 @@ services:
   maildev-ssl:
     ## NOTE: Using this requires a root CA certificate to be added to the Java keystore.
     ## See maildev-keys/README.md for more info.
-    image: maildev/maildev:latest
+    ## Pinned: the unpinned `latest` tag moved to 3.0.0-rc.1 (2026-07-06), which
+    ## breaks the SSL/SMTP setup and fails the custom SMTP e2e tests.
+    image: maildev/maildev:2.2.1
     ports:
       - "1081:1081"
       - "465:465"

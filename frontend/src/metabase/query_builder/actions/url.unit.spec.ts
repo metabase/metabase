@@ -15,7 +15,7 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
@@ -94,7 +94,7 @@ async function setup({
     qb,
   });
 
-  await updateUrl(question, options)(dispatch, getState as any);
+  await updateUrl(question, options)(dispatch, getState);
 
   return { dispatch };
 }
