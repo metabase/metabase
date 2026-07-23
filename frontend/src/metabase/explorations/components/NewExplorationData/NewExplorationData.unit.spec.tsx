@@ -89,6 +89,9 @@ describe("NewExplorationData (Research plan)", () => {
       expect(
         screen.getByRole("button", { name: /Events/ }),
       ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Start research/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("opens the metrics modal from the +Data menu", async () => {

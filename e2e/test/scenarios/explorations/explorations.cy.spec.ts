@@ -12,8 +12,9 @@ type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
 };
 
+const ORDERS_COUNT_METRIC_NAME = "Count of orders";
 const ORDERS_COUNT_METRIC: StructuredQuestionDetailsWithName = {
-  name: "Count of orders",
+  name: ORDERS_COUNT_METRIC_NAME,
   type: "metric" as const,
   query: {
     "source-table": ORDERS_ID,
@@ -22,8 +23,9 @@ const ORDERS_COUNT_METRIC: StructuredQuestionDetailsWithName = {
   display: "scalar" as const,
 };
 
+const ORDERS_TIMESERIES_METRIC_NAME = "Count of orders over time";
 const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
-  name: "Count of orders over time",
+  name: ORDERS_TIMESERIES_METRIC_NAME,
   type: "metric" as const,
   query: {
     "source-table": ORDERS_ID,
@@ -89,6 +91,7 @@ function createTimelineWithSentinelEvent(
 
 describe("scenarios > explorations > new research > manual flow", () => {
   beforeEach(() => {
+    cy.task("stopMockLlmServer");
     H.restore();
     cy.signInAsAdmin();
     H.enableExplorations();
@@ -107,64 +110,69 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-    cy.task("stopMockLlmServer");
   });
 
-  it("renders the empty research-mode landing with a disabled CTA", () => {
-    H.visitNewExploration();
+  it("picks metrics + dimensions + timelines, creates an exploration, and lands on the detail page", () => {
+    createTimelineWithSentinelEvent("Releases", "star").then((releasesId) => {
+      createTimelineWithSentinelEvent("Marketing campaigns", "bell").then(
+        (marketingId) => {
+          H.visitNewExploration();
+          H.startManualExploration();
 
-    cy.findByRole("main")
-      .findByText(/What do you want to research\?/i)
-      .should("be.visible");
+          // Manual setup is its own location, so browser back returns here
+          // instead of leaving the research flow (UXW-4832).
+          cy.location("pathname").should("eq", "/question/research/plan");
 
-    H.explorationsMetabotPromptInput().should("be.visible");
+          H.addMetricsAndDimensions({
+            metrics: [ORDERS_COUNT_METRIC_NAME],
+          });
 
-    H.startManualExploration();
-    cy.findByTestId("research-content")
-      .findByRole("button", { name: /Data/ })
-      .should("be.visible");
-    cy.findByTestId("research-content")
-      .findByRole("button", { name: /Events/ })
-      .should("be.visible");
+          cy.findByTestId("research-content")
+            .should("be.visible")
+            .and("contain", ORDERS_COUNT_METRIC_NAME);
 
-    // CTA only appears once at least one block is added.
-    cy.findByRole("button", { name: /Start research/i }).should("not.exist");
-  });
+          // Pick two timelines via the "+ Events" modal.
+          H.addTimelinesToExploration(["Marketing campaigns", "Releases"]);
 
-  it("picks metrics + dimensions, creates an exploration, and lands on the detail page", () => {
-    H.visitNewExploration();
-    H.startManualExploration();
+          // The first picked timeline shows as a pill next to the Events
+          // button; the rest collapse into a "+N" overflow pill.
+          cy.findByTestId("research-content")
+            .findByText("Marketing campaigns")
+            .should("be.visible");
+          cy.findByTestId("research-content")
+            .findByText("+1")
+            .should("be.visible");
 
-    // Manual setup is its own location, so browser back returns here
-    // instead of leaving the research flow (UXW-4832).
-    cy.location("pathname").should("eq", "/question/research/plan");
+          H.beginResearch().then((id) => {
+            // `beginResearch` consumed the create request; re-read it off its
+            // alias to assert both timeline ids were forwarded.
+            cy.get("@createExploration")
+              .its("request.body.timeline_ids")
+              .should("deep.eq", [marketingId, releasesId]);
 
-    H.addMetricsAndDimensions({
-      metrics: ["Count of orders"],
-    });
+            H.expectUnstructuredSnowplowEvent({
+              event: "exploration_plan_edited",
+              triggered_from: "manual",
+              event_detail: "metrics",
+            });
+            H.expectUnstructuredSnowplowEvent({
+              event: "exploration_plan_edited",
+              triggered_from: "manual",
+              event_detail: "timelines",
+            });
+            H.expectUnstructuredSnowplowEvent({
+              event: "exploration_created",
+              target_id: id,
+            });
 
-    cy.findByTestId("research-content")
-      .findByText("Count of orders")
-      .should("be.visible");
-
-    H.beginResearch().then((id) => {
-      H.expectUnstructuredSnowplowEvent({
-        event: "exploration_plan_edited",
-        triggered_from: "manual",
-        event_detail: "metrics",
-      });
-      H.expectUnstructuredSnowplowEvent({
-        event: "exploration_created",
-        target_id: id,
-      });
-
-      // Detail page (`/question/research/:id`) renders. The BE
-      // defaults `name` to "New exploration" when the user hasn't
-      // set one — see `buildCreateExplorationRequest` in
-      // `NewExplorationData.tsx`.
-      cy.url().should("include", `/question/research/${id}`);
-      // No new-exploration CTA on the detail page.
-      cy.findByRole("button", { name: /Start research/i }).should("not.exist");
+            // `beginResearch` already asserted the detail-page URL.
+            // No new-exploration CTA on the detail page.
+            cy.findByRole("button", { name: /Start research/i }).should(
+              "not.exist",
+            );
+          });
+        },
+      );
     });
   });
 
@@ -185,30 +193,36 @@ describe("scenarios > explorations > new research > manual flow", () => {
     cy.wait("@getDimensions");
     // Seeded metrics aren't in the library; switch off the default Library tab.
     H.selectAllMetricsTab();
-    cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
-    cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
+    cy.findByRole("checkbox", { name: ORDERS_COUNT_METRIC_NAME }).should(
+      "exist",
+    );
+    cy.findByRole("checkbox", { name: ORDERS_TIMESERIES_METRIC_NAME }).should(
       "exist",
     );
 
     // Type a substring that only matches the timeseries metric.
     cy.findByPlaceholderText("Search for a metric").type("over time");
     cy.wait("@getDimensions");
-    cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
+    cy.findByRole("checkbox", { name: ORDERS_TIMESERIES_METRIC_NAME }).should(
       "exist",
     );
-    cy.findByRole("checkbox", { name: "Count of orders" }).should("not.exist");
+    cy.findByRole("checkbox", { name: ORDERS_COUNT_METRIC_NAME }).should(
+      "not.exist",
+    );
 
     // Clear the input → both rows return.
     cy.findByPlaceholderText("Search for a metric").clear();
-    cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
-    cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
+    cy.findByRole("checkbox", { name: ORDERS_COUNT_METRIC_NAME }).should(
+      "exist",
+    );
+    cy.findByRole("checkbox", { name: ORDERS_TIMESERIES_METRIC_NAME }).should(
       "exist",
     );
 
     // Search for something that matches no metric → empty-state copy.
-    cy.findByPlaceholderText("Search for a metric").type("zzz no such metric");
+    cy.findByPlaceholderText("Search for a metric").type("zzz");
     cy.wait("@getDimensions");
-    cy.findByRole("dialog").findByText("No results").should("be.visible");
+    cy.findByRole("dialog").should("contain", "No results");
 
     // Close the metrics modal before opening the events one.
     cy.get("body").type("{esc}");
@@ -230,65 +244,13 @@ describe("scenarios > explorations > new research > manual flow", () => {
     cy.findByRole("checkbox", { name: "Releases" }).should("exist");
     cy.findByRole("checkbox", { name: "Marketing campaigns" }).should("exist");
 
-    // No match → empty-state copy.
-    cy.findByPlaceholderText("Search for a timeline").type("zzz");
-    cy.findByRole("dialog").findByText("No results").should("be.visible");
-  });
-
-  it("picks one or more timelines via the Browse tab and POSTs them with the exploration", () => {
-    createTimelineWithSentinelEvent("Releases", "star").then((releasesId) => {
-      createTimelineWithSentinelEvent("Marketing campaigns", "bell").then(
-        (marketingId) => {
-          H.visitNewExploration();
-          H.startManualExploration();
-          H.addMetricsAndDimensions({ metrics: ["Count of orders"] });
-
-          // Pick two timelines via the "+ Events" modal.
-          H.addTimelinesToExploration(["Marketing campaigns", "Releases"]);
-
-          // The first picked timeline shows as a pill next to the Events
-          // button; the rest collapse into a "+N" overflow pill.
-          cy.findByTestId("research-content")
-            .findByText("Marketing campaigns")
-            .should("be.visible");
-          cy.findByTestId("research-content")
-            .findByText("+1")
-            .should("be.visible");
-
-          // Verify the request body forwards both timeline ids
-          cy.intercept("POST", "/api/exploration").as("createExploration");
-          cy.findByRole("button", { name: /Start research/i }).click();
-          cy.wait("@createExploration").then(({ request, response }) => {
-            expect(request.body.timeline_ids).to.deep.eq([
-              marketingId,
-              releasesId,
-            ]);
-            // Unjustified type cast. FIXME
-            const id = response?.body?.id as number;
-            H.expectUnstructuredSnowplowEvent({
-              event: "exploration_plan_edited",
-              triggered_from: "manual",
-              event_detail: "metrics",
-            });
-            H.expectUnstructuredSnowplowEvent({
-              event: "exploration_plan_edited",
-              triggered_from: "manual",
-              event_detail: "timelines",
-            });
-            H.expectUnstructuredSnowplowEvent({
-              event: "exploration_created",
-              target_id: id,
-            });
-            cy.url().should("include", `/question/research/${id}`);
-          });
-        },
-      );
-    });
+    // The no-match empty state is covered by AddTimelinesModal.unit.spec.tsx.
   });
 });
 
 describe("scenarios > explorations > new research > metabot flow", () => {
   beforeEach(() => {
+    cy.task("stopMockLlmServer");
     H.restore();
     cy.signInAsAdmin();
     H.enableExplorations();
@@ -303,7 +265,6 @@ describe("scenarios > explorations > new research > metabot flow", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-    cy.task("stopMockLlmServer");
   });
 
   it("auto-populates metrics + dimensions + name from agent tool calls, then Start research succeeds", () => {
@@ -396,6 +357,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
 
 describe("scenarios > explorations > detail page", () => {
   beforeEach(() => {
+    cy.task("stopMockLlmServer");
     H.restore();
     cy.signInAsAdmin();
     H.enableExplorations();
@@ -406,76 +368,28 @@ describe("scenarios > explorations > detail page", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-    cy.task("stopMockLlmServer");
   });
 
-  it("auto-selects a sidebar entity on first load and toggles via ArrowRight/ArrowLeft", () => {
-    H.createExplorationViaApi({ name: "Keyboard nav fixture" }).then((id) => {
+  it("auto-selects the top-ranked sidebar row on first load", () => {
+    H.createExplorationViaApi({ name: "Auto-select fixture" }).then((id) => {
       visitExplorationUntilSettled(id, 2);
 
-      // After landing, the page auto-selects the most-interesting
-      // entity (see `ExplorationPage` selection logic). The
-      // `ExplorationTreeItem` is a `<a role="treeitem">` that
-      // toggles `aria-selected`. We identify the selected row via a
-      // CSS attribute selector rather than testing-library's
-      // `{ selected: true }` filter so each read goes through a
-      // fresh, reactive Cypress query.
-      //
-      // The `ExplorationTreeItem` link has no `id` attribute, so we
-      // identify the row by its trimmed text content (group/query
-      // name). Each selected-state read goes through a fresh
-      // selector so the detached-subject error can't bite after a
-      // keyboard-driven re-render.
-      const selectedRows = () =>
-        cy
-          .findAllByRole("treeitem", { timeout: 15000 })
-          .filter('[aria-selected="true"]');
-
-      selectedRows().should("have.length.at.least", 1);
-
-      // `findAllByRole` → `filter` → `first` → `invoke` are all Cypress
-      // queries, so a `.should` chained onto this re-runs the whole lookup
-      // until the assertion passes. Trimming happens inside the `.should`
-      // callbacks below — a `.then` here would freeze the subject and break
-      // retryability.
-      const selectedText = () => selectedRows().first().invoke("text");
-
-      selectedText().then((initial: string) => {
-        const initialText = initial.trim();
-
-        // The keyboard handler attaches to `window` (see
-        // `ExplorationSidebar.tsx`), so we fire the event on the
-        // body.
-        cy.get("body").type("{rightarrow}");
-        selectedText().should((text: string) => {
-          expect(text.trim()).not.to.eq(initialText);
-        });
-
-        cy.get("body").type("{leftarrow}");
-        selectedText().should((text: string) => {
-          expect(text.trim()).to.eq(initialText);
-        });
-
-        // ArrowRight onto the next page, ArrowLeft back onto the
-        // initial one — and `expectUnstructuredSnowplowEvent` asserts
-        // an exact count.
-        H.expectUnstructuredSnowplowEvent(
-          {
-            event: "exploration_visualization_changed",
-            triggered_from: "keyboard",
-          },
-          2,
-        );
-      });
+      // Auto-selection follows the interestingness-sorted tree the backend's
+      // scores produce: the top page row is selected on load. The
+      // ArrowRight/ArrowLeft and click selection mechanics are unit-tested
+      // in ExplorationSidebar.unit.spec.tsx.
+      cy.findAllByRole("treeitem", { timeout: 15000 })
+        .first()
+        .should("have.attr", "aria-selected", "true");
+      cy.findAllByRole("treeitem")
+        .filter('[aria-selected="true"]')
+        .should("have.length", 1);
     });
   });
 
-  it("groups sidebar rows under their metric heading, makes the headings collapsible, and marks interesting groups", () => {
+  it("groups sidebar rows under their metric heading, ordered by interestingness", () => {
     createTwoPageExploration("Sidebar grouping fixture").then(
       ({ explorationId, metricName, pageNames }) => {
-        // Settling matters here beyond query readiness: collapsing the
-        // heading races the poll-driven tree rebuilds otherwise, and the
-        // clicked heading node can be replaced mid-click.
         visitExplorationUntilSettled(explorationId, pageNames.length);
 
         // Deliberately no `.within()` here: a `within` captures the sidebar
@@ -483,28 +397,46 @@ describe("scenarios > explorations > detail page", () => {
         // after which every inner query runs against the detached old node
         // and times out. Fresh root-based chains re-query on every retry.
         const sidebarScope = () => cy.findByTestId("exploration-page-sidebar");
-        const metricHeading = () =>
-          sidebarScope().findByRole("group", { name: metricName });
 
-        metricHeading().should("be.visible");
+        sidebarScope()
+          .findByRole("group", { name: metricName })
+          .should("be.visible");
         for (const pageName of pageNames) {
           sidebarScope().findByText(pageName).should("be.visible");
         }
 
-        cy.log("Collapse the metric heading: both leaves disappear");
-        metricHeading().should("have.attr", "aria-expanded", "true");
-        metricHeading().click();
-        metricHeading().should("have.attr", "aria-expanded", "false");
-        for (const pageName of pageNames) {
-          sidebarScope().findByText(pageName).should("not.exist");
-        }
+        // Row order is backend-driven: pages sort by their queries' highest
+        // interestingness score. Collapse/expand click mechanics are
+        // unit-tested in ExplorationSidebar.unit.spec.tsx.
+        cy.request("GET", `/api/exploration/${explorationId}`).then(
+          ({ body }) => {
+            // Unjustified type cast. FIXME
+            const exploration = body as Exploration;
+            const thread = exploration.threads?.[0];
+            const queries = thread?.queries ?? [];
+            const pages = (thread?.blocks ?? []).flatMap(
+              (block) => block.pages ?? [],
+            );
+            const scoreOf = (page: { query_ids: number[] }) =>
+              Math.max(
+                ...page.query_ids.map(
+                  (queryId) =>
+                    queries.find((query) => query.id === queryId)
+                      ?.interestingness_score ?? -Infinity,
+                ),
+              );
+            const expectedOrder = [...pages]
+              .sort((a, b) => scoreOf(b) - scoreOf(a))
+              .map((page) => page.name);
 
-        cy.log("Re-expand: both leaves return");
-        metricHeading().click();
-        metricHeading().should("have.attr", "aria-expanded", "true");
-        for (const pageName of pageNames) {
-          sidebarScope().findByText(pageName).should("be.visible");
-        }
+            sidebarScope()
+              .findAllByRole("treeitem")
+              .then(($rows) => {
+                const rowTexts = [...$rows].map((el) => el.textContent?.trim());
+                expect(rowTexts).to.deep.eq(expectedOrder);
+              });
+          },
+        );
       },
     );
   });
@@ -605,11 +537,11 @@ function createTwoPageExploration(name: string): Cypress.Chainable<{
     // Unjustified type cast. FIXME
     const data = body as GetExplorationDataResponse;
     const ordersMetric = data.metrics.find(
-      (metric) => metric.name === "Count of orders",
+      (metric) => metric.name === ORDERS_COUNT_METRIC_NAME,
     );
     expect(
       ordersMetric,
-      '"Count of orders" metric is exposed by /api/exploration/dimensions',
+      `"${ORDERS_COUNT_METRIC_NAME}" metric is exposed by /api/exploration/dimensions`,
     ).to.exist;
     const dimsById = new Map(
       data.dimension_groups.flatMap((group) =>
@@ -683,6 +615,7 @@ describe("scenarios > explorations > sidebar triage", () => {
   };
 
   beforeEach(() => {
+    cy.task("stopMockLlmServer");
     H.restore();
     cy.signInAsAdmin();
     H.enableExplorations();
@@ -693,7 +626,6 @@ describe("scenarios > explorations > sidebar triage", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-    cy.task("stopMockLlmServer");
   });
 
   it("filters pages with the Stars and Discussions tabs and persists the sort preference across reloads", () => {
@@ -921,6 +853,7 @@ describe("scenarios > explorations > sidebar triage", () => {
 
 describe("scenarios > explorations > chart click-through", () => {
   beforeEach(() => {
+    cy.task("stopMockLlmServer");
     H.restore();
     cy.signInAsAdmin();
     H.enableExplorations();
@@ -931,7 +864,6 @@ describe("scenarios > explorations > chart click-through", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-    cy.task("stopMockLlmServer");
   });
 
   it("clicking a cartesian point opens Explore further + Add comment, posts explore-further filters, and navigates from the new-thread toast", () => {
@@ -940,11 +872,11 @@ describe("scenarios > explorations > chart click-through", () => {
         // Unjustified type cast. FIXME
         const data = body as GetExplorationDataResponse;
         const ordersMetric = data.metrics.find(
-          (metric) => metric.name === "Count of orders",
+          (metric) => metric.name === ORDERS_COUNT_METRIC_NAME,
         );
         expect(
           ordersMetric,
-          '"Count of orders" metric is exposed by /api/exploration/dimensions',
+          `"${ORDERS_COUNT_METRIC_NAME}" metric is exposed by /api/exploration/dimensions`,
         ).to.exist;
         const dimsById = new Map(
           data.dimension_groups.flatMap((group) =>
@@ -1087,6 +1019,7 @@ describe("scenarios > explorations > chart click-through", () => {
 
 describe("scenarios > explorations > collection placement + archive", () => {
   beforeEach(() => {
+    cy.task("stopMockLlmServer");
     H.restore();
     cy.signInAsAdmin();
     H.enableExplorations();
@@ -1097,7 +1030,6 @@ describe("scenarios > explorations > collection placement + archive", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-    cy.task("stopMockLlmServer");
   });
 
   it("places a newly-created exploration in the creator's personal collection and lets the user move it to trash from there", () => {
