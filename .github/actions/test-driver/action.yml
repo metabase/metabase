@@ -30,6 +30,14 @@ inputs:
       When "true" (default), a re-run of a failed job runs only the tests that failed on the
       previous attempt (hawk `:only`). Stress workflows set this to "false": they intentionally
       run a fixed test set `:times N`, and narrowing to failures would drop that repetition.
+  rerun-artifact-key:
+    required: false
+    description: >-
+      Discriminator for the granular-rerun failed-tests artifact. Falls back to `junit-name`,
+      which is unique per job in most callers. Callers whose matrix runs several concurrent jobs
+      under one `junit-name` (e.g. app-db.yml's partition legs) MUST set a per-job-unique value
+      here, or those jobs collide on a single artifact and a rerun restores the wrong job's
+      failed set. Must be stable across attempts of the same job.
 
 outputs:
   test-outcome:
@@ -65,7 +73,7 @@ runs:
       continue-on-error: true
       uses: actions/download-artifact@v8
       with:
-        name: failed-tests-${{ inputs.junit-name }}
+        name: failed-tests-${{ inputs.rerun-artifact-key || inputs.junit-name }}
         path: target
 
     - name: Test database driver
@@ -113,7 +121,7 @@ runs:
       continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
-        name: failed-tests-${{ inputs.junit-name }}
+        name: failed-tests-${{ inputs.rerun-artifact-key || inputs.junit-name }}
         path: target/failed-tests
         if-no-files-found: ignore
         overwrite: true
