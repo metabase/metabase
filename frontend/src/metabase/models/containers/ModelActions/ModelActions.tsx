@@ -1,4 +1,3 @@
-import type { LocationDescriptor } from "history";
 import { useEffect, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
@@ -16,6 +15,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { fetchTableForeignKeys } from "metabase/redux/tables";
+import type { LocationDescriptor } from "metabase/router";
 import { Outlet, replace } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";

@@ -99,7 +99,7 @@ export const MetabotPromptInput = forwardRef<
       {
         extensions,
         content: parseMetabotMessageToTiptapDoc(value),
-        autofocus: autoFocus,
+        autofocus: autoFocus ? "end" : false,
         injectNonce: getCspNonce(),
         onUpdate: ({ editor }) => {
           const jsonContent = editor.getJSON();

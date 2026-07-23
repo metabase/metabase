@@ -1,10 +1,10 @@
-import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import type { AuthProvider } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Divider } from "metabase/ui";
 

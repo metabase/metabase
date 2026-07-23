@@ -18,7 +18,7 @@ export type ConversationSummary = {
   conversation_id: string;
   created_at: string;
   user_id: number;
-  summary: string | null;
+  title: string | null;
   message_count: number;
   user_message_count: number;
   assistant_message_count: number;
@@ -89,7 +89,7 @@ export type ConversationFeedback = MetabotFeedback & {
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
-  summary: string | null;
+  title: string | null;
   user: MetabotUserInfo | null;
   message_count: number;
   total_tokens: number;

@@ -2,33 +2,56 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetCollectionQuery,
+  useGetDashboardQuery,
+  useGetDocumentQuery,
+} from "metabase/api";
+import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
-import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Anchor,
+  Badge,
+  Box,
+  Flex,
+  Icon,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { MetabotCodeEdit } from "metabase-types/api";
 
 import {
   CodeEditTablePills,
+  GeneratedCardTablePills,
   NavigateToTablePills,
 } from "./MetabotAgentDataSourcePills";
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotInlineChart } from "./MetabotInlineChart";
+import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
 type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
   readonly: boolean;
   debug: boolean;
+  conversationId: string;
 };
 
 export const AgentDataPartMessage = ({
   message,
   readonly,
   debug,
+  conversationId,
 }: AgentDataPartMessageProps) =>
   match(message)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
@@ -73,10 +96,33 @@ export const AgentDataPartMessage = ({
       ({ part }) => (
         <Stack gap="md">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-          <MetabotInlineChart value={part.data} />
+          <MetabotInlineChart
+            value={part.data}
+            readonly={readonly}
+            conversationId={conversationId}
+          />
+          <GeneratedCardTablePills
+            value={part.data}
+            messageId={readonly ? undefined : message.externalId}
+          />
         </Stack>
       ),
     )
+    .with(
+      { part: { type: "data-generated_entity", data: { type: "dashboard" } } },
+      ({ part }) => (
+        <Stack gap="md">
+          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+          <MetabotInlineDashboardLink value={part.data} />
+        </Stack>
+      ),
+    )
+    .with({ part: { type: "data-entity_saved" } }, ({ part }) => (
+      <Stack gap="md">
+        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+        <EntitySavedMessage value={part.data} />
+      </Stack>
+    ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
@@ -88,7 +134,121 @@ export const AgentDataPartMessage = ({
       return null;
     });
 
+const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
+  const { destination } = value;
+
+  const { data: card, isLoading: isCardLoading } = useGetCardQuery({
+    id: value.card_id,
+    ignore_error: true,
+  });
+  const { data: collection, isLoading: isCollectionLoading } =
+    useGetCollectionQuery(
+      destination.type === "collection"
+        ? { id: destination.id ?? "root", ignore_error: true }
+        : skipToken,
+    );
+  const { data: dashboard, isLoading: isDashboardLoading } =
+    useGetDashboardQuery(
+      destination.type === "dashboard"
+        ? { id: destination.id, ignore_error: true }
+        : skipToken,
+    );
+  const { data: document, isLoading: isDocumentLoading } = useGetDocumentQuery(
+    destination.type === "document" ? { id: destination.id } : skipToken,
+  );
+  const container = match(destination)
+    .with({ type: "dashboard" }, () =>
+      dashboard
+        ? { name: dashboard.name, url: Urls.dashboard(dashboard) }
+        : null,
+    )
+    .with({ type: "document" }, () =>
+      document ? { name: document.name, url: Urls.document(document) } : null,
+    )
+    .with({ type: "collection" }, () =>
+      collection
+        ? { name: collection.name, url: Urls.collection(collection) }
+        : null,
+    )
+    .exhaustive();
+
+  if (
+    isCardLoading ||
+    isCollectionLoading ||
+    isDashboardLoading ||
+    isDocumentLoading
+  ) {
+    return <Skeleton h="1rem" w="18rem" data-testid="entity-saved-loading" />;
+  }
+
+  if (card == null) {
+    return null;
+  }
+
+  const target = container && (
+    <Anchor
+      key="target"
+      component={ForwardRefLink}
+      to={container.url}
+      target="_blank"
+      fw="bold"
+    >
+      {container.name}
+    </Anchor>
+  );
+  const chartName = (
+    <Anchor
+      key="name"
+      component={ForwardRefLink}
+      to={Urls.card(card)}
+      target="_blank"
+      fw="bold"
+    >
+      {card.name}
+    </Anchor>
+  );
+
+  return (
+    <Flex align="center" gap="sm" c="text-secondary">
+      <Icon name="check" size={14} />
+      <Text c="text-secondary">
+        {target
+          ? jt`Chart ${chartName} saved to ${target}`
+          : jt`Chart ${chartName} saved`}
+      </Text>
+    </Flex>
+  );
+};
+
 const formatPartType = (type: string) => type.replace(/^data-/, "");
+
+const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
+  <Flex
+    direction="row"
+    align="center"
+    justify="space-between"
+    bd="1px solid var(--mb-color-border-neutral)"
+    bdrs="sm"
+    className={Styles.agentPartCard}
+    p="sm"
+    pl="md"
+  >
+    <Flex align="center">
+      <Icon name="document" c="text-secondary" mr="sm" />
+      <Text fw="bold">{formatPartType(type)}</Text>
+    </Flex>
+    <ActionIcon
+      component={ForwardRefLink}
+      to={path}
+      target="_blank"
+      h="sm"
+      aria-label={t`Visit`}
+      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+    >
+      <Icon name="external" size="1rem" />
+    </ActionIcon>
+  </Flex>
+);
 
 const DataPartJsonCard = ({
   type,
@@ -157,34 +317,6 @@ const DataPartJsonCard = ({
     </Box>
   );
 };
-
-const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
-  <Flex
-    direction="row"
-    align="center"
-    justify="space-between"
-    bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
-    className={Styles.agentPartCard}
-    p="sm"
-    pl="md"
-  >
-    <Flex align="center">
-      <Icon name="document" c="text-secondary" mr="sm" />
-      <Text fw="bold">{formatPartType(type)}</Text>
-    </Flex>
-    <ActionIcon
-      component={ForwardRefLink}
-      to={path}
-      target="_blank"
-      h="sm"
-      aria-label={t`Visit`}
-      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
-    >
-      <Icon name="external" size="1rem" />
-    </ActionIcon>
-  </Flex>
-);
 
 const CodeEditDataPart = ({
   type,

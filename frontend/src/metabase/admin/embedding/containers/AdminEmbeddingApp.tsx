@@ -1,6 +1,5 @@
-import type { Location } from "history";
-
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
+import type { Location } from "metabase/router";
 import { Outlet } from "metabase/router";
 
 import { EmbeddingNav } from "../components/EmbeddingNav";
