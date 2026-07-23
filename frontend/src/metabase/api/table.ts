@@ -165,6 +165,14 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    refingerprintTable: builder.mutation<void, TableId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/table/${id}/refingerprint`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("table", id), listTag("field")]),
+    }),
     appendTableCsv: builder.mutation<
       void,
       { tableId: TableId; formData: FormData }
@@ -275,6 +283,7 @@ export const {
   useRescanTableFieldValuesMutation,
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
+  useRefingerprintTableMutation,
   useAppendTableCsvMutation,
   useReplaceTableCsvMutation,
 
