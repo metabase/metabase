@@ -16,10 +16,10 @@ import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { STORAGE_PRODUCT_TYPE } from "./use-storage-add-on";
 
-export const POLL_INTERVAL_MS = 2000;
+export const POLL_INTERVAL_MS = 4000;
 
 /** Setup lives only in this tab, so it needs its own deadline to stop spinning. */
-export const STORAGE_SETUP_TIMEOUT_MS = 10 * 60 * 1000;
+export const STORAGE_SETUP_TIMEOUT_MS = 4 * 60 * 1000;
 
 /** `failed` is terminal for the session; only another purchase or a reload clears it. */
 type StorageSetupPhase = "idle" | "setting-up" | "failed";
@@ -68,9 +68,10 @@ export function usePurchaseStorageAddOn() {
   }, [isSettingUp]);
 
   // A condition rather than a transition, so it also covers storage that was
-  // already there when setup started.
+  // already there when setup started, and a background success that lands after
+  // setup has locally timed out into `failed`.
   useEffect(() => {
-    if (isSettingUp && hasAttachedDwh) {
+    if (phase !== "idle" && hasAttachedDwh) {
       setPhase("idle");
       // Refetch every databases-list variant (the poll only refreshes the
       // `undefined` one) so the new Storage database surfaces as an upload
@@ -88,7 +89,7 @@ export function usePurchaseStorageAddOn() {
         message: t`Metabase Storage is ready`,
       });
     }
-  }, [isSettingUp, hasAttachedDwh, sendToast, dispatch]);
+  }, [phase, hasAttachedDwh, sendToast, dispatch]);
 
   // Refresh the token (a Store round-trip) until `attached_dwh` shows up, so the
   // rest of the app picks up the new plan without a reload.
@@ -101,6 +102,7 @@ export function usePurchaseStorageAddOn() {
   useListDatabasesQuery(undefined, {
     skip: !isSettingUp,
     pollingInterval: POLL_INTERVAL_MS,
+    skipPollingIfUnfocused: true,
   });
 
   const handlePurchase = useCallback(async () => {

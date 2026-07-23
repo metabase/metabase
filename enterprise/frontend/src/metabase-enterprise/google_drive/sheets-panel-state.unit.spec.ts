@@ -60,8 +60,16 @@ describe("getSheetsPanelState", () => {
       expect(state({ isLoading: true, isSettingUp: true })).toBe(
         "provisioning-storage",
       );
-      expect(state({ isLoading: true, hasSetupFailed: true })).toBe(
-        "storage-setup-failed",
+      expect(
+        state({ isLoading: true, hasSetupFailed: true, hasAttachedDwh: false }),
+      ).toBe("storage-setup-failed");
+    });
+
+    it("trusts an attached DWH over a stale cached setup failure", () => {
+      // Setup can time out locally yet finish in the background; once the DWH is
+      // present, the failure gate must yield to the normal status path.
+      expect(state({ hasSetupFailed: true, hasAttachedDwh: true })).toBe(
+        "not-connected",
       );
     });
 

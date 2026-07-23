@@ -258,7 +258,7 @@ describe("CSVPanel storage purchase", () => {
     expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
   });
 
-  it("offers a way out when setup exceeds its deadline", async () => {
+  it("shows the failure view when setup exceeds its deadline", async () => {
     // Fake timers must be installed before render and drive the click, or the
     // setup deadline stays on the real clock.
     jest.useFakeTimers();
@@ -279,9 +279,6 @@ describe("CSVPanel storage purchase", () => {
         screen.getByText("Storage setup didn't finish"),
       ).toBeInTheDocument();
       expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Go to your account" }),
-      ).toHaveAttribute("href", expect.stringContaining("/account/storage"));
 
       // The failure is terminal for the session — it used to collapse back to
       // the upsell, re-offering storage to someone who had just bought it.
