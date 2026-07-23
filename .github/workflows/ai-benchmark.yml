@@ -1,4 +1,4 @@
-name: evals-dispatch
+name: AI Benchmark
 run-name: "dispatch evals · ${{ github.event_name == 'pull_request' && format('smoke PR#{0}', github.event.pull_request.number) || (inputs.pr != '' && format('PR#{0}', inputs.pr) || (inputs.ref != '' && inputs.ref || 'master')) }}"
 
 on:
