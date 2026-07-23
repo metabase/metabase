@@ -5,6 +5,7 @@
    [metabase.app-db.cluster-lock :as sut]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -226,3 +227,61 @@
         (is (= [[:a :failed :timeout]
                 [:b :done]]
                @results))))))
+
+(deftest detached-lock-basic-test
+  (testing "returns the body's value and works non-concurrently"
+    (is (= :ok (sut/with-cluster-lock {:lock ::detached-basic :detached? true} :ok))))
+  (testing ":detached? and :retry-transient? are mutually exclusive"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"mutually exclusive"
+                          (sut/with-cluster-lock {:lock ::detached-basic :detached? true :retry-transient? true}
+                            :nope)))))
+
+(deftest detached-lock-body-commits-incrementally-test
+  (let [email (mt/random-email)]
+    (try
+      (testing "body work commits as it goes and survives a later throw in the body"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                              (sut/with-cluster-lock {:lock ::detached-commit :detached? true}
+                                (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+                                (throw (ex-info "boom" {})))))
+        (is (t2/exists? :model/User :email email)))
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest detached-lock-reentrant-test
+  (testing "re-acquiring a held detached lock is a no-op instead of a self-deadlock"
+    (is (= :ok (sut/with-cluster-lock {:lock ::detached-reentrant :detached? true}
+                 (sut/with-cluster-lock {:lock ::detached-reentrant :detached? true
+                                         :timeout-seconds 1 :retry-config {:max-retries 0}}
+                   :ok)))))
+  (when (not= (mdb/db-type) :h2)
+    (testing "a transactional acquisition of a lock this thread holds detached is also a no-op"
+      (is (= :ok (sut/with-cluster-lock {:lock ::detached-reentrant :detached? true}
+                   (sut/with-cluster-lock {:lock ::detached-reentrant
+                                           :timeout-seconds 1 :retry-config {:max-retries 0}}
+                     :ok)))))
+    (testing "upgrading a held detached :share lock to :exclusive throws instead of self-deadlocking"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot upgrade"
+                            (sut/with-cluster-lock {:lock ::detached-reentrant :mode :share :detached? true}
+                              (sut/with-cluster-lock {:lock ::detached-reentrant :detached? true}
+                                :nope)))))))
+
+(deftest detached-lock-mutual-exclusion-test
+  ;; h2 uses the in-process rw-lock path where :detached? is a no-op; real row-lock semantics only.
+  (when (not= (mdb/db-type) :h2)
+    ;; warm up the row first so we're not racing on the initial INSERT
+    (sut/with-cluster-lock {:lock ::detached-mutex :detached? true} :warm)
+    (let [held (run-with-lock {:lock ::detached-mutex :detached? true})]
+      (is (.await ^CountDownLatch (:entered held) 3 TimeUnit/SECONDS))
+      (testing "a detached holder blocks another detached acquirer"
+        (is (not (acquirable-within? {:lock ::detached-mutex :detached? true
+                                      :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                     3000))))
+      (testing "a detached holder blocks a transactional acquirer"
+        (is (not (acquirable-within? {:lock ::detached-mutex
+                                      :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                     3000))))
+      (.countDown ^CountDownLatch (:release held))
+      (is (= :ok (deref (:done held) 3000 :timeout)))
+      (testing "released once the body completes"
+        (is (acquirable-within? {:lock ::detached-mutex :detached? true} 3000))))))
