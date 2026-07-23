@@ -501,6 +501,16 @@ describe("scenarios > dashboard > title drill", () => {
       }).then(({ dashboard, questions }) => {
         H.visitDashboard(dashboard.id);
 
+        // The title href is computed lazily on focus/hover and cached in
+        // component state (see LegendCaption). If a dashcard finishes loading
+        // and re-renders after we interact, its caption remounts and the
+        // freshly-computed href is reset back to the inert placeholder — which
+        // react-router serializes as the current path (e.g. "/dashboard/11"),
+        // producing the flake. Wait for every card to settle before touching
+        // any title so no such re-render lands after our focus/hover.
+        H.getDashboardCard(3).should("be.visible");
+        cy.findByTestId("loading-indicator").should("not.exist");
+
         // make cursor start from a place where subsequent realHover() calls
         // won't make the cursor move over the other cards during test
         // (which would interfere with assertions)
@@ -538,13 +548,12 @@ describe("scenarios > dashboard > title drill", () => {
       });
     });
 
-    // Before it is focused/hovered, the title's href is an inert placeholder that
-    // is only computed lazily on interaction (see LegendCaption). That placeholder
-    // is rendered through react-router's <Link to="#">, whose serialized href is
-    // not stable across loads — it can render as "#" or be resolved against the
-    // current location (e.g. "/dashboard/11"), so asserting the exact placeholder
-    // value is flaky. Assert the behavioral contract the test name promises
-    // instead: the href is not the question URL until interaction, then becomes it.
+    // Assert the behavioral contract the test name promises: the title is not
+    // yet the question anchor before interaction (its href is an inert
+    // placeholder, computed lazily on focus/hover — see LegendCaption), then
+    // becomes the question URL once focused/hovered. Asserting the exact
+    // placeholder value up front is flaky: react-router's <Link to="#">
+    // serializes it inconsistently ("#" vs the resolved current path).
     function assertTitleHrefOnFocus({ elementAlias, href }) {
       cy.get(elementAlias).should("not.have.attr", "href", href);
       cy.get(elementAlias).focus();
