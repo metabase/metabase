@@ -50,8 +50,9 @@ describe("scenarios > native > card template tag normalization", () => {
       cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
       });
-      cy.findByText("Open Editor").click();
+      cy.findByTestId("visibility-toggler").click();
       H.NativeEditor.get().should("contain", `{{${frontendTag}}}`);
+      cy.findByTestId("qb-header").should("be.visible");
       cy.findByTestId("qb-header").button("Save").should("not.exist");
     });
   });
