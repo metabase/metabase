@@ -142,34 +142,37 @@
     :else
     (try
       (if-let [user-id (parse-token-user-id token)]
-        (if-let [auth-identity (t2/select-one :model/AuthIdentity
-                                              {:select [:auth_identity.*
-                                                        [:core_user.is_active :is_active]]
-                                               :from :auth_identity
-                                               :left-join [:core_user [:= :core_user.id :auth_identity.user_id]]
-                                               :where [:and
-                                                       [:= :auth_identity.user_id user-id]
-                                                       [:= :auth_identity.provider (name provider)]]})]
-          (let [verification-result (verify-reset-token token (:credentials auth-identity))]
-            (case verification-result
-              :valid
-              (do
-                (log/debugf "Valid reset token for user %s" user-id)
-                {:success? true
-                 :user-id user-id
-                 :auth-identity auth-identity})
-              :expired
-              {:success? false
-               :error :expired-token
-               :message "Reset token has expired"}
-              :consumed
-              {:success? false
-               :error :consumed-token
-               :message "Reset token has already been used"}
-              :invalid
-              {:success? false
-               :error :invalid-token
-               :message "Reset token is invalid"}))
+        (if-let [auth-identity (t2/query-one {:select [:auth_identity.*
+                                                       [:core_user.is_active :is_active]]
+                                              :from :auth_identity
+                                              :left-join [:core_user [:= :core_user.id :auth_identity.user_id]]
+                                              :where [:and
+                                                      [:= :auth_identity.user_id user-id]
+                                                      [:= :auth_identity.provider (name provider)]]})]
+          (if (false? (:is_active auth-identity))
+            {:success? false
+             :error :inactive-account
+             :message "Inactive Account"}
+            (let [verification-result (verify-reset-token token (:credentials auth-identity))]
+              (case verification-result
+                :valid
+                (do
+                  (log/debugf "Valid reset token for user %s" user-id)
+                  {:success? true
+                   :user-id user-id
+                   :auth-identity auth-identity})
+                :expired
+                {:success? false
+                 :error :expired-token
+                 :message "Reset token has expired"}
+                :consumed
+                {:success? false
+                 :error :consumed-token
+                 :message "Reset token has already been used"}
+                :invalid
+                {:success? false
+                 :error :invalid-token
+                 :message "Reset token is invalid"})))
           {:success? false
            :error :no-auth-identity
            :message "No reset token found for this user"})
