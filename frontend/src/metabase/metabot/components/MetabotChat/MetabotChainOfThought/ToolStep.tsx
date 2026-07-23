@@ -14,15 +14,13 @@ import {
   doneToolLabel,
   renderTitle,
   searchResultCount,
-  specificLabel,
+  titledToolLabel,
 } from "./utils";
 
 const toolLabelContent = (step: ToolChainStep, done: boolean) => {
-  // search reads "Searching for orders" / "Searched for orders", trailed by a
-  // muted result count once the hits are in
   if (step.name === SEARCH_TOOL_NAME) {
     const label =
-      specificLabel(step, done) ?? (done ? t`Searched` : t`Searching`);
+      titledToolLabel(step, done) ?? (done ? t`Searched` : t`Searching`);
     return (
       <>
         {renderTitle(label)}
@@ -34,7 +32,7 @@ const toolLabelContent = (step: ToolChainStep, done: boolean) => {
       </>
     );
   }
-  const specific = specificLabel(step, done);
+  const specific = titledToolLabel(step, done);
   if (specific) {
     return renderTitle(specific);
   }
@@ -55,7 +53,6 @@ const ToolStepLabel = ({
   </Text>
 );
 
-// a burst of near-instant read_resource calls, collapsed into one row
 export const ResourceGroupStep = ({
   count,
   done,
@@ -74,8 +71,6 @@ export const ResourceGroupStep = ({
   </div>
 );
 
-// a tool step is itself a collapse: the label is always shown, its results (search
-// hits) stay hidden until the row is expanded
 export const ToolStep = ({
   step,
   done,

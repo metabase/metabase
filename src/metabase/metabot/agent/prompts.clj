@@ -27,12 +27,6 @@
   `permission:write_sql_queries` capability."
   #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
 
-(def ^:private loader-only-templates
-  "Templates whose client shows a plain loader, not the chain-of-thought timeline —
-  today the embedding SDK. These keep progress-narration guidance; everywhere else
-  `shows_reasoning` tells the model to skip the play-by-play."
-  #{"embedding-next.selmer"})
-
 ;;; Template Loading
 
 (defn- load-resource
@@ -178,7 +172,7 @@
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
-                                  :shows_reasoning          (not (contains? loader-only-templates template-name))
+                                  :shows_reasoning          (not= template-name "embedding-next.selmer")
                                   :custom_instructions      (not-empty
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search

@@ -14,9 +14,6 @@ type StreamingMarkdownProps = {
   isStreaming: boolean;
   blockClassName: string;
   components: Record<string, any>;
-  // seed the fade boundary at 0 so content that first renders already non-empty
-  // (e.g. chunky reasoning summaries) still fades in
-  animateFromStart?: boolean;
 };
 
 const repair = (source: string) => {
@@ -35,7 +32,6 @@ export const StreamingMarkdown = ({
   isStreaming,
   blockClassName,
   components,
-  animateFromStart = false,
 }: StreamingMarkdownProps) => {
   const animate = isStreaming && !isReducedMotionPreferred();
   const coalesced = useCoalescedSource(source, animate);
@@ -54,9 +50,7 @@ export const StreamingMarkdown = ({
     if (!animate || !isLast) {
       return undefined;
     }
-    const created = [
-      createRehypeStreamWords({ animateFromChar: animateFromStart ? 0 : null }),
-    ];
+    const created = [createRehypeStreamWords({ animateFromChar: null })];
     pluginsByBlock.current.set(index, created);
     return created;
   };

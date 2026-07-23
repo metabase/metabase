@@ -16,7 +16,7 @@ import { Text } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 
 import S from "./MetabotChainOfThought.module.css";
-import { resultContextParts, toModel } from "./utils";
+import { resultContextParts, toSearchModel } from "./utils";
 
 const isIconModel = (model: string): model is IconModel =>
   model in modelIconMap;
@@ -44,7 +44,7 @@ const ResultContext = ({ result }: { result: SearchResultItem }) => {
 
 const ResultIcon = ({ result }: { result: SearchResultItem }) => {
   const getIcon = useGetIcon();
-  const model = toModel(result.type);
+  const model = toSearchModel(result.type);
   const iconData: IconData = isIconModel(model)
     ? getIcon({
         model,
@@ -67,7 +67,7 @@ const SearchResultRow = ({
   <Link
     to={modelToUrl({
       id: result.id,
-      model: toModel(result.type),
+      model: toSearchModel(result.type),
       name: result.name,
       database_id: result.database_id,
     })}

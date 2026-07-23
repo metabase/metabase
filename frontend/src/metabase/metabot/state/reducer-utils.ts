@@ -58,22 +58,31 @@ export const pushNewToolCall = (
   });
 };
 
+const activeChain = (convo: WritableDraft<MetabotConverstationState>) => {
+  const chain = convo.activeChainId
+    ? convo.messages.find((m) => m.id === convo.activeChainId)
+    : undefined;
+  return chain?.type === "chain_of_thought" ? chain : undefined;
+};
+
+const stampChainSpan = (
+  chain: WritableDraft<MetabotAgentChainOfThoughtMessage>,
+  nowMs?: number,
+) => {
+  if (nowMs == null) {
+    return;
+  }
+  chain.startedAtMs ??= nowMs;
+  chain.endedAtMs = nowMs;
+};
+
 const ensureChain = (
   convo: WritableDraft<MetabotConverstationState>,
   nowMs?: number,
 ): WritableDraft<MetabotAgentChainOfThoughtMessage> => {
-  const existing = convo.activeChainId
-    ? convo.messages.find((m) => m.id === convo.activeChainId)
-    : undefined;
-  if (existing?.type === "chain_of_thought") {
-    // the shell opens unstamped; the first real step starts the clock, and every
-    // step advances the end so the "Thought for Ns" span lives entirely in redux
-    if (existing.startedAtMs == null && nowMs != null) {
-      existing.startedAtMs = nowMs;
-    }
-    if (nowMs != null) {
-      existing.endedAtMs = nowMs;
-    }
+  const existing = activeChain(convo);
+  if (existing) {
+    stampChainSpan(existing, nowMs);
     return existing;
   }
   const chain: WritableDraft<MetabotAgentChainOfThoughtMessage> = {
@@ -89,7 +98,6 @@ const ensureChain = (
   return chain;
 };
 
-// Open an empty chain so "Thinking…" shows before the first step arrives.
 export const openChain = (convo: WritableDraft<MetabotConverstationState>) => {
   ensureChain(convo);
 };
@@ -101,8 +109,6 @@ const dropChain = (
   convo.messages = convo.messages.filter((m) => m.id !== id);
 };
 
-// A new reasoning block always starts its own step, so tool calls between blocks
-// keep the timeline chronological.
 export const startChainReasoning = (
   convo: WritableDraft<MetabotConverstationState>,
   nowMs?: number,
@@ -137,32 +143,26 @@ export const addChainTool = (
     nowMs,
   }: { id: string; name: string; title?: string; nowMs?: number },
 ) => {
-  // dedupe across all chains: tool-input-start and tool-input-available both
-  // signal a tool, and the second must not re-add the step (or open a fresh
-  // chain) if the first's chain has since closed
   const existing = findChainToolStep(convo, id);
-  if (existing) {
-    if (title) {
-      // tool-input-start may arrive without a title; tool-input-available fills it in
-      existing.step.title = title;
-    }
-    if (existing.chain.id === convo.activeChainId) {
-      ensureChain(convo, nowMs);
-    }
+  if (!existing) {
+    ensureChain(convo, nowMs).steps.push({
+      kind: "tool",
+      id,
+      name,
+      title,
+      status: "started",
+      startedAtMs: nowMs,
+    });
     return;
   }
-  ensureChain(convo, nowMs).steps.push({
-    kind: "tool",
-    id,
-    name,
-    title,
-    status: "started",
-    startedAtMs: nowMs,
-  });
+  if (title) {
+    existing.step.title = title;
+  }
+  if (existing.chain.id === convo.activeChainId) {
+    stampChainSpan(existing.chain, nowMs);
+  }
 };
 
-// all chains, not just the active one — a tool's results/end can arrive after
-// answer text has already closed its chain
 const findChainToolStep = (
   convo: WritableDraft<MetabotConverstationState>,
   toolCallId: string,
@@ -191,9 +191,6 @@ export const setChainToolSearchResults = (
   }
 };
 
-// a tool whose display label is only known once it finishes (e.g. save_entity,
-// which can't name the saved entity until the card exists) stamps its step title
-// from an output data part, keyed by tool-call id
 export const setChainToolTitle = (
   convo: WritableDraft<MetabotConverstationState>,
   toolCallId: string,
@@ -215,42 +212,21 @@ export const endChainTool = (
     return;
   }
   found.step.status = "ended";
-  // only a still-active chain's span advances; a settled chain keeps the end
-  // the answer text stamped
-  if (nowMs != null && found.chain.id === convo.activeChainId) {
+  const chainStillActive = found.chain.id === convo.activeChainId;
+  if (chainStillActive && nowMs != null) {
     found.chain.endedAtMs = nowMs;
   }
 };
 
-// End the current chain so later reasoning/tools start a fresh one after the
-// answer text, keeping the timeline chronological. A chain that never gathered
-// a step is dropped rather than persisted as an empty "Thinking…" row.
 export const closeChain = (
   convo: WritableDraft<MetabotConverstationState>,
   nowMs?: number,
 ) => {
-  const chain = convo.activeChainId
-    ? convo.messages.find((m) => m.id === convo.activeChainId)
-    : undefined;
-  if (chain?.type === "chain_of_thought") {
-    if (chain.steps.length === 0) {
-      dropChain(convo, chain.id);
-    } else if (nowMs != null) {
-      chain.endedAtMs = nowMs;
-    }
-  }
-  convo.activeChainId = undefined;
-};
-
-// Turn teardown: drop an empty chain left open and release the active id.
-export const finalizeChain = (
-  convo: WritableDraft<MetabotConverstationState>,
-) => {
-  const chain = convo.activeChainId
-    ? convo.messages.find((m) => m.id === convo.activeChainId)
-    : undefined;
-  if (chain?.type === "chain_of_thought" && chain.steps.length === 0) {
+  const chain = activeChain(convo);
+  if (chain && chain.steps.length === 0) {
     dropChain(convo, chain.id);
+  } else if (chain && nowMs != null) {
+    chain.endedAtMs = nowMs;
   }
   convo.activeChainId = undefined;
 };

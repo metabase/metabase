@@ -9,15 +9,16 @@ import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { useMetabotName } from "metabase/metabot/hooks";
-import type {
-  MetabotAgentChatMessage,
-  MetabotAgentDataPartMessage,
-  MetabotAgentTextChatMessage,
-  MetabotAgentTurnError,
-  MetabotAgentTurnErroredMessage,
-  MetabotChatMessage,
-  MetabotDataPart,
-  MetabotUserChatMessage,
+import {
+  type MetabotAgentChatMessage,
+  type MetabotAgentDataPartMessage,
+  type MetabotAgentTextChatMessage,
+  type MetabotAgentTurnError,
+  type MetabotAgentTurnErroredMessage,
+  type MetabotChatMessage,
+  type MetabotDataPart,
+  type MetabotUserChatMessage,
+  isChainOfThoughtMessage,
 } from "metabase/metabot/state";
 import {
   ActionIcon,
@@ -74,6 +75,9 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
     .with({ type: "turn_errored" }, () => true)
     .with({ type: "turn_in_progress" }, () => false)
     .exhaustive();
+
+const isConversationContent = (message: MetabotChatMessage) =>
+  !isChainOfThoughtMessage(message) && message.type !== "tool_call";
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotChatMessage;
@@ -541,12 +545,9 @@ export const Messages = ({
     <>
       {visibleMessages.map((message, index) => {
         const next = visibleMessages[index + 1];
-        // chain-of-thought rows (and the tool_call rows debug mode renders) are
-        // timeline furniture, not conversation content: they neither settle a
-        // live chain nor count as "another agent message" for the actions row
         const nextContent = visibleMessages
           .slice(index + 1)
-          .find((m) => m.type !== "chain_of_thought" && m.type !== "tool_call");
+          .find(isConversationContent);
         const isLastUserMessage = index > lastUserIndex;
 
         return message.role === "agent" ? (
@@ -569,14 +570,14 @@ export const Messages = ({
                 : undefined
             }
             hideActions={
-              message.type === "chain_of_thought" ||
+              isChainOfThoughtMessage(message) ||
               nextContent?.role === "agent" ||
               (isDoingScience && !nextContent)
             }
             extraActions={getExtraActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
             isStreaming={
-              message.type === "chain_of_thought"
+              isChainOfThoughtMessage(message)
                 ? isDoingScience && !nextContent
                 : isDoingScience && !next
             }

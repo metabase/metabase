@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { useEffect, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -11,13 +10,15 @@ import { Collapse, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 import S from "./MetabotChainOfThought.module.css";
 import { ReasoningStep } from "./ReasoningStep";
 import { ResourceGroupStep, ToolStep } from "./ToolStep";
-import { useMeteredLabel, useNow } from "./hooks";
+import { useAutoCollapseOnSettle, useMeteredLabel, useNow } from "./hooks";
 import {
   buildDisplayItems,
   isRenderableStep,
+  isToolStep,
   latestPreviewLabel,
   reasoningLabel,
   settledHeader,
+  soleReasoningStep,
 } from "./utils";
 
 export const MetabotChainOfThought = ({
@@ -27,20 +28,8 @@ export const MetabotChainOfThought = ({
   message: MetabotAgentChainOfThoughtMessage;
   isStreaming: boolean;
 }) => {
-  const [open, setOpen] = useState(false);
+  const { open, toggle } = useAutoCollapseOnSettle(isStreaming);
   const now = useNow(isStreaming);
-
-  // collapse the chain once — the first time it settles — so a mid-stream peek
-  // doesn't linger. isStreaming can toggle false more than once as later messages
-  // arrive, so we latch to avoid fighting a user who reopens it.
-  const autoCollapsedRef = useRef(false);
-  useEffect(() => {
-    if (!isStreaming && !autoCollapsedRef.current) {
-      autoCollapsedRef.current = true;
-      setOpen(false);
-    }
-  }, [isStreaming]);
-
   const preview = useMeteredLabel(latestPreviewLabel(message.steps));
 
   if (message.steps.length === 0 && !isStreaming) {
@@ -52,14 +41,10 @@ export const MetabotChainOfThought = ({
       ? message.endedAtMs - message.startedAtMs
       : undefined;
 
-  // the verb swaps to "Thought" when the whole turn was reasoning — no tool ran
   const thinkingOnly = !message.steps.some(
-    (step) => step.kind === "tool" && isRenderableStep(step),
+    (step) => isToolStep(step) && isRenderableStep(step),
   );
 
-  // the current (latest) step reads in the present tense while the turn is live
-  // and its label shimmers; only once a newer step supersedes it does it settle
-  // into the past tense.
   const activeIndex = message.steps.reduce(
     (acc, step, i) => (isRenderableStep(step) ? i : acc),
     -1,
@@ -82,19 +67,15 @@ export const MetabotChainOfThought = ({
   };
 
   const renderableItems = buildDisplayItems(message.steps);
-  // a turn that was a single thinking event: skip the redundant collapse row (its
-  // label would just echo the header's "Thought briefly") and show reasoning inline
-  const soleReasoning =
-    renderableItems.length === 1 && renderableItems[0].kind === "reasoning"
-      ? renderableItems[0].step
-      : null;
+  const soleReasoning = isStreaming ? null : soleReasoningStep(renderableItems);
 
   return (
     <div className={S.root} data-testid="metabot-chain-of-thought">
       <UnstyledButton
         className={S.trigger}
         aria-expanded={open}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={toggle}
+        data-testid="metabot-chain-of-thought-header"
       >
         <Text
           component="span"
@@ -118,10 +99,8 @@ export const MetabotChainOfThought = ({
         <Stack gap="0.5rem" mt="0.5rem">
           {soleReasoning ? (
             <div className={S.step}>
-              <div className={S.reasoningBody}>
-                <AIMarkdown isStreaming={isStreaming} animateFromStart>
-                  {soleReasoning.text}
-                </AIMarkdown>
+              <div className={cx(S.reasoningBody, Animation.fadeIn)}>
+                <AIMarkdown>{soleReasoning.text}</AIMarkdown>
               </div>
             </div>
           ) : (

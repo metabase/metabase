@@ -55,7 +55,6 @@
   }
 }
 
-/* a highlight band sweeping over the text color while a step streams in */
 .shimmer {
   /* both colors stay in the text family (a lighter highlight over the resting
      tone) so the sweep reads as a sheen rather than a spotlight */
@@ -103,7 +102,6 @@
   line-height: 1.57;
 }
 
-/* reasoning summaries use bold section headers; keep them at body weight */
 .step strong,
 .step b {
   font-weight: inherit;
@@ -127,8 +125,6 @@
   cursor: default;
 }
 
-/* entity links follow the muted palette, brand on hover; the whole item carries
-   the underline (border-bottom), so the text itself has none */
 .toolRow a,
 .headerLabel a {
   color: var(--mb-color-text-tertiary);
@@ -182,7 +178,6 @@
   opacity: 0.6;
 }
 
-/* a plain list, no card — ~5 rows tall, then scrolls */
 .resultsList {
   display: flex;
   flex-direction: column;
@@ -205,7 +200,6 @@
   color: var(--mb-color-brand);
 }
 
-/* inherits the row color: text-secondary at rest, brand on hover */
 .resultIcon {
   flex-shrink: 0;
   color: inherit;

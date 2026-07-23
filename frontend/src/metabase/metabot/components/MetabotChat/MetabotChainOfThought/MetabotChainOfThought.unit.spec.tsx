@@ -36,10 +36,8 @@ const setup = (
   );
 };
 
-// the header trigger is always the first button; its label now varies
-// (Worked/Thought, briefly/for N seconds), so select it by position to expand
 const expandChain = async () => {
-  await userEvent.click(screen.getAllByRole("button")[0]);
+  await userEvent.click(screen.getByTestId("metabot-chain-of-thought-header"));
 };
 
 describe("MetabotChainOfThought", () => {
@@ -456,7 +454,6 @@ describe("MetabotChainOfThought", () => {
       false,
     );
     await expandChain();
-    // the reasoning row shows its own elapsed seconds, not "briefly"
     expect(screen.getByText("Thought for 7 seconds")).toBeInTheDocument();
     expect(screen.queryByText("Thought briefly")).not.toBeInTheDocument();
   });

@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
 import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
@@ -10,6 +11,7 @@ import {
   type MetabaseProtocolEntityModel,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/metabot/utils/links";
+import { isNotNull } from "metabase/utils/types";
 
 import {
   REASONING_EXACT_THRESHOLD_MS,
@@ -21,14 +23,12 @@ import {
 export type ToolChainStep = MetabotChainStep & { kind: "tool" };
 export type ReasoningChainStep = MetabotChainStep & { kind: "reasoning" };
 
-// Metabot entity-type names -> the search "model" vocabulary modelToUrl/getIcon speak.
-// No shared FE util exists: the app only ever uses card/dataset, this rename is the
-// metabot boundary (the backend inverse lives in metabase.metabot.search-models).
-const RESULT_MODEL: Record<string, string> = {
+const SEARCH_MODEL_BY_METABOT_TYPE: Record<string, string> = {
   question: "card",
   model: "dataset",
 };
-export const toModel = (type: string) => RESULT_MODEL[type] ?? type;
+export const toSearchModel = (type: string) =>
+  SEARCH_MODEL_BY_METABOT_TYPE[type] ?? type;
 
 export const resultContextParts = (result: SearchResultItem): string[] => {
   if (result.collection?.name) {
@@ -43,7 +43,6 @@ export const activeToolLabel = (name: string) =>
   getToolMessage(name)?.active() ?? t`Thinking`;
 export const doneToolLabel = (name: string) =>
   getToolMessage(name)?.done() ?? activeToolLabel(name);
-// a tool that's known but maps to no label is shown silently (previewed as "Thinking")
 export const isHiddenTool = (name: string) => {
   const message = getToolMessage(name);
   return !!message && message.active() === undefined;
@@ -95,31 +94,25 @@ export const renderTitle = (title: string) =>
     ),
   );
 
-// search & read_resource stream just the *object* (the query / the entities) as
-// their title; the FE owns the verb + tense so the same object reads present while
-// the step runs ("Searching for orders") and past once it settles ("Searched for
-// orders"). null for any other tool (their title, if any, is shown verbatim).
-export const specificLabel = (
+export const titledToolLabel = (
   step: ToolChainStep,
   done: boolean,
 ): string | null => {
-  if (!step.title) {
+  const { title } = step;
+  if (!title) {
     return null;
   }
-  if (step.name === SEARCH_TOOL_NAME) {
-    return done
-      ? t`Searched for ${step.title}`
-      : t`Searching for ${step.title}`;
-  }
-  if (step.name === RESOURCE_TOOL_NAME) {
-    return done ? t`Read ${step.title}` : t`Reading ${step.title}`;
-  }
-  // save_entity's title (a metabase:// entity link) only arrives once the card
-  // exists, so a running save has no title and reads the generic "Saving"
-  if (step.name === SAVE_ENTITY_TOOL_NAME) {
-    return done ? t`Saved ${step.title}` : t`Saving ${step.title}`;
-  }
-  return step.title;
+  return match(step.name)
+    .with(SEARCH_TOOL_NAME, () =>
+      done ? t`Searched for ${title}` : t`Searching for ${title}`,
+    )
+    .with(RESOURCE_TOOL_NAME, () =>
+      done ? t`Read ${title}` : t`Reading ${title}`,
+    )
+    .with(SAVE_ENTITY_TOOL_NAME, () =>
+      done ? t`Saved ${title}` : t`Saving ${title}`,
+    )
+    .otherwise(() => title);
 };
 
 export const searchResultCount = ({ totalCount }: { totalCount: number }) =>
@@ -131,46 +124,39 @@ export const searchResultCount = ({ totalCount }: { totalCount: number }) =>
         totalCount,
       );
 
-// the collapsed header always previews the latest step in the present tense —
-// reasoning is never echoed verbatim, it just reads "Thinking…". walk back past
-// hidden/empty steps to the first that has something to say.
-export const latestPreviewLabel = (steps: MetabotChainStep[]): string => {
-  for (let i = steps.length - 1; i >= 0; i--) {
-    const step = steps[i];
-    if (step.kind === "reasoning") {
-      if (step.text.trim()) {
-        return t`Thinking`;
-      }
-      continue;
-    }
-    if (step.name === RESOURCE_TOOL_NAME) {
-      // stays generic at the top level; the expanded rows name the entities
-      return t`Reading resources`;
-    }
-    if (!isHiddenTool(step.name)) {
-      return activeToolLabel(step.name);
-    }
-  }
-  return t`Thinking`;
-};
+const previewLabel = (step: MetabotChainStep): string | undefined =>
+  match(step)
+    .with({ kind: "reasoning" }, ({ text }) =>
+      text.trim() ? t`Thinking` : undefined,
+    )
+    .with(
+      { kind: "tool", name: RESOURCE_TOOL_NAME },
+      () => t`Reading resources`,
+    )
+    .with({ kind: "tool" }, ({ name }) =>
+      isHiddenTool(name) ? undefined : activeToolLabel(name),
+    )
+    .exhaustive();
 
-export const isRenderableStep = (s: MetabotChainStep) =>
-  s.kind === "tool"
-    ? !!s.title || !!s.searchResults || !isHiddenTool(s.name)
-    : !!s.text;
+export const latestPreviewLabel = (steps: MetabotChainStep[]): string =>
+  steps.map(previewLabel).filter(isNotNull).at(-1) ?? t`Thinking`;
 
-export const isResourceStep = (s: MetabotChainStep): s is ToolChainStep =>
-  s.kind === "tool" && s.name === RESOURCE_TOOL_NAME;
+export const isToolStep = (step: MetabotChainStep): step is ToolChainStep =>
+  step.kind === "tool";
 
-// a group of consecutive read_resource calls renders as one aggregated row;
-// index is the position of its first step (for shimmer/keying)
+export const isRenderableStep = (step: MetabotChainStep) =>
+  isToolStep(step)
+    ? !!step.title || !!step.searchResults || !isHiddenTool(step.name)
+    : !!step.text;
+
+export const isResourceStep = (step: MetabotChainStep): step is ToolChainStep =>
+  isToolStep(step) && step.name === RESOURCE_TOOL_NAME;
+
 export type DisplayItem =
   | { kind: "reasoning"; step: ReasoningChainStep; index: number }
   | { kind: "tool"; step: ToolChainStep; index: number }
   | { kind: "resourceGroup"; steps: ToolChainStep[]; index: number };
 
-// consecutive read_resource steps collapse into one run; everything else stays a
-// singleton run, preserving order
 const groupConsecutiveResources = (
   steps: MetabotChainStep[],
 ): MetabotChainStep[][] =>
@@ -190,8 +176,6 @@ const toDisplayItem = (
   if (first.kind === "reasoning") {
     return { kind: "reasoning", step: first, index };
   }
-  // only consecutive resource reads ever group, so a >1 run is always a burst;
-  // a lone resource read keeps its own tool row (and any entity-link title)
   const resources = group.filter(isResourceStep);
   return resources.length > 1
     ? { kind: "resourceGroup", steps: resources, index }
@@ -201,25 +185,47 @@ const toDisplayItem = (
 const isRenderableItem = (item: DisplayItem): boolean =>
   item.kind === "resourceGroup" || isRenderableStep(item.step);
 
-// hidden/empty steps are dropped only after grouping — one still breaks the
-// contiguity of a read_resource burst. `index` stays the step's position in the
-// raw steps array (what activeIndex is computed against).
-export const buildDisplayItems = (steps: MetabotChainStep[]): DisplayItem[] =>
-  groupConsecutiveResources(steps)
-    .reduce<{
-      items: DisplayItem[];
-      offset: number;
-    }>(
-      ({ items, offset }, group) => ({
-        items: [...items, toDisplayItem(group, offset)],
-        offset: offset + group.length,
-      }),
-      { items: [], offset: 0 },
-    )
-    .items.filter(isRenderableItem);
+export const buildDisplayItems = (steps: MetabotChainStep[]): DisplayItem[] => {
+  const groups = groupConsecutiveResources(steps);
+  return groups
+    .map((group, groupIndex) => {
+      const stepIndex = groups.slice(0, groupIndex).flat().length;
+      return toDisplayItem(group, stepIndex);
+    })
+    .filter(isRenderableItem);
+};
 
-// a rollup phrased as "Worked" (or "Thought" for a thinking-only turn), rolled up
-// to "briefly" under the exact-seconds threshold
+export const soleReasoningStep = (
+  items: DisplayItem[],
+): ReasoningChainStep | null => {
+  const [only] = items;
+  return items.length === 1 && only.kind === "reasoning" ? only.step : null;
+};
+
+const exactSeconds = (durationMs: number | undefined): number | null =>
+  durationMs != null && durationMs >= REASONING_EXACT_THRESHOLD_MS
+    ? Math.round(durationMs / 1000)
+    : null;
+
+const thoughtFor = (seconds: number) =>
+  ngettext(
+    msgid`Thought for ${seconds} second`,
+    `Thought for ${seconds} seconds`,
+    seconds,
+  );
+
+const workedFor = (seconds: number) =>
+  ngettext(
+    msgid`Worked for ${seconds} second`,
+    `Worked for ${seconds} seconds`,
+    seconds,
+  );
+
+export const reasoningLabel = (durationMs: number | undefined): string => {
+  const seconds = exactSeconds(durationMs);
+  return seconds == null ? t`Thought briefly` : thoughtFor(seconds);
+};
+
 export const settledHeader = (
   durationMs: number | undefined,
   thinkingOnly: boolean,
@@ -227,31 +233,9 @@ export const settledHeader = (
   if (durationMs == null) {
     return thinkingOnly ? t`Thought about it` : t`Worked on it`;
   }
-  if (durationMs < REASONING_EXACT_THRESHOLD_MS) {
-    return thinkingOnly ? t`Thought briefly` : t`Worked briefly`;
+  if (thinkingOnly) {
+    return reasoningLabel(durationMs);
   }
-  const seconds = Math.round(durationMs / 1000);
-  return thinkingOnly
-    ? ngettext(
-        msgid`Thought for ${seconds} second`,
-        `Thought for ${seconds} seconds`,
-        seconds,
-      )
-    : ngettext(
-        msgid`Worked for ${seconds} second`,
-        `Worked for ${seconds} seconds`,
-        seconds,
-      );
-};
-
-export const reasoningLabel = (durationMs: number | undefined): string => {
-  if (durationMs != null && durationMs >= REASONING_EXACT_THRESHOLD_MS) {
-    const secs = Math.round(durationMs / 1000);
-    return ngettext(
-      msgid`Thought for ${secs} second`,
-      `Thought for ${secs} seconds`,
-      secs,
-    );
-  }
-  return t`Thought briefly`;
+  const seconds = exactSeconds(durationMs);
+  return seconds == null ? t`Worked briefly` : workedFor(seconds);
 };

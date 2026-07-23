@@ -25,8 +25,6 @@ describe("metabot > message", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
 
     await enterChatMessage("Who is your favorite?");
-    // while the turn is pending the "Thinking" chain-of-thought shell stands in
-    // for the old response loader
     expect(
       await screen.findByTestId("metabot-chain-of-thought"),
     ).toBeInTheDocument();
@@ -70,8 +68,6 @@ describe("metabot > message", () => {
     await enterChatMessage("Question");
 
     expect(await screen.findByText("Here you go.")).toBeInTheDocument();
-    // the trailing chain-of-thought row must not swallow the reply's actions:
-    // one copy button on the user message, one on the agent reply
     expect(
       await screen.findAllByTestId("metabot-chat-message-copy"),
     ).toHaveLength(2);

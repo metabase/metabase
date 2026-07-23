@@ -115,10 +115,6 @@ export type ToolMessage = {
   done: (count?: number) => string | undefined;
 };
 
-// One entry per tool: `active` while it runs, `done` once it settles. A tool that
-// runs silently (no user-facing label) maps both to `undefined`. read_resource is
-// count-aware (its calls come in near-instant bursts that the chain of thought
-// collapses into a single aggregated row).
 export const TOOL_MESSAGES = {
   analyze_chart: {
     active: () => t`Inspecting the visualization`,
@@ -140,11 +136,9 @@ export const TOOL_MESSAGES = {
     active: () => t`Getting transform details`,
     done: () => t`Got transform details`,
   },
-  // silent tools — no user-facing label, previewed as "Thinking"
   list_available_fields: { active: () => undefined, done: () => undefined },
   load_skill: { active: () => undefined, done: () => undefined },
   read_resource: {
-    // no count: a lone read (generic label). count: an aggregated burst.
     active: (count) =>
       count == null
         ? t`Reading resource`

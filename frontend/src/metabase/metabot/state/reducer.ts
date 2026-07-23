@@ -25,7 +25,6 @@ import {
   convoReducer,
   createConversation,
   endChainTool,
-  finalizeChain,
   findLastToolCallMessage,
   getMetabotInitialState,
   getRequestConversation,
@@ -158,7 +157,6 @@ export const metabot = createSlice({
         if (canAppend) {
           lastMessage.message = lastMessage.message + action.payload.text;
         } else {
-          // the answer is starting — settle the chain of thought
           closeChain(convo, action.payload.nowMs);
           const externalId = convo.pendingMessageExternalId;
           convo.messages.push({
@@ -428,8 +426,7 @@ export const metabot = createSlice({
         convo.title = title;
         convo.isProcessing = hasInProgressMessage(messages ?? []);
         if (convo.isProcessing) {
-          // resuming a mid-response conversation — show the "Thinking…" shell
-          openChain(convo);
+          openChain(convo); // resuming mid-response
         }
         convo.stateBeforeTurn = undefined;
         convo.pendingMessageExternalId = undefined;
@@ -460,7 +457,7 @@ export const metabot = createSlice({
             convo.state = { ...action.payload.state };
           }
           convo.activeToolCalls = [];
-          finalizeChain(convo);
+          closeChain(convo);
           convo.isProcessing = false;
           convo.experimental.developerMessage = "";
           convo.pendingMessageExternalId = undefined;
@@ -504,7 +501,7 @@ export const metabot = createSlice({
 
           convo.pendingMessageExternalId = undefined;
           convo.activeToolCalls = [];
-          finalizeChain(convo);
+          closeChain(convo);
           convo.isProcessing = false;
         }
       });
