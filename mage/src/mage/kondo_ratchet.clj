@@ -224,11 +224,11 @@
 ;;;; ---------------------------------------------------------------------------
 
 (defn- ignored-linters-at
-  "Linter keywords named by the ignore form at `row` of `lines`; reads a couple of extra lines since
-  the vector may wrap."
+  "Linter keywords named by the ignore form starting at `row` of `lines`."
   [lines row]
-  (kondo-ratchet/line-linters
-   (str/join "\n" (subvec lines (dec row) (min (count lines) (+ row 2))))))
+  (->> (kondo-ratchet/ignore-matches (str/join "\n" lines))
+       (filter #(= row (:line %)))
+       (mapcat :linters)))
 
 (defn- lsp-only?
   "Does the ignore form suppress only linters kondo doesn't run, so a re-lint could never restore it?"
@@ -244,8 +244,8 @@
 (defn- remove-ignores-at
   "The inline ignore forms that start on the 1-based `rows` of `text`, removed.
   Forms that name any clojure-lsp/* linter survive ([[names-lsp?]]): the verify pass could never restore
-  that half of the suppression. Forms whose matched span has unbalanced braces (nested maps the regex
-  can't span) are skipped and reported under `:skipped` rather than corrupted.
+  that half of the suppression. Prefixless maps and forms whose matched span has unbalanced braces
+  (nested maps the regex can't span) are skipped and reported under `:skipped` rather than corrupted.
   A line left whitespace-only by a removal is deleted; an inline removal also swallows the spaces
   separating it from the following form when the preceding text already ends in a space.
   Returns `{:text _, :sites [{:row _, :linters _, :original _} ...], :skipped [rows...]}`.
@@ -254,15 +254,19 @@
   [text rows]
   (let [rowset (set rows)
         masked (kondo-ratchet/mask-strings-and-comments text)
+        prefixed? (fn [{:keys [start]}]
+                    (contains? #{\# \^} (.charAt ^String masked start)))
         balanced? (fn [{:keys [start end]}]
                     (let [span (subs masked start end)]
                       (= (count (filter #{\{} span))
                          (count (filter #{\}} span)))))
-        {removable true, unbalanced false}
-        (group-by balanced?
+        {prefixed true, prefixless false}
+        (group-by prefixed?
                   (->> (kondo-ratchet/ignore-matches text)
                        (filter (comp rowset :line))
                        (remove (comp names-lsp? :linters))))
+        {removable true, unbalanced false}
+        (group-by balanced? prefixed)
         result (reduce (fn [{:keys [text] :as acc} {:keys [start end line linters]}]
                          (let [before     (subs text 0 start)
                                after      (subs text end)
@@ -308,7 +312,7 @@
                  :linters      linters
                  :original     original})
      ;; adjusted like :sites, so warnings point at the rewritten file
-     :skipped (map (comp post-removal-row :line) unbalanced)}))
+     :skipped (map (comp post-removal-row :line) (concat prefixless unbalanced))}))
 
 (defn redundant-ignores
   "Report inline ignores kondo flags as redundant, dropping its two known false-positive classes:
@@ -366,7 +370,7 @@
                                        (remove-ignores-at (slurp file) (map :row file-candidates))]
                                    (spit file text)
                                    (doseq [row skipped]
-                                     (println (format "WARNING: %s:%d skipped -- can't be excised cleanly (unbalanced braces); remove it by hand"
+                                     (println (format "WARNING: %s:%d skipped -- can't be excised safely (prefixless map or unbalanced braces); remove it by hand"
                                                       file row)))
                                    ;; whether the removed site carried a marker decides where its marker
                                    ;; goes on restore ([[site-restore-plan]]) -- record it, don't infer it

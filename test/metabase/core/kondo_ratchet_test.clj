@@ -108,19 +108,24 @@
     [:all]              "  ^:clj-kondo/ignore (foo)"
     ;; lookalikes that must NOT count
     []                  "#_:clj-kondo/ignore-my-advice"
+    []                  "#_:clj-kondo/ignore?"
+    []                  "#_:clj-kondo/ignore!"
+    []                  "#_:clj-kondo/ignore+"
+    []                  "#_:clj-kondo/ignore*"
     []                  "(defn foo [x] (inc x))"
     ;; ignore forms inside strings and comments don't count either
     []                  "(def s \"#_{:clj-kondo/ignore [:in-a-string]}\")"
     []                  ";; #_{:clj-kondo/ignore [:commented-out]}"))
 
 (deftest ^:parallel noncanonical-ignore-test
-  (testing "an ignore behind another map key fails closed instead of asking a partial reader to classify it"
+  (testing "alternate ignore spellings fail closed instead of asking a partial reader to classify them"
     (are [line] (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"put the ignore first in its map"
+                                  #"literal ignore key first"
                                   (kondo-ratchet/line-linters line))
       "(def ^{:added \"0.1\" :clj-kondo/ignore [:buried]} x 1)"
       "(ns b {:doc \"d\" :clj-kondo/ignore [:buried]})"
-      "{:label :clj-kondo/ignore [:data]}")))
+      "{:label :clj-kondo/ignore [:data]}"
+      "(def ^#:clj-kondo{:ignore [:namespaced-map]} x 1)")))
 
 (deftest ^:parallel scan-test
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory
