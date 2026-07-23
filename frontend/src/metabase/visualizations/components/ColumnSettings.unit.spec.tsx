@@ -16,7 +16,7 @@ describe("hasColumnSettingsWidgets", () => {
     ).toBe(true);
   });
 
-  // proves the FormattingColumn union: a Field flows through the same pipeline
+  // proves a raw Field flows through the same pipeline as a DatasetColumn
   it("returns true for a number Field", () => {
     expect(
       hasColumnSettingsWidgets({

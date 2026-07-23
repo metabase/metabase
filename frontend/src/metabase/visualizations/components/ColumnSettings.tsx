@@ -8,18 +8,17 @@ import ChartSettingsWidget, {
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
-import type {
-  FormattingColumn,
-  SettingsExtra,
-} from "metabase/visualizations/types";
+import type { SettingsExtra } from "metabase/visualizations/types";
 import type {
   ColumnSettings as ApiColumnSettings,
+  DatasetColumn,
+  Field,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
 type CommonProps = {
-  column: FormattingColumn;
+  column: DatasetColumn | Field;
   inheritedSettings?: ApiColumnSettings;
   onChange?: (settings: ApiColumnSettings) => void;
   onChangeSetting?: (settings: Partial<VisualizationSettings>) => void;
@@ -41,6 +40,21 @@ type ColumnSettingsProps = HasColumnSettingsWidgetsProps & {
   variant?: ChartSettingsWidgetVariant;
 };
 
+// The settings pipeline works on DatasetColumns, but the metadata editors pass
+// raw Fields; a Field is a column of its table, so it only needs `source` (and
+// a numeric `id` — a Field's id may be a field reference) to become one.
+function toDatasetColumn(column: DatasetColumn | Field): DatasetColumn {
+  if ("source" in column) {
+    return column;
+  }
+  const { id, ...field } = column;
+  return {
+    ...field,
+    id: typeof id === "number" ? id : undefined,
+    source: "fields",
+  };
+}
+
 function getWidgets({
   column,
   inheritedSettings,
@@ -54,9 +68,13 @@ function getWidgets({
   // fake series
   const series: Series = [];
 
+  const datasetColumn = toDatasetColumn(column);
+
   // add a "unit" to make certain settings work
-  const columnWithUnit: FormattingColumn =
-    column.unit != null ? column : { ...column, unit: "default" };
+  const columnWithUnit: DatasetColumn =
+    datasetColumn.unit != null
+      ? datasetColumn
+      : { ...datasetColumn, unit: "default" };
 
   const settingsDefs = getSettingDefinitionsForColumn(series, columnWithUnit);
 

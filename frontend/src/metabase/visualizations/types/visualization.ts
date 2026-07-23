@@ -28,7 +28,6 @@ import type {
   DashboardId,
   DatasetColumn,
   DatasetData,
-  Field,
   IconName,
   RawSeries,
   RowValue,
@@ -119,12 +118,6 @@ export type OnChangeCardAndRunOpts = {
 };
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
-
-// `unit` never exists on a Field; declaring it optional lets consumers read
-// `column.unit` directly instead of narrowing the union first.
-export type FormattingColumn =
-  | DatasetColumn
-  | (Field & { unit?: DatasetColumn["unit"] });
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
@@ -324,10 +317,6 @@ export type SettingsExtra = {
   transformedSeries?: RawSeries | TransformedSeries;
 };
 
-type SettingsForObject<T> = T extends FormattingColumn
-  ? ColumnSettings
-  : ComputedVisualizationSettings;
-
 export type VisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
@@ -342,32 +331,44 @@ export type VisualizationSettingDefinition<
   widget?: string | ComponentType<TProps & { id: string }>;
   isValid?: (
     object: T,
-    settings: SettingsForObject<T>,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
   getHidden?: (
     object: T,
-    settings: SettingsForObject<T>,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
   getDefault?: (
     object: T,
-    settings: SettingsForObject<T>,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
   getValue?: (
     object: T,
-    settings: SettingsForObject<T>,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
   getSection?: (
     object: T,
-    settings: SettingsForObject<T>,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
   getWrapperStyle?: (
     object: T,
-    settings: SettingsForObject<T>,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => CSSProperties | undefined;
   autoOpenWhenUnset?: boolean;
@@ -376,7 +377,9 @@ export type VisualizationSettingDefinition<
   inline?: boolean;
   getProps?: (
     object: T,
-    vizSettings: SettingsForObject<T>,
+    vizSettings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     onChange: (value: TValue) => void,
     extra: SettingsExtra | undefined,
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,
@@ -411,7 +414,7 @@ export type CompleteVisualizationSettingDefinition<
 export type DatasetColumnSettingDefinition<
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> = VisualizationSettingDefinition<FormattingColumn, TValue, TProps>;
+> = VisualizationSettingDefinition<DatasetColumn, TValue, TProps>;
 
 export type SeriesSettingDefinition<
   TValue = unknown,
@@ -670,7 +673,7 @@ export type VisualizationDefinition = {
   isSensible?: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions
-    | ((column: FormattingColumn) => VisualizationSettingsDefinitions);
+    | ((column: DatasetColumn) => VisualizationSettingsDefinitions);
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,
