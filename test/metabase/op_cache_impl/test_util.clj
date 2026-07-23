@@ -39,4 +39,9 @@
                          (into {} (remove (fn [[_ {:keys [written-at]}]]
                                             (t/before? written-at (t/instant cutoff))))
                                entries)))
-        nil))))
+        nil)
+      (keys-written-since [_ threshold]
+        (into [] (keep (fn [[k {:keys [written-at]}]]
+                         (when-not (t/before? written-at (t/instant threshold))
+                           k)))
+              @entries)))))

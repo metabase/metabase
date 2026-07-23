@@ -1,13 +1,16 @@
 (ns metabase-enterprise.cache.task.refresh-cache-configs
   (:require
+   [buddy.core.codecs :as codecs]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
    [metabase.app-db.core :as app-db]
+   [metabase.op-cache.core :as op-cache]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.cache :as qp.cache]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -102,45 +105,39 @@
     :h2       [:lower [:rawtohex col]]))
 
 (defn- duration-queries-to-rerun-honeysql
-  "HoneySQL query for selecting query definitions that should be rerun, given a list of :duration cache configs.
-  Executed twice, once to find parameterized queries and once to find non-parameterized queries."
-  [cache-configs parameterized?]
-  (let [queries
-        (for [{:keys [model model_id config]} cache-configs]
-          (let [rerun-cutoff (duration-ago config)]
-            {:nest
-             {:select   [[:q.query :query]
-                         [:qc.cache_key :cache-hash]
-                         [:qe.card_id :card-id]
-                         [:qe.dashboard_id :dashboard-id]
-                         [[:count :q.query_hash] :count]]
-              :from     [[(t2/table-name :model/Query) :q]]
-              :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
-                         ;; op_cache keys are the hex-encoded query hash
-                         [(t2/table-name :model/OpCacheEntry) :qc] [:= :qc.cache_key (hex-of :qe.cache_hash)]]
-              :where    [:and
-                         (case model
-                           "question" [:= :qe.card_id model_id]
-                           "dashboard" [:= :qe.dashboard_id model_id])
-                         ;; claim-only rows (no stored value) have a NULL written_at and are excluded here
-                         [:<= :qc.written_at rerun-cutoff]
-                         ;; This is a safety check so that we don't scan all of query_execution -- if a query
-                         ;; has not been executed at all in the last month (including cache hits) we won't bother
-                         ;; refreshing it again.
-                         [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]
-                         [:= :qe.error nil]
-                         [:= :qe.is_sandboxed false]
-                         (if parameterized?
-                           [:and
-                            [:= :qe.parameterized true]
-                            ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
-                            [:= :qe.cache_hit true]
-                            ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
-                            [:not= :qe.context (name :cache-refresh)]]
-                           [:= :qe.parameterized false])]
-              :group-by [:q.query_hash :q.query :qc.cache_key :qe.card_id :qe.dashboard_id]}}))]
-    {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
-     :from   [[{:union queries} :u]]}))
+  "HoneySQL query for selecting candidate query definitions for a rerun under a single :duration cache config, based
+  on recent query-execution activity. Executed twice, once to find parameterized queries and once to find
+  non-parameterized queries. Cache freshness is not consulted here; the caller filters the candidates against the
+  cache's recently-written keys."
+  [{:keys [model model_id]} parameterized?]
+  {:select   [[:q.query :query]
+              ;; op-cache keys are the hex-encoded query hash; encode SQL-side so no blob leaves the result set
+              [(hex-of :qe.cache_hash) :cache-hash]
+              [:qe.card_id :card-id]
+              [:qe.dashboard_id :dashboard-id]
+              [[:count :q.query_hash] :count]]
+   :from     [[(t2/table-name :model/Query) :q]]
+   :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
+   :where    [:and
+              (case model
+                "question" [:= :qe.card_id model_id]
+                "dashboard" [:= :qe.dashboard_id model_id])
+              [:not= :qe.cache_hash nil]
+              ;; This is a safety check so that we don't scan all of query_execution -- if a query
+              ;; has not been executed at all in the last month (including cache hits) we won't bother
+              ;; refreshing it again.
+              [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]
+              [:= :qe.error nil]
+              [:= :qe.is_sandboxed false]
+              (if parameterized?
+                [:and
+                 [:= :qe.parameterized true]
+                 ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
+                 [:= :qe.cache_hit true]
+                 ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
+                 [:not= :qe.context (name :cache-refresh)]]
+                [:= :qe.parameterized false])]
+   :group-by [:q.query_hash :q.query (hex-of :qe.cache_hash) :qe.card_id :qe.dashboard_id]})
 
 (defn- select-parameterized-queries
   "Given a list of parameterized query definitions from the Query table with additional :count and :card-id keys,
@@ -155,20 +152,33 @@
                      (take *parameterized-queries-to-rerun-per-card*))))
              vals)))
 
+(defn- duration-config-queries-to-rerun
+  "The queries to rerun for a single :duration cache config: candidates with recent execution activity, minus any
+  whose cache entry was written within the config's caching window (those are still fresh and don't need a refresh)."
+  [op-cache {:keys [config], :as cache-config}]
+  (let [fresh-keys            (into #{}
+                                    (map codecs/bytes->hex)
+                                    (op-cache/keys-written-since op-cache (duration-ago config)))
+        stale?                (fn [{:keys [cache-hash]}]
+                                (not (contains? fresh-keys cache-hash)))
+        base-queries          (filter stale? (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-config false)))
+        parameterized-queries (filter stale? (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-config true)))]
+    (concat base-queries (select-parameterized-queries parameterized-queries))))
+
 (defn- duration-queries-to-rerun
   []
   (let [cache-configs (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true)]
     (when (seq cache-configs)
-      (let [base-queries          (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs false))
-            parameterized-queries (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs true))]
-        (concat base-queries (select-parameterized-queries parameterized-queries))))))
+      (let [op-cache (qp.cache/op-cache)]
+        (mapcat #(duration-config-queries-to-rerun op-cache %) cache-configs)))))
 
 (defn- clear-caches-for-queries!
-  "Deletes any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
-  to re-run them before the cache has been refreshed. "
+  "Evicts any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
+  to re-run them before the cache has been refreshed."
   [queries]
-  (doseq [batch (partition 1000 1000 nil queries)]
-    (t2/delete! :model/OpCacheEntry :cache_key [:in (map :cache-hash batch)])))
+  (let [op-cache (qp.cache/op-cache)]
+    (doseq [{:keys [cache-hash]} queries]
+      (op-cache/evict! op-cache (codecs/hex->bytes cache-hash)))))
 
 (defn- maybe-refresh-duration-caches!
   "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that

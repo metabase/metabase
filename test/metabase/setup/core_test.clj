@@ -5,10 +5,11 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
+   [metabase.cache.op-cache-storage :as op-cache-storage]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.op-cache-impl.storage :as op-cache.storage]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -130,11 +131,11 @@
       (encryption-test/with-secret-key nil
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (mdb/setup-db! :create-sample-content? true)
-          (let [cache-backend (i/cache-backend :db)]
-            (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
+          (let [storage (op-cache-storage/storage)]
+            (op-cache.storage/write-entry! storage (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
             (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
             (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
-            (is (= 1 (t2/count :model/QueryCache)))
+            (is (= 1 (t2/count :model/OpCacheEntry)))
             (testing "Adding encryption encrypts database on restart"
               (encryption-test/with-secret-key "key1"
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -142,7 +143,7 @@
                 (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
                 (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
                 (testing "Cache is cleared on encryption"
-                  (is (= 0 (t2/count :model/QueryCache))))))))))
+                  (is (= 0 (t2/count :model/OpCacheEntry))))))))))
     (testing "Database created with encryption configured is encrypted"
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]

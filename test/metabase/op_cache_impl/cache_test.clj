@@ -107,6 +107,20 @@
                  (op-cache/fetch-or-compute! cache "k" (counting-op calls [1 2 3])
                                              {:invalidated-at (ttl-invalidated-at 60000)}))))))))
 
+(deftest ^:parallel keys-written-since-test
+  (let [storage (impl.tu/in-memory-storage)
+        cache   (make-cache storage)]
+    (t/with-clock (t/mock-clock t0)
+      (op-cache/fetch-or-compute! cache "old" (fn [] :v) {:invalidated-at nil}))
+    (t/with-clock (t/mock-clock (t/plus t0 (t/seconds 120)))
+      (op-cache/fetch-or-compute! cache "new" (fn [] :v) {:invalidated-at nil})
+      (testing "only keys written at or after the threshold are returned"
+        (is (= ["new"]
+               (into [] (op-cache/keys-written-since cache (t/minus (t/instant) (t/seconds 60)))))))
+      (testing "an early enough threshold returns every key"
+        (is (= #{"old" "new"}
+               (into #{} (op-cache/keys-written-since cache (t/minus (t/instant) (t/seconds 300))))))))))
+
 (deftest ^:parallel nil-size-not-stored-test
   (testing "a value whose size can't be determined (:size-fn returns nil) is never stored when :max-size is set"
     (t/with-clock (t/mock-clock t0)

@@ -4,7 +4,7 @@
    [metabase.cache.api]
    [metabase.cache.core :as cache]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
-   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
+   [metabase.query-processor.middleware.cache :as qp.cache]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -69,7 +69,7 @@
   :type)
 
 (defmethod strategy->invalidated-at* :ttl [strategy]
-  (backend.db/invalidated-at-ttl strategy))
+  (qp.cache/invalidated-at-ttl strategy))
 
 (defmethod strategy->invalidated-at* :duration [strategy]
   (if-not (and (:duration strategy) (:unit strategy))

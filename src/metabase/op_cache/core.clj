@@ -21,4 +21,12 @@
       * `:written-at` -- when the served cached value was written; absent for `:computed` results.
       * `:stored`     -- for `:computed` results, whether the value was saved for later callers.")
   (evict! [cache k]
-    "Remove any cached value for `k`."))
+    "Remove any cached value for `k`.")
+  (evict-all! [cache]
+    "Remove every cached value.")
+  (keys-written-since [cache threshold]
+    "A reducible of the key of every cached value written at or after instant `threshold`. Keys are in the same form
+    callers pass to [[fetch-or-compute!]].")
+  (stats [cache]
+    "Statistics about the stored values: `{:entries <count>, :average-value-size <bytes, or nil with no entries>}`.
+    Sizes are as stored (e.g. after any at-rest encryption)."))

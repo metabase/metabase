@@ -1,0 +1,47 @@
+## Storage for the op cache (the storage-backed operation cache the QP query cache runs on).
+##
+## Replaces query_cache as the QP cache's storage. One row per cache key; a row with a NULL value is a
+## claim-only row: a caller has claimed the right to compute the operation on a cold miss, but no result
+## has been stored yet. Claims on existing values use claim_started_at alone.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.op-cache-table
+      author: bgrabow
+      comment: Create op_cache table for the storage-backed op cache
+      changes:
+        - createTable:
+            tableName: op_cache
+            remarks: Storage for the op cache. One row per cache key; NULL value = claim-only row (no result stored yet).
+            columns:
+              - column:
+                  name: cache_key
+                  type: varchar(254)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: The cache key. The QP query cache stores the hex-encoded query hash here.
+              - column:
+                  name: value
+                  type: ${blob.type}
+                  constraints:
+                    nullable: true
+                  remarks: The stored value (encrypted when a site encryption key is configured). NULL for claim-only rows.
+              - column:
+                  name: written_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+                  remarks: When the value was last written, per the JVM clock. NULL for claim-only rows.
+              - column:
+                  name: claim_started_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+                  remarks: When a caller claimed the right to compute this key's operation; NULL when no computation is in flight.
+        - createIndex:
+            indexName: idx_op_cache_written_at
+            tableName: op_cache
+            columns:
+              - column:
+                  name: written_at

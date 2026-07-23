@@ -4,31 +4,28 @@
   If query caching is enabled, cache strategy has been passed and it's not a `{:type :nocache}`, THEN cached results
   will be returned for Cards if available or stored if applicable. For all other queries, caching is skipped.
 
-  Storage defaults to the application database (see [[metabase.cache.op-cache-storage]]). Setting the env var
-  `MB_QP_CACHE_BACKEND` to another value routes storage through the legacy
-  [[metabase.query-processor.middleware.cache-backend.interface]] backend of that name instead."
+  Storage lives in the application database (see [[metabase.cache.op-cache-storage]])."
   (:refer-clojure :exclude [get-in])
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.batch-processing.core :as grouper]
    [metabase.cache.core :as cache]
    [metabase.cache.op-cache-storage :as op-cache-storage]
-   [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.op-cache-impl.cache :as op-cache.impl]
    [metabase.op-cache-impl.storage :as op-cache.storage]
    [metabase.op-cache.core :as op-cache]
-   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
-   [metabase.query-processor.middleware.cache-backend.interface :as i]
-   [metabase.query-processor.middleware.cache-backend.storage-adapter :as storage-adapter]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in]])
@@ -38,8 +35,6 @@
 
 (set! *warn-on-reflection* true)
 
-(comment backend.db/keep-me)
-
 (def ^:private cache-version
   "Current serialization format version. Basically
 
@@ -48,10 +43,37 @@
 
 (def ^:dynamic *storage*
   "Current op-cache storage. Dynamically rebindable primarily for test purposes."
-  (let [backend-kw (config/config-kw :mb-qp-cache-backend)]
-    (if (= backend-kw :db)
-      (op-cache-storage/storage)
-      (storage-adapter/storage (i/cache-backend backend-kw)))))
+  (op-cache-storage/storage))
+
+(defn- short-hex-hash
+  "Converts a query hash to a short hex string for logging purposes."
+  [^bytes b]
+  (codecs/bytes->hex (byte-array 4 b)))
+
+;;; --------------------------------------------------- Freshness ----------------------------------------------------
+
+(defn- ms-ago [n]
+  (u.date/add (t/offset-date-time) :millisecond (- n)))
+
+(defn invalidated-at-ttl
+  "Freshness boundary for a `:ttl` strategy: cache entries written before this are stale. Returns nil when the
+  strategy is missing `:avg-execution-ms` (so a TTL can't be computed and nothing should be served from cache)."
+  [strategy]
+  (when-let [avg-execution-ms (:avg-execution-ms strategy)]
+    ;; `:multiplier` can be fractional, so round to whole milliseconds (`ms-ago`/`u.date/add` want an integer)
+    (let [boundary (ms-ago (long (* (:multiplier strategy) avg-execution-ms)))]
+      (if-let [invalidated-at (:invalidated-at strategy)]
+        (t/max boundary invalidated-at)
+        boundary))))
+
+(defenterprise strategy->invalidated-at
+  "Freshness boundary timestamp for `strategy`: cache entries written strictly before this are stale and must be
+  refreshed. Returns nil when nothing can be served from cache for this strategy (e.g. on OSS for a non-`:ttl`
+  strategy). EE overrides this to also handle `:duration` and `:schedule`."
+  metabase-enterprise.cache.strategies
+  [strategy]
+  (when (= :ttl (:type strategy))
+    (invalidated-at-ttl strategy)))
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
@@ -188,7 +210,7 @@
   (when is
     (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
       (log/debugf "Found cached results for hash '%s'. Version: %s"
-                  (i/short-hex-hash query-hash) (pr-str (:cache-version metadata)))
+                  (short-hex-hash query-hash) (pr-str (:cache-version metadata)))
       (when (and (= (:cache-version metadata) cache-version)
                  reducible-rows)
         (log/trace "Reducing cached rows...")
@@ -224,6 +246,12 @@
   (when v
     (alength v)))
 
+(defn op-cache
+  "An op cache over the current query-cache storage, for callers outside the query pipeline (e.g. the EE preemptive
+  refresh scheduler) to inspect or evict entries."
+  []
+  (op-cache.impl/cache *storage* {}))
+
 (defn- query-op-cache
   "An op cache running [[*storage*]], configured for `cache-strategy`."
   [cache-strategy]
@@ -244,7 +272,7 @@
       (throw e))
     (catch Throwable e
       (log/errorf e "Error reducing cached results for query with hash %s: %s"
-                  (i/short-hex-hash query-hash) (ex-message e))
+                  (short-hex-hash query-hash) (ex-message e))
       nil)))
 
 (mu/defn- run-query-with-cache :- :some
@@ -257,7 +285,7 @@
         ;; nil `invalidated-at` means the op cache never serves a stored value, which is exactly what
         ;; `ignore-cached-results?` wants (results are still stored for later callers)
         invalidated-at (when-not (:ignore-cached-results? middleware)
-                         (backend.db/strategy->invalidated-at cache-strategy))
+                         (strategy->invalidated-at cache-strategy))
         result-vol     (volatile! nil)
         op-cache       (query-op-cache cache-strategy)]
     (try
@@ -270,7 +298,7 @@
             (do
               (when stored
                 (log/infof "Cached results for next time for query with hash %s. %s"
-                           (pr-str (i/short-hex-hash query-hash)) (u/emoji "💾"))
+                           (pr-str (short-hex-hash query-hash)) (u/emoji "💾"))
                 (schedule-purge! *storage*))
               ;; only augment a `:cache/details` the rf chain preserved -- middlewares up the chain (userland query
               ;; execution) strip it from their response, and it should stay stripped
@@ -281,7 +309,7 @@
             (do
               (when (= source :cached-stale)
                 (log/debugf "Serving stale cached results (written at %s) for hash '%s' while another process refreshes"
-                            written-at (i/short-hex-hash query-hash)))
+                            written-at (short-hex-hash query-hash)))
               (or (reduce-cached-bytes value rff query-hash)
                   ;; the entry is unusable; evict it and retry (a retry either recomputes or is served a concurrent
                   ;; caller's fresh results). If a second entry is *still* unusable, just run the query uncached.

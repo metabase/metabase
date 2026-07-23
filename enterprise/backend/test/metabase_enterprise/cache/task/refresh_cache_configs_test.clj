@@ -321,13 +321,13 @@
                                                            {:card_id card-id-1})]
               (is (= [query-1-rerun-def]
                      (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                              [question-cache-config-1] false))))
+                                              question-cache-config-1 false))))
               (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-2)
                                                              {:card_id card-id-2})]
                 (is (= (->> [query-1-rerun-def query-2-rerun-def]
                             (sort-by :card-id))
-                       (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                     [question-cache-config-1 question-cache-config-2] false))
+                       (->> [question-cache-config-1 question-cache-config-2]
+                            (mapcat #(t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql % false)))
                             (sort-by :card-id)))))))
           (testing "Cache configs on dashboards"
             (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
@@ -338,32 +338,32 @@
                            (assoc query-2-rerun-def :dashboard-id dashboard-id)]
                           (sort-by :card-id))
                      (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                   [dashboard-cache-config] false))
+                                                   dashboard-cache-config false))
                           (sort-by :card-id)))))))
         (testing "We don't rerun a query execution older than 30 days"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :started_at (t/minus (t/offset-date-time) (t/days 32))})]
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] false))))))
+                                               question-cache-config-1 false))))))
         (testing "We don't rerun an errored query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :error "Error"})]
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] false))))))
+                                               question-cache-config-1 false))))))
         (testing "We don't rerun a sandboxed query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :is_sandboxed true})]
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] false))))))
+                                               question-cache-config-1 false))))))
         (testing "We don't rerun a parameterized query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :parameterized true})]
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] false))))))))))
+                                               question-cache-config-1 false))))))))))
 
 (deftest duration-parameterized-queries-to-rerun-edge-cases-test
   (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
@@ -405,15 +405,15 @@
                                                             :parameterized true})]
               (is (= [query-1-rerun-def]
                      (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                              [question-cache-config-1] true))))
+                                              question-cache-config-1 true))))
               (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-2)
                                                              {:card_id card-id-2
                                                               :cache_hit true
                                                               :parameterized true})]
                 (is (= (->> [query-1-rerun-def query-2-rerun-def]
                             (sort-by :card-id))
-                       (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                     [question-cache-config-1 question-cache-config-2] true))
+                       (->> [question-cache-config-1 question-cache-config-2]
+                            (mapcat #(t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql % true)))
                             (sort-by :card-id)))))))
           (testing "Cache configs on dashboards"
             (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
@@ -430,7 +430,7 @@
                            (assoc query-2-rerun-def :dashboard-id dashboard-id)]
                           (sort-by :card-id))
                      (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                   [dashboard-cache-config] true))
+                                                   dashboard-cache-config true))
                           (sort-by :card-id)))))))
         (testing "We don't rerun a query execution older than 30 days"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
@@ -438,28 +438,28 @@
                                                           :cache_hit true
                                                           :started_at (t/minus (t/offset-date-time) (t/days 32))})]
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] true))))))
+                                               question-cache-config-1 true))))))
         (testing "We don't rerun an errored query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :cache_hit true
                                                           :error "Error"})]
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] true))))))
+                                               question-cache-config-1 true))))))
         (testing "We don't rerun a sandboxed query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :cache_hit true
                                                           :is_sandboxed true})]
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] true))))))
+                                               question-cache-config-1 true))))))
         (testing "We don't rerun a non parameterized query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :cache_hit true
                                                           :parameterized false})]
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] true))))))))))
+                                               question-cache-config-1 true))))))))))
 
 (defn- compare-query-results
   "Compares a normal query result with a query result generated after a preemptive caching job runs, and asserts

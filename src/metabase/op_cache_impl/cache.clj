@@ -115,4 +115,10 @@
                   (Thread/sleep (long poll-interval-ms))
                   (recur)))))))
       (evict! [_ k]
-        (storage/delete-entry! storage k)))))
+        (storage/delete-entry! storage k))
+      (evict-all! [_]
+        (storage/delete-all-entries! storage))
+      (keys-written-since [_ threshold]
+        (storage/keys-written-since storage threshold))
+      (stats [_]
+        (storage/stats storage)))))

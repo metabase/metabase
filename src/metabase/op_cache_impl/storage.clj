@@ -20,4 +20,12 @@
     "Release any claim on `k` without touching the stored value.")
   (purge-entries-written-before! [storage cutoff]
     "Remove every entry whose value was written before instant `cutoff`, along with any abandoned claim-only state at
-    least that old. Retention maintenance; when to call it is the caller's policy."))
+    least that old. Retention maintenance; when to call it is the caller's policy.")
+  (keys-written-since [storage threshold]
+    "A reducible of the key of every stored value written at or after instant `threshold`. Storages that cannot
+    enumerate their keys should return an empty reducible.")
+  (delete-all-entries! [storage]
+    "Remove every entry and claim.")
+  (stats [storage]
+    "Statistics about the stored values: `{:entries <count>, :average-value-size <bytes, or nil with no entries>}`.
+    Sizes are as stored."))

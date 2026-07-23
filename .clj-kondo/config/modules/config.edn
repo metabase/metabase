@@ -1949,7 +1949,6 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
-                    :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
 
@@ -3026,6 +3025,7 @@
    :api  #{metabase-enterprise.cache.init}
    :uses #{app-db
            cache
+           op-cache
            premium-features
            query-processor
            task
@@ -3034,7 +3034,6 @@
                     :model/Card
                     :model/Dashboard
                     :model/DatabaseRouter
-                    :model/OpCacheEntry
                     :model/Query
                     :model/QueryExecution}}
 
