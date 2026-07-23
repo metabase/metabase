@@ -13,7 +13,7 @@ import {
 } from "metabase/utils/formatting";
 import { hasHour } from "metabase/utils/formatting/datetime-utils";
 import MetabaseSettings from "metabase/utils/settings";
-import { getVisualizationRaw } from "metabase/visualizations";
+import { getVisualization, getVisualizationRaw } from "metabase/visualizations";
 import {
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
@@ -474,9 +474,10 @@ export function getSettingDefinitionsForColumn(
   series: Series,
   column: DatasetColumn,
 ) {
-  // ColumnSettings passes an empty fake series when formatting outside a viz
+  // ColumnSettings passes an empty fake series when formatting outside a viz;
+  // fall back to the default visualization's column settings in that case
   const visualization =
-    series.length > 0 ? getVisualizationRaw(series) : undefined;
+    series.length > 0 ? getVisualizationRaw(series) : getVisualization(null);
   const extraColumnSettings =
     typeof visualization?.columnSettings === "function"
       ? visualization.columnSettings(column)

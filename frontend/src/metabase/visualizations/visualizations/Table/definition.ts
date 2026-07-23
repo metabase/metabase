@@ -370,18 +370,8 @@ export const TABLE_DEFINITION = {
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
-      getProps: (
-        column,
-        settings,
-        onChange,
-        {
-          series: [
-            {
-              data: { cols },
-            },
-          ],
-        },
-      ) => {
+      getProps: (column, settings, onChange, { series }) => {
+        const cols = series[0]?.data.cols ?? [];
         return {
           options: cols.map((column) => column.name),
           placeholder: t`Link to {{bird_id}}`,
@@ -396,18 +386,8 @@ export const TABLE_DEFINITION = {
       getDefault: () => null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
-      getProps: (
-        column,
-        settings,
-        onChange,
-        {
-          series: [
-            {
-              data: { cols },
-            },
-          ],
-        },
-      ) => {
+      getProps: (column, settings, onChange, { series }) => {
+        const cols = series[0]?.data.cols ?? [];
         return {
           options: cols.map((column) => column.name),
           placeholder: t`http://toucan.example/{{bird_id}}`,
