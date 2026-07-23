@@ -40,9 +40,10 @@ const setup = ({
 
   const state = createMockState({ settings: mockSettings(settings) });
 
-  // In the app, AppComponent holds an app-lifetime useGetSettingsQuery
-  // subscription; it is what turns the persist mutations' session-properties
-  // invalidation into a refetch. Mount the same subscription here.
+  // The default settings subscription is managed in AppComponent.
+  // This component doesn't create a subscription itself, but in RTK
+  // invalidating a tag with no active subscriber doesn't refetch.
+  // So we need to create a subscriber for this test to test the invalidation and refetching behaviour
   const SettingsSubscriber = () => {
     useGetSettingsQuery();
     return null;

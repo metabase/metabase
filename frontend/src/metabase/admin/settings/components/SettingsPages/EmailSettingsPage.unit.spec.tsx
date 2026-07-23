@@ -57,7 +57,7 @@ const setup = async (props: {
     },
   );
 
-  await screen.findByText(/From Name|SMTP/);
+  await screen.findByText(props.hosted ? /SMTP/ : "From Name");
   await waitFor(async () => {
     const gets = await findRequests("GET");
     expect(gets).toHaveLength(2); // 2 settings fetches
@@ -67,18 +67,15 @@ const setup = async (props: {
 describe("EmailSettingsPage", () => {
   it("should render an EmailSettingsPage", async () => {
     await setup({});
-
-    await waitFor(() => {
-      [
-        "From Name",
-        "From Address",
-        "Reply-To Address",
-        "Add Recipients as CC or BCC",
-        "Approved domains for notifications",
-        "Suggest recipients on dashboard subscriptions and alerts",
-      ].forEach((text) => {
-        expect(screen.getByText(text)).toBeInTheDocument();
-      });
+    [
+      "From Name",
+      "From Address",
+      "Reply-To Address",
+      "Add Recipients as CC or BCC",
+      "Approved domains for notifications",
+      "Suggest recipients on dashboard subscriptions and alerts",
+    ].forEach((text) => {
+      expect(screen.getByText(text)).toBeInTheDocument();
     });
   });
 

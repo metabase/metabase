@@ -76,15 +76,13 @@ const setup = async (enablePublicSharing = false) => {
       },
     },
   );
+
+  await screen.findByText("Enable Public Sharing");
 };
 
 describe("PublicSharingSettingsPage", () => {
   it("should render the PublicSharingSettingsPage with public sharing disabled", async () => {
     await setup(false);
-
-    expect(
-      await screen.findByText("Enable Public Sharing"),
-    ).toBeInTheDocument();
 
     [
       "Shared dashboards",
@@ -102,23 +100,20 @@ describe("PublicSharingSettingsPage", () => {
 
   it("should render the PublicSharingSettingsPage with public sharing enabled", async () => {
     await setup(true);
-    // `AdminSettingInput` renders null until the settings queries settle, and
-    // the "Test …" entries come from separate public-list endpoints — so the
-    // page fills in asynchronously. waitFor retries the whole set until done.
-    await waitFor(() => {
-      [
-        "Enable Public Sharing",
-        "Shared dashboards",
-        "Shared questions",
-        "Shared action forms",
-        "Shared documents",
-        "Test Action",
-        "Test Dashboard",
-        "Test Question",
-        "Test Document",
-      ].forEach((text) => {
-        expect(screen.getByText(text)).toBeInTheDocument();
-      });
+
+    // Each list loads from its own endpoint, so await one row per list.
+    expect(await screen.findByText("Test Action")).toBeInTheDocument();
+    expect(await screen.findByText("Test Dashboard")).toBeInTheDocument();
+    expect(await screen.findByText("Test Question")).toBeInTheDocument();
+    expect(await screen.findByText("Test Document")).toBeInTheDocument();
+
+    [
+      "Shared dashboards",
+      "Shared questions",
+      "Shared action forms",
+      "Shared documents",
+    ].forEach((text) => {
+      expect(screen.getByText(text)).toBeInTheDocument();
     });
   });
 
@@ -130,7 +125,7 @@ describe("PublicSharingSettingsPage", () => {
     expect(screen.queryByText("Shared Documents")).not.toBeInTheDocument();
 
     // Toggle public sharing on
-    const toggle = await screen.findByRole("switch");
+    const toggle = screen.getByRole("switch");
     await userEvent.click(toggle);
 
     await waitFor(async () => {

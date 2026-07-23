@@ -105,7 +105,7 @@ describe("FormCollectionAndDashboardPicker", () => {
     );
     await waitForLoaderToBeRemoved();
 
-    // Wait for picker content to load. Scope to the modal: the picker button
+    // Wait for picker content to load. Scope to the modal because the picker button
     // behind it also renders "Our analytics" once the root collection resolves.
     expect(
       await within(screen.getByTestId("entity-picker-modal")).findByText(
