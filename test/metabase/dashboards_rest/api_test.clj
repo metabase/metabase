@@ -5244,6 +5244,28 @@
       (is (not (t2/exists? :model/DashboardCard :dashboard_id other-dash-id :card_id dq-card-id)))
       (is (not (t2/exists? :model/DashboardCardSeries :card_id dq-card-id))))))
 
+(deftest ^:parallel pre-existing-foreign-internal-card-does-not-block-dashboard-save-test
+  ;; UXW-4870: dashboards that already reference a question internal to another dashboard (a state that can
+  ;; pre-date the UXW-4731 guard) must remain savable. Only *newly introduced* foreign internal cards are
+  ;; rejected; card ids already associated with the dashboard are grandfathered — including moving one to a
+  ;; different dashcard (delete + re-add) in a single save.
+  (mt/with-temp [:model/Dashboard     {source-dash-id :id}  {}
+                 :model/Card          {dq-card-id :id}      {:dashboard_id source-dash-id}
+                 :model/Dashboard     {other-dash-id :id}   {}
+                 :model/Card          {normal-card-id :id}  {}
+                 :model/DashboardCard {dashcard-id :id}     {:card_id dq-card-id :dashboard_id other-dash-id}]
+    (testing "An unrelated edit (resize the dashcard, add a separate normal card) succeeds"
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" other-dash-id)
+                            {:dashcards [{:id dashcard-id :size_x 4 :size_y 4 :row 0 :col 0 :card_id dq-card-id}
+                                         {:id -1 :size_x 1 :size_y 1 :row 4 :col 0 :card_id normal-card-id}]})
+      (is (= 4 (t2/select-one-fn :size_x :model/DashboardCard :id dashcard-id)))
+      (is (t2/exists? :model/DashboardCard :dashboard_id other-dash-id :card_id normal-card-id)))
+    (testing "Deleting the dashcard and re-adding its grandfathered card on a new dashcard in one save succeeds"
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" other-dash-id)
+                            {:dashcards [{:id -1 :size_x 2 :size_y 2 :row 1 :col 1 :card_id dq-card-id}]})
+      (is (not (t2/exists? :model/DashboardCard :id dashcard-id)))
+      (is (t2/exists? :model/DashboardCard :dashboard_id other-dash-id :card_id dq-card-id)))))
+
 (deftest dashboard-questions-are-archived-with-the-dashboard
   (testing "It gets archived with the dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
