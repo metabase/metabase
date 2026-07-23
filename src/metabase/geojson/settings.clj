@@ -78,7 +78,7 @@
   (try
     (let [url (.toURL (URI. url-string))]
       (and (valid-protocol? url)
-           (http/valid-host? :external-only url)))
+           (http/external-host? url)))
     (catch Throwable _ false)))
 
 (defn valid-geojson-resource-path?

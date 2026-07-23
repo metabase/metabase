@@ -12,6 +12,7 @@
    [metabase.server.handler :as server.handler]
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as jetty]
@@ -147,7 +148,8 @@
        (ex-data e#))))
 
 (deftest can-connect-no-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  ;; neutralize the request opts so the test can hit a local server (opts are unit-tested in metabase.util.http-test)
+  (with-redefs [u.http/ssrf-safe-request-opts {}]
     (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400 get-500]]
       (let [can-connect?* (fn [route]
                             (can-connect? {:url         (str url (:path route))
@@ -170,7 +172,7 @@
                 (exception-data (can-connect?* get-500))))))))
 
 (deftest can-connect-header-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (with-redefs [u.http/ssrf-safe-request-opts {}]
     (with-server [url [(make-route :get "/user"
                                    (fn [x]
                                      (if (= "SECRET" (get-in x [:headers "x-api-key"]))
@@ -192,7 +194,7 @@
                                               :auth-info   {:x-api-key "WRONG"}}))))))))
 
 (deftest can-connect-query-param-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (with-redefs [u.http/ssrf-safe-request-opts {}]
     (with-server [url [(make-route :get "/user"
                                    (fn [x]
                                      (if (= ["qnkhuat" "secretpassword"]
@@ -217,7 +219,7 @@
                                                             :password "wrongpassword"}}))))))))
 
 (deftest can-connect-request-body-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (with-redefs [u.http/ssrf-safe-request-opts {}]
     (with-server [url [(make-route :post "/user"
                                    (fn [x]
                                      (if (= "SECRET_TOKEN" (get-in x [:body :token]))
@@ -250,7 +252,7 @@
     (testing "include undefined key"
       (is (=? {:errors {:xyz ["disallowed key"]}}
               (exception-data (can-connect? {:xyz "hello world"})))))
-    (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+    (with-redefs [u.http/ssrf-safe-request-opts {}]
       (with-server [url [get-400]]
         (is (= {:request-body   "Bad request"
                 :request-status 400}
@@ -279,7 +281,8 @@
                        nil)
         (is (= (merge default-request
                       {:method       :get
-                       :url          "https://www.secret_service.xyz"})
+                       :url          "https://www.secret_service.xyz"}
+                      u.http/ssrf-safe-request-opts)
                (first @requests)))))
     (testing "default method is post"
       (with-captured-http-requests [requests]
@@ -289,7 +292,8 @@
                        nil)
         (is (= (merge default-request
                       {:method       :post
-                       :url          "https://www.secret_service.xyz"})
+                       :url          "https://www.secret_service.xyz"}
+                      u.http/ssrf-safe-request-opts)
                (first @requests)))))
     (testing "preserves req headers when use auth-method=:header"
       (with-captured-http-requests [requests]
@@ -303,7 +307,8 @@
                       {:method  :get
                        :url          "https://www.secret_service.xyz"
                        :headers      {:Authorization "Bearer 123"
-                                      :X-Request-Id "123"}})
+                                      :X-Request-Id "123"}}
+                      u.http/ssrf-safe-request-opts)
                (first @requests)))))
     (testing "preserves req query-params when use auth-method=:query-param"
       (with-captured-http-requests [requests]
@@ -317,7 +322,8 @@
                       {:method       :get
                        :url          "https://www.secret_service.xyz"
                        :query-params {:token "123"
-                                      :page 1}})
+                                      :page 1}}
+                      u.http/ssrf-safe-request-opts)
                (first @requests)))))))
 
 (deftest send!-humanized-invalid-url-test
@@ -338,7 +344,7 @@
                                              nil)))))))
 
 (deftest alert-http-channel-e2e-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (with-redefs [u.http/ssrf-safe-request-opts {}]
     (let [received-message (atom nil)
           receive-route    (make-route :post "/test_http_channel"
                                        (fn [res]

@@ -10,6 +10,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -223,8 +224,10 @@
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
     (let [start-ms             (u/start-timer)
+          ;; user/admin-configured base URL
           {:keys [usage data]} (-> (http/post endpoint
-                                              {:headers
+                                              (merge
+                                               {:headers
                                                (merge {"Content-Type"  "application/json"}
                                                       (if (and (empty? api-key)
                                                                (= "ai-service" provider))
@@ -237,7 +240,8 @@
                                                :body    (json/encode (merge {:model           model-name
                                                                              :input           texts
                                                                              :encoding_format "base64"}
-                                                                            extra-body))})
+                                                                            extra-body))}
+                                               u.http/ssrf-safe-request-opts))
                                    :body
                                    (json/decode true))
           total-tokens         (:total_tokens usage 0)

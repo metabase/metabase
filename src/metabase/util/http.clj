@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.util.json :as json])
   (:import
    (com.google.common.net InetAddresses)
@@ -22,35 +23,14 @@
   (json/decode headers))
 
 (defn ^:dynamic *fetch-as-json*
-  "Fetches url and parses body as json, returning it."
-  [url headers]
-  (let [headers (cond-> headers
-                  (string? headers) parse-http-headers)
-        response (http/get url (m/assoc-some {:as :json} :headers headers))]
-    (:body response)))
-
-(def ^:private invalid-hosts
-  #{"metadata.google.internal"}) ; internal metadata for GCP
-
-(defn valid-host?
-  "Check whether url is valid based on the given strategy:
-   :external-only - only external hosts
-   :allow-private - external + private networks but not localhost/loopback
-   :allow-all - no restrictions"
-  [strategy url]
-  (case strategy
-    :allow-all true
-    ;; For both :external-only and :allow-private, we need to check the host
-    (let [^URL url   (if (string? url) (URL. url) url)
-          host       (.getHost url)
-          host-name  (InetAddress/getByName host)]
-      (and
-       (not (contains? invalid-hosts host))
-       (not (.isLinkLocalAddress host-name))
-       (not (.isLoopbackAddress host-name))
-       ;; Only block site-local (private) addresses for :external-only
-       (or (= strategy :allow-private)
-           (not (.isSiteLocalAddress host-name)))))))
+  "Fetch `url`, parse the JSON body, return it. `opts` is merged into the clj-http request -- pass
+  [[ssrf-safe-request-opts]] for untrusted URLs; omit only for trusted, hardcoded ones."
+  ([url headers] (*fetch-as-json* url headers nil))
+  ([url headers opts]
+   (let [headers  (cond-> headers
+                    (string? headers) parse-http-headers)
+         response (http/get url (merge (m/assoc-some {:as :json} :headers headers) opts))]
+     (:body response))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; SSRF-hardened fetch of an untrusted (user-provided) URL.
@@ -65,13 +45,9 @@
 ;;  - No cookies/credentials (a fresh clj-http GET carries no Metabase session).
 ;;  - Cap the download bytes and (optionally) restrict to an allowlist of content-types.
 ;;
-;; TODO (bshepherdson 2026-06-09) -- this hardened fetch (rebinding-safe [[ssrf-safe-dns-resolver]]
-;; + [[public-address?]] + size/content-type caps) supersedes the weaker [[valid-host?]] above,
-;; which validates only a single up-front DNS resolution (a TOCTOU/DNS-rebinding gap) and misses
-;; IPv6 ULA, IPv4 CGNAT, any-local, multicast, and IP-literal hosts. Migrate the existing
-;; `valid-host?` callers -- `metabase.geojson`, `metabase.sso.oidc.http`,
-;; `metabase.channel.impl.http` -- onto this, and add SSRF validation to
-;; `metabase.actions.http-action` (which currently has none).
+;; `valid-host?` was removed; callers validate via [[public-address?]] -- through
+;; [[ssrf-safe-request-opts]] / [[fetch-bytes]] / [[external-host?]]. `metabase.actions.http-action`
+;; is not yet routed through these.
 ;; --------------------------------------------------------------------------------------------
 
 (def ^:private fetch-default-timeout-ms 8000)
@@ -81,17 +57,31 @@
 (def ^:private blocked-fetch-hosts #{"localhost" "metadata" "metadata.google.internal"})
 (def ^:private blocked-fetch-host-suffixes [".localhost" ".local" ".internal" ".lan" ".home.arpa"])
 
+(defn- hosted?
+  "Metabase Cloud? `requiring-resolve` avoids a static dep on `metabase.premium-features`."
+  []
+  (boolean ((requiring-resolve 'metabase.premium-features.core/is-hosted?))))
+
+(defn- allow-private-networks?
+  "Private destinations (RFC1918 + IPv6 ULA) are allowed only via the self-hosted
+  `MB_ALLOW_PRIVATE_NETWORK_FETCH` opt-in, and never on Cloud."
+  []
+  (and (not (hosted?))
+       (boolean (config/config-bool :mb-allow-private-network-fetch))))
+
 (defn public-address?
-  "True only for globally-routable unicast IP addresses (rejects loopback, link-local, site-local,
-  any-local, multicast, IPv6 unique-local fc00::/7, and IPv4 CGNAT 100.64.0.0/10)."
+  "Safe destination address? Always rejects loopback, link-local, any-local, multicast, and CGNAT;
+  also RFC1918 site-local and IPv6 ULA unless [[allow-private-networks?]]."
   [^InetAddress addr]
-  (let [b (.getAddress addr)]
+  (let [allow-private? (allow-private-networks?)
+        b              (.getAddress addr)]
     (not (or (.isLoopbackAddress addr)
              (.isLinkLocalAddress addr)
-             (.isSiteLocalAddress addr)
              (.isAnyLocalAddress addr)
              (.isMulticastAddress addr)
-             (and (instance? Inet6Address addr)              ; IPv6 unique-local fc00::/7
+             (and (not allow-private?) (.isSiteLocalAddress addr))
+             (and (not allow-private?)                       ; IPv6 unique-local fc00::/7
+                  (instance? Inet6Address addr)
                   (= 0xfc (bit-and (aget b 0) 0xfe)))
              (and (= 4 (alength b))                          ; IPv4 CGNAT 100.64.0.0/10
                   (= 100 (bit-and (aget b 0) 0xff))
@@ -108,6 +98,26 @@
           (if (every? public-address? addrs)
             addrs
             (throw (ex-info "Refusing to fetch from a non-public address" {:ssrf true}))))))))
+
+(def ssrf-safe-request-opts
+  "clj-http request options that make an outbound request external-only: pins every resolved IP to a
+  public address ([[ssrf-safe-dns-resolver]]) and disables redirects. Merge into a request map for
+  callers needing an arbitrary method, an `http://` target, or the raw response (where [[fetch-bytes]]
+  is too strict). Public IP-literal URLs are allowed. Single place to add a strategy knob later."
+  {:dns-resolver      ssrf-safe-dns-resolver
+   :redirect-strategy :none})
+
+(defn external-host?
+  "Advisory check: true when `url`'s host resolves and every IP is public ([[public-address?]]);
+  accepts hostnames and IP literals. A single up-front resolution (rebinding-prone), so use only for
+  create-time/fast-fail -- the authoritative gate is [[ssrf-safe-request-opts]] / [[fetch-bytes]]."
+  [url]
+  (try
+    (let [^URL u (if (instance? URL url) url (URL. (str url)))
+          host   (some-> (.getHost u) (str/replace #"^\[|\]$" ""))   ; strip IPv6 literal brackets
+          addrs  (when-not (str/blank? host) (InetAddress/getAllByName host))]
+      (boolean (and (seq addrs) (every? public-address? addrs))))
+    (catch Throwable _ false)))
 
 (defn safe-url?
   "True if `url` is safe to fetch from untrusted input: HTTPS scheme, no userinfo, and a real DNS

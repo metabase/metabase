@@ -7,9 +7,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.test.http-client :as client]
-   [metabase.util.http :as u.http]
-   [metabase.util.json :as json])
+   [metabase.util.http :as u.http])
   (:import
    [java.util Properties]))
 
@@ -78,13 +76,14 @@
     (let [original-details (:details (mt/db))
           provider-details {:use-auth-provider true
                             :auth-provider "http"
-                            :http-auth-url (client/build-url "/testing/echo"
-                                                             {:body (json/encode original-details)})}]
-      (is (= original-details (auth-provider/fetch-auth :http nil provider-details)))
-      (is (= (merge provider-details original-details)
-             (driver.u/fetch-and-incorporate-auth-provider-details
-              (tx/driver)
-              provider-details))))))
+                            :http-auth-url "https://auth-provider.example.com/creds"}]
+      ;; the :http fetch is now external-only, so stub it (a localhost echo server would be rejected)
+      (binding [u.http/*fetch-as-json* (fn [_url _headers & _] original-details)]
+        (is (= original-details (auth-provider/fetch-auth :http nil provider-details)))
+        (is (= (merge provider-details original-details)
+               (driver.u/fetch-and-incorporate-auth-provider-details
+                (tx/driver)
+                provider-details)))))))
 
 (deftest oauth-provider-tests
   (mt/with-premium-features #{:database-auth-providers}
@@ -92,15 +91,16 @@
                           :expires_in "84791"}
           provider-details {:use-auth-provider true
                             :auth-provider :oauth
-                            :oauth-token-url (client/build-url "/testing/echo"
-                                                               {:body (json/encode oauth-response)})}]
-      (is (= oauth-response (auth-provider/fetch-auth :oauth nil provider-details)))
-      (is (=? (merge provider-details
-                     {:password "foobar"
-                      :password-expiry-timestamp #(and (int? %) (> % (System/currentTimeMillis)))})
-              (driver.u/fetch-and-incorporate-auth-provider-details
-               (tx/driver)
-               provider-details))))))
+                            :oauth-token-url "https://auth-provider.example.com/token"}]
+      ;; see http-provider-tests: the :oauth fetch is external-only, so stub it
+      (binding [u.http/*fetch-as-json* (fn [_url _headers & _] oauth-response)]
+        (is (= oauth-response (auth-provider/fetch-auth :oauth nil provider-details)))
+        (is (=? (merge provider-details
+                       {:password "foobar"
+                        :password-expiry-timestamp #(and (int? %) (> % (System/currentTimeMillis)))})
+                (driver.u/fetch-and-incorporate-auth-provider-details
+                 (tx/driver)
+                 provider-details)))))))
 
 (deftest ^:parallel azure-managed-identity-provider-tests
   (mt/with-premium-features #{:database-auth-providers}
