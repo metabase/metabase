@@ -45,10 +45,9 @@
   "Return a sequential collection of embedding vectors, in the same order as the input texts.
 
   `embedding-model` — `{:provider :model-name :model-dimensions}` map; provider must be one of those registered on
-                      [[metabase-enterprise.semantic-search.embedding/get-embeddings-batch]] (`ai-service`, `openai`,
-                      `ollama`).
+                      [[metabase.embeddings.provider]] (`ai-service`, `openai`, `ollama`).
   `texts`           — sequential collection of input strings.
   `opts`            — optional keyword opts (e.g. `:type :doc`). Accepts alternating kwargs or a single trailing map;
-                      forwarded as kwargs into the multimethod, which destructures with `& {:as opts}`."
+                      forwarded as kwargs to the provider."
   [embedding-model texts & {:as opts}]
   (apply semantic-search/get-embeddings-batch (normalize-model-descriptor embedding-model) texts (mapcat identity opts)))
