@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import { forkConversation } from "metabase/metabot/state";
 import * as Urls from "metabase/urls";
 
@@ -50,9 +50,6 @@ const setupWithReply = async () => {
   return { store, lastMessage };
 };
 
-const undoMessages = (store: ReturnType<typeof setup>["store"]) =>
-  store.getState().undo.map((undo) => undo.message);
-
 describe("metabot > fork", () => {
   it("forks the conversation from an assistant message", async () => {
     const { store, lastMessage } = await setupWithReply();
@@ -71,7 +68,7 @@ describe("metabot > fork", () => {
         store.getState().metabot.conversations.omnibot?.conversationId,
       ).toBe("forked-convo-id"),
     );
-    expect(undoMessages(store)).toContain("Conversation forked");
+    expect(await screen.findByText("Conversation forked")).toBeInTheDocument();
   });
 
   it("shows an error toast and keeps the original conversation when forking fails", async () => {
@@ -82,9 +79,9 @@ describe("metabot > fork", () => {
 
     await userEvent.click(await forkButton(lastMessage));
 
-    await waitFor(() =>
-      expect(undoMessages(store)).toContain("Failed to fork conversation"),
-    );
+    expect(
+      await screen.findByText("Failed to fork conversation"),
+    ).toBeInTheDocument();
     expect(store.getState().metabot.conversations.omnibot?.conversationId).toBe(
       originalConversationId,
     );

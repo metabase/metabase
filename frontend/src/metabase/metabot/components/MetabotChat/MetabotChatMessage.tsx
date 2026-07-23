@@ -218,10 +218,9 @@ export const AgentMessage = ({
   const isInProgress = message.type === "turn_in_progress";
   const isFailedTurn =
     message.type === "turn_errored" || message.type === "turn_aborted";
-  const canGiveFeedback =
-    !readonly && !isInProgress && !!setFeedbackMessage && !!messageId;
-  const canFork =
-    !readonly && !isInProgress && !isFailedTurn && !!onFork && !!messageId;
+  const canActOnMessage = !readonly && !isInProgress && !!messageId;
+  const canGiveFeedback = canActOnMessage && !!setFeedbackMessage;
+  const canFork = canActOnMessage && !isFailedTurn && !!onFork;
   const clipboard = useClipboard({ timeout: 2000 });
 
   return (
@@ -487,6 +486,31 @@ export const getFullAgentReply = (
   return messages.slice(firstMessageIndex, lastMessageIndex + 1);
 };
 
+const ForkBoundary = ({ href }: { href?: string | null }) => (
+  <Divider
+    my="md"
+    label={
+      <Text span fz="sm" px="md">
+        {href
+          ? jt`Forked from ${(
+              <Anchor
+                key="fork-boundary-link"
+                component={ForwardRefLink}
+                to={href}
+                underline="hover"
+                fz="sm"
+              >
+                {t`a previous conversation`}
+              </Anchor>
+            )}`
+          : t`Forked from a previous conversation`}
+      </Text>
+    }
+    labelPosition="center"
+    data-testid="metabot-fork-boundary"
+  />
+);
+
 export const Messages = ({
   messages,
   onRetryMessage,
@@ -647,28 +671,7 @@ export const Messages = ({
           <Fragment key={"msg-" + message.id}>
             {messageElement}
             {index === forkBoundaryIndex && (
-              <Divider
-                my="md"
-                label={
-                  <Text span fz="sm" px="md">
-                    {forkBoundaryHref
-                      ? jt`Forked from ${(
-                          <Anchor
-                            key="fork-boundary-link"
-                            component={ForwardRefLink}
-                            to={forkBoundaryHref}
-                            underline="hover"
-                            fz="sm"
-                          >
-                            {t`a previous conversation`}
-                          </Anchor>
-                        )}`
-                      : t`Forked from a previous conversation`}
-                  </Text>
-                }
-                labelPosition="center"
-                data-testid="metabot-fork-boundary"
-              />
+              <ForkBoundary href={forkBoundaryHref} />
             )}
           </Fragment>
         );

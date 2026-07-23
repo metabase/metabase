@@ -346,6 +346,7 @@ export function setup(
       metabot: metabotReducer,
     },
     withRouter,
+    withUndos: true,
     ...(initialRoute ? { initialRoute } : {}),
   });
 
