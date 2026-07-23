@@ -6,6 +6,9 @@ import type {
   ExportChangesResponse,
   ExportPreflightResponse,
   GetBranchesResponse,
+  GetHasRemoteChangesRequest,
+  GetRemoteSyncHasChangesRequest,
+  GetRemoteSyncTaskRequest,
   HasRemoteChangesResponse,
   ImportFromBranchRequest,
   ImportFromBranchResponse,
@@ -97,17 +100,25 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         };
       },
     }),
-    getRemoteSyncHasChanges: builder.query<RemoteSyncHasChangesResponse, void>({
-      query: () => ({
+    getRemoteSyncHasChanges: builder.query<
+      RemoteSyncHasChangesResponse,
+      GetRemoteSyncHasChangesRequest
+    >({
+      query: (params) => ({
         url: `/api/ee/remote-sync/is-dirty`,
         method: "GET",
+        params: params ?? undefined,
       }),
       providesTags: () => [tag("collection-is-dirty")],
     }),
-    getHasRemoteChanges: builder.query<HasRemoteChangesResponse, void>({
-      query: () => ({
+    getHasRemoteChanges: builder.query<
+      HasRemoteChangesResponse,
+      GetHasRemoteChangesRequest
+    >({
+      query: (params) => ({
         url: `/api/ee/remote-sync/has-remote-changes`,
         method: "GET",
+        params: params ?? undefined,
       }),
       providesTags: () => [tag("remote-sync-has-remote-changes")],
     }),
@@ -161,10 +172,14 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("session-properties"),
       ],
     }),
-    getRemoteSyncCurrentTask: builder.query<RemoteSyncTask, void>({
-      query: () => ({
+    getRemoteSyncCurrentTask: builder.query<
+      RemoteSyncTask,
+      GetRemoteSyncTaskRequest
+    >({
+      query: (params) => ({
         method: "GET",
         url: `/api/ee/remote-sync/current-task`,
+        params: params ?? undefined,
       }),
       providesTags: () => [tag("remote-sync-current-task")],
     }),

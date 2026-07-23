@@ -119,6 +119,44 @@ remoteSyncListenerMiddleware.startListening({
   },
 });
 
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.pullWorktree.matchPending,
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "import",
+        worktreeId: action.meta.arg.originalArgs.worktree_id,
+      }),
+    );
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.pullWorktree.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared());
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.pushWorktree.matchPending,
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "export",
+        worktreeId: action.meta.arg.originalArgs.worktree_id,
+      }),
+    );
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.pushWorktree.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared());
+  },
+});
+
 const terminalTaskStates: RemoteSyncTaskStatus[] = [
   "successful",
   "errored",

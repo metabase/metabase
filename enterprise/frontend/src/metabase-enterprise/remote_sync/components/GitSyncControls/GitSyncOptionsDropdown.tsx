@@ -1,23 +1,37 @@
 import { t } from "ttag";
 
-import { Box, Combobox, Group, Icon, Loader, Text, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Combobox,
+  Divider,
+  Group,
+  Icon,
+  Loader,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import type { RemoteSyncWorktreeId } from "metabase-types/api";
 
 export interface GitSyncOptionsDropdownProps {
+  worktreeId?: RemoteSyncWorktreeId;
   isPullDisabled: boolean;
   isPullError: boolean;
   isLoadingPull: boolean;
   isPushDisabled: boolean;
   onPullClick: VoidFunction;
   onPushClick: VoidFunction;
+  onDeleteClick?: VoidFunction;
 }
 
 export const GitSyncOptionsDropdown = ({
+  worktreeId,
   isPullDisabled,
   isPullError,
   isLoadingPull,
   isPushDisabled,
   onPullClick,
   onPushClick,
+  onDeleteClick,
 }: GitSyncOptionsDropdownProps) => {
   if (isPullError) {
     return (
@@ -69,6 +83,18 @@ export const GitSyncOptionsDropdown = ({
             </Group>
           </Combobox.Option>
         </Tooltip>
+
+        {worktreeId !== undefined && (
+          <>
+            <Divider />
+            <Combobox.Option onClick={onDeleteClick} py="sm" value="delete">
+              <Group gap="md" wrap="nowrap">
+                <Icon name="trash" size={12} c="danger" />
+                <Text c="danger">{t`Delete worktree`}</Text>
+              </Group>
+            </Combobox.Option>
+          </>
+        )}
       </Combobox.Options>
     </Combobox.Dropdown>
   );

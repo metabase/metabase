@@ -18,6 +18,7 @@ import {
   getShowModal,
   getTaskOutcome,
   getTaskType,
+  getTaskWorktreeId,
 } from "../selectors";
 import { modalDismissed } from "../sync-task-slice";
 
@@ -38,6 +39,7 @@ export const useSyncStatus = () => {
   const isSuccess = useSelector(getIsSuccess);
   const outcome = useSelector(getTaskOutcome);
   const hasPendingMutation = useSelector(getHasPendingMutation);
+  const taskWorktreeId = useSelector(getTaskWorktreeId);
 
   const minutesSinceLastUpdate = lastProgressReportAt
     ? dayjs().diff(dayjs(lastProgressReportAt), "minute")
@@ -45,11 +47,14 @@ export const useSyncStatus = () => {
 
   const shouldPoll = isRunning && showModal && !hasPendingMutation;
 
-  useGetRemoteSyncCurrentTaskQuery(undefined, {
-    pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
-    skipPollingIfUnfocused: true,
-    skip: !isRemoteSyncEnabled || !shouldPoll,
-  });
+  useGetRemoteSyncCurrentTaskQuery(
+    taskWorktreeId != null ? { "worktree-id": taskWorktreeId } : undefined,
+    {
+      pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
+      skipPollingIfUnfocused: true,
+      skip: !isRemoteSyncEnabled || !shouldPoll,
+    },
+  );
 
   const progressModal =
     showModal && taskType ? (

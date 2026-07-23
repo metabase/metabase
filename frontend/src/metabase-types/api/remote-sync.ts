@@ -213,6 +213,18 @@ export type TestRemoteSyncConnectionResponse = {
 
 export type RemoteSyncWorktreeId = number;
 
+export type GetRemoteSyncHasChangesRequest = {
+  "worktree-id"?: RemoteSyncWorktreeId;
+} | void;
+
+export type GetHasRemoteChangesRequest = {
+  "worktree-id"?: RemoteSyncWorktreeId;
+} | void;
+
+export type GetRemoteSyncTaskRequest = {
+  "worktree-id"?: RemoteSyncWorktreeId;
+} | void;
+
 /** A remote sync worktree: a checked-out branch materialized as collection trees. */
 export type RemoteSyncWorktree = {
   id: RemoteSyncWorktreeId;

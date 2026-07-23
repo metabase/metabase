@@ -75,9 +75,7 @@ const getDefaultPluginRemoteSync = () => ({
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
   // Unjustified type cast. FIXME
   CollectionSyncStatusBadge: null as ComponentType | null,
-  NavbarWorktreesSection:
-    // widened so EE can install the section component; stays null on OSS
-    null as ComponentType<NavbarWorktreesSectionProps> | null,
+  NavbarWorktreesSection: PluginPlaceholder,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -107,7 +105,7 @@ export const PLUGIN_REMOTE_SYNC: {
   GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
-  NavbarWorktreesSection: ComponentType<NavbarWorktreesSectionProps> | null;
+  NavbarWorktreesSection: ComponentType<NavbarWorktreesSectionProps>;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;

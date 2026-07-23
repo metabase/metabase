@@ -20,6 +20,11 @@ export const getShowModal = createSelector(
   (state) => state.showModal,
 );
 
+export const getTaskWorktreeId = createSelector(
+  getRemoteSyncState,
+  (state) => state.taskWorktreeId,
+);
+
 export const getIsRunning = createSelector(
   getCurrentTask,
   (currentTask) => currentTask !== null && currentTask.ended_at === null,

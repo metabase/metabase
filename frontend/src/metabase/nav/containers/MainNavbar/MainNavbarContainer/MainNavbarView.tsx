@@ -311,12 +311,10 @@ export function MainNavbarView({
             <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
           )}
 
-          {PLUGIN_REMOTE_SYNC.NavbarWorktreesSection && (
-            <PLUGIN_REMOTE_SYNC.NavbarWorktreesSection
-              selectedId={collectionItem?.id}
-              onItemSelect={onItemSelect}
-            />
-          )}
+          <PLUGIN_REMOTE_SYNC.NavbarWorktreesSection
+            selectedId={collectionItem?.id}
+            onItemSelect={onItemSelect}
+          />
 
           <SidebarSection>
             <ErrorBoundary>

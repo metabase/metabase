@@ -15,27 +15,32 @@ import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/Sideba
 import type { NavbarWorktreesSectionProps } from "metabase/plugins/oss/remote-sync";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { ActionIcon, Group, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Combobox, Group, Icon, useCombobox } from "metabase/ui";
 import {
   useCreateWorktreeMutation,
   useDeleteWorktreeMutation,
+  useGetHasRemoteChangesQuery,
+  useGetRemoteSyncHasChangesQuery,
   useListWorktreesQuery,
   usePullWorktreeMutation,
   usePushWorktreeMutation,
 } from "metabase-enterprise/api";
-import type { RemoteSyncWorktree } from "metabase-types/api";
+import type {
+  RemoteSyncWorktree,
+  RemoteSyncWorktreeId,
+} from "metabase-types/api";
 
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
+import { GitSyncOptionsDropdown } from "../GitSyncControls/GitSyncOptionsDropdown";
 
 import { CreateWorktreeModal } from "./CreateWorktreeModal";
 
 const WORKTREE_NODE_PREFIX = "worktree-";
 
 function worktreeTreeNode(worktree: RemoteSyncWorktree): ITreeNodeItem {
-  const pulled = worktree.base_version != null;
   return {
     id: `${WORKTREE_NODE_PREFIX}${worktree.id}`,
-    name: pulled ? worktree.branch : t`${worktree.branch} (not pulled yet)`,
+    name: worktree.branch,
     icon: "git_branch",
     nonNavigable: true,
     children: worktree.roots.map((root) => ({
@@ -46,13 +51,84 @@ function worktreeTreeNode(worktree: RemoteSyncWorktree): ITreeNodeItem {
   };
 }
 
-function worktreeIdOfNode(
-  item: ITreeNodeItem,
-): RemoteSyncWorktree["id"] | null {
+function worktreeIdOfNode(item: ITreeNodeItem): RemoteSyncWorktreeId | null {
   if (typeof item.id === "string" && item.id.startsWith(WORKTREE_NODE_PREFIX)) {
     return Number(item.id.slice(WORKTREE_NODE_PREFIX.length));
   }
   return null;
+}
+
+interface WorktreeMenuProps {
+  worktreeId: RemoteSyncWorktreeId;
+  onPull: (worktreeId: RemoteSyncWorktreeId) => void;
+  onPush: (worktreeId: RemoteSyncWorktreeId) => void;
+  onDelete: (worktreeId: RemoteSyncWorktreeId) => void;
+}
+
+function WorktreeMenu({
+  worktreeId,
+  onPull,
+  onPush,
+  onDelete,
+}: WorktreeMenuProps) {
+  const combobox = useCombobox();
+
+  const { currentData: dirtyData, isFetching: isFetchingDirty } =
+    useGetRemoteSyncHasChangesQuery(
+      { "worktree-id": worktreeId },
+      {
+        refetchOnMountOrArgChange: 10,
+        skip: !combobox.dropdownOpened,
+      },
+    );
+  const {
+    currentData: remoteChangesData,
+    isFetching: isFetchingRemoteChanges,
+    isError: hasRemoteChangesError,
+  } = useGetHasRemoteChangesQuery(
+    { "worktree-id": worktreeId },
+    {
+      refetchOnMountOrArgChange: 10,
+      skip: !combobox.dropdownOpened,
+    },
+  );
+
+  return (
+    <Combobox position="bottom-end" store={combobox} width={280} withinPortal>
+      <Combobox.Target>
+        <ActionIcon
+          aria-label={t`Worktree actions`}
+          size="sm"
+          variant="subtle"
+          onClick={(event) => {
+            event.stopPropagation();
+            combobox.toggleDropdown();
+          }}
+        >
+          <Icon name="ellipsis" />
+        </ActionIcon>
+      </Combobox.Target>
+      <GitSyncOptionsDropdown
+        worktreeId={worktreeId}
+        isPullDisabled={!remoteChangesData?.has_changes}
+        isPullError={hasRemoteChangesError}
+        isLoadingPull={isFetchingRemoteChanges}
+        isPushDisabled={isFetchingDirty || !dirtyData?.is_dirty}
+        onPullClick={() => {
+          combobox.closeDropdown();
+          onPull(worktreeId);
+        }}
+        onPushClick={() => {
+          combobox.closeDropdown();
+          onPush(worktreeId);
+        }}
+        onDeleteClick={() => {
+          combobox.closeDropdown();
+          onDelete(worktreeId);
+        }}
+      />
+    </Combobox>
+  );
 }
 
 export function NavbarWorktreesSection({
@@ -79,12 +155,10 @@ export function NavbarWorktreesSection({
   const [pullWorktree] = usePullWorktreeMutation();
   const [pushWorktree] = usePushWorktreeMutation();
 
-  const worktrees = useMemo(
-    () =>
-      (worktreesData?.items ?? []).filter((worktree) => !worktree.is_default),
+  const treeData = useMemo(
+    () => (worktreesData?.items ?? []).map(worktreeTreeNode),
     [worktreesData],
   );
-  const treeData = useMemo(() => worktrees.map(worktreeTreeNode), [worktrees]);
 
   const notifyError = useCallback(
     (error: unknown, fallback: string) => {
@@ -106,6 +180,33 @@ export function NavbarWorktreesSection({
     [createWorktree, notifyError, pullWorktree],
   );
 
+  const handlePull = useCallback(
+    (worktreeId: RemoteSyncWorktreeId) => {
+      pullWorktree({ worktree_id: worktreeId })
+        .unwrap()
+        .catch((error) => notifyError(error, t`Failed to pull the worktree`));
+    },
+    [notifyError, pullWorktree],
+  );
+
+  const handlePush = useCallback(
+    (worktreeId: RemoteSyncWorktreeId) => {
+      pushWorktree({ worktree_id: worktreeId })
+        .unwrap()
+        .catch((error) => notifyError(error, t`Failed to push the worktree`));
+    },
+    [notifyError, pushWorktree],
+  );
+
+  const handleDelete = useCallback(
+    (worktreeId: RemoteSyncWorktreeId) => {
+      deleteWorktree({ id: worktreeId })
+        .unwrap()
+        .catch((error) => notifyError(error, t`Failed to delete the worktree`));
+    },
+    [deleteWorktree, notifyError],
+  );
+
   const worktreeMenu = useCallback(
     (item?: ITreeNodeItem) => {
       const worktreeId = item ? worktreeIdOfNode(item) : null;
@@ -113,61 +214,15 @@ export function NavbarWorktreesSection({
         return null;
       }
       return (
-        <Menu position="bottom-end">
-          <Menu.Target>
-            <ActionIcon
-              aria-label={t`Worktree actions`}
-              size="sm"
-              variant="subtle"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Icon name="ellipsis" />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="download" />}
-              onClick={() =>
-                pullWorktree({ worktree_id: worktreeId })
-                  .unwrap()
-                  .catch((error) =>
-                    notifyError(error, t`Failed to pull the worktree`),
-                  )
-              }
-            >
-              {t`Pull`}
-            </Menu.Item>
-            <Menu.Item
-              leftSection={<Icon name="upload" />}
-              onClick={() =>
-                pushWorktree({ worktree_id: worktreeId })
-                  .unwrap()
-                  .catch((error) =>
-                    notifyError(error, t`Failed to push the worktree`),
-                  )
-              }
-            >
-              {t`Push`}
-            </Menu.Item>
-            <Menu.Divider />
-            <Menu.Item
-              c="danger"
-              leftSection={<Icon name="trash" />}
-              onClick={() =>
-                deleteWorktree({ id: worktreeId })
-                  .unwrap()
-                  .catch((error) =>
-                    notifyError(error, t`Failed to delete the worktree`),
-                  )
-              }
-            >
-              {t`Delete worktree`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        <WorktreeMenu
+          worktreeId={worktreeId}
+          onPull={handlePull}
+          onPush={handlePush}
+          onDelete={handleDelete}
+        />
       );
     },
-    [deleteWorktree, notifyError, pullWorktree, pushWorktree],
+    [handleDelete, handlePull, handlePush],
   );
 
   if (!isEnabled || (treeData.length === 0 && !isAdmin)) {
