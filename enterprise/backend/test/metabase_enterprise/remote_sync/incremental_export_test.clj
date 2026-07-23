@@ -218,8 +218,10 @@
             (is (not (entity-exported? mock b-eid)) "card B removed from the remote"))
           ;; USER ACTION: pull from the remote. Because the removal was pushed, the collection is no
           ;; longer in the remote, so the import cannot re-enable it.
-          (let [task (new-task!)]
-            (impl/import! (source.p/snapshot mock) task))
+          (let [task   (new-task!)
+                result (impl/import! (source.p/snapshot mock) task)]
+            (is (not= :error (:status result))
+                "the pull itself succeeds — otherwise the assertion below passes vacuously"))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id coll-id))
               "a pull does not re-enable a collection that was disabled and pushed"))))))
 
