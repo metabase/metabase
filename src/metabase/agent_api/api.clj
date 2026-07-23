@@ -1812,18 +1812,19 @@
 
 (defn- error-message-from-response
   "Best-effort human-readable error string from an agent-api error `response`, for the gated
-  `error_message` column. Only a plain-data body carries one; a streaming/opaque body yields nil."
+  `error_message` column. Keyword lookups are nil-safe, so a streaming/opaque body just yields nil."
   [response]
   (let [body (:body response)]
-    (when (map? body)
-      (or (:message body) (:error body)))))
+    (or (:message body) (:error body))))
 
 (defn- record-agent-api-usage!
-  "Record one `agent_api_call_log` row for a completed direct Agent API HTTP call (EE-only,
-  best-effort). Skips the synthetic in-process requests MCP dispatches through here — those are
-  already counted in `mcp_tool_call_log`, so recording them again would double-count. `status`,
-  `duration_ms`, IP, and User-Agent are all in scope here, and `+auth` has bound
-  `*current-user-id*` by the time this respond fires so direct HTTP callers get attributed."
+  "Record one `agent_api_call_log` row for a completed direct Agent API HTTP call (EE-only).
+  Best-effort: the EE writer wraps the insert in try/catch, so a failure to record is logged and
+  swallowed — analytics never fails the request. Skips the synthetic in-process requests MCP
+  dispatches through here — those are already counted in `mcp_tool_call_log`, so recording them
+  again would double-count. `status`, `duration_ms`, IP, and User-Agent are all in scope here, and
+  `+auth` has bound `*current-user-id*` by the time this respond fires so direct HTTP callers get
+  attributed."
   [request response timer]
   (when-not (:agent-api-internal-request? request)
     (let [status-code (:status response)

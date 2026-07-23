@@ -45,6 +45,9 @@
                  (triggers/with-identity trimmer-trigger-key)
                  (triggers/start-now)
                  (triggers/with-schedule
-                  ;; daily at 23:24:41 (offset from the MCP usage trimmer's 23:19:41)
+                  ;; Quartz 6-field cron (sec min hour day-of-month month day-of-week): daily at
+                  ;; 23:24:41. The offset from the MCP trimmer's 23:19:41 just staggers the two
+                  ;; independent jobs (different tables) so they don't fire at the same instant —
+                  ;; it's not a dependency; overlapping runs would be harmless.
                   (cron/cron-schedule "41 24 23 * * ?")))]
     (task/schedule-task! job trigger)))
