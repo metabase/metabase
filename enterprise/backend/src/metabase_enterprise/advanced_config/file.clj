@@ -96,6 +96,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
+   [medley.core :as m]
    [metabase-enterprise.advanced-config.file.api-keys]
    [metabase-enterprise.advanced-config.file.databases]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
@@ -168,13 +169,12 @@
                              [(u.files/get-path configured-path)]
                              [default-config-yml
                               default-config-yaml])]
-    (if-let [path* (first (filter u.files/exists? paths-to-try))]
-      (do
+    (if-let [path* (m/find-first u.files/exists? paths-to-try)]
+      (u/prog1 path*
         (log/info (u/format-color :magenta
                                   "Found config file at path %s; Metabase will be initialized with values from this file"
                                   (pr-str (str path*)))
-                  (u/emoji "🗄️"))
-        path*)
+                  (u/emoji "🗄️")))
       (log/info (u/format-color :yellow "No config file found at path %s" (str/join " or "
                                                                                     (map #(pr-str (str %))
                                                                                          paths-to-try)))))))
