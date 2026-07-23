@@ -1,6 +1,6 @@
 import { type PropsWithChildren, createContext } from "react";
 
-import type { WithRouterProps } from "./react-router";
+import type { WithRouterProps } from "./types";
 import { RouterProviderV7 } from "./v7/RouterProviderV7";
 
 type RouterContextType = WithRouterProps;

@@ -46,7 +46,7 @@ export function useNavigate(): NavigateFunction {
 
       const path = resolveTo(
         to,
-        getRoutePathnames(routesRef.current, location.pathname),
+        getRoutePathnames(routesRef.current),
         location.pathname,
         options.relative === "path",
       );

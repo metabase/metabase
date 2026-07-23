@@ -6,7 +6,7 @@ import {
   useInRouterContext,
 } from "react-router-v7";
 
-import type { RouterLinkProps } from "./react-router";
+import type { RouterLinkProps } from "./types";
 import { queryToSearch } from "./v7/location";
 
 function hrefFor(target: V7LinkProps["to"]): string {

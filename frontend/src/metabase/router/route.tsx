@@ -1,6 +1,6 @@
 import type { ComponentClass, ReactNode } from "react";
 
-import type { RouteProps } from "./react-router";
+import type { RouteProps } from "./types";
 
 /**
  * Props accepted by the `<Route>` element: react-router v7's `index` and

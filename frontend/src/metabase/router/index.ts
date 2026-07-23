@@ -2,7 +2,6 @@ export * from "./Link";
 export * from "./middleware";
 export * from "./navigation";
 export * from "./Navigate";
-export * from "./react-router";
 export * from "./redirect";
 export * from "./router-link";
 export * from "./route";
