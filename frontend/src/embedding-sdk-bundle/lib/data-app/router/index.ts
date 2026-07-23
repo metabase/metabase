@@ -1,4 +1,4 @@
-import { getDataAppHistory } from "metabase/router";
+import { getRawBrowserHistory } from "metabase/router";
 
 import { DataAppRouter, getBasename } from "./DataAppRouter";
 
@@ -14,7 +14,7 @@ export { useDataAppLocation } from "./useDataAppLocation";
  */
 export const dataAppRouting = {
   getBasename,
-  navigate: (to: string) => getDataAppHistory().push(getBasename() + to),
+  navigate: (to: string) => getRawBrowserHistory().push(getBasename() + to),
   subscribe: (callback: () => void) =>
-    getDataAppHistory().listen(() => callback()),
+    getRawBrowserHistory().listen(() => callback()),
 };

@@ -31,34 +31,18 @@ interface Registration {
 
 const registrations = new Set<Registration>();
 
-/**
- * The history the app is currently mounted on. The router shim's `listen`, and
- * the SDK data-app router, subscribe to location changes through this, since the
- * redux navigator is built before the router exists and cannot capture it.
- */
-let currentHistory: History | null = null;
-
-export function getCurrentHistory(): History | null {
-  return currentHistory;
-}
-
-let dataAppHistory: History | null = null;
+let rawBrowserHistory: History | null = null;
 
 /**
- * A browser history for imperative navigation outside the app's router tree,
- * replacing v3's global `browserHistory` singleton. The SDK data-app bundle
- * mounts no router, so `getCurrentHistory()` is null there and it needs a history
- * of its own to drive the iframe's URL. Prefer the app's mounted history when one
- * exists, so the two never both attach to `window.history`; otherwise lazily
- * create a dedicated browser history (lazy so it is never created in the main app,
- * where it would fight the mounted router over `popstate`).
+ * A plain browser history for imperative navigation outside the app's router
+ * tree, replacing v3's global `browserHistory` singleton. The SDK data-app bundle
+ * mounts no router, so it drives its iframe URL through this instead. Created
+ * lazily on first use, so it never exists in the main app, where a second history
+ * would fight the mounted router over `popstate`.
  */
-export function getDataAppHistory(): History {
-  if (currentHistory) {
-    return currentHistory;
-  }
-  dataAppHistory ??= createBrowserHistory({ v5Compat: true });
-  return dataAppHistory;
+export function getRawBrowserHistory(): History {
+  rawBrowserHistory ??= createBrowserHistory({ v5Compat: true });
+  return rawBrowserHistory;
 }
 
 /**
@@ -194,7 +178,7 @@ export function withBlocking(history: History): History {
 
   const overrides = { push, replace, listen };
 
-  const blocking = new Proxy(history, {
+  return new Proxy(history, {
     get(target, prop) {
       if (prop === "push" || prop === "replace" || prop === "listen") {
         return overrides[prop];
@@ -203,7 +187,4 @@ export function withBlocking(history: History): History {
       return typeof value === "function" ? value.bind(target) : value;
     },
   });
-
-  currentHistory = blocking;
-  return blocking;
 }

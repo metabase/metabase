@@ -15,4 +15,4 @@ export * from "./use-params";
 export * from "./use-router";
 export * from "./use-search-params";
 export * from "./with-route-props";
-export { getCurrentHistory, getDataAppHistory } from "./v7/blocking-history";
+export { getRawBrowserHistory } from "./v7/blocking-history";

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { getDataAppHistory } from "metabase/router";
+import { getRawBrowserHistory } from "metabase/router";
 
 import { getBasename } from "./DataAppRouter";
 
@@ -33,7 +33,7 @@ export const useDataAppLocation = (): {
   useEffect(() => {
     // `listen` fires for every navigation: `<Link>` clicks, imperative `push`
     // calls, and browser back/forward. One subscription covers all of them.
-    return getDataAppHistory().listen(() => {
+    return getRawBrowserHistory().listen(() => {
       setPathname(computeSubPath(basename));
     });
   }, [basename]);
@@ -42,7 +42,7 @@ export const useDataAppLocation = (): {
     (to: string) => {
       // `to` is bundle-relative (e.g. "/customers/42"). The real URL is
       // `basename + to`.
-      getDataAppHistory().push(basename + to);
+      getRawBrowserHistory().push(basename + to);
     },
     [basename],
   );
