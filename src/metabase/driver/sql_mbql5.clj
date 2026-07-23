@@ -49,6 +49,8 @@
 
 (defn- stage->honeysql [driver prev-from stage]
   (cond
+    ;; We don't add the source query if the stage is persisted, because the persisted query
+    ;; is already all of the previous stages materialized from the cached table
     (:persisted-info/native stage)
     (sql.qp/sql-source-query (:persisted-info/native stage) nil)
 

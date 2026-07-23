@@ -1,5 +1,6 @@
-import type { History } from "history";
 import { type PropsWithChildren, createContext } from "react";
+
+import type { History } from "metabase/router";
 
 type HistoryContextType = {
   history: History;

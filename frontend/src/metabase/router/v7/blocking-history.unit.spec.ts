@@ -1,5 +1,6 @@
-import type { Location as HistoryLocation } from "history";
 import { UNSAFE_createMemoryHistory as createMemoryHistory } from "react-router-v7";
+
+import type { Location as HistoryLocation } from "../types";
 
 import {
   hasLeaveHooks,

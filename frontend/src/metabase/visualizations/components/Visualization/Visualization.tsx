@@ -1,6 +1,5 @@
 /* eslint-disable complexity */
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import React, {
   type CSSProperties,
   type ComponentType,
@@ -25,6 +24,7 @@ import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
+import type { LocationDescriptorObject } from "metabase/router";
 import { getTokenFeature } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";

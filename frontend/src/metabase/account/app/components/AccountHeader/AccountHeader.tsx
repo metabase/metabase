@@ -1,4 +1,3 @@
-import type { Path } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -14,7 +13,7 @@ import S from "./AccountHeader.module.css";
 type AccountHeaderProps = {
   user: User;
   path?: string;
-  onChangeLocation?: (nextLocation: Path) => void;
+  onChangeLocation?: (nextLocation: string) => void;
 };
 
 export const AccountHeader = ({

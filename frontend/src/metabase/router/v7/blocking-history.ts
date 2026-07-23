@@ -1,10 +1,11 @@
-import type { Location as HistoryLocation } from "history";
 import {
   type HistoryRouterProps,
   type To,
   type Location as V7Location,
   parsePath,
 } from "react-router-v7";
+
+import type { Location as HistoryLocation } from "../types";
 
 import { toV3Location } from "./location";
 
