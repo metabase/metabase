@@ -198,9 +198,9 @@ describe("issue 52411", { tags: "@external" }, () => {
   });
 
   it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
-    // Opening the table picker fetches the raw databases and the saved-questions
-    // database in parallel; the latter resolving re-renders the database list and
-    // detaches "Writable Postgres12" mid-click. Wait for it to settle first.
+    // Opening the table picker loads the saved-questions database asynchronously,
+    // which re-renders (and re-mounts) the picker popover after the response comes
+    // back. Wait for that request first to shrink the churn window...
     cy.intercept({
       method: "GET",
       pathname: "/api/database",
@@ -210,11 +210,15 @@ describe("issue 52411", { tags: "@external" }, () => {
     cy.visit("/admin/datamodel/segments");
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
     cy.wait("@savedQuestionsDatabase");
-    H.popover().within(() => {
-      cy.findByText("Writable Postgres12").should("be.visible").click();
-      cy.findByText("Wild").click();
-      cy.findByText("Birds").click();
-    });
+
+    // ...and re-query the popover fresh for each step instead of freezing its
+    // subject with `within`: the list re-renders a couple more times after the
+    // response settles, so a cached popover/item reference detaches mid-click.
+    // A direct `H.popover().findByText(...)` chain re-runs the whole query (and
+    // recovers from a re-mounted popover) on every retry.
+    H.popover().findByText("Writable Postgres12").should("be.visible").click();
+    H.popover().findByText("Wild").click();
+    H.popover().findByText("Birds").click();
     cy.findByTestId("segment-list-table")
       .findByText("Birds")
       .should("be.visible");
