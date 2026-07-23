@@ -33,7 +33,7 @@ function createConversation(
     conversation_id: "convo-1",
     created_at: "2026-01-15T00:00:00Z",
     user_id: 1,
-    summary: null,
+    title: null,
     message_count: 4,
     user_message_count: 2,
     assistant_message_count: 2,
@@ -103,6 +103,7 @@ describe("ConversationsPage", () => {
     // Sortable columns render with the "columnheader" role; Queries and Searches
     // aren't sortable, so they're asserted via plain text below instead.
     const sortableColumnHeaders = [
+      "Title",
       "User",
       "Profile",
       "Date",

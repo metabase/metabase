@@ -61,7 +61,7 @@ export function eventColumns(
   hasPii: boolean,
 ): EventColumn[] {
   const columns: (EventColumn | false)[] = [
-    { key: "tool_call_id", title: t`ID` },
+    { key: "tool_call_id", title: t`ID`, sort: "tool_call_id" },
     {
       key: "created_at",
       title: t`Created at`,
@@ -79,10 +79,18 @@ export function eventColumns(
       title: t`Client`,
       sort: "client_display_name",
     },
-    { key: "client_version", title: t`Client version` },
+    {
+      key: "client_version",
+      title: t`Client version`,
+      sort: "client_version",
+    },
     { key: "user_display_name", title: t`User`, sort: "user_display_name" },
-    hasTenants && { key: "tenant_name", title: t`Tenant` },
-    hasPii && { key: "ip_address", title: t`IP address` },
+    hasTenants && {
+      key: "tenant_name",
+      title: t`Tenant`,
+      sort: "tenant_name",
+    },
+    hasPii && { key: "ip_address", title: t`IP address`, sort: "ip_address" },
     { key: "status", title: t`Status`, sort: "status" },
     {
       key: "duration_ms",
@@ -92,8 +100,12 @@ export function eventColumns(
       render: (value) =>
         value == null ? EMPTY_CELL_PLACEHOLDER : formatNumber(Number(value)),
     },
-    { key: "error_type", title: t`Error type` },
-    hasPii && { key: "error_message", title: t`Error message` },
+    { key: "error_type", title: t`Error type`, sort: "error_type" },
+    hasPii && {
+      key: "error_message",
+      title: t`Error message`,
+      sort: "error_message",
+    },
   ];
   return columns.filter((column): column is EventColumn => column !== false);
 }

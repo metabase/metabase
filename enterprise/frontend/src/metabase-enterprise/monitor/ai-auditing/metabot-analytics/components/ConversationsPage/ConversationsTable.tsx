@@ -171,7 +171,8 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
       width: "auto",
       minWidth: 160,
       maxAutoWidth: 280,
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: false,
       accessorFn: (convo) => convo.title ?? "",
       cell: ({ row }) => (
         <Ellipsified style={{ maxWidth: 280 }}>
