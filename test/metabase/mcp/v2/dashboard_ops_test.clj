@@ -344,8 +344,24 @@
                                 [{:op "add_parameter" :parameter_id "p_date" :name "Date"
                                   :type "date/all-options" :isMultiSelect false}]
                                 {})]
-      (is (= [{:id "p_date" :name "Date" :type "date/all-options" :isMultiSelect false}]
+      (is (= [{:id "p_date" :name "Date" :slug "date" :type "date/all-options" :isMultiSelect false}]
              parameters)))))
+
+(deftest add-parameter-derives-slug-from-name-test
+  (testing "GHY-4147: a created parameter gets the URL slug the editor would give it, so it is
+            addressable by slug in embedding, public links, and URL param sync"
+    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+                                empty-dash
+                                [{:op "add_parameter" :parameter_id "p1" :name "Order Total"
+                                  :type "number/>="}]
+                                {})]
+      (is (= "order_total" (:slug (first parameters)))))
+    (testing "a nameless parameter gets no slug rather than a bogus one"
+      (let [{:keys [parameters]} (dashboard-ops/compile-ops
+                                  empty-dash
+                                  [{:op "add_parameter" :parameter_id "p1" :type "string/="}]
+                                  {})]
+        (is (not (contains? (first parameters) :slug)))))))
 
 (deftest add-parameter-rejects-duplicate-id-test
   (testing "GHY-4147: reusing an existing parameter id is a teaching error pointing at update_parameter"
@@ -357,12 +373,23 @@
           {})))))
 
 (deftest update-parameter-merges-test
-  (testing "GHY-4147: update_parameter merges into the existing parameter"
+  (testing "GHY-4147: update_parameter merges into the existing parameter, re-slugging on a rename"
     (let [{:keys [parameters]} (dashboard-ops/compile-ops
                                 (assoc empty-dash :parameters [{:id "p1" :name "X" :type "string/="}])
                                 [{:op "update_parameter" :parameter_id "p1" :name "Y"}]
                                 {})]
-      (is (= [{:id "p1" :name "Y" :type "string/="}] parameters)))))
+      (is (= [{:id "p1" :name "Y" :slug "y" :type "string/="}] parameters)))))
+
+(deftest update-parameter-preserves-slug-when-not-renaming-test
+  (testing "GHY-4147: an update that does not touch the name leaves the slug alone, so an edit to
+            an editor-created parameter cannot silently break its existing URLs"
+    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+                                (assoc empty-dash
+                                       :parameters [{:id "p1" :name "Order-Date" :slug "order-date"
+                                                     :type "date/all-options"}])
+                                [{:op "update_parameter" :parameter_id "p1" :isMultiSelect true}]
+                                {})]
+      (is (= "order-date" (:slug (first parameters)))))))
 
 (deftest remove-parameter-strips-mappings-test
   (testing "GHY-4147: remove_parameter drops the parameter, its dashcard mappings, its inline

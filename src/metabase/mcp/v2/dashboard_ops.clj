@@ -14,7 +14,8 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.mcp.v2.common :as common]
-   [metabase.parameters.mapping-targets :as mapping-targets]))
+   [metabase.parameters.mapping-targets :as mapping-targets]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -334,6 +335,14 @@
   [state dashcard]
   (get (::cards state) (:card_id dashcard)))
 
+(defn- assoc-slug
+  "Derive `:slug` from a parameter's name, as the editor's `setParameterName` does. Without it a
+   parameter this tool creates is not addressable by slug — embedding, public links, and URL param
+   sync all key on the slug — so a parameter that works in the editor would half-work here."
+  [param]
+  (cond-> param
+    (:name param) (assoc :slug (u/slugify (:name param)))))
+
 (defmethod apply-op "add_parameter"
   [state idx {:keys [parameter_id] :as op}]
   (when (some #(= parameter_id (:id %)) (:parameters state))
@@ -341,14 +350,18 @@
                            (pr-str parameter_id))))
   (update state :parameters conj
           (-> (dissoc op :op :parameter_id)
-              (assoc :id parameter_id))))
+              (assoc :id parameter_id)
+              assoc-slug)))
 
 (defmethod apply-op "update_parameter"
   [state idx {:keys [parameter_id] :as op}]
   (resolve-parameter! state idx parameter_id)
   (update state :parameters
           (partial mapv #(if (= parameter_id (:id %))
-                           (merge % (dissoc op :op :parameter_id))
+                           ;; only re-slug on a rename, so an unrelated edit can't rewrite the
+                           ;; slug of a parameter created in the editor and break its existing URLs
+                           (cond-> (merge % (dissoc op :op :parameter_id))
+                             (contains? op :name) assoc-slug)
                            %))))
 
 (defmethod apply-op "remove_parameter"

@@ -159,8 +159,10 @@
                                               :values_query_type "list" :isMultiSelect true}]})))]
         (is (= [{:id "p1" :name "Category" :type "string/="}] (:parameters result)))
         (testing "the stored row carries the decoded enum, as it does when the REST endpoint saves the same body"
-          (is (= :list
-                 (:values_query_type (first (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))))))))))
+          (let [stored (first (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))]
+            (is (= :list (:values_query_type stored)))
+            (testing "and a slug derived from the name, so the parameter is URL-addressable"
+              (is (= "category" (:slug stored))))))))))
 
 (deftest unknown-card-is-a-teaching-error-test
   (testing "GHY-4147: add_card referencing a card the user cannot read fails before any write"
