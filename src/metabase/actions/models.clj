@@ -90,12 +90,12 @@
 
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
-  (u/prog1 (remote-sync/set-worktree-id-before-insert action :model/Card :model_id)
+  (u/prog1 (remote-sync/inherit-worktree-id action :model/Card :model_id)
     (check-model-is-not-a-saved-question model-id)))
 
 (t2/define-before-update :model/Action
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
-  (u/prog1 (remote-sync/set-worktree-id-before-update changes :model/Card :model_id)
+  (u/prog1 (remote-sync/check-same-worktree changes :model/Card :model_id)
     (if archived?
       (t2/delete! :model/DashboardCard :action_id id)
       (check-model-is-not-a-saved-question model-id))))

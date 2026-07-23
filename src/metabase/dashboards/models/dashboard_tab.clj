@@ -23,11 +23,11 @@
 
 (t2/define-before-insert :model/DashboardTab
   [tab]
-  (remote-sync/set-worktree-id-before-insert tab :model/Dashboard :dashboard_id))
+  (remote-sync/inherit-worktree-id tab :model/Dashboard :dashboard_id))
 
 (t2/define-before-update :model/DashboardTab
   [tab]
-  (remote-sync/set-worktree-id-before-update tab :model/Dashboard :dashboard_id))
+  (remote-sync/check-same-worktree tab :model/Dashboard :dashboard_id))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]

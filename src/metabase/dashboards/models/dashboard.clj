@@ -81,7 +81,7 @@
   [dashboard]
   (let [defaults  {:parameters []}
         dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
-    (u/prog1 (remote-sync/set-worktree-id-before-insert dashboard :model/Collection :collection_id)
+    (u/prog1 (remote-sync/inherit-worktree-id dashboard :model/Collection :collection_id)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
@@ -99,7 +99,7 @@
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
     (u/prog1 (-> dashboard
                  maybe-populate-initially-published-at
-                 (remote-sync/set-worktree-id-before-update :model/Collection :collection_id))
+                 (remote-sync/check-same-worktree :model/Collection :collection_id))
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))

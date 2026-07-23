@@ -289,8 +289,8 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  (remote-sync/set-worktree-id-before-insert model :model/Collection :collection_id))
+  (remote-sync/inherit-worktree-id model :model/Collection :collection_id))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  (remote-sync/set-worktree-id-before-update model :model/Collection :collection_id))
+  (remote-sync/check-same-worktree model :model/Collection :collection_id))

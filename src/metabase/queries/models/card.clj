@@ -823,7 +823,7 @@
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields
-        (remote-sync/set-worktree-id-before-insert :model/Collection :collection_id))
+        (remote-sync/inherit-worktree-id :model/Collection :collection_id))
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
@@ -884,7 +884,7 @@
         (clear-metabot-origin changes)
         (pre-update changes)
         maybe-populate-initially-published-at
-        (remote-sync/set-worktree-id-before-update :model/Collection :collection_id))))
+        (remote-sync/check-same-worktree :model/Collection :collection_id))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card

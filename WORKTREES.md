@@ -130,7 +130,7 @@ content, no transform.
   main-app counterpart (same entity id, NULL worktree) — a checkout is exactly as visible as
   what it mirrors, never more.
 - **Edit** — ordinary collection content. Events ledger changes into the collection's
-  worktree (`ledger-worktree-id`), so main dirty state and checkout dirty state never mix.
+  worktree (`ledger-worktree-id`), so main dirty state and worktree dirty state never mix.
 - **Push** — full export of the worktree ledger to its branch; refuses (unless forced) when
   the remote advanced past `base_version`.
 - **Delete** — root collections deleted through the model (content hooks run), then the row;
@@ -154,16 +154,21 @@ guards (`expected_branch` CAS) cannot be bypassed via the worktree path. All gat
 
 Collection listings (`tree`, list, root items) exclude worktree content via the OSS
 `non-worktree-filter-clause` (`remote_sync_worktree_id IS NULL`) unless `include-worktrees`
-is passed.
+is passed; browsing into a worktree collection shows its children. The exclusion is plain OSS
+data filtering with no feature gate: if an instance loses the EE feature, worktree content is
+simply hidden from the main tree, never exposed into it.
 
 ## 7. Guards
 
 - One branch, one materialization: worktree-per-branch unique; the sync branch can't be
   checked out; a checked-out branch can't become the sync branch.
-- A collection cannot move between two different worktrees (that would mean
-  delete-from-one-ledger / create-in-another); moves into/out of unsynced space stay legal.
-- Cross-worktree content moves re-derive `remote_sync_worktree_id` from the new parent
-  (collection membership changes inherit the parent's worktree).
+- **Worktree membership is immutable.** `remote_sync_worktree_id` is derived at insert from the
+  row's container (item → collection, dashcard/tab → dashboard, action → model card, collection →
+  parent collection; a worktree pull binds the loaded worktree), never client-supplied, and any
+  move that would change it — between two worktrees, or into/out of one — is refused with a 400.
+  Worktree content changes only through pulls. Trash moves are exempt (archived rows keep their
+  membership so a worktree delete still sweeps them). Enforced in OSS model hooks, so the data
+  stays correct regardless of edition or feature flags.
 - Per-worktree cluster locks; the ledger and task history are scope-strict.
 
 ## 8. Frontend

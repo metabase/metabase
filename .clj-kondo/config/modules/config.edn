@@ -603,14 +603,12 @@
            search
            util}
    :model-exports #{:model/Collection}
-   :model-imports #{:model/Action
-                    :model/Card
+   :model-imports #{:model/Card
                     :model/CollectionBookmark
                     :model/CollectionPermissionGraphRevision
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
-                    :model/DashboardTab
                     :model/Document
                     :model/NativeQuerySnippet
                     :model/Permissions
@@ -1950,7 +1948,8 @@
            metabase.remote-sync.init}
    :uses #{api
            models
-           premium-features}
+           premium-features
+           util}
    :model-imports #{:model/Collection}}
 
   request

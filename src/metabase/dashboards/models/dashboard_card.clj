@@ -36,11 +36,11 @@
               :visualization_settings {}
               :inline_parameters      []}
              dashcard)
-      (remote-sync/set-worktree-id-before-insert :model/Dashboard :dashboard_id)))
+      (remote-sync/inherit-worktree-id :model/Dashboard :dashboard_id)))
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
-  (remote-sync/set-worktree-id-before-update dashcard :model/Dashboard :dashboard_id))
+  (remote-sync/check-same-worktree dashcard :model/Dashboard :dashboard_id))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard

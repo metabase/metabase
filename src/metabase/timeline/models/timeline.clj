@@ -27,11 +27,11 @@
 
 (t2/define-before-insert :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id model))
-  (remote-sync/set-worktree-id-before-insert model :model/Collection :collection_id))
+  (remote-sync/inherit-worktree-id model :model/Collection :collection_id))
 
 (t2/define-before-update :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
-  (remote-sync/set-worktree-id-before-update model :model/Collection :collection_id))
+  (remote-sync/check-same-worktree model :model/Collection :collection_id))
 
 ;;;; functions
 
