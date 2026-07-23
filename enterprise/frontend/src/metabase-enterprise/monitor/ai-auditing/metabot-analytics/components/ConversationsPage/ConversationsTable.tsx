@@ -160,7 +160,6 @@ export function ConversationsTable({
         />
       )}
     </Card>
-
   );
 }
 

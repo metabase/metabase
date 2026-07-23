@@ -19,11 +19,6 @@ jest.mock("metabase/monitor/components/MonitorLayout", () => ({
   MonitorMain: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-// Avoid unrelated permission and tenant requests.
-jest.mock("./ConversationHeader", () => ({
-  ConversationHeader: () => null,
-}));
-
 type ConversationMessage = ConversationDetail["messages"][number];
 
 function userMessage(
