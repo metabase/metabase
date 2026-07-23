@@ -157,6 +157,8 @@
 (deftest persistable-data-part?-test
   (testing "state parts are not persisted (value lives on MetabotConversation.state)"
     (is (false? (streaming/persistable-data-part? (streaming/state-part {:queries {}})))))
+  (testing "search-results parts are not persisted (they render under the ephemeral chain of thought)"
+    (is (false? (streaming/persistable-data-part? (streaming/search-results-part {:total_count 0 :results []})))))
   (testing "other parts are persisted"
     (is (true? (streaming/persistable-data-part? (streaming/todo-list-part []))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
@@ -190,7 +192,15 @@
           result (into [] streaming/expand-data-parts-xf parts)]
       (is (= 3 (count result)))
       (is (= "a" (:data-type (second result))))
-      (is (= "b" (:data-type (nth result 2)))))))
+      (is (= "b" (:data-type (nth result 2))))))
+  (testing "stamps the tool-call id onto search-results parts, leaving others untouched"
+    (let [parts [{:type :tool-output
+                  :id "call-7"
+                  :result {:data-parts [(streaming/search-results-part {:total_count 1 :results []})
+                                        {:type :data :data-type "todo_list" :data []}]}}]
+          [_ search-part todo-part] (into [] streaming/expand-data-parts-xf parts)]
+      (is (= "call-7" (get-in search-part [:data :tool_call_id])))
+      (is (not (contains? (:data todo-part) :tool_call_id))))))
 
 (deftest resolve-links-xf-test
   (testing "resolves metabase:// links in text parts"
