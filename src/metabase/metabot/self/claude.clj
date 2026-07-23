@@ -412,16 +412,18 @@
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
-    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (let [messages  (parts->claude-messages input)
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
+    :or   {model "claude-haiku-4-5" reasoning? true}} :- core/LLMRequestOpts]
+  (let [input     (cond->> input
+                    (not reasoning?) (remove #(= :reasoning (:type %))))
+        messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
         all-tools (if (and all-tools (not schema))
                     (add-tools-cache-breakpoint all-tools)
                     all-tools)
         ;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
-        thinking  (when-not (or schema (= "required" (some-> tool_choice name)))
+        thinking  (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
                     (model-thinking-config model))]
     (cond-> {:model         model
              ;; thinking draws from the same max_tokens budget as the answer, so with

@@ -49,7 +49,9 @@
     :max-tokens  - Maximum tokens in the response
     :schema      - JSON Schema map for structured output; each provider forces a
                    tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
-    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy"
+    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy
+    :reasoning?  - When false, don't request thinking/reasoning and strip
+                   :reasoning parts from the replayed input (defaults true)"
   [:map
    [:model       {:optional true} :string]
    [:system      {:optional true} [:maybe :string]]
@@ -59,7 +61,8 @@
    [:temperature {:optional true} [:maybe number?]]
    [:max-tokens  {:optional true} [:maybe :int]]
    [:schema      {:optional true} :any]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
+   [:ai-proxy?   {:optional true} [:maybe :boolean]]
+   [:reasoning?  {:optional true} [:maybe :boolean]]])
 
 (defn mkid
   "Generate a random id"
@@ -423,9 +426,9 @@
                         (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
 
               ;; empty-text parts (signature/metadata carriers, redacted blocks) open
-              ;; no reasoning block — only parts with text do
+              ;; no reasoning block; whitespace-only deltas (paragraph separators) flow
               :reasoning
-              (if (str/blank? (:text part))
+              (if (empty? (:text part))
                 result
                 (let [id (or (:id part) (mkid))]
                   (if (= id @current-reasoning-id)

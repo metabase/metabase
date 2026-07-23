@@ -507,6 +507,15 @@
                  (sse-events [{:type :reasoning :id "r1" :text "hi"}
                               {:type :reasoning :id "r1" :text ""
                                :provider-metadata {:anthropic {:signature "sig"}}}])))))
+  (testing "a whitespace-only part (paragraph separator) flows as a delta"
+    (is (= [["reasoning-delta" "part one"]
+            ["reasoning-delta" "\n\n"]
+            ["reasoning-delta" "part two"]]
+           (->> (sse-events [{:type :reasoning :id "r1" :text "part one"}
+                             {:type :reasoning :id "r1" :text "\n\n"}
+                             {:type :reasoning :id "r1" :text "part two"}])
+                (filter #(= "reasoning-delta" (:type %)))
+                (mapv (juxt :type :delta))))))
   (testing "a tool part closes an open reasoning block first"
     (is (= ["reasoning-start" "reasoning-delta" "reasoning-end" "tool-input-available" "finish"]
            (mapv :type

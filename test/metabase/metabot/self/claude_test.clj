@@ -275,6 +275,19 @@
              [{:type :reasoning :id "r1" :text "unsigned"}
               {:type :tool-input :id "call-1" :function "search" :arguments {}}])))))
 
+(deftest ^:parallel claude-request-body-reasoning-disabled-test
+  (testing ":reasoning? false disables thinking and strips reasoning replay"
+    (let [body (claude/claude-request-body
+                {:model      "claude-opus-4-8"
+                 :reasoning? false
+                 :input      [{:type :reasoning :id "r1" :text "let me think"}
+                              {:type :reasoning :id "r1" :text ""
+                               :provider-metadata {:anthropic {:signature "abc"}}}
+                              {:type :tool-input :id "call-1" :function "search" :arguments {}}]})]
+      (is (not (contains? body :thinking)))
+      (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
+              (:messages body))))))
+
 (deftest ^:parallel parts->claude-messages-tool-result-test
   (testing "tool output becomes user message with tool_result content block"
     (is (=? [{:role    "user"

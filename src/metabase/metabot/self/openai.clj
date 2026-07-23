@@ -106,6 +106,17 @@
              (= t "response.created")           (-> (rf {:type :start :messageId (:id response)})
                                                     (u/prog1
                                                       (vreset! model-name (:model response))))
+             ;; a finished reasoning item carries the encrypted content that lets us
+             ;; replay it next round-trip — ride it out on the reasoning-end's metadata
+             (and (= t "response.output_item.done")
+                  (= "reasoning" (:type item))
+                  (= @current-id (:id item))
+                  (:encrypted_content item))
+             (u/prog1
+               (vswap! payload assoc :providerMetadata
+                       {:openai {:itemId           (:id item)
+                                 :encryptedContent (:encrypted_content item)}}))
+
              ;; time to finish previous chunk
              ;; this logic will skip most of the *.done types, but they seem to be always followed by one of those two?
              (or (= t "response.output_item.done")
@@ -178,10 +189,15 @@
   (into []
         (keep (fn [part]
                 (case (:type part)
-                  ;; summaries are display-only and can't be replayed without the
-                  ;; encrypted reasoning content we don't persist; the Responses API
-                  ;; reconstructs its own reasoning context instead
-                  :reasoning   nil
+                  ;; with store:false the API keeps nothing server-side, so reasoning
+                  ;; items ride along as encrypted content ahead of their tool calls;
+                  ;; parts without it (bare summaries, foreign providers) drop
+                  :reasoning   (when-let [content (get-in part [:provider-metadata :openai :encryptedContent])]
+                                 {:type              "reasoning"
+                                  :id                (or (get-in part [:provider-metadata :openai :itemId])
+                                                         (:id part))
+                                  :summary           []
+                                  :encrypted_content content})
                   :text        {:type    "message"
                                 :role    "assistant"
                                 :content [{:type "output_text"
@@ -303,9 +319,11 @@
 
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
-    :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
-  (let [all-tools (or (when schema
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
+    :or   {model "gpt-5.4" reasoning? true}} :- core/LLMRequestOpts]
+  (let [input     (cond->> input
+                    (not reasoning?) (remove #(= :reasoning (:type %))))
+        all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
                         [{:type        "function"
                           :name        "structured_output"
@@ -324,8 +342,11 @@
                          :tools       all-tools)
       max-tokens  (assoc :max_output_tokens max-tokens)
 
-      (reasoning-model? model)
-      (assoc :reasoning {:summary "auto"})
+      ;; encrypted_content lets us replay reasoning items across tool-call
+      ;; round-trips despite store:false — see [[parts->openai-input]]
+      (and reasoning? (reasoning-model? model))
+      (assoc :reasoning {:summary "auto"}
+             :include   ["reasoning.encrypted_content"])
 
       (and temperature (model-supports-temperature? model))
       (assoc :temperature temperature))))

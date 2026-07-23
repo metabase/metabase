@@ -147,6 +147,24 @@
     (testing "temperature is omitted when the deployment is named after a reasoning model"
       (is (not (contains? body :temperature))))))
 
+(deftest reasoning-is-disabled-test
+  (testing "anthropic deployments get no thinking config and reasoning parts are stripped"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request!
+                        {:model "anthropic/claude-opus-4-8"
+                         :input [{:type :reasoning :id "r1" :text ""
+                                  :provider-metadata {:anthropic {:signature "abc"}}}
+                                 {:type :tool-input :id "call-1" :function "search" :arguments {}}]})))]
+      (is (not (contains? body :thinking)))
+      (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
+              (:messages body)))))
+  (testing "openai deployments get no reasoning summary or encrypted-content include"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request! {:model "openai/gpt-5.4"
+                                               :input [{:role :user :content "hi"}]})))]
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include))))))
+
 (deftest unsupported-family-throws-test
   (is (thrown-with-msg?
        clojure.lang.ExceptionInfo
