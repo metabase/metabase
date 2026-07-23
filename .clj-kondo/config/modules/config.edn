@@ -222,8 +222,10 @@
            internal-stats
            lib-be
            models
+           op-cache
            permissions
            premium-features
+           query-processor
            request
            session
            settings
@@ -243,7 +245,6 @@
                     :model/Document
                     :model/Field
                     :model/ModerationReview
-                    :model/OpCacheEntry
                     :model/PermissionsGroup
                     :model/Pulse
                     :model/PulseCard
@@ -1892,6 +1893,7 @@
               metabase.query-processor.init
               metabase.query-processor.interface
               metabase.query-processor.metadata
+              metabase.query-processor.middleware.cache
               metabase.query-processor.middleware.constraints
               metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions

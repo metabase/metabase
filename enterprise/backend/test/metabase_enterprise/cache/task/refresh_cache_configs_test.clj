@@ -51,6 +51,9 @@
                 (fn [query info]
                   (qp/process-query (qp/userland-query (assoc query :info info))))))))
 
+;; These helpers manipulate cache storage rows directly (white-box): backdating and inspecting entry timestamps is
+;; test-only storage surgery, not a cache operation, so no op-cache protocol method exposes it.
+
 (defn- most-recent-cache-entry
   []
   (t2/select-one [:model/OpCacheEntry :cache_key :written_at] {:order-by [[:written_at :desc]] :limit 1}))

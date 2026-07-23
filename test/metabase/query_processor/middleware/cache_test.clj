@@ -102,7 +102,17 @@
         (into [] (keep (fn [[hex-key {:keys [written-at]}]]
                          (when-not (t/before? written-at (t/instant threshold))
                            (codecs/hex->bytes hex-key))))
-              @entries)))))
+              @entries))
+
+      (delete-all-entries! [_]
+        (reset! entries {})
+        (reset! claims {}))
+
+      (stats [_]
+        (let [sizes (map (fn [[_ {:keys [^bytes value]}]] (alength value)) @entries)]
+          {:entries            (count sizes)
+           :average-value-size (when (seq sizes)
+                                 (double (/ (reduce + sizes) (count sizes))))})))))
 
 (defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)

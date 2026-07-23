@@ -44,4 +44,13 @@
         (into [] (keep (fn [[k {:keys [written-at]}]]
                          (when-not (t/before? written-at (t/instant threshold))
                            k)))
-              @entries)))))
+              @entries))
+      (delete-all-entries! [_]
+        (reset! entries {})
+        (reset! claims {})
+        nil)
+      (stats [_]
+        (let [sizes (map (comp count :value val) @entries)]
+          {:entries            (count sizes)
+           :average-value-size (when (seq sizes)
+                                 (double (/ (reduce + sizes) (count sizes))))})))))

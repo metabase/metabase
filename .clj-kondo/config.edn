@@ -197,7 +197,9 @@
      metabase.oauth-server.core/reset-provider!
      ;; op-cache tests exercise these against test-local in-memory storage, so they can't affect other tests
      metabase.op-cache.core/evict!
+     metabase.op-cache.core/evict-all!
      metabase.op-cache.core/fetch-or-compute!
+     metabase.op-cache-impl.storage/delete-all-entries!
      metabase.op-cache-impl.storage/delete-entry!
      metabase.op-cache-impl.storage/release-claim!
      metabase.op-cache-impl.storage/try-claim!

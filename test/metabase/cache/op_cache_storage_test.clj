@@ -135,6 +135,28 @@
              (testing "entries written after the cutoff survive"
                (is (some? (storage/read-entry s fresh-k))))))))))))
 
+(deftest stats-and-delete-all-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (let [s (op-cache-storage/storage)
+          k1 (byte-array (map #(mod (+ % 3) 256) (range 32)))
+          k2 (byte-array (map #(mod (+ % 5) 256) (range 32)))]
+      (testing "an empty cache has zero entries and no average size"
+        (is (= {:entries 0, :average-value-size nil}
+               (storage/stats s))))
+      (storage/write-entry! s k1 (byte-array 10))
+      (storage/write-entry! s k2 (byte-array 20))
+      ;; a claim-only row is not an entry and must not count
+      (is (true? (storage/try-claim! s (byte-array (repeat 32 7)) (u/minutes->ms 5))))
+      (testing "stats count only valued entries, averaging stored sizes"
+        (let [{:keys [entries average-value-size]} (storage/stats s)]
+          (is (= 2 entries))
+          (is (some? average-value-size))))
+      (testing "delete-all-entries! empties the cache"
+        (storage/delete-all-entries! s)
+        (is (= {:entries 0, :average-value-size nil}
+               (storage/stats s)))))))
+
 (defn- raw-value
   "The raw stored bytes of the single op_cache row, read straight from the table."
   ^bytes [^Connection conn]
