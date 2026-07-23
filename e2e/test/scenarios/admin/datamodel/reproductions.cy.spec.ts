@@ -198,10 +198,19 @@ describe("issue 52411", { tags: "@external" }, () => {
   });
 
   it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
+    // Opening the table picker fetches the raw databases and the saved-questions
+    // database in parallel; the latter resolving re-renders the database list and
+    // detaches "Writable Postgres12" mid-click. Wait for it to settle first.
+    cy.intercept("GET", {
+      pathname: "/api/database",
+      query: { saved: "true" },
+    }).as("savedQuestionsDatabase");
+
     cy.visit("/admin/datamodel/segments");
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
+    cy.wait("@savedQuestionsDatabase");
     H.popover().within(() => {
-      cy.findByText("Writable Postgres12").click();
+      cy.findByText("Writable Postgres12").should("be.visible").click();
       cy.findByText("Wild").click();
       cy.findByText("Birds").click();
     });
