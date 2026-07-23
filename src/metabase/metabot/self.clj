@@ -315,6 +315,7 @@
              make-source    (fn []
                               (eduction (comp (core/tool-executor-xf tools)
                                               (core/lite-aisdk-xf)
+                                              (core/stamp-tool-titles-xf tools)
                                               (report-aisdk-errors-xf tracking-opts)
                                               (report-token-usage-xf tracking-opts)
                                               (report-tool-usage-xf tracking-opts))

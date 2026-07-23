@@ -21,6 +21,13 @@
           (is (string? (:tool-name m)))
           (is (some? (:schema m))))))))
 
+(deftest wrap-tools-with-state-carries-display-fn-test
+  (testing "a tool var's :display-fn metadata reaches the tool-def map"
+    (let [wrapped (agent-tools/wrap-tools-with-state
+                   {"read_resource" #'agent-tools/read-resource-tool}
+                   (atom {}) nil nil)]
+      (is (fn? (get-in wrapped ["read_resource" :display-fn]))))))
+
 (deftest filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/read-resource-tool]]
