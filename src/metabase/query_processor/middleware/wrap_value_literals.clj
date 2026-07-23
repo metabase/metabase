@@ -11,7 +11,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   ;; the legacy pipeline path reads the metadata provider from the ambient store; the MBQL 5 entry point sidesteps it
+   ;; every path still reads field metadata from the ambient store when it's initialized, even the deprecated mbql5 shim
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
