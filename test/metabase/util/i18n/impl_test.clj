@@ -27,6 +27,11 @@
       (is (= expected
              (i18n.impl/normalized-locale-string s))))))
 
+(deftest normalized-locale-string-ignores-default-locale-test
+  (mt/with-locale! "tr"
+    (is (= "id_IN"
+           (i18n.impl/normalized-locale-string "ID-in")))))
+
 (deftest ^:parallel locale-test
   (testing "Should be able to coerce various types of objects to Locales"
     (doseq [arg-type [:str :keyword]
