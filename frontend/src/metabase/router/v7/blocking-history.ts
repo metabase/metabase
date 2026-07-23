@@ -2,6 +2,7 @@ import {
   type HistoryRouterProps,
   type To,
   type Location as V7Location,
+  UNSAFE_createBrowserHistory as createBrowserHistory,
   parsePath,
 } from "react-router-v7";
 
@@ -39,6 +40,25 @@ let currentHistory: History | null = null;
 
 export function getCurrentHistory(): History | null {
   return currentHistory;
+}
+
+let dataAppHistory: History | null = null;
+
+/**
+ * A browser history for imperative navigation outside the app's router tree,
+ * replacing v3's global `browserHistory` singleton. The SDK data-app bundle
+ * mounts no router, so `getCurrentHistory()` is null there and it needs a history
+ * of its own to drive the iframe's URL. Prefer the app's mounted history when one
+ * exists, so the two never both attach to `window.history`; otherwise lazily
+ * create a dedicated browser history (lazy so it is never created in the main app,
+ * where it would fight the mounted router over `popstate`).
+ */
+export function getDataAppHistory(): History {
+  if (currentHistory) {
+    return currentHistory;
+  }
+  dataAppHistory ??= createBrowserHistory({ v5Compat: true });
+  return dataAppHistory;
 }
 
 /**

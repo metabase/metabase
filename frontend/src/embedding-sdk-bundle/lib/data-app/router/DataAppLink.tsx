@@ -1,6 +1,6 @@
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
 
-import { getCurrentHistory } from "metabase/router";
+import { getDataAppHistory } from "metabase/router";
 
 import { getBasename } from "./DataAppRouter";
 
@@ -56,7 +56,7 @@ export const DataAppLink = ({
     }
 
     event.preventDefault();
-    getCurrentHistory()?.push(href);
+    getDataAppHistory().push(href);
   };
 
   return (
