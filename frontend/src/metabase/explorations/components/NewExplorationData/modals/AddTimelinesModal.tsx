@@ -76,13 +76,10 @@ export function AddTimelinesModal({
     const wanted = new Set(keys.map(Number));
     const current = new Set(timelines.map((timeline) => timeline.id));
 
-    let hasChanges = false;
-    for (const id of wanted) {
-      if (!current.has(id)) {
-        hasChanges = true;
-      }
-    }
-    if (hasChanges) {
+    const changed =
+      wanted.size !== current.size ||
+      keys.some((key) => !current.has(Number(key)));
+    if (changed) {
       trackExplorationPlanEdited("manual", "timelines");
     }
 

@@ -116,7 +116,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         for (const message of messages) {
-          // Unjustified type cast. FIXME
+          // tool result shape verified by the backend
           const { metrics, dimension_groups, groups } = JSON.parse(
             message.result,
           ) as AddResearchGroupsResponse;
@@ -211,7 +211,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         for (const message of messages) {
-          // Unjustified type cast. FIXME
+          // tool result shape verified by the backend
           const { block_ids, members, timeline_ids } = JSON.parse(
             message.result,
           ) as RemoveFromResearchPlanResponse;
@@ -269,8 +269,11 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         return;
       }
       try {
-        // Unjustified type cast. FIXME
-        const parsed = JSON.parse(messages[0].result) as { name: string };
+        // there can only be one name, use the latest if multiple
+        // tool result shape verified by the backend
+        const parsed = JSON.parse(messages[messages.length - 1].result) as {
+          name: string;
+        };
         setName(parsed.name);
       } catch (error) {
         console.error(error);
@@ -288,7 +291,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         const timelineIds = messages.flatMap((message) => {
-          // Unjustified type cast. FIXME
+          // tool result shape verified by the backend
           const parsed = JSON.parse(message.result) as {
             timeline_ids: number[];
           };

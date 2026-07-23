@@ -142,7 +142,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
               </Button>
               <Button
                 variant="filled"
-                disabled={prompt.length === 0}
+                disabled={prompt.trim().length === 0}
                 onClick={handleSubmit}
               >
                 {t`Create plan`}

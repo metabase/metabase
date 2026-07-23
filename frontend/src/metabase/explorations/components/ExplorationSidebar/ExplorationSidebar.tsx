@@ -490,6 +490,7 @@ function ExplorationTreeHeading({
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           onToggleExpand();
+          e.preventDefault();
         }
       }}
       onClick={onToggleExpand}

@@ -85,11 +85,15 @@ export function AddMetricsModal({
     [libraryEnabled, activeTab, metrics],
   );
 
-  const items = visibleMetrics.map((metric) => ({
-    key: String(metric.id),
-    label: metric.name,
-    description: metric.description,
-  }));
+  const items = useMemo(
+    () =>
+      visibleMetrics.map((metric) => ({
+        key: String(metric.id),
+        label: metric.name,
+        description: metric.description,
+      })),
+    [visibleMetrics],
+  );
 
   const handleAdd = (keys: string[]) => {
     trackExplorationPlanEdited("manual", "metrics");

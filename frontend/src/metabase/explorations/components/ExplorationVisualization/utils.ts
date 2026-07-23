@@ -68,7 +68,11 @@ export function buildSeriesGroup({
   let isTimeseries = false;
   let stackCount: number | undefined;
 
-  const segmentNames = queriesWithDatasets.map(
+  const nonEmptyQueriesWithDatasets = queriesWithDatasets.filter(
+    (queryWithDataset) => queryWithDataset.dataset.data.rows.length > 0,
+  );
+
+  const segmentNames = nonEmptyQueriesWithDatasets.map(
     (q) => q.segment_name ?? t`(All)`,
   );
   const colors = getColorsForValues(segmentNames);
@@ -77,56 +81,54 @@ export function buildSeriesGroup({
     color: colors[name],
   }));
 
-  const series = queriesWithDatasets
-    .filter((queryWithDataset) => queryWithDataset.dataset.data.rows.length > 0)
-    .map((queryWithDataset, i) => {
-      const { dataset, ...query } = queryWithDataset;
+  const numSegmentQueries = nonEmptyQueriesWithDatasets.filter(
+    (query) => query.segment_id != null,
+  ).length;
 
-      const queriesWithSegments = queriesWithDatasets.filter(
-        (query) => query.segment_id != null,
-      );
+  const series = nonEmptyQueriesWithDatasets.map((queryWithDataset, i) => {
+    const { dataset, ...query } = queryWithDataset;
 
-      const {
-        display,
-        settings,
-        isTimeseries: isTimeseriesForQuery,
-        stackCount: stackCountForQuery,
-      } = getDisplay(
-        queryWithDataset,
-        queriesWithDatasets.length,
-        queriesWithSegments.length,
-      );
-      isTimeseries = isTimeseries || Boolean(isTimeseriesForQuery);
-      // this works because we should always get the same stackCount for all queries in a group
-      // but that's only because we don't run queries for segments and breakouts at the same time
-      // so this is somewhat fragile and will need to be revisited if we ever support that
-      stackCount = stackCountForQuery;
-      const isCartesian = isCartesianChart(display);
-      const cardVizSettings: VisualizationSettings = { ...settings };
-      if (isCartesian) {
-        // disable axis labels unless explicitly set
-        if (!cardVizSettings["graph.y_axis.labels_enabled"]) {
-          cardVizSettings["graph.y_axis.labels_enabled"] = false;
-        }
-        if (!cardVizSettings["graph.x_axis.labels_enabled"]) {
-          cardVizSettings["graph.x_axis.labels_enabled"] = false;
-        }
-      } else if (display === "map") {
-        const segmentName = segmentNames[i];
-        const color = colors[segmentName];
-        if (color) {
-          cardVizSettings["map.colors"] = getColorplethColorScale(color);
-        }
+    const {
+      display,
+      settings,
+      isTimeseries: isTimeseriesForQuery,
+      stackCount: stackCountForQuery,
+    } = getDisplay(
+      queryWithDataset,
+      nonEmptyQueriesWithDatasets.length,
+      numSegmentQueries,
+    );
+    isTimeseries = isTimeseries || Boolean(isTimeseriesForQuery);
+    // this works because we should always get the same stackCount for all queries in a group
+    // but that's only because we don't run queries for segments and breakouts at the same time
+    // so this is somewhat fragile and will need to be revisited if we ever support that
+    stackCount = stackCountForQuery;
+    const isCartesian = isCartesianChart(display);
+    const cardVizSettings: VisualizationSettings = { ...settings };
+    if (isCartesian) {
+      // disable axis labels unless explicitly set
+      if (!cardVizSettings["graph.y_axis.labels_enabled"]) {
+        cardVizSettings["graph.y_axis.labels_enabled"] = false;
       }
-      const card = createSeriesCard(
-        query.id,
-        query.name ?? null,
-        display,
-        cardVizSettings,
-        query.dataset_query ?? undefined,
-      );
-      return { card, data: dataset.data };
-    });
+      if (!cardVizSettings["graph.x_axis.labels_enabled"]) {
+        cardVizSettings["graph.x_axis.labels_enabled"] = false;
+      }
+    } else if (display === "map") {
+      const segmentName = segmentNames[i];
+      const color = colors[segmentName];
+      if (color) {
+        cardVizSettings["map.colors"] = getColorplethColorScale(color);
+      }
+    }
+    const card = createSeriesCard(
+      query.id,
+      query.name ?? null,
+      display,
+      cardVizSettings,
+      query.dataset_query ?? undefined,
+    );
+    return { card, data: dataset.data };
+  });
 
   return {
     series: getFinalSeries({ series, legendItems }),

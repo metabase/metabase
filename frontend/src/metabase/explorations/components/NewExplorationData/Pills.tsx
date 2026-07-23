@@ -118,7 +118,7 @@ function PillItem({
       px="sm"
       maw="100%"
       classNames={{ root: S.pill, remove: S.pillRemove, label: S.pillLabel }}
-      data-interestingness={interestingness || "null"}
+      data-interestingness={interestingness ?? "null"}
       removeButtonProps={
         onRemove != null
           ? { mr: 0, "aria-hidden": false, "aria-label": t`Remove` }
@@ -150,7 +150,7 @@ export function TogglePill({
       className={cx(S.togglePill, { [S.togglePillSelected]: selected })}
       disabled={disabled}
       aria-pressed={selected}
-      data-interestingness={interestingness || "null"}
+      data-interestingness={interestingness ?? "null"}
       onClick={onToggle}
     >
       {selected && <Icon name="check" size={12} aria-hidden />}

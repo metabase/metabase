@@ -151,6 +151,22 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     });
   }, []);
 
+  const handleRemoveBlock = useCallback(
+    (blockId: string, type: "metrics" | "dimensions") => {
+      removeBlock(blockId);
+      trackExplorationPlanEdited("manual", type);
+      setExpandedIds((prev) => {
+        if (prev.has(blockId)) {
+          const next = new Set(prev);
+          next.delete(blockId);
+          return next;
+        }
+        return prev;
+      });
+    },
+    [removeBlock],
+  );
+
   const handleStart = useCallback(async () => {
     const prompt = messages
       .filter((message) => message.role === "user")
@@ -273,10 +289,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
                   expanded={getIsExpanded(block.id)}
                   disabled={isManualDataPickingDisabled}
                   onToggleExpand={() => toggleExpanded(block.id)}
-                  onRemoveBlock={() => {
-                    removeBlock(block.id);
-                    trackExplorationPlanEdited("manual", "metrics");
-                  }}
+                  onRemoveBlock={() => handleRemoveBlock(block.id, "metrics")}
                   onToggleDimension={(dimensionId) => {
                     toggleDimensionSelected(block.id, dimensionId);
                     trackExplorationPlanEdited("manual", "dimensions");
@@ -289,10 +302,9 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
                   expanded={getIsExpanded(block.id)}
                   disabled={isManualDataPickingDisabled}
                   onToggleExpand={() => toggleExpanded(block.id)}
-                  onRemoveBlock={() => {
-                    removeBlock(block.id);
-                    trackExplorationPlanEdited("manual", "dimensions");
-                  }}
+                  onRemoveBlock={() =>
+                    handleRemoveBlock(block.id, "dimensions")
+                  }
                   onToggleMetric={(metricId) => {
                     toggleMetricSelected(block.id, metricId);
                     trackExplorationPlanEdited("manual", "metrics");

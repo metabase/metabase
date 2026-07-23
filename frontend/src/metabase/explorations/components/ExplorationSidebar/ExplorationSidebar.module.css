@@ -1,7 +1,3 @@
-.errorTooltip {
-  overflow-wrap: break-word;
-}
-
 .filterButton.filterButton {
   flex: none;
   border: 1px solid var(--mb-color-border-neutral);

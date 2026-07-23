@@ -61,7 +61,11 @@ export function AddDimensionsModal({
       filterDimensionGroupsBySearch(
         response?.dimension_groups ?? [],
         debouncedSearch,
-      ).filter((group) => !dimensionBlockIds.has(group.dimensions[0].id)),
+      ).filter(
+        (group) =>
+          group.dimensions.length > 0 && // BE ensures group.dimensions is not empty, but check again just in case
+          !dimensionBlockIds.has(group.dimensions[0].id),
+      ),
     [response, debouncedSearch, dimensionBlockIds],
   );
 
