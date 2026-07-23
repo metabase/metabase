@@ -3,11 +3,14 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollectionData,
   isEmptyStateData,
+  isSeedData,
   isTableData,
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
 import type { CollectionId } from "metabase-types/api";
+
+import { SeedRowMenu } from "../../seeds/components/SeedRowMenu";
 
 import { LibraryCollectionRowMenu } from "./LibraryCollectionRowMenu";
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
@@ -24,6 +27,10 @@ export function ActionCell(props: ActionCellProps) {
 
   if (isEmptyStateData(data)) {
     return null;
+  }
+
+  if (isSeedData(data)) {
+    return <SeedRowMenu seed={data} />;
   }
 
   if (isTableData(data)) {

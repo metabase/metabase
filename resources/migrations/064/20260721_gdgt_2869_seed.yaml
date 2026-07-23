@@ -1,0 +1,103 @@
+## Create the `seed` table for Data Studio seeds.
+##
+## A seed is a stably-named CSV that owns a derived warehouse table. The CSV is the
+## source of truth (it's what git versions via remote-sync); the warehouse table is a
+## reproducible materialization. `csv` holds the raw payload, `table_id` links the
+## table materialized on THIS instance (nullable: re-derived on pull), and the
+## sync bookkeeping columns mirror `data_app`.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.seed1
+      author: qnkhuat
+      comment: Create seed table for Data Studio seeds (git-synced reference CSVs)
+      changes:
+        - createTable:
+            tableName: seed
+            remarks: A stably-named CSV (source of truth) and the warehouse table it materializes into.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Stable slug; becomes the materialized table name and is what dependents reference.
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: unique_seed_name
+              - column:
+                  name: csv
+                  type: ${text.type}
+                  remarks: Raw CSV payload. The source of truth; the warehouse table is derived from it.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: csv_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex of the CSV bytes, used to skip no-op re-pushes.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The warehouse table this seed materialized into on this instance. NULL until (re)materialized.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The Library/Data collection the seed's table is published into.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Serdes portable identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+                    uniqueConstraintName: unique_seed_entity_id
+              - column:
+                  name: last_synced_sha
+                  type: varchar(40)
+                  remarks: Git commit SHA the CSV was last synced from. NULL until first sync.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: sync_error
+                  type: ${text.type}
+                  remarks: Error from the most recent failed materialization, NULL when the last one succeeded.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the seed was created.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the seed was last updated.
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: seed
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_seed_table_id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: seed
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_seed_collection_id
+            onDelete: SET NULL

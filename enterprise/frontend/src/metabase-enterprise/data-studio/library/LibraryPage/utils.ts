@@ -1,5 +1,8 @@
 import type { TreeItem } from "metabase/data-studio/common/types";
-import { isEmptyStateData } from "metabase/data-studio/common/utils";
+import {
+  isEmptyStateData,
+  isSeedData,
+} from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
 import type { Collection, CollectionType } from "metabase-types/api";
 
@@ -25,6 +28,10 @@ export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
 
   if (treeItem.model === "empty-state" || isEmptyStateData(treeItem.data)) {
     return null;
+  }
+  if (isSeedData(treeItem.data)) {
+    const { tableId } = treeItem.data;
+    return tableId != null ? Urls.dataStudioTable(tableId) : null;
   }
   // Unjustified type cast. FIXME
   const entityId = treeItem.data.id as number;

@@ -31,6 +31,10 @@ const getEmptyStateConfig = (
       description: t`Reusable bits of code that save your time`,
       actionLabel: t`New snippet`,
     },
+    seeds: {
+      description: t`Version-controlled reference tables loaded from CSV`,
+      actionLabel: t`New seed`,
+    },
   };
 
   return config[sectionType];
@@ -48,6 +52,8 @@ export const createEmptyStateItem = (
     actionUrl = Urls.newDataStudioMetric({ collectionId: collectionId });
   } else if (sectionType === "snippets" && !hideAction) {
     actionUrl = Urls.newDataStudioSnippet();
+  } else if (sectionType === "seeds" && !hideAction) {
+    actionUrl = Urls.dataStudioSeeds();
   }
   // "data" section opens a modal, so no actionUrl
 

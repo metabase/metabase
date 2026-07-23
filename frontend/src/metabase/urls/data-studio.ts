@@ -105,6 +105,10 @@ export function dataStudioTable(tableId: TableId) {
   return `${dataStudioLibrary()}/tables/${tableId}`;
 }
 
+export function dataStudioSeeds() {
+  return `${dataStudioLibrary()}/seeds`;
+}
+
 export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
   const baseUrl = `${dataStudioLibrary()}/tables/${tableId}/fields`;
   return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;

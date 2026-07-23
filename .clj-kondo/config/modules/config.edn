@@ -3130,18 +3130,20 @@
 
   enterprise/data-studio
   {:team "UX West"
-   :api  #{metabase-enterprise.data-studio.api}
+   :api  #{metabase-enterprise.data-studio.api metabase-enterprise.data-studio.seeds}
    :uses #{api
            collections
            events
            models
            permissions
            premium-features
+           upload
            util}
    :model-imports #{:model/Collection
                     :model/Dimension
                     :model/Field
-                    :model/Table}}
+                    :model/Table
+                    :model/User}}
 
   enterprise/database-replication
   {:team "Cloud"
@@ -3447,6 +3449,7 @@
            task-history
            util
            enterprise/data-apps
+           enterprise/data-studio
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}

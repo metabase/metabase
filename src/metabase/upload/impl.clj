@@ -561,8 +561,10 @@
          :generated-columns 0}))))
 
 (defn- create-from-csv-and-sync!
-  "This is separated from `create-csv-upload!` for testing"
-  [{:keys [db filename file schema table-name display-name]}]
+  "This is separated from `create-csv-upload!` for testing.
+  `data-source` tags the resulting table (`:upload` for uploads, `:seed` for seeds); defaults to `:upload`."
+  [{:keys [db filename file schema table-name display-name data-source]
+    :or   {data-source :upload}}]
   (driver.conn/with-write-connection
     (let [driver                  (driver.u/database->driver db)
           schema                  (some->> schema (ddl.i/format-name driver))
@@ -575,7 +577,7 @@
                                                           :display_name display-name})
           _set_is_upload          (t2/update! :model/Table (:id table) {:is_upload      true
                                                                         :data_authority :authoritative
-                                                                        :data_source    :upload
+                                                                        :data_source    data-source
                                                                         :is_writable    true})
           _sync                   (scan-and-sync-table! db table)
           _set_names              (set-display-names! (:id table) columns)
@@ -691,6 +693,63 @@
         (analytics.core/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                                 :event :csv-upload-failed))
         (throw e)))))
+
+(mu/defn create-csv-table!
+  "Materialize a CSV into a plain warehouse table with a caller-provided stable `table-name` and **no** model Card.
+
+  This is the seed path: same engine as [[create-csv-upload!]], but the table keeps its given name (uploads suffix a
+  timestamp) and nothing wraps it. Tags the table with `data-source` (`:seed`). Throws 400 if the name is already
+  taken. Returns the synced Table. Placing the table in the Library is the caller's job (enterprise-only)."
+  [{:keys [filename ^File file db-id schema-name table-name display-name data-source]
+    :or   {data-source :seed}}
+   :- [:map
+       [:filename :string]
+       [:file (ms/InstanceOfClass File)]
+       [:db-id ms/PositiveInt]
+       [:table-name :string]
+       [:schema-name {:optional true} [:maybe :string]]
+       [:display-name {:optional true} [:maybe :string]]
+       [:data-source {:optional true} :keyword]]]
+  (check-workspace-mode!)
+  (let [database (or (t2/select-one :model/Database :id db-id)
+                     (throw (ex-info (tru "The uploads database does not exist.")
+                                     {:status-code 422})))]
+    (check-can-create-upload database schema-name)
+    (check-filetype filename file)
+    (let [driver     (driver.u/database->driver database)
+          normalized (->> table-name (ddl.i/format-name driver) u/lower-case-en)]
+      (when (t2/exists? :model/Table :db_id db-id :schema schema-name :name normalized)
+        (throw (ex-info (tru "A table named {0} already exists." normalized)
+                        {:status-code 400})))
+      (let [{:keys [table]} (create-from-csv-and-sync! {:db           database
+                                                        :filename     filename
+                                                        :file         file
+                                                        :schema       schema-name
+                                                        :table-name   normalized
+                                                        :display-name (or (not-empty display-name) table-name)
+                                                        :data-source  data-source})]
+        table))))
+
+(mu/defn replace-csv-table!
+  "Full-refresh a CSV-backed table: drop the physical table and rebuild it from `file`, keeping the app-db Table row.
+  Any schema change is allowed since the table is recreated from scratch. Used by seeds (enterprise).
+  Not transactional: if rebuild fails after the drop, the physical table is gone but the Table row remains, and the caller owns recovery."
+  [{:keys [table filename ^File file]}
+   :- [:map
+       [:table :map]
+       [:filename :string]
+       [:file (ms/InstanceOfClass File)]]]
+  (check-workspace-mode!)
+  (let [database   (table/database table)
+        driver     (driver.u/database->driver database)
+        table-name (table-identifier table)]
+    (check-filetype filename file)
+    (driver.conn/with-write-connection
+      (driver/drop-table! driver (:id database) table-name)
+      (let [{:keys [columns]} (create-from-csv! driver database table-name filename file)]
+        (scan-and-sync-table! database table)
+        (set-display-names! (:id table) columns))))
+  (t2/select-one :model/Table :id (:id table)))
 
 ;;; +-----------------------------
 ;;; |  appending to uploaded table
