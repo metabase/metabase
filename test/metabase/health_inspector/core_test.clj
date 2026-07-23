@@ -23,14 +23,13 @@
       (is (= 100 (-> report :validate-queries :health))))))
 
 (deftest validate-queries*-works
-  ;; guarantees a template row exists: the raw :report_card copy below needs one even when this
-  ;; test runs in isolation
-  (mt/with-temp [:model/Card _template {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+  ;; the raw :report_card copy below clones this template, so the test works in isolation
+  (mt/with-temp [:model/Card template {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
     (let [bad-query {"database" 1
                      "query" {"expressions" "extremely invalid"
                               "source-table" 2}
                      "type" "query"}
-          bad-card (assoc (dissoc (t2/select-one :report_card) :id)
+          bad-card (assoc (dissoc (t2/select-one :report_card :id (:id template)) :id)
                           :entity_id (u/generate-nano-id)
                           :dataset_query (json/encode bad-query)
                           :description "bad query")
