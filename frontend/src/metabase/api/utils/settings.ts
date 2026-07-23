@@ -112,10 +112,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   // Read the value through `getSetting` so it resolves from the cache with a
   // synchronous fallback to the bootstrap (available before the fetch resolves),
   // the same as `useSetting`.
-  // Unjustified type cast. FIXME
-  const settingValue = useSelector((state) =>
-    getSetting(state, settingName),
-  ) as EnterpriseSettingValue<SettingName>;
+  const settingValue = useSelector((state) => getSetting(state, settingName));
 
   return {
     value: settingValue,

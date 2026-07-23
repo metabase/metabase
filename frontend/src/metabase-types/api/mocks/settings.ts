@@ -367,6 +367,8 @@ export const createMockSettings = (
   "saml-attribute-group": null,
   "saml-group-sync": null,
   "saml-group-mappings": null,
+  "jwt-group-mappings": null,
+  "oidc-group-mappings": null,
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",

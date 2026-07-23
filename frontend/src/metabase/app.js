@@ -108,12 +108,10 @@ function _init(reducers, getRoutes, callback) {
   registerVisualizations();
   registerDashboardVisualizations();
 
-  // Populate the settings cache on load for every app entry. The main app also
-  // keeps a live `useGetSettingsQuery` subscription in AppComponent (so setting
-  // mutations refetch), but the public and embed entries don't mount
-  // AppComponent — without this fetch their settings cache stays empty and
-  // `getSettings` falls back to the server-injected `window.MetabaseBootstrap`,
-  // missing anything only present in the session-properties response.
+  // Populate the settings cache on load for every app entry.
+  // The main app also keeps a live `useGetSettingsQuery` subscription in AppComponent,
+  // but the public and embed entries don't mount AppComponent/
+  // In RTK if there is no active subscriber, invalidating a tag does not trigger a refetch.
   store.dispatch(refetchSiteSettings());
 
   PLUGIN_APP_INIT_FUNCTIONS.forEach((init) => init());

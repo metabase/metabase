@@ -10,14 +10,14 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { GroupId, GroupInfo } from "metabase-types/api";
-import type { Settings } from "metabase-types/api/settings";
 
+import type { MappingSettingKey } from "./GroupMappingsWidgetView";
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 
 type GroupMappingsWidgetProps = {
-  mappingSetting: string;
+  mappingSetting: MappingSettingKey;
   [key: string]: unknown;
 };
 
@@ -27,11 +27,7 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
   const { data } = useListPermissionsGroupsQuery({});
   const allGroups = data ?? EMPTY_GROUP_LIST;
   const mappings = useSelector(
-    (state) =>
-      // Unjustified type cast. FIXME
-      (getSetting(state, props.mappingSetting as keyof Settings) as
-        | Record<string, GroupId[]>
-        | undefined) ?? {},
+    (state) => getSetting(state, props.mappingSetting) ?? {},
   );
 
   const [deletePermissionsGroup] = useDeletePermissionsGroupMutation();
@@ -46,19 +42,19 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
     [clearGroupMembership],
   );
   const handleUpdateSetting = useCallback(
-    async (args: { key: string; value: Record<string, GroupId[]> }) => {
-      // Unjustified type cast. FIXME
-      await updateSetting(args as Parameters<typeof updateSetting>[0]).unwrap();
-      // The table reads mappings from the session-properties cache. Patch the
-      // just-saved value in optimistically so it doesn't blink out between the
-      // PUT and the background invalidation refetch (which then confirms it).
+    async (args: {
+      key: MappingSettingKey;
+      value: Record<string, GroupId[]>;
+    }) => {
+      await updateSetting(args).unwrap();
+      // For this particular setting we don't need to fully wait for the refetch.
+      // So long as unwrap succeeds, we can update the cache to reflect the new value
       dispatch(
         sessionApi.util.updateQueryData(
           "getSessionProperties",
           undefined,
           (draft) => {
-            // Unjustified type cast. FIXME
-            (draft as Record<string, unknown>)[args.key] = args.value;
+            draft[args.key] = args.value;
           },
         ),
       );

@@ -13,20 +13,19 @@ export type QueryCacheSeed = {
  * the shared `Api`, without a live store. Use this to give a test server data
  * that the app reads from the query cache.
  *
- * Building the slice via `preloadedState` (rather than dispatching into a built
- * store) keeps it fully synchronous and per-store: no cross-test leakage, and
- * reads resolve on the first render.
+ * Building the slice via `preloadedState` keeps it fully synchronous and per-store:
+ * no cross-test leakage, and reads resolve on the first render.
  *
- * Note: a seeded entry is `fulfilled`, so `useXQuery` hooks won't refetch on
- * mount. A test that needs to assert a fetch happened should drive the query
- * explicitly (or not seed) instead.
+ * Note: a seeded entry is `fulfilled`, so `useXQuery` hooks won't refetch on mount.
+ * A test that needs to assert a fetch happened should drive the query
+ * explicitly, or not seed the cache, instead.
  */
 export function seedApiQueryCache(
   currentApiState: ApiState | undefined,
   entries: QueryCacheSeed[],
 ): ApiState {
   // endpointName/value are validated at runtime by RTK against the injected
-  // endpoint registry; the cast keeps this helper endpoint-agnostic.
+  // endpoint registry. The cast keeps this helper endpoint-agnostic.
   const upsertEntries = entries.map(({ endpointName, arg, value }) => ({
     endpointName,
     arg,
