@@ -96,7 +96,15 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     query_count,
     queries,
     feedback,
+    fork_boundary_message_id,
+    forked_from_conversation_id,
   } = conversation;
+
+  const forkBoundaryHref = forked_from_conversation_id
+    ? EnterpriseUrls.adminMetabotUsageAuditingConversation(
+        forked_from_conversation_id,
+      )
+    : undefined;
 
   return (
     <MetabotAdminLayout>
@@ -146,14 +154,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               debug
               readonly
               conversationId={convoId}
-              forkBoundaryMessageId={conversation.fork_boundary_message_id}
-              forkBoundaryHref={
-                conversation.forked_from_conversation_id
-                  ? EnterpriseUrls.adminMetabotUsageAuditingConversation(
-                      conversation.forked_from_conversation_id,
-                    )
-                  : undefined
-              }
+              forkBoundaryMessageId={fork_boundary_message_id}
+              forkBoundaryHref={forkBoundaryHref}
             />
           </Card>
         </Stack>
