@@ -7,6 +7,7 @@ interface MeasurementContainerOptions {
 }
 
 const DEFAULT_FONT_SIZE = "12.5px";
+export const MEASUREMENT_ROOT_CLASSNAME = "mb-measurement-root";
 
 export function createMeasurementContainer(
   options: MeasurementContainerOptions = {},
@@ -14,6 +15,7 @@ export function createMeasurementContainer(
   const { fontSize = DEFAULT_FONT_SIZE } = options;
 
   const container = document.createElement("div");
+  container.classList.add(MEASUREMENT_ROOT_CLASSNAME);
   container.style.position = "absolute";
   container.style.top = "-9999px";
   container.style.left = "-9999px";

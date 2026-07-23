@@ -12,6 +12,7 @@ import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/The
 import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
+import { Help } from "metabase/admin/help";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -34,29 +35,12 @@ import {
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
-import { Help } from "metabase/monitor/tools/components/Help";
-import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
-import { JobTriggersModal } from "metabase/monitor/tools/components/JobTriggersModal";
-import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
-import { Logs } from "metabase/monitor/tools/components/Logs";
 import {
-  ModelCachePage,
-  ModelCacheRefreshJobModal,
-} from "metabase/monitor/tools/components/ModelCacheRefreshJobs";
-import { ToolsApp } from "metabase/monitor/tools/components/ToolsApp";
-import { ToolsUpsell } from "metabase/monitor/tools/components/ToolsUpsell";
-import {
-  getNotificationsRoutes,
-  getTasksRoutes,
-} from "metabase/monitor/tools/routes";
-import {
-  PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AI_CONTROLS,
   PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
-  PLUGIN_DEPENDENCIES,
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
@@ -99,7 +83,6 @@ const RoutedRevisionHistoryApp = withRouteProps(RevisionHistoryApp);
 const RoutedGroupDetailApp = withRouteProps(GroupDetailApp);
 const RoutedAdminEmbeddingApp = withRouteProps(AdminEmbeddingApp);
 const RoutedEmbeddingThemeEditorApp = withRouteProps(EmbeddingThemeEditorApp);
-const RoutedToolsApp = withRouteProps(ToolsApp);
 const RoutedOAuthAuthorizationsPage = withRouteProps(OAuthAuthorizationsPage);
 
 export const getRoutes = (
@@ -371,44 +354,10 @@ export const getRoutes = (
           />
         )}
 
-        <Route
-          path="tools"
-          element={createElement(createAdminRouteGuard("tools"))}
-        >
-          <Route element={<RoutedToolsApp />}>
-            <Route index element={redirect("help")} />
-            <Route
-              key="error-overview"
-              path="errors"
-              // If the audit_app feature flag is present, our enterprise plugin system kicks in and we render the
-              // appropriate enterprise component. The upsell component is shown in all other cases.
-              element={createElement(
-                PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell,
-              )}
-            />
-            <Route path="model-caching" element={<ModelCachePage />}>
-              {modalRoute(":jobId", ModelCacheRefreshJobModal)}
-            </Route>
-            <Route path="help" element={<Help />}>
-              {PLUGIN_SUPPORT.isEnabled &&
-                modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
-            </Route>
-            <Route path="tasks">{getTasksRoutes()}</Route>
-            <Route path="notifications">{getNotificationsRoutes()}</Route>
-            <Route path="jobs" element={<JobInfoApp />}>
-              {modalRoute(":jobKey", JobTriggersModal, {
-                modalProps: { size: "85%" },
-              })}
-            </Route>
-            <Route path="logs" element={<Logs />}>
-              {modalRoute("levels", LogLevelsModal)}
-            </Route>
-            {PLUGIN_DEPENDENCIES.isEnabled && (
-              <Route
-                path="dependencies"
-                element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />}
-              />
-            )}
+        <Route element={createElement(createAdminRouteGuard("help"))}>
+          <Route path="help" element={<Help />}>
+            {PLUGIN_SUPPORT.isEnabled &&
+              modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
           </Route>
         </Route>
       </Route>

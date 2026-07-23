@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.transform-job]
    [metabase.transforms.models.transform-run]
    [metabase.transforms.models.transform-tag]
@@ -308,15 +309,42 @@
             (mt/user-http-request :lucky :delete 404 "transform-job/999999")))))))
 
 (deftest execute-job-test
-  (testing "POST /api/transform-job/:id/execute"
+  (testing "POST /api/transform-job/:id/run"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms-basic}
-        (mt/with-temp [:model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}]
-          (testing "Returns stub run response"
-            (let [response (mt/user-http-request :lucky :post 200 (str "transform-job/" (:id job) "/run"))]
-              (is (= "Job run started" (:message response)))
-              (is (string? (:job_run_id response)))
-              (is (re-matches #"stub-\d+-\d+" (:job_run_id response))))))))))
+        (testing "returns the created run id"
+          (mt/with-model-cleanup [:model/TransformJobRun]
+            (mt/with-temp [:model/TransformTag tag {:name "execute-test-tag"}
+                           :model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}
+                           :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                           :model/Transform transform {:name "To Run"}
+                           :model/TransformTransformTag _ {:transform_id (:id transform) :tag_id (:id tag) :position 0}]
+              (let [called (promise)]
+                (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                   (deliver called run-id)
+                                                                   {::jobs/status :succeeded})]
+                  (let [response (mt/user-http-request :lucky :post 202 (str "transform-job/" (:id job) "/run"))]
+                    (is (= "Job run started" (:message response)))
+                    (is (pos-int? (:job_run_id response)))
+                    (is (= (:job_run_id response) (deref called 5000 ::timed-out)))
+                    (let [run (t2/select-one :model/TransformJobRun :id (:job_run_id response))]
+                      (is (= (:id job) (:job_id run)))
+                      (testing "the job's name and entity_id are snapshotted on the run"
+                        (is (= "To Execute" (:job_name run)))
+                        (is (= (:entity_id job) (:job_entity_id run)))))))))))
+        (testing "returns a nil run id when the job has no transforms"
+          (mt/with-temp [:model/TransformJob job {:name "Empty Job" :schedule "0 0 0 * * ?"}]
+            (let [response (mt/user-http-request :lucky :post 202 (str "transform-job/" (:id job) "/run"))]
+              (is (nil? (:job_run_id response))))))
+        (testing "returns a nil run id when the job is already running"
+          (mt/with-temp [:model/TransformJob job {:name "Busy Job" :schedule "0 0 0 * * ?"}
+                         :model/TransformJobRun _ {:job_id     (:id job)
+                                                   :status     "started"
+                                                   :is_active  true
+                                                   :run_method "manual"
+                                                   :start_time (parse-instant "2025-09-01T10:00:00")}]
+            (let [response (mt/user-http-request :lucky :post 202 (str "transform-job/" (:id job) "/run"))]
+              (is (nil? (:job_run_id response))))))))))
 
 (deftest permissions-test
   (testing "All endpoints require transform permissions"
@@ -506,6 +534,70 @@
                                                           :start_time (parse-instant "2025-09-01T10:00:00")}]
         (mt/user-http-request :rasta :get 403
                               (str "transform-job/" job-id "/runs/" run-id "/transform-runs"))))))
+
+;;; +------------------------------------------------------------------------------------------------------------------+
+;;; |                                 POST /api/transform-job/:job-id/runs/:run-id/cancel                               |
+;;; +------------------------------------------------------------------------------------------------------------------+
+
+(deftest cancel-job-run-test
+  (testing "POST /api/transform-job/:job-id/runs/:run-id/cancel"
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (mt/with-premium-features #{:transforms-basic}
+        (testing "cancels an active job run and requests cancellation of its active members"
+          (mt/with-temp [:model/TransformJob {job-id :id} {:name "Cancel Job" :schedule "0 0 0 * * ?"}
+                         :model/TransformJobRun {run-id :id} {:job_id     job-id
+                                                              :status     "started"
+                                                              :is_active  true
+                                                              :run_method "manual"
+                                                              :start_time (parse-instant "2025-09-01T10:00:00")}
+                         :model/Transform {t1-id :id} {:name "TR1"}
+                         :model/TransformRun {member-id :id} {:transform_id t1-id
+                                                              :job_run_id   run-id
+                                                              :status       "started"
+                                                              :is_active    true
+                                                              :run_method   "cron"
+                                                              :start_time   (parse-instant "2025-09-01T10:00:00")
+                                                              :end_time     nil}]
+            (mt/user-http-request :lucky :post 204 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
+            (let [run (t2/select-one :model/TransformJobRun :id run-id)]
+              (is (= :canceled (:status run)))
+              (is (nil? (:is_active run)))
+              (is (some? (:end_time run))))
+            (testing "a cancelation row is recorded for the still-running member"
+              (is (t2/exists? :model/TransformRunCancelation :run_id member-id)))))
+        (testing "returns 400 when the run has already finished"
+          (mt/with-temp [:model/TransformJob {job-id :id} {:name "Cancel Job" :schedule "0 0 0 * * ?"}
+                         :model/TransformJobRun {run-id :id} {:job_id     job-id
+                                                              :status     "succeeded"
+                                                              :run_method "cron"
+                                                              :start_time (parse-instant "2025-09-01T10:00:00")
+                                                              :end_time   (parse-instant "2025-09-01T10:05:00")}]
+            (mt/user-http-request :lucky :post 400 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
+            (is (= :succeeded (:status (t2/select-one :model/TransformJobRun :id run-id)))
+                "a finished run is never resurrected into a canceled state")))
+        (testing "returns 404 for a non-existent job or run, or a run of another job"
+          (mt/with-temp [:model/TransformJob {job-id :id} {:name "Cancel Job" :schedule "0 0 0 * * ?"}
+                         :model/TransformJob {other-job-id :id} {:name "Other Job" :schedule "0 0 0 * * ?"}
+                         :model/TransformJobRun {run-id :id} {:job_id     job-id
+                                                              :status     "started"
+                                                              :is_active  true
+                                                              :run_method "manual"
+                                                              :start_time (parse-instant "2025-09-01T10:00:00")}]
+            (mt/user-http-request :lucky :post 404 (str "transform-job/999999/runs/" run-id "/cancel"))
+            (mt/user-http-request :lucky :post 404 (str "transform-job/" job-id "/runs/999999/cancel"))
+            (mt/user-http-request :lucky :post 404 (str "transform-job/" other-job-id "/runs/" run-id "/cancel"))))))))
+
+(deftest cancel-job-run-requires-write-permission-test
+  (testing "POST /api/transform-job/:job-id/runs/:run-id/cancel requires write permission on the job"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob {job-id :id} {:name "Auth Test" :schedule "0 0 0 * * ?"}
+                     :model/TransformJobRun {run-id :id} {:job_id     job-id
+                                                          :status     "started"
+                                                          :is_active  true
+                                                          :run_method "manual"
+                                                          :start_time (parse-instant "2025-09-01T10:00:00")}]
+        (mt/user-http-request :rasta :post 403
+                              (str "transform-job/" job-id "/runs/" run-id "/cancel"))))))
 
 (deftest built-in-jobs-and-tags-seeded-test
   (testing "the built-in Hourly/Daily/Weekly/Monthly jobs and tags are pre-seeded (migration data)"

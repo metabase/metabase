@@ -124,10 +124,12 @@
              :visualization_settings {}}))
 
    :model/Collection
-   (fn [_] (default-created-at-timestamped {:name (u.random/random-name)}))
+   (fn [_] (default-created-at-timestamped {:entity_id (u/generate-nano-id)
+                                            :name (u.random/random-name)}))
 
    :model/Action
-   (fn [_] {:creator_id (rasta-id)})
+   (fn [_] {:creator_id (rasta-id)
+            :entity_id (u/generate-nano-id)})
 
    :model/Channel
    (fn [_] (default-timestamped
@@ -149,12 +151,14 @@
    :model/Dashboard
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
+             :entity_id (u/generate-nano-id)
              :name (u.random/random-name)}))
 
    :model/DashboardCard
    (fn [_] (default-timestamped
             {:row 0
              :col 0
+             :entity_id (u/generate-nano-id)
              :size_x 4
              :size_y 4}))
 
@@ -164,7 +168,8 @@
    :model/DashboardTab
    (fn [_]
      (default-timestamped
-      {:name (u.random/random-name)
+      {:entity_id (u/generate-nano-id)
+       :name (u.random/random-name)
        :position 0}))
 
    :model/Database
@@ -179,12 +184,14 @@
 
    :model/Dimension
    (fn [_] (default-timestamped
-            {:name (u.random/random-name)
+            {:entity_id (u/generate-nano-id)
+             :name (u.random/random-name)
              :type "internal"}))
 
    :model/Document
    (fn [_] (default-timestamped
-            {:name (u.random/random-name)
+            {:entity_id (u/generate-nano-id)
+             :name (u.random/random-name)
              :document {:type "doc"
                         :content [{:attrs {:_id (str (random-uuid))}
                                    :type "paragraph"
@@ -215,6 +222,7 @@
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
              :definition {}
+             :entity_id (u/generate-nano-id)
              :name "Mock Measure"
              :table_id (data/id :checkins)}))
 
@@ -240,6 +248,7 @@
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
+             :entity_id (u/generate-nano-id)
              :name (u.random/random-name)
              :content "1 = 1"}))
 
@@ -281,7 +290,8 @@
             :creator_id (rasta-id)})
 
    :model/PermissionsGroup
-   (fn [_] {:name (u.random/random-name)})
+   (fn [_] {:entity_id (u/generate-nano-id)
+            :name (u.random/random-name)})
 
    :model/PermissionsGroupMembership
    (fn [_] {:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships true})
@@ -289,10 +299,12 @@
    :model/Pulse
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
+             :entity_id (u/generate-nano-id)
              :name (u.random/random-name)}))
 
    :model/PulseCard
    (fn [_] {:position 0
+            :entity_id (u/generate-nano-id)
             :include_csv false
             :include_xls false})
 
@@ -300,6 +312,7 @@
    (fn [_] (default-timestamped
             {:channel_type :email
              :details {}
+             :entity_id (u/generate-nano-id)
              :schedule_type :daily
              :schedule_hour 15}))
 
@@ -314,6 +327,7 @@
             {:creator_id (rasta-id)
              :definition {}
              :description "Lookin' for a blueberry"
+             :entity_id (u/generate-nano-id)
              :name "Toucans in the rainforest"
              :table_id (data/id :checkins)}))
 
@@ -340,7 +354,8 @@
    :model/Timeline
    (fn [_]
      (default-timestamped
-      {:name "Timeline of bird squawks"
+      {:entity_id (u/generate-nano-id)
+       :name "Timeline of bird squawks"
        :default false
        :icon timeline-event/default-icon
        :creator_id (rasta-id)}))
@@ -357,7 +372,8 @@
 
    :model/Transform
    (fn [_]
-     {:name (str "Test Transform " (u/generate-nano-id))
+     {:entity_id (u/generate-nano-id)
+      :name (str "Test Transform " (u/generate-nano-id))
       :source {:type  "query"
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
@@ -367,7 +383,8 @@
    :model/TransformJob
    (fn [_]
      (default-timestamped
-      {:name            (str "Test Transform Job " (u/generate-nano-id))
+      {:entity_id       (u/generate-nano-id)
+       :name            (str "Test Transform Job " (u/generate-nano-id))
        :schedule        "0 0 * * * ?"
        :ui_display_type :cron/raw}))
 
@@ -381,7 +398,8 @@
    :model/TransformTag
    (fn [_]
      (default-timestamped
-      {:name (str "test-tag-" (u/generate-nano-id))}))
+      {:entity_id (u/generate-nano-id)
+       :name (str "test-tag-" (u/generate-nano-id))}))
 
    :model/Tenant
    (fn [_]
@@ -392,6 +410,7 @@
    (fn [_] {:first_name (u.random/random-name)
             :last_name (u.random/random-name)
             :email (u.random/random-email)
+            :entity_id (u/generate-nano-id)
             :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
             :updated_at (t/zoned-date-time)})

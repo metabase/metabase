@@ -7,6 +7,7 @@ import {
 } from "react-router-v7";
 
 import { type RouterLinkProps, V3RouterLink } from "./react-router";
+import { queryToSearch } from "./v7/location";
 
 /**
  * The app's `<Link>`, engine-aware.
@@ -25,19 +26,43 @@ type V3To = RouterLinkProps["to"];
 // v3 descriptors carry the query as a `query` object and `state` inline; v7 uses
 // a `search` string and a separate `state` prop. Translate so existing call sites
 // keep working on v7.
+/**
+ * v3 resolved a bare path against the root, so call sites write `to="reference"`
+ * meaning `/reference`. v7 resolves it against the current route instead, which
+ * would nest it (that link sits on `/browse/databases`). Anchor it so the target
+ * does not depend on where the link is rendered.
+ *
+ * Left alone: a leading `?` or `#`, which keeps the current path by design, and
+ * anything carrying a scheme (`https:`, `mailto:`) or a protocol-relative `//`,
+ * which is not a route at all.
+ */
+function toRootRelative(pathname: string): string {
+  const isAlreadyAnchored = pathname === "" || /^[/?#]/.test(pathname);
+  const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(pathname);
+  return isAlreadyAnchored || hasScheme ? pathname : `/${pathname}`;
+}
+
 function toV7Target(to: V3To): { to: V7LinkProps["to"]; state?: unknown } {
-  if (to == null || typeof to === "string") {
-    return { to: to ?? "" };
+  if (to == null) {
+    return { to: "" };
+  }
+  if (typeof to === "string") {
+    return { to: toRootRelative(to) };
   }
   if (typeof to === "function") {
     // v3's function form of `to` has no v7 analog and is not used in the app.
     return { to: "" };
   }
   const { pathname, search, hash, query, state } = to;
-  const searchString =
-    search ?? (query ? `?${new URLSearchParams(query).toString()}` : undefined);
+  // `query` wins over `search`, matching history@3: call sites build
+  // `{ ...location, query }`, where the spread carries a stale `search`.
+  const searchString = query ? queryToSearch(query) : search;
   return {
-    to: { pathname: pathname ?? "", search: searchString, hash },
+    to: {
+      pathname: pathname == null ? "" : toRootRelative(pathname),
+      search: searchString,
+      hash,
+    },
     state,
   };
 }
@@ -63,12 +88,13 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
       const { activeClassName, activeStyle, onlyActiveOnIndex, ...rest } =
         props;
 
-      // A `<Link>` with no destination is used as a button: it navigates through
-      // its `onClick`. v7's `<Link>` would additionally navigate to the current
-      // route on click, clobbering any push the handler performs, so render a
-      // plain anchor instead. On v3 this matches `router.push(undefined)`, which
-      // is a no-op, so only the handler runs.
-      if (to == null) {
+      // A `<Link>` with no destination (`to` null or `""`) is used as a button: it
+      // navigates through its `onClick`. v7's `<Link>` would additionally navigate
+      // on click (an empty `to` resolves to the current route, or `/` from a
+      // top-level portal like a toast), clobbering any push the handler performs,
+      // so render a plain anchor instead. On v3 this matches `router.push("")` /
+      // `router.push(undefined)`, which are no-ops, so only the handler runs.
+      if (to == null || to === "") {
         return <a {...rest} ref={linkRef} />;
       }
 
@@ -85,6 +111,7 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
             {...navRest}
             to={v7To}
             state={state}
+            replace={false}
             ref={linkRef}
             end={onlyActiveOnIndex}
             className={({ isActive }) =>
@@ -99,7 +126,19 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
         );
       }
 
-      return <V7Link {...rest} to={v7To} state={state} ref={linkRef} />;
+      // v7's `<Link>` silently downgrades a click to a `replace` when the target
+      // equals the current URL. v3 always pushed, and call sites rely on it: the
+      // "New document" menu item links to `/document/new` from `/document/new`,
+      // and the unsaved-changes prompt keys off the new location. Push always.
+      return (
+        <V7Link
+          {...rest}
+          to={v7To}
+          state={state}
+          replace={false}
+          ref={linkRef}
+        />
+      );
     }
 
     return (

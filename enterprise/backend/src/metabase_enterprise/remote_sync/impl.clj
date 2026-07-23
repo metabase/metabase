@@ -321,9 +321,9 @@
   ;; `read-file` returns file text (a string) or nil; data-apps.sync converts to
   ;; bytes on its side, keeping all Java interop out of this namespace.
   (data-apps.sync/sync-from-snapshot!
-   {:read-file  (fn [path] (source.p/read-file snapshot path))
-    :list-files (fn [] (source.p/list-files snapshot))
-    :sha        (source.p/version snapshot)}))
+   {:read-file (fn [path] (source.p/read-file snapshot path))
+    :list-dir  (fn [path] (source.p/list-dir snapshot path))
+    :sha       (source.p/version snapshot)}))
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
@@ -460,7 +460,7 @@
                         (serdes/with-cache
                           (serialization/load-metabase!
                            (source.ingestable/wrap-progress-ingestable task-id 0.7 ingestable)
-                           :backfill? false :reindex? false)))
+                           :reindex? false)))
         imported-data (spec/extract-imported-entities (:seen load-result))
         loaded-eid?   (fn [model-type eid]
                         ;; by-entity-id holds sets of raw entity_id strings, keyed by model type
@@ -845,11 +845,12 @@
   Return:
     - [[row entity]] (if no entity, then omit)"
   [{:keys [model_type rows]}]
-  (let [id->row (u/index-by :model_id rows)
-        opts    {:where [:in :id (mapv :model_id rows)] :skip-archived true}]
+  (let [pk-col  (spec/pk-col model_type)
+        id->row (u/index-by :model_id rows)
+        opts    {:where [:in pk-col (mapv :model_id rows)] :skip-archived true}]
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
     (into [] (keep (fn [instance]
-                     (when-let [row (id->row (:id instance))]
+                     (when-let [row (id->row (get instance pk-col))]
                        [row (serdes/extract-one model_type opts instance)])))
           (serdes/extract-query model_type opts))))
 
