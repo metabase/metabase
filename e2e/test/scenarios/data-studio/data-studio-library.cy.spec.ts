@@ -627,8 +627,6 @@ describe("scenarios > data studio > library", () => {
           name: "Parent Folder",
           parent_id: dataCollection.id,
         }).then((parent) => {
-          // A published table (which has no ancestor path of its own) and a
-          // nested folder, both living inside Parent Folder.
           H.publishTables({ table_ids: [ORDERS_ID], collection_id: parent.id });
           createLibraryCollection({
             name: "Child Folder",
@@ -648,8 +646,6 @@ describe("scenarios > data studio > library", () => {
       bulkBar().findByText("1 item selected").should("be.visible");
       H.DataStudio.Library.selectRow("Parent Folder");
 
-      // Both descendants stay checked but disabled — the published table is
-      // subsumed despite carrying no location path.
       H.DataStudio.Library.rowCheckbox("Orders").should("be.checked");
       H.DataStudio.Library.rowCheckbox("Orders").should("be.disabled");
       H.DataStudio.Library.result("Orders").should(
@@ -658,8 +654,7 @@ describe("scenarios > data studio > library", () => {
       );
       H.DataStudio.Library.rowCheckbox("Child Folder").should("be.checked");
       H.DataStudio.Library.rowCheckbox("Child Folder").should("be.disabled");
-      // The count reflects only the actual selection: the table folds into the
-      // parent rather than adding to it.
+      // The count reflects only the top level items selected
       bulkBar().findByText("1 item selected").should("be.visible");
 
       cy.log(
@@ -677,9 +672,6 @@ describe("scenarios > data studio > library", () => {
         "aria-level",
         "3",
       );
-      // The table and folder are still one level below Parent Folder (level 4),
-      // not flattened into siblings directly under Target Folder.
-      H.DataStudio.Library.expandCollection("Parent Folder");
       H.DataStudio.Library.result("Orders").should(
         "have.attr",
         "aria-level",
