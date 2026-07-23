@@ -161,67 +161,79 @@
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
 
+  Options:
+  - `:attached?` whether this card's results are exported as a file attachment. Attached cards run to the
+    attachment row limit; body-only cards get the interactive display limits since only a preview is rendered.
+
   This function should be executed under pulse's creator permissions."
-  [{:keys [card_id dashboard_id] :as dashcard} parameters]
-  (log/with-context {:card_id card_id}
-    (try
-      (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
-        (let [multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
-              result-fn      (fn [card-id]
-                               {:card     (if (= card-id (:id card))
-                                            card
-                                            (t2/select-one :model/Card :id card-id))
-                                :dashcard dashcard
-                                ;; TODO should this be dashcard?
-                                :type     :card
-                                :result   (-> (qp.dashboard/process-query-for-dashcard
-                                               :dashboard-id  dashboard_id
-                                               :card-id       card-id
-                                               :dashcard-id   (u/the-id dashcard)
-                                               :context       :dashboard-subscription
-                                               :export-format :api
-                                               :parameters    parameters
-                                               :constraints   {}
-                                               :middleware    {:process-viz-settings?             true
-                                                               :js-int-to-string?                 false
-                                                               :add-default-userland-constraints? false}
-                                               :make-run      (fn make-run [qp _export-format]
-                                                                (^:once fn* [query info]
-                                                                  (qp
-                                                                   (qp/userland-query query info)
-                                                               ;; Pass streaming rff with 2000 row threshold
-                                                                   (notification.temp-storage/notification-rff
-                                                                    cells-to-disk-threshold
-                                                                    {:dashboard_id dashboard_id
-                                                                     :card_id card-id
-                                                                     :dashcard_id (u/the-id dashcard)})))))
-                                              fixup-viz-settings
-                                              format-qp-result)})
-              result         (result-fn card_id)
-              series-results (mapv (comp result-fn :id) multi-cards)]
-          (log/debugf "Dashcard has %d series" (count multi-cards))
-          (log/debugf "Result has %d rows" (-> result :result :row_count))
-          (doseq [series-result series-results]
-            (log/with-context {:series_card_id (-> series-result :card :id)}
-              (log/debugf "Series result has %d rows" (-> series-result :result :row_count))))
-          (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
-                         (is-card-empty? (assoc card :result (:result result))))
-            (update result :dashcard assoc :series-results series-results))))
-      (catch Throwable e
-        (log/warnf e "Error running query for Card %s" (:card_id dashcard))))))
+  ([dashcard parameters]
+   (execute-dashboard-subscription-card dashcard parameters nil))
+  ([{:keys [card_id dashboard_id] :as dashcard} parameters {:keys [attached?]}]
+   (log/with-context {:card_id card_id}
+     (try
+       (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
+         (let [multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
+               result-fn      (fn [card-id]
+                                (let [card             (if (= card-id (:id card))
+                                                         card
+                                                         (t2/select-one :model/Card :id card-id))
+                                      attached-result? (and attached? (= card-id card_id))]
+                                  {:card     card
+                                   :dashcard dashcard
+                                   ;; TODO should this be dashcard?
+                                   :type     :card
+                                   :result   (-> (qp.dashboard/process-query-for-dashcard
+                                                  :dashboard-id  dashboard_id
+                                                  :card-id       card-id
+                                                  :dashcard-id   (u/the-id dashcard)
+                                                  :context       :dashboard-subscription
+                                                  :export-format :api
+                                                  :parameters    parameters
+                                                  :constraints   {}
+                                                  :middleware    {:process-viz-settings?             true
+                                                                  :js-int-to-string?                 false
+                                                                  ;; body-only cards only render a preview, so cap
+                                                                  ;; them at the interactive display limits;
+                                                                  ;; attachments need the full result
+                                                                  :add-default-userland-constraints? (not attached-result?)}
+                                                  :make-run      (fn make-run [qp _export-format]
+                                                                   (^:once fn* [query info]
+                                                                     (qp
+                                                                      (qp/userland-query query info)
+                                                                      ;; Pass streaming rff with 2000 row threshold
+                                                                      (notification.temp-storage/notification-rff
+                                                                       cells-to-disk-threshold
+                                                                       {:dashboard_id dashboard_id
+                                                                        :card_id card-id
+                                                                        :dashcard_id (u/the-id dashcard)})))))
+                                                 fixup-viz-settings
+                                                 format-qp-result)}))
+               result         (result-fn card_id)
+               series-results (mapv (comp result-fn :id) multi-cards)]
+           (log/debugf "Dashcard has %d series" (count multi-cards))
+           (log/debugf "Result has %d rows" (-> result :result :row_count))
+           (doseq [series-result series-results]
+             (log/with-context {:series_card_id (-> series-result :card :id)}
+               (log/debugf "Series result has %d rows" (-> series-result :result :row_count))))
+           (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
+                          (is-card-empty? (assoc card :result (:result result))))
+             (update result :dashcard assoc :series-results series-results))))
+       (catch Throwable e
+         (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))))
 
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
 
   The result will follow the pulse's creator permissions."
-  [dashcard parameters]
+  [dashcard parameters {:keys [attached-card-ids]}]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
     (log/with-context {:card_id (:card_id dashcard)}
       (let [parameters (merge-default-values parameters)]
         ;; Streaming to disk is now handled by the query processor rff
-        (-> (execute-dashboard-subscription-card dashcard parameters)
+        (-> (execute-dashboard-subscription-card dashcard parameters
+                                                 {:attached? (contains? attached-card-ids (:card_id dashcard))})
             (m/update-existing :dashcard resolve-inline-parameters parameters))))
 
     (virtual-card-of-type? dashcard "iframe")
@@ -254,9 +266,9 @@
               (assoc :type :text)))))
 
 (defn- dashcards->part
-  [dashcards parameters]
+  [dashcards parameters opts]
   (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
-    (doall (keep #(dashcard->part % parameters) ordered-dashcards))))
+    (doall (keep #(dashcard->part % parameters opts) ordered-dashcards))))
 
 (mr/def ::Part
   "Part."
@@ -279,10 +291,12 @@
 
   Options:
   - `:only-card-ids` when set, only dashcards whose :card_id is in this set are executed (e.g. attachment-only
-    subscriptions that never render the other cards)."
+    subscriptions that never render the other cards).
+  - `:attached-card-ids` cards whose results are exported as file attachments; they run to the attachment row limit
+    while the rest get the interactive display limits."
   ([dashboard-id user-id parameters]
    (execute-dashboard dashboard-id user-id parameters nil))
-  ([dashboard-id user-id parameters {:keys [only-card-ids]}]
+  ([dashboard-id user-id parameters {:keys [only-card-ids] :as opts}]
    (let [keep-dashcards (fn [dashcards]
                           (cond->> dashcards
                             only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
@@ -299,10 +313,10 @@
                                (concat
                                 (when should-render-tab?
                                   [(tab->part tab)])
-                                (dashcards->part cards parameters)))))))
+                                (dashcards->part cards parameters opts)))))))
          (let [dashcards (keep-dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id))]
            (log/debugf "Rendering dashboard with %d cards" (count dashcards))
-           (dashcards->part dashcards parameters)))))))
+           (dashcards->part dashcards parameters opts)))))))
 
 (mu/defn execute-card :- [:maybe ::Part]
   "Returns the result for a card."

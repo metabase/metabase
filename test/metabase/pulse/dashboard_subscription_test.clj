@@ -1404,9 +1404,9 @@
   (let [executed (atom [])
         orig     @#'notification.payload.execute/execute-dashboard-subscription-card]
     (with-redefs [notification.payload.execute/execute-dashboard-subscription-card
-                  (fn [dashcard parameters]
+                  (fn [dashcard parameters opts]
                     (swap! executed conj (:card_id dashcard))
-                    (orig dashcard parameters))]
+                    (orig dashcard parameters opts))]
       (f))
     executed))
 
@@ -1446,3 +1446,36 @@
                           #(pulse.test-util/with-captured-channel-send-messages!
                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
             (is (= #{attached-id other-id} (set @executed)))))))))
+
+(deftest dashboard-sub-body-only-cards-use-display-limit-test
+  (testing "cards not selected for attachment get the interactive display limit; attached cards keep the attachment limit (GDGT-2773)"
+    (mt/with-temp [:model/Card          {attached-id :id}  {:name          "Attached Card"
+                                                            :dataset_query (mt/mbql-query orders)}
+                   :model/Card          {body-only-id :id} {:name          "Body Only Card"
+                                                            :dataset_query (mt/mbql-query orders)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id attached-id}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id body-only-id}
+                   :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                        :dashboard_id dashboard-id}
+                   :model/PulseCard     _ {:pulse_id    pulse-id
+                                           :card_id     attached-id
+                                           :position    0
+                                           :include_csv true}
+                   :model/PulseCard     _ {:pulse_id pulse-id
+                                           :card_id  body-only-id
+                                           :position 1}
+                   :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                     :channel_type "email"}
+                   :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                   :pulse_channel_id pc-id}]
+      (let [row-counts (atom {})
+            orig       @#'notification.payload.execute/execute-dashboard-subscription-card]
+        (with-redefs [notification.payload.execute/execute-dashboard-subscription-card
+                      (fn [dashcard parameters opts]
+                        (u/prog1 (orig dashcard parameters opts)
+                          (swap! row-counts assoc (:card_id dashcard) (-> <> :result :row_count))))]
+          (pulse.test-util/with-captured-channel-send-messages!
+            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))
+        (is (< 2000 (get @row-counts attached-id)) "attached card runs to the attachment limit")
+        (is (= 2000 (get @row-counts body-only-id)) "body-only card gets the interactive display limit")))))
