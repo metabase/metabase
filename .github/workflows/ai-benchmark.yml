@@ -30,6 +30,10 @@ on:
         required: false
         default: ""
 
+concurrency:
+  group: evals-dispatch-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   announce:
     if: >-
@@ -83,17 +87,19 @@ jobs:
       - name: Resolve evals branch
         id: branch
         run: |
-          value="$(tr -d '\r' < .evals_branch 2>/dev/null | head -n1)"
+          value="$(head -n1 .evals_branch 2>/dev/null | tr -d '[:space:]')"
           echo "value=${value:-main}" >> "$GITHUB_OUTPUT"
       - name: Dispatch smoke eval-run
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           EVALS_BRANCH: ${{ steps.branch.outputs.value }}
         run: |
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
             -f ref="$EVALS_BRANCH" \
             -f "inputs[pr]=$PR" \
+            -f "inputs[ref]=$HEAD_SHA" \
             -f "inputs[scope]=smoke" \
             -f "inputs[sample]=5" \
             -f "inputs[evals_branch]=$EVALS_BRANCH" \
@@ -108,6 +114,8 @@ jobs:
     timeout-minutes: 5
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
+      SMOKE_RESULT: ${{ needs.smoke.result }}
+      UBERJAR_RESULT: ${{ needs.uberjar.result }}
     steps:
       - name: Comment (build/dispatch failed)
         uses: actions/github-script@v9
@@ -115,7 +123,11 @@ jobs:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const body = `🤖 **Evals smoke** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
+            // A concurrency-cancelled retrigger lands here too; don't stamp it as an infra failure.
+            const cancelled = [process.env.SMOKE_RESULT, process.env.UBERJAR_RESULT].includes('cancelled');
+            const body = cancelled
+              ? `🤖 **Evals smoke** — ⚪ cancelled before evals started ([logs](${runUrl}))`
+              : `🤖 **Evals smoke** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
             await github.rest.issues.updateComment({
               owner: context.repo.owner, repo: context.repo.repo,
               comment_id: Number(process.env.COMMENT_ID), body });
@@ -135,7 +147,7 @@ jobs:
         env:
           INPUT_BRANCH: ${{ inputs.evals_branch }}
         run: |
-          value="${INPUT_BRANCH:-$(tr -d '\r' < .evals_branch 2>/dev/null | head -n1)}"
+          value="${INPUT_BRANCH:-$(head -n1 .evals_branch 2>/dev/null | tr -d '[:space:]')}"
           echo "value=${value:-main}" >> "$GITHUB_OUTPUT"
       - name: Dispatch eval-run
         env:
@@ -151,5 +163,5 @@ jobs:
             -f "inputs[pr]=$PR" \
             -f "inputs[ref]=$REF" \
             -f "inputs[scope]=$SCOPE" \
-            -f "inputs[sample]=$SAMPLE" \
+            -f "inputs[sample]=${SAMPLE:-5}" \
             -f "inputs[evals_branch]=$EVALS_BRANCH"
