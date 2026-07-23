@@ -30,16 +30,14 @@
   "The created/updated row echoed to the caller: `kind`'s concise read projection — so the echo
    and a concise get_content read carry the same identity fields by construction — plus
    `:entity_id` (a portable id to update by) and `:definition`, the stored MBQL 5 shape, so the
-   caller sees the result of any input conversion. Nils drop out: an unset description is omitted,
-   not null."
+   caller sees the result of any input conversion. The concise projection already drops its own
+   nil-valued keys, so an unset description is omitted rather than echoed as null."
   [row kind]
   ;; The :segment/:measure projections are registered by metabase.mcp.v2.tools.content, which
   ;; metabase.mcp.v2.api loads alongside this ns — so the registry is populated before any tool
   ;; dispatch reaches here.
-  (->> (-> (projections/project kind :concise row)
-           (assoc :entity_id  (:entity_id row)
-                  :definition (some-> (:definition row) lib/prepare-for-serialization)))
-       (m/remove-vals nil?)))
+  (cond-> (assoc (projections/project kind :concise row) :entity_id (:entity_id row))
+    (:definition row) (assoc :definition (lib/prepare-for-serialization (:definition row)))))
 
 (defn- resolve-table
   "Resolve a numeric `table_id` behind the table's read check. \"Doesn't exist\" and \"exists but
