@@ -138,19 +138,45 @@ jobs:
     - name: Check JAR version properties
       run: |
         # ensure actual jar checksum matches checksum file
-        grep -q $(sha256sum ./metabase.jar) SHA256.sum && echo "checksums match" || (echo "checksum mismatch" && exit 1)
+        jar_checksum=$(sha256sum ./metabase.jar | cut -d ' ' -f 1)
+        if grep -q "$jar_checksum" SHA256.sum; then
+          echo "checksums match"
+        else
+          echo "checksum mismatch"
+          exit 1
+        fi
 
         # ensure stored commit-id file matches input commit
-        grep -q ${{ inputs.commit }} COMMIT-ID && echo "commit ids match" || (echo "commit-id mismatch" && exit 1)
+        if grep -q "${{ inputs.commit }}" COMMIT-ID; then
+          echo "commit ids match"
+        else
+          echo "commit-id mismatch"
+          exit 1
+        fi
 
         # ensure version.properties partial commit matches commit input
-        grep -q $(cut -c 1-7 <<< ${{ inputs.commit }}) version.properties && echo "version.properties commit matches" || (echo "version.properties commit mismatch" && exit 1)
+        if grep -q "$(cut -c 1-7 <<< '${{ inputs.commit }}')" version.properties; then
+          echo "version.properties commit matches"
+        else
+          echo "version.properties commit mismatch"
+          exit 1
+        fi
 
         # ensure version.properties version number matches input version (without v0/v1 to make it ee/oss agnostic)
-        grep -q $(cut -c 3-99 <<< ${{ inputs.version }}) version.properties && echo "version.properties version number matches" || (echo "version.properties version number mismatch" && exit 1)
+        if grep -q "$(cut -c 3-99 <<< '${{ inputs.version }}')" version.properties; then
+          echo "version.properties version number matches"
+        else
+          echo "version.properties version number mismatch"
+          exit 1
+        fi
 
         # ensure the build is not a snapshot build
-        grep -q "SNAPSHOT" version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
+        if grep -q "SNAPSHOT" version.properties; then
+          echo "jar is a snapshot"
+          exit 1
+        else
+          echo "jar is not a snapshot build"
+        fi
     - name: Upload Uberjar as artifact
       uses: actions/upload-artifact@v7
       with:
@@ -244,7 +270,7 @@ jobs:
       run:
         curl -L http://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}.s3.${{ vars.AWS_REGION }}.amazonaws.com/${{ steps.version_path.outputs.result }}/metabase.jar -o metabase-downloaded.jar
     - name: Verify Checksum
-      run: grep -q $(sha256sum ./metabase-downloaded.jar) SHA256.sum && echo "checksums match" || exit 1
+      run: grep -q "$(sha256sum ./metabase-downloaded.jar | cut -d ' ' -f 1)" SHA256.sum && echo "checksums match" || exit 1
 
   containerize-oss:
     needs: check-version
@@ -255,7 +281,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}
       tag: ${{ needs.check-version.outputs.oss }}
-      release: "true"
+      release: ${{ 'true' }}
 
   containerize-ee:
     needs: check-version
@@ -266,7 +292,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}-enterprise
       tag: ${{ needs.check-version.outputs.ee }}
-      release: "true"
+      release: ${{ 'true' }}
 
   push-tags:
     needs: [verify-s3-download, containerize-oss, containerize-ee, check-version]
