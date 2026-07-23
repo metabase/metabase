@@ -33,4 +33,19 @@ describe("Embedding SDK: data-app dev server", () => {
       .findAllByTestId("cell-data")
       .should("have.length.greaterThan", 0);
   });
+
+  it("sandboxes network requests but permits allowed_hosts", () => {
+    cy.intercept("https://allowed.data-app.test/**").as("allowedRequest");
+    cy.intercept("https://blocked.data-app.test/**").as("blockedRequest");
+
+    cy.visit(CLIENT_HOST);
+
+    // The allowed host (in data_app.yaml) reaches the network; the other never
+    // does — the sandbox rejects it before a request is made.
+    cy.get("@allowedRequest.all", { timeout: TIMEOUT_MS }).should(
+      "have.length.at.least",
+      1,
+    );
+    cy.get("@blockedRequest.all").should("have.length", 0);
+  });
 });

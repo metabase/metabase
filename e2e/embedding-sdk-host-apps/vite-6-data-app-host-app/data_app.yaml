@@ -1,2 +1,4 @@
 name: Vite 6 Data App
 path: ./dist/index.js
+allowed_hosts:
+  - https://allowed.data-app.test
