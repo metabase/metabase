@@ -1038,7 +1038,12 @@
   (when (seq entity-ids)
     (let [;; Get select fields from spec, with :id always included
           select-fields (into [:id] (or (:select-fields tracking) [:name :collection_id]))
-          entities (t2/select (into [model-key] select-fields) :entity_id [:in entity-ids])]
+          ;; entity ids are only unique per worktree: resolve them within the worktree being synced
+          ;; (nil = the main app) or a checkout's copies would land in the wrong ledger
+          entities (apply t2/select (into [model-key] select-fields)
+                          :entity_id [:in entity-ids]
+                          (when (contains? serdes/worktree-scoped-models model-type)
+                            [:remote_sync_worktree_id serdes/*worktree-id*]))]
       (map (fn [entity]
              (let [;; Apply field mappings
                    field-mappings (:field-mappings tracking)
@@ -1069,7 +1074,9 @@
       ;; The query template uses alias :s for the main model (segment)
       (let [base-query (-> query-template
                            (update :select (fn [cols] (vec (concat [:s.id] cols))))
-                           (assoc :where [:in :s.entity_id entity-ids]))]
+                           (assoc :where (cond-> [:and [:in :s.entity_id entity-ids]]
+                                           (contains? serdes/worktree-scoped-models model-type)
+                                           (conj [:= :s.remote_sync_worktree_id serdes/*worktree-id*]))))]
         (->> (t2/query base-query)
              (map (fn [entity]
                     (let [field-mappings (:field-mappings tracking)

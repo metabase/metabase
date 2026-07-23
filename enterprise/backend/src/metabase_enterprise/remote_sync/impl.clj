@@ -403,25 +403,27 @@
   (let [sync-timestamp   (t/instant)
         snapshot-version (source.p/version snapshot)]
     (try
-      (let [path-filters    (mapv #(re-pattern (str % "/.*")) worktree-managed-dirs)
-            base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
-            ingestable      (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
-            load-result     (binding [serdes/*worktree-id* (:id worktree)]
-                              (serdes/with-cache
-                                (serialization/load-metabase! ingestable)))
-            imported-data   (spec/extract-imported-entities (:seen load-result))]
-        (remote-sync.task/update-progress! task-id 0.8)
-        (t2/with-transaction [_conn]
-          (remove-unsynced-worktree! (:id worktree) imported-data)
-          (t2/delete! :model/RemoteSyncObject :worktree_id (:id worktree))
-          (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
-                                 (source.ingestable/cached-file-paths base-ingestable)
-                                 :worktree-id (:id worktree))
-          (remote-sync.task/set-version! task-id snapshot-version))
-        (remote-sync.task/update-progress! task-id 0.95)
-        {:status  :success
-         :version snapshot-version
-         :outcome {:kind "pulled" :branch (:branch worktree)}})
+      ;; the binding covers both the load (scoped matching + stamping) and the ledger rebuild
+      ;; (sync-all-entities! resolves entity ids within the worktree)
+      (binding [serdes/*worktree-id* (:id worktree)]
+        (let [path-filters    (mapv #(re-pattern (str % "/.*")) worktree-managed-dirs)
+              base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+              ingestable      (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
+              load-result     (serdes/with-cache
+                                (serialization/load-metabase! ingestable))
+              imported-data   (spec/extract-imported-entities (:seen load-result))]
+          (remote-sync.task/update-progress! task-id 0.8)
+          (t2/with-transaction [_conn]
+            (remove-unsynced-worktree! (:id worktree) imported-data)
+            (t2/delete! :model/RemoteSyncObject :worktree_id (:id worktree))
+            (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
+                                   (source.ingestable/cached-file-paths base-ingestable)
+                                   :worktree-id (:id worktree))
+            (remote-sync.task/set-version! task-id snapshot-version))
+          (remote-sync.task/update-progress! task-id 0.95)
+          {:status  :success
+           :version snapshot-version
+           :outcome {:kind "pulled" :branch (:branch worktree)}}))
       (catch Exception e
         (log/errorf e "Failed to pull worktree %s: %s" (:id worktree) (ex-message e))
         (analytics/inc! :metabase-remote-sync/imports-failed)
