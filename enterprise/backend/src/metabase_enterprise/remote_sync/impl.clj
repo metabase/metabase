@@ -321,9 +321,9 @@
   ;; `read-file` returns file text (a string) or nil; data-apps.sync converts to
   ;; bytes on its side, keeping all Java interop out of this namespace.
   (data-apps.sync/sync-from-snapshot!
-   {:read-file  (fn [path] (source.p/read-file snapshot path))
-    :list-files (fn [] (source.p/list-files snapshot))
-    :sha        (source.p/version snapshot)}))
+   {:read-file (fn [path] (source.p/read-file snapshot path))
+    :list-dir  (fn [path] (source.p/list-dir snapshot path))
+    :sha       (source.p/version snapshot)}))
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
