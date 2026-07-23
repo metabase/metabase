@@ -4,7 +4,7 @@ import {
   type Location as V7Location,
   UNSAFE_createBrowserHistory as createBrowserHistory,
   parsePath,
-} from "react-router-v7";
+} from "react-router";
 
 import type { Location as HistoryLocation } from "../types";
 

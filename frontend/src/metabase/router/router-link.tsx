@@ -4,7 +4,7 @@ import {
   type LinkProps as V7LinkProps,
   NavLink as V7NavLink,
   useInRouterContext,
-} from "react-router-v7";
+} from "react-router";
 
 import type { RouterLinkProps } from "./types";
 import { queryToSearch } from "./v7/location";

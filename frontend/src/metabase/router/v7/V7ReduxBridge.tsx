@@ -4,7 +4,7 @@ import {
   useNavigationType,
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
-} from "react-router-v7";
+} from "react-router";
 
 import { useDispatch } from "metabase/redux";
 

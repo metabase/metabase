@@ -387,7 +387,7 @@
     "raf": "^3.4.0",
     "react-docgen-typescript-plugin": "^1.0.6",
     "react-refresh": "^0.14.2",
-    "react-router-v7": "npm:react-router@7.18.1",
+    "react-router": "7.18.1",
     "reg-cli": "^0.17.7",
     "semver": "^7.6.3",
     "shadow-cljs": "^3.3.5",

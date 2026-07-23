@@ -9,7 +9,7 @@ import {
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
   useParams as useV7Params,
-} from "react-router-v7";
+} from "react-router";
 
 import { OutletContext, RouteContext } from "../Outlet";
 import { RouterContext } from "../RouterProvider";

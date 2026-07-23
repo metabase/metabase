@@ -5,7 +5,7 @@ import {
   Routes,
   UNSAFE_createBrowserHistory as createBrowserHistory,
   UNSAFE_createMemoryHistory as createMemoryHistory,
-} from "react-router-v7";
+} from "react-router";
 
 import { useDispatch } from "metabase/redux";
 import { getBasename } from "metabase/utils/basename";

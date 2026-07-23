@@ -5,7 +5,7 @@ import {
   type ReactNode,
   isValidElement,
 } from "react";
-import { Route as V7Route } from "react-router-v7";
+import { Route as V7Route } from "react-router";
 
 import type { RouteElementProps } from "../route";
 import { Route } from "../route";
