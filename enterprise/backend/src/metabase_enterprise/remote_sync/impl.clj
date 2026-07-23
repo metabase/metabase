@@ -845,7 +845,7 @@
   Return:
     - [[row entity]] (if no entity, then omit)"
   [{:keys [model_type rows]}]
-  (let [pk-col  (spec/pk-col model_type)
+  (let [pk-col  (serdes/pk-column model_type)
         id->row (u/index-by :model_id rows)
         opts    {:where [:in pk-col (mapv :model_id rows)] :skip-archived true}]
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open

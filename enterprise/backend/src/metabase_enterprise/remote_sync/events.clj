@@ -178,11 +178,10 @@
 
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
-   Checks eligibility, determines status, and creates/updates the sync object."
-  [model-spec topic {:keys [object]}]
+   Takes the already-computed `eligible?`, determines status, and creates/updates the sync object."
+  [model-spec topic {:keys [object]} eligible?]
   (let [model-type     (:model-type model-spec)
         model-id       (:id object)
-        eligible?      (spec/check-eligibility model-spec object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
@@ -201,25 +200,30 @@
           (cascade-to-children! model-spec model-id "removed" false))))))
 
 (defn- register-events-for-spec!
-  "Registers event handlers for a single spec. Creates event hierarchy and
-   registers a methodical handler for the parent event."
-  [model-spec]
-  (let [event-kws (spec/event-keywords model-spec)
-        parent-kw (:parent event-kws)]
-    (derive parent-kw :metabase/event)
-    (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
-      (derive event-kw parent-kw))
-    (methodical/add-primary-method!
-     #'events/publish-event!
-     parent-kw
-     (fn [topic event]
-       (handle-model-event-from-spec model-spec topic event)))))
+  "Registers event handlers for a single spec. Creates event hierarchy and registers a methodical
+   handler for the parent event. `extra-handler`, when provided, is `(fn [topic event eligible?])`
+   and runs after the standard spec handling with the same eligibility result — the mechanism for
+   piggybacking side-car tracking (TableUserSettings) on a model's events without registering a
+   conflicting second primary method."
+  ([model-spec]
+   (register-events-for-spec! model-spec nil))
+  ([model-spec extra-handler]
+   (let [event-kws (spec/event-keywords model-spec)
+         parent-kw (:parent event-kws)]
+     (derive parent-kw :metabase/event)
+     (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
+       (derive event-kw parent-kw))
+     (methodical/add-primary-method!
+      #'events/publish-event!
+      parent-kw
+      (fn [topic {:keys [object] :as event}]
+        (let [eligible? (spec/check-eligibility model-spec object)]
+          (handle-model-event-from-spec model-spec topic event eligible?)
+          (when extra-handler
+            (extra-handler topic event eligible?))))))))
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 
-;; Table gets a combined handler below (spec behavior + TableUserSettings tracking) instead of the
-;; generic registration: registering a second methodical primary method for the same table events
-;; would conflict with the spec-registered one.
 (doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field :model/Table)]
   (register-events-for-spec! model-spec))
 
@@ -242,30 +246,30 @@
      :table_name    table-name}))
 
 (defn- handle-table-user-settings-event
-  [{:keys [object]}]
-  (let [table-id  (:id object)
-        eligible? (spec/check-eligibility table-spec object)]
+  [topic {:keys [object]} eligible?]
+  (let [table-id (:id object)
+        status   (spec/determine-status table-spec topic object)
+        rso      (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id table-id)]
     (cond
-      (and eligible? (t2/exists? :model/TableUserSettings :table_id table-id))
+      ;; The table is being deleted or archived: its TableUserSettings row cascades away with it, so
+      ;; transition the RSO directly (the hydration the generic path does would find no table).
+      (and rso (= status "delete"))
+      (if (= "create" (:status rso))
+        (t2/delete! :model/RemoteSyncObject (:id rso))
+        (t2/update! :model/RemoteSyncObject (:id rso) {:status            "delete"
+                                                       :status_changed_at (t/offset-date-time)}))
+
+      (and eligible?
+           (not= status "delete")
+           (t2/exists? :model/TableUserSettings :table_id table-id))
       (create-or-update-remote-sync-object-entry!
        "TableUserSettings" table-id "update" hydrate-table-user-settings-details)
 
-      (and (not eligible?)
-           (t2/exists? :model/RemoteSyncObject :model_type "TableUserSettings" :model_id table-id))
+      (and (not eligible?) rso)
       (create-or-update-remote-sync-object-entry!
        "TableUserSettings" table-id "removed" hydrate-table-user-settings-details))))
 
-(let [event-kws (spec/event-keywords table-spec)
-      parent-kw (:parent event-kws)]
-  (derive parent-kw :metabase/event)
-  (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
-    (derive event-kw parent-kw))
-  (methodical/add-primary-method!
-   #'events/publish-event!
-   parent-kw
-   (fn [topic event]
-     (handle-model-event-from-spec table-spec topic event)
-     (handle-table-user-settings-event event))))
+(register-events-for-spec! table-spec handle-table-user-settings-event)
 
 ;;; ----------------------------------------- Collection Event Handler -------------------------------------------------
 ;; Collection has special handling due to side effects (tracking published tables when

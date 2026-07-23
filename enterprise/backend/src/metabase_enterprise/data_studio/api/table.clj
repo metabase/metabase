@@ -128,6 +128,8 @@
           table-ids-to-update (when (seq downstream-ids)
                                 (t2/select-pks-set :model/Table :id [:in downstream-ids] :is_published true))]
       (when (seq table-ids-to-update)
+        ;; the Table before-update hook mirrors the collection_id nulling into any recorded
+        ;; TableUserSettings row, so the mirror stops claiming the archived collection
         (t2/update! :model/Table :id [:in table-ids-to-update]
                     {:collection_id nil
                      :is_published  false})
@@ -178,7 +180,8 @@
     (when (seq table-ids-to-update)
       (t2/with-transaction [_conn]
         (schema.table-user-settings/upsert-user-settings! table-ids-to-update
-                                                          {:collection_id (:id target-collection)})
+                                                          {:collection_id (:id target-collection)
+                                                           :is_published  true})
         (t2/update! :model/Table :id [:in table-ids-to-update]
                     {:collection_id (:id target-collection)
                      :is_published  true}))
@@ -205,7 +208,8 @@
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
       (t2/with-transaction [_conn]
-        (schema.table-user-settings/upsert-user-settings! table-ids-to-update {:collection_id nil})
+        (schema.table-user-settings/upsert-user-settings! table-ids-to-update {:collection_id nil
+                                                                               :is_published  false})
         (t2/update! :model/Table :id [:in table-ids-to-update]
                     {:collection_id nil
                      :is_published  false}))

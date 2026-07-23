@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
@@ -103,12 +104,27 @@
                  :model/Table      {table-id :id} {:db_id         db-id
                                                    :collection_id coll-id
                                                    :is_published  true}]
-    (table-user-settings/upsert-user-settings! [table-id] {:collection_id coll-id})
+    (table-user-settings/upsert-user-settings! [table-id] {:collection_id coll-id
+                                                           :is_published  true})
     (testing "collection_id is not sync-overridable: system unpublish flows can still null it"
       (t2/update! :model/Table table-id {:collection_id nil :is_published false})
       (is (=? {:collection_id nil
                :is_published  false}
-              (t2/select-one :model/Table table-id))))))
+              (t2/select-one :model/Table table-id))))
+    (testing "and the recorded settings are mirrored along, so they don't claim stale publish intent"
+      (is (=? {:collection_id nil
+               :is_published  false}
+              (t2/select-one :model/TableUserSettings :table_id table-id))))))
+
+(deftest custom-order-fields-records-user-settings-test
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {table-id :id} {:db_id db-id}
+                 :model/Field    {f1-id :id}    {:table_id table-id}
+                 :model/Field    {f2-id :id}    {:table_id table-id}]
+    (table/custom-order-fields! (t2/select-one :model/Table table-id) [f2-id f1-id])
+    (testing "a manual field reorder is recorded as a user edit"
+      (is (=? {:field_order :custom}
+              (t2/select-one :model/TableUserSettings :table_id table-id))))))
 
 (deftest table-delete-cascades-test
   (mt/with-temp [:model/Database {db-id :id}    {}

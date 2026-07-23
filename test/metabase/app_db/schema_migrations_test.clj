@@ -3348,12 +3348,15 @@
                                                          extra)))
             settings   (fn [table-id] (t2/select-one :metabase_table_user_settings :table_id table-id))
             pristine   (new-table! db-id "order_items" :display_name "Order Items")
+            verbatim   (new-table! db-id "raw_names" :display_name "raw_names")
+            respaced   (new-table! db-id "order_items_3" :display_name "OrderItems3")
             renamed    (new-table! db-id "order_items_2" :display_name "The Real Orders")
             curated    (new-table! db-id "curated"
                                    :display_name       "Curated"
                                    :caveats            "beware"
                                    :points_of_interest "look here"
                                    :collection_id      coll-id
+                                   :is_published       true
                                    :owner_email        "owner@example.com"
                                    :data_authority     "authoritative"
                                    :field_order        "custom")
@@ -3372,13 +3375,18 @@
         (migrate!)
         (testing "a table whose values all match system defaults gets no row"
           (is (nil? (settings pristine))))
-        (testing "a display_name deviating from the humanized name is recorded as a user rename"
+        (testing "a display_name equal to the name verbatim (the :none humanization strategy) gets no row"
+          (is (nil? (settings verbatim))))
+        (testing "a rename that only changes spacing/capitalization is conservatively skipped"
+          (is (nil? (settings respaced))))
+        (testing "a display_name deviating from the name beyond separators/case is recorded as a user rename"
           (is (=? {:display_name "The Real Orders"} (settings renamed))))
         (testing "user-only columns are recorded, and matching display_name is not"
           (is (=? {:display_name       nil
                    :caveats            "beware"
                    :points_of_interest "look here"
                    :collection_id      coll-id
+                   :is_published       true
                    :owner_email        "owner@example.com"
                    :data_authority     "authoritative"
                    :field_order        "custom"}

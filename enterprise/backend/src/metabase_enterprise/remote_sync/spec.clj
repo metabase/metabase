@@ -1237,15 +1237,6 @@
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
     (u/group-by first second targets)))
 
-(defn pk-col
-  "Returns the PK column keyword for `model`. FieldUserSettings uses :field_id and TableUserSettings
-  uses :table_id; all others use :id."
-  [model]
-  (case model
-    "FieldUserSettings" :field_id
-    "TableUserSettings" :table_id
-    :id))
-
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
 
@@ -1257,7 +1248,7 @@
    3. Are in one of the provided collections (or descendants)"
   []
   (eduction (map (fn [[model ids]]
-                   (serdes/extract-all model {:where         [:in (pk-col model) ids]
+                   (serdes/extract-all model {:where         [:in (serdes/pk-column model) ids]
                                               :skip-archived true})))
             cat
             (exportable-entities)))
@@ -1269,7 +1260,7 @@
   [rows]
   (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
     (eduction (map (fn [[model ids]]
-                     (serdes/extract-all model {:where         [:in (pk-col model) ids]
+                     (serdes/extract-all model {:where         [:in (serdes/pk-column model) ids]
                                                 :skip-archived true})))
               cat
               by-model)))

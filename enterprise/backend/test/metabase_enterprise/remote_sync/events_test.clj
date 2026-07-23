@@ -1272,3 +1272,19 @@
         (events/publish-event! :event/table-update {:object updated :user-id (mt/user->id :rasta)}))
       (is (= "removed"
              (:status (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id (:id table))))))))
+
+(deftest table-delete-transitions-tus-rso-test
+  (testing "a tracked TableUserSettings RSO transitions to delete along with the table"
+    (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
+                   :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (t2/insert! :model/RemoteSyncObject {:model_type        "TableUserSettings"
+                                           :model_id          (:id table)
+                                           :model_name        "T"
+                                           :model_table_id    (:id table)
+                                           :status            "synced"
+                                           :status_changed_at (t/offset-date-time)})
+      ;; the TUS row is already cascade-deleted by the time the event fires
+      (events/publish-event! :event/table-delete {:object table :user-id (mt/user->id :rasta)})
+      (is (= "delete"
+             (:status (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id (:id table))))))))

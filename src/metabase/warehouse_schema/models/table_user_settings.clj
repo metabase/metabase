@@ -3,6 +3,7 @@
   opposed to values authored by sync). One row per Table, PK is `table_id`. The mirror of
   [[metabase.warehouse-schema.models.field-user-settings]] for Tables."
   (:require
+   [metabase.app-db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -33,12 +34,12 @@
   are recorded; a key explicitly present with a `nil` value is recorded as `nil` (the user unset it)."
   [table-ids settings]
   (let [filtered-settings (u/select-keys-when settings :present table/table-user-settings)]
-    (when (and (seq table-ids) (seq filtered-settings))
-      (let [existing-ids (t2/select-fn-set :table_id :model/TableUserSettings :table_id [:in table-ids])
-            missing-ids  (remove (or existing-ids #{}) table-ids)]
-        (when (seq missing-ids)
-          (t2/insert! :model/TableUserSettings (for [id missing-ids] {:table_id id})))
-        (t2/update! :model/TableUserSettings :table_id [:in table-ids] filtered-settings)))))
+    (when (seq filtered-settings)
+      ;; update-or-insert! retries on a concurrent first insert of the same row, which a bare
+      ;; select-then-insert would turn into a duplicate-PK error
+      (doseq [id table-ids]
+        (mdb.query/update-or-insert! :model/TableUserSettings {:table_id id}
+                                     (constantly filtered-settings))))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
@@ -73,7 +74,8 @@
 
 (defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
   {:copy      [:display_name :description :entity_type :visibility_type :field_order :caveats
-               :points_of_interest :show_in_getting_started :data_authority :data_source :owner_email]
+               :points_of_interest :show_in_getting_started :is_published :data_authority :data_source
+               :owner_email]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :owner_user_id (serdes/fk :model/User)

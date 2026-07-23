@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as mdb.query]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
@@ -201,7 +202,8 @@
 (def table-user-settings
   "Set of user-settable values for a Table, mirrored in `:model/TableUserSettings`."
   #{:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
-    :show_in_getting_started :collection_id :data_layer :data_authority :data_source :owner_email :owner_user_id})
+    :show_in_getting_started :collection_id :is_published :data_layer :data_authority :data_source
+    :owner_email :owner_user_id})
 
 (def ^:private sync-overridable-user-settings
   "The subset of [[table-user-settings]] the sync process writes (description and visibility from
@@ -220,7 +222,11 @@
 
 (t2/define-before-update :model/Table
   [table]
-  (let [table          (merge-user-settings table)
+  ;; During serdes import the incoming values are authoritative (the TableUserSettings row is
+  ;; imported alongside); merging local settings here would make the result depend on whether the
+  ;; Table or its TableUserSettings happens to load first.
+  (let [table          (cond-> table
+                         (not mi/*deserializing?*) merge-user-settings)
         changes        (t2/changes table)
         original-table (t2/original table)
         current-active (:active original-table)
@@ -234,6 +240,16 @@
                (= (keyword (:data_authority changes)) :unconfigured))
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
+    ;; System flows (collection archival/deletion, forced downstream unpublish) null collection_id /
+    ;; unset is_published directly; mirror that into any recorded user setting so the mirror doesn't
+    ;; keep claiming an archived collection or publish intent. Update-only: absent rows stay absent.
+    (when-let [unpublish-mirror (not-empty
+                                 (cond-> {}
+                                   (and (contains? changes :collection_id) (nil? (:collection_id changes)))
+                                   (assoc :collection_id nil)
+                                   (false? (:is_published changes))
+                                   (assoc :is_published false)))]
+      (t2/update! :model/TableUserSettings (:id table) unpublish-mirror))
     ;; Prevent changing data_source to/from metabase-transform.
     ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
     ;; can be migrated to a transform-managed table via serdes.
@@ -498,6 +514,10 @@
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
+    ;; a manual reorder is a user edit, so record it in TableUserSettings like the API update paths
+    ;; do (inline rather than via the table-user-settings namespace, which requires this one)
+    (mdb.query/update-or-insert! :model/TableUserSettings {:table_id (u/the-id table)}
+                                 (constantly {:field_order :custom}))
     (t2/update! :model/Table (u/the-id table) {:field_order :custom})
     (dorun
      (map-indexed (fn [position field-id]
