@@ -289,7 +289,10 @@
            (str "Add a filter or parameter widget to the dashboard. It does nothing until "
                 "`wire_parameter` connects it to at least one card.")
            (into [[:parameter_id parameter-id-schema]] parameter-fields))
-   (op-map "update_parameter" "Change properties of an existing parameter; omitted properties are left alone."
+   (op-map "update_parameter"
+           (str "Change properties of an existing parameter. Only the properties you pass change; "
+                "the rest are left alone. Passing null does not clear a property — it is treated as "
+                "omitted — so a default or linked filter already set cannot be removed this way.")
            (into [[:parameter_id parameter-id-schema]] parameter-fields))
    (op-map "remove_parameter"
            (str "Delete a parameter, along with its card mappings, its inline placements, and any "
