@@ -59,6 +59,21 @@ describe("MetabotChainOfThought", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders nothing for a settled chain whose steps are all non-renderable", () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "reasoning", text: "" },
+          { kind: "tool", id: "t1", name: "load_skill", status: "ended" },
+        ],
+      }),
+      false,
+    );
+    expect(
+      screen.queryByTestId("metabot-chain-of-thought"),
+    ).not.toBeInTheDocument();
+  });
+
   it("never surfaces reasoning text in the header, only Thinking", () => {
     setup(
       chain({

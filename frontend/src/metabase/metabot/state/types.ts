@@ -16,6 +16,7 @@ export type MetabotDataPart = Exclude<
   | { type: "data-state" }
   | { type: "data-conversation-title" }
   | { type: "data-search_results" }
+  | { type: "data-tool_title" }
 >;
 
 export type MetabotSearchResults = {

@@ -555,7 +555,7 @@ describe("metabot reducer", () => {
       store.dispatch(metabotActions.addAgentTextDelta({ agentId, text: "hi" }));
       // the saved card's link only exists once the tool finishes
       store.dispatch(
-        metabotActions.toolCallSaved({
+        metabotActions.toolCallTitled({
           agentId,
           toolCallId: "t1",
           title: "[Sales by Month](metabase://question/5)",

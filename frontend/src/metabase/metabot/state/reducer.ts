@@ -277,7 +277,7 @@ export const metabot = createSlice({
         setChainToolSearchResults(convo, toolCallId, { totalCount, results });
       },
     ),
-    toolCallSaved: convoReducer(
+    toolCallTitled: convoReducer(
       (
         convo,
         action: ConvoPayloadAction<{ toolCallId: string; title: string }>,

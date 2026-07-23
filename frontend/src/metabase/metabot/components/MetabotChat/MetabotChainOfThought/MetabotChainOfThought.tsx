@@ -32,7 +32,9 @@ export const MetabotChainOfThought = ({
   const now = useNow(isStreaming);
   const preview = useMeteredLabel(latestPreviewLabel(message.steps));
 
-  if (message.steps.length === 0 && !isStreaming) {
+  const renderableItems = buildDisplayItems(message.steps);
+
+  if (!isStreaming && renderableItems.length === 0) {
     return null;
   }
 
@@ -66,7 +68,6 @@ export const MetabotChainOfThought = ({
     );
   };
 
-  const renderableItems = buildDisplayItems(message.steps);
   const soleReasoning = isStreaming ? null : soleReasoningStep(renderableItems);
 
   return (
