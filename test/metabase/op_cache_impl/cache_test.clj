@@ -107,6 +107,25 @@
                  (op-cache/fetch-or-compute! cache "k" (counting-op calls [1 2 3])
                                              {:invalidated-at (ttl-invalidated-at 60000)}))))))))
 
+(deftest ^:parallel byte-array-keys-test
+  (testing "byte-array keys hit the same entry across equal-but-distinct arrays (the QP's keys are query hashes)"
+    (t/with-clock (t/mock-clock t0)
+      (let [storage (impl.tu/in-memory-storage)
+            cache   (make-cache storage)
+            calls   (atom 0)
+            k       #(byte-array (range 32))]
+        (is (= {:value :v1, :source :computed, :stored true}
+               (op-cache/fetch-or-compute! cache (k) (counting-op calls :v1)
+                                           {:invalidated-at (ttl-invalidated-at 60000)})))
+        (testing "a second call with an equal (but not identical) key is served the cached value"
+          (is (= {:value :v1, :source :cached-fresh, :written-at t0}
+                 (op-cache/fetch-or-compute! cache (k) (counting-op calls :should-not-run)
+                                             {:invalidated-at (ttl-invalidated-at 60000)})))
+          (is (= 1 @calls)))
+        (testing "keys-written-since returns the key in its original byte-array form"
+          (is (= (vec (k))
+                 (vec (first (into [] (op-cache/keys-written-since cache t0)))))))))))
+
 (deftest ^:parallel keys-written-since-test
   (let [storage (impl.tu/in-memory-storage)
         cache   (make-cache storage)]

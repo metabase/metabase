@@ -6,8 +6,12 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.cache.task.refresh-cache-configs :as task.cache]
+   [metabase.op-cache-impl.storage :as op-cache.storage]
+   [metabase.op-cache.core :as op-cache]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.cache :as qp.cache]
+   [metabase.query-processor.middleware.cache-test-util :as qp.cache.tu]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -15,6 +19,8 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(use-fixtures :each (fn [thunk] (qp.cache.tu/do-with-in-memory-op-cache thunk)))
 
 (set! *warn-on-reflection* true)
 
@@ -51,22 +57,29 @@
                 (fn [query info]
                   (qp/process-query (qp/userland-query (assoc query :info info))))))))
 
-;; These helpers manipulate cache storage rows directly (white-box): backdating and inspecting entry timestamps is
-;; test-only storage surgery, not a cache operation, so no op-cache protocol method exposes it.
+(defn- cache-entries
+  "Every cache entry as `{:key <bytes>, :written-at <instant>}`, via the op-cache protocols."
+  []
+  (into []
+        (map (fn [k] {:key k, :written-at (:written-at (op-cache.storage/read-entry qp.cache/*storage* k))}))
+        (op-cache/keys-written-since (qp.cache/op-cache) (t/instant "1970-01-01T00:00:00Z"))))
 
 (defn- most-recent-cache-entry
   []
-  (t2/select-one [:model/OpCacheEntry :cache_key :written_at] {:order-by [[:written_at :desc]] :limit 1}))
+  (last (sort-by :written-at (cache-entries))))
 
 (defn- delete-cache-entry!
   [entry]
-  (t2/delete! :model/OpCacheEntry :cache_key (:cache_key entry)))
+  (op-cache/evict! (qp.cache/op-cache) (:key entry)))
 
 (defn- expire-cache-entry!
-  "Manually expire a cache entry by setting its written_at back by 24 hours"
-  [cache-entry]
-  (t2/update! :model/OpCacheEntry :cache_key (:cache_key cache-entry)
-              {:written_at (t/minus (:written_at cache-entry) (t/days 1))}))
+  "Expire a cache entry by rewriting its value with the clock turned back 24 hours: entry timestamps come from the
+  (mockable) clock, so a backdated clock yields a backdated write through the protocol."
+  [entry]
+  (let [storage         qp.cache/*storage*
+        {:keys [value]} (op-cache.storage/read-entry storage (:key entry))]
+    (t/with-clock (t/mock-clock (t/minus (t/instant) (t/days 1)))
+      (op-cache.storage/write-entry! storage (:key entry) value))))
 
 (defn- expire-most-recent-cache-entry!
   []
@@ -306,13 +319,7 @@
                    ;; The actual queries don't matter for these tests; we just care about the hash being distinct
                    :model/Query {} {:query_hash (qp.util/query-hash query-2)
                                     :average_execution_time 1
-                                    :query query-2}
-                   :model/OpCacheEntry {} {:cache_key  (codecs/bytes->hex (qp.util/query-hash query-1))
-                                           :written_at (t/minus (t/offset-date-time) (t/days 1))
-                                           :value      (.getBytes "cache contents" "UTF-8")}
-                   :model/OpCacheEntry {} {:cache_key  (codecs/bytes->hex (qp.util/query-hash query-2))
-                                           :written_at (t/minus (t/offset-date-time) (t/days 1))
-                                           :value      (.getBytes "cache contents" "UTF-8")}]
+                                    :query query-2}]
       (let [question-cache-config-1 {:model "question" :model_id card-id-1 :config {:duration 1 :unit "hours"}}
             question-cache-config-2 {:model "question" :model_id card-id-2 :config {:duration 1 :unit "hours"}}
             dashboard-cache-config  {:model "dashboard" :model_id dashboard-id :config {:duration 1 :unit "hours"}}
@@ -388,13 +395,7 @@
                    ;; The actual queries don't matter for these tests; we just care about the hash being distinct
                    :model/Query {} {:query_hash (qp.util/query-hash query-2)
                                     :average_execution_time 1
-                                    :query query-2}
-                   :model/OpCacheEntry {} {:cache_key  (codecs/bytes->hex (qp.util/query-hash query-1))
-                                           :written_at (t/minus (t/offset-date-time) (t/days 1))
-                                           :value      (.getBytes "cache contents" "UTF-8")}
-                   :model/OpCacheEntry {} {:cache_key  (codecs/bytes->hex (qp.util/query-hash query-2))
-                                           :written_at (t/minus (t/offset-date-time) (t/days 1))
-                                           :value      (.getBytes "cache contents" "UTF-8")}]
+                                    :query query-2}]
       (let [question-cache-config-1 {:model "question" :model_id card-id-1 :config {:duration 1 :unit "hours"}}
             question-cache-config-2 {:model "question" :model_id card-id-2 :config {:duration 1 :unit "hours"}}
             dashboard-cache-config  {:model "dashboard" :model_id dashboard-id :config {:duration 1 :unit "hours"}}
@@ -521,8 +522,8 @@
                     (@#'task.cache/refresh-cache-configs!)
                     (let [refreshed-cache-entry (most-recent-cache-entry)
                           cached-result (run-query-for-card-id card-id parameters)]
-                      (is (t/before? (:written_at original-cache-entry) (:written_at refreshed-cache-entry)))
-                      (is (= (vec (:query_hash original-cache-entry)) (vec (:query_hash refreshed-cache-entry))))
+                      (is (t/before? (:written-at original-cache-entry) (:written-at refreshed-cache-entry)))
+                      (is (= (vec (:key original-cache-entry)) (vec (:key refreshed-cache-entry))))
                       (compare-query-results original-result cached-result))
                     (finally
                       (delete-cache-entry! original-cache-entry))))))))))))
@@ -553,8 +554,8 @@
                     (is (= 1 (:schedule-refreshed (@#'task.cache/refresh-cache-configs!))))
                     (let [refreshed-cache-entry (most-recent-cache-entry)
                           cached-result (run-query-for-dashcard card-id dashboard-id dashcard-id parameters)]
-                      (is (t/before? (:written_at original-cache-entry) (:written_at refreshed-cache-entry)))
-                      (is (= (vec (:query_hash original-cache-entry)) (vec (:query_hash refreshed-cache-entry))))
+                      (is (t/before? (:written-at original-cache-entry) (:written-at refreshed-cache-entry)))
+                      (is (= (vec (:key original-cache-entry)) (vec (:key refreshed-cache-entry))))
                       (compare-query-results original-result cached-result))
                     (finally
                       (delete-cache-entry! original-cache-entry))))))))))))
@@ -587,8 +588,8 @@
                     (let [refreshed-cache-entry (most-recent-cache-entry)
                           cached-result (run-query-for-card-id card-id parameters)]
                       (compare-query-results original-result cached-result)
-                      (is (t/before? (:written_at original-cache-entry) (:written_at refreshed-cache-entry)))
-                      (is (= (vec (:query_hash original-cache-entry)) (vec (:query_hash refreshed-cache-entry)))))
+                      (is (t/before? (:written-at original-cache-entry) (:written-at refreshed-cache-entry)))
+                      (is (= (vec (:key original-cache-entry)) (vec (:key refreshed-cache-entry)))))
                     (finally
                       (delete-cache-entry! original-cache-entry))))))))))))
 
@@ -622,8 +623,8 @@
                     (is (= 1 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
                     (let [refreshed-cache-entry (most-recent-cache-entry)
                           cached-result (run-query-for-dashcard card-id dashboard-id dashcard-id parameters)]
-                      (is (t/before? (:written_at original-cache-entry) (:written_at refreshed-cache-entry)))
-                      (is (= (vec (:query_hash original-cache-entry)) (vec (:query_hash refreshed-cache-entry))))
+                      (is (t/before? (:written-at original-cache-entry) (:written-at refreshed-cache-entry)))
+                      (is (= (vec (:key original-cache-entry)) (vec (:key refreshed-cache-entry))))
                       (compare-query-results original-result cached-result))
                     (finally
                       (delete-cache-entry! original-cache-entry))))))))))))

@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.cache-test-util :as qp.cache.tu]
    [metabase.query-processor.test :as qp]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]))
@@ -25,7 +26,7 @@
                                       {:stored true, :hash some?})
                      :row_count     5
                      :status        :completed})]
-        (mt/with-model-cleanup [[:model/OpCacheEntry :written_at]]
+        (qp.cache.tu/with-in-memory-op-cache
           (testing "strategy = ttl"
             (let [query (assoc query :cache-strategy {:type             :ttl
                                                       :multiplier       10
@@ -45,7 +46,7 @@
                 (mt/with-clock #t "2024-02-13T10:00:06Z"
                   (is (=? (mkres nil)
                           (-> (qp/process-query query) (dissoc :data)))))))))
-        (mt/with-model-cleanup [[:model/OpCacheEntry :written_at]]
+        (qp.cache.tu/with-in-memory-op-cache
           (testing "strategy = duration"
             (let [query (assoc query :cache-strategy {:type            :duration
                                                       :duration        1
@@ -63,7 +64,7 @@
                 (mt/with-clock #t "2024-02-13T10:01:01Z"
                   (is (=? (mkres nil)
                           (-> (qp/process-query query) (dissoc :data)))))))))
-        (mt/with-model-cleanup [[:model/OpCacheEntry :written_at]]
+        (qp.cache.tu/with-in-memory-op-cache
           (testing "strategy = schedule"
             (let [query (assoc query :cache-strategy {:type           :schedule
                                                       :schedule       "0/2 * * * *"
@@ -126,7 +127,7 @@
                            :row_count     3
                            :status        :completed})]
               (testing "strategy = ttl"
-                (mt/with-model-cleanup [[:model/OpCacheEntry :written_at]]
+                (qp.cache.tu/with-in-memory-op-cache
                   (mt/with-clock (t 0)
                     (let [q (mt/with-dynamic-fn-redefs [query/average-execution-time-ms (constantly 1000)]
                               (#'qp.card/query-for-card card1 [] {} {} {}))]
@@ -142,7 +143,7 @@
                           (is (=? (mkres nil)
                                   (-> (qp/process-query q) (dissoc :data))))))))))
               (testing "strategy = duration"
-                (mt/with-model-cleanup [[:model/OpCacheEntry :written_at]]
+                (qp.cache.tu/with-in-memory-op-cache
                   (mt/with-clock (t 0)
                     (let [q (#'qp.card/query-for-card card2 [] {} {} {})]
                       (is (=? {:type :duration}
@@ -157,7 +158,7 @@
                           (is (=? (mkres nil)
                                   (-> (qp/process-query q) (dissoc :data))))))))))
               (testing "strategy = schedule"
-                (mt/with-model-cleanup [[:model/OpCacheEntry :written_at]]
+                (qp.cache.tu/with-in-memory-op-cache
                   (mt/with-clock (t 0)
                     (is (pos? (:schedule-invalidated (#'task.cache/refresh-cache-configs!))))
                     (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
@@ -203,7 +204,7 @@
                                                        :strategy :duration
                                                        :config   {:duration 1
                                                                   :unit     "hours"}}]
-          (mt/with-model-cleanup [[:model/OpCacheEntry :written_at]]
+          (qp.cache.tu/with-in-memory-op-cache
             (mt/with-clock #t "2024-02-13T10:00:00Z"
               (are [param-val cache-details] (let [params [{:id     "num_param"
                                                             :type   :number
