@@ -4,14 +4,8 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
-import type {
-  QueryColumnInfoPopoverProps,
-  TableColumnInfoPopoverProps,
-} from "../ColumnInfoPopover";
-import {
-  QueryColumnInfoPopover,
-  TableColumnInfoPopover,
-} from "../ColumnInfoPopover";
+import type { QueryColumnInfoPopoverProps } from "../ColumnInfoPopover";
+import { QueryColumnInfoPopover } from "../ColumnInfoPopover";
 import {
   HoverParent,
   PopoverDefaultIcon,
@@ -53,34 +47,3 @@ export function QueryColumnInfoIcon({
 }
 
 QueryColumnInfoIcon.HoverParent = HoverParent;
-
-type TableColumnInfoIconProps = TableColumnInfoPopoverProps & {
-  icon: IconName;
-  size?: number;
-  color?: ColorName;
-};
-
-export function TableColumnInfoIcon({
-  className,
-  field,
-  icon,
-  size,
-  color,
-  ...props
-}: TableColumnInfoIconProps) {
-  return (
-    <TableColumnInfoPopover {...props} field={field}>
-      <span aria-label={t`More info`}>
-        <PopoverDefaultIcon
-          className={className}
-          name={icon}
-          size={size}
-          c={color}
-        />
-        <PopoverHoverTarget className={className} name="info" size={size} />
-      </span>
-    </TableColumnInfoPopover>
-  );
-}
-
-TableColumnInfoIcon.HoverParent = HoverParent;
