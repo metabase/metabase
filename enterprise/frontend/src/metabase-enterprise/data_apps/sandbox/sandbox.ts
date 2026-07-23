@@ -1,6 +1,9 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
-import { makeDistortionCallback } from "./distortions";
+import {
+  type SandboxBlockedListener,
+  makeDistortionCallback,
+} from "./distortions";
 import { DATA_APP_GLOBAL_NAMES } from "./globals";
 import type { DataAppFactory, SandboxBlockedListener } from "./types";
 

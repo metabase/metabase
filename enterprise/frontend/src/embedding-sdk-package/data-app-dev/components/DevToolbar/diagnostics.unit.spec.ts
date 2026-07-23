@@ -1,8 +1,17 @@
+import { DATA_APP_DIAGNOSTIC_MAX_CHARS } from "../../constants/diagnostics-channel";
+// `formatDevDiagnostic` is a lens onto captured entries — the projection lives
+// in the payload module now, this spec only uses it to read what was captured.
+import { formatDevDiagnostic } from "../../lib/diagnostics-payload";
+import type { DevDiagnosticEntry } from "../../types/diagnostics";
+
 import {
-  type DevDiagnosticEntry,
   clearDevDiagnostics,
+  getDevConnectionStatus,
   getDevDiagnostics,
   installDevDiagnostics,
+  recordDevDiagnostic,
+  recordSandboxBlockedEvent,
+  setDevConnectionStatus,
   subscribeDevDiagnostics,
 } from "./diagnostics";
 
@@ -11,13 +20,15 @@ const last = (entries: readonly DevDiagnosticEntry[]) =>
 
 let forwarded: unknown[][] = [];
 let originalConsoleError: typeof console.error;
+/** The active capture's teardown, so a test can uninstall and reinstall. */
+let uninstall: () => void;
 
 beforeAll(() => {
   originalConsoleError = console.error;
   console.error = (...args: unknown[]) => {
     forwarded.push(args);
   };
-  installDevDiagnostics();
+  uninstall = installDevDiagnostics();
 });
 
 afterAll(() => {
@@ -40,7 +51,7 @@ describe("dev diagnostics store", () => {
     const entries = getDevDiagnostics();
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
-      level: "error",
+      kind: "error",
       message: 'boom {"code":1}',
     });
     expect(typeof entries[0].id).toBe("number");
@@ -56,7 +67,7 @@ describe("dev diagnostics store", () => {
   it("formats Error arguments using their message", () => {
     console.error(new Error("kaboom"));
 
-    expect(last(getDevDiagnostics()).message).toContain("kaboom");
+    expect(formatDevDiagnostic(last(getDevDiagnostics()))).toContain("kaboom");
   });
 
   it("captures uncaught window errors", () => {
@@ -65,7 +76,9 @@ describe("dev diagnostics store", () => {
     });
     window.dispatchEvent(event);
 
-    expect(last(getDevDiagnostics()).message).toContain("window blew up");
+    expect(formatDevDiagnostic(last(getDevDiagnostics()))).toContain(
+      "window blew up",
+    );
   });
 
   it("captures unhandled promise rejections", () => {
@@ -74,10 +87,12 @@ describe("dev diagnostics store", () => {
     });
     window.dispatchEvent(event);
 
-    expect(last(getDevDiagnostics()).message).toBe("Unhandled rejection: nope");
+    expect(formatDevDiagnostic(last(getDevDiagnostics()))).toBe(
+      "Unhandled rejection: nope",
+    );
   });
 
-  it("captures CSP form-action violations (e.g. a blocked native form submit)", () => {
+  it("captures CSP violations as typed entries", () => {
     const event = Object.assign(new Event("securitypolicyviolation"), {
       effectiveDirective: "form-action",
       violatedDirective: "form-action",
@@ -86,22 +101,26 @@ describe("dev diagnostics store", () => {
     } satisfies Partial<SecurityPolicyViolationEvent>);
     window.dispatchEvent(event);
 
-    expect(last(getDevDiagnostics()).message).toBe(
+    const entry = last(getDevDiagnostics());
+    expect(entry).toMatchObject({
+      kind: "csp-violation",
+      directive: "form-action",
+      blockedUri: "https://example.com/",
+    });
+    expect(formatDevDiagnostic(entry)).toBe(
       "Content Security Policy (form-action) blocked https://example.com/",
     );
   });
 
-  it("formats other CSP violations generically (e.g. connect-src)", () => {
-    const event = Object.assign(new Event("securitypolicyviolation"), {
-      effectiveDirective: "connect-src",
-      violatedDirective: "connect-src",
-      blockedURI: "https://evil.test/",
-      originalPolicy: "connect-src 'self'; form-action 'none'",
-    } satisfies Partial<SecurityPolicyViolationEvent>);
-    window.dispatchEvent(event);
+  it("formats a CSP violation with an empty URI as inline content", () => {
+    recordDevDiagnostic({
+      kind: "csp-violation",
+      directive: "script-src",
+      blockedUri: "",
+    });
 
-    expect(last(getDevDiagnostics()).message).toBe(
-      "Content Security Policy (connect-src) blocked https://evil.test/",
+    expect(formatDevDiagnostic(last(getDevDiagnostics()))).toBe(
+      "Content Security Policy (script-src) blocked inline content",
     );
   });
 
@@ -141,7 +160,175 @@ describe("dev diagnostics store", () => {
 
     const entries = getDevDiagnostics();
     expect(entries).toHaveLength(200);
-    expect(entries[0].message).toBe("error 5");
-    expect(last(entries).message).toBe("error 204");
+    expect(formatDevDiagnostic(entries[0])).toBe("error 5");
+    expect(formatDevDiagnostic(last(entries))).toBe("error 204");
+  });
+
+  it("does not let a flood of requests evict earlier errors", () => {
+    console.error("the error worth keeping");
+
+    for (let i = 0; i < 500; i++) {
+      recordDevDiagnostic({
+        kind: "sdk-call",
+        method: "GET",
+        endpoint: `/api/card/${i}`,
+        status: 200,
+        durationMs: 1,
+      });
+    }
+
+    // A polling app used to push whatever explained its own failures out of the
+    // shared buffer — the one entry an author or an agent actually needs.
+    const entries = getDevDiagnostics();
+    expect(formatDevDiagnostic(entries[0])).toBe("the error worth keeping");
+    expect(entries.filter((entry) => entry.kind === "sdk-call")).toHaveLength(
+      50,
+    );
+  });
+});
+
+describe("recordSandboxBlockedEvent", () => {
+  it("records a blocked API as a blocked-api entry and logs it uncaptured", () => {
+    recordSandboxBlockedEvent({
+      type: "api",
+      message: "[data-app dev] blocked API call: document.write",
+    });
+
+    const entries = getDevDiagnostics();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      kind: "blocked-api",
+      message: "[data-app dev] blocked API call: document.write",
+    });
+    // Forwarded to the real console, without being re-captured as an error.
+    expect(forwarded).toContainEqual([
+      "[data-app dev] blocked API call: document.write",
+    ]);
+  });
+
+  it("records a blocked network call as a blocked-network entry and logs it uncaptured", () => {
+    recordSandboxBlockedEvent({
+      type: "network",
+      api: "fetch",
+      url: "https://evil.test/x",
+      reason: "evil.test (not in allowed_hosts)",
+    });
+
+    const entries = getDevDiagnostics();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      kind: "blocked-network",
+      api: "fetch",
+      url: "https://evil.test/x",
+      reason: "evil.test (not in allowed_hosts)",
+    });
+    expect(formatDevDiagnostic(entries[0])).toBe(
+      "Blocked fetch to evil.test (not in allowed_hosts)",
+    );
+    expect(forwarded).toContainEqual([
+      "[data-app dev] blocked fetch to evil.test (not in allowed_hosts)",
+    ]);
+  });
+});
+
+describe("sdk-call entries", () => {
+  it("formats a completed call with status and duration", () => {
+    recordDevDiagnostic({
+      kind: "sdk-call",
+      method: "POST",
+      endpoint: "/api/card/1/query",
+      status: 202,
+      durationMs: 45,
+    });
+
+    expect(formatDevDiagnostic(last(getDevDiagnostics()))).toBe(
+      "POST /api/card/1/query → 202 (45ms)",
+    );
+  });
+
+  it("keeps the endpoint on the summary line and the reason below it", () => {
+    recordDevDiagnostic({
+      kind: "sdk-call",
+      method: "POST",
+      endpoint: "/api/dataset",
+      status: 400,
+      durationMs: 12,
+      error: 'Table "orders" is not in the manifest',
+    });
+
+    expect(formatDevDiagnostic(last(getDevDiagnostics()))).toBe(
+      'POST /api/dataset → 400 (12ms)\nTable "orders" is not in the manifest',
+    );
+  });
+
+  it("formats a transport failure, which has no status", () => {
+    recordDevDiagnostic({
+      kind: "sdk-call",
+      method: "GET",
+      endpoint: "/api/user/current",
+      status: null,
+      durationMs: 5,
+      error: "Failed to fetch",
+    });
+
+    expect(formatDevDiagnostic(last(getDevDiagnostics()))).toBe(
+      "GET /api/user/current → failed (5ms)\nFailed to fetch",
+    );
+  });
+});
+
+describe("connection status", () => {
+  it("stores the connection status and notifies subscribers", () => {
+    const listener = jest.fn();
+    const unsubscribe = subscribeDevDiagnostics(listener);
+
+    setDevConnectionStatus({
+      checkedAt: 1,
+      metabaseUrl: "http://localhost:3000",
+      reachable: true,
+      sdkVersion: "0.63.1",
+    });
+
+    expect(getDevConnectionStatus()).toMatchObject({ reachable: true });
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+});
+
+describe("bounded entry size", () => {
+  it("truncates a huge logged object instead of retaining it whole", () => {
+    installDevDiagnostics();
+    clearDevDiagnostics();
+
+    // The count cap alone bounds nothing: one entry can be arbitrarily large,
+    // and it is retained twice and re-serialized on every poll.
+    console.error("rows", {
+      rows: Array.from({ length: 50_000 }, (_, i) => i),
+    });
+
+    const [entry] = getDevDiagnostics();
+    expect(entry.kind).toBe("error");
+    const message = entry.kind === "error" ? entry.message : "";
+    expect(message.length).toBeLessThan(DATA_APP_DIAGNOSTIC_MAX_CHARS * 2);
+    expect(message).toContain("truncated");
+  });
+});
+
+describe("installDevDiagnostics teardown", () => {
+  it("stops capturing, and a reinstall records once rather than twice", () => {
+    uninstall();
+    clearDevDiagnostics();
+
+    console.error("after teardown");
+    expect(getDevDiagnostics()).toHaveLength(0);
+
+    // Reinstalling wraps the restored console.error, not the previous wrapper —
+    // without the teardown resetting `installed`, an HMR reload of the dev entry
+    // would double every capture.
+    uninstall = installDevDiagnostics();
+    clearDevDiagnostics();
+    console.error("once");
+
+    expect(getDevDiagnostics()).toHaveLength(1);
   });
 });

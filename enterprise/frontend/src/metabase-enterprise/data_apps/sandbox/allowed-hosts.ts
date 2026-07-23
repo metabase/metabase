@@ -18,6 +18,19 @@
 
 import type { SandboxBlockedNetworkListener, SandboxRealm } from "./types";
 
+/** A network request the sandbox refused, reported to an optional listener. */
+export interface SandboxBlockedNetworkInfo {
+  api: "fetch" | "xhr";
+  /** The request URL as resolved (or the raw input when unparseable). */
+  url: string;
+  /** Human-readable block reason, e.g. `api.foo.com (not in allowed_hosts)`. */
+  reason: string;
+}
+
+export type SandboxBlockedNetworkListener = (
+  info: SandboxBlockedNetworkInfo,
+) => void;
+
 interface AllowedOrigin {
   protocol: string; // "https:" | "http:"
   wildcard: boolean; // entry was "*.host"

@@ -1,27 +1,20 @@
-// Dev diagnostics store for the data-app dev toolbar. Captures errors —
-// including the sandbox's `[data-app …] blocked API call: …` logs, which surface
-// through `console.error` — so the toolbar can show what went wrong (the sandbox
-// otherwise reports blocked APIs only as an opaque `#<Object>`).
-//
-// Capture is opt-in: it only patches `console.error` / listens for uncaught
-// errors once `installDevDiagnostics()` is called. Nothing here runs on import,
-// so a host that imports `createDataAppSandbox` from the same entry doesn't pull
-// any of this in unless it's actually used.
+import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/distortions";
 
-export type DevDiagnosticLevel = "error";
-
-export interface DevDiagnosticEntry {
-  id: number;
-  time: number;
-  level: DevDiagnosticLevel;
-  message: string;
-}
-
-const MAX_ENTRIES = 200;
+import {
+  capDiagnosticEntries,
+  truncateDiagnosticText,
+} from "../../lib/diagnostics-limits";
+import type {
+  DevDiagnosticEntry,
+  DevDiagnosticEvent,
+} from "../../types/diagnostics";
+import type { DevConnectionStatus } from "../../types/diagnostics-channel";
 
 let entries: DevDiagnosticEntry[] = [];
+let connectionStatus: DevConnectionStatus | null = null;
 let nextId = 1;
 let installed = false;
+let uncapturedConsoleError: typeof console.error | null = null;
 const listeners = new Set<() => void>();
 
 const emit = () => {
@@ -32,42 +25,67 @@ const emit = () => {
 
 const formatArg = (arg: unknown): string => {
   if (typeof arg === "string") {
-    return arg;
+    return truncateDiagnosticText(arg);
   }
   if (arg instanceof Error) {
-    return arg.stack ?? `${arg.name}: ${arg.message}`;
+    return truncateDiagnosticText(arg.stack ?? `${arg.name}: ${arg.message}`);
   }
   try {
-    return JSON.stringify(arg);
+    return truncateDiagnosticText(JSON.stringify(arg));
   } catch {
-    return String(arg);
+    return truncateDiagnosticText(String(arg));
   }
 };
 
-/**
- * Format a CSP violation for the toolbar. The dev server mirrors Metabase's
- * production CSP, so a violation here means the app would be blocked once
- * sandboxed in Metabase too — e.g. a native `<form action="…">` hitting
- * `form-action 'none'`, or a `fetch` to a host outside `allowed_hosts`. These
- * never reach `console.error`, so the toolbar wouldn't see them otherwise.
- */
-const formatCspViolation = (event: SecurityPolicyViolationEvent): string => {
-  const directive = event.effectiveDirective || event.violatedDirective;
-  const target = event.blockedURI || "inline content";
+const cappedEvent = (event: DevDiagnosticEvent): DevDiagnosticEvent =>
+  // Rebuilding the union through entries() loses the `kind`→fields tie; values
+  // are only ever mapped string→string.
+  Object.fromEntries(
+    Object.entries(event).map(([key, value]) => [
+      key,
+      typeof value === "string" ? truncateDiagnosticText(value) : value,
+    ]),
+  ) as DevDiagnosticEvent;
 
-  return `Content Security Policy (${directive}) blocked ${target}`;
-};
-
-const record = (level: DevDiagnosticLevel, message: string) => {
+export const recordDevDiagnostic = (event: DevDiagnosticEvent): void => {
   // New array reference each time so `useSyncExternalStore` re-renders.
-  entries = [...entries, { id: nextId++, time: Date.now(), level, message }];
-  if (entries.length > MAX_ENTRIES) {
-    entries = entries.slice(-MAX_ENTRIES);
-  }
+  entries = capDiagnosticEntries([
+    ...entries,
+    { id: nextId++, time: Date.now(), ...cappedEvent(event) },
+  ]);
   emit();
 };
 
+const logDevDiagnosticToConsole = (message: string): void => {
+  (uncapturedConsoleError ?? console.error)(message);
+};
+
+export const recordSandboxBlockedEvent = (event: SandboxBlockedEvent): void => {
+  if (event.type === "api") {
+    recordDevDiagnostic({ kind: "blocked-api", message: event.message });
+    logDevDiagnosticToConsole(event.message);
+    return;
+  }
+  recordDevDiagnostic({
+    kind: "blocked-network",
+    api: event.api,
+    url: event.url,
+    reason: event.reason,
+  });
+  logDevDiagnosticToConsole(
+    `[data-app dev] blocked ${event.api === "xhr" ? "XMLHttpRequest" : "fetch"} to ${event.reason}`,
+  );
+};
+
 export const getDevDiagnostics = (): readonly DevDiagnosticEntry[] => entries;
+
+export const getDevConnectionStatus = (): DevConnectionStatus | null =>
+  connectionStatus;
+
+export const setDevConnectionStatus = (status: DevConnectionStatus): void => {
+  connectionStatus = status;
+  emit();
+};
 
 export const subscribeDevDiagnostics = (listener: () => void): (() => void) => {
   listeners.add(listener);
@@ -82,33 +100,61 @@ export const clearDevDiagnostics = (): void => {
 };
 
 /**
- * Start capturing errors into the diagnostics store: wraps `console.error` and
- * listens for uncaught errors / unhandled rejections. Idempotent. Call it before
- * the sandbox runs so nothing is missed.
+ * Wraps `console.error` and listens for uncaught errors. Idempotent; call before
+ * the sandbox runs so nothing is missed. The teardown matters: without it, an HMR
+ * reload re-wraps the already-wrapped `console.error` and doubles every capture.
  */
-export const installDevDiagnostics = (): void => {
+export const installDevDiagnostics = (): (() => void) => {
   if (installed || typeof window === "undefined") {
-    return;
+    return () => undefined;
   }
   installed = true;
 
   const originalError = console.error.bind(console);
+  uncapturedConsoleError = originalError;
   console.error = (...args: unknown[]) => {
-    record("error", args.map(formatArg).join(" "));
+    recordDevDiagnostic({
+      kind: "error",
+      message: args.map(formatArg).join(" "),
+    });
     originalError(...args);
   };
 
-  window.addEventListener("error", (event) => {
+  const onError = (event: ErrorEvent) => {
     if (event.error != null || event.message) {
-      record("error", formatArg(event.error ?? event.message));
+      recordDevDiagnostic({
+        kind: "error",
+        message: formatArg(event.error ?? event.message),
+      });
     }
-  });
+  };
 
-  window.addEventListener("unhandledrejection", (event) => {
-    record("error", `Unhandled rejection: ${formatArg(event.reason)}`);
-  });
+  const onRejection = (event: PromiseRejectionEvent) => {
+    recordDevDiagnostic({
+      kind: "error",
+      message: `Unhandled rejection: ${formatArg(event.reason)}`,
+    });
+  };
 
-  window.addEventListener("securitypolicyviolation", (event) => {
-    record("error", formatCspViolation(event));
-  });
+  window.addEventListener("error", onError);
+  window.addEventListener("unhandledrejection", onRejection);
+
+  const onCspViolation = (event: SecurityPolicyViolationEvent) => {
+    recordDevDiagnostic({
+      kind: "csp-violation",
+      directive: event.effectiveDirective || event.violatedDirective,
+      blockedUri: event.blockedURI,
+    });
+  };
+
+  window.addEventListener("securitypolicyviolation", onCspViolation);
+
+  return () => {
+    console.error = originalError;
+    uncapturedConsoleError = null;
+    window.removeEventListener("error", onError);
+    window.removeEventListener("unhandledrejection", onRejection);
+    window.removeEventListener("securitypolicyviolation", onCspViolation);
+    installed = false;
+  };
 };

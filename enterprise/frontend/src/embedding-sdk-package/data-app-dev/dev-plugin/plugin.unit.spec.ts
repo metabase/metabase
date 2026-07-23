@@ -12,6 +12,11 @@ import {
   DATA_APP_BUNDLE_URL,
   DATA_APP_REBUILT_EVENT,
 } from "../constants/bundle";
+import {
+  DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+  DATA_APP_DIAGNOSTICS_EVENT,
+  DATA_APP_DIAGNOSTICS_URL,
+} from "../constants/diagnostics-channel";
 
 import { dataAppSandboxDevPlugin } from "./plugin";
 
@@ -38,7 +43,7 @@ type FakeServer = {
     logger: { error: jest.Mock };
     server: { headers: Record<string, string | null> };
   };
-  ws: { send: jest.Mock };
+  ws: { send: jest.Mock; on: jest.Mock; clients: Set<unknown> };
   middlewares: { use: jest.Mock };
   watcher: { on: jest.Mock };
   transformIndexHtml: jest.Mock;
@@ -138,7 +143,7 @@ describe("dataAppSandboxDevPlugin", () => {
           logger: { error: jest.fn() },
           server: { headers: { "Content-Security-Policy": DEV_CSP } },
         },
-        ws: { send: jest.fn() },
+        ws: { send: jest.fn(), on: jest.fn(), clients: new Set() },
         middlewares: { use: jest.fn() },
         watcher: { on: jest.fn() },
         transformIndexHtml: jest.fn(async (_url: string, html: string) => html),
@@ -221,7 +226,51 @@ describe("dataAppSandboxDevPlugin", () => {
       expect(server.ws.send).not.toHaveBeenCalled();
     });
 
+    describe("manifest validation", () => {
+      it("re-validates when data_app.yaml changes, and serves it on the feed", async () => {
+        const { server } = await setup();
+        mockedFs.existsSync.mockReturnValue(true);
+        mockedFs.readFileSync.mockReturnValue(
+          "name: Renamed\npath: dist/index.js\n",
+        );
+
+        const [watchEvent, onAll] = server.watcher.on.mock.calls[1];
+        expect(watchEvent).toBe("all");
+
+        onAll("change", `/app${path.sep}data_app.yaml`);
+
+        // The status is read from the feed, not pushed to the page — the page
+        // used to echo it back, which raced and reported "not validated yet".
+        const middleware = server.middlewares.use.mock.calls
+          .map((call) => call[0])
+          .find((handler) => {
+            const probe = { setHeader: jest.fn(), end: jest.fn() };
+            const next = jest.fn();
+            handler({ url: DATA_APP_DIAGNOSTICS_URL }, probe, next);
+            return !next.mock.calls.length;
+          });
+        const res = { setHeader: jest.fn(), end: jest.fn() };
+        middleware?.({ url: DATA_APP_DIAGNOSTICS_URL }, res, jest.fn());
+
+        expect(JSON.parse(res.end.mock.calls[0][0]).manifest).toMatchObject({
+          name: "Renamed",
+        });
+      });
+
+      it("ignores other file events", async () => {
+        const { server } = await setup();
+
+        const onAll = server.watcher.on.mock.calls[1][1];
+        onAll("change", `/app${path.sep}src${path.sep}index.tsx`);
+
+        expect(server.ws.send).not.toHaveBeenCalled();
+      });
+    });
+
     describe("synthetic index.html document", () => {
+      // The document middleware is the second one registered: the bundle
+      // middleware from `configureServer` (index 0), then this one from the
+      // returned late hook (index 1).
       // Registered by the post-hook, so it's always the last one added.
       const getDocumentMiddleware = (server: FakeServer) =>
         server.middlewares.use.mock.calls.at(-1)[0];
@@ -285,6 +334,214 @@ describe("dataAppSandboxDevPlugin", () => {
         );
 
         expect(next).toHaveBeenCalledWith(error);
+      });
+    });
+
+    describe("diagnostics feed", () => {
+      /** Drive the JSON endpoint the way connect would, and parse the response. */
+      const request = (server: FakeServer, url: string) => {
+        const middleware = server.middlewares.use.mock.calls
+          .map((call) => call[0])
+          .find((handler) => {
+            const res = { setHeader: jest.fn(), end: jest.fn() };
+            const next = jest.fn();
+            handler({ url: DATA_APP_DIAGNOSTICS_URL }, res, next);
+            return !next.mock.calls.length;
+          });
+
+        const res = { setHeader: jest.fn(), end: jest.fn() };
+        const next = jest.fn();
+        middleware?.({ url }, res, next);
+
+        return {
+          next,
+          body: res.end.mock.calls[0]
+            ? JSON.parse(res.end.mock.calls[0][0])
+            : null,
+        };
+      };
+
+      const report = (
+        server: FakeServer,
+        entries: unknown[],
+        sessionId?: string,
+      ) => {
+        const handler = server.ws.on.mock.calls.find(
+          ([event]) => event === DATA_APP_DIAGNOSTICS_EVENT,
+        )?.[1];
+        handler({ sessionId, entries, connection: { reachable: true } });
+      };
+
+      it("serves what the page reported, and passes other URLs through", async () => {
+        const { server } = await setup();
+
+        report(server, [
+          { id: 1, kind: "error", summary: "boom", alert: true },
+          { id: 2, kind: "sdk-call", summary: "POST /api/dataset → 400" },
+        ]);
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+        expect(
+          body.entries.map((entry: { eventId: number }) => entry.eventId),
+        ).toEqual([1, 2]);
+        expect(body.connection).toEqual({ reachable: true });
+        expect(body.nextEventId).toBe(3);
+
+        expect(request(server, "/something-else").next).toHaveBeenCalled();
+      });
+
+      it("re-stamps ids so a page reload can't hide entries behind a poller's cursor", async () => {
+        const { server } = await setup();
+
+        // First page: ids 1..2 from its own counter.
+        report(server, [
+          { id: 1, summary: "before reload" },
+          { id: 2, summary: "also before" },
+        ]);
+        const cursor = request(server, DATA_APP_DIAGNOSTICS_URL).body
+          .nextEventId;
+
+        // The preview reloads; the page's counter restarts at 1.
+        report(server, [{ id: 1, summary: "after reload" }]);
+
+        const { body } = request(
+          server,
+          `${DATA_APP_DIAGNOSTICS_URL}?startEventId=${cursor}`,
+        );
+        expect(body.entries.map((e: { summary: string }) => e.summary)).toEqual(
+          ["after reload"],
+        );
+      });
+
+      it("carries the manifest before any client has reported", async () => {
+        // Regression: the manifest used to round-trip through the page, so the
+        // feed said "not validated yet" whenever that echo hadn't happened.
+        const { server } = await setup();
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+
+        expect(body.manifest).toEqual(
+          expect.objectContaining({ errors: expect.any(Array) }),
+        );
+      });
+
+      it("keeps the manifest even when the page reports without one", async () => {
+        const { server } = await setup();
+        report(server, [{ eventId: 1, summary: "boom" }]);
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+
+        expect(body.manifest).not.toBeNull();
+      });
+
+      it("caps oversized text the socket sends", async () => {
+        const { server } = await setup();
+        // The socket is only as trustworthy as any local process, and this buffer
+        // is re-serialized on every poll.
+        report(server, [
+          {
+            eventId: 1,
+            summary: "x".repeat(50_000),
+            detail: "y".repeat(50_000),
+          },
+        ]);
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+
+        expect(body.entries[0].summary.length).toBeLessThan(6_000);
+        expect(body.entries[0].detail.length).toBeLessThan(6_000);
+        expect(body.entries[0].summary).toContain("truncated");
+      });
+
+      it("drops the previous page's events when a new page loads", async () => {
+        const { server } = await setup();
+
+        report(server, [{ eventId: 1, summary: "before reload" }], "page-1");
+        report(server, [{ eventId: 2, summary: "after reload" }], "page-2");
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+
+        // Only the current page's event survives, but ids keep climbing so an
+        // existing poller's cursor stays valid.
+        expect(body.entries.map((e: { summary: string }) => e.summary)).toEqual(
+          ["after reload"],
+        );
+        expect(body.sessionId).toBe("page-2");
+      });
+
+      it("keeps events across a soft reload (same sessionId)", async () => {
+        const { server } = await setup();
+
+        report(server, [{ eventId: 1, summary: "first" }], "page-1");
+        report(server, [{ eventId: 2, summary: "second" }], "page-1");
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+
+        expect(body.entries).toHaveLength(2);
+      });
+
+      it("returns only events from `startEventId` onward", async () => {
+        const { server } = await setup();
+        report(server, [
+          { id: 1, summary: "old" },
+          { id: 2, summary: "new" },
+        ]);
+
+        const { body } = request(
+          server,
+          `${DATA_APP_DIAGNOSTICS_URL}?startEventId=2`,
+        );
+
+        expect(body.entries).toHaveLength(1);
+        expect(body.entries[0].summary).toBe("new");
+      });
+
+      it("reports connected clients, so an empty feed isn't read as healthy", async () => {
+        const { server } = await setup();
+
+        expect(request(server, DATA_APP_DIAGNOSTICS_URL).body).toMatchObject({
+          entries: [],
+          clients: 0,
+          lastReportAt: null,
+        });
+
+        server.ws.clients.add({});
+        report(server, []);
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+        expect(body.clients).toBe(1);
+        expect(body.lastReportAt).toEqual(expect.any(Number));
+      });
+
+      const changeNudges = (server: FakeServer) =>
+        server.ws.send.mock.calls.filter(
+          ([message]) => message?.event === DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+        ).length;
+
+      it("nudges readers when a report brings something new", async () => {
+        const { server } = await setup();
+
+        report(server, [{ summary: "boom" }], "page-1");
+
+        // The nudge carries no payload: readers re-read the endpoint, so the
+        // toolbar and a shell agent still see the same bytes.
+        expect(changeNudges(server)).toBe(1);
+        expect(server.ws.send).toHaveBeenCalledWith({
+          type: "custom",
+          event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+        });
+      });
+
+      it("stays quiet when a report brings nothing new", async () => {
+        const { server } = await setup();
+
+        report(server, [{ summary: "boom" }], "page-1");
+        report(server, [], "page-1");
+        report(server, [], "page-1");
+
+        // The reporter flushes on a timer whether or not anything happened.
+        // Nudging on those would rebuild the poll loop from the other side.
+        expect(changeNudges(server)).toBe(1);
       });
     });
   });
