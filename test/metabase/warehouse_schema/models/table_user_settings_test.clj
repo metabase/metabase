@@ -61,6 +61,55 @@
                :owner_email "alice@example.com"}
               (t2/select-one :model/TableUserSettings :table_id table-2-id))))))
 
+(deftest merge-back-overlay-test
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {table-id :id} {:db_id       db-id
+                                                 :description "from sync"}]
+    (table-user-settings/upsert-user-settings! [table-id] {:description "user text"})
+    (t2/update! :model/Table table-id {:description "user text"})
+    (testing "a sync-style update cannot override a user-set description"
+      (t2/update! :model/Table table-id {:description "newer sync description"})
+      (is (= "user text" (t2/select-one-fn :description :model/Table table-id))))
+    (testing "columns without a recorded user setting update normally"
+      (t2/update! :model/Table table-id {:entity_type :entity/TransactionTable})
+      (is (= :entity/TransactionTable (t2/select-one-fn :entity_type :model/Table table-id))))
+    (testing "the user can still change the value by recording the new one first (the API flow)"
+      (table-user-settings/upsert-user-settings! [table-id] {:description "revised"})
+      (t2/update! :model/Table table-id {:description "revised"})
+      (is (= "revised" (t2/select-one-fn :description :model/Table table-id))))
+    (testing "an explicitly unset (nil) user setting no longer overrides"
+      (table-user-settings/upsert-user-settings! [table-id] {:description nil})
+      (t2/update! :model/Table table-id {:description "sync wins again"})
+      (is (= "sync wins again" (t2/select-one-fn :description :model/Table table-id))))))
+
+(deftest merge-back-overlay-visibility-pair-test
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {table-id :id} {:db_id db-id}]
+    (table-user-settings/upsert-user-settings! [table-id] {:visibility_type "hidden"})
+    (t2/update! :model/Table table-id {:visibility_type :hidden})
+    (testing "user-hidden tables keep a consistent visibility_type/data_layer pair"
+      (is (=? {:visibility_type :hidden
+               :data_layer      :hidden}
+              (t2/select-one :model/Table table-id))))
+    (testing "a sync-style attempt to unhide is overridden, and the pair stays consistent"
+      (t2/update! :model/Table table-id {:visibility_type nil})
+      (is (=? {:visibility_type :hidden
+               :data_layer      :hidden}
+              (t2/select-one :model/Table table-id))))))
+
+(deftest merge-back-overlay-does-not-fight-system-writes-test
+  (mt/with-temp [:model/Database   {db-id :id}    {}
+                 :model/Collection {coll-id :id}  {:name "Library Data" :type "library-data"}
+                 :model/Table      {table-id :id} {:db_id         db-id
+                                                   :collection_id coll-id
+                                                   :is_published  true}]
+    (table-user-settings/upsert-user-settings! [table-id] {:collection_id coll-id})
+    (testing "collection_id is not sync-overridable: system unpublish flows can still null it"
+      (t2/update! :model/Table table-id {:collection_id nil :is_published false})
+      (is (=? {:collection_id nil
+               :is_published  false}
+              (t2/select-one :model/Table table-id))))))
+
 (deftest table-delete-cascades-test
   (mt/with-temp [:model/Database {db-id :id}    {}
                  :model/Table    {table-id :id} {:db_id db-id}]

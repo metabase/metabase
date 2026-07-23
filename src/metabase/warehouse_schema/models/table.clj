@@ -16,7 +16,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -202,9 +203,25 @@
   #{:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
     :show_in_getting_started :collection_id :data_layer :data_authority :data_source :owner_email :owner_user_id})
 
+(def ^:private sync-overridable-user-settings
+  "The subset of [[table-user-settings]] the sync process writes (description and visibility from
+  metadata sync, entity_type from classification; data_layer pairs with visibility_type). The
+  merge-back overlay protects only these: the other user-settable columns are never written by sync,
+  and force-merging them would fight legitimate system writes (e.g. collection archival nulling
+  collection_id)."
+  #{:description :entity_type :visibility_type :data_layer})
+
+(defn- merge-user-settings [table]
+  ;; we transparently prevent updates that would override user-set values; this runs before the
+  ;; visibility_type/data_layer pair sync below so the pair stays consistent after the merge
+  (let [user-settings (t2/select-one :model/TableUserSettings (:id table))
+        updated-table (merge table (u/select-keys-when user-settings :non-nil sync-overridable-user-settings))]
+    (t2.protocols/with-current table updated-table)))
+
 (t2/define-before-update :model/Table
   [table]
-  (let [changes        (t2/changes table)
+  (let [table          (merge-user-settings table)
+        changes        (t2/changes table)
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
@@ -622,8 +639,13 @@
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            [["Measure" measure-id] {"Table" id}]))]
-    (merge fields segments measures)))
+                            [["Measure" measure-id] {"Table" id}]))
+        ;; When user-edits-only (git sync), emit the Table's own user-authored metadata too; full
+        ;; exports extract TableUserSettings as a top-level model instead.
+        table-user-settings (when (and user-edits-only
+                                       (t2/exists? :model/TableUserSettings :table_id id))
+                              {["TableUserSettings" id] {"Table" id}})]
+    (merge fields segments measures table-user-settings)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]

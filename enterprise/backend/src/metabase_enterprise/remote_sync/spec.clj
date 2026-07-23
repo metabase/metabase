@@ -1238,9 +1238,13 @@
     (u/group-by first second targets)))
 
 (defn pk-col
-  "Returns the PK column keyword for `model`. FieldUserSettings uses :field_id; all others use :id."
+  "Returns the PK column keyword for `model`. FieldUserSettings uses :field_id and TableUserSettings
+  uses :table_id; all others use :id."
   [model]
-  (if (= model "FieldUserSettings") :field_id :id))
+  (case model
+    "FieldUserSettings" :field_id
+    "TableUserSettings" :table_id
+    :id))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.

@@ -1174,6 +1174,21 @@
                    [{:model "Collection" :id coll-eid}]}
                  (set (serdes/deserialization-dependencies ser)))))))))
 
+(deftest table-descendants-table-user-settings-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id    :id} {:name "DB"}
+                       :model/Table    {table-id :id} {:name "T" :db_id db-id}]
+      (testing "with user-edits-only and no TableUserSettings row: no TableUserSettings descendant"
+        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
+          (is (empty? (filter (fn [[model _]] (= "TableUserSettings" model)) (keys desc))))))
+      (testing "with user-edits-only and a TableUserSettings row: it appears as a descendant"
+        (t2/insert! :model/TableUserSettings {:table_id table-id :description "edited"})
+        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
+          (is (contains? (set (keys desc)) ["TableUserSettings" table-id])))
+        (testing "but not without user-edits-only (full exports extract it as a top-level model instead)"
+          (let [desc (serdes/descendants "Table" table-id {})]
+            (is (not (contains? (set (keys desc)) ["TableUserSettings" table-id])))))))))
+
 (deftest table-descendants-user-edits-only-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id    :id} {:name "DB"}

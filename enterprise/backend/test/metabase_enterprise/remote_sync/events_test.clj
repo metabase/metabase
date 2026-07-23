@@ -1217,3 +1217,58 @@
         (is (= 1 (count entries)) "still only one RSO — no Field RSO added")
         (is (= "removed"
                (:status (t2/select-one :model/RemoteSyncObject :model_type "FieldUserSettings" :model_id (:id field)))))))))
+
+;;; ----------------------------------------- TableUserSettings RSO Tracking ------------------------------------------
+;; Table events run the standard spec-based Table handling, and additionally track a
+;; TableUserSettings RSO when the table has user-curated metadata.
+
+(deftest table-update-creates-tus-rso-when-tus-exists-test
+  (testing "table-update on an eligible table with a TUS row creates a TableUserSettings RSO alongside the Table RSO"
+    (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
+                   :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}]
+      (t2/insert! :model/TableUserSettings {:table_id (:id table) :description "curated"})
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/table-update {:object table :user-id (mt/user->id :rasta)})
+      (is (=? {:status "update"}
+              (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table)))
+          "the standard Table RSO is still created")
+      (is (=? {:status         "update"
+               :model_table_id (:id table)}
+              (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id (:id table)))))))
+
+(deftest table-update-no-tus-rso-when-no-tus-row-test
+  (testing "table-update on an eligible table with NO TUS row creates only the Table RSO"
+    (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
+                   :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/table-update {:object table :user-id (mt/user->id :rasta)})
+      (is (some? (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))))
+      (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id (:id table)))))))
+
+(deftest table-update-no-tus-rso-for-ineligible-table-test
+  (testing "table-update creates no TUS RSO when the table is not in sync scope"
+    (mt/with-temp [:model/Collection coll  {:name "Normal" :type "library-data"}
+                   :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}]
+      (t2/insert! :model/TableUserSettings {:table_id (:id table) :description "curated"})
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/table-update {:object table :user-id (mt/user->id :rasta)})
+      (is (empty? (t2/select :model/RemoteSyncObject))))))
+
+(deftest table-update-tus-rso-marks-removed-when-table-leaves-sync-scope-test
+  (testing "existing TableUserSettings RSO is marked removed when the table leaves sync scope"
+    (mt/with-temp [:model/Collection synced {:is_remote_synced true :name "Synced" :type "library-data"}
+                   :model/Collection normal {:name "Normal" :type "library-data"}
+                   :model/Table      table  {:name "T" :is_published true :collection_id (:id synced)}]
+      (t2/insert! :model/TableUserSettings {:table_id (:id table) :description "curated"})
+      (t2/delete! :model/RemoteSyncObject)
+      (t2/insert! :model/RemoteSyncObject {:model_type        "TableUserSettings"
+                                           :model_id          (:id table)
+                                           :model_name        "T"
+                                           :model_table_id    (:id table)
+                                           :status            "synced"
+                                           :status_changed_at (t/offset-date-time)})
+      (t2/update! :model/Table (:id table) {:collection_id (:id normal)})
+      (let [updated (t2/select-one :model/Table (:id table))]
+        (events/publish-event! :event/table-update {:object updated :user-id (mt/user->id :rasta)}))
+      (is (= "removed"
+             (:status (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id (:id table))))))))

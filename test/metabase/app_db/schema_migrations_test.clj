@@ -3321,3 +3321,77 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest backfill-table-user-settings-test
+  (testing "v64.2026-07-23: clearly user-edited table values are backfilled into metabase_table_user_settings"
+    (impl/test-migrations ["v64.2026-07-23T10:00:00" "v64.2026-07-23T10:00:05"] [migrate!]
+      (let [new-db!    (fn [name & {:as extra}]
+                         (t2/insert-returning-pk! :metabase_database
+                                                  (merge {:name       name
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"}
+                                                         extra)))
+            db-id      (new-db! "Regular DB")
+            audit-db   (new-db! "Audit DB" :is_audit true)
+            coll-id    (t2/insert-returning-pk! :collection {:name     "Library Data"
+                                                             :slug     "library_data"
+                                                             :location "/"})
+            new-table! (fn [db-id name & {:as extra}]
+                         (t2/insert-returning-pk! :metabase_table
+                                                  (merge {:db_id      db-id
+                                                          :name       name
+                                                          :active     true
+                                                          :created_at :%now
+                                                          :updated_at :%now}
+                                                         extra)))
+            settings   (fn [table-id] (t2/select-one :metabase_table_user_settings :table_id table-id))
+            pristine   (new-table! db-id "order_items" :display_name "Order Items")
+            renamed    (new-table! db-id "order_items_2" :display_name "The Real Orders")
+            curated    (new-table! db-id "curated"
+                                   :display_name       "Curated"
+                                   :caveats            "beware"
+                                   :points_of_interest "look here"
+                                   :collection_id      coll-id
+                                   :owner_email        "owner@example.com"
+                                   :data_authority     "authoritative"
+                                   :field_order        "custom")
+            crufty     (new-table! db-id "checkins_bak"
+                                   :display_name    "Checkins Bak"
+                                   :visibility_type "cruft"
+                                   :data_layer      "hidden")
+            hidden     (new-table! db-id "secrets"
+                                   :display_name    "Secrets"
+                                   :visibility_type "hidden"
+                                   :data_layer      "hidden")
+            final      (new-table! db-id "facts"
+                                   :display_name "Facts"
+                                   :data_layer   "final")
+            audit-tbl  (new-table! audit-db "vw_users" :display_name "Metabase Users")]
+        (migrate!)
+        (testing "a table whose values all match system defaults gets no row"
+          (is (nil? (settings pristine))))
+        (testing "a display_name deviating from the humanized name is recorded as a user rename"
+          (is (=? {:display_name "The Real Orders"} (settings renamed))))
+        (testing "user-only columns are recorded, and matching display_name is not"
+          (is (=? {:display_name       nil
+                   :caveats            "beware"
+                   :points_of_interest "look here"
+                   :collection_id      coll-id
+                   :owner_email        "owner@example.com"
+                   :data_authority     "authoritative"
+                   :field_order        "custom"}
+                  (settings curated))))
+        (testing "sync-authored cruft visibility is not treated as a user edit"
+          (is (nil? (settings crufty))))
+        (testing "user-hidden tables record visibility_type and its paired data_layer"
+          (is (=? {:visibility_type "hidden"
+                   :data_layer      "hidden"}
+                  (settings hidden))))
+        (testing "a non-default data_layer with no visibility_type is recorded"
+          (is (=? {:visibility_type nil
+                   :data_layer      "final"}
+                  (settings final))))
+        (testing "audit database tables are excluded"
+          (is (nil? (settings audit-tbl))))))))

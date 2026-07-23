@@ -217,8 +217,55 @@
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 
-(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field)]
+;; Table gets a combined handler below (spec behavior + TableUserSettings tracking) instead of the
+;; generic registration: registering a second methodical primary method for the same table events
+;; would conflict with the spec-registered one.
+(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field :model/Table)]
   (register-events-for-spec! model-spec))
+
+;;; ------------------------------------- Table + TableUserSettings Tracking -------------------------------------------
+;; When a table changes, run the standard spec-based handling for the Table itself, and also track
+;; any TableUserSettings row for it. TableUserSettings has no separate event; it piggybacks on the
+;; table events (like FieldUserSettings does on :event/field-update).
+
+(def ^:private table-spec (get spec/remote-sync-specs :model/Table))
+
+(defn- hydrate-table-user-settings-details
+  "TableUserSettings RSOs are keyed by the parent table's id, so the table fills in both the model
+  fields and its own table_id/table_name self-reference (the Table spec's hydration provides only
+  name and collection_id)."
+  [table-id]
+  (when-let [{table-name :name, :keys [collection_id]} (t2/select-one [:model/Table :name :collection_id] :id table-id)]
+    {:name          table-name
+     :collection_id collection_id
+     :table_id      table-id
+     :table_name    table-name}))
+
+(defn- handle-table-user-settings-event
+  [{:keys [object]}]
+  (let [table-id  (:id object)
+        eligible? (spec/check-eligibility table-spec object)]
+    (cond
+      (and eligible? (t2/exists? :model/TableUserSettings :table_id table-id))
+      (create-or-update-remote-sync-object-entry!
+       "TableUserSettings" table-id "update" hydrate-table-user-settings-details)
+
+      (and (not eligible?)
+           (t2/exists? :model/RemoteSyncObject :model_type "TableUserSettings" :model_id table-id))
+      (create-or-update-remote-sync-object-entry!
+       "TableUserSettings" table-id "removed" hydrate-table-user-settings-details))))
+
+(let [event-kws (spec/event-keywords table-spec)
+      parent-kw (:parent event-kws)]
+  (derive parent-kw :metabase/event)
+  (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
+    (derive event-kw parent-kw))
+  (methodical/add-primary-method!
+   #'events/publish-event!
+   parent-kw
+   (fn [topic event]
+     (handle-model-event-from-spec table-spec topic event)
+     (handle-table-user-settings-event event))))
 
 ;;; ----------------------------------------- Collection Event Handler -------------------------------------------------
 ;; Collection has special handling due to side effects (tracking published tables when

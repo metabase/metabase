@@ -2719,7 +2719,8 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
-                    :model/Table}
+                    :model/Table
+                    :model/TableUserSettings}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3463,6 +3464,7 @@
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
