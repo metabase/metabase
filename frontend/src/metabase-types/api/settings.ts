@@ -805,6 +805,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
+  "jwt-group-mappings": Record<string, GroupId[]> | null;
+  "oidc-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
