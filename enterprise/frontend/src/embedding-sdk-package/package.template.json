@@ -2,7 +2,7 @@
   "name": "@metabase/embedding-sdk-react",
   "version": "0.999.0-beta.0",
   "sdkRelease": { "distTag": "999-beta", "tagAsLatest": false },
-  "description": "Metabase Embedding SDK for React",
+  "description": "Metabase Embedding SDK for React (dry-run no-op edit, EMB-1518)",
   "bin": "./dist/cli.js",
   "repository": {
     "url": "git+https://github.com/metabase/metabase.git"
