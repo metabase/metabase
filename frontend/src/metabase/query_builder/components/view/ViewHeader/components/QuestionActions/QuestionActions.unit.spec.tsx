@@ -345,9 +345,11 @@ describe("QuestionActions", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Upload data to this model" }),
       );
-      await userEvent.click(
-        await screen.findByText("Append data to this model"),
-      );
+      const appendMenuItem = await screen.findByRole("menuitem", {
+        name: /Append data to this model/,
+      });
+      await waitFor(() => expect(appendMenuItem).toBeEnabled());
+      await userEvent.click(appendMenuItem);
 
       const modal = await screen.findByRole("dialog", {
         name: "Upload data to this model?",
@@ -368,9 +370,11 @@ describe("QuestionActions", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Upload data to this model" }),
       );
-      await userEvent.click(
-        await screen.findByText("Append data to this model"),
-      );
+      const appendMenuItem = await screen.findByRole("menuitem", {
+        name: /Append data to this model/,
+      });
+      await waitFor(() => expect(appendMenuItem).toBeEnabled());
+      await userEvent.click(appendMenuItem);
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });

@@ -75,30 +75,28 @@ export const QuestionActions = ({
   const [isUploadWarningModalOpen, setIsUploadWarningModalOpen] =
     useState(false);
 
-  const { data: cardsBasedOnUploadTable } = useListCardsQuery(
-    typeof uploadTableId === "number"
-      ? { f: "table", model_id: uploadTableId }
-      : skipToken,
-  );
+  const { data: cardsBasedOnUploadTable, isLoading: isLoadingCards } =
+    useListCardsQuery(
+      typeof uploadTableId === "number"
+        ? { f: "table", model_id: uploadTableId }
+        : skipToken,
+    );
 
-  const otherModelsBasedOnUploadTable = useMemo(
+  const otherModelNames = useMemo(
     () =>
-      (cardsBasedOnUploadTable ?? []).filter(
-        (card) => card.type === "model" && card.id !== question.id(),
-      ),
+      (cardsBasedOnUploadTable ?? [])
+        .filter((card) => card.type === "model" && card.id !== question.id())
+        .map((card) => card.name)
+        .join(", "),
     [cardsBasedOnUploadTable, question],
   );
-
-  const otherModelNames = otherModelsBasedOnUploadTable
-    .map((model) => model.name)
-    .join(", ");
 
   const handleUploadClick = (
     newUploadMode: UploadMode.append | UploadMode.replace,
   ) => {
     setUploadMode(newUploadMode);
 
-    if (otherModelsBasedOnUploadTable.length > 0) {
+    if (otherModelNames.length > 0) {
       setIsUploadWarningModalOpen(true);
     } else {
       fileInputRef.current?.click();
@@ -174,6 +172,7 @@ export const QuestionActions = ({
               <Menu.Dropdown>
                 <Menu.Item
                   leftSection={<Icon name="add" />}
+                  disabled={isLoadingCards}
                   onClick={() => handleUploadClick(UploadMode.append)}
                 >
                   {t`Append data to this model`}
@@ -181,6 +180,7 @@ export const QuestionActions = ({
 
                 <Menu.Item
                   leftSection={<Icon name="refresh" />}
+                  disabled={isLoadingCards}
                   onClick={() => handleUploadClick(UploadMode.replace)}
                 >
                   {t`Replace all data in this model`}
