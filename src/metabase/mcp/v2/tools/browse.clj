@@ -42,11 +42,8 @@
         [:timezone :dbms_version :is_sample :is_on_demand :uploads_enabled :auto_run_queries
          :initial_sync_status :created_at :updated_at]))
 
-(projections/register-projection!
- :database
- {:concise  #(select-keys % database-concise-keys)
-  :detailed #(select-keys % database-detailed-keys)
-  :sample   (zipmap database-detailed-keys (repeat "x"))})
+(projections/register-key-projection! :database database-concise-keys
+                                      :detailed-keys database-detailed-keys :compact? false)
 
 (def ^:private field-concise-keys
   [:id :name :display_name :base_type :semantic_type :fk_target_field_id :description])
@@ -546,14 +543,13 @@
         [:entity_id :collection_id :database_id :display :archived :authority_level
          :moderated_status :last_used_at :location :here :below :last-edit-info]))
 
-(projections/register-projection!
- :collection-item
- {:concise  #(compact (select-keys % collection-item-concise-keys))
-  :detailed #(compact (select-keys % collection-item-detailed-keys))
-  :sample   (-> (zipmap collection-item-detailed-keys (repeat "x"))
-                (assoc :last-edit-info {:id 1 :email "x" :first_name "x" :last_name "x" :timestamp "x"}
-                       :here ["card"]
-                       :below ["card"]))})
+(projections/register-key-projection!
+ :collection-item collection-item-concise-keys
+ :detailed-keys collection-item-detailed-keys
+ :sample (-> (zipmap collection-item-detailed-keys (repeat "x"))
+             (assoc :last-edit-info {:id 1 :email "x" :first_name "x" :last_name "x" :timestamp "x"}
+                    :here ["card"]
+                    :below ["card"])))
 
 ;;; ------------------------------------------ browse_collection validation ----------------------------------------
 
