@@ -554,22 +554,22 @@
                                 :arguments {} :title "Inspecting [Orders](metabase://dashboard/5)"}]))))))
 
 (deftest ^:parallel stamp-tool-titles-xf-test
-  (let [tools {"greet" {:tool-name "greet" :display-fn (fn [{:keys [who]}] (str "Greeting " who))}
-               "boom"  {:tool-name "boom"  :display-fn (fn [_] (throw (ex-info "nope" {})))}
-               "num"   {:tool-name "num"   :display-fn (fn [_] 42)}
+  (let [tools {"greet" {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
+               "boom"  {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
+               "num"   {:tool-name "num"   :title-fn (fn [_] 42)}
                "plain" {:tool-name "plain"}}
         stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
-    (testing "display-fn result becomes :title"
+    (testing "title-fn result becomes :title"
       (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
                :title "Greeting Sam"}]
              (stamp {:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}}))))
-    (testing "a throwing display-fn leaves the part untitled"
+    (testing "a throwing title-fn leaves the part untitled"
       (is (= [{:type :tool-input :id "c2" :function "boom" :arguments {}}]
              (stamp {:type :tool-input :id "c2" :function "boom" :arguments {}}))))
     (testing "a non-string result leaves the part untitled"
       (is (= [{:type :tool-input :id "c3" :function "num" :arguments {}}]
              (stamp {:type :tool-input :id "c3" :function "num" :arguments {}}))))
-    (testing "a tool without a display-fn is untouched"
+    (testing "a tool without a title-fn is untouched"
       (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
              (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
     (testing "non-tool-input parts pass through"

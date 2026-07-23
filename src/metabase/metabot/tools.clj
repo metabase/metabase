@@ -161,7 +161,7 @@
                        :schema               (:schema m)
                        :prompt               (:prompt m)
                        :decode               (:decode m)
-                       :display-fn           (:display-fn m)
+                       :title-fn             (:title-fn m)
                        :system-instructions  (:system-instructions m)
                        :capabilities         (:capabilities m)
                        :scope                (:scope m)

@@ -193,14 +193,17 @@
       (is (= 3 (count result)))
       (is (= "a" (:data-type (second result))))
       (is (= "b" (:data-type (nth result 2))))))
-  (testing "stamps the tool-call id onto search-results parts, leaving others untouched"
+  (testing "stamps the originating tool-call id into every object-shaped data payload"
     (let [parts [{:type :tool-output
                   :id "call-7"
                   :result {:data-parts [(streaming/search-results-part {:total_count 1 :results []})
+                                        (streaming/entity-saved-part {:card_id 5})
                                         {:type :data :data-type "todo_list" :data []}]}}]
-          [_ search-part todo-part] (into [] streaming/expand-data-parts-xf parts)]
+          [_ search-part entity-part todo-part] (into [] streaming/expand-data-parts-xf parts)]
       (is (= "call-7" (get-in search-part [:data :tool_call_id])))
-      (is (not (contains? (:data todo-part) :tool_call_id))))))
+      (is (= "call-7" (get-in entity-part [:data :tool_call_id])))
+      ;; array payloads have no keyed slot, so they're passed through untouched
+      (is (= [] (:data todo-part))))))
 
 (deftest resolve-links-xf-test
   (testing "resolves metabase:// links in text parts"

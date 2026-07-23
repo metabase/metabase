@@ -958,7 +958,8 @@
      :output formatted}))
 
 (def ^:private link-models
-  "URI leading segment -> model for entities the FE renders as `metabase://` links."
+  "URI leading segment -> model, for entities rendered as `metabase://` links. Mirrors
+   `METABASE_PROTOCOL_ENTITY_MODELS` in metabot/utils/links.ts — keep the two in sync."
   {"dashboard"  :model/Dashboard
    "database"   :model/Database
    "collection" :model/Collection
@@ -969,14 +970,14 @@
    "transform"  :model/Transform})
 
 (def ^:private plain-models
-  "URI leading segment -> model for entities the FE can't link; their name still
-   shows as plain text instead of the \"Reading resource\" fallback."
+  "URI leading segment -> model for entities that aren't `metabase://`-linkable; their
+   name still shows as plain text instead of the bare \"Reading resource\" fallback."
   {"metric"  :model/Card
    "measure" :model/Measure
    "segment" :model/Segment})
 
 (defn- entity-title
-  "The URI entity's name — `[Name](metabase://…)` when FE-linkable, else plain text.
+  "The URI entity's name — `[Name](metabase://…)` when linkable, else plain text.
    nil when the segment names no entity or it is missing/unreadable (name withheld)."
   [segment id-str]
   (when-let [model (or (link-models segment) (plain-models segment))]
@@ -1001,13 +1002,13 @@
     nil))
 
 (defn- aspect-noun
-  "Localized noun for the sub-resource an `entity/{id}/…` URI drills into; words
-   match existing site copy. nil for the bare entity."
+  "Localized noun for the sub-resource an `entity/{id}/…` URI drills into; words match
+   existing site copy. nil for the bare entity."
   [segment aspect]
   (if (and (= segment "dashboard") (= aspect "items"))
     (tru "cards")
     (case aspect
-      "fields"         (tru "columns")
+      "fields"         (tru "fields")
       "derived"        (tru "dependents")
       "sources"        (tru "sources")
       "dimensions"     (tru "dimensions")
@@ -1042,7 +1043,7 @@
 
 (mu/defn ^{:tool-name  "read_resource"
            :scope      scope/agent-resource-read
-           :display-fn read-resource-display}
+           :title-fn   read-resource-display}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
   the instance and drill into specific entities. URIs returned by `search` can be fed directly
