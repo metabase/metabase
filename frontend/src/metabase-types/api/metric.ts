@@ -126,6 +126,7 @@ export type ListMetricDimensionsRequest = {
   metricId: MetricId;
   query?: string;
   "with-addable"?: boolean;
+  "include-orphaned"?: boolean;
 };
 
 export type AddableDimensionGroup = {

@@ -88,18 +88,22 @@
      :offset offset
      :data   metrics}))
 
-(mu/defn- hydrated-metric [id :- ms/PositiveInt]
+(mu/defn- hydrated-metric [id :- ms/PositiveInt
+                           include-orphaned? :- :boolean]
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
-  (-> (t2/select-one :model/Card :id id :type "metric")
-      metrics.perms/filter-dimensions-for-user))
+  (cond-> (-> (t2/select-one :model/Card :id id :type "metric")
+              metrics.perms/filter-dimensions-for-user)
+    (not include-orphaned?) metrics/without-orphaned-dimensions))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
   Returns the metric with hydrated dimensions and dimension mappings."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [metric (hydrated-metric id)]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [include-orphaned]} :- [:map
+                                  [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
+  (let [metric (hydrated-metric id (boolean include-orphaned))]
     (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -295,7 +299,7 @@
   [{:keys [id dimension-key]} :- [:map
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id false)]
     (metrics/dimension-values
      (:dimensions metric)
      (:dimension_mappings metric)
@@ -310,7 +314,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id false)]
     (metrics/dimension-search-values
      (:dimensions metric)
      (:dimension_mappings metric)
@@ -326,7 +330,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [value]}             :- [:map [:value :string]]]
-  (let [metric (hydrated-metric id)]
+  (let [metric (hydrated-metric id false)]
     (metrics/dimension-remapped-value
      (:dimensions metric)
      (:dimension_mappings metric)
@@ -360,12 +364,15 @@
   "List a metric's curated dimensions, and (when `with-addable=true`) the columns still available to
   add, grouped by source table. Both can be filtered with a `query` name substring."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [query with-addable]} :- [:map
-                                    [:query        {:optional true} [:maybe :string]]
-                                    [:with-addable {:optional true} [:maybe ms/BooleanValue]]]]
+   {:keys [query with-addable include-orphaned]} :- [:map
+                                                     [:query            {:optional true} [:maybe :string]]
+                                                     [:with-addable     {:optional true} [:maybe ms/BooleanValue]]
+                                                     [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (read-check-metric! id)
-  (metrics/list-dimensions :metadata/metric id {:query         query
-                                                :with-addable? (boolean with-addable)}))
+  (metrics/sync-dimensions! :metadata/metric id)
+  (metrics/list-dimensions :metadata/metric id {:query             query
+                                                :with-addable?     (boolean with-addable)
+                                                :include-orphaned? (boolean include-orphaned)}))
 
 (api.macros/defendpoint :post "/:id/dimension/add"
   :- [:sequential :map]

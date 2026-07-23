@@ -34,11 +34,15 @@ export function setupMetricDimensionsEndpoints(
     (call) => {
       const searchParams = new URL(call.url).searchParams;
       const query = searchParams.get("query")?.toLowerCase();
+      const includeOrphaned = searchParams.get("include-orphaned") === "true";
+      const visibleAdded = includeOrphaned
+        ? added
+        : added.filter(({ status }) => status !== "status/orphaned");
       const filteredAdded = query
-        ? added.filter((dimension) =>
+        ? visibleAdded.filter((dimension) =>
             dimension.display_name.toLowerCase().includes(query),
           )
-        : added;
+        : visibleAdded;
       const addable =
         searchParams.get("with-addable") === "true"
           ? response.addable

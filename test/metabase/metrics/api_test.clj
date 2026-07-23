@@ -192,6 +192,38 @@
           (is (seq (:dimensions updated-card)))
           (is (seq (:dimension_mappings updated-card))))))))
 
+(deftest fetch-metric-excludes-orphaned-dimensions-test
+  (testing "GET /api/metric/:id excludes orphaned dimensions unless explicitly requested"
+    (mt/with-temp [:model/Card metric {:name          "Metric with orphaned dimension"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+            orphan-id      (:id (first dimensions))
+            orphan-mapping (some #(when (= orphan-id (:dimension-id %)) %) dimension_mappings)
+            mappings       (mapv #(if (= orphan-id (:dimension-id %))
+                                    (assoc-in % [:target 2] (mt/id :users :name))
+                                    %)
+                                 dimension_mappings)]
+        (is (some? orphan-mapping))
+        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (let [response             (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+              response-ids         (into #{} (map :id) (:dimensions response))
+              response-mapping-ids (into #{} (map :dimension-id) (:dimension_mappings response))]
+          (is (not (contains? response-ids orphan-id)))
+          (is (not (contains? response-mapping-ids orphan-id))))
+        (let [response (mt/user-http-request :rasta :get 200
+                                             (str "metric/" (:id metric))
+                                             :include-orphaned true)
+              orphan   (some #(when (= orphan-id (:id %)) %) (:dimensions response))]
+          (is (= "status/orphaned" (:status orphan)))
+          (is (some #(= orphan-id (:dimension-id %)) (:dimension_mappings response))))
+        (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))]
+          (is (= :status/orphaned (:status (some #(when (= orphan-id (:id %)) %) dimensions))))
+          (is (some #(= orphan-id (:dimension-id %)) dimension_mappings)))))))
+
 (deftest fetch-metric-dimensions-have-has-field-values-test
   (testing "GET /api/metric/:id returns dimensions with has-field-values populated"
     (mt/with-temp [:model/Card metric {:name          "Metric with HFV"

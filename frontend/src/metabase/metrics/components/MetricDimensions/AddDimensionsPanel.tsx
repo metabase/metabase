@@ -50,6 +50,7 @@ export function AddDimensionsPanel({
     metricId,
     "with-addable": true,
     query: debouncedSearch || undefined,
+    "include-orphaned": true,
   });
   const [addDimensions] = useAddMetricDimensionsMutation();
 

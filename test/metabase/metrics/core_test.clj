@@ -30,6 +30,15 @@
     (-> (lib/query mp table-metadata)
         (lib/aggregate aggregation-clause))))
 
+(deftest without-orphaned-dimensions-test
+  (let [entity {:dimensions         [{:id "active" :status :status/active}
+                                     {:id "orphaned" :status :status/orphaned}]
+                :dimension_mappings [{:dimension-id "active"}
+                                     {:dimension-id "orphaned"}]}]
+    (is (= {:dimensions         [{:id "active" :status :status/active}]
+            :dimension_mappings [{:dimension-id "active"}]}
+           (metrics/without-orphaned-dimensions entity)))))
+
 ;;; ------------------------------------------------ Metric Dimension Sync Tests ------------------------------------------------
 
 (deftest metric-sync-dimensions-basic-test

@@ -254,6 +254,25 @@
         (is (contains? names "Price"))
         (is (not (contains? names "Latitude")))))))
 
+(deftest list-dimensions-excludes-orphaned-dimensions-test
+  (testing "GET /api/metric/:id/dimension synchronizes and optionally includes orphaned dimensions"
+    (with-seeded-metric [metric]
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+            orphan-id (:id (first dimensions))
+            mappings  (mapv #(if (= orphan-id (:dimension-id %))
+                               (assoc-in % [:target 2] (mt/id :users :name))
+                               %)
+                            dimension_mappings)]
+        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (str "metric/" (:id metric) "/dimension"))]
+          (is (not (some #(= orphan-id (:id %)) (:added response)))))
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (str "metric/" (:id metric) "/dimension")
+                                             :include-orphaned true)
+              orphan   (some #(when (= orphan-id (:id %)) %) (:added response))]
+          (is (= "status/orphaned" (:status orphan))))))))
+
 (deftest remove-dimensions-test
   (testing "POST /api/metric/:id/dimension/remove removes dimensions by id and persists"
     (with-seeded-metric [metric]

@@ -46,6 +46,7 @@ export function MetricDimensions({
   const { data, isLoading, error, isFetching } = useListMetricDimensionsQuery({
     metricId,
     query: debouncedSearch || undefined,
+    "include-orphaned": true,
   });
   const [removeDimensions] = useRemoveMetricDimensionsMutation();
   const [reorderDimensions] = useReorderMetricDimensionsMutation();

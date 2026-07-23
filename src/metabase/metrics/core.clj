@@ -174,6 +174,19 @@
                                 (lib-metric/extract-persisted-dimensions persisted-dims)
                                 persisted-mappings))))))))
 
+(defn without-orphaned-dimensions
+  "Remove orphaned dimensions and their mappings from an API response without changing persistence."
+  [entity]
+  (if (nil? (:dimensions entity))
+    entity
+    (let [dimensions    (filterv #(not= :status/orphaned (:status %)) (:dimensions entity))
+          dimension-ids (into #{} (map :id) dimensions)]
+      (assoc entity
+             :dimensions dimensions
+             :dimension_mappings
+             (filterv #(contains? dimension-ids (:dimension-id %))
+                      (:dimension_mappings entity))))))
+
 ;;; ------------------------------------------------- Dimension CRUD -------------------------------------------------
 ;;; Orchestration behind the dimension-editor endpoints. Each function loads the dimensionable entity
 ;;; (measure / metric) by its metadata-type + id, mutates the curated dimension set, persists via
@@ -232,13 +245,18 @@
 (defn list-dimensions
   "List a metric/measure's curated (`:added`) dimensions and, when `with-addable?`, the columns still
    available to add (`:addable`, grouped by source table). Both are filtered by `query` (a name
-   substring) and by the current user's permissions."
-  [metadata-type id {:keys [query with-addable?]}]
+   substring) and by the current user's permissions. Orphaned dimensions are omitted unless
+   `include-orphaned?` is true."
+  [metadata-type id {:keys [query with-addable? include-orphaned?]}]
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
         persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
-        added              (added-dimensions (filterv #(search-matches? query %) persisted-dims)
-                                             persisted-mappings)]
+        visible            (cond-> {:dimensions         persisted-dims
+                                    :dimension_mappings persisted-mappings}
+                             (not include-orphaned?) without-orphaned-dimensions)
+        added              (added-dimensions
+                            (filterv #(search-matches? query %) (:dimensions visible))
+                            (:dimension_mappings visible))]
     {:added   added
      :addable (if with-addable?
                 (->> (lib-metric/addable-pairs (entity-computed-pairs entity) persisted-mappings)

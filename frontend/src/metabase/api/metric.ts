@@ -151,7 +151,7 @@ export const metricApi = Api.injectEndpoints({
         const patch = dispatch(
           metricApi.util.updateQueryData(
             "listMetricDimensions",
-            { metricId, query: undefined },
+            { metricId, query: undefined, "include-orphaned": true },
             (draft) => {
               const position = new Map(
                 dimension_ids.map((id, index) => [id, index]),
