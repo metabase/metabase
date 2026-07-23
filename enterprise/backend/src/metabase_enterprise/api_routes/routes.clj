@@ -108,9 +108,7 @@
    "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
-   ;; DEV (content-optimizer): premium feature gate commented out to ease dev work; restore the gated line before merge.
-   ;; "/content-diagnostics"       (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
-   "/content-diagnostics"          metabase-enterprise.content-diagnostics.api/routes
+   "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes

@@ -4,6 +4,7 @@
   `checkers/*`, the shared entity-type mapping + denormalization helper in `common`."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.content-diagnostics.checkers.duplicated :as duplicated]
    [metabase-enterprise.content-diagnostics.checkers.slow :as slow]
    [metabase-enterprise.content-diagnostics.checkers.stale :as stale]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -23,8 +24,9 @@
   returning finding maps. Declaring the types (rather than inferring them from a scan's output) is what
   lets post-scan invalidation know its supersession scope even when a scan emits **zero** rows - i.e. an
   all-clean scan still resolves the previous scan's findings."
-  [{:finding-types #{:stale} :run stale/checker}
-   {:finding-types #{:slow}  :run slow/checker}])
+  [{:finding-types #{:stale}      :run stale/checker}
+   {:finding-types #{:slow}       :run slow/checker}
+   {:finding-types #{:duplicated} :run duplicated/checker}])
 
 (defn covered-finding-types
   "The set of finding-types the registered checkers own - the supersession scope for post-scan invalidation."
@@ -77,7 +79,8 @@
     (t2/with-transaction [_conn]
       (t2/insert! :model/ContentDiagnosticsFinding
                   (for [{:keys [entity-type entity-id finding-type details scope-collection-id last-active-at
-                                duration-ms entity-name entity-created-at entity-creator-id entity-creator-name]} chunk]
+                                duration-ms duplicate-count entity-name entity-created-at entity-creator-id
+                                entity-creator-name]} chunk]
                     {:scan_id             scan-id
                      :entity_type         entity-type
                      :entity_id           entity-id
@@ -85,6 +88,7 @@
                      :scope_collection_id scope-collection-id
                      :last_active_at      last-active-at
                      :duration_ms         duration-ms
+                     :duplicate_count     duplicate-count
                      :entity_name         entity-name
                      :entity_created_at   entity-created-at
                      :entity_creator_id   entity-creator-id

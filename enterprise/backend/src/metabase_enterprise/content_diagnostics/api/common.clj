@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -115,21 +116,39 @@
 ;;; name/created_at/creator are denormalized (frozen at scan time); description, the collection
 ;;; breadcrumb, the transform owner, and slow roll-up culprits are live-hydrated, batched per entity-type.
 
-(defn- entity-context
-  "For one entity-type's id set → `{entity-id → row}`. Live-hydrates only the non-denormalized display
-  fields: `description`, `collection_id`, `view_count` (all but transform), and (transform only) the owner.
-  `document` has no description."
+(defmulti ^:private hydrate-owner
+  "Batch-hydrate the per-type `owner` onto already-selected rows. card/dashboard/document have no owner, so
+  `::collection-item` returns rows unchanged; transform hydrates its `:owner` (a user row, or an `{:email …}`
+  external stand-in)."
+  {:arglists '([entity-type rows])}
+  (fn [entity-type _rows] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod hydrate-owner ::common/collection-item [_ rows] rows)
+(defmethod hydrate-owner :transform [_ rows] (t2/hydrate rows :owner))
+
+(defn- context-rows
+  "Build `{entity-id → row}` for a column-resident type: select `common/context-cols` plus `id`/`collection_id`,
+  hydrate the owner (`hydrate-owner`), index by id. Empty `ids` → nil (skips a degenerate `IN ()`; callers use
+  `get-in`, so nil is fine)."
   [entity-type ids]
-  (when-let [model (common/entity-type->model entity-type)]
-    (let [cols (cond-> [:id :collection_id]
-                 (not= entity-type :document)  (conj :description)
-                 ;; card/dashboard/document have a native view_count column; transform has none.
-                 (not= entity-type :transform) (conj :view_count)
-                 (= entity-type :transform)    (conj :owner_user_id :owner_email))
-          rows (cond-> (t2/select (into [model] cols) :id [:in (set ids)])
-                 ;; reuse the transform model's batched :owner hydrate (user row, or {:email …} external)
-                 (= entity-type :transform) (t2/hydrate :owner))]
-      (m/index-by :id rows))))
+  (when (seq ids)
+    (->> (t2/select (into [(common/entity-type->model entity-type) :id :collection_id]
+                          (common/context-cols entity-type))
+                    :id [:in (set ids)])
+         (hydrate-owner entity-type)
+         (m/index-by :id))))
+
+(defmulti ^:private entity-context
+  "For one entity-type's id set → `{entity-id → row}` of the live display fields (description, collection_id,
+  view_count, transform owner). card/dashboard/document (`::collection-item`) and transform share the
+  column-based [[context-rows]]; a non-column-resident type (e.g. collection) would get its own method."
+  {:arglists '([entity-type ids])}
+  (fn [entity-type _ids] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod entity-context ::common/collection-item [entity-type ids] (context-rows entity-type ids))
+(defmethod entity-context :transform [entity-type ids] (context-rows entity-type ids))
 
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
@@ -147,6 +166,21 @@
                      :effective_ancestors (mapv #(select-keys % [:id :name]) (:effective_ancestors c))}]))
             colls))))
 
+(defn- readable-entities-where
+  "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
+  (the same gate as `visible-findings-clause`) always, plus the personal-collection exclusion when
+  `excluded-personal-ids` is provided. Shared by the culprit/peer hydrators so the read-time gate lives in
+  one place - a perms change lands once, not per hydrator."
+  [ids excluded-personal-ids]
+  [:and
+   [:in :id ids]
+   (collection/visible-collection-filter-clause :collection_id)
+   ;; root-collection entities (nil collection_id) must survive the NOT-IN.
+   (when excluded-personal-ids
+     [:or
+      [:= :collection_id nil]
+      [:not [:in :collection_id excluded-personal-ids]]])])
+
 (defn- hydrate-slow-entities
   "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw> :view_count <int>}}`. The
   read-time hydration of a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects.
@@ -163,14 +197,49 @@
     (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)
                                :view_count (:view_count c)})
                       [:model/Card :id :name :type :view_count :card_schema]
-                      {:where [:and
-                               [:in :id (set card-ids)]
-                               (collection/visible-collection-filter-clause :collection_id)
-                               ;; root-collection culprits (nil collection_id) must survive the NOT-IN.
-                               (when excluded-personal-ids
-                                 [:or
-                                  [:= :collection_id nil]
-                                  [:not [:in :collection_id excluded-personal-ids]]])]})))
+                      {:where (readable-entities-where (set card-ids) excluded-personal-ids)})))
+
+(defmulti ^:private read-entity-rows
+  "Permission-filtered rows for hydrating a type's duplicate ids, read-gated by [[readable-entities-where]].
+  For card/dashboard/document (`::collection-item`) that collection clause IS the read permission (they derive
+  `:perms/use-parent-collection-perms`), with projection cols from `common/peer-select-cols`; transform
+  readability isn't collection-based, so it selects full rows and additionally filters by `mi/can-read?`."
+  {:arglists '([entity-type ids excluded-personal-ids])}
+  (fn [entity-type _ids _excluded] entity-type)
+  :hierarchy #'common/hierarchy)
+
+(defmethod read-entity-rows ::common/collection-item
+  [entity-type ids excluded-personal-ids]
+  ;; :card_schema (a peer-select-col for cards) is required on any Card select - its after-select hook reads it.
+  (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/peer-select-cols entity-type))
+             {:where (readable-entities-where ids excluded-personal-ids)}))
+
+(defmethod read-entity-rows :transform
+  [_ ids excluded-personal-ids]
+  ;; mi/can-read? on a transform = source-type feature gate + (superuser, or data-analyst with readable
+  ;; source tables) - the collection clause alone would leak transform names to collection-granted
+  ;; non-analysts. It reads :source, so select full rows; peer sets are page-bounded, so the per-row check
+  ;; is cheap.
+  (filter mi/can-read? (t2/select :model/Transform {:where (readable-entities-where ids excluded-personal-ids)})))
+
+(defn- hydrate-duplicate-entities
+  "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
+  :card_type <kw> :view_count <int>}}`. `card_type` and `view_count` are present only on card/dashboard/
+  document peers (transforms have no view concept, so their peers carry no usage signal). Peers share the
+  finding's own entity type, so each type's ids resolve from that type's own model via [[read-entity-rows]]
+  (which applies the per-type read gate); a filtered-out peer drops out of `duplicate_entities` like a
+  deleted one."
+  [findings excluded-personal-ids]
+  (into {}
+        (for [[etype rows] (group-by :entity_type findings)
+              :let  [model (common/entity-type->model etype)
+                     ids   (into #{} (mapcat (comp :duplicate_entity_ids :details)) rows)]
+              :when (and model (seq ids))
+              row   (read-entity-rows etype ids excluded-personal-ids)]
+          [[etype (:id row)]
+           (cond-> {:id (:id row) :name (:name row) :entity_type etype}
+             (not= etype :transform) (assoc :view_count (:view_count row))
+             (= etype :card)         (assoc :card_type (:type row)))])))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
@@ -182,56 +251,94 @@
         {:id id :name common_name :email email :type :user}
         {:email email :type :external}))))
 
+(defn- rewrite-ids->entities
+  "Replace `details.<ids-key>` with hydrated `details.<entities-key>`, each id looked up via `id->entity`
+  (misses dropped). A no-op when `ids-key` is absent."
+  [details ids-key entities-key id->entity]
+  (if (contains? details ids-key)
+    (-> details
+        (dissoc ids-key)
+        (assoc entities-key (into [] (keep id->entity) (ids-key details))))
+    details))
+
+(defn- with-slow-culprits
+  "Replace `details.slow_entity_ids` with hydrated `details.slow_entities` from `culprits`. A no-op for a
+  slow leaf (card/transform), which rolls up no culprits and so carries no `slow_entity_ids`."
+  [details culprits]
+  (rewrite-ids->entities details :slow_entity_ids :slow_entities culprits))
+
+(defn- with-duplicate-peers
+  "Replace `details.duplicate_entity_ids` with hydrated same-type `details.duplicate_entities` from
+  `entities` (keyed `[entity-type id]`). The raw stored ids are not permission-filtered, so the hydrated
+  list is the served form; a filtered-out peer drops out like a deleted one. A no-op when the finding
+  carries no `duplicate_entity_ids`."
+  [details entity-type entities]
+  (rewrite-ids->entities details :duplicate_entity_ids :duplicate_entities #(get entities [entity-type %])))
+
+(defmulti ^:private finalize-finding
+  "Apply the finding-type-specific tail to one assembled finding `base`: hoist the type's native top-level
+  column(s) from `row`, and rewrite `details` from the batch-hydrated `ctx` (`{:culprits _ :entities _}`).
+  Dispatches per row on `finding_type`, so a page may mix finding types (an umbrella endpoint); an
+  unregistered type throws - fail-closed, no `:default`."
+  {:arglists '([finding-type base row ctx])}
+  (fn [finding-type _base _row _ctx] finding-type))
+
+(defmethod finalize-finding :stale [_ base row _ctx]
+  (merge base (select-keys row [:last_active_at])))
+
+(defmethod finalize-finding :slow [_ base row {:keys [culprits]}]
+  (-> (merge base (select-keys row [:duration_ms]))
+      (update :details with-slow-culprits culprits)))
+
+(defmethod finalize-finding :duplicated [_ base row {:keys [entities]}]
+  (-> (merge base (select-keys row [:duplicate_count]))
+      (update :details with-duplicate-peers (:entity_type row) entities)))
+
 (defn hydrate-findings
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
   is the entity's live usage counter, present only for types that have the column (all but transform).
   Batched, page-size-independent.
 
-  Options let each endpoint add its per-finding-type extras without changing the shared base:
-  `:top-level-cols` - extra native finding columns hoisted to the top level (e.g. `:last_active_at` for
-  stale, `:duration_ms` for slow); `:hydrate-culprits?` - replace `details.slow_entity_ids` with hydrated
-  `details.slow_entities` objects (slow roll-ups); `:excluded-personal-collection-ids` - the request's
-  resolved exclusion set (see `excluded-personal-collection-ids`), threaded to the culprit hydration so
-  its personal-collection exclusion matches the findings filter without re-querying."
-  [findings & [{:keys [top-level-cols hydrate-culprits? excluded-personal-collection-ids]
-                :or   {top-level-cols []}}]]
+  The finding-type-specific tail - the hoisted native column(s) and any `details` rewrite (slow culprits /
+  duplicated peers) - is dispatched per row on each finding's `finding_type` via [[finalize-finding]], so a
+  page may mix finding types. `excluded-personal-ids` (the request's resolved exclusion set) gates the
+  culprit/peer hydration so it matches the findings filter without re-querying."
+  [findings excluded-personal-ids]
   (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
                                [etype (entity-context etype (map :entity_id rows))]))
         coll-ids    (into #{} (keep (fn [{:keys [entity_type entity_id]}]
                                       (get-in ctx-by-type [entity_type entity_id :collection_id])))
                           findings)
         breadcrumbs (collection-breadcrumbs coll-ids)
-        culprits    (when hydrate-culprits?
-                      (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
-                                             excluded-personal-collection-ids))]
+        ;; Batch-prep runs over whatever the page carries - an absent finding type contributes no ids, so
+        ;; its hydrator issues no query.
+        culprits    (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
+                                           excluded-personal-ids)
+        entities    (hydrate-duplicate-entities findings excluded-personal-ids)
+        ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
                        entity_name entity_creator_id entity_creator_name details] :as row}]
-            (let [entity  (get-in ctx-by-type [entity_type entity_id])
-                  base    (merge details
-                                 {:collection  (get breadcrumbs (:collection_id entity))
-                                  :description (:description entity)
-                                  ;; only transforms have owner columns; null for the rest.
-                                  :owner       (normalized-owner entity)
-                                  ;; creator denormalized (id + common_name) - no live :creator hydrate.
-                                  :creator     (when entity_creator_id
-                                                 {:id entity_creator_id :name entity_creator_name :type :user})}
-                                 (when-some [view-count (:view_count entity)]
-                                   {:view_count view-count}))
-                  details* (if (and hydrate-culprits? (contains? details :slow_entity_ids))
-                             (-> base
-                                 (dissoc :slow_entity_ids)
-                                 (assoc :slow_entities (into [] (keep culprits) (:slow_entity_ids details))))
-                             base)]
-              (merge {:id                  id
-                      :finding_type        finding_type
-                      :entity_type         entity_type
-                      :entity_id           entity_id
-                      :detected_at         detected_at
-                      :entity_display_name entity_name
-                      :created_at          entity_created_at
-                      :details             details*}
-                     (select-keys row top-level-cols))))
+            (let [entity   (get-in ctx-by-type [entity_type entity_id])
+                  details* (merge details
+                                  {:collection  (get breadcrumbs (:collection_id entity))
+                                   :description (:description entity)
+                                   ;; only transforms have owner columns; null for the rest.
+                                   :owner       (normalized-owner entity)
+                                   ;; creator denormalized (id + common_name) - no live :creator hydrate.
+                                   :creator     (when entity_creator_id
+                                                  {:id entity_creator_id :name entity_creator_name :type :user})}
+                                  (when-some [view-count (:view_count entity)]
+                                    {:view_count view-count}))
+                  base     {:id                  id
+                            :finding_type        finding_type
+                            :entity_type         entity_type
+                            :entity_id           entity_id
+                            :detected_at         detected_at
+                            :entity_display_name entity_name
+                            :created_at          entity_created_at
+                            :details             details*}]
+              (finalize-finding finding_type base row ctx)))
           findings)))
 
 (defn last-scan-at
