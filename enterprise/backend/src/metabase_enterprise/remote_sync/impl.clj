@@ -1787,15 +1787,14 @@
                                     {:deleted [] :overwritten []}))}))))
 
 (defn create-branch!
-  "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
-   to the new name. Does not publish events or return a response map; the caller
-   is responsible for those concerns."
+  "Creates a new remote branch from `base-branch`. Only creates: the `remote-sync-branch` setting is
+   never touched — switching the main app is the admin settings save (or a successful export carrying
+   a branch), and a branch created for a worktree checkout must not move the main app at all. Does not
+   publish events or return a response map; the caller is responsible for those concerns."
   [name base-branch]
   (guards/ensure-no-active-task!)
-  (remote-sync.worktree/check-branch-not-checked-out! name)
   (let [source (source/source-from-settings)]
-    (source.p/create-branch source name base-branch)
-    (settings/remote-sync-branch! name)))
+    (source.p/create-branch source name base-branch)))
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an

@@ -115,6 +115,17 @@ export type ImportFromBranchResponse = {
   message?: string;
 };
 
+export type StashChangesRequest = {
+  new_branch: string;
+  message?: string;
+};
+
+export type StashChangesResponse = {
+  status: string;
+  message: string;
+  task_id: number;
+};
+
 export type CollectionSyncPreferences = Record<number, boolean>;
 
 export type RemoteSyncConfigurationSettings = Pick<

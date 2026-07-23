@@ -388,7 +388,10 @@
                           e)))))))
 
 (api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
-  "Create a new branch from the current remote-sync branch and switches the current remote-sync branch to it.
+  "Create a new branch from the current remote-sync branch. Only creates — the current remote-sync
+  branch is never switched; switching the main app happens through the settings save (or a
+  successful export carrying a branch).
+
   Requires superuser permissions."
   [_route
    _query
@@ -416,13 +419,13 @@
    _query
    {new-branch :new_branch message :message} :- [:map
                                                  [:new_branch ms/NonBlankString]
-                                                 [:message ms/NonBlankString]]]
+                                                 [:message {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
   (api/check-400 (source/source-from-settings) "Source not configured")
   (try
     (let [user-id       api/*current-user-id*
-          {task-id :id} (impl/stash! new-branch message
+          {task-id :id} (impl/stash! new-branch (or message "Stashed from Metabase")
                                      :on-success (fn [task-id _result]
                                                    (impl/publish-sync-event! :event/remote-sync-stash task-id {:branch new-branch} user-id)))]
       {:status "success"

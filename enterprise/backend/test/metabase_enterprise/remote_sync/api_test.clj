@@ -1321,7 +1321,8 @@
                                        {:name "feature-branch"})))
           (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
                  (set (source.p/branches mock-source))))
-          (is (= "feature-branch" (settings/remote-sync-branch))))))))
+          (testing "only creates: the current remote-sync branch is not switched"
+            (is (= "main" (settings/remote-sync-branch)))))))))
 
 (deftest stash
   (testing "POST /api/ee/remote-sync/stash"
