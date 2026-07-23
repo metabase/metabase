@@ -89,7 +89,7 @@
 @media (prefers-reduced-motion: reduce) {
   .shimmer {
     animation: none;
-    color: var(--base-color);
+    color: var(--base-color) !important;
     background-image: none;
   }
 }

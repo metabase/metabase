@@ -83,7 +83,7 @@ export const {
   toolCallStart,
   toolCallArgs,
   toolCallEnd,
-  toolCallSaved,
+  toolCallTitled,
   toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
@@ -609,10 +609,20 @@ export const sendAgentRequest = createAsyncThunk<
                 const { tool_call_id, title } = part.data;
                 if (tool_call_id && title) {
                   dispatchToConvo(
-                    toolCallSaved({ agentId, toolCallId: tool_call_id, title }),
+                    toolCallTitled({
+                      agentId,
+                      toolCallId: tool_call_id,
+                      title,
+                    }),
                   );
                 }
                 pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "data-tool_title" }, (part) => {
+                const { tool_call_id, title } = part.data;
+                dispatchToConvo(
+                  toolCallTitled({ agentId, toolCallId: tool_call_id, title }),
+                );
               })
               .with(
                 { type: "data-navigate_to" },

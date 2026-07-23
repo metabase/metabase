@@ -45,6 +45,7 @@ export const knownDataPartTypes = [
   "data-adhoc_viz",
   "data-static_viz",
   "data-search_results",
+  "data-tool_title",
   "data-conversation-title",
 ] as const satisfies readonly KnownDataPart["type"][];
 
@@ -114,6 +115,11 @@ export type EntitySavedValue = {
   title?: string;
 };
 
+export type ToolTitleData = {
+  tool_call_id: string;
+  title: string;
+};
+
 export type KnownDataPart =
   | { type: "data-navigate_to"; data: string }
   | { type: "data-state"; data: Record<string, unknown> }
@@ -125,6 +131,7 @@ export type KnownDataPart =
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue }
   | { type: "data-search_results"; data: SearchResultsData }
+  | { type: "data-tool_title"; data: ToolTitleData }
   | { type: "data-conversation-title"; data: string };
 
 export const isKnownDataPart = (part: {
