@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -61,6 +62,11 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
 
   const chartFilters = { dateFilter, userId, groupId, tenantId };
 
+  const sortingOptions = useMemo(
+    () => ({ sort_column: sortColumn, sort_direction: sortDirection }),
+    [sortColumn, sortDirection],
+  );
+
   const { isInitialLoading, isRefetching, hasData, count } = useMcpHasData({
     ...dataSources,
     ...chartFilters,
@@ -78,9 +84,19 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
     errorsOnly: true,
   });
 
-  return (
+  // The events (Tool calls) tab is a data grid that should scroll internally, like other
+  // Monitor grid views; the charts tab is dashboard-like content that scrolls with the page.
+  // MonitorMain only fills/clips the viewport when its own parent is a flex container, so that
+  // constraint is applied conditionally, matching whichever tab is active.
+  const isEventsTab = tab === "events";
+
+  const content = (
     <MonitorMain>
-      <Stack gap="lg">
+      <Stack
+        gap="lg"
+        flex={isEventsTab ? 1 : undefined}
+        mih={isEventsTab ? 0 : undefined}
+      >
         <MonitorHeaderTitle>{t`MCP analytics`}</MonitorHeaderTitle>
 
         <Tabs
@@ -90,12 +106,12 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
             patchUrlState({ tab: val === "events" ? "events" : "charts" })
           }
           keepMounted={false}
-          flex={1}
-          mih={0}
-          display="flex"
-          style={{ flexDirection: "column" }}
+          flex={isEventsTab ? 1 : undefined}
+          mih={isEventsTab ? 0 : undefined}
+          display={isEventsTab ? "flex" : undefined}
+          style={isEventsTab ? { flexDirection: "column" } : undefined}
         >
-          <Tabs.List mb="lg">
+          <Tabs.List mb="md">
             <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
             <Tabs.Tab value="events">{t`Tool calls`}</Tabs.Tab>
           </Tabs.List>
@@ -118,18 +134,18 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
 
           {match({ isInitialLoading, showEmpty })
             .with({ isInitialLoading: true }, () => (
-              <Flex mih="60vh" align="center" justify="center" mt="lg">
+              <Flex mih="60vh" align="center" justify="center" mt="md">
                 <Loader size="lg" />
               </Flex>
             ))
             .with({ showEmpty: true }, () => (
-              <Box mt="lg">
+              <Box mt="md">
                 <McpAnalyticsEmptyState />
               </Box>
             ))
             .otherwise(() => (
               <>
-                <Tabs.Panel value="charts" mt="lg">
+                <Tabs.Panel value="charts" mt="md">
                   <Stack gap="lg">
                     <McpCallsTimelineChart
                       {...dataSources}
@@ -191,7 +207,7 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
 
                 <Tabs.Panel
                   value="events"
-                  mt="lg"
+                  mt="md"
                   flex={1}
                   mih={0}
                   display="flex"
@@ -205,10 +221,7 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
                     page={page}
                     total={count}
                     onPageChange={(newPage) => patchUrlState({ page: newPage })}
-                    sortingOptions={{
-                      sort_column: sortColumn,
-                      sort_direction: sortDirection,
-                    }}
+                    sortingOptions={sortingOptions}
                     onSortingOptionsChange={(newSorting) =>
                       patchUrlState({
                         sortColumn: newSorting.sort_column,
@@ -223,5 +236,13 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
         </Tabs>
       </Stack>
     </MonitorMain>
+  );
+
+  return isEventsTab ? (
+    <Flex h="100%" wrap="nowrap">
+      {content}
+    </Flex>
+  ) : (
+    content
   );
 }

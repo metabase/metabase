@@ -57,47 +57,52 @@ export function ConversationsPage({ location }: WithRouterProps) {
   const total = conversationsData?.total ?? 0;
 
   return (
-    <MonitorMain>
-      <MonitorHeaderTitle>{t`Conversations`}</MonitorHeaderTitle>
+    <Flex h="100%" wrap="nowrap">
+      <MonitorMain>
+        <MonitorHeaderTitle mb="sm">{t`Conversations`}</MonitorHeaderTitle>
 
-      <ConversationFilters
-        date={date}
-        onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-        user={user}
-        onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-        group={group}
-        onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-        groupNoFilterValue={groupNoFilterValue}
-        tenant={tenant}
-        onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-        userOptions={userOptions}
-        groupOptions={groupOptions}
-        tenantOptions={tenantOptions}
-        hasTenants={hasTenants}
-      />
-
-      <ConversationsTable
-        conversations={conversations}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        error={error}
-        page={page}
-        sortingOptions={{ sort_column, sort_direction }}
-        onSortingOptionsChange={(newSortingOptions) =>
-          patchUrlState({ ...newSortingOptions, page: 0 })
-        }
-      />
-
-      <Flex justify="flex-end">
-        <PaginationControls
-          onPreviousPage={() => patchUrlState({ page: page - 1 })}
-          onNextPage={() => patchUrlState({ page: page + 1 })}
-          page={page}
-          pageSize={PAGE_SIZE}
-          itemsLength={conversations.length}
-          total={total}
+        <ConversationFilters
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+          group={group}
+          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+          groupNoFilterValue={groupNoFilterValue}
+          tenant={tenant}
+          onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
+          userOptions={userOptions}
+          groupOptions={groupOptions}
+          tenantOptions={tenantOptions}
+          hasTenants={hasTenants}
         />
-      </Flex>
-    </MonitorMain>
+
+        <ConversationsTable
+          conversations={conversations}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          error={error}
+          page={page}
+          sortingOptions={{ sort_column, sort_direction }}
+          onSortingOptionsChange={(newSortingOptions) =>
+            patchUrlState({ ...newSortingOptions, page: 0 })
+          }
+        />
+
+        {!isLoading && error == null && (
+          <Flex justify="flex-end">
+            <PaginationControls
+              onPreviousPage={() => patchUrlState({ page: page - 1 })}
+              onNextPage={() => patchUrlState({ page: page + 1 })}
+              page={page}
+              pageSize={PAGE_SIZE}
+              itemsLength={conversations.length}
+              total={total}
+              showTotal
+            />
+          </Flex>
+        )}
+      </MonitorMain>
+    </Flex>
   );
 }

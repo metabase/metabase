@@ -62,7 +62,7 @@ export function ConversationHeader({
 
       <Flex justify="space-between" align="flex-start" gap="md">
         <Stack gap="sm">
-          <Flex align="baseline">
+          <Flex align="center">
             <MonitorHeaderTitle>
               {conversation.title || t`Conversation with ${userName}`}
             </MonitorHeaderTitle>

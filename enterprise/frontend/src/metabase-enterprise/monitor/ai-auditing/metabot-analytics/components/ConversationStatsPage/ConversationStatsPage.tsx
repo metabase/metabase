@@ -284,23 +284,25 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             <Tabs.Tab value="messages">{t`Messages`}</Tabs.Tab>
           </Tabs.List>
         </Tabs>
+      </Stack>
 
-        <ConversationFilters
-          date={date}
-          onDateChange={(val) => patchUrlState({ date: val })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val })}
-          group={group}
-          onGroupChange={(val) => patchUrlState({ group: val })}
-          groupNoFilterValue={groupNoFilterValue}
-          tenant={tenant}
-          onTenantChange={(val) => patchUrlState({ tenant: val })}
-          userOptions={userOptions}
-          groupOptions={groupOptions}
-          tenantOptions={tenantOptions}
-          hasTenants={hasTenants}
-        />
+      <ConversationFilters
+        date={date}
+        onDateChange={(val) => patchUrlState({ date: val })}
+        user={user}
+        onUserChange={(val) => patchUrlState({ user: val })}
+        group={group}
+        onGroupChange={(val) => patchUrlState({ group: val })}
+        groupNoFilterValue={groupNoFilterValue}
+        tenant={tenant}
+        onTenantChange={(val) => patchUrlState({ tenant: val })}
+        userOptions={userOptions}
+        groupOptions={groupOptions}
+        tenantOptions={tenantOptions}
+        hasTenants={hasTenants}
+      />
 
+      <Stack gap="lg">
         <ConversationsByDayChart
           {...sharedChartProps}
           onDimensionClick={handleDayClick}

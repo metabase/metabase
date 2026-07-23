@@ -341,17 +341,19 @@ function McpEventsTableInner({
         )}
       </Card>
 
-      <Flex justify="flex-end">
-        <PaginationControls
-          page={page}
-          pageSize={EVENTS_PAGE_SIZE}
-          itemsLength={rows.length}
-          total={total}
-          showTotal
-          onPreviousPage={() => onPageChange(page - 1)}
-          onNextPage={() => onPageChange(page + 1)}
-        />
-      </Flex>
+      {data != null && (
+        <Flex justify="flex-end">
+          <PaginationControls
+            page={page}
+            pageSize={EVENTS_PAGE_SIZE}
+            itemsLength={rows.length}
+            total={total}
+            showTotal
+            onPreviousPage={() => onPageChange(page - 1)}
+            onNextPage={() => onPageChange(page + 1)}
+          />
+        </Flex>
+      )}
     </Stack>
   );
 }
