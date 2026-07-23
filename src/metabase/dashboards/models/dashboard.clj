@@ -432,7 +432,7 @@
                :view_count :last_viewed_at
                ;; this is deprecated
                :cache_ttl
-               ;; which checkout materialized this row is local state, not portable content
+               ;; worktree membership is instance-local state, not portable content
                :remote_sync_worktree_id]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)

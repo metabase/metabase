@@ -442,7 +442,7 @@
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :description :entity_id :name :public_uuid]
-   :skip      [;; which checkout materialized this row is local state, not portable content
+   :skip      [;; worktree membership is instance-local state, not portable content
                :remote_sync_worktree_id]
    :transform {:created_at             (serdes/date)
                :type                   (serdes/kw)

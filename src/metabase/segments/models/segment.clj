@@ -229,7 +229,7 @@
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
    :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
                :table_id
-               ;; which checkout materialized this row is local state, not portable content
+               ;; worktree membership is instance-local state, not portable content
                :remote_sync_worktree_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)

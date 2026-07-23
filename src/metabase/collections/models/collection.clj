@@ -2226,8 +2226,7 @@
           :namespace
           :slug
           :type]
-   ;; worktree membership is local state (which worktree this instance materialized the collection into),
-   ;; not portable content
+   ;; worktree membership is instance-local state, not portable content
    :skip [:remote_sync_worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.

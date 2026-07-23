@@ -222,7 +222,7 @@
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
    :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id
-          ;; which checkout materialized this row is local state, not portable content
+          ;; worktree membership is instance-local state, not portable content
           :remote_sync_worktree_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)

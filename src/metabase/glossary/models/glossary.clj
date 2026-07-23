@@ -44,7 +44,7 @@
 
 (defmethod serdes/make-spec "Glossary" [_model-name _opts]
   {:copy      [:term :definition]
-   :skip      [;; which checkout materialized this row is local state, not portable content
+   :skip      [;; worktree membership is instance-local state, not portable content
                :remote_sync_worktree_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)

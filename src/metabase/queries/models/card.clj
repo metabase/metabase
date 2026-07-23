@@ -1417,7 +1417,7 @@
           :view_count :last_used_at :initially_published_at
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
-          ;; which checkout materialized this row is local state, not portable content
+          ;; worktree membership is instance-local state, not portable content
           :remote_sync_worktree_id
           ;; this column is not used anymore
           :cache_ttl
