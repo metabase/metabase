@@ -20,6 +20,7 @@ import type {
   MetabotChatMessage,
   MetabotUserChatMessage,
 } from "./types";
+import { hasInProgressMessage } from "./utils";
 
 /*
  * Top Level Selectors
@@ -41,6 +42,12 @@ export const getMetabotId = () =>
 export const getDebugMode = createSelector(
   getMetabotState,
   (state) => state.debugMode,
+);
+
+export const getSavedChartCardId = createSelector(
+  [getMetabotState, (_state: State, entityId: string) => entityId],
+  (metabotState, entityId): number | undefined =>
+    metabotState.savedChartCardIds[entityId],
 );
 
 export const getMetabotReactionsState = createSelector(
@@ -97,6 +104,21 @@ export const getMetabotConversation = createSelector(
   },
 );
 
+export const getMetabotConversationId = createSelector(
+  getMetabotConversation,
+  (convo) => convo.conversationId,
+);
+
+export const getIsCurrentConversation = (
+  state: State,
+  agentId: MetabotAgentId,
+  conversationId: string,
+  loadId: string,
+) => {
+  const convo = getMetabotConversation(state, agentId);
+  return convo.conversationId === conversationId && convo.loadId === loadId;
+};
+
 export const getMetabotVisible = createSelector(
   getMetabotConversation,
   (convo) => convo.visible,
@@ -105,6 +127,19 @@ export const getMetabotVisible = createSelector(
 export const getMessages = createSelector(
   getMetabotConversation,
   (convo) => convo.messages,
+);
+
+export const getMetabotConversationTitle = createSelector(
+  getMetabotConversation,
+  (convo) => convo.title,
+);
+
+export const getIsPollingForTitle = createSelector(
+  [
+    (state: State) => getMetabotState(state).titlePollingConversationIds,
+    (_state: State, conversationId: string) => conversationId,
+  ],
+  (conversationIds, conversationId) => conversationIds.includes(conversationId),
 );
 
 export const getDeveloperMessage = createSelector(
@@ -143,15 +178,18 @@ const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
     return turns;
   }, []);
 
-export const getFinalNavigateToMessageIdsPerTurn = createSelector(
+export const getFinalChartMessageIdsPerTurn = createSelector(
   getMessages,
   (messages) =>
     new Set(
       splitByTurn(messages).flatMap((turn) => {
-        const lastNav = turn.findLast(
-          (m) => m.type === "data_part" && m.part.type === "data-navigate_to",
+        const lastChart = turn.findLast(
+          (m) =>
+            m.type === "data_part" &&
+            m.part.type === "data-generated_entity" &&
+            m.part.data.type === "card",
         );
-        return lastNav ? [lastNav.id] : [];
+        return lastChart ? [lastChart.id] : [];
       }),
     ),
 );
@@ -194,9 +232,24 @@ export const getIsProcessing = createSelector(
   (convo) => convo.isProcessing,
 );
 
+export const getIsConversationInProgress = createSelector(
+  getMessages,
+  hasInProgressMessage,
+);
+
 export const getMetabotRequestState = createSelector(
   getMetabotConversation,
   (convo) => convo.state,
+);
+
+export const getConversationChart = createSelector(
+  [getMetabotState, (_state: State, chartId: string) => chartId],
+  (metabotState, chartId): Urls.ConversationChart | undefined => {
+    const charts = Object.values(metabotState.conversations)
+      .map((convo) => convo?.state?.charts?.[chartId])
+      .filter((chart) => chart != null);
+    return charts.find(Urls.hasLinkableChartQuery) ?? charts[0];
+  },
 );
 
 export const getIsLongMetabotConversation = createSelector(

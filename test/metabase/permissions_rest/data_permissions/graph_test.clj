@@ -614,3 +614,32 @@
                   {}))))))
     (testing "an empty reducible yields an empty graph"
       (is (= {} (reduce-into-graph [] identity))))))
+
+(deftest transforms-require-query-builder-and-native-test
+  (testing "Granting transforms permission requires \"Query builder and native\" (create-queries = :query-builder-and-native)"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/Database         {db-id :id}    {}]
+      ;; Clear default perms for the group
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (testing "transforms:yes together with create-queries:query-builder-and-native is allowed"
+        (is (nil? (data-perms.graph/update-data-perms-graph!
+                   {:groups {group-id {db-id {:view-data :unrestricted
+                                              :create-queries :query-builder-and-native
+                                              :transforms :yes}}}})))
+        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :perms/transforms db-id))))
+      (testing "transforms:yes together with create-queries:query-builder is rejected"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Query builder and native"
+             (data-perms.graph/update-data-perms-graph!
+              {:groups {group-id {db-id {:view-data :unrestricted
+                                         :create-queries :query-builder
+                                         :transforms :yes}}}}))))
+      (testing "transforms:yes alone is rejected when existing create-queries is not query-builder-and-native"
+        ;; Downgrade create-queries so the group no longer has native access
+        (data-perms.graph/update-data-perms-graph!
+         {:groups {group-id {db-id {:view-data :unrestricted
+                                    :create-queries :query-builder}}}})
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Query builder and native"
+             (data-perms.graph/update-data-perms-graph!
+              {:groups {group-id {db-id {:transforms :yes}}}})))))))

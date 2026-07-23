@@ -12,7 +12,18 @@
   padding: 1.25rem 1.5rem 1rem;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.headerTitle {
+  min-width: 0;
+  flex: 1;
+  line-height: 1.25;
+}
+
+.headerActions {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .inputContainer {

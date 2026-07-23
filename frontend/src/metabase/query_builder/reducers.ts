@@ -639,6 +639,24 @@ type NestedCardPayloadAction = {
   };
 };
 
+// Extracted to a standalone typed function (rather than an inline arrow) so its type is
+// resolved once, instead of being re-inferred inline inside addCase's generic instantiation —
+// see the note below on why that inline form tips TS2589 over the edge.
+const handleQueryCompleted = (
+  state: Card | null,
+  action: NestedCardPayloadAction,
+) => {
+  if (!state) {
+    return state;
+  }
+  return {
+    ...state,
+    display: action.payload.card.display,
+    result_metadata: action.payload.card.result_metadata,
+    visualization_settings: action.payload.card.visualization_settings,
+  };
+};
+
 // the card that is actively being worked on
 //
 // NOTE: the `.addCase` / `.addMatcher` calls below are written as separate
@@ -684,17 +702,7 @@ export const card = createReducer<Card | null>(null, (builder) => {
   );
   builder.addCase<string, NestedCardPayloadAction>(
     QUERY_COMPLETED,
-    (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        display: action.payload.card.display,
-        result_metadata: action.payload.card.result_metadata,
-        visualization_settings: action.payload.card.visualization_settings,
-      };
-    },
+    handleQueryCompleted,
   );
   builder.addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
     if (!state) {

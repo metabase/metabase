@@ -235,6 +235,12 @@ export interface PrefetchDashcardValuesRequest {
   parameters: ParametersForActionExecution;
 }
 
+export interface PrefetchPublicDashcardValuesRequest {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  parameters: ParametersForActionExecution;
+}
+
 export type ActionExecutionResult = Record<string, unknown>;
 export type GetPublicAction = Pick<
   WritebackActionBase,

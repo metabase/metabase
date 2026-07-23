@@ -195,13 +195,15 @@ const setup = ({
 
   return renderWithProviders(
     <Route
-      path="/monitor/notifications(/:notificationId)"
+      path="/monitor/notifications"
       element={
         <MonitorContent>
           <RoutedNotificationsAdminPage />
         </MonitorContent>
       }
-    />,
+    >
+      <Route path=":notificationId" />
+    </Route>,
     { withRouter: true, initialRoute },
   );
 };

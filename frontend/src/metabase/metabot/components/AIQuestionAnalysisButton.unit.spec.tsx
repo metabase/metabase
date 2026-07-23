@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
@@ -37,7 +38,11 @@ function setup({
   setupUserMetabotPermissionsEndpoint();
   setupEnterprisePlugins();
 
-  const metabotState = getMetabotInitialState();
+  const metabotState = assocIn(
+    getMetabotInitialState(),
+    ["conversations", "omnibot", "title"],
+    "Chart analysis",
+  );
 
   renderWithProviders(
     <MetabotProvider>

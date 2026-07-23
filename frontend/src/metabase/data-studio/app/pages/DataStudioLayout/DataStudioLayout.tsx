@@ -99,6 +99,14 @@ export function DataStudioLayout() {
         showLabel={isNavbarOpened}
         isGated={!hasDependenciesFeature}
       />
+      <AreaTab
+        label={t`Dependency diagnostics`}
+        icon="search_check"
+        to={Urls.dependencyDiagnostics()}
+        isSelected={currentTab === "dependency-diagnostics"}
+        showLabel={isNavbarOpened}
+        isGated={!hasDependenciesFeature}
+      />
       {shouldShowTransforms && (
         <AreaTab
           label={t`Transforms`}
@@ -169,7 +177,7 @@ export function DataStudioLayout() {
         <AreaTab
           label={t`Runs`}
           icon="play_outlined"
-          to={Urls.transformRunList()}
+          to={Urls.transformGraphRunList()}
           isSelected={currentTab === "runs"}
           showLabel={isNavbarOpened}
         />
