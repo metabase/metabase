@@ -31,8 +31,16 @@
 ;; A keyword ends only at EOF, whitespace/comma, or one of Clojure's terminating reader macros.
 ;; Defining the boundary by delimiters keeps every other character -- including Unicode -- in a
 ;; lookalike keyword such as `:clj-kondo/ignoreλ` rather than mistaking its prefix for the marker.
+(def ^:private reader-delimiter-char-class
+  "[\\p{javaWhitespace},()\\[\\]{}\";@^`~\\\\]")
+
 (def ^:private ignore-marker-boundary
-  "(?=$|[\\p{javaWhitespace},()\\[\\]{}\";@^`~\\\\])")
+  (str "(?=$|" reader-delimiter-char-class ")"))
+
+;; A namespaced-map prefix (and its optional clj-kondo reader discard) must start a reader form,
+;; not merely occur inside a symbol such as `foo#:clj-kondo` or `foo#_#:clj-kondo`.
+(def ^:private reader-form-start
+  (str "(?:^|(?<=" reader-delimiter-char-class "))(?:#_)*"))
 
 ;; Canonical map form: the ignore must be the first key. This covers reader-discard maps, metadata maps,
 ;; and prefix-less attr maps such as `(ns foo {...})`. Keeping one deliberately narrow spelling lets the
@@ -53,7 +61,7 @@
 ;; Any explicit `#:clj-kondo` map can spell the real ignore key as `:ignore`, including after arbitrary
 ;; values or comments. Reserve the namespace prefix itself rather than parsing what separates it from the map.
 (def ^:private namespaced-ignore-prefix-re
-  (re-pattern (str "#:clj-kondo" ignore-marker-boundary)))
+  (re-pattern (str reader-form-start "#:clj-kondo" ignore-marker-boundary)))
 
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
@@ -199,7 +207,13 @@
          :let  [content (slurp f)]
          :when (or (str/includes? content ignore-marker)
                    (re-find namespaced-ignore-prefix-re content))
-         m     (ignore-matches content)]
+         m     (try
+                 (ignore-matches content)
+                 (catch clojure.lang.ExceptionInfo e
+                   (let [file (.getPath f)]
+                     (throw (ex-info (format "%s in %s" (.getMessage e) file)
+                                     (assoc (ex-data e) :file file)
+                                     e)))))]
      {:file       (.getPath f)
       :line       (:line m)
       :linters    (:linters m)

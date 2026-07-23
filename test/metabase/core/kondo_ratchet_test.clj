@@ -116,6 +116,8 @@
     []                  "#_:clj-kondo/ignore'"
     []                  "#_:clj-kondo/ignore$"
     []                  "#_:clj-kondo/ignoreλ"
+    []                  "(def foo#:clj-kondo 1)"
+    []                  "(def foo#_#:clj-kondo 1)"
     []                  "(defn foo [x] (inc x))"
     ;; ignore forms inside strings and comments don't count either
     []                  "(def s \"#_{:clj-kondo/ignore [:in-a-string]}\")"
@@ -133,7 +135,9 @@
       "(def ^#:clj-kondo{:doc \"x\", :ignore [:namespaced-map]} x 1)"
       "(def ^#:clj-kondo,{:ignore [:namespaced-map]} x 1)"
       "(def ^#:clj-kondo ;; why\n {:ignore [:namespaced-map]} x 1)"
-      "(def ^#:clj-kondo{;; why\n :ignore [:namespaced-map]} x 1)")))
+      "(def ^#:clj-kondo{;; why\n :ignore [:namespaced-map]} x 1)"
+      "#_#:clj-kondo{:ignore [:namespaced-map]} (foo)"
+      "#_#_#:clj-kondo{:ignore [:namespaced-map]} (foo)")))
 
 (deftest ^:parallel scan-test
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory
@@ -180,6 +184,19 @@
       (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1, :after-code-comment 1,
               :after-blank 1, :sneaky 1, :attr-map 1, :extra 1}
              (kondo-ratchet/actual-counts occurrences))))))
+
+(deftest ^:parallel scan-error-identifies-file-test
+  (let [dir  (.toFile (java.nio.file.Files/createTempDirectory
+                       "kondo-ratchet-error-test"
+                       (make-array java.nio.file.attribute.FileAttribute 0)))
+        file (io/file dir "unsupported.clj")]
+    (spit file "(def ^{:doc \"x\" :clj-kondo/ignore [:buried]} x 1)")
+    (try
+      (doall (kondo-ratchet/scan [(.getPath dir)]))
+      (is false "unsupported syntax should fail closed")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= (.getPath file) (:file (ex-data e))))
+        (is (str/includes? (.getMessage e) (.getPath file)))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Budget bookkeeping unit tests
