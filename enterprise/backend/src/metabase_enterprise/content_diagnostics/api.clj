@@ -41,27 +41,44 @@
            [:name [:maybe :string]]
            [:type [:= :user]]]])
 
-(def ^:private StaleFinding
-  "Response item for a `stale` finding: flat identity + nested typed `details`."
+(def ^:private FindingBase
+  "The flat identity every finding response shares: stable id/type columns, the per-finding `detected_at`
+  freshness stamp, the display name, and the denormalized `created_at`. Each finding `:merge`s its own
+  top-level column (`last_active_at` / `duration_ms` / `duplicate_count`) and its typed `details` onto this."
   [:map
    [:id                  :int]
    [:finding_type        :keyword]
    [:entity_type         :keyword]
    [:entity_id           :int]
-   [:detected_at         some?]
+   [:detected_at         ms/TemporalInstant]
    [:entity_display_name [:maybe :string]]
-   ;; frozen scan-time activity anchor; nil ⇒ never used/ran (top-level, SQL-filterable by threshold-days)
-   [:last_active_at      [:maybe some?]]
    ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
-   [:created_at          [:maybe some?]]
-   [:details
-    [:map
-     [:collection     [:maybe :map]]
-     [:description    [:maybe :string]]
-     [:owner          NormalizedUser]
-     [:creator        Creator]
-     [:view_count     {:optional true} :int]
-     [:threshold_days {:optional true} :int]]]])
+   [:created_at          [:maybe ms/TemporalInstant]]])
+
+(def ^:private FindingDetailsBase
+  "The display fields every finding's `details` carries: the collection breadcrumb, live `description`, the
+  hydrated `owner`/`creator`, and the entity's `view_count` (present for every type but transform). Each
+  finding type `:merge`s its own detail extras onto this."
+  [:map
+   [:collection  [:maybe :map]]
+   [:description [:maybe :string]]
+   [:owner       NormalizedUser]
+   [:creator     Creator]
+   [:view_count  {:optional true} :int]])
+
+(def ^:private StaleDetails
+  "`stale` details: the shared core plus the frozen `threshold_days` verdict."
+  [:merge FindingDetailsBase
+   [:map
+    [:threshold_days {:optional true} :int]]])
+
+(def ^:private StaleFinding
+  "Response item for a `stale` finding: flat identity + a top-level `last_active_at` + nested typed `details`."
+  [:merge FindingBase
+   [:map
+    ;; frozen scan-time activity anchor; nil ⇒ never used/ran (top-level, SQL-filterable by threshold-days)
+    [:last_active_at [:maybe ms/TemporalInstant]]
+    [:details        StaleDetails]]])
 
 (def ^:private SlowEntity
   "A hydrated culprit of a container roll-up: an embedded slow **card** of a dashboard/document finding.
@@ -76,31 +93,24 @@
    [:card_type   {:optional true} [:maybe :keyword]]
    [:view_count  :int]])
 
+(def ^:private SlowDetails
+  "`slow` details: the shared core plus a leaf's frozen `threshold_ms`, or a container's hydrated
+  `slow_entities` culprit cards."
+  [:merge FindingDetailsBase
+   [:map
+    [:threshold_ms  {:optional true} :int]
+    [:slow_entities {:optional true} [:sequential SlowEntity]]]])
+
 (def ^:private SlowFinding
   "Response item for a `slow` finding: flat identity + a top-level `duration_ms` + nested typed `details`.
   One open map covering both variants: a **leaf** (card/transform) freezes `details.threshold_ms`; a
   **container** (dashboard/document) carries `details.slow_entities` (hydrated culprit cards). Every slow
   row stamps `duration_ms` (leaf mean / container's slowest culprit), so it is never null in this result."
-  [:map
-   [:id                  :int]
-   [:finding_type        :keyword]
-   [:entity_type         :keyword]
-   [:entity_id           :int]
-   [:detected_at         some?]
-   [:entity_display_name [:maybe :string]]
-   ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
-   [:created_at          [:maybe some?]]
-   ;; measured magnitude (top-level, SQL-filterable/sortable); always present on slow findings
-   [:duration_ms         :int]
-   [:details
-    [:map
-     [:collection    [:maybe :map]]
-     [:description   [:maybe :string]]
-     [:owner         NormalizedUser]
-     [:creator       Creator]
-     [:view_count    {:optional true} :int]
-     [:threshold_ms  {:optional true} :int]
-     [:slow_entities {:optional true} [:sequential SlowEntity]]]]])
+  [:merge FindingBase
+   [:map
+    ;; measured magnitude (top-level, SQL-filterable/sortable); always present on slow findings
+    [:duration_ms :int]
+    [:details     SlowDetails]]])
 
 (def ^:private DuplicatedEntity
   "A hydrated peer of a `duplicated` finding: another entity **of the same type** sharing the flagged
@@ -115,6 +125,14 @@
    [:card_type   {:optional true} [:maybe :keyword]]
    [:view_count  {:optional true} :int]])
 
+(def ^:private DuplicatedDetails
+  "`duplicated` details: the shared core plus the collided `normalized_name` and the hydrated same-type
+  `duplicate_entities` peers."
+  [:merge FindingDetailsBase
+   [:map
+    [:normalized_name    :string]
+    [:duplicate_entities [:sequential DuplicatedEntity]]]])
+
 (def ^:private DuplicatedFinding
   "Response item for a `duplicated` finding: flat identity + a top-level `duplicate_count` + nested typed
   `details`. `duplicate_count` is the peer count (cluster size minus 1) and is never null on duplicated
@@ -123,26 +141,11 @@
   `details.duplicate_entities` are the hydrated peers the caller can see - permission and
   personal-collection filtering can leave it shorter than `duplicate_count` (down to empty, but the key
   is always present)."
-  [:map
-   [:id                  :int]
-   [:finding_type        :keyword]
-   [:entity_type         :keyword]
-   [:entity_id           :int]
-   [:detected_at         some?]
-   [:entity_display_name [:maybe :string]]
-   ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
-   [:created_at          [:maybe some?]]
-   ;; peer count (top-level, SQL-filterable/sortable); always present on duplicated findings
-   [:duplicate_count     :int]
-   [:details
-    [:map
-     [:collection         [:maybe :map]]
-     [:description        [:maybe :string]]
-     [:owner              NormalizedUser]
-     [:creator            Creator]
-     [:view_count         {:optional true} :int]
-     [:normalized_name    :string]
-     [:duplicate_entities [:sequential DuplicatedEntity]]]]])
+  [:merge FindingBase
+   [:map
+    ;; peer count (top-level, SQL-filterable/sortable); always present on duplicated findings
+    [:duplicate_count :int]
+    [:details         DuplicatedDetails]]])
 
 (def ^:private stale-sort-column->field
   "Sortable stale-list params → their native `content_diagnostics_finding` column. The shared base plus
@@ -206,7 +209,7 @@
       [:total        :int]
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
-      [:last_scan_at [:maybe some?]]]
+      [:last_scan_at [:maybe ms/TemporalInstant]]]
   "List **stale** findings - the latest valid `stale` finding per entity, permission-filtered
   for the current user. Each item is a flat identity + a nested `details` (collection, `description`, `owner`,
   `creator`, `threshold_days`). Paginated via `limit`/`offset`; `total` is the full valid count.
@@ -254,7 +257,7 @@
       [:total        :int]
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
-      [:last_scan_at [:maybe some?]]]
+      [:last_scan_at [:maybe ms/TemporalInstant]]]
   "List **slow** findings - the latest valid `slow` finding per entity, permission-filtered for the
   current user. Each item is a flat identity + a top-level `duration_ms` + a nested `details`. `details`
   varies by `entity_type`: leaves (card/transform) freeze `threshold_ms`; containers (dashboard/document)
@@ -305,7 +308,7 @@
       [:total        :int]
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
-      [:last_scan_at [:maybe some?]]]
+      [:last_scan_at [:maybe ms/TemporalInstant]]]
   "List **duplicated** findings - the latest valid `duplicated` finding per entity, permission-filtered
   for the current user. Each item is a flat identity + a top-level `duplicate_count` (the number of other
   same-type entities sharing the normalized name) + a nested `details` (collection, `description`,
