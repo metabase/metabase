@@ -33,7 +33,8 @@
                                        (lib/update-options (lib/ref resolved)
                                                            merge
                                                            (select-keys opts [:lib/expression-name
-                                                                              ::qp.add-remaps/original-field-dimension-id])))))
+                                                                              ::qp.add-remaps/original-field-dimension-id
+                                                                              ::qp.add-remaps/new-field-dimension-id])))))
                                  &match)))
         stage' (update-fields stage)]
     (when-not (= stage' stage)

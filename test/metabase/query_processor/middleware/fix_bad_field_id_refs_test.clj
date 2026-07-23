@@ -317,29 +317,30 @@
           (is (every? string? (keys exprs))
               (str "Assert failed: :expressions should always use string keys, got: " (pr-str exprs))))))))
 
-(deftest ^:parallel preserve-remap-marker-when-fixing-field-id-ref-test
-  (testing "rewriting an ID ref to a previous-stage name ref preserves its remap marker (#78187)"
-    (let [mp (lib.tu/mock-metadata-provider
-              {:database {:id 1, :engine :h2}
-               :tables   [{:id 10, :db-id 1, :name "MY_TABLE", :schema "PUBLIC"}]
-               :fields   [{:id 100, :table-id 10, :name "ID", :base-type :type/Integer}]})
-          query (-> (lib/query mp {:database 1
-                                   :type     :query
-                                   :query    {:source-query {:native "SELECT ID FROM MY_TABLE"}
-                                              :fields       [[:field 100 nil]]}})
-                    (assoc-in [:stages 0 :lib/stage-metadata]
-                              {:lib/type :metadata/results
-                               :columns  [{:lib/type  :metadata/column
-                                           :name      "ID"
-                                           :base-type :type/Integer
-                                           :id        100
-                                           :table-id  10}]})
-                    (update-in [:stages 1 :fields 0]
-                               lib/update-options assoc
-                               ::qp.add-remaps/original-field-dimension-id 123))]
-      (is (=? {:stages [{}
-                        {:fields [[:field {::qp.add-remaps/original-field-dimension-id 123} "ID"]]}]}
-              (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))
+(deftest ^:parallel preserve-remapping-keys-when-fixing-field-id-ref-test
+  (testing "rewriting bad ID refs preserves the remapping dimension keys added by add-remaps (#78187)"
+    ;; a legacy card-source query with ID refs is the same shape sandboxing produces: the stage has no
+    ;; :source-table, so both the remapped-from and remapped-to refs hit the rewrite branch here
+    (let [mp           (-> meta/metadata-provider
+                           (lib.tu/metadata-provider-with-cards-for-queries
+                            [(lib/query meta/metadata-provider (meta/table-metadata :venues))])
+                           (lib.tu/remap-metadata-provider
+                            (meta/field-metadata :venues :category-id)
+                            (meta/field-metadata :categories :name)))
+          query        (lib/query mp {:database (meta/id)
+                                      :type     :query
+                                      :query    {:source-table "card__1"
+                                                 :fields       [[:field (meta/id :venues :category-id) nil]]}})
+          dimension-id (get-in (lib.metadata/field mp (meta/id :venues :category-id))
+                               [:lib/external-remap :id])]
+      (is (=? {:stages [{:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
+                                   "CATEGORY_ID"]
+                                  [:field {:source-field                          (meta/id :venues :category-id)
+                                           ::qp.add-remaps/new-field-dimension-id dimension-id}
+                                   (meta/id :categories :name)]]}]}
+              (-> query
+                  qp.add-remaps/add-remapped-columns
+                  fix-bad-field-id-refs/fix-bad-field-id-refs))))))
 
 (deftest ^:parallel resolve-join-conditions-test
   (testing "Resolve fields in join :conditions"
