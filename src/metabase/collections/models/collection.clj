@@ -1776,16 +1776,18 @@
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
 (defn- stamp-remote-sync-worktree-id
-  "When `changes` writes `:is_remote_synced`, also write `:remote_sync_worktree_id`: the parent's worktree
-  when the collection sits under a worktree checkout, else nil (the main app, including default-branch
-  remote sync, is not a worktree). `location` is the collection's (possibly new) location."
+  "When `changes` writes `:is_remote_synced`, also write `:remote_sync_worktree_id`: the worktree being
+  loaded (during a worktree pull), else the parent's worktree when the collection sits under a worktree
+  checkout, else nil (the main app, including default-branch remote sync, is not a worktree). `location`
+  is the collection's (possibly new) location."
   [changes location]
   (if-not (contains? changes :is_remote_synced)
     changes
     (assoc changes :remote_sync_worktree_id
            (when (:is_remote_synced changes)
-             (when-let [parent-id (some-> location location-path->parent-id)]
-               (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id))))))
+             (or serdes/*worktree-id*
+                 (when-let [parent-id (some-> location location-path->parent-id)]
+                   (t2/select-one-fn :remote_sync_worktree_id :model/Collection :id parent-id)))))))
 
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [type] :as collection}]
