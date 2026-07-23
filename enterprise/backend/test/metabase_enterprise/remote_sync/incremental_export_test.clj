@@ -223,6 +223,31 @@
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id coll-id))
               "a pull does not re-enable a collection that was disabled and pushed"))))))
 
+(deftest reenable-collection-before-export-keeps-contents-test
+  (testing "disable → re-enable before any export runs: the next export must not delete the collection's
+            contents from the remote (GHY-4189)"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        (let [coll-eid (t2/select-one-fn :entity_id :model/Collection :id coll-id)
+              a-eid    (t2/select-one-fn :entity_id :model/Card :id card-a)
+              b-eid    (t2/select-one-fn :entity_id :model/Card :id card-b)]
+          ;; Production populates a content RSO's model_collection_id from the card's collection_id (see
+          ;; the tracking specs); the bare seed-synced-row! helper does not, so set it to match reality.
+          (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id [:in [card-a card-b]]
+                      {:model_collection_id coll-id})
+          ;; Clear the initial-export task so the bulk-set-remote-sync guard lets us proceed.
+          (t2/delete! :model/RemoteSyncTask)
+          ;; USER ACTION: disable the collection, then re-enable it before any export runs.
+          (core/bulk-set-remote-sync {coll-id false})
+          (core/bulk-set-remote-sync {coll-id true})
+          ;; USER ACTION: push. Nothing was disabled at push time, so nothing may be deleted.
+          (let [task   (new-task!)
+                result (impl/export! (source.p/snapshot mock) task "after re-enable")]
+            (is (= :success (:status result)))
+            (is (entity-exported? mock coll-eid) "collection file still on the remote")
+            (is (entity-exported? mock a-eid) "card A still on the remote")
+            (is (entity-exported? mock b-eid) "card B still on the remote")))))))
+
 (deftest rename-without-stored-path-falls-back-test
   (with-exported-collection!
     (fn [{:keys [mock card-a]}]

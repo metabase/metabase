@@ -88,21 +88,46 @@
     (spec/batch-check-eligibility spec instances)
     (into {} (map (fn [inst] [(:id inst) false])) instances)))
 
+(defn- subtree-where
+  "HoneySQL predicate matching `collections` and all of their descendants."
+  [collections]
+  (into [:or [:in :id (map :id collections)]]
+        (for [collection collections]
+          [:like :location (str (collections/location-path collection) "%")])))
+
+(defn- contents-rso-where
+  "HoneySQL predicate matching the RemoteSyncObject rows of `collection-ids` and of their contents."
+  [collection-ids]
+  [:or
+   [:and [:= :model_type "Collection"] [:in :model_id collection-ids]]
+   [:in :model_collection_id collection-ids]])
+
 (defn- record-removed-rsos!
   "Records a pending removal on the RemoteSyncObject rows of the given collections and their contents, so
   the next export deletes them from the remote. Rows still in 'create' (never pushed) are dropped outright
   — the remote never received them, so there is nothing to delete there."
   [collection-ids]
-  (let [rows (t2/select [:model/RemoteSyncObject :id :status]
-                        {:where [:or
-                                 [:and [:= :model_type "Collection"] [:in :model_id collection-ids]]
-                                 [:in :model_collection_id collection-ids]]})
+  (let [rows (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-where collection-ids)})
         {created true tracked false} (group-by #(= "create" (:status %)) rows)]
     (when (seq created)
       (t2/delete! :model/RemoteSyncObject :id [:in (map :id created)]))
     (when (seq tracked)
       (t2/update! :model/RemoteSyncObject :id [:in (map :id tracked)]
                   {:status "removed" :status_changed_at (t/offset-date-time)}))))
+
+(defn- restore-removed-rsos!
+  "Clears a pending removal recorded by [[record-removed-rsos!]] when a collection is re-synced before that
+  removal was ever pushed, so the next export does not delete its contents from the remote.
+
+  Restores to 'update' rather than 'synced': edits made while the collection was un-synced are not tracked,
+  so the entity must be re-serialized for the remote to be guaranteed to match local."
+  [collection-ids]
+  (when-let [ids (seq (t2/select-pks-set :model/RemoteSyncObject
+                                         {:where [:and
+                                                  [:= :status "removed"]
+                                                  (contents-rso-where collection-ids)]}))]
+    (t2/update! :model/RemoteSyncObject :id [:in ids]
+                {:status "update" :status_changed_at (t/offset-date-time)})))
 
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
@@ -125,17 +150,16 @@
                    :set {:is_remote_synced true}
                    :where [:and
                            [:= :is_remote_synced false]
-                           (into [:or [:in :id (map :id sync-on)]]
-                                 (for [collection sync-on]
-                                   [:like :location (str (collections/location-path collection) "%")]))]}))
+                           (subtree-where sync-on)]})
+        ;; Re-syncing before a recorded removal was pushed must not leave the contents marked for deletion.
+        (when-let [ids (seq (t2/select-pks-set :model/Collection {:where (subtree-where sync-on)}))]
+          (restore-removed-rsos! ids)))
       (when (seq sync-off)
         (let [affected-collection-ids
               (t2/select-pks-set :model/Collection
                                  {:where [:and
                                           [:= :is_remote_synced true]
-                                          (into [:or [:in :id (map :id sync-off)]]
-                                                (for [collection sync-off]
-                                                  [:like :location (str (collections/location-path collection) "%")]))]})]
+                                          (subtree-where sync-off)]})]
           (when (seq affected-collection-ids)
             (t2/query {:update (t2/table-name :model/Collection)
                        :set {:is_remote_synced false}
