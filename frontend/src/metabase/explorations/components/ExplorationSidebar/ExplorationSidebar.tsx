@@ -7,7 +7,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -34,6 +33,7 @@ import {
   isExplorationSidebarTab,
 } from "metabase/explorations/types";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   ActionIcon,
   Box,
