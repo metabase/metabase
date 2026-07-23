@@ -128,40 +128,52 @@
 
 (defn- create-or-update-sync-object-from-spec!
   "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
-   This is the spec-based version of create-or-update-remote-sync-object-entry!."
+   This is the spec-based version of create-or-update-remote-sync-object-entry!.
+
+   Row-locks the entry for the transaction, so this and a concurrent un-sync of the entity's collection
+   settle in a fixed order rather than losing one of the two writes: whichever locks first commits, and
+   the other then observes that result — the un-sync re-marking the row, or the eligibility re-check below
+   seeing the entity is gone from the synced set."
   [model-spec model-id status]
-  (let [model-type (:model-type model-spec)
-        existing   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
-    (cond
-      (not existing)
-      (let [model-details (spec/hydrate-model-details model-spec model-id)
-            fields        (spec/build-sync-object-fields model-spec model-details)]
-        (t2/insert! :model/RemoteSyncObject
-                    (merge {:model_type        model-type
-                            :model_id          model-id
-                            :status            status
-                            :status_changed_at (t/offset-date-time)}
-                           fields)))
-      (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
-      (t2/delete! :model/RemoteSyncObject (:id existing))
-      ;; A pending removal must not be resurrected by a tracked-status write whose eligibility check was
-      ;; overtaken by a concurrent un-sync: that check ran against the event payload, well before this
-      ;; write, so re-check against current state and let the removal stand when it no longer holds.
-      (and (contains? #{"removed" "delete"} (:status existing))
-           (not (contains? #{"removed" "delete"} status))
-           (not (still-eligible? model-spec model-id)))
-      nil
-      (= "delete" (:status existing))
-      (t2/update! :model/RemoteSyncObject (:id existing)
-                  {:status            status
-                   :status_changed_at (t/offset-date-time)})
-      (not= "create" (:status existing))
-      (let [model-details (spec/hydrate-model-details model-spec model-id)
-            fields        (spec/build-sync-object-fields model-spec model-details)]
+  (t2/with-transaction [_conn]
+    (let [model-type (:model-type model-spec)
+          existing   (t2/select-one :model/RemoteSyncObject
+                                    {:where [:and [:= :model_type model-type] [:= :model_id model-id]]
+                                     :for   :update})]
+      (cond
+        (not existing)
+        (let [model-details (spec/hydrate-model-details model-spec model-id)
+              fields        (spec/build-sync-object-fields model-spec model-details)]
+          (t2/insert! :model/RemoteSyncObject
+                      (merge {:model_type        model-type
+                              :model_id          model-id
+                              :status            status
+                              :status_changed_at (t/offset-date-time)}
+                             fields)))
+
+        (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
+        (t2/delete! :model/RemoteSyncObject (:id existing))
+
+        ;; A pending removal must not be resurrected by a tracked-status write whose eligibility check was
+        ;; overtaken by a concurrent un-sync: that check ran against the event payload, well before this
+        ;; write, so re-check against current state and let the removal stand when it no longer holds.
+        (and (contains? #{"removed" "delete"} (:status existing))
+             (not (contains? #{"removed" "delete"} status))
+             (not (still-eligible? model-spec model-id)))
+        nil
+
+        (= "delete" (:status existing))
         (t2/update! :model/RemoteSyncObject (:id existing)
-                    (merge {:status            (resolve-status model-type model-id status existing)
-                            :status_changed_at (t/offset-date-time)}
-                           fields))))))
+                    {:status            status
+                     :status_changed_at (t/offset-date-time)})
+
+        (not= "create" (:status existing))
+        (let [model-details (spec/hydrate-model-details model-spec model-id)
+              fields        (spec/build-sync-object-fields model-spec model-details)]
+          (t2/update! :model/RemoteSyncObject (:id existing)
+                      (merge {:status            (resolve-status model-type model-id status existing)
+                              :status_changed_at (t/offset-date-time)}
+                             fields)))))))
 
 (defn- cascade-filter
   "Derives the filter conditions for querying eligible children from a child spec."

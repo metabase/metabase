@@ -1226,18 +1226,22 @@
                         :status_changed_at (t/offset-date-time)
                         :file_path "collections/rs/cards/race.yaml"}])
           (let [handler-read (promise)
-                disable-done (promise)
+                unpark       (promise)
                 parked?      (atom false)
                 orig         t2/select-one]
             ;; Park the card-update handler exactly once, after its eligibility check has read
-            ;; pre-disable state, until the disable has committed. This is the interleaving a real
+            ;; pre-disable state and it holds the entry's row lock. This is the interleaving a real
             ;; concurrent card edit produces under read committed.
+            ;;
+            ;; The disable runs on its own thread and the unpark does NOT wait for it to finish: the
+            ;; handler holds the row lock while parked, so a disable the main thread waited on would
+            ;; block on that lock and deadlock against the unpark it is responsible for delivering.
             (with-redefs [t2/select-one (fn [& args]
                                           (let [res (apply orig args)]
                                             (when (and (= (first args) :model/RemoteSyncObject)
                                                        (compare-and-set! parked? false true))
                                               (deliver handler-read true)
-                                              (deref disable-done 10000 nil))
+                                              (deref unpark 10000 nil))
                                             res))]
               (let [event (future
                             (events/publish-event! :event/card-update
@@ -1245,9 +1249,14 @@
                                                     :user-id (mt/user->id :rasta)}))]
                 (is (true? (deref handler-read 10000 false))
                     "the event handler ran and read pre-disable state")
-                (remote-sync.core/bulk-set-remote-sync {coll-id false})
-                (deliver disable-done true)
-                (deref event 10000 nil))))
+                (let [disable (future (remote-sync.core/bulk-set-remote-sync {coll-id false}))]
+                  ;; Let the disable reach the point where it contends with the parked handler — it
+                  ;; blocks on the row lock, so this deref is expected to time out. The assertion below
+                  ;; must hold for either order, so this only biases which one we exercise.
+                  (deref disable 300 ::still-blocked)
+                  (deliver unpark true)
+                  (deref disable 10000 nil)
+                  (deref event 10000 nil)))))
           (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
                                              :model_type "Card" :model_id (:id card)))
               "the pending removal survives a concurrent card-update event")
