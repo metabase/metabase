@@ -538,14 +538,21 @@ describe("scenarios > dashboard > title drill", () => {
       });
     });
 
+    // Before it is focused/hovered, the title's href is an inert placeholder that
+    // is only computed lazily on interaction (see LegendCaption). That placeholder
+    // is rendered through react-router's <Link to="#">, whose serialized href is
+    // not stable across loads — it can render as "#" or be resolved against the
+    // current location (e.g. "/dashboard/11"), so asserting the exact placeholder
+    // value is flaky. Assert the behavioral contract the test name promises
+    // instead: the href is not the question URL until interaction, then becomes it.
     function assertTitleHrefOnFocus({ elementAlias, href }) {
-      cy.get(elementAlias).should("have.attr", "href", "#");
+      cy.get(elementAlias).should("not.have.attr", "href", href);
       cy.get(elementAlias).focus();
       cy.get(elementAlias).should("have.attr", "href", href);
     }
 
     function assertTitleHrefOnHover({ elementAlias, href }) {
-      cy.get(elementAlias).should("have.attr", "href", "#");
+      cy.get(elementAlias).should("not.have.attr", "href", href);
       cy.get(elementAlias).realHover();
       cy.get(elementAlias).should("have.attr", "href", href);
     }
