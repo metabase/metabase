@@ -1,5 +1,5 @@
 import { queryToSearch } from "./location";
-import { toNavigateArgs } from "./navigator";
+import { createV7Navigator, setV7Navigate, toNavigateArgs } from "./navigator";
 
 // v3 location descriptors carry the query as an object. v7 only reads `search`,
 // so the navigator has to serialize it; dropping it silently loses params (the
@@ -51,6 +51,48 @@ describe("toNavigateArgs", () => {
     );
 
     expect(options).toEqual({ replace: true, state: { from: "here" } });
+  });
+});
+
+// The redux navigator is built at store creation, before the router mounts and
+// registers its `navigate`. A navigation dispatched in that window (a guard
+// redirecting from a mount layout effect) must not be lost, but it also must not
+// leak into a later router once this one is gone.
+describe("createV7Navigator pre-mount buffering", () => {
+  afterEach(() => {
+    setV7Navigate(null);
+  });
+
+  it("buffers a navigation made before the router mounts and flushes it on register", () => {
+    const navigator = createV7Navigator();
+    navigator.replace("/target");
+
+    const navigate = jest.fn();
+    setV7Navigate(navigate);
+
+    expect(navigate).toHaveBeenCalledWith("/target", { replace: true });
+  });
+
+  it("navigates immediately once the router is registered", () => {
+    const navigate = jest.fn();
+    setV7Navigate(navigate);
+
+    createV7Navigator().push("/now");
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a buffered navigation when the router unmounts before it flushes", () => {
+    const navigator = createV7Navigator();
+    navigator.replace("/stale");
+
+    // Router unmounts without ever registering; the next one must not inherit it.
+    setV7Navigate(null);
+
+    const navigate = jest.fn();
+    setV7Navigate(navigate);
+
+    expect(navigate).not.toHaveBeenCalled();
   });
 });
 

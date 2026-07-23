@@ -8,8 +8,8 @@ default: &default
   - "bin/**/!(*.md)"
 
 actionlint:
-  - ".github/workflows/*.yml"
-  - ".github/workflows/*.yaml"
+  - added|modified: ".github/workflows/*.yml"
+  - added|modified: ".github/workflows/*.yaml"
 
 shared_sources: &shared_sources
   - "src/**/*.cljc"

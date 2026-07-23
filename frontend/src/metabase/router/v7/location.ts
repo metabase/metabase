@@ -1,5 +1,6 @@
-import type { Location as HistoryLocation } from "history";
 import type { Location as V7Location } from "react-router-v7";
+
+import type { Location as HistoryLocation } from "../types";
 
 /**
  * Parse a search string into v3's `location.query` object: repeated keys become
