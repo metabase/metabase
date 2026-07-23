@@ -28,6 +28,14 @@
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 
+;; Keep marker boundaries aligned with [[linter-keywords]] so lookalike keywords such as
+;; `:clj-kondo/ignore?` remain ordinary data rather than being mistaken for the ignore marker.
+(def ^:private keyword-token-char-class
+  "[A-Za-z0-9*+!?<>=._/-]")
+
+(def ^:private ignore-marker-boundary
+  (str "(?!" keyword-token-char-class ")"))
+
 ;; Canonical map form: the ignore must be the first key. This covers reader-discard maps, metadata maps,
 ;; and prefix-less attr maps such as `(ns foo {...})`. Keeping one deliberately narrow spelling lets the
 ;; scanner fail closed instead of growing a partial Clojure reader; [[ignore-matches]] rejects any real
@@ -39,10 +47,15 @@
 
 ;; Bare `#_kw` / `^kw` with no linter vector: suppresses every linter on the next form.
 (def ^:private bare-form-re
-  (re-pattern (str "(?:#_\\s*|\\^)" ignore-marker "(?![\\w./-])")))
+  (re-pattern (str "(?:#_\\s*|\\^)" ignore-marker ignore-marker-boundary)))
 
 (def ^:private ignore-marker-re
-  (re-pattern (str ignore-marker "(?![\\w./-])")))
+  (re-pattern (str ignore-marker ignore-marker-boundary)))
+
+;; `#:clj-kondo{:ignore [...]}` reads as a map containing the real ignore key without spelling that key
+;; literally. Reject this narrow alternate spelling so it cannot bypass the lexical scanner.
+(def ^:private namespaced-ignore-marker-re
+  (re-pattern (str "#:clj-kondo\\s*\\{\\s*:ignore" ignore-marker-boundary)))
 
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
@@ -128,13 +141,15 @@
                           (re-matches substantive-comment-re (str/trim (subs raw i))))))))))
 
 (defn- marker-offsets
-  "Offsets of real ignore markers in `masked`; strings and comments have already been blanked."
+  "Offsets of real or namespaced-map ignore markers in `masked`; strings and comments are blanked."
   [masked]
-  (let [m (re-matcher ignore-marker-re masked)]
-    (loop [acc []]
-      (if (.find m)
-        (recur (conj acc (.start m)))
-        acc))))
+  (mapcat (fn [re]
+            (let [m (re-matcher re masked)]
+              (loop [acc []]
+                (if (.find m)
+                  (recur (conj acc (.start m)))
+                  acc))))
+          [ignore-marker-re namespaced-ignore-marker-re]))
 
 (defn- unsupported-ignore-lines
   "Lines containing an ignore marker outside one of `matches`' canonical spans."
@@ -154,7 +169,7 @@
                                  (matches-with-offsets bare-form-re masked true)))
         unsupported (vec (unsupported-ignore-lines masked matches))]
     (when (seq unsupported)
-      (throw (ex-info (format "Unsupported %s syntax on line%s %s; put the ignore first in its map"
+      (throw (ex-info (format "Unsupported %s syntax on line%s %s; use the literal ignore key first in its map"
                               ignore-marker
                               (if (= 1 (count unsupported)) "" "s")
                               (str/join ", " unsupported))
@@ -184,7 +199,8 @@
          :when (and (.isFile f)
                     (some #(str/ends-with? (.getPath f) %) source-extensions))
          :let  [content (slurp f)]
-         :when (str/includes? content ignore-marker)
+         :when (or (str/includes? content ignore-marker)
+                   (re-find namespaced-ignore-marker-re content))
          m     (ignore-matches content)]
      {:file       (.getPath f)
       :line       (:line m)

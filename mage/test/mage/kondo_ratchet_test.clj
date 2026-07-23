@@ -265,6 +265,14 @@
   (update (#'kondo-ratchet/remove-ignores-at text rows)
           :sites (partial mapv #(dissoc % :original :removed-line))))
 
+(deftest ignored-linters-at-test
+  (testing "reads the complete file when an ignore vector spans more than three lines"
+    (is (= [:a :b :c :d]
+           (#'kondo-ratchet/ignored-linters-at
+            (vec (str/split-lines
+                  "#_{:clj-kondo/ignore [:a\n                      :b\n                      :c\n                      :d]}\n(foo)"))
+            1)))))
+
 (deftest remove-ignores-at-originals-test
   (testing "each site captures its removed form verbatim, so a restore puts back exactly what was cut"
     (is (= [{:whole-line? true, :text "  #_{:clj-kondo/ignore [:equals-true]}"}]
@@ -321,6 +329,10 @@
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
             [1]))))
+  (testing "a prefixless match is left for manual removal rather than risking a dangling reader discard"
+    (let [text "#_ ;; rationale\n{:clj-kondo/ignore [:x]}\n(a)\n"]
+      (is (= {:text text, :sites [], :skipped [2]}
+             (remove-ignores-at' text [2])))))
   (testing "a skipped row is reported in post-removal coordinates when removals above it delete lines"
     (is (= {:text      "(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
             :sites     [{:row 1, :linters [:x]}]
