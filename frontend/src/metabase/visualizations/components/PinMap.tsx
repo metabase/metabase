@@ -17,10 +17,10 @@ import type {
 } from "metabase-types/api";
 
 import { LeafletGridHeatMap } from "./LeafletGridHeatMap";
-import type {
+import {
   LeafletMap,
-  LeafletMapPoint,
-  LeafletMapProps,
+  type LeafletMapPoint,
+  type LeafletMapProps,
 } from "./LeafletMap";
 import { LeafletMarkerPinMap } from "./LeafletMarkerPinMap";
 import { LeafletTilePinMap } from "./LeafletTilePinMap";
@@ -31,18 +31,13 @@ const WORLD_BOUNDS: L.LatLngTuple[] = [
   [90, 180],
 ];
 
-// The map classes declare narrower prop types than what PinMap passes (the
-// tile map takes 2-tuple points; the marker map's hover/click handlers don't
-// accept null), so present them as accepting the shared child-props shape.
-// "heat" is a legacy pin type with no renderer.
+// The child map classes declare narrower prop types than PinMapChildProps.
 const MAP_COMPONENTS_BY_TYPE = {
   markers: LeafletMarkerPinMap,
   tiles: LeafletTilePinMap,
   grid: LeafletGridHeatMap,
 } as Partial<Record<PinMapStyle, ComponentClass<PinMapChildProps>>>;
 
-// A point is [latitude, longitude, metric]; non-pin maps filter out rows
-// with a null metric.
 export type PinMapPoint = LeafletMapPoint<[number | null]>;
 
 export interface GetPointsResult {
@@ -116,8 +111,6 @@ export function getPoints({
   const binWidth = cols[longitudeIndex]?.binning_info?.bin_width;
   const binHeight = cols[latitudeIndex]?.binning_info?.bin_width;
 
-  // Binned coordinates label the lower-left corner of each bin, so extend the
-  // bounds by one bin to the north/east to keep the top/right bins in view.
   const northEast = bounds.getNorthEast();
   if (binWidth != null) {
     bounds.extend([northEast.lat, northEast.lng + binWidth]);
@@ -133,9 +126,6 @@ interface PinMapProps extends VisualizationProps {
   token?: string | null;
 }
 
-// Props PinMap forwards to whichever Leaflet map component is selected. The
-// three components share LeafletMap's base props and each read a subset of the
-// extras below.
 type PinMapChildProps = LeafletMapProps<PinMapPoint> & {
   min?: number;
   max?: number;
@@ -201,8 +191,7 @@ export function PinMap(props: PinMapProps) {
   }, [onRender, warnings]);
 
   const handleMapRef = useCallback((instance: unknown) => {
-    // Every entry in MAP_COMPONENTS_BY_TYPE is a LeafletMap subclass.
-    setMapInstance(instance as LeafletMap | null);
+    setMapInstance(instance instanceof LeafletMap ? instance : null);
   }, []);
 
   const updateSettings = () => {

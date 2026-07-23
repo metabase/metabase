@@ -185,9 +185,9 @@ describe("PinMap", () => {
       onRender,
     });
 
-    render(<PinMap {...props} token={token} />);
+    const { rerender } = render(<PinMap {...props} token={token} />);
 
-    return { onRender };
+    return { onRender, props, rerender };
   };
 
   beforeEach(() => {
@@ -245,6 +245,21 @@ describe("PinMap", () => {
     await userEvent.click(await screen.findByText("Draw box to filter"));
 
     expect(screen.getByText("Cancel filter")).toBeInTheDocument();
+    expect(screen.queryByText("Draw box to filter")).not.toBeInTheDocument();
+  });
+
+  it("should clear the map instance when switching to a pin type with no renderer", async () => {
+    const { props, rerender } = setup();
+
+    expect(await screen.findByText("Draw box to filter")).toBeInTheDocument();
+
+    rerender(
+      <PinMap
+        {...props}
+        settings={{ ...props.settings, "map.pin_type": "heat" }}
+      />,
+    );
+
     expect(screen.queryByText("Draw box to filter")).not.toBeInTheDocument();
   });
 });
