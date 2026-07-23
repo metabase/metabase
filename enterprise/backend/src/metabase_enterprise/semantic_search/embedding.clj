@@ -493,8 +493,11 @@
                       {:status 502 :endpoint endpoint}
                       e)))
     (catch Exception e
-      (log/error e (str "Failed to generate " provider " embeddings")
-                 {:documents (count texts) :tokens (count-tokens-batch texts)})
+      ;; The breaker transition already logs the outage once. Fast-failed calls while it remains open are
+      ;; expected and can be frequent, so do not emit a redundant error for every guarded request.
+      (when-not (= :embedder/circuit-open (:cause (ex-data e)))
+        (log/error e (str "Failed to generate " provider " embeddings")
+                   {:documents (count texts) :tokens (count-tokens-batch texts)}))
       (throw e))))
 
 ;;;; Embedding-service provider

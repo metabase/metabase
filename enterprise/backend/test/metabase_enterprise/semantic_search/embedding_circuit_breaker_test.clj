@@ -23,6 +23,7 @@
 (defmethod semantic.embedding/embedder-circuit-endpoint test-provider [_] test-endpoint)
 
 (def ^:private call-through* #'semantic.embedding/call-through-embedder-breaker)
+(def ^:private openai-compatible-get-embeddings-batch* #'semantic.embedding/openai-compatible-get-embeddings-batch)
 (def ^:private validate-embeddings!* #'semantic.embedding/validate-embeddings!)
 
 (defn- call-through [thunk & {:as opts}]
@@ -114,6 +115,27 @@
       (is (=? {:cause :embedder/circuit-open :status 502}
               (try (call-through (constantly :never)) nil
                    (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+
+(deftest ^:sequential circuit-open-fast-failure-does-not-log-request-error-test
+  (testing "the breaker transition reports the outage without an error log for every guarded request"
+    (with-redefs [semantic.embedding/embedder-circuit-breakers
+                  (atom {test-endpoint (dh.cb/circuit-breaker
+                                        {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})})]
+      (is (thrown? Exception (call-through boom)))
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.embedding :error]]
+        (is (=? {:cause :embedder/circuit-open :status 502}
+                (try
+                  (openai-compatible-get-embeddings-batch*
+                   {:provider          "test"
+                    :endpoint          test-endpoint
+                    :model-name        "test-model"
+                    :vector-dimensions 1
+                    :texts             ["text"]
+                    :record-tokens?    false})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (ex-data e)))))
+        (is (empty? (messages)))))))
 
 (deftest ^:sequential throwable-releases-half-open-permit-test
   (testing "a JVM-level failure cannot strand the breaker's only half-open trial permit"
