@@ -24,7 +24,7 @@
   display: flex;
   flex: 0 0 1.5rem;
   justify-content: center;
-  margin-bottom: var(--mantine-spacing-sm);
+  margin-bottom: var(--mantine-spacing-md);
   max-width: 100%;
 }
 

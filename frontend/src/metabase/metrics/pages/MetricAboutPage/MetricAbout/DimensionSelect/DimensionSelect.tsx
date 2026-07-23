@@ -40,7 +40,7 @@ export function DimensionSelect({
   return (
     <Combobox
       store={combobox}
-      position="bottom"
+      position="top"
       width="max-content"
       withinPortal
       middlewares={{ flip: true, shift: true, size: true }}
