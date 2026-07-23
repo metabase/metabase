@@ -300,11 +300,11 @@ export function getCompactRelativeTime(timestamp: string): string {
   if (days < 7) {
     return c("Compact relative time; {0} is a number of days").t`${days}d`;
   }
-  const weeks = now.diff(then, "week");
-  if (weeks < 4) {
+  const months = now.diff(then, "month");
+  if (months < 1) {
+    const weeks = now.diff(then, "week");
     return c("Compact relative time; {0} is a number of weeks").t`${weeks}w`;
   }
-  const months = now.diff(then, "month");
   if (months < 12) {
     return c("Compact relative time; {0} is a number of months").t`${months}mo`;
   }
