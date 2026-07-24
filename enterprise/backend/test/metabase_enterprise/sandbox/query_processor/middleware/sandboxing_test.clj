@@ -24,6 +24,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.middleware.cache-test :as cache-test]
+   [metabase.query-processor.middleware.cache-test-util :as qp.cache.tu]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -1244,7 +1245,7 @@
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
-    (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+    (qp.cache.tu/with-in-memory-op-cache
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
         (let [card-id (t2/select-one-fn :card_id :model/Sandbox :group_id (u/the-id &group))
               _ (is (pos-int? card-id))

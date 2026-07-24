@@ -222,8 +222,10 @@
            internal-stats
            lib-be
            models
+           op-cache
            permissions
            premium-features
+           query-processor
            request
            session
            settings
@@ -247,7 +249,6 @@
                     :model/Pulse
                     :model/PulseCard
                     :model/PulseChannel
-                    :model/QueryCache
                     :model/QueryExecution
                     :model/Segment
                     :model/Table
@@ -354,6 +355,7 @@
            task
            util}
    :model-imports #{:model/Field
+                    :model/OpCacheEntry
                     :model/QueryCache
                     :model/Secret
                     :model/Setting}}
@@ -465,18 +467,20 @@
   {:team "UX West"
    :api  #{metabase.cache.api
            metabase.cache.core
-           metabase.cache.init}
+           metabase.cache.init
+           metabase.cache.op-cache-storage}
    :uses #{api
            app-db
            config
            events
            models
+           op-cache-impl
            permissions
            premium-features
            request
            settings
            util}
-   :model-exports #{:model/CacheConfig :model/QueryCache}
+   :model-exports #{:model/CacheConfig :model/OpCacheEntry :model/QueryCache}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
@@ -1544,6 +1548,17 @@
            tracing
            util}}
 
+  op-cache
+  {:team "Graphy"
+   :api  #{metabase.op-cache.core}
+   :uses #{}}
+
+  op-cache-impl
+  {:team "Graphy"
+   :api  #{metabase.op-cache-impl.cache metabase.op-cache-impl.storage}
+   :uses #{op-cache
+           util}}
+
   osi
   {:team "Metabot"
    :api  #{metabase.osi.ai-context.api}
@@ -1879,6 +1894,7 @@
               metabase.query-processor.init
               metabase.query-processor.interface
               metabase.query-processor.metadata
+              metabase.query-processor.middleware.cache
               metabase.query-processor.middleware.constraints
               metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
@@ -1917,6 +1933,8 @@
            lib-be
            model-persistence
            models
+           op-cache
+           op-cache-impl
            parameters
            permissions
            pivot
@@ -1934,7 +1952,6 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
-                    :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
 
@@ -3011,7 +3028,9 @@
   enterprise/cache
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
-   :uses #{cache
+   :uses #{app-db
+           cache
+           op-cache
            premium-features
            query-processor
            task
@@ -3021,7 +3040,6 @@
                     :model/Dashboard
                     :model/DatabaseRouter
                     :model/Query
-                    :model/QueryCache
                     :model/QueryExecution}}
 
   enterprise/cloud-add-ons

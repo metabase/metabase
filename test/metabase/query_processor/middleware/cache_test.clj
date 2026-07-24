@@ -16,10 +16,9 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.op-cache-impl.storage :as op-cache.storage]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.middleware.cache :as cache]
-   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
-   [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -35,8 +34,6 @@
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [pretty.core :as pretty]
    [toucan2.core :as t2])
   (:import
    (java.time ZonedDateTime)))
@@ -57,74 +54,77 @@
   "Gets a message whenever old entries are purged from the test backend."
   nil)
 
-(defn- test-backend
-  "In in-memory cache backend implementation."
+(defn- test-storage
+  "An in-memory op-cache Storage. Claims are held until the expiry instant computed from the *acquirer's*
+  `claim-ttl-ms`, so tests can pre-acquire short- or long-lived claims to simulate another process computing."
   [save-chan purge-chan]
-  (let [store  (atom nil)
-        leases (atom {})]
-    (reify
-      pretty/PrettyPrintable
-      (pretty [_]
-        (str "\n"
-             (u/pprint-to-str 'blue
-                              (for [[hash {:keys [created]}] @store]
-                                [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
+  (let [entries (atom {})   ; hex-key -> {:value <bytes>, :written-at <instant>}
+        claims  (atom {})]  ; hex-key -> <instant> the claim expires at
+    (reify op-cache.storage/Storage
+      (read-entry [_ k]
+        (get @entries (codecs/bytes->hex k)))
 
-      i/CacheBackend
+      (write-entry! [_ k value]
+        (let [hex-key (codecs/bytes->hex k)]
+          (swap! entries assoc hex-key {:value value, :written-at (t/instant)})
+          (swap! claims dissoc hex-key))
+        (a/>!! save-chan value))
 
-      (cached-results [this query-hash respond]
-        (let [hex-hash (codecs/bytes->hex query-hash)]
-          (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
-          (if-let [{:keys [^bytes results created]} (get @store hex-hash)]
-            (with-open [is (java.io.ByteArrayInputStream. results)]
-              (respond is created))
-            (respond nil nil))))
+      (delete-entry! [_ k]
+        (let [hex-key (codecs/bytes->hex k)]
+          (swap! entries dissoc hex-key)
+          (swap! claims dissoc hex-key)))
 
-      (save-results! [this query-hash results]
-        (let [hex-hash (codecs/bytes->hex query-hash)]
-          (swap! store assoc hex-hash {:results results
-                                       :created (t/instant)})
-          (swap! leases dissoc hex-hash) ; release the refresh lease now that fresh results are stored
-          (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
-        (a/>!! save-chan results))
+      (try-claim! [_ k claim-ttl-ms]
+        (let [hex-key (codecs/bytes->hex k)
+              now     (t/instant)
+              won     (volatile! false)]
+          (swap! claims (fn [claims]
+                          (let [expires-at (get claims hex-key)]
+                            (if (or (nil? expires-at) (t/before? expires-at now))
+                              (do (vreset! won true)
+                                  (assoc claims hex-key (t/plus now (t/millis claim-ttl-ms))))
+                              (do (vreset! won false)
+                                  claims)))))
+          @won))
 
-      (purge-old-entries! [this max-age-seconds]
-        (swap! store (fn [store]
-                       (into {} (filter (fn [[_ {:keys [created]}]]
-                                          (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
-                                        store))))
-        (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
+      (release-claim! [_ k]
+        (swap! claims dissoc (codecs/bytes->hex k)))
+
+      (purge-entries-written-before! [_ cutoff]
+        (swap! entries (fn [entries]
+                         (into {} (remove (fn [[_ {:keys [written-at]}]]
+                                            (t/before? written-at (t/instant cutoff))))
+                               entries)))
         (a/>!! purge-chan ::purge))
 
-      (delete-entry! [this query-hash]
-        (let [hex-hash (codecs/bytes->hex query-hash)]
-          (swap! store dissoc hex-hash)
-          (swap! leases dissoc hex-hash)
-          (log/tracef "Delete entry for %s --> store: %s" hex-hash (pretty/pretty this))))
+      (keys-written-since [_ threshold]
+        (into [] (keep (fn [[hex-key {:keys [written-at]}]]
+                         (when-not (t/before? written-at (t/instant threshold))
+                           (codecs/hex->bytes hex-key))))
+              @entries))
 
-      (try-acquire-refresh-lease! [_this query-hash lease-ms]
-        (let [hex-hash (codecs/bytes->hex query-hash)
-              now      (t/instant)
-              won      (volatile! false)]
-          (swap! leases (fn [ls]
-                          (let [held (get ls hex-hash)]
-                            (if (or (nil? held) (t/before? held now))
-                              (do (vreset! won true)
-                                  (assoc ls hex-hash (t/plus now (t/millis lease-ms))))
-                              ls))))
-          @won)))))
+      (delete-all-entries! [_]
+        (reset! entries {})
+        (reset! claims {}))
+
+      (stats [_]
+        (let [sizes (map (fn [[_ {:keys [^bytes value]}]] (alength value)) @entries)]
+          {:entries            (count sizes)
+           :average-value-size (when (seq sizes)
+                                 (double (/ (reduce + sizes) (count sizes))))})))))
 
 (defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
                           purge-chan (a/chan 10)]
     (mt/with-temporary-setting-values [query-caching-max-ttl     60
                                        synchronous-batch-updates true]
-      (binding [cache/*backend* (test-backend save-chan purge-chan)
+      (binding [cache/*storage* (test-storage save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
         (let [orig (mt/original-fn #'cache/serialized-bytes)]
           (mt/with-dynamic-fn-redefs [cache/serialized-bytes (fn []
-                                                               ;; if `save-results!` isn't going to get called because `*result-fn*`
+                                                               ;; if the save isn't going to happen because `*result-fn*`
                                                                ;; throws an Exception, catch it and send it to `save-chan` so it still
                                                                ;; gets a result and tests can finish
                                                                (try
@@ -239,47 +239,6 @@
       (is (= :not-cached
              (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)))))))
 
-(deftest refresh-lease-test
-  (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
-                                                               :results    (byte-array [0])
-                                                               :updated_at (t/offset-date-time)}]
-      (testing "the first caller wins the lease"
-        (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
-      (testing "a concurrent caller loses while the lease is still held"
-        (is (false? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
-      (testing "an abandoned lease (older than the caller's tolerance) can be taken over"
-        (is (true? (backend.db/try-acquire-refresh-lease! query-hash -1)))))))
-
-(deftest refresh-lease-does-not-bump-updated-at-test
-  (testing (str "try-acquire-refresh-lease! must not touch updated_at (regression for #76856). "
-                "updated_at means 'when the results blob was last written' -- freshness, purging, and the EE refresh "
-                "scheduler all read it that way. Bumping it on lease claim makes a crashed refresh look freshly "
-                "written, so the stale row is treated as fresh for a full additional cache window.")
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (let [original-updated-at (t/offset-date-time "2020-01-01T00:00Z")]
-      (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
-                                                                 :results    (byte-array [0])
-                                                                 :updated_at original-updated-at}]
-        (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
-        (let [{:keys [updated_at refresh_started_at]}
-              (t2/select-one :model/QueryCache :query_hash query-hash)]
-          (testing "the lease was claimed"
-            (is (some? refresh_started_at)))
-          (testing "updated_at was left alone -- results have not actually been rewritten yet"
-            (is (= (t/instant original-updated-at) (t/instant updated_at)))))))))
-
-(deftest delete-entry-test
-  (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
-                                                               :results    (byte-array [0])
-                                                               :updated_at (t/offset-date-time)}]
-      (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
-      (backend.db/delete-entry! query-hash)
-      (is (nil? (t2/select-one :model/QueryCache :query_hash query-hash))))))
-
 (deftest failed-refresh-deletes-outdated-entry-test
   (testing "a refresh that fails to save (e.g. results exceed query-caching-max-kb) deletes the outdated entry
             instead of leaving it to be served to later requests"
@@ -337,9 +296,145 @@
         (run-query :cache-strategy strategy)
         (mt/wait-for-result save-chan)
         (Thread/sleep 200)
-        (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash 600000)))
+        (is (true? (op-cache.storage/try-claim! cache/*storage* query-hash 600000)))
         (is (= :cached
                (run-query :cache-strategy strategy)))))))
+
+(defn- run-query-with-execute*
+  "Like [[run-query*]] but with an explicit `execute-fn` bound as [[qp.pipeline/*execute*]], so tests can gate query
+  execution on latches to force a deterministic interleaving of concurrent requests."
+  [execute-fn & {:as query-kvs}]
+  (let [qp    (cache/maybe-return-cached-results qp.pipeline/*run*)
+        query (test-query query-kvs)]
+    (binding [driver.settings/*query-timeout-ms* 20000
+              qp.pipeline/*execute*              execute-fn]
+      (driver/with-driver :h2
+        (-> (qp query qp.reducible/default-rff)
+            (assoc :data {}))))))
+
+(defn- wait-until-done
+  "Give future `fut` up to ~1 second to complete on its own. Returns immediately once it does."
+  [fut]
+  (loop [attempts-remaining 100]
+    (when (and (pos? attempts-remaining)
+               (not (future-done? fut)))
+      (Thread/sleep 10)
+      (recur (dec attempts-remaining)))))
+
+(deftest stale-while-revalidate-staleness-is-bounded-test
+  (testing "a lease loser may be served a slightly stale entry, but not an arbitrarily old one; beyond the grace
+            window it waits for the in-flight refresh instead (#78339)"
+    (with-mock-cache! [save-chan]
+      (let [t0 #t "2026-01-01T00:00:00Z[UTC]"]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (testing "the entry expired 30 days ago and another process is refreshing it"
+          (mt/with-clock (t/plus t0 (t/days 30))
+            (let [entered   (promise)
+                  release   (promise)
+                  refresher (future (run-query-with-execute*
+                                     (fn [_driver _query respond]
+                                       (deliver entered true)
+                                       (u/deref-with-timeout release 10000)
+                                       (respond {} *rows*))))]
+              ;; the refresher provably holds the refresh lease, blocked mid-query
+              (u/deref-with-timeout entered 10000)
+              (let [loser (future (run-query-with-execute*
+                                   (fn [_driver _query respond]
+                                     (respond {} *rows*))))]
+                (wait-until-done loser)
+                (is (not (future-done? loser))
+                    "the loser must wait for the in-flight refresh, not be served the 30-day-old entry")
+                (deliver release true)
+                (is (=? {:status        :completed
+                         :cache/details {:stored true}}
+                        (u/deref-with-timeout refresher 10000)))
+                (testing "the loser is served the refreshed results, not the ancient entry"
+                  (is (=? {:status        :completed
+                           :cache/details {:cached     true
+                                           :updated_at (t/plus t0 (t/days 30))}}
+                          (u/deref-with-timeout loser 10000))))))))))))
+
+(deftest stale-while-revalidate-within-grace-window-test
+  (testing "a lease loser is served the stale entry when it is only slightly past its TTL, so concurrent requests
+            don't stampede the warehouse while a refresh is in flight"
+    (with-mock-cache! [save-chan]
+      ;; (ttl-strategy) TTL = :multiplier 60 * :avg-execution-ms 1000 = 60 seconds
+      (let [t0         #t "2026-01-01T00:00:00Z[UTC]"
+            query-hash (qp.util/query-hash (test-query nil))]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (testing "the entry expired 1 second ago and another process holds the refresh lease"
+          (mt/with-clock (t/plus t0 (t/seconds 61))
+            (is (true? (op-cache.storage/try-claim! cache/*storage* query-hash (u/minutes->ms 5))))
+            (is (= :cached
+                   (run-query))
+                "just-expired results are fine to serve while the refresh is in flight")))))))
+
+(deftest stale-grace-setting-test
+  (testing "query-caching-stale-grace-seconds bounds stale serving independently of the refresh lease"
+    (with-mock-cache! [save-chan]
+      (let [t0 #t "2026-01-01T00:00:00Z[UTC]"]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (mt/with-temporary-setting-values [query-caching-stale-grace-seconds 0]
+          (testing "with a zero grace window, even a just-expired entry is not served stale during a refresh"
+            (mt/with-clock (t/plus t0 (t/seconds 61))
+              (let [entered   (promise)
+                    release   (promise)
+                    refresher (future (run-query-with-execute*
+                                       (fn [_driver _query respond]
+                                         (deliver entered true)
+                                         (u/deref-with-timeout release 10000)
+                                         (respond {} *rows*))))]
+                (u/deref-with-timeout entered 10000)
+                (let [loser (future (run-query-with-execute*
+                                     (fn [_driver _query respond]
+                                       (respond {} *rows*))))]
+                  (wait-until-done loser)
+                  (is (not (future-done? loser))
+                      "with no grace window the loser must wait for the refresh, not be served the expired entry")
+                  (deliver release true)
+                  (is (partial= {:status :completed} (u/deref-with-timeout refresher 10000)))
+                  (testing "the loser is served the refreshed results"
+                    (is (=? {:status        :completed
+                             :cache/details {:cached     true
+                                             :updated_at (t/plus t0 (t/seconds 61))}}
+                            (u/deref-with-timeout loser 10000)))))))))))))
+
+(deftest concurrent-cold-miss-runs-query-once-test
+  (testing "concurrent identical requests on a cold cache should run the query exactly once; the loser should wait
+            for the winner's result instead of independently hitting the warehouse"
+    (with-mock-cache! []
+      (let [exec-count    (atom 0)
+            first-entered (promise)
+            release       (promise)
+            execute       (fn [_driver _query respond]
+                            (when (= 1 (swap! exec-count inc))
+                              ;; hold the first execution in flight until the test releases it, guaranteeing the
+                              ;; second request does its cache lookup while the first is still running
+                              (deliver first-entered true)
+                              (u/deref-with-timeout release 10000))
+                            (respond {} *rows*))
+            request-1     (future (run-query-with-execute* execute))]
+        (u/deref-with-timeout first-entered 10000)
+        (let [request-2 (future (run-query-with-execute* execute))]
+          ;; wait for the second request to either finish on its own (the bug: it ran the query itself) or block
+          ;; awaiting the first request's result (the desired behavior)
+          (loop [attempts-remaining 100]
+            (when (and (pos? attempts-remaining)
+                       (< @exec-count 2)
+                       (not (future-done? request-2)))
+              (Thread/sleep 10)
+              (recur (dec attempts-remaining))))
+          (deliver release true)
+          (is (partial= {:status :completed} @request-1))
+          (is (partial= {:status :completed} @request-2))
+          (is (= 1 @exec-count)
+              "the second concurrent request should coalesce onto the first, not run the query again"))))))
 
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
@@ -419,10 +514,8 @@
       (mt/wait-for-result save-chan)
       (let [query-hash (qp.util/query-hash (test-query nil))]
         (testing "Cached results should exist"
-          (is (true?
-               (i/cached-results cache/*backend* query-hash
-                                 (fn [is _updated-at] (some? is))))))
-        (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
+          (is (some? (op-cache.storage/read-entry cache/*storage* query-hash))))
+        (op-cache.storage/write-entry! cache/*storage* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
                  (run-query))))))))
@@ -834,29 +927,16 @@
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
 
-(def stub-no-op-cache-backend
-  (reify i/CacheBackend
-    (cached-results [_ _ respond] (respond nil nil))
-    (save-results! [_ _ _])
-    (purge-old-entries! [_ _])
-    (delete-entry! [_ _])
-    (try-acquire-refresh-lease! [_ _ _] true)))
-
 (deftest ^:parallel caching-big-resultsets
-  (binding [cache/*backend* stub-no-op-cache-backend]
-    (testing "Make sure we can save large result sets without tripping over internal async buffers"
-      (is (= 10000 (count (transduce identity
-                                     (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                     (repeat 10000 [1]))))))
-    (testing "Make sure we don't block somewhere if we decide not to save results"
-      (is (= 10000 (count (transduce identity
-                                     (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
-                                     (repeat 10000 [1]))))))
-    (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
-      (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
-        (is (= max-bytes (count (transduce identity
-                                           (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                           (repeat max-bytes [1])))))))))
+  (testing "Make sure we can save large result sets without tripping over internal async buffers"
+    (is (= 10000 (count (transduce identity
+                                   (#'cache/serialize-tee-xform {} (byte-array 0) conj)
+                                   (repeat 10000 [1]))))))
+  (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
+    (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
+      (is (= max-bytes (count (transduce identity
+                                         (#'cache/serialize-tee-xform {} (byte-array 0) conj)
+                                         (repeat max-bytes [1]))))))))
 
 (deftest perms-checks-should-still-apply-test
   (testing "Double-check that perms checks still happen even for cached results"

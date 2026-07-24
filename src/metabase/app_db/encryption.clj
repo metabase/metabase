@@ -61,7 +61,12 @@
         (t2/update! :conn conn :secret
                     {:id id}
                     {:value (encrypt-bytes-fn value)}))
-      (t2/delete! :conn conn :model/QueryCache))))
+      (t2/delete! :conn conn :model/QueryCache)
+      ;; cached values are encrypted with the old key; they're disposable, so drop them rather than re-encrypt.
+      ;; This is a raw table operation rather than an op-cache eviction: this module sits below the cache abstraction
+      ;; in the module graph (a protocol call would be an upward, cyclic dependency), and it must run against the
+      ;; explicit connection being rotated, which a protocol method could not honor.
+      (t2/delete! :conn conn :model/OpCacheEntry))))
 
 (defn encrypt-db
   "Encrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data, and the passed `to-key` to re-encrypt.

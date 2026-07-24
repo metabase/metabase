@@ -47,6 +47,7 @@
     :model/MetabotInstanceLimit
     :model/MetabotMessage
     :model/MetabotPermissions
+    :model/OpCacheEntry
     :model/PremiumFeaturesCache
     :model/PythonLibrary
     :model/Query

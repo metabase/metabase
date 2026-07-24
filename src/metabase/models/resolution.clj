@@ -85,6 +85,7 @@
     :model/OAuthClient                       metabase.oauth-server.models.oauth-client
     :model/OAuthClientEvent                  metabase.oauth-server.models.oauth-client-event
     :model/OAuthRefreshToken                 metabase.oauth-server.models.oauth-refresh-token
+    :model/OpCacheEntry                      metabase.cache.models.op-cache-entry
     :model/OsiAiContext                      metabase.osi.models.osi-ai-context
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models

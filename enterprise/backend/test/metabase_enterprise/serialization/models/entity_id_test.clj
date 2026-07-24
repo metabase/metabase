@@ -89,6 +89,7 @@
     :model/OAuthClient
     :model/OAuthClientEvent
     :model/OAuthRefreshToken
+    :model/OpCacheEntry
     :model/ParameterCard
     :model/Permissions
     :model/PermissionsGroup

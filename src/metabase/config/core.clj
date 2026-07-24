@@ -61,7 +61,6 @@
    :mb-colorize-logs                (str (not is-windows?)) ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
    :mb-emoji-in-logs                (str (not is-windows?)) ; disable them by default when running on Windows. Otherwise they're enabled
    :mb-log-team-attribution         "false"
-   :mb-qp-cache-backend             "db"
    :mb-jetty-async-response-timeout (str (* 10 60 1000)) ; 10m
    :mb-monitor-performance           ""
    :mb-monitor-performance-save-rate ""})

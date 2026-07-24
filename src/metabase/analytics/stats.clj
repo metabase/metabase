@@ -20,7 +20,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.op-cache.core :as op-cache]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor.middleware.cache :as qp.cache]
    [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
@@ -470,13 +472,13 @@
 ;;; Cache Metrics
 
 (defn- cache-metrics
-  "Metrics based on use of the QueryCache."
+  "Metrics based on use of the query cache."
   []
-  (let [{:keys [length count]} (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
-    {:average_entry_size (int (or length 0))
-     :num_queries_cached (bin-small-number count)
+  (let [{:keys [entries average-value-size]} (op-cache/stats (qp.cache/op-cache))]
+    {:average_entry_size (int (or average-value-size 0))
+     :num_queries_cached (bin-small-number entries)
      ;; this value gets used in the snowplow ping 'metrics' section.
-     :num_queries_cached_unbinned count}))
+     :num_queries_cached_unbinned entries}))
 
 ;;; System Metrics
 

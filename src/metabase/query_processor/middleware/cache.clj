@@ -4,35 +4,36 @@
   If query caching is enabled, cache strategy has been passed and it's not a `{:type :nocache}`, THEN cached results
   will be returned for Cards if available or stored if applicable. For all other queries, caching is skipped.
 
-  The default backend is `db`, which uses the application database; this value can be changed by setting the env var
-  `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
-  about how the cache backends themselves."
+  Storage lives in the application database (see [[metabase.cache.op-cache-storage]])."
   (:refer-clojure :exclude [get-in])
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.batch-processing.core :as grouper]
    [metabase.cache.core :as cache]
-   [metabase.config.core :as config]
+   [metabase.cache.op-cache-storage :as op-cache-storage]
    [metabase.lib.core :as lib]
-   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
-   [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.op-cache-impl.cache :as op-cache.impl]
+   [metabase.op-cache-impl.storage :as op-cache.storage]
+   [metabase.op-cache.core :as op-cache]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in]])
   (:import
+   (java.io ByteArrayInputStream)
    (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
-
-(comment backend.db/keep-me)
 
 (def ^:private cache-version
   "Current serialization format version. Basically
@@ -40,9 +41,39 @@
     [initial-metadata row-1 row-2 ... row-n final-metadata]"
   3)
 
-(def ^:dynamic *backend*
-  "Current cache backend. Dynamically rebindable primary for test purposes."
-  (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
+(def ^:dynamic *storage*
+  "Current op-cache storage. Dynamically rebindable primarily for test purposes."
+  (op-cache-storage/storage))
+
+(defn- short-hex-hash
+  "Converts a query hash to a short hex string for logging purposes."
+  [^bytes b]
+  (codecs/bytes->hex (byte-array 4 b)))
+
+;;; --------------------------------------------------- Freshness ----------------------------------------------------
+
+(defn- ms-ago [n]
+  (u.date/add (t/offset-date-time) :millisecond (- n)))
+
+(defn invalidated-at-ttl
+  "Freshness boundary for a `:ttl` strategy: cache entries written before this are stale. Returns nil when the
+  strategy is missing `:avg-execution-ms` (so a TTL can't be computed and nothing should be served from cache)."
+  [strategy]
+  (when-let [avg-execution-ms (:avg-execution-ms strategy)]
+    ;; `:multiplier` can be fractional, so round to whole milliseconds (`ms-ago`/`u.date/add` want an integer)
+    (let [boundary (ms-ago (long (* (:multiplier strategy) avg-execution-ms)))]
+      (if-let [invalidated-at (:invalidated-at strategy)]
+        (t/max boundary invalidated-at)
+        boundary))))
+
+(defenterprise strategy->invalidated-at
+  "Freshness boundary timestamp for `strategy`: cache entries written strictly before this are stale and must be
+  refreshed. Returns nil when nothing can be served from cache for this strategy (e.g. on OSS for a non-`:ttl`
+  strategy). EE overrides this to also handle `:duration` and `:schedule`."
+  metabase-enterprise.cache.strategies
+  [strategy]
+  (when (= :ttl (:type strategy))
+    (invalidated-at-ttl strategy)))
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
@@ -54,11 +85,13 @@
 
 (def ^:private purge-queue-capacity 1000)
 
-(defn- purge!* [backends]
-  (doseq [backend (distinct backends)]
+(defn- purge!* [storages]
+  (doseq [storage (distinct storages)]
     (try
       (log/tracef "Purging cache entries older than %s" (u/format-seconds (cache/query-caching-max-ttl)))
-      (i/purge-old-entries! backend (cache/query-caching-max-ttl))
+      (op-cache.storage/purge-entries-written-before!
+       storage
+       (t/minus (t/instant) (t/millis (long (* 1000 (cache/query-caching-max-ttl))))))
       (log/trace "Successfully purged old cache entries.")
       (catch Throwable e
         (log/errorf e "Error purging old cache entries: %s" (ex-message e))))))
@@ -69,8 +102,8 @@
           :capacity purge-queue-capacity
           :interval (* purge-interval-seconds 1000))))
 
-(defn- schedule-purge! [backend]
-  (grouper/submit! @purge-queue backend))
+(defn- schedule-purge! [storage]
+  (grouper/submit! @purge-queue storage))
 
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
@@ -92,30 +125,12 @@
   (when *result-fn*
     (*result-fn*)))
 
-(defn- cache-results!
-  "Save the final results of a query. Returns true if the results were saved successfully."
-  [result-fn query-hash]
-  (log/infof "Caching results for next time for query with hash %s. %s"
-             (pr-str (i/short-hex-hash query-hash)) (u/emoji "💾"))
-  (try
-    (let [bytez (result-fn)]
-      (if-not (instance? (Class/forName "[B") bytez)
-        (do
-          (log/errorf "Cannot cache results: expected byte array, got %s" (class bytez))
-          false)
-        (do
-          (log/trace "Got serialized bytes; saving to cache backend")
-          (i/save-results! *backend* query-hash bytez)
-          (log/debug "Successfully cached results for query.")
-          (schedule-purge! *backend*)
-          true)))
-    (catch Throwable e
-      (if (= (:type (ex-data e)) ::impl/max-bytes)
-        (log/debugf e "Not caching results: results are larger than %s KB" (cache/query-caching-max-kb))
-        (log/errorf e "Error saving query results to cache: %s" (ex-message e)))
-      false)))
-
-(defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
+(defn- serialize-tee-xform
+  "Tee `metadata` and every row flowing through `rf` into the active serialization context, so that once the reduction
+  completes the serialized results are available via [[serialized-bytes]]. Also stamps the result's `:cache/details`
+  with the query hash *within* the reduction, where middlewares up the rf chain (e.g. userland query execution
+  recording) can see it."
+  [metadata query-hash rf]
   (add-object-to-cache! (assoc metadata
                                :cache-version cache-version
                                :last-ran      (t/zoned-date-time)))
@@ -126,28 +141,29 @@
      (add-object-to-cache! (if (map? result)
                              (m/dissoc-in result [:data :rows])
                              {}))
-     (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-           min-duration-ms (:min-duration-ms strategy 0)
-           ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
-           ;; doesn't get re-run at full cost on every request
-           eligible?       (> duration-ms min-duration-ms)]
-       (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
-                  (i/short-hex-hash query-hash)
-                  (u/format-milliseconds duration-ms)
-                  (u/format-milliseconds min-duration-ms)
-                  (if eligible? "eligible" "not eligible"))
-       (let [stored? (boolean (when eligible?
-                                (cache-results! serialized-bytes query-hash)))]
-         ;; fresh results weren't saved (too large, save error, or no longer cache-eligible): any existing entry is
-         ;; outdated and the refresh lease is still held, so delete it rather than let it keep being served stale
-         (when-not stored?
-           (i/delete-entry! *backend* query-hash))
-         (rf (cond-> result
-               (map? result) (update :cache/details assoc :hash query-hash :stored stored?))))))
+     (rf (cond-> result
+           (map? result) (update :cache/details assoc :hash query-hash))))
 
     ([acc row]
      (add-object-to-cache! row)
      (rf acc row))))
+
+(defn- try-serialized-bytes
+  "The serialized bytes of the just-reduced results, or nil if serialization failed or was aborted (e.g. the results
+  are larger than [[cache/query-caching-max-kb]])."
+  []
+  (try
+    (let [bytez (serialized-bytes)]
+      (if (instance? (Class/forName "[B") bytez)
+        bytez
+        (do
+          (log/errorf "Cannot cache results: expected byte array, got %s" (class bytez))
+          nil)))
+    (catch Throwable e
+      (if (= (:type (ex-data e)) ::impl/max-bytes)
+        (log/debugf e "Not caching results: results are larger than %s KB" (cache/query-caching-max-kb))
+        (log/errorf e "Error serializing query results for the cache: %s" (ex-message e)))
+      nil)))
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
@@ -194,83 +210,22 @@
   (when is
     (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
       (log/debugf "Found cached results for hash '%s'. Version: %s"
-                  (i/short-hex-hash query-hash) (pr-str (:cache-version metadata)))
+                  (short-hex-hash query-hash) (pr-str (:cache-version metadata)))
       (when (and (= (:cache-version metadata) cache-version)
                  reducible-rows)
         (log/trace "Reducing cached rows...")
         (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
           (log/trace "All cached rows reduced"))))))
 
-(def ^:dynamic *refresh-lease-duration-ms*
-  "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
-  the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
-  (u/minutes->ms 5))
-
-(defn- cache-fresh?
-  "Whether a cache entry last written at `updated-at` is still within its TTL given `invalidated-at` (the strategy's
-  freshness boundary, which must be non-nil)."
-  [updated-at invalidated-at]
-  (boolean (and updated-at
-                (not (t/before? (t/instant updated-at) (t/instant invalidated-at))))))
-
-(mu/defn- maybe-serve-cached-results :- [:tuple
-                                         #_status [:enum ::fresh ::stale ::miss ::canceled]
-                                         #_result :any]
-  "Look up the cache entry for `query-hash` and decide what to do (stale-while-revalidate):
-    - `[::fresh result]` -- entry is within its TTL; serve it.
-    - `[::stale result]` -- entry is expired but another process holds the refresh lease; serve it stale while that
-                            process refreshes, so we don't stampede the data warehouse.
-    - `[::miss nil]`     -- no entry, or it's expired and *this* process won the lease; the caller must recompute.
-    - `[::canceled nil]` -- the request was canceled."
-  [ignore-cache?
-   query-hash :- bytes?
-   strategy   :- :map
-   rff        :- ::qp.schema/rff]
-  (if ignore-cache?
-    [::miss nil]
-    (try
-      (or (i/with-cached-results *backend* query-hash [is updated-at]
-                                 (when is
-                                   (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
-                                     (cond
-                                       ;; can't determine freshness for this strategy -> don't serve from cache
-                                       (nil? invalidated-at)
-                                       nil
-
-                                       ;; within its TTL -> serve the fresh entry
-                                       (cache-fresh? updated-at invalidated-at)
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         [::fresh result])
-
-                                       ;; expired, and we won the refresh lease -> recompute (don't serve stale)
-                                       (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
-                                       nil
-
-                                       ;; expired, another process is refreshing -> serve stale
-                                       :else
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         (log/debugf "Serving stale cached results for hash '%s' while another process refreshes"
-                                                     (i/short-hex-hash query-hash))
-                                         [::stale result])))))
-          [::miss nil])
-      (catch EofException _
-        (log/debug "Request is closed; no one to return cached results to")
-        [::canceled nil])
-      (catch Throwable e
-        (log/errorf e "Error attempting to fetch cached results for query with hash %s: %s"
-                    (i/short-hex-hash query-hash)
-                    (ex-message e))
-        [::miss nil]))))
-
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(defn- run-and-cache!
-  "Run `query` through `qp` and save the results to the cache (if eligible). Used on a cache miss, or when this process
-  holds the stale-while-revalidate refresh lease."
-  [qp query query-hash cache-strategy rff]
-  (let [start-time-ns (System/nanoTime)
-        orig-reduce   qp.pipeline/*reduce*]
-    (log/trace "Running query and saving cached results (if eligible)...")
+(defn- run-and-serialize!
+  "Run `query` through `qp`, streaming results through `rff` while teeing them into the serializer. Stashes the reduced
+  result in `result-volatile` and returns the serialized bytes, or nil if serialization failed or was aborted."
+  [qp query query-hash rff result-volatile]
+  (let [orig-reduce qp.pipeline/*reduce*
+        bytes-vol   (volatile! nil)]
+    (log/trace "Running query and serializing results...")
     (binding [qp.pipeline/*reduce* (fn reduce'
                                      [rff metadata rows]
                                      {:post [(some? %)]}
@@ -278,10 +233,47 @@
                                       (fn [in-fn result-fn]
                                         (binding [*in-fn*     in-fn
                                                   *result-fn* result-fn]
-                                          (orig-reduce rff metadata rows)))))]
-      (qp query
-          (fn [metadata]
-            (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
+                                          (u/prog1 (orig-reduce rff metadata rows)
+                                            (vreset! bytes-vol (try-serialized-bytes)))))))]
+      (vreset! result-volatile (qp query (fn [metadata]
+                                           (serialize-tee-xform metadata query-hash (rff metadata)))))
+      @bytes-vol)))
+
+(defn- serialized-size
+  "Size of serialized results for the op cache's max-size check, or nil when serialization failed or was aborted and
+  there is nothing storable."
+  [^bytes v]
+  (when v
+    (alength v)))
+
+(defn op-cache
+  "An op cache over the current query-cache storage, for callers outside the query pipeline (e.g. the EE preemptive
+  refresh scheduler) to inspect or evict entries."
+  []
+  (op-cache.impl/cache *storage* {}))
+
+(defn- query-op-cache
+  "An op cache running [[*storage*]], configured for `cache-strategy`."
+  [cache-strategy]
+  (op-cache.impl/cache *storage*
+                       {:min-duration-ms (:min-duration-ms cache-strategy 0)
+                        :max-size        (* (cache/query-caching-max-kb) 1024)
+                        :size-fn         serialized-size
+                        :stale-grace-ms  (* 1000 (cache/query-caching-stale-grace-seconds))
+                        :claim-ttl-ms    (* 1000 (cache/query-caching-refresh-lease-seconds))}))
+
+(defn- reduce-cached-bytes
+  "Reduce cached serialized results `value` with `rff`. Returns the reduced result, or nil if the bytes are unusable
+  (incompatible cache version, corrupt entry, ...). [[EofException]] (the requester hung up) propagates."
+  [^bytes value rff query-hash]
+  (try
+    (reduce-cached-stream (ByteArrayInputStream. value) rff query-hash)
+    (catch EofException e
+      (throw e))
+    (catch Throwable e
+      (log/errorf e "Error reducing cached results for query with hash %s: %s"
+                  (short-hex-hash query-hash) (ex-message e))
+      nil)))
 
 (mu/defn- run-query-with-cache :- :some
   [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
@@ -289,12 +281,46 @@
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see
   ;; #14388.
-  (let [query-hash      (qp.util/query-hash query)
-        [status result] (maybe-serve-cached-results (:ignore-cached-results? middleware) query-hash cache-strategy rff)]
-    (case status
-      (::fresh ::stale) result
-      ::canceled        ::canceled
-      ::miss            (run-and-cache! qp query query-hash cache-strategy rff))))
+  (let [query-hash     (qp.util/query-hash query)
+        ;; nil `invalidated-at` means the op cache never serves a stored value, which is exactly what
+        ;; `ignore-cached-results?` wants (results are still stored for later callers)
+        invalidated-at (when-not (:ignore-cached-results? middleware)
+                         (strategy->invalidated-at cache-strategy))
+        result-vol     (volatile! nil)
+        op-cache       (query-op-cache cache-strategy)]
+    (try
+      (loop [retried? false]
+        (let [{:keys [value source written-at stored]}
+              (op-cache/fetch-or-compute! op-cache query-hash
+                                          (fn [] (run-and-serialize! qp query query-hash rff result-vol))
+                                          {:invalidated-at invalidated-at})]
+          (if (= source :computed)
+            (do
+              (when stored
+                (log/infof "Cached results for next time for query with hash %s. %s"
+                           (pr-str (short-hex-hash query-hash)) (u/emoji "💾"))
+                (schedule-purge! *storage*))
+              ;; only augment a `:cache/details` the rf chain preserved -- middlewares up the chain (userland query
+              ;; execution) strip it from their response, and it should stay stripped
+              (let [result @result-vol]
+                (cond-> result
+                  (and (map? result) (:cache/details result))
+                  (update :cache/details assoc :hash query-hash :stored (boolean stored)))))
+            (do
+              (when (= source :cached-stale)
+                (log/debugf "Serving stale cached results (written at %s) for hash '%s' while another process refreshes"
+                            written-at (short-hex-hash query-hash)))
+              (or (reduce-cached-bytes value rff query-hash)
+                  ;; the entry is unusable; evict it and retry (a retry either recomputes or is served a concurrent
+                  ;; caller's fresh results). If a second entry is *still* unusable, just run the query uncached.
+                  (if retried?
+                    (qp query rff)
+                    (do
+                      (op-cache/evict! op-cache query-hash)
+                      (recur true))))))))
+      (catch EofException _
+        (log/debug "Request is closed; no one to return cached results to")
+        ::canceled))))
 
 (defn- has-cache-strategy? [cache-strategy]
   (some? cache-strategy))
