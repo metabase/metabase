@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
 import type { VersionInfoFile } from "./types";
-import { generateVersionInfoJson, getSupportedMajors, getSupportedMajorVersions, getVersionInfoUrl, isVersionActiveLatestLts, isLatestActiveLts, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
+import { generateVersionInfoJson, getSupportedMajors, getSupportedMajorVersions, getVersionInfoUrl, isLtsVersion, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
 
 jest.mock("node-fetch", () => ({
   __esModule: true,
@@ -414,178 +414,58 @@ describe("version-info", () => {
     });
   });
 
-  describe("isVersionActiveLatestLts", () => {
-    const fileWith = (
-      major_version_support: any,
-      { latest = {}, older = [] }: { latest?: any; older?: any[] } = {},
-    ) =>
-      ({ latest, older, major_version_support }) as unknown as VersionInfoFile;
-
-    const majorSupport = [
-      { major: 54, released: "2025-04-15", lts: true, eol: "2025-06-01" }, // past eol
-      { major: 60, released: "2026-04-01", lts: true, eol: "2027-06-01" }, // active LTS
-      { major: 61, released: "2026-05-01", lts: false, eol: "2026-07-01" }, // active, not LTS
+  describe("isLtsVersion", () => {
+    const majorVersionSupport = [
+      { major: 55, released: "2025-04-15", lts: true, eol: "2027-06-01" },
+      { major: 56, released: "2025-08-01", lts: false, eol: "2026-08-01" },
     ];
 
-    // major 60 (active LTS) has released up to v0.60.3
-    const versionInfo = fileWith(majorSupport, {
-      latest: { version: "v0.61.0" },
-      older: [{ version: "v0.60.3" }, { version: "v0.60.2" }],
-    });
+    const mockVersionInfo = (major_version_support: any) => {
+      mockFetch.mockResolvedValue({
+        json: async () => ({ latest: {}, older: [], major_version_support }),
+      } as Awaited<ReturnType<typeof fetch>>);
+    };
 
-    it("returns true for an LTS version that is the latest release of its major", () => {
-      expect(isVersionActiveLatestLts("v0.60.3", versionInfo, "2026-06-04")).toBe(
-        true,
-      );
-    });
-
-    it("returns true for an LTS version newer than the latest recorded release", () => {
-      expect(isVersionActiveLatestLts("v0.60.4", versionInfo, "2026-06-04")).toBe(
-        true,
-      );
-    });
-
-    it("returns false for an LTS version older than the latest recorded release", () => {
-      expect(isVersionActiveLatestLts("v0.60.2", versionInfo, "2026-06-04")).toBe(
-        false,
-      );
-    });
-
-    it("returns true for the first release of an LTS major with nothing recorded yet", () => {
-      const freshInfo = fileWith(majorSupport, {
-        latest: { version: "v0.61.0" },
-        older: [],
-      });
-
-      expect(isVersionActiveLatestLts("v0.60.0", freshInfo, "2026-06-04")).toBe(
-        true,
-      );
-    });
-
-    it("resolves the major from an enterprise version string too", () => {
-      expect(isVersionActiveLatestLts("v1.60.4", versionInfo, "2026-06-04")).toBe(
-        true,
-      );
-
-      expect(isVersionActiveLatestLts("v1.60.2", versionInfo, "2026-06-04")).toBe(
-        false,
-      );
-    });
-
-    it("returns false when the version's major is in support but not an LTS", () => {
-      expect(isVersionActiveLatestLts("v0.61.0", versionInfo, "2026-06-04")).toBe(
-        false,
-      );
-    });
-
-    it("returns false when the version's major is past end-of-life", () => {
-      expect(isVersionActiveLatestLts("v0.54.9", versionInfo, "2026-06-04")).toBe(
-        false,
-      );
-    });
-
-    it("returns false when the version's major is not listed at all", () => {
-      expect(isVersionActiveLatestLts("v0.99.0", versionInfo, "2026-06-04")).toBe(
-        false,
-      );
-    });
-
-    describe("with multiple active LTS majors (transition window)", () => {
-      // both 58 and 60 are active LTS; 60 is the newest LTS and owns the tag
-      const multiLtsSupport = [
-        { major: 58, released: "2025-10-01", lts: true, eol: "2027-02-17" }, // older active LTS
-        { major: 60, released: "2026-04-01", lts: true, eol: "2028-04-01" }, // newest active LTS
-        { major: 61, released: "2026-05-01", lts: false, eol: "2026-07-01" }, // active, not LTS
-      ];
-
-      const multiLtsInfo = fileWith(multiLtsSupport, {
-        latest: { version: "v0.61.0" },
-        older: [
-          { version: "v0.60.3" },
-          { version: "v0.60.2" },
-          { version: "v0.58.9" },
-          { version: "v0.58.8" },
-        ],
-      });
-
-      it("returns true for the latest release of the newest LTS major", () => {
-        expect(
-          isVersionActiveLatestLts("v0.60.3", multiLtsInfo, "2026-06-04"),
-        ).toBe(true);
-      });
-
-      it("returns true for a release newer than the newest LTS major's latest", () => {
-        expect(
-          isVersionActiveLatestLts("v0.60.4", multiLtsInfo, "2026-06-04"),
-        ).toBe(true);
-      });
-
-      it("returns false for the latest release of an older, still-active LTS major", () => {
-        expect(
-          isVersionActiveLatestLts("v0.58.9", multiLtsInfo, "2026-06-04"),
-        ).toBe(false);
-      });
-
-      it("returns false for a release newer than the older LTS major's latest", () => {
-        // even a brand-new 58.x must not drag the tag back off the newest LTS
-        expect(
-          isVersionActiveLatestLts("v0.58.10", multiLtsInfo, "2026-06-04"),
-        ).toBe(false);
-      });
-
-      it("returns true for the first release of the newest LTS major", () => {
-        const freshNewestLts = fileWith(multiLtsSupport, {
-          latest: { version: "v0.61.0" },
-          older: [{ version: "v0.58.9" }],
-        });
-
-        expect(
-          isVersionActiveLatestLts("v0.60.0", freshNewestLts, "2026-06-04"),
-        ).toBe(true);
-      });
-    });
-  });
-
-  describe("isLatestActiveLts", () => {
     beforeEach(() => {
       process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
       process.env.AWS_REGION = "us-north-9";
       mockFetch.mockReset();
+      mockVersionInfo(majorVersionSupport);
     });
 
-    const mockVersionInfo = () =>
-      mockFetch.mockResolvedValue({
-        json: async () => ({
-          latest: { version: "v0.61.0" },
-          older: [{ version: "v0.60.3" }, { version: "v0.60.2" }],
-          major_version_support: [
-            { major: 60, released: "2026-04-01", lts: true, eol: "2027-06-01" },
-            { major: 61, released: "2026-05-01", lts: false, eol: "2027-07-01" },
-          ],
-        }),
-      } as Awaited<ReturnType<typeof fetch>>);
+    it("returns true when the version's major is an lts release", async () => {
+      expect(await isLtsVersion({ version: "v0.55.2" })).toEqual(true);
+    });
 
-    it("fetches the OSS version-info.json and returns true for the latest active LTS", async () => {
-      mockVersionInfo();
+    it("returns false when the version's major is not an lts release", async () => {
+      expect(await isLtsVersion({ version: "v0.56.0" })).toEqual(false);
+    });
 
-      const tagLts = await isLatestActiveLts("v0.60.3", "2026-06-04");
+    it("returns false when the version's major is absent from the support list", async () => {
+      expect(await isLtsVersion({ version: "v0.99.0" })).toEqual(false);
+    });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
+    it("returns true for an EE (v1.*) version of an lts major", async () => {
+      expect(await isLtsVersion({ version: "v1.55.0" })).toEqual(true);
+    });
+
+    it("resolves the major from patch and pre-release version strings", async () => {
+      expect(await isLtsVersion({ version: "v0.55.1.2" })).toEqual(true);
+      expect(await isLtsVersion({ version: "v0.55.0-RC1" })).toEqual(true);
+    });
+
+    it("throws when major_version_support is missing", async () => {
+      mockVersionInfo(undefined);
+      await expect(isLtsVersion({ version: "v0.55.0" })).rejects.toThrow(
+        /no `major_version_support`/,
       );
-      expect(tagLts).toBe(true);
     });
 
-    it("returns false for an LTS version that is not the latest release of its major", async () => {
-      mockVersionInfo();
-
-      expect(await isLatestActiveLts("v0.60.2", "2026-06-04")).toBe(false);
-    });
-
-    it("returns false for a supported non-LTS version", async () => {
-      mockVersionInfo();
-
-      expect(await isLatestActiveLts("v0.61.0", "2026-06-04")).toBe(false);
+    it("throws when major_version_support is empty", async () => {
+      mockVersionInfo([]);
+      await expect(isLtsVersion({ version: "v0.55.0" })).rejects.toThrow(
+        /no `major_version_support`/,
+      );
     });
   });
 

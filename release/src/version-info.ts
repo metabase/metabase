@@ -8,11 +8,10 @@ import type {
   VersionInfoFile,
 } from "./types";
 import {
+  getMajorVersion,
   getVersionType,
   isEnterpriseVersion,
   isPatchVersion,
-  getMajorVersion,
-  versionSort,
 } from "./version-helpers";
 
 const generateVersionInfo = ({
@@ -130,13 +129,14 @@ export async function getVersionInfo({
   return newVersionJson;
 }
 
-// Returns the `major_version_support` entries still in support (eol today or
-// later). Throws if the file carries no `major_version_support` list, or if
-// every line is already past end-of-life.
-const getActiveMajorVersions = (
+// A major version line is in support — and therefore an eligible backport and
+// auto-release target — if and only if its end-of-life date is today or later.
+// `lts` is display-only and intentionally ignored here. `major_version_support`
+// is append-only, so support is computed from `eol`, never from list membership.
+export const getSupportedMajorVersions = (
   versionInfo: VersionInfoFile,
-  today: string,
-): MajorVersionSupport[] => {
+  today: string = new Date().toISOString().slice(0, 10),
+): number[] => {
   const lines: MajorVersionSupport[] | undefined =
     versionInfo?.major_version_support;
 
@@ -146,101 +146,28 @@ const getActiveMajorVersions = (
     );
   }
 
-  const active = lines.filter(line => line.eol >= today);
+  const supported = [
+    ...new Set(lines.filter(line => line.eol >= today).map(line => line.major)),
+  ].sort((a, b) => b - a);
 
-  if (active.length === 0) {
+  if (supported.length === 0) {
     throw new Error(
       "No in-support major versions found — every `eol` date is in the past?",
     );
   }
 
-  return active;
+  return supported;
 };
 
-// Fetches version-info.json as the edition-agnostic OSS file. `major_version_support`
-// is edition-agnostic, so the OSS file suffices for support/LTS lookups.
-const fetchOssVersionInfo = async (): Promise<VersionInfoFile> => {
-  const url = getVersionInfoUrl("v0");
-  return (await fetch(url).then(r => r.json())) as VersionInfoFile;
-};
-
-// A major version line is in support — and therefore an eligible backport and
-// auto-release target — if and only if its end-of-life date is today or later.
-// `lts` is display-only and intentionally ignored here. `major_version_support`
-// is append-only, so support is computed from `eol`, never from list membership.
-export const getSupportedMajorVersions = (
-  versionInfo: VersionInfoFile,
-  today: string = new Date().toISOString().slice(0, 10),
-): number[] => {
-  return [
-    ...new Set(
-      getActiveMajorVersions(versionInfo, today).map(line => line.major),
-    ),
-  ].sort((a, b) => b - a);
-};
-
-// Fetches version-info.json and returns the supported major versions, newest first.
+// Fetches version-info.json and returns the supported major versions, newest
+// first. `major_version_support` is edition-agnostic, so the OSS file suffices.
 export async function getSupportedMajors(
   today: string = new Date().toISOString().slice(0, 10),
 ): Promise<number[]> {
-  return getSupportedMajorVersions(await fetchOssVersionInfo(), today);
-}
+  const url = getVersionInfoUrl("v0"); // any non-`v1.` string picks the OSS file
+  const versionInfo = (await fetch(url).then(r => r.json())) as VersionInfoFile;
 
-// Get the latest patch/minor version recorded in the version info file for a given major version
-const getLatestVersionForMajor = (
-  versionInfo: VersionInfoFile,
-  major: number,
-): string | undefined =>
-  [versionInfo.latest, ...(versionInfo.older ?? [])]
-    .map(entry => entry?.version)
-    .filter(
-      (v): v is string => Boolean(v) && getMajorVersion(v) === String(major),
-    )
-    .sort(versionSort)
-    .at(-1);
-
-// Determines if a version is part of the latest active LTS major release and if it is the latest version for that LTS release.
-export const isVersionActiveLatestLts = (
-  version: string,
-  versionInfo: VersionInfoFile,
-  today: string = new Date().toISOString().slice(0, 10),
-): boolean => {
-  const activeVersions = getActiveMajorVersions(versionInfo, today);
-  const activeVersion = activeVersions.find(
-    line => String(line.major) === getMajorVersion(version),
-  );
-
-  if (!activeVersion?.lts) {
-    return false;
-  }
-
-  // check that this is the newest LTS release, we may have multiple active LTS releases
-  const latestLtsMajor = Math.max(
-    ...activeVersions.filter(line => line.lts).map(line => line.major),
-  );
-  if (activeVersion.major !== latestLtsMajor) {
-    return false;
-  };
-
-  const latestVersion = getLatestVersionForMajor(
-    versionInfo,
-    activeVersion.major,
-  );
-
-  // no latest version means this is a new LTS release
-  if (!latestVersion) {
-    return true;
-  };
-
-  return versionSort(version, latestVersion) >= 0;
-};
-
-// Checks version-info.json for if a version is the latest version for an active LTS version.
-export async function isLatestActiveLts(
-  version: string,
-  today: string = new Date().toISOString().slice(0, 10),
-): Promise<boolean> {
-  return isVersionActiveLatestLts(version, await fetchOssVersionInfo(), today);
+  return getSupportedMajorVersions(versionInfo, today);
 }
 
 // for promoting a released version to `latest` in version-info.json
@@ -261,4 +188,26 @@ export async function updateVersionInfoLatest({
     existingVersionInfo: existingFile,
     rollout,
   });
+}
+
+// Checks if a version is part of an LTS major release.
+export async function isLtsVersion({
+  version,
+}: {
+  version: string,
+}): Promise<Boolean> {
+  const url = getVersionInfoUrl("v0"); // any non-`v1.` string picks the OSS file
+  const versionInfo = (await fetch(url).then(r => r.json())) as VersionInfoFile;
+
+  const majorVersions = versionInfo?.major_version_support;
+  if (!majorVersions || majorVersions.length === 0) {
+    throw new Error(
+      "version-info.json has no `major_version_support`, cannot determine if this version is part of an LTS version",
+    );
+  }
+
+  const versionMajor = getMajorVersion(version);
+  const match = majorVersions.find((v) => v?.lts && String(v.major) === versionMajor);
+
+  return match !== undefined;
 }
