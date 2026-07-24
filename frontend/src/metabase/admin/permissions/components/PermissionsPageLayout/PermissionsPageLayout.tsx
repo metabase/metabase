@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -84,7 +84,12 @@ export function PermissionsPageLayout({
     "show-updated-permission-modal",
     { shouldDebounce: false },
   );
-  const showSplitPermsModal = canShowSplitPermsModal && !!showModalSetting;
+  // Stops the split permissions modal from reopening after the user dismisses it once,
+  // even if the save fails
+  const [isSplitPermsModalDismissed, setIsSplitPermsModalDismissed] =
+    useState(false);
+  const showSplitPermsModal =
+    canShowSplitPermsModal && !!showModalSetting && !isSplitPermsModalDismissed;
 
   const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
@@ -104,6 +109,7 @@ export function PermissionsPageLayout({
   }, [dispatch]);
 
   const handleDimissSplitPermsModal = () => {
+    setIsSplitPermsModalDismissed(true);
     setShowModalSetting(false);
   };
 
