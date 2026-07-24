@@ -1747,17 +1747,17 @@ function(bin) {
   `aggr-expr` is expected to be a clause that is a result of [[extract-aggregations]]. For details see its docstring.
 
   Distinct values are computed using the `$addToSet` in a `$group` stage. `$size` transforms them to actual count."
-  [[aggr-expr mappings :as x] :- [:tuple
-                                  #_aggr-expr
-                                  [:or
-                                   [:ref ::lib.schema.mbql-clause/clause]
-                                   :string] ; Mongo expr
-                                  #_mappings
-                                  [:map-of
-                                   #_ag-clause [:or
-                                                [:ref ::lib.schema.mbql-clause/clause]
-                                                :string]
-                                   #_name      :string]]]
+  [[aggr-expr mappings] :- [:tuple
+                            #_aggr-expr
+                            [:or
+                             [:ref ::lib.schema.mbql-clause/clause]
+                             :string]   ; Mongo expr
+                            #_mappings
+                            [:map-of
+                             #_ag-clause [:or
+                                          [:ref ::lib.schema.mbql-clause/clause]
+                                          :string]
+                             #_name      :string]]]
   (let [distinct-keys (filter (fn [[tag, :as _ag-clause]] (= :distinct tag)) (keys mappings))
         distinct-vals (into #{}
                             (comp (map #(get mappings %))

@@ -7,10 +7,10 @@
 {:ignore-counts {:aliased-namespace-symbol                                            3
                  :all                                                                 50
                  :case-symbol-test                                                    1
-                 :clojure-lsp/unused-public-var                                       9
+                 :clojure-lsp/unused-public-var                                       8
                  :def-fn                                                              1
                  :deprecated-namespace                                                97
-                 :deprecated-var                                                      81
+                 :deprecated-var                                                      88
                  :discouraged-java-method                                             3
                  :discouraged-namespace                                               81
                  :discouraged-var                                                     106
