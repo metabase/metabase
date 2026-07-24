@@ -321,13 +321,22 @@
   (process-day! bucket-date {:advance-watermark? false}))
 
 (defn delete-expired-rollups!
-  "Delete rollup rows older than the retention cutoff and return that cutoff day."
+  "Delete rollup rows older than the retention cutoff. Returns
+   `{:cutoff-day <day>, :pruned-dimension-fields #{field-id …}}`. The latter is every dimension
+   field that had a row in the pruned range (captured *before* the delete) — candidates whose
+   breakout usage may have just dropped to zero. The downstream interestingness rescore confirms
+   each against surviving rows and resets the ones that truly went idle."
   [retention-days today]
   (let [retention-days (max 1 (or retention-days 1))
-        cutoff-day     (t/minus today (t/days retention-days))]
+        cutoff-day     (t/minus today (t/days retention-days))
+        pruned-fields  (t2/select-fn-set :field_id :model/SourceDimensionDaily
+                                         :bucket_date    [:< cutoff-day]
+                                         :ownership_mode [:in ["direct" "projected"]]
+                                         :field_id       [:not= nil])]
     (doseq [model rollup-models]
       (t2/delete! model :bucket_date [:< cutoff-day]))
-    cutoff-day))
+    {:cutoff-day              cutoff-day
+     :pruned-dimension-fields pruned-fields}))
 
 (defn run-batch!
   "Process all currently targetable closed UTC days and return a run summary."
@@ -340,22 +349,23 @@
                                   :retention-days     retention-days
                                   :yesterday          (t/minus today (t/days 1))})
          started-ns (System/nanoTime)
-         cutoff     (delete-expired-rollups! retention-days today)
-         initial    {:status                :success
-                     :days-targeted         (count days)
-                     :days-processed        0
-                     :query-execution-rows  0
-                     :joined-rows           0
-                     :segment-tuples        0
-                     :metric-tuples         0
-                     :dimension-tuples      0
-                     :profile-observations  0
-                     :segment-rollup-rows   0
-                     :metric-rollup-rows    0
-                     :dimension-rollup-rows 0
-                     :skipped-rows          {}
-                     :retention-cutoff      cutoff
-                     :watermark-advanced-to last-completed-day}]
+         {:keys [cutoff-day pruned-dimension-fields]} (delete-expired-rollups! retention-days today)
+         initial    {:status                  :success
+                     :days-targeted           (count days)
+                     :days-processed          0
+                     :query-execution-rows    0
+                     :joined-rows             0
+                     :segment-tuples          0
+                     :metric-tuples           0
+                     :dimension-tuples        0
+                     :profile-observations    0
+                     :segment-rollup-rows     0
+                     :metric-rollup-rows      0
+                     :dimension-rollup-rows   0
+                     :skipped-rows            {}
+                     :retention-cutoff        cutoff-day
+                     :pruned-dimension-fields pruned-dimension-fields
+                     :watermark-advanced-to   last-completed-day}]
      (lib-be/with-metadata-provider-cache
        (let [raw-result (reduce
                          (fn [summary bucket-date]
@@ -385,7 +395,7 @@
                          days)
              elapsed-ms (long (/ (- (System/nanoTime) started-ns) 1000000))
              final-result (assoc raw-result :elapsed-ms elapsed-ms)]
-         (log/info "Usage metadata batch summary" (dissoc final-result :error))
+         (log/info "Usage metadata batch summary" (dissoc final-result :error :pruned-dimension-fields))
          (when-let [e (:error final-result)]
            (throw e))
          final-result)))))

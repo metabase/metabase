@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.task.core :as task]
    [metabase.usage-metadata.batch :as usage-metadata.batch]
+   [metabase.usage-metadata.interestingness :as usage-metadata.interestingness]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.util.log :as log])
   (:import
@@ -31,11 +32,17 @@
   UsageMetadataProcess
   [_]
   (when (usage-metadata.settings/usage-metadata-enabled?)
-    (try
-      (usage-metadata.batch/run-batch!)
-      (catch Throwable e
-        (log/error e "Error processing usage metadata batch")
-        (throw e)))))
+    (let [summary (try
+                    (usage-metadata.batch/run-batch!)
+                    (catch Throwable e
+                      (log/error e "Error processing usage metadata batch")
+                      (throw e)))]
+      (try
+        ;; reset the "falling edge" — fields whose last rollup row was just pruned — in the same pass
+        (usage-metadata.interestingness/rescore-dimension-interestingness!
+         (:pruned-dimension-fields summary))
+        (catch Throwable e
+          (log/error e "Error rescoring dimension interestingness from usage metadata"))))))
 
 (defn- job []
   (jobs/build

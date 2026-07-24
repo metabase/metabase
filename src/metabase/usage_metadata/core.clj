@@ -2,10 +2,20 @@
   "Public API for usage-metadata rollups."
   (:require
    [metabase.usage-metadata.insights :as insights]
+   [metabase.usage-metadata.interestingness]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.usage-metadata.interestingness/keep-me)
+
+(p/import-vars
+ [metabase.usage-metadata.interestingness
+  breakout-counts-by-field
+  breakout-usage
+  with-breakout-usage])
 
 (mu/defn implicit-segments :- [:sequential ::usage-metadata.schema/implicit-segment]
   "Filter predicates users have run ad-hoc that aren't already saved as Segments — surface candidates

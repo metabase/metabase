@@ -127,3 +127,32 @@
     (let [score (:score (dim/text-structure
                          {:fingerprint {:type {:type/Text {:percent-blank 0.1 :average-length 10}}}}))]
       (is (>= score 0.7)))))
+
+;;; -------------------------------------------------- usage --------------------------------------------------
+
+(deftest ^:parallel usage-test
+  (testing "no usage data returns neutral 0.5"
+    (is (= 0.5 (:score (dim/usage {}))))
+    (is (= 0.5 (:score (dim/usage {:usage {}})))))
+  (testing "field never broken out returns neutral 0.5"
+    (is (= 0.5 (:score (dim/usage {:usage {:breakout-count 0 :baseline-breakout-count 1000}})))))
+  (testing "no instance baseline to scale against returns neutral 0.5"
+    (is (= 0.5 (:score (dim/usage {:usage {:breakout-count 50}}))))
+    (is (= 0.5 (:score (dim/usage {:usage {:breakout-count 50 :baseline-breakout-count 0}})))))
+  (testing "a dimension at the p95 baseline scores 1.0"
+    (is (= 1.0 (:score (dim/usage {:usage {:breakout-count 5000 :baseline-breakout-count 5000}})))))
+  (testing "a dimension above the p95 baseline (top ~5%) is clamped to 1.0"
+    (is (= 1.0 (:score (dim/usage {:usage {:breakout-count 50000 :baseline-breakout-count 5000}})))))
+  (testing "a less-used dimension scores between neutral and the baseline"
+    (let [score (:score (dim/usage {:usage {:breakout-count 50 :baseline-breakout-count 100000}}))]
+      (is (< 0.5 score 1.0))))
+  (testing "score is monotonic in usage for a fixed baseline"
+    (let [base 100000
+          s1   (:score (dim/usage {:usage {:breakout-count 1 :baseline-breakout-count base}}))
+          s100 (:score (dim/usage {:usage {:breakout-count 100 :baseline-breakout-count base}}))
+          s10k (:score (dim/usage {:usage {:breakout-count 10000 :baseline-breakout-count base}}))]
+      (is (< s1 s100 s10k))))
+  (testing "self-calibrating: the same raw count scores higher on a quieter instance"
+    (let [busy  (:score (dim/usage {:usage {:breakout-count 500 :baseline-breakout-count 1000000}}))
+          quiet (:score (dim/usage {:usage {:breakout-count 500 :baseline-breakout-count 1000}}))]
+      (is (< busy quiet)))))
