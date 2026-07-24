@@ -504,6 +504,7 @@
     "modules/drivers/mongo/test"
     "modules/drivers/oracle/test"
     "modules/drivers/presto-jdbc/test"
+    "modules/drivers/quack/test"
     "modules/drivers/redshift/test"
     "modules/drivers/snowflake/test"
     "modules/drivers/sparksql/test"

@@ -250,6 +250,7 @@
               :mongo
               :oracle
               :presto-jdbc
+              :quack
               :redshift
               :snowflake
               :sparksql
@@ -479,6 +480,8 @@
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
   metabase.driver.mongo.connection/with-mongo-database                                  clojure.core/let
   metabase.driver.mongo.query-processor/mongo-let                                       clojure.core/let
+  metabase.driver.quack.client/with-connection                                          clojure.core/let
+  metabase.driver.quack.client/with-transaction                                         clojure.core/let
   metabase.driver.sql-jdbc.actions/with-jdbc-transaction                                clojure.core/let
   metabase.driver.sql-jdbc.connection.ssh-tunnel/with-ssh-tunnel                        clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
