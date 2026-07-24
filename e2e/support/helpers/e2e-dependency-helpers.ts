@@ -16,8 +16,14 @@ export const DependencyGraph = {
 };
 
 export const DependencyDiagnostics = {
-  visitBrokenDependencies: () =>
-    cy.visit("/monitor/dependency-diagnostics/broken"),
+  visitBrokenDependencies: () => {
+    cy.intercept("GET", "/api/ee/dependencies/graph/breaking*").as(
+      "breakingEntities",
+    );
+    cy.visit("/monitor/dependency-diagnostics/broken");
+    cy.wait("@breakingEntities");
+    DependencyDiagnostics.list().should("be.visible");
+  },
   visitUnreferencedEntities: () => {
     cy.intercept("GET", "/api/ee/dependencies/graph/unreferenced*").as(
       "unreferencedEntities",
