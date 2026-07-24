@@ -25,13 +25,10 @@ import {
   Route,
   type RouteComponent,
   redirect,
-  withRouteProps,
 } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { MonitorLayout } from "./components/MonitorLayout";
-
-const RoutedJobInfoApp = withRouteProps(JobInfoApp);
 
 /** Lands on the first Monitor section the user can access. */
 function MonitorIndexRedirect() {
@@ -67,7 +64,7 @@ export function getMonitorRoutes(
 
         <Route element={<CanAccessMonitoringTools />}>
           <Route path="tasks">{getTasksRoutes()}</Route>
-          <Route path="jobs" element={<RoutedJobInfoApp />}>
+          <Route path="jobs" element={<JobInfoApp />}>
             <Route path=":jobKey" />
           </Route>
           <Route path="logs" element={<Logs />}>
