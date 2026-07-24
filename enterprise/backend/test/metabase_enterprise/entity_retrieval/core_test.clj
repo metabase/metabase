@@ -36,6 +36,63 @@
       (is (> (:total_score (score {:distance 0.1 :doc_type "name"}))
              (:total_score (score {:distance 0.5 :doc_type "name"})))))))
 
+(deftest search-uses-reconcile-lock-test
+  (let [calls      (atom [])
+        lock-count (atom 0)]
+    (mt/with-premium-features #{:library-retrieval}
+      (with-redefs [entity-retrieval.core/available?                         (constantly true)
+                    semantic.db.datasource/ensure-initialized-data-source!  (constantly ::datasource)
+                    semantic.embedding/get-configured-model                 (constantly semantic.tu/mock-embedding-model)
+                    reconcile/with-index-read-lock                          (fn [ds f]
+                                                                              (let [n    (swap! lock-count inc)
+                                                                                    conn (keyword (str "locked-connection-" n))]
+                                                                                (swap! calls conj [:lock ds])
+                                                                                (f conn)))
+                    index-table/index-compatible?                           (fn [conn _model]
+                                                                              (swap! calls conj [:compatible conn])
+                                                                              true)
+                    semantic.embedding/get-embedding                        (fn [_model text & _opts]
+                                                                              (swap! calls conj [:embed text])
+                                                                              [0.0 0.0 0.0 0.0])
+                    jdbc/execute!                                           (fn [conn & _args]
+                                                                              (swap! calls conj [:query conn])
+                                                                              [])]
+        (is (= [] (entity-retrieval.core/search "the query" 10)))
+        (is (= [[:lock ::datasource]
+                [:compatible :locked-connection-1]
+                [:embed "the query"]
+                [:lock ::datasource]
+                [:compatible :locked-connection-2]
+                [:query :locked-connection-2]]
+               @calls)
+            "both preflight and query compatibility checks happen behind non-blocking reconcile locks")))))
+
+(deftest search-skips-embedding-for-an-incompatible-index-test
+  (mt/with-premium-features #{:library-retrieval}
+    (with-redefs [entity-retrieval.core/available?                        (constantly true)
+                  semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
+                  semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
+                  index-table/index-compatible?                          (constantly false)
+                  semantic.embedding/get-embedding                       (fn [& _]
+                                                                           (throw (ex-info "must not embed" {})))
+                  reconcile/with-index-read-lock                         (fn [_ds f]
+                                                                           (f ::locked-connection))]
+      (is (= [] (entity-retrieval.core/search "the query" 10))))))
+
+(deftest search-degrades-when-reconcile-holds-the-lock-test
+  (mt/with-premium-features #{:library-retrieval}
+    (with-redefs [entity-retrieval.core/available?                        (constantly true)
+                  semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
+                  semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
+                  index-table/index-compatible?                          (fn [& _]
+                                                                           (throw (ex-info "must not touch index metadata" {})))
+                  semantic.embedding/get-embedding                       (fn [& _]
+                                                                           (throw (ex-info "must not embed" {})))
+                  reconcile/with-index-read-lock                         (constantly nil)
+                  jdbc/execute!                                          (fn [& _]
+                                                                           (throw (ex-info "must not query" {})))]
+      (is (= [] (entity-retrieval.core/search "the query" 10))))))
+
 (deftest search-degrades-when-configured-model-cannot-be-resolved-test
   (mt/with-premium-features #{:library-retrieval}
     (with-redefs [entity-retrieval.core/available?                        (constantly true)
@@ -46,10 +103,12 @@
                                                                                            {:type ::model-changed})))
                   index-table/index-compatible?                           (fn [& _]
                                                                             (throw (ex-info "must not inspect index" {})))
-                  semantic.embedding/get-embedding                        (fn [& _]
-                                                                            (throw (ex-info "must not embed" {})))
-                  jdbc/execute!                                           (fn [& _]
-                                                                            (throw (ex-info "must not query" {})))]
+                  semantic.embedding/get-embedding                       (fn [& _]
+                                                                           (throw (ex-info "must not embed" {})))
+                  reconcile/with-index-read-lock                         (fn [& _]
+                                                                           (throw (ex-info "must not lock" {})))
+                  jdbc/execute!                                          (fn [& _]
+                                                                           (throw (ex-info "must not query" {})))]
       (is (= [] (entity-retrieval.core/search "the query" 10))))))
 
 (deftest dispatch-without-pgvector-test

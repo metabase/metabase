@@ -271,6 +271,15 @@
                               (format "WHEN doc_type = '%s' THEN %s" (name k) w)))]
     (format "(%s) - (CASE %s ELSE 0.0 END)" distance-expr cases)))
 
+(defn- index-compatible?
+  [connectable model]
+  (try
+    (index-table/index-compatible? connectable model)
+    (catch SQLException e
+      (if (= "42P01" (.getSQLState e))
+        false
+        (throw e)))))
+
 (defenterprise search
   "Find the library-entity documents best matching `user-search-prompt`, up to `limit`, ranked by a
   blended score (cosine similarity plus a slight doc_type bump).
@@ -284,51 +293,56 @@
     (let [pgvector  (semantic.db.datasource/ensure-initialized-data-source!)
           limit     (or limit default-limit)
           model     (resolved-configured-model-for-search)]
-      ;; Re-check immediately before embedding/querying. A setting change after the tool was offered must
-      ;; never query same-width vectors from a different immutable space.
+      ;; Check compatibility under a short non-blocking read lock. Even metadata-table DDL can otherwise block this
+      ;; preflight behind reconcile before we reach the protected query path. The later locked recheck remains
+      ;; authoritative because a reconcile can begin while the embedding is generated.
       (if-not (and model
-                   (try
-                     (index-table/index-compatible? pgvector model)
-                     (catch SQLException e
-                       (if (= "42P01" (.getSQLState e))
-                         false
-                         (throw e)))))
+                   (true? (reconcile/with-index-read-lock pgvector #(index-compatible? % model))))
         []
         (let [embedding (embedding/get-embedding model user-search-prompt
                                                  {:type :query :record-tokens? true})
               lit       (index-table/format-embedding embedding)
-              distance  (str "doc_embedding <=> " lit)
-              rows      (try
-                          (jdbc/execute!
-                           pgvector
-                           (-> (sql.helpers/select :entity_type :entity_local_id :doc_type :doc_text
-                                                   [[:raw distance] :distance])
-                               (sql.helpers/from (keyword index-table/*vectors-table*))
-                               ;; Exact scan, no HNSW: the blended order-by can't use an ANN index, and the
-                               ;; library set is tiny.
-                               (sql.helpers/order-by [[:raw (ranking-sql distance)] :asc])
-                               (sql.helpers/limit limit)
-                               (sql/format {:quoted true}))
-                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                          (catch SQLException e
-                            ;; Only the index-not-ready states degrade to no results — the index, not the agent,
-                            ;; is at fault and the next reconcile heals it:
-                            ;;   42P01  vectors table doesn't exist yet (pre-first-build; expected at boot, stay quiet)
-                            ;;   22000  stored vectors incompatible with the query vector (a dimension/format change
-                            ;;          awaiting rebuild — e.g. a vector(OLD) column vs a vector(NEW) literal)
-                            ;; Any other SQL error — a connection loss or pgvector outage — propagates so the tool
-                            ;; reports the search as unavailable rather than as an empty library.
-                            (case (.getSQLState e)
-                              "42P01" []
-                              "22000" (do (log/warn e "library entity index incompatible with the query vector; returning no results")
-                                          [])
-                              (do (analytics/inc! :metabase-entity-retrieval/search-failed)
-                                  (throw e)))))]
-          (->> rows
-               (map (fn [row]
-                      {:entity   {:model (:entity_type row) :id (:entity_local_id row)}
-                       :doc_type (:doc_type row)
-                       :doc_text (:doc_text row)
-                       :score    (score row)}))
-               (sort-by (comp :total_score :score) >)
-               vec))))))
+              distance  (str "doc_embedding <=> " lit)]
+          (or
+           (reconcile/with-index-read-lock
+             pgvector
+             (fn [conn]
+               ;; The compatibility check and query share the reconcile lock and connection. A setting change
+               ;; after the tool was offered must never query same-width vectors from another immutable space.
+               (if-not (index-compatible? conn model)
+                 []
+                 (let [rows (try
+                              (jdbc/execute!
+                               conn
+                               (-> (sql.helpers/select :entity_type :entity_local_id :doc_type :doc_text
+                                                       [[:raw distance] :distance])
+                                   (sql.helpers/from (keyword index-table/*vectors-table*))
+                                   ;; Exact scan, no HNSW: the blended order-by can't use an ANN index, and the
+                                   ;; library set is tiny.
+                                   (sql.helpers/order-by [[:raw (ranking-sql distance)] :asc])
+                                   (sql.helpers/limit limit)
+                                   (sql/format {:quoted true}))
+                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                              (catch SQLException e
+                                ;; Only the index-not-ready states degrade to no results — the index, not the agent,
+                                ;; is at fault and the next reconcile heals it:
+                                ;;   42P01  vectors table doesn't exist yet (pre-first-build; expected at boot, stay quiet)
+                                ;;   22000  stored vectors incompatible with the query vector (a dimension/format change
+                                ;;          awaiting rebuild — e.g. a vector(OLD) column vs a vector(NEW) literal)
+                                ;; Any other SQL error — a connection loss or pgvector outage — propagates so the tool
+                                ;; reports the search as unavailable rather than as an empty library.
+                                (case (.getSQLState e)
+                                  "42P01" []
+                                  "22000" (do (log/warn e "library entity index incompatible with the query vector; returning no results")
+                                              [])
+                                  (do (analytics/inc! :metabase-entity-retrieval/search-failed)
+                                      (throw e)))))]
+                   (->> rows
+                        (map (fn [row]
+                               {:entity   {:model (:entity_type row) :id (:entity_local_id row)}
+                                :doc_type (:doc_type row)
+                                :doc_text (:doc_text row)
+                                :score    (score row)}))
+                        (sort-by (comp :total_score :score) >)
+                        vec)))))
+           []))))))
