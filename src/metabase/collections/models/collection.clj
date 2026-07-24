@@ -1778,7 +1778,10 @@
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type)))
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+                ;; personal collections are system-created (often lazily, mid-request) and must
+                ;; never belong to a workspace — a workspace_id would cascade-delete them with it
+                (:personal_owner_id collection) (assoc :workspace_id nil))
                workspaces/stamp-workspace-id)
     (assert-valid-remote-synced-parent <>)))
 
