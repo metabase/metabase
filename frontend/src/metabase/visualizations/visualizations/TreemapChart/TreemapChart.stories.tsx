@@ -14,7 +14,6 @@ export default {
   component: TreemapChart,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(TreemapChart);
 
 type TemplateArgs = { rawSeries: Series; displayTheme?: "light" | "dark" };

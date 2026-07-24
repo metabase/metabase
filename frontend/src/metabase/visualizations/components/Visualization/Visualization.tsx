@@ -685,7 +685,6 @@ class Visualization extends PureComponent<
       getHref,
       hasDevWatermark,
       headerIcon,
-      height: rawHeight,
       isAction,
       isDashboard,
       isDocument,
@@ -732,7 +731,6 @@ class Visualization extends PureComponent<
       tableHeaderHeight,
       timelineEvents,
       totalNumGridCols,
-      width: rawWidth,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
@@ -951,7 +949,7 @@ class Visualization extends PureComponent<
                     getHref={getHref}
                     gridSize={gridSize}
                     headerIcon={hasHeader ? null : headerIcon}
-                    height={rawHeight}
+                    height={height}
                     hovered={hovered}
                     isDashboard={!!isDashboard}
                     isDocument={!!isDocument}
@@ -989,7 +987,7 @@ class Visualization extends PureComponent<
                     timelineEvents={timelineEvents}
                     totalNumGridCols={totalNumGridCols}
                     visualizationIsClickable={this.visualizationIsClickable}
-                    width={rawWidth}
+                    width={width}
                     zoomedRowIndex={zoomedRowIndex}
                     onZoomRow={onZoomRow}
                     onActionDismissal={this.hideActions}

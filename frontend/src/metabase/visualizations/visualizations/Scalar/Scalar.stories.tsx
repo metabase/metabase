@@ -20,7 +20,6 @@ export default {
   component: Scalar,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Scalar);
 
 // Unjustified type cast. FIXME

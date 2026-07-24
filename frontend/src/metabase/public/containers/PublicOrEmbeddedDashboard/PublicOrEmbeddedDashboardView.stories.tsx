@@ -44,9 +44,7 @@ import {
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 export default {
@@ -401,7 +399,7 @@ export function ComponentCompatibility() {
 
 // Card visualizations
 
-// @ts-expect-error: incompatible prop types with registerVisualization
+// @ts-expect-error: ObjectDetail uses its own OwnProps shape; migrate props to VisualizationProps
 registerVisualization(ObjectDetail);
 
 export const CardVisualizationsLightTheme = {

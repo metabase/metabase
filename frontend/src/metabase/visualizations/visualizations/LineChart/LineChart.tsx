@@ -4,8 +4,11 @@ import type { VisualizationProps } from "../../types";
 
 import { LINE_CHART_DEFINITION } from "./definition";
 
-Object.assign(LineChart, LINE_CHART_DEFINITION);
-
-export function LineChart(props: VisualizationProps) {
+function LineChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const LineChart = Object.assign(
+  LineChartComponent,
+  LINE_CHART_DEFINITION,
+);

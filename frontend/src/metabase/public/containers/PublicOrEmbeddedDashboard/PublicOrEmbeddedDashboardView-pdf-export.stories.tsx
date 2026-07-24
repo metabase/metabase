@@ -33,7 +33,6 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Map);
 
 // Initialize MetabaseSettings with required values for map rendering
