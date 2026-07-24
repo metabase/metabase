@@ -47,11 +47,11 @@ describe("RedirectIfSetup", () => {
     expect(screen.getByText("setup page")).toBeInTheDocument();
 
     // The wizard's user step calls /api/setup, then reloads settings via
-    // `refetchSiteSettings`, flipping `has-user-setup` to true midway. Mirror
-    // that by writing the refreshed value into the session-properties cache.
+    // `refetchSiteSettings`, flipping `has-user-setup` to true midway.
+    // Mirror that by writing the refreshed value into the session-properties cache.
     await act(async () => {
-      // The store's test-harness dispatch type isn't thunk-aware; the app
-      // dispatch (`DispatchFn`) is.
+      // The store's test-harness dispatch type isn't thunk-aware,
+      // the app DispatchFn is.
       await (store.dispatch as DispatchFn)(
         sessionApi.util.upsertQueryData(
           "getSessionProperties",
