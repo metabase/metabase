@@ -15,7 +15,18 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Button, Flex, Group, Select, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Divider,
+  Flex,
+  Group,
+  Loader,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { MetabotProvider } from "metabase-types/api";
 
 import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
@@ -29,13 +40,38 @@ import {
   parseProviderAndModel,
 } from "./utils";
 
-export function AIProviderConfigurationForm({
-  isModal = false,
-  onClose,
-}: {
+interface AIProviderConfigurationFormProps {
   isModal?: boolean;
-  onClose?: VoidFunction;
-}) {
+  defaultProvider?: MetabotProvider;
+  onClose?: (connectedProvider?: MetabotProvider) => void;
+  onSkip?: VoidFunction;
+}
+
+export function AIProviderConfigurationForm(
+  props: AIProviderConfigurationFormProps,
+) {
+  const { isLoading } = useAdminSetting("llm-metabot-provider");
+
+  // The saved provider loads asynchronously, and the form body computes its
+  // initial selection once at mount. Mounting before the value arrives would
+  // let `defaultProvider` win over an existing connection.
+  if (props.defaultProvider && isLoading) {
+    return (
+      <Center p="lg">
+        <Loader data-testid="loading-indicator" />
+      </Center>
+    );
+  }
+
+  return <AIProviderConfigurationFormBody {...props} />;
+}
+
+function AIProviderConfigurationFormBody({
+  isModal = false,
+  defaultProvider,
+  onClose,
+  onSkip,
+}: AIProviderConfigurationFormProps) {
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
   const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
   const [sendToast] = useToast();
@@ -57,9 +93,16 @@ export function AIProviderConfigurationForm({
   );
   const connectedProvider = isConfigured ? config?.provider : undefined;
   const connectedModel = isConfigured ? config?.model : undefined;
-  const [provider, setProvider] = useState<MetabotProvider | undefined>(
-    isModal ? undefined : connectedProvider,
-  );
+  // `defaultProvider` is only a suggestion for the unconfigured state — an
+  // existing connection always wins over it. A modal without a suggestion
+  // starts unselected on purpose, even when connected (the "switch provider"
+  // flow).
+  const [provider, setProvider] = useState<MetabotProvider | undefined>(() => {
+    if (!isModal) {
+      return connectedProvider;
+    }
+    return defaultProvider ? (connectedProvider ?? defaultProvider) : undefined;
+  });
 
   const isCurrentConfigured = connectedProvider === provider && isConfigured;
 
@@ -253,7 +296,7 @@ export function AIProviderConfigurationForm({
 
         {match(provider)
           .with("metabase", () => (
-            <MetabaseAIProviderSetup onConnect={onClose} />
+            <MetabaseAIProviderSetup onConnect={() => onClose?.("metabase")} />
           ))
           .with("azure", () => (
             <AzureProviderFields
@@ -283,14 +326,14 @@ export function AIProviderConfigurationForm({
 
         {envSettingName && <SetByEnvVar varName={envSettingName} />}
 
-        <Flex justify="end">
+        <Flex justify={onSkip ? "flex-start" : "end"}>
           {match({ isCurrentConfigured, isConnectButtonEnabled, isModal })
             .with({ isModal: true, isCurrentConfigured: true }, () => (
               <Button
                 variant="filled"
                 loading={isMutating}
                 disabled={isMutating}
-                onClick={onClose}
+                onClick={() => onClose?.(provider)}
               >
                 {t`Done`}
               </Button>
@@ -324,6 +367,24 @@ export function AIProviderConfigurationForm({
             )
             .exhaustive()}
         </Flex>
+
+        {onSkip && !isCurrentConfigured && (
+          <>
+            <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
+            <Box>
+              <Button
+                onClick={onSkip}
+                variant="subtle"
+                px={0}
+                fw="normal"
+                disabled={isMutating}
+              >{t`I'll set this up later`}</Button>
+              <Text c="text-disabled" size="sm">
+                {t`You won't be able to use AI features until you connect a provider.`}
+              </Text>
+            </Box>
+          </>
+        )}
         <ConfirmModal
           opened={isDisconnectConfirmOpen}
           onClose={() => setIsDisconnectConfirmOpen(false)}

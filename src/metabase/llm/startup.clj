@@ -5,6 +5,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
+   [metabase.setup.core :as setup]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -32,6 +33,11 @@
 (defn check-and-sync-settings-on-startup!
   "For legacy `:metabot-v3` customers that do not have `:metabase-ai-managed`,
   switch the default unmanaged Metabot provider to the managed `metabase/...`
-  provider on startup."
+  provider on startup.
+
+  This is a migration for existing instances only: it is skipped until initial
+  setup has completed, so fresh instances choose their AI provider in the setup
+  wizard instead of booting pre-configured."
   []
-  (maybe-sync-managed-metabot-provider!))
+  (when (setup/has-user-setup)
+    (maybe-sync-managed-metabot-provider!)))

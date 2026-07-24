@@ -45,5 +45,6 @@ export const createMockSetupState = (
   isEmbeddingUseCase: false,
   isLocaleLoaded: false,
   isTrackingAllowed: true,
+  isAiConfigRequested: false,
   ...opts,
 });

@@ -85,6 +85,31 @@ export const getIsEmailConfigured = (state: State): boolean => {
   return getSetting(state, "email-configured?");
 };
 
+export const getIsAiConfigRequested = (state: State): boolean => {
+  return state.setup.isAiConfigRequested;
+};
+
+export const getIsAiConfigAvailable = createSelector(
+  [
+    (state: State) => getUsageReason(state),
+    (state: State) => getIsEmbeddingUseCase(state),
+    (state: State) => getSetting(state, "ai-features-enabled?"),
+  ],
+  (usageReason, isEmbeddingUseCase, areAiFeaturesEnabled) =>
+    usageReason !== "embedding" &&
+    !isEmbeddingUseCase &&
+    areAiFeaturesEnabled !== false,
+);
+
+export const getShouldOfferAiConfig = createSelector(
+  [
+    (state: State) => getIsAiConfigAvailable(state),
+    (state: State) => getIsAiConfigRequested(state),
+  ],
+  (isAiConfigAvailable, isAiConfigRequested) =>
+    isAiConfigAvailable && !isAiConfigRequested,
+);
+
 export const getSteps = createSelector(
   [
     (state: State) => getUsageReason(state),
@@ -92,6 +117,8 @@ export const getSteps = createSelector(
     (state: State) => getSetting(state, "token-features"),
     (state: State) => state.setup.licenseToken,
     (state: State) => getIsEmbeddingUseCase(state),
+    (state: State) => getIsAiConfigAvailable(state),
+    (state: State) => getIsAiConfigRequested(state),
   ],
   (
     usageReason,
@@ -99,6 +126,8 @@ export const getSteps = createSelector(
     tokenFeatures,
     licenseToken,
     isEmbeddingUseCase,
+    isAiConfigAvailable,
+    isAiConfigRequested,
   ) => {
     const isPaidPlan =
       tokenFeatures &&
@@ -136,6 +165,10 @@ export const getSteps = createSelector(
       ),
       ...maybeAddStep("license_token", shouldShowLicenseStep),
       ...maybeAddStep("data_usage", shouldShowDataUsageStep),
+      // Opted into from the completed step, so it always comes last. The
+      // managed-AI offer relies on PLUGIN_METABOT.isEnabled, which is frozen
+      // at plugin init: a token entered in license_token can't surface it.
+      ...maybeAddStep("ai_config", isAiConfigAvailable && isAiConfigRequested),
       "completed",
     ];
 

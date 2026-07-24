@@ -6,6 +6,7 @@ export type SetupStep =
   | "user_info"
   | "usage_question"
   | "db_connection"
+  | "ai_config"
   | "license_token"
   | "data_usage"
   | "completed";
@@ -45,5 +46,6 @@ export interface SetupState {
   isEmbeddingUseCase: boolean;
   isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
+  isAiConfigRequested: boolean;
   licenseToken?: string | null;
 }
