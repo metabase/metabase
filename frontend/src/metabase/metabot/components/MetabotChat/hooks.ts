@@ -128,8 +128,6 @@ export function useScrollManager(hasMessages: boolean) {
           const latestPrompt = userMessages[userMessages.length - 1];
 
           const promptOffsetTop = latestPrompt?.offsetTop ?? 0;
-          // the gap left above the prompt has to match the padding
-          // calculateFillerHeight reserves, or the prompt can't reach the top
           const topOffset = parseFloat(
             getComputedStyle(scrollContainerEl).paddingTop,
           );
