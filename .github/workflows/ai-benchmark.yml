@@ -56,17 +56,15 @@ jobs:
             const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
             core.setOutput('comment_id', String(data.id));
 
-  uberjar:
-    needs: [announce]
-    if: >-
-      github.event_name == 'pull_request'
-      && github.event.label.name == 'evals/smoke'
-      && github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/uberjar.yml
+  image:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/build-private-ee-docker-image.yml
     secrets: inherit
+    with:
+     commit: ${{ github.event.inputs.ref || github.event.pull_request.head.sha || github.sha }}
 
   smoke:
-    needs: [announce, uberjar]
+    needs: [announce, image]
     if: >-
       github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
@@ -93,9 +91,7 @@ jobs:
             -f "inputs[comment_id]=$COMMENT_ID"
 
   finalize:
-    # If the build or dispatch fell over, eval-run never took over the comment — leave a
-    # failure verdict instead of a comment stuck at "building the image…".
-    needs: [announce, uberjar, smoke]
+    needs: [announce, image, smoke]
     if: always() && needs.announce.result == 'success' && needs.smoke.result != 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -120,6 +116,7 @@ jobs:
               comment_id: Number(process.env.COMMENT_ID), body });
 
   dispatch:
+    needs: [image]
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 5
