@@ -11,8 +11,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
-   ;; registers the run_saved_question tool for the call-tool seam below
-   [metabase.mcp.v2.tools.query]
+   ;; registers the run_saved_question tool for the call-tool seam below; aliased for the
+   ;; direct unit test of the private `check-parameter-value!`
+   [metabase.mcp.v2.tools.query :as tools.query]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -73,7 +74,7 @@
           (is (= 5 (:returned payload)))
           (is (= 5 (count (:rows payload))))
           (is (true? (:truncated payload)))
-          (is (= "returned 5 rows — narrow with `parameters`, or `export` for the full set"
+          (is (= "returned 5 rows, more available — narrow with `parameters`, or raise `row_limit` (max 2000)"
                  (::steering payload)))
           (is (= ["ID" "CATEGORY"] (map :name (:cols payload))))
           (is (every? (every-pred :name :base_type :display_name) (:cols payload)))
@@ -86,6 +87,15 @@
     (mt/with-temp [:model/Card {card-id :id} (plain-card "rsq complete")]
       (mt/with-current-user (mt/user->id :rasta)
         (let [payload (tool-result (call-run-saved-question {:id card-id :row_limit 500}))]
+          (is (= 200 (:returned payload)))
+          (is (false? (:truncated payload)))
+          (is (nil? (::steering payload))))))))
+
+(deftest ^:parallel exact-fit-result-not-truncated-test
+  (testing "a result that fills row_limit exactly is complete, not truncated — truncation is observed, not inferred"
+    (mt/with-temp [:model/Card {card-id :id} (plain-card "rsq exact fit")]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [payload (tool-result (call-run-saved-question {:id card-id :row_limit 200}))]
           (is (= 200 (:returned payload)))
           (is (false? (:truncated payload)))
           (is (nil? (::steering payload))))))))
@@ -184,21 +194,106 @@
           (is (map? (tool-result (call-run-saved-question
                                   {:id card-id :parameters [{:id "min_rating" :value "4.5"}]})))))))))
 
-(deftest ^:parallel non-template-tag-parameter-teaching-error-test
-  (testing "a declared card parameter targeting a query dimension (not a template tag) is a teaching error, not a QP failure"
-    (mt/with-temp [:model/Card {card-id :id}
-                   {:name          "rsq mbql param"
-                    :dataset_query (lib/query (mt/metadata-provider)
-                                              (lib.metadata/table (mt/metadata-provider) (mt/id :products)))
-                    :parameters    [{:id     "p1"
-                                     :slug   "cat_dim"
-                                     :name   "Category"
-                                     :type   :string/=
-                                     :target [:dimension [:field (mt/id :products :category) nil]]}]}]
+(defn- mbql-dimension-param-card
+  "A plain MBQL question over PRODUCTS with a declared filter-widget parameter targeting the
+   CATEGORY field — the case v1 and the first cut of this tool refused."
+  [card-name]
+  {:name          card-name
+   :dataset_query (lib/query (mt/metadata-provider)
+                             (lib.metadata/table (mt/metadata-provider) (mt/id :products)))
+   :parameters    [{:id     "p1"
+                    :slug   "cat_dim"
+                    :name   "Category"
+                    :type   :string/=
+                    :target [:dimension [:field (mt/id :products :category) nil]]}]})
+
+(deftest ^:parallel mbql-dimension-parameter-filters-test
+  (testing "a saved question's declared MBQL filter-widget parameter runs and filters, addressable by id or slug"
+    (mt/with-temp [:model/Card {card-id :id} (mbql-dimension-param-card "rsq mbql param")]
       (mt/with-current-user (mt/user->id :rasta)
-        (is (= "Parameter \"cat_dim\" is not backed by a template tag in the card's query and cannot be set on this path."
-               (tool-error (call-run-saved-question
-                            {:id card-id :parameters [{:id "cat_dim" :value "Widget"}]}))))))))
+        (let [category-col (fn [payload]
+                             (let [i (first (keep-indexed #(when (= "CATEGORY" (:name %2)) %1)
+                                                          (:cols payload)))]
+                               (distinct (map #(nth % i) (:rows payload)))))
+              by-id   (tool-result (call-run-saved-question
+                                    {:id card-id :parameters [{:id "p1" :value ["Widget"]}]}))
+              by-slug (tool-result (call-run-saved-question
+                                    {:id card-id :parameters [{:id "cat_dim" :value ["Widget"]}]}))]
+          (is (pos? (:returned by-id)))
+          (is (= ["Widget"] (category-col by-id))
+              "the dimension parameter must filter CATEGORY to the supplied value")
+          (is (= (:rows by-id) (:rows by-slug))))))))
+
+(deftest ^:parallel mbql-dimension-parameter-target-ignored-security-test
+  (testing "a client-supplied :target on an MBQL dimension parameter cannot repoint the filter at another field"
+    (mt/with-temp [:model/Card {card-id :id} (mbql-dimension-param-card "rsq mbql target swap")]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [clean   (tool-result (call-run-saved-question
+                                    {:id card-id :parameters [{:id "cat_dim" :value ["Widget"]}]}))
+              swapped (tool-result (call-run-saved-question
+                                    {:id         card-id
+                                     :parameters [{:id     "cat_dim"
+                                                   :value  ["Widget"]
+                                                   :type   "number/="
+                                                   :target ["dimension" ["field" (mt/id :products :rating) nil]]}]}))]
+          (is (pos? (:returned clean)))
+          (is (= (:rows clean) (:rows swapped))
+              "the injected target must not repoint the filter from CATEGORY to RATING"))))))
+
+;; not ^:parallel: calls the `!`-named (but pure) `check-parameter-value!` directly, which the
+;; parallel-test linter bars as potentially destructive.
+(deftest value-type-family-check-test
+  ;; Exercises `check-parameter-value!` directly across every type family: the tool path in
+  ;; `wrong-value-type-teaching-error-test` only reaches the `number` branch, and constructing a
+  ;; card whose stored parameter type lands on `boolean`/`date`/`temporal-unit` is fiddly and
+  ;; couples the test to widget-type derivation. The checker is pure, so drive it as data.
+  (let [check #'tools.query/check-parameter-value!]
+    (testing "each family accepts JSON types that satisfy it and rejects those that cannot"
+      (doseq [[param-type accepted rejected]
+              [[:number/=      [5 5.5 "5" "-3.2e4"]        ["abc" true]]
+               [:number        [7 "7"]                     ["nope"]]
+               [:boolean       [true false "true" "false"] ["yes" 1]]
+               [:date/single   ["2020-01-01"]              [5 true]]
+               [:temporal-unit ["month"]                   [5]]
+               ;; default branch: any string, number, or boolean scalar
+               [:string/=      ["Widget" 5 true]           [{:x 1}]]]]
+        (testing (str param-type)
+          (doseq [v accepted]
+            (is (nil? (check {:type param-type :slug "p"} v))
+                (str "should accept " (pr-str v))))
+          (doseq [v rejected]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid value"
+                                  (check {:type param-type :slug "p"} v))
+                (str "should reject " (pr-str v)))))))
+    (testing "one bad element rejects the whole multi-value array, naming that element"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid value \"abc\""
+                            (check {:type :number :slug "n"} [1 "abc"]))))
+    (testing "a structured value can never satisfy any family — no MBQL fragment reaches a filter"
+      ;; The second injection surface after target: the value position. Even for the permissive
+      ;; string family, a keyword, map, or nested-vector element is rejected, so a value cannot
+      ;; smuggle a field ref or clause into the filter it feeds.
+      (doseq [v [:keyword
+                 {:x 1}
+                 [["field" 1 nil]]
+                 [:field 1 nil]]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid value"
+                              (check {:type :string/= :slug "p"} v))
+            (str "should reject structured value " (pr-str v)))))))
+
+(deftest ^:parallel structured-value-rejected-at-schema-test
+  (testing "a non-scalar parameter value is rejected by the args schema, not swallowed as an internal error"
+    ;; Defense in depth with `check-parameter-value!`: the tightened `:value` schema stops a
+    ;; structured value (map, nested vector) at the boundary, so it can never reach the filter.
+    ;; A boundary rejection is a caller-facing "Invalid arguments" teaching error — the opposite
+    ;; of the opaque "Internal error" a value that slipped through to the QP would produce.
+    (mt/with-temp [:model/Card {card-id :id} (variable-card "rsq structured value")]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [bad-value [{:x 1} [["field" 1 nil]]]]
+          (let [message (tool-error (call-run-saved-question
+                                     {:id card-id :parameters [{:id "cat" :value bad-value}]}))]
+            (is (str/includes? message "Invalid arguments")
+                (str "should reject structured value " (pr-str bad-value)))
+            (is (not= "Internal error" message))))))))
 
 ;; not ^:parallel: mutates the permission graph for the temp collection.
 (deftest not-found-and-unreadable-collapse-test
