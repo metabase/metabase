@@ -63,9 +63,8 @@
   - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since these IDs are sequential."
   [engine id]
-  ;; one transaction so a crash can't commit the database row but skip the permissions guard below —
-  ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path.
-  ;; (under the detached audit lock this rides an ordinary pooled connection, so it costs nothing.)
+  ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
+  ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
   (t2/with-transaction [_conn]
     (t2/insert! :model/Database {:is_audit         true
                                  :id               id
@@ -353,11 +352,8 @@
   (let [current       (views-checksum)
         views-stale?  (and current (not= current (audit-app.settings/last-analytics-views-checksum)))
         sync-pending? (audit-app.settings/audit-db-dialect-sync-pending)]
-    ;; record the debt durably BEFORE attempting the sync: the analytics content checksum has already
-    ;; advanced by this point, so a sync that fails or is killed mid-flight would otherwise leave the
-    ;; audit DB half-scanned for the host dialect with no path ever repairing it (the scheduled sync
-    ;; task and the sync API both refuse the audit DB) until the next release changes the content
-    ;; checksum. The marker makes the next boot retry the sync without re-running the load.
+    ;; record the debt durably BEFORE attempting the sync: the content checksum has already advanced, so
+    ;; a failed or interrupted sync would otherwise never be retried — no other path syncs the audit DB
     (when engine-changed?
       (audit-app.settings/audit-db-dialect-sync-pending! true))
     (when (or engine-changed? views-stale? sync-pending?)
@@ -452,9 +448,8 @@
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
-      ;; one transaction per group so a crash mid-group can't delete the orphans yet skip the survivor
-      ;; update: the shrunken group would no longer register as duplicates, leaving the survivor with its
-      ;; defective flags until some future sync re-forms the group
+      ;; one transaction per group so a crash can't delete the orphans yet skip the survivor update —
+      ;; the shrunken group would no longer register as duplicates, stranding the survivor's flags
       (t2/with-transaction [_conn]
         (let [referenced-ids    (into #{}
                                       (map :table_id)
@@ -503,12 +498,9 @@
   ;; under the lock. If another node already holds the lock it is doing this same work, so we skip rather than fail
   ;; the boot.
   ;;
-  ;; The lock is :detached? so the pipeline does NOT run as one long transaction on the lock's connection: the serdes
-  ;; load's per-entity transactions commit incrementally (restoring #74412's per-entity isolation) instead of piling
-  ;; up thousands of savepoints/subtransaction XIDs and holding every row lock until one big commit at the end —
-  ;; which stalled first boot for many minutes and blocked concurrent work (#78238). Safe because this whole pipeline
-  ;; is idempotent and self-healing: the checksum only advances on completion and reconcile runs every boot, so a
-  ;; crash mid-pipeline is repaired by the next boot.
+  ;; :detached? keeps the pipeline off the lock's transaction — its work commits incrementally in small
+  ;; transactions (#78238). That is safe here because the pipeline self-heals: the checksum only advances
+  ;; on completion and reconcile runs every boot, so a crash mid-pipeline is repaired by the next boot.
   (try
     (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}
                                      :detached? true}

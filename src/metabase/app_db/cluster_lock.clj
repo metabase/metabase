@@ -104,13 +104,11 @@
   (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
               result-set (.executeQuery stmt)]
     (when-not (.next result-set)
-      ;; this record will not be visible until the tx commits, so there's no need to lock it
-      ;; we instead rely on concurrent threads having constraint violation trying to insert their own record.
-      ;; raw JDBC on `conn` for two reasons: in detached mode there is no ambient transaction, so an insert
-      ;; on a pooled connection would commit immediately without us holding the row lock; and the insert
-      ;; needs the same query timeout as the SELECT -- N nodes cold-starting against an empty lock table
-      ;; block inside their INSERTs on the winner's uncommitted unique-index entry, and without a timeout
-      ;; that wait is unbounded instead of falling into the retry machinery
+      ;; this record will not be visible until the tx commits, so there's no need to lock it; concurrent
+      ;; inserters get a constraint violation and retry. Raw JDBC because the insert must run on `conn`
+      ;; (in detached mode ambient resolution would hand it a different connection) and needs the same
+      ;; query timeout as the SELECT — concurrent first-time inserters block on the winner's uncommitted
+      ;; unique-index entry
       (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
                                       :columns     [:lock_name]
                                       :values      [[[:raw "?"]]]})]
@@ -366,10 +364,10 @@
       :else
       (let [acquired? (volatile! false)
             config    (assoc (merge default-retry-config retry-config)
-                             ;; a detached body's work commits incrementally, so a retryable-looking error
-                             ;; it throws (e.g. a nested cluster lock timing out inside it) must not re-run
-                             ;; it: only acquisition-phase failures may retry. The transactional body is
-                             ;; safe to re-run -- its rollback restored the slate -- and :retry-transient?
+                             ;; a detached body commits incrementally, so a retryable-looking error it
+                             ;; throws must not re-run it (or be mistaken for acquisition failure below):
+                             ;; past acquisition, detached errors propagate raw. A transactional body is
+                             ;; safe to re-run — its rollback restored the slate — and :retry-transient?
                              ;; depends on that.
                              :retry-if (fn [_ e]
                                          (and (or (not detached?) (not @acquired?))
@@ -380,10 +378,6 @@
             (vreset! acquired? false)
             (impl locks timeout-seconds thunk acquired?))
           (catch Throwable e
-            ;; only a genuine lock-acquisition failure gets the "Failed to obtain cluster lock" wrapper --
-            ;; a retryable-looking error thrown by a detached body after acquisition propagates raw, so
-            ;; callers that treat contention on this lock as benign (ensure-audit-db-installed!) don't
-            ;; swallow a real body failure as "another node holds the lock".
             (if (and (retryable? e)
                      (or (not detached?) (not @acquired?)))
               (throw (ex-info (str "Failed to obtain cluster lock: "

@@ -312,8 +312,7 @@
 (defn do-with-unshared-connection
   "Impl for [[with-unshared-connection]]."
   [f]
-  ;; check out through *application-db* itself (not the raw data source) so the ApplicationDB
-  ;; read-lock gate applies — the testing API blocks new connections through it during appdb restore
+  ;; through *application-db* (not the raw data source) so its connection read-lock gate applies
   (with-open [conn (.getConnection *application-db*)]
     (f (t2.conn/unshared-connection! conn))))
 
