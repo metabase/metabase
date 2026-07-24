@@ -42,9 +42,14 @@ export function LookbackField({ readOnly }: { readOnly?: boolean }) {
     fieldId != null ? { id: Number(fieldId) } : skipToken,
   );
 
-  const baseType = field?.base_type;
-  const isTemporal = baseType != null && isa(baseType, TYPE.Temporal);
-  const isDateOnly = isTemporal && !isa(baseType, TYPE.DateTime);
+  // Effective type first, so coerced columns (e.g. unix timestamps) count as temporal.
+  // Time-only columns are excluded — their watermarks wrap at midnight, so the BE rejects them.
+  const fieldType = field?.effective_type ?? field?.base_type;
+  const isSupported =
+    fieldType != null &&
+    isa(fieldType, TYPE.Temporal) &&
+    !isa(fieldType, TYPE.Time);
+  const isDateOnly = isSupported && !isa(fieldType, TYPE.DateTime);
 
   // Date-only columns only take day-or-coarser units; snap a finer unit (possible after a
   // checkpoint-field change) back to days. Guarded on a set value — a write here counts as a
@@ -59,7 +64,7 @@ export function LookbackField({ readOnly }: { readOnly?: boolean }) {
     }
   }, [isDateOnly, values.lookbackValue, values.lookbackUnit, setFieldValue]);
 
-  if (fieldId == null || !isTemporal) {
+  if (fieldId == null || !isSupported) {
     return null;
   }
 

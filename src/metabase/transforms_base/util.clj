@@ -403,11 +403,14 @@
             _                   (when (or (nil? column) (not (:active column)))
                                   (throw (ex-info "Checkpoint field does not exist or is not active"
                                                   {:checkpoint-filter-field-id checkpoint-filter-field-id})))
-            _ (when-not (supported-incremental-filter-type? (:base-type column))
-                (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str (:base-type column)) ". "
+            ;; Coerced columns (e.g. a unix-timestamp integer with an effective type of
+            ;; :type/Instant) filter and return values as their effective type, so all
+            ;; parsing/encoding of checkpoint values must key off it, not the storage type.
+            base-type         (or (:effective-type column) (:base-type column))
+            _ (when-not (supported-incremental-filter-type? base-type)
+                (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str base-type) ". "
                                      "Only numeric and temporal columns are supported for incremental filtering.")
                                 {:column column})))
-            base-type         (:base-type column)
             ;; `checkpoint-lo` is the stored watermark; `lo` is the scan bound, pushed back by any lookback.
             checkpoint-lo     (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
             lookback          (get-in source [:source-incremental-strategy :lookback])

@@ -85,7 +85,8 @@
   (let [{:keys [lookback checkpoint-filter-field-id]} (:source-incremental-strategy source)]
     (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform) lookback)]
       (when-let [field (t2/select-one :model/Field checkpoint-filter-field-id)]
-        (let [base-type (:base_type field)]
+        ;; effective type first, so coerced columns (e.g. unix timestamps) count as temporal
+        (let [base-type (or (:effective_type field) (:base_type field))]
           (api/check-400 (and (isa? base-type :type/Temporal)
                               (not (isa? base-type :type/Time)))
                          (deferred-tru "A lookback window is only supported for date or datetime checkpoint columns."))
