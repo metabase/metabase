@@ -1,4 +1,8 @@
-import type { WidgetMount } from "custom-viz";
+import type {
+  CreateCustomVisualization,
+  CustomVisualization,
+  WidgetMount,
+} from "custom-viz";
 import type { ComponentType } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
@@ -86,11 +90,12 @@ const getDefaultPluginCustomViz = () => ({
   }>,
 
   // Static viz rendering (GraalJS context)
-  customVizRegistry: new Map<string, Record<string, ComponentType<any>>>(),
+  customVizRegistry: new Map<
+    VisualizationDisplay,
+    CustomVisualization<Record<string, unknown>>
+  >(),
   registerCustomVizPlugin: (
-    _factory: (
-      props: Record<string, unknown>,
-    ) => Record<string, ComponentType<any>>,
+    _factory: CreateCustomVisualization<Record<string, unknown>>,
     _identifier: string,
     _pluginId: CustomVizPluginId,
   ) => {},

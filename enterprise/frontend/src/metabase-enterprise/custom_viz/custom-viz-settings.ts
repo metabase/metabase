@@ -7,6 +7,7 @@ import type {
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
+import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import type { CustomVizPluginId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -28,6 +29,21 @@ export function brandSettingDefinition(
   return definition as CustomVisualizationSettingDefinition<
     Record<string, unknown>
   >;
+}
+
+/**
+ * The inverse boundary of `brandSettingDefinition`: strip the opaque brand so
+ * the host can hand a plugin's setting definitions to its own settings
+ * machinery. The brand is type-level only — at runtime these are the plain
+ * setting-definition objects `getComputedSettings` consumes.
+ */
+export function toHostSettingsDefinitions(
+  settings:
+    | CustomVisualization<Record<string, unknown>>["settings"]
+    | undefined,
+): VisualizationSettingsDefinitions {
+  // The brand symbol exists only at the type level — see the doc comment.
+  return (settings ?? {}) as VisualizationSettingsDefinitions;
 }
 
 /**

@@ -7,8 +7,6 @@ import { isCustomVizDisplay } from "metabase-types/guards";
 export const CustomStaticVisualization = ({
   rawSeries,
   renderingContext,
-  isStorybook,
-  hasDevWatermark,
   width,
   height,
 }: StaticVisualizationProps) => {
@@ -43,8 +41,6 @@ export const CustomStaticVisualization = ({
       series={rawSeries}
       renderingContext={customVizRenderingContext}
       settings={settings}
-      isStorybook={isStorybook}
-      hasDevWatermark={hasDevWatermark}
       width={width}
       height={height}
     />
