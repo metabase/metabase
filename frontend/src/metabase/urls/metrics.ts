@@ -1,9 +1,9 @@
-import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
 import {
   type MetricsViewerDisplayType,
   type SerializedMetricsViewerPageState,
   encodeState,
 } from "metabase/common/metrics-viewer";
+import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
 import type { CardId, CollectionId } from "metabase-types/api";
 
 import { card as urlForCard } from "./cards";

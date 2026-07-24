@@ -2,8 +2,8 @@
 import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isStorybookActive } from "metabase/env";
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";

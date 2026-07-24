@@ -1,5 +1,4 @@
-/* eslint-disable import/order */
-
+// oxfmt-ignore
 import {
   createMockStore,
   mockFetchTableMetadata,
@@ -8,11 +7,15 @@ import {
   resetTestState,
   stagesOf,
 } from "./setup";
+// oxfmt-ignore
 import { TEST_SCHEMA } from "./fixtures";
 
+// oxfmt-ignore
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
+// oxfmt-ignore
 import { cardApi } from "metabase/api";
 
+// oxfmt-ignore
 import { avg, breakout, count, filter, orderBy, sum } from "..";
 
 beforeEach(resetTestState);
