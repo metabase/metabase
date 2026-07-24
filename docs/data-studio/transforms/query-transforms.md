@@ -102,7 +102,7 @@ Your data has to have certain structure for incremental transforms to work. See 
 
 For a transform to run incrementally, you'll need to pick a column ("checkpoint") that Metabase needs to check for new values. Then, behind the scenes, Metabase will add a filter around your transform query that will filter the results of the query for values greater than the last written checkpoint value.
 
-Metabase adds those filtered rows to the target table. If you set a [merge key](transforms-overview.md#add-merge-keys-to-upsert-rows), Metabase updates the target rows that match the key instead of adding new ones.
+If you set a [merge key](transforms-overview.md#add-merge-keys-to-upsert-rows), Metabase updates the target rows that match the key instead of adding new ones.
 
 ### Make a query transform incremental
 
