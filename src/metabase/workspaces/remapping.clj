@@ -21,11 +21,11 @@
    [toucan2.core :as t2]))
 
 (mu/defn current-workspace-id :- [:maybe pos-int?]
-  "ID of the current user's active workspace, or nil when none is active. Reads
-  [[metabase.api.common/*current-workspace-id*]], which is bound alongside `*current-user*`
-  for every request; bind it (to a bare ID) in tests to force a workspace context."
+  "ID of the current user's active workspace (`core_user.workspace_id`, carried on
+  `api/*current-user*`), or nil when none is active. Use `with-redefs` on this fn in tests
+  that need to force a workspace context without a real current user."
   []
-  (force api/*current-workspace-id*))
+  (:workspace_id @api/*current-user*))
 
 (defn check-workspace-enabled
   "Assert that the current user has an active workspace (`core_user.workspace_id`); throw a

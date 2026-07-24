@@ -127,13 +127,6 @@
   false)
 
 ;;; TODO -- move this to [[metabase.request.current]]
-(def ^:dynamic *current-workspace-id*
-  "ID of the current user's active workspace (`core_user.workspace_id`), or nil. May hold either
-  a plain value or something derefable (it is read with `force`), so tests can bind a bare ID.
-  Bound in [[metabase.request.session/do-with-current-user]] alongside [[*current-user*]]."
-  nil)
-
-;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user-permissions-set*
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.permissions.models.permissions]] for
   more information about the Metabase permissions system."
