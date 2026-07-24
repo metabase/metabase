@@ -243,7 +243,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown a {
-    display: inline-block;
+    display: inline;
     font-weight: bold;
     cursor: pointer;
     text-decoration: none;
