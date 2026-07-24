@@ -47,6 +47,11 @@ export type CustomVizEvent =
   | CustomVizPluginRefreshedEvent
   | CustomVizSelectedEvent;
 
+export type AiSetupStartedEvent = ValidateEvent<{
+  event: "ai_setup_started";
+  triggered_from: "setup";
+}>;
+
 export type AiProviderConnectedEvent = ValidateEvent<{
   event: "ai_provider_connected";
   triggered_from: "setup";

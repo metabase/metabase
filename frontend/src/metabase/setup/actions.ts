@@ -29,6 +29,7 @@ import {
   trackAddDataLaterClicked,
   trackAiProviderConnected,
   trackAiSetupLaterClicked,
+  trackAiSetupStarted,
   trackDatabaseSelected,
   trackLicenseTokenStepSubmitted,
   trackTrackingChanged,
@@ -202,12 +203,21 @@ export const submitUserInvite = createAsyncThunk(
   },
 );
 
+export const START_AI_CONFIG = "metabase/setup/START_AI_CONFIG";
+export const startAiConfig = createAsyncThunk(
+  START_AI_CONFIG,
+  (_: void, { dispatch }) => {
+    trackAiSetupStarted();
+    dispatch(selectStep("ai_config"));
+  },
+);
+
 export const SUBMIT_AI_CONFIG = "metabase/setup/SUBMIT_AI_CONFIG";
 export const submitAiConfig = createAsyncThunk(
   SUBMIT_AI_CONFIG,
   (provider: string | undefined, { dispatch }) => {
     trackAiProviderConnected(provider);
-    dispatch(goToNextStep());
+    dispatch(selectStep("completed"));
   },
 );
 
@@ -216,7 +226,7 @@ export const skipAiConfig = createAsyncThunk(
   SKIP_AI_CONFIG,
   (_: void, { dispatch }) => {
     trackAiSetupLaterClicked();
-    dispatch(goToNextStep());
+    dispatch(selectStep("completed"));
   },
 );
 
