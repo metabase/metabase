@@ -1,14 +1,12 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
-import { useListPermissionsGroupsQuery } from "metabase/api";
 import { FormField } from "metabase/common/components/FormField";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { GroupsMultiSelect } from "metabase/common/components/GroupsMultiSelect";
-import { isDefaultGroup } from "metabase/common/utils/groups";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import {
   Form,
   FormErrorMessage,
@@ -20,9 +18,9 @@ import {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { Button } from "metabase/ui";
+import { Alert, Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { GroupId, User, UserId } from "metabase-types/api";
+import type { GroupId, GroupInfo, User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -34,9 +32,18 @@ const externalUserSchema = localUserSchema.shape({
   tenant_id: Yup.number().required(Errors.required),
 });
 
+// Groups granting access to the invite target; drives the sectioned dropdown and the no-access warning.
+interface GroupAccessInfo {
+  groupIds: GroupId[];
+  sectionLabel: string;
+  warningMessage: string;
+}
+
 interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   external?: boolean;
+  groups?: GroupInfo[];
+  groupAccess?: GroupAccessInfo;
 }
 
 const FormGroupsWidget = ({
@@ -45,20 +52,17 @@ const FormGroupsWidget = ({
   style,
   title = t`Groups`,
   external,
+  groups,
+  groupAccess,
 }: FormGroupsWidgetProps) => {
   const [{ value: formValue }, , { setValue }] =
     useField<{ id: GroupId; is_group_manager?: boolean }[]>(name);
 
-  const { data: groups, isLoading } = useListPermissionsGroupsQuery({
-    tenancy: external ? "external" : "internal",
-  });
-
-  if (isLoading || !groups) {
+  if (!groups) {
     return null;
   }
 
-  const defaultGroup = _.find(
-    groups,
+  const defaultGroup = groups.find(
     external ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
   );
 
@@ -66,23 +70,18 @@ const FormGroupsWidget = ({
     formValue ??
     (defaultGroup ? [{ id: defaultGroup.id, is_group_manager: false }] : []);
 
-  // Preserve each group's manager flag across selection changes.
-  const managerFlagByGroupId = new Map(
-    memberships.map((membership) => [
-      membership.id,
-      membership.is_group_manager ?? false,
-    ]),
-  );
-
   const handleChange = (groupIds: GroupId[]) => {
     const ids = defaultGroup
       ? Array.from(new Set([defaultGroup.id, ...groupIds]))
       : groupIds;
 
+    // Preserve each group's manager flag across selection changes.
     setValue(
       ids.map((id) => ({
         id,
-        is_group_manager: managerFlagByGroupId.get(id) ?? false,
+        is_group_manager:
+          memberships.find((membership) => membership.id === id)
+            ?.is_group_manager ?? false,
       })),
     );
   };
@@ -101,6 +100,13 @@ const FormGroupsWidget = ({
     );
   };
 
+  const adminGroupId = groups.find(isAdminGroup)?.id;
+  const showNoAccessWarning =
+    groupAccess != null &&
+    !memberships.some(
+      ({ id }) => id === adminGroupId || groupAccess.groupIds.includes(id),
+    );
+
   return (
     <FormField className={className} style={style} title={title}>
       <GroupsMultiSelect
@@ -109,7 +115,18 @@ const FormGroupsWidget = ({
         onChange={handleChange}
         managerGroupIds={managerGroupIds}
         onToggleManager={handleToggleManager}
+        itemAccessGroups={
+          groupAccess && {
+            groupIds: groupAccess.groupIds,
+            label: groupAccess.sectionLabel,
+          }
+        }
       />
+      {showNoAccessWarning && (
+        <Alert color="warning" mt="sm">
+          {groupAccess?.warningMessage}
+        </Alert>
+      )}
     </FormField>
   );
 };
@@ -124,6 +141,8 @@ interface UserFormProps {
   userId?: UserId | null;
   hideNameFields?: boolean;
   hideAttributes?: boolean;
+  groups?: GroupInfo[];
+  groupAccess?: GroupAccessInfo;
 }
 
 export const UserForm = ({
@@ -136,6 +155,8 @@ export const UserForm = ({
   userId,
   hideNameFields = false,
   hideAttributes = false,
+  groups,
+  groupAccess,
 }: UserFormProps) => {
   return (
     <FormProvider
@@ -179,6 +200,8 @@ export const UserForm = ({
             name="user_group_memberships"
             external={external}
             title={PLUGIN_TENANTS.getFormGroupsTitle(external) ?? t`Groups`}
+            groups={groups}
+            groupAccess={groupAccess}
           />
           {external && (
             <PLUGIN_TENANTS.FormTenantWidget

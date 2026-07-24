@@ -50,7 +50,12 @@ function setup(
   {
     managerGroupIds = [],
     groups = GROUPS,
-  }: { managerGroupIds?: GroupId[]; groups?: GroupInfo[] } = {},
+    itemAccessGroups,
+  }: {
+    managerGroupIds?: GroupId[];
+    groups?: GroupInfo[];
+    itemAccessGroups?: { groupIds: GroupId[]; label: string };
+  } = {},
 ) {
   const onChange = jest.fn<void, [GroupId[]]>();
   const onToggleManager = jest.fn<void, [GroupId]>();
@@ -75,6 +80,7 @@ function setup(
               : [...prev, id],
           );
         }}
+        itemAccessGroups={itemAccessGroups}
       />
     );
   }
@@ -191,6 +197,82 @@ describe("GroupsMultiSelect", () => {
     expect(
       screen.queryByRole("button", { name: /Turn into (Manager|Member)/ }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("with item access groups", () => {
+    const ITEM_ACCESS_GROUPS = {
+      groupIds: [MARKETING.id],
+      label: "Can view this dashboard",
+    };
+
+    it("splits the dropdown into access and other sections instead of the pinned divider", async () => {
+      setup([ALL_USERS.id], { itemAccessGroups: ITEM_ACCESS_GROUPS });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      const accessLabel = screen.getByText("Can view this dashboard");
+      const otherLabel = screen.getByText("Other groups");
+
+      // Marketing (granted) and Administrators (implicit) sit in the access section...
+      expect(
+        isBefore(
+          accessLabel,
+          screen.getByRole("option", { name: "Marketing" }),
+        ),
+      ).toBe(true);
+      expect(
+        isBefore(
+          accessLabel,
+          screen.getByRole("option", { name: "Administrators" }),
+        ),
+      ).toBe(true);
+      expect(
+        isBefore(screen.getByRole("option", { name: "Marketing" }), otherLabel),
+      ).toBe(true);
+
+      // ...while All Users and Sales fall under "Other groups".
+      expect(
+        isBefore(otherLabel, screen.getByRole("option", { name: "All Users" })),
+      ).toBe(true);
+      expect(
+        isBefore(otherLabel, screen.getByRole("option", { name: "Sales" })),
+      ).toBe(true);
+
+      // The sections replace the flat layout's pinned divider.
+      expect(screen.queryByRole("separator")).not.toBeInTheDocument();
+    });
+
+    it("omits the access section when no visible group has access", async () => {
+      // Without Administrators in the list, nothing has implicit access either.
+      setup([ALL_USERS.id], {
+        groups: [ALL_USERS, MARKETING],
+        itemAccessGroups: { groupIds: [], label: "Can view this dashboard" },
+      });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      expect(
+        screen.queryByText("Can view this dashboard"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Other groups")).toBeInTheDocument();
+    });
+
+    it("omits the other-groups section when every group has access", async () => {
+      setup([ALL_USERS.id], {
+        itemAccessGroups: {
+          groupIds: [ALL_USERS.id, MARKETING.id, SALES.id],
+          label: "Can view this dashboard",
+        },
+      });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      expect(screen.getByText("Can view this dashboard")).toBeInTheDocument();
+      expect(screen.queryByText("Other groups")).not.toBeInTheDocument();
+    });
   });
 
   describe("with the group-managers feature (EE)", () => {
