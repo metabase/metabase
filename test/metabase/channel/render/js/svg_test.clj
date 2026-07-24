@@ -52,10 +52,10 @@
            (.getAttribute line "fill-opacity")))))
 
 (defn- load-custom-viz-bundle-ms
-  "Load the slim custom-viz bundle into a fresh UNTRUSTED isolate context on the currently-bound shared
-  untrusted-plugin engine, returning the wall-clock load time in ms."
-  ^double []
-  (let [^Context ctx (js.graal/untrusted-plugin-context)
+  "Load the slim custom-viz bundle into a fresh UNTRUSTED isolate context on `engine`, returning the
+  wall-clock load time in ms."
+  ^double [^Engine engine]
+  (let [^Context ctx (js.graal/untrusted-plugin-context engine)
         start        (System/nanoTime)]
     (try
       (js.graal/load-resource ctx js.common/custom-viz-bundle-resource-path)
@@ -65,17 +65,16 @@
 (deftest shared-engine-parsed-source-cache-speeds-bundle-reloads-test
   (testing "reloading the slim custom-viz bundle in fresh UNTRUSTED isolate contexts reuses the engine's parsed-source cache"
     (let [^Engine warmup (#'js.graal/new-untrusted-plugin-engine)]
-      (with-redefs [js.graal/shared-untrusted-plugin-engine (delay warmup)]
-        (load-custom-viz-bundle-ms)
-        (load-custom-viz-bundle-ms))
-      (.close warmup))
+      (try
+        (load-custom-viz-bundle-ms warmup)
+        (load-custom-viz-bundle-ms warmup)
+        (finally (.close warmup))))
     (let [^Engine engine (#'js.graal/new-untrusted-plugin-engine)
-          [cold warm]    (with-redefs [js.graal/shared-untrusted-plugin-engine (delay engine)]
-                           (try
-                             [(load-custom-viz-bundle-ms)          ; first parse on this engine: cold
-                              (min (load-custom-viz-bundle-ms)     ; reloads on the same engine hit the cache
-                                   (load-custom-viz-bundle-ms))]
-                             (finally (.close engine))))]
+          [cold warm]    (try
+                           [(load-custom-viz-bundle-ms engine)          ; first parse on this engine: cold
+                            (min (load-custom-viz-bundle-ms engine)     ; reloads on the same engine hit the cache
+                                 (load-custom-viz-bundle-ms engine))]
+                           (finally (.close engine)))]
       (testing (format "(cold=%.0fms warm=%.0fms)" cold warm)
         (is (< warm (* 0.75 cold)))))))
 
@@ -90,6 +89,18 @@
        ;; rendering calls it), so its absence proves the slim bundle is what got loaded here.
        (is (= "undefined" (.asString (.eval ctx "js" "typeof MetabaseStaticViz.getCellBackgroundColorsJSON")))
            "the full static-viz bundle (getCellBackgroundColorsJSON present) leaked into the untrusted pool")))))
+
+(deftest untrusted-engine-ref-counted-lifecycle-test
+  (testing "the shared untrusted isolate engine is ref-counted: created with the first context, closed with the last"
+    (let [state   (:state @#'js.graal/shared-untrusted-plugin-engine)
+          refs    #(get @state :refs 0)
+          before  (refs)
+          context (#'js.graal/generate-untrusted-context!)]
+      (is (= (inc before) (refs)) "generating a context should bump the shared-engine ref count")
+      (#'js.graal/destroy-untrusted-context! context)
+      (is (= before (refs)) "destroying the context should drop its ref")
+      (when (zero? before)
+        (is (nil? @state) "the last destroy should close the engine and clear the shared state")))))
 
 (deftest untrusted-static-viz-context-is-pooled-test
   (testing "pooled untrusted isolate contexts are reused across renders (bundle parsed once, not per render)"
