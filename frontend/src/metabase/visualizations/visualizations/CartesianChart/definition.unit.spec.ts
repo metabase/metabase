@@ -5,7 +5,11 @@ import { getCartesianChartDefinition } from "./definition";
 
 describe("definition", () => {
   describe("onDisplayUpdate", () => {
-    const onDisplayUpdate = getCartesianChartDefinition({}).onDisplayUpdate!;
+    const onDisplayUpdate = getCartesianChartDefinition({
+      getUiName: () => "Chart",
+      identifier: "bar",
+      iconName: "bar",
+    }).onDisplayUpdate!;
 
     it("should reset individual series display", () => {
       const settings: VisualizationSettings = {

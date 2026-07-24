@@ -69,7 +69,7 @@ function BoxPlotInner({
 
   const settings = useMemo(
     () =>
-      autoAdjustSettings
+      autoAdjustSettings && width != null && height != null
         ? getDashboardAdjustedSettings({
             settings: originalSettings,
             height,
@@ -205,7 +205,7 @@ function BoxPlotInner({
               ? () => onChangeCardAndRun({ nextCard: card })
               : undefined
           }
-          width={width}
+          width={width ?? undefined}
           titleMenuItems={titleMenuItems}
         />
       )}
@@ -219,8 +219,8 @@ function BoxPlotInner({
         isQueryBuilder={isQueryBuilder}
         onToggleSeriesVisibility={handleToggleSeriesVisibility}
         onHoverChange={onHoverChange}
-        width={width}
-        height={height}
+        width={width ?? undefined}
+        height={height ?? undefined}
       >
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}
@@ -236,7 +236,7 @@ function BoxPlotInner({
   );
 }
 
-export function BoxPlot(props: VisualizationProps) {
+function BoxPlotComponent(props: VisualizationProps) {
   return (
     <ChartRenderingErrorBoundary onRenderError={props.onRenderError}>
       <BoxPlotInner {...props} />
@@ -244,4 +244,7 @@ export function BoxPlot(props: VisualizationProps) {
   );
 }
 
-Object.assign(BoxPlot, BOXPLOT_CHART_DEFINITION);
+export const BoxPlot = Object.assign(
+  BoxPlotComponent,
+  BOXPLOT_CHART_DEFINITION,
+);

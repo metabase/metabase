@@ -20,9 +20,10 @@ import { getSetting } from "metabase/selectors/settings";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { isEmpty } from "metabase/utils/validate";
+import type { VisualizationGridSize } from "metabase/visualizations/types";
 import type {
   Dashboard,
-  VirtualDashboardCard,
+  DashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -37,13 +38,10 @@ import {
 interface HeadingProps {
   isMobile: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
-  dashcard: VirtualDashboardCard;
+  dashcard?: DashboardCard;
   settings: VisualizationSettings;
-  dashboard: Dashboard;
-  gridSize: {
-    width: number;
-    height: number;
-  };
+  dashboard?: Dashboard;
+  gridSize?: VisualizationGridSize;
 }
 
 export function Heading({
@@ -64,7 +62,7 @@ export function Heading({
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const tc = useTranslateContent();
-  const isShort = gridSize.height < 2;
+  const isShort = gridSize != null && gridSize.height < 2;
 
   const [isFocused, { open: toggleFocusOn, close: toggleFocusOff }] =
     useDisclosure(justAdded);
@@ -78,10 +76,12 @@ export function Heading({
   const isEditingParameter = useSelector(getIsEditingParameter);
 
   const mappingOptions = useSelector((state) =>
-    getDashcardParameterMappingOptions(state, {
-      card: dashcard.card,
-      dashcard,
-    }),
+    dashcard != null
+      ? getDashcardParameterMappingOptions(state, {
+          card: dashcard.card,
+          dashcard,
+        })
+      : [],
   );
   const hasVariables = mappingOptions.length > 0;
 
@@ -94,7 +94,7 @@ export function Heading({
 
   const content = useMemo(
     () =>
-      isEditing
+      isEditing || dashboard == null
         ? translatedText
         : fillParametersInText({
             dashcard,
@@ -126,7 +126,7 @@ export function Heading({
   if (isEditingParameter) {
     leftContent = (
       <Box h="100%" style={{ overflow: "hidden" }}>
-        {hasVariables ? (
+        {hasVariables && dashcard != null ? (
           <DashCardParameterMapper
             compact
             dashcard={dashcard}

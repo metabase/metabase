@@ -30,9 +30,7 @@ import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange, isGaugeSegmentsArray } from "./types";
 import { getValue, radians } from "./utils";
 
-Object.assign(Gauge, GAUGE_CHART_DEFINITION);
-
-export function Gauge({
+function GaugeComponent({
   className,
   isSettings,
   height: heightProp,
@@ -43,14 +41,15 @@ export function Gauge({
   ],
   settings,
   visualizationIsClickable,
-  width,
+  width: widthProp,
   onVisualizationClick,
   onHoverChange,
 }: VisualizationProps) {
   const labelRef = useRef<SVGTextElement>(null);
   const isMounted = useMounted();
 
-  const height = heightProp - PADDING_BOTTOM;
+  const width = widthProp ?? 0;
+  const height = (heightProp ?? 0) - PADDING_BOTTOM;
 
   const viewBoxHeight =
     (ARC_DEGREES > 180 ? 50 : 0) + Math.sin(radians(ARC_DEGREES / 2)) * 50;
@@ -245,3 +244,5 @@ export function Gauge({
     </div>
   );
 }
+
+export const Gauge = Object.assign(GaugeComponent, GAUGE_CHART_DEFINITION);

@@ -22,7 +22,7 @@ import { DASHCARD_HEADER_HEIGHT } from "./constants";
 import { SMART_SCALAR_CHART_DEFINITION } from "./definition";
 import { getValueHeight, getValueWidth, isPeriodVisible } from "./utils";
 
-export function SmartScalar({
+function SmartScalarComponent({
   onVisualizationClick,
   isDashboard,
   settings,
@@ -30,14 +30,17 @@ export function SmartScalar({
   series,
   rawSeries,
   gridSize,
-  width,
-  height,
+  width: widthProp,
+  height: heightProp,
   totalNumGridCols,
   fontFamily,
   onRenderError,
 }: VisualizationProps & VisualizationPassThroughProps) {
   const scalarRef = useRef(null);
   const { getColor } = useBrowserRenderingContext({ fontFamily });
+
+  const width = widthProp ?? 0;
+  const height = heightProp ?? 0;
 
   const insights = rawSeries?.[0].data?.insights;
   const { trend, error } = useMemo(
@@ -138,4 +141,7 @@ export function SmartScalar({
   );
 }
 
-Object.assign(SmartScalar, SMART_SCALAR_CHART_DEFINITION);
+export const SmartScalar = Object.assign(
+  SmartScalarComponent,
+  SMART_SCALAR_CHART_DEFINITION,
+);

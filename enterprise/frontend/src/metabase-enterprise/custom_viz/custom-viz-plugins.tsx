@@ -514,8 +514,8 @@ function createCustomVizWrapper(
     const { resolvedColorScheme } = useColorScheme();
 
     const pluginProps: GenericVizPluginProps = {
-      width,
-      height,
+      width: width ?? null,
+      height: height ?? null,
       // Unjustified type cast. FIXME
       series: series as unknown as GenericVizPluginProps["series"],
       settings,

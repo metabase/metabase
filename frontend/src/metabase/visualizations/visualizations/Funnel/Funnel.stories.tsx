@@ -23,7 +23,6 @@ export default {
   component: Funnel,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Funnel);
 
 const dataset_query = createMockStructuredDatasetQuery({

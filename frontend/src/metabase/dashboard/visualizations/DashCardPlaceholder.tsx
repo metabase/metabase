@@ -13,11 +13,8 @@ import type {
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
 type Props = VisualizationProps & {
-  dashcard: VirtualDashboardCard;
-  dashboard: Dashboard;
   isEditingParameter?: boolean;
 };
 
@@ -31,6 +28,10 @@ function DashCardPlaceholderInner({
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
+  if (!isDashboard || dashboard == null || dashcard == null) {
+    return null;
+  }
+
   const handleSelectQuestion = (nextCard: OmniPickerItem) => {
     if (typeof nextCard.id === "number") {
       dispatch(
@@ -39,10 +40,6 @@ function DashCardPlaceholderInner({
       setQuestionPickerOpen(false);
     }
   };
-
-  if (!isDashboard) {
-    return null;
-  }
 
   const pointerEvents = isEditingParameter ? "none" : "all";
 

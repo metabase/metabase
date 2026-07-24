@@ -29,8 +29,8 @@ export function useModelsAndOption(
     settings,
     card,
     fontFamily,
-    width,
-    height,
+    width: widthProp,
+    height: heightProp,
     hiddenSeries = new Set(),
     timelineEvents,
     selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
@@ -41,6 +41,9 @@ export function useModelsAndOption(
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
   const tc = useTranslateContent();
+
+  const width = widthProp ?? 0;
+  const height = heightProp ?? 0;
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,

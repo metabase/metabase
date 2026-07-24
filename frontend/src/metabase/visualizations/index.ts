@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { isValidElementType } from "react-is";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,10 +14,17 @@ import type {
 } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./types";
-import type { Visualization } from "./types/visualization";
+import type {
+  Visualization,
+  VisualizationDefinition,
+} from "./types/visualization";
 
-const visualizations = new Map<VisualizationDisplay, Visualization>();
-const aliases = new Map<string, Visualization>();
+// The static-viz bundle registers bare definitions with no component; the app
+// bundles register full components carrying their definition statics.
+export type RegisteredVisualization = Visualization | VisualizationDefinition;
+
+const visualizations = new Map<VisualizationDisplay, RegisteredVisualization>();
+const aliases = new Map<string, RegisteredVisualization>();
 const settingWidgets = new Map<string, ComponentType<any>>();
 visualizations.get = function (key) {
   return (
@@ -36,16 +44,22 @@ export function getSensibleDisplays(data: DatasetData) {
     .map(([display]) => display);
 }
 
-let defaultVisualization: Visualization;
-export function setDefaultVisualization(visualization: Visualization) {
+let defaultVisualization: RegisteredVisualization;
+export function setDefaultVisualization(
+  visualization: RegisteredVisualization,
+) {
   defaultVisualization = visualization;
 }
 
-function isVisualizationComponent(visualization: Visualization | undefined) {
-  return typeof visualization === "function";
+export function isVisualizationComponent(
+  visualization: RegisteredVisualization | null | undefined,
+): visualization is Visualization {
+  // Components are plain functions or exotic objects (memo, forwardRef, connect),
+  // while the static-viz bundle registers plain definition objects.
+  return isValidElementType(visualization);
 }
 
-export function registerVisualization(visualization: Visualization) {
+export function registerVisualization(visualization: RegisteredVisualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
@@ -112,7 +126,7 @@ export function getVisualization(display: VisualizationDisplay | null) {
 
 export function getVisualizationRaw(
   series: SeriesLike,
-): Visualization | undefined {
+): RegisteredVisualization | undefined {
   return visualizations.get(series[0].card.display);
 }
 

@@ -15,11 +15,13 @@ import { connect, useSelector } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Tooltip } from "metabase/ui";
+import { isActionDashCard } from "metabase/utils/dashboard";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
   Dashboard,
+  DashboardCard,
   ParameterValuesMap,
   ParametersForActionExecution,
   WritebackAction,
@@ -36,20 +38,25 @@ import {
 } from "./utils";
 
 interface OwnProps {
-  dashcard: ActionDashboardCard;
-  dashboard: Dashboard;
-  parameterValues: ParameterValuesMap;
+  dashcard?: DashboardCard;
+  dashboard?: Dashboard;
 }
 
 interface StateProps {
+  parameterValues: ParameterValuesMap;
   isEditingDashcard: boolean;
-
-  dispatch: Dispatch;
 }
 
 export type ActionProps = Pick<VisualizationProps, "settings" | "isSettings"> &
   OwnProps &
-  StateProps;
+  StateProps & {
+    dispatch: Dispatch;
+  };
+
+type ActionInnerProps = Omit<ActionProps, "dashcard" | "dashboard"> & {
+  dashcard: ActionDashboardCard;
+  dashboard: Dashboard;
+};
 
 const ActionComponent = ({
   dashcard,
@@ -59,7 +66,7 @@ const ActionComponent = ({
   settings,
   parameterValues,
   isEditingDashcard,
-}: ActionProps) => {
+}: ActionInnerProps) => {
   const { data: card } = useGetCardQuery(
     dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
   );
@@ -148,20 +155,28 @@ const ActionComponent = ({
 
 const ConnectedActionComponent = connect()(ActionComponent);
 
-function mapStateToProps(state: State, props: ActionProps) {
+function mapStateToProps(
+  state: State,
+  props: Pick<VisualizationProps, "settings" | "isSettings"> & OwnProps,
+): StateProps {
   return {
     parameterValues: getParameterValues(state),
-    isEditingDashcard: getEditingDashcardId(state) === props.dashcard.id,
+    isEditingDashcard: getEditingDashcardId(state) === props.dashcard?.id,
   };
 }
 
 function ActionFn(props: ActionProps) {
-  const { dashcard } = props;
-  const { action } = dashcard;
+  const { dashcard, dashboard } = props;
 
-  const hasActionsEnabled = getActionIsEnabledInDatabase(dashcard);
+  if (dashcard == null || dashboard == null) {
+    return null;
+  }
 
-  if (!action || !hasActionsEnabled) {
+  const isAction = isActionDashCard(dashcard);
+  const action = isAction ? dashcard.action : undefined;
+  const hasActionsEnabled = isAction && getActionIsEnabledInDatabase(dashcard);
+
+  if (!action || !isAction || !hasActionsEnabled) {
     const tooltip = getErrorTooltip({
       hasActionAssigned: !!action,
       hasActionsEnabled,
@@ -182,7 +197,13 @@ function ActionFn(props: ActionProps) {
     );
   }
 
-  return <ConnectedActionComponent {...props} />;
+  return (
+    <ConnectedActionComponent
+      {...props}
+      dashcard={dashcard}
+      dashboard={dashboard}
+    />
+  );
 }
 
 function getErrorTooltip({

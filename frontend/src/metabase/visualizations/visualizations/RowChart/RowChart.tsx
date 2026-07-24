@@ -9,7 +9,7 @@ import { extractRemappedColumns } from "metabase/visualizations";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
-import { RowChart } from "metabase/visualizations/shared/components/RowChart";
+import { RowChart as SharedRowChart } from "metabase/visualizations/shared/components/RowChart";
 import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import type {
   GroupedDatum,
@@ -60,7 +60,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
     <RowChartContainer data-testid="row-chart-container">
-      <RowChart {...props} />
+      <SharedRowChart {...props} />
     </RowChartContainer>
   );
 }
@@ -265,13 +265,13 @@ const RowChartVisualization = ({
           icon={headerIcon}
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
-          width={outerWidth}
+          width={outerWidth ?? undefined}
           getHref={getHref}
         />
       )}
       <RowChartLegendLayout
-        width={outerWidth}
-        height={outerHeight}
+        width={outerWidth ?? undefined}
+        height={outerHeight ?? undefined}
         hasLegend={hasLegend}
         items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
@@ -309,6 +309,7 @@ const RowChartVisualization = ({
   );
 };
 
-Object.assign(RowChartVisualization, ROW_CHART_DEFINITION);
-
-export { RowChartVisualization as RowChart };
+export const RowChart = Object.assign(
+  RowChartVisualization,
+  ROW_CHART_DEFINITION,
+);

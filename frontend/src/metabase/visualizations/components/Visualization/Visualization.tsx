@@ -31,8 +31,10 @@ import type { IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
 import {
+  type RegisteredVisualization,
   extractRemappings,
   getVisualizationTransformed,
+  isVisualizationComponent,
 } from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -55,10 +57,8 @@ import {
   type ClickObject,
   type HoveredObject,
   type QueryClickActionsMode,
-  type VisualizationDefinition,
   type VisualizationGridSize,
   type VisualizationPassThroughProps,
-  type Visualization as VisualizationType,
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
@@ -205,7 +205,7 @@ type VisualizationState = {
   getHref: (() => string) | undefined;
   hovered: HoveredObject | null;
   series: Series | null;
-  visualization: VisualizationDefinition | null;
+  visualization: RegisteredVisualization | null;
   warnings: string[];
   _lastProps?: VisualizationProps;
   isNativeView: boolean;
@@ -841,8 +841,9 @@ class Visualization extends PureComponent<
       };
     }
 
-    // Unjustified type cast. FIXME
-    const CardVisualization = visualization as VisualizationType;
+    const CardVisualization = isVisualizationComponent(visualization)
+      ? visualization
+      : null;
 
     const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
 
@@ -921,7 +922,8 @@ class Visualization extends PureComponent<
               isNativeView={isNativeView}
             />
           ) : (
-            series && (
+            series &&
+            CardVisualization && (
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
