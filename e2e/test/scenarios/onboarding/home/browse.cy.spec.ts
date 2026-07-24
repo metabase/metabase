@@ -141,6 +141,30 @@ describe("scenarios > browse", () => {
     });
   });
 
+  it("keeps hidden tooltip triggers positioned when leaving a table card (#77927)", () => {
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    cy.findByRole("heading", { name: "Orders" })
+      .closest("a")
+      .as("ordersCard")
+      .realHover();
+    cy.get("@ordersCard")
+      .findByLabelText("X-ray this table")
+      .should("be.visible")
+      .as("xRayButton");
+
+    H.main().realHover();
+
+    cy.get("@xRayButton")
+      .should("not.be.visible")
+      .and(($button) => {
+        const { height, width } = $button[0].getBoundingClientRect();
+
+        expect(height).to.be.greaterThan(0);
+        expect(width).to.be.greaterThan(0);
+      });
+  });
+
   it("tracks when a new model creation is initiated", () => {
     cy.visit("/browse/models");
     cy.findByTestId("browse-models-header")
