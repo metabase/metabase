@@ -2285,6 +2285,13 @@ describe("scenarios > metrics > explorer", () => {
         display: "scalar",
       });
 
+      // The shared `beforeEach` already fired one `dataset` request (adding
+      // "Count of orders"), which offsets the alias counter. Re-intercept with a
+      // dedicated alias so each `cy.wait` below deterministically tracks a
+      // request this test itself triggers, rather than resolving on the stale
+      // setup request and asserting before the visualization has rendered.
+      cy.intercept("POST", "/api/metric/dataset").as("numericMetricDataset");
+
       cy.log("Sum metric '123' with itself — both selected from dropdown");
       addMetricInputSequence(
         [
@@ -2294,6 +2301,7 @@ describe("scenarios > metrics > explorer", () => {
         ],
         { clearInput: true },
       );
+      cy.wait("@numericMetricDataset");
       H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       cy.log(
@@ -2304,6 +2312,7 @@ describe("scenarios > metrics > explorer", () => {
         { nameOrPath: ["Our analytics", NUMERIC_METRIC_NAME] },
       ]);
 
+      cy.wait("@numericMetricDataset");
       H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       cy.log("Append metric '123' as standalone — selected from dropdown");
@@ -2311,6 +2320,7 @@ describe("scenarios > metrics > explorer", () => {
         ",",
         { nameOrPath: ["Our analytics", NUMERIC_METRIC_NAME] },
       ]);
+      cy.wait("@numericMetricDataset");
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
 
       cy.log("Verify final pill layout");
