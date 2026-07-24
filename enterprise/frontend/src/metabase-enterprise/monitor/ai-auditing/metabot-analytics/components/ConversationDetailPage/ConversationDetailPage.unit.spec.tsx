@@ -297,4 +297,28 @@ describe("ConversationDetailPage", () => {
       screen.queryByTestId("tool-call-details-sidebar"),
     ).not.toBeInTheDocument();
   });
+
+  it("closes the sidebar when the same tool call is clicked again", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "search orders"),
+        toolCallMessage("t1", "u1"),
+        agentMessage("a1", "t1", "found 3 orders"),
+      ]),
+    );
+
+    await screen.findByText("search");
+    const toolCallRow = screen.getAllByTestId("metabot-chat-message")[1];
+
+    await userEvent.click(within(toolCallRow).getByText("search"));
+    expect(
+      await screen.findByTestId("tool-call-details-sidebar"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(toolCallRow).getByText("search"));
+
+    expect(
+      screen.queryByTestId("tool-call-details-sidebar"),
+    ).not.toBeInTheDocument();
+  });
 });

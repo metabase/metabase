@@ -56,6 +56,12 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const [selectedToolCall, setSelectedToolCall] =
     useState<MetabotDebugToolCallMessage | null>(null);
 
+  const handleToolCallSelect = (message: MetabotDebugToolCallMessage) => {
+    setSelectedToolCall((current) =>
+      current?.id === message.id ? null : message,
+    );
+  };
+
   const {
     data: conversation,
     isLoading,
@@ -156,7 +162,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                 debug
                 readonly
                 conversationId={convoId}
-                onToolCallSelect={setSelectedToolCall}
+                onToolCallSelect={handleToolCallSelect}
               />
             </Card>
           </Stack>
