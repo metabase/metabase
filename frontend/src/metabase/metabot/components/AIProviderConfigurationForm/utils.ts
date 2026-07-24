@@ -77,12 +77,21 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    "chat-completions": {
+      value: "chat-completions",
+      label: t`Generic Chat Completions`,
+      apiKey: {
+        placeholder: t`Enter your API key`,
+        // Generic endpoint — there is no single provider console to link to.
+        addKeyUrl: "",
+      },
+    },
   };
 }
 
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
-  "metabase" | "azure" | "bedrock"
+  "metabase" | "azure" | "bedrock" | "chat-completions"
 >;
 
 export function isMetabotProvider(
@@ -96,6 +105,7 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "anthropic" ||
     provider === "azure" ||
     provider === "bedrock" ||
+    provider === "chat-completions" ||
     provider === "metabase" ||
     provider === "openai" ||
     provider === "openrouter"

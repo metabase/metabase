@@ -73,6 +73,11 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     value: "azure/anthropic/claude-sonnet-4-5",
     models: [],
   },
+  "chat-completions": {
+    // Generic Chat Completions has no model dropdown — the model name is free text.
+    value: "chat-completions/my-model",
+    models: [],
+  },
   bedrock: {
     value: "bedrock/anthropic.claude-haiku-4-5",
     models: [
@@ -123,6 +128,8 @@ type MetabotSettingKey =
   | "llm-anthropic-api-key"
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
+  | "llm-chat-completions-api-key"
+  | "llm-chat-completions-api-base-url"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
   | "llm-bedrock-access-key-id"
@@ -210,12 +217,13 @@ async function setup({
   const updateMetabotSettingsDeferred = defer<void>();
 
   const mergedApiKeyValues: Record<
-    MetabotApiKeyProvider | "azure" | "bedrock",
+    MetabotApiKeyProvider | "azure" | "bedrock" | "chat-completions",
     string | null
   > = {
     anthropic: "**********45",
     azure: null,
     bedrock: null,
+    "chat-completions": null,
     openai: null,
     openrouter: null,
     ...apiKeyValues,
@@ -270,6 +278,17 @@ async function setup({
       key: "llm-azure-api-base-url",
       value: mergedApiKeyValues.azure
         ? "https://my-resource.services.ai.azure.com/anthropic"
+        : undefined,
+    }),
+    "llm-chat-completions-api-key": createMockSettingDefinition({
+      key: "llm-chat-completions-api-key",
+      value: mergedApiKeyValues["chat-completions"] ?? undefined,
+    }),
+    // The base URL is configured whenever the Chat Completions API key is — they are saved together.
+    "llm-chat-completions-api-base-url": createMockSettingDefinition({
+      key: "llm-chat-completions-api-base-url",
+      value: mergedApiKeyValues["chat-completions"]
+        ? "https://api.example.com/v1"
         : undefined,
     }),
     "llm-openai-api-key": createMockSettingDefinition({
@@ -2171,6 +2190,126 @@ describe("AIProviderSettingsSection", () => {
       expect(
         await screen.findByText("Connect to an AI provider"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("Generic Chat Completions", () => {
+    it("shows Generic Chat Completions as selectable in the provider dropdown", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await userEvent.click(screen.getByLabelText("Provider"));
+
+      const option = await screen.findByRole("option", {
+        name: "Generic Chat Completions",
+      });
+      expect(option).toBeInTheDocument();
+      expect(option).not.toHaveAttribute("data-combobox-disabled");
+    });
+
+    it("shows the base URL, API key, and free-text model fields when selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Generic Chat Completions");
+
+      expect(await screen.findByLabelText("Base URL")).toBeInTheDocument();
+      expect(screen.getByLabelText("API key")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model name")).toBeInTheDocument();
+      // No model dropdown — the model is free text.
+      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+    });
+
+    it("connects by sending the model and the credentials object", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "chat-completions/my-model",
+          models: [],
+        },
+      });
+
+      await selectProvider("Generic Chat Completions");
+
+      const connectButton = screen.getByRole("button", { name: "Connect" });
+      expect(connectButton).toBeDisabled();
+
+      await userEvent.type(
+        await screen.findByLabelText("Base URL"),
+        "https://api.example.com/v1",
+      );
+      await userEvent.type(screen.getByLabelText("API key"), "secret-key");
+      await userEvent.type(screen.getByLabelText("Model name"), "my-model");
+
+      expect(connectButton).toBeEnabled();
+      await userEvent.click(connectButton);
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "chat-completions",
+          model: "my-model",
+          credentials: {
+            "api-key": "secret-key",
+            "base-url": "https://api.example.com/v1",
+          },
+        }),
+      );
+    });
+
+    it("shows the saved base URL and model for a connected provider", async () => {
+      await setup({
+        savedProviderValue: "chat-completions/my-model",
+        apiKeyValues: { "chat-completions": "**********ey" },
+      });
+
+      expect(await screen.findByLabelText("Base URL")).toHaveValue(
+        "https://api.example.com/v1",
+      );
+      expect(screen.getByLabelText("Model name")).toHaveValue("my-model");
+      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+    });
+
+    it("disconnects by clearing the credentials before the provider setting", async () => {
+      await setup({
+        savedProviderValue: "chat-completions/my-model",
+        apiKeyValues: { "chat-completions": "**********ey" },
+      });
+
+      await screen.findByLabelText("Model name");
+      await confirmDisconnectProvider();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+            body: { provider: "chat-completions", credentials: null },
+          }),
+        ).toBe(true);
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/setting", {
+            method: "PUT",
+            body: { "llm-metabot-provider": null },
+          }),
+        ).toBe(true);
+      });
     });
   });
 

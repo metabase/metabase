@@ -2280,3 +2280,90 @@
         (is (= {:value  "azure/anthropic/claude-sonnet-4-5"
                 :models []}
                (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "azure")))))))
+
+;;; ------------------------------------------- chat-completions settings PUT/GET -------------------------------
+
+(deftest settings-put-saves-chat-completions-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider              nil
+                                mb-llm-chat-completions-api-key      nil
+                                mb-llm-chat-completions-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-chat-completions-api-key      nil
+                                       llm.settings/llm-chat-completions-api-base-url nil
+                                       metabot.settings/llm-metabot-provider          "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                             (is (= "chat-completions" provider))
+                                                             (is (= {:api-key  "secret-key"
+                                                                     :base-url "https://api.example.com/v1"}
+                                                                    credentials)
+                                                                 "validation runs against the normalized request credentials")
+                                                             (is (nil? (llm.settings/llm-chat-completions-api-key))
+                                                                 "validation should happen before saving the credentials")
+                                                             {:models []})]
+        (testing "connecting chat-completions saves the credentials and the composed provider/model value"
+          (is (=? {:value  "chat-completions/my-model"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "chat-completions"
+                                         :model       "my-model"
+                                         :credentials {:api-key  "secret-key"
+                                                       :base-url "https://api.example.com/v1/"}}))))
+        (is (= "secret-key" (llm.settings/llm-chat-completions-api-key)))
+        (testing "the trailing slash is trimmed before persisting"
+          (is (= "https://api.example.com/v1"
+                 (llm.settings/llm-chat-completions-api-base-url))))))))
+
+(deftest settings-put-chat-completions-rejects-incomplete-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider              nil
+                                mb-llm-chat-completions-api-key      nil
+                                mb-llm-chat-completions-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-chat-completions-api-key      nil
+                                       llm.settings/llm-chat-completions-api-base-url nil
+                                       metabot.settings/llm-metabot-provider          "anthropic/claude-sonnet-4-6"]
+      (testing "credentials missing the base URL fail before validation and nothing is saved"
+        (is (=? {:message      "Chat Completions credentials are incomplete."
+                 :missing-keys ["base-url"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "chat-completions"
+                                       :model       "my-model"
+                                       :credentials {:api-key "secret-key"}})))
+        (is (nil? (llm.settings/llm-chat-completions-api-key)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-chat-completions-key-rotation-uses-saved-base-url-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider              nil
+                                mb-llm-chat-completions-api-key      nil
+                                mb-llm-chat-completions-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-chat-completions-api-key      "old-key"
+                                       llm.settings/llm-chat-completions-api-base-url "https://api.example.com/v1"
+                                       metabot.settings/llm-metabot-provider          "chat-completions/my-model"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (is (= {:api-key  "new-key"
+                                                                     :base-url "https://api.example.com/v1"}
+                                                                    credentials)
+                                                                 "the new key is layered over the saved base URL")
+                                                             {:models []})]
+        (is (=? {:value "chat-completions/my-model"}
+                (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                      {:provider    "chat-completions"
+                                       :credentials {:api-key "new-key"}})))
+        (is (= "new-key" (llm.settings/llm-chat-completions-api-key)))
+        (is (= "https://api.example.com/v1"
+               (llm.settings/llm-chat-completions-api-base-url)))))))
+
+(deftest settings-put-nil-chat-completions-credentials-clears-saved-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider              nil
+                                mb-llm-chat-completions-api-key      nil
+                                mb-llm-chat-completions-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-chat-completions-api-key      "secret-key"
+                                       llm.settings/llm-chat-completions-api-base-url "https://api.example.com/v1"
+                                       metabot.settings/llm-metabot-provider          "chat-completions/my-model"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                             (is false (str "unexpected list-models call: " provider)))]
+        (testing "an explicit nil credentials clears both saved settings without validating against them"
+          (is (=? {:value  "chat-completions/my-model"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "chat-completions"
+                                         :credentials nil})))
+          (is (nil? (llm.settings/llm-chat-completions-api-key)))
+          (is (nil? (llm.settings/llm-chat-completions-api-base-url))))))))
