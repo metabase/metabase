@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { act, render, screen } from "__support__/ui";
 
 import { DevToolbar } from "./DevToolbar";
-import { clearDevDiagnostics, installDevDiagnostics } from "./diagnostics";
+import { devDiagnostics } from "./diagnostics";
 
 const recordError = (message: string) => {
   act(() => {
@@ -16,7 +16,7 @@ let originalConsoleError: typeof console.error;
 beforeAll(() => {
   originalConsoleError = console.error;
   console.error = () => {};
-  installDevDiagnostics();
+  devDiagnostics.install();
 });
 
 afterAll(() => {
@@ -24,7 +24,7 @@ afterAll(() => {
 });
 
 beforeEach(() => {
-  clearDevDiagnostics();
+  devDiagnostics.clear();
 });
 
 const getToggle = () => screen.getByRole("button", { name: /Diagnostics/ });
@@ -72,6 +72,45 @@ describe("DevToolbar", () => {
 
     expect(screen.getByText("No errors captured.")).toBeInTheDocument();
     expect(getToggle()).toHaveTextContent(/^⚠ Diagnostics$/);
+  });
+
+  it("leaves successful requests off the badge and out of the panel", async () => {
+    render(<DevToolbar />);
+    act(() => {
+      devDiagnostics.record({
+        kind: "sdk-call",
+        method: "GET",
+        endpoint: "/api/card/1",
+        status: 200,
+        durationMs: 12,
+      });
+    });
+
+    // Every request lands in the collector now. Counting them would warn about
+    // a page that is working.
+    expect(getToggle()).toHaveTextContent(/^⚠ Diagnostics$/);
+
+    await userEvent.click(getToggle());
+    expect(screen.getByText("No errors captured.")).toBeInTheDocument();
+  });
+
+  it("still badges a request that failed", async () => {
+    render(<DevToolbar />);
+    act(() => {
+      devDiagnostics.record({
+        kind: "sdk-call",
+        method: "POST",
+        endpoint: "/api/dataset",
+        status: 400,
+        durationMs: 8,
+        error: "Table does not exist",
+      });
+    });
+
+    expect(getToggle()).toHaveTextContent("⚠ Diagnostics (1)");
+
+    await userEvent.click(getToggle());
+    expect(screen.getByText(/Table does not exist/)).toBeInTheDocument();
   });
 
   it("closes the panel when Close is clicked", async () => {
