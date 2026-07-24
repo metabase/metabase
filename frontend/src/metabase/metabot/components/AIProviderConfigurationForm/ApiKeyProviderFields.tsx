@@ -38,6 +38,7 @@ export const ApiKeyProviderFields = ({
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-zai-api-key",
   ] as const);
   const apiKeySetting = details[API_KEY_SETTING_BY_PROVIDER[selectedProvider]];
   const apiKeyEnvSettingName = apiKeySetting?.is_env_setting
