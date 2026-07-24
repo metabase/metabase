@@ -576,6 +576,24 @@ describe("admin > custom visualizations", () => {
         .should("be.visible");
       // Default threshold from getDefault
       H.main().findByText("Threshold: 0").should("be.visible");
+
+      cy.findByTestId("demo-viz-measured-width")
+        .invoke("text")
+        .then((text) => {
+          const measuredWidth = Number(text.replace(/\D/g, ""));
+          expect(measuredWidth).to.be.within(197, 217);
+        });
+      cy.findByTestId("demo-viz-measured-height")
+        .invoke("text")
+        .then((text) => {
+          const measuredHeight = Number(text.replace(/\D/g, ""));
+          expect(measuredHeight).to.be.within(10, 15);
+        });
+      cy.findByTestId("demo-viz-brand-color")
+        .invoke("text")
+        .should("match", /Brand color: (#[0-9a-fA-F]{3,8}|rgba?\(.+\))$/);
+      cy.findByTestId("demo-viz-font-family").should("contain", "Lato");
+
       H.expectUnstructuredSnowplowEvent({ event: "custom_viz_selected" });
       H.expectNoBadSnowplowEvents();
     });
