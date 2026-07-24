@@ -5,13 +5,12 @@ import { getStore } from "__support__/entities-store";
 import { seedApiQueryCache } from "__support__/rtk-query-cache";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
-import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import {
   type StoreSeedState,
   createMockState,
@@ -64,20 +63,15 @@ export function renderWithSDKProviders(
   }
 
   if (seededSettings?.values) {
-    // Unjustified type cast. FIXME
     initialState = {
       ...initialState,
-      [Api.reducerPath]: seedApiQueryCache(
-        // Unjustified type cast. FIXME
-        (initialState as Partial<State>)[Api.reducerPath],
-        [
-          {
-            endpointName: "getSessionProperties",
-            value: seededSettings.values,
-          },
-        ],
-      ),
-    } as SdkStoreState;
+      [Api.reducerPath]: seedApiQueryCache(initialState[Api.reducerPath], [
+        {
+          endpointName: "getSessionProperties",
+          value: seededSettings.values,
+        },
+      ]),
+    };
   }
 
   const storeMiddleware = _.compact([Api.middleware]);
