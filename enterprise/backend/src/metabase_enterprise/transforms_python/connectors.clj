@@ -74,7 +74,7 @@
 (defn- prune-pending! []
   (swap! pending-tokens #(into {} (filter (fn [[_ v]] (< (u/since-ms (:started-at v)) pending-token-ttl-ms))) %)))
 
-(defn- redirect-uri [connector-id]
+(defn- redirect-uri ^String [connector-id]
   (str (system/site-url) "/api/ee/transforms-python/connector/oauth/callback/" connector-id))
 
 (defn oauth-url
