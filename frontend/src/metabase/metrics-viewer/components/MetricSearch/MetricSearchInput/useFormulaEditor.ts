@@ -322,6 +322,65 @@ export function useFormulaEditor({
     selectedMetrics,
   ]);
 
+  /**
+   * @uiw/react-codemirror can sync the controlled value with a full doc
+   * replacement, which drops our custom identity field. Restore identities that
+   * still point at the same metric text so validation does not reject them.
+   *
+   * Runs both from an effect (after the value sync settles) and synchronously
+   * from handleRun / handleInputBlur: a Run clicked immediately after selecting
+   * a metric from the dropdown can otherwise read a RangeSet the effect has not
+   * yet repaired, misclassify the fresh metric token as an "Unknown token", and
+   * silently bail — leaving the editor expanded with the query un-run.
+   */
+  const recoverDroppedIdentities = useCallback(() => {
+    const view = editorRef.current?.view;
+    const pendingIdentities = pendingMetricIdentitiesRef.current;
+
+    if (!view || pendingIdentities == null) {
+      return;
+    }
+
+    if (view.state.doc.toString() !== editTextRef.current) {
+      return;
+    }
+
+    const currentIdentities = readMetricIdentities(view);
+    const identityByPosition = new Map<string, MetricIdentityEntry>(
+      currentIdentities.map((identity): [string, MetricIdentityEntry] => [
+        `${identity.from}:${identity.to}`,
+        identity,
+      ]),
+    );
+
+    const recoverableIdentities =
+      editTextRef.current === textAtFocusRef.current
+        ? [...editingSessionIdentities, ...pendingIdentities]
+        : pendingIdentities;
+
+    for (const identity of recoverableIdentities) {
+      const positionKey = `${identity.from}:${identity.to}`;
+      const metricName = metricNamesRef.current[identity.sourceId];
+      if (
+        !identityByPosition.has(positionKey) &&
+        metricName != null &&
+        view.state.doc.sliceString(identity.from, identity.to) === metricName
+      ) {
+        identityByPosition.set(positionKey, identity);
+      }
+    }
+
+    const recoveredIdentities = Array.from(identityByPosition.values());
+    if (currentIdentities.length < recoveredIdentities.length) {
+      view.dispatch({
+        effects: setMetricIdentities.of(
+          identitiesFromEntries(recoveredIdentities),
+        ),
+      });
+    }
+    pendingMetricIdentitiesRef.current = null;
+  }, [editorRef, editingSessionIdentities, metricNamesRef]);
+
   const handleInputBlur = useCallback(
     (event: React.FocusEvent) => {
       // If the text hasn't changed since focus, collapse back to pills view
@@ -342,6 +401,7 @@ export function useFormulaEditor({
         return;
       }
 
+      recoverDroppedIdentities();
       const view = editorRef.current?.view;
       const identities = view ? readMetricIdentities(view) : [];
       const invalidRanges = findInvalidRanges(
@@ -356,7 +416,7 @@ export function useFormulaEditor({
 
       setValidationError(null);
     },
-    [editorRef, metricNamesRef, dropdownRef],
+    [editorRef, metricNamesRef, dropdownRef, recoverDroppedIdentities],
   );
 
   const handleChange = useCallback(
@@ -397,58 +457,9 @@ export function useFormulaEditor({
     [editorRef, metricNamesRef],
   );
 
-  /**
-   * @uiw/react-codemirror can sync the controlled value with a full doc
-   * replacement, which drops our custom identity field. Restore identities that
-   * still point at the same metric text so validation does not reject them.
-   */
   useEffect(() => {
-    const view = editorRef.current?.view;
-    const pendingIdentities = pendingMetricIdentitiesRef.current;
-
-    if (!view || pendingIdentities == null) {
-      return;
-    }
-
-    if (view.state.doc.toString() !== editText) {
-      return;
-    }
-
-    const currentIdentities = readMetricIdentities(view);
-    const identityByPosition = new Map<string, MetricIdentityEntry>(
-      currentIdentities.map((identity): [string, MetricIdentityEntry] => [
-        `${identity.from}:${identity.to}`,
-        identity,
-      ]),
-    );
-
-    const recoverableIdentities =
-      editText === textAtFocusRef.current
-        ? [...editingSessionIdentities, ...pendingIdentities]
-        : pendingIdentities;
-
-    for (const identity of recoverableIdentities) {
-      const positionKey = `${identity.from}:${identity.to}`;
-      const metricName = metricNamesRef.current[identity.sourceId];
-      if (
-        !identityByPosition.has(positionKey) &&
-        metricName != null &&
-        view.state.doc.sliceString(identity.from, identity.to) === metricName
-      ) {
-        identityByPosition.set(positionKey, identity);
-      }
-    }
-
-    const recoveredIdentities = Array.from(identityByPosition.values());
-    if (currentIdentities.length < recoveredIdentities.length) {
-      view.dispatch({
-        effects: setMetricIdentities.of(
-          identitiesFromEntries(recoveredIdentities),
-        ),
-      });
-    }
-    pendingMetricIdentitiesRef.current = null;
-  }, [editText, editingSessionIdentities, editorRef, metricNamesRef]);
+    recoverDroppedIdentities();
+  }, [editText, recoverDroppedIdentities]);
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
@@ -660,6 +671,7 @@ export function useFormulaEditor({
 
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
+    recoverDroppedIdentities();
     const view = editorRef.current?.view;
     const identities = view ? readMetricIdentities(view) : [];
     const invalidRanges = findInvalidRanges(
@@ -674,7 +686,7 @@ export function useFormulaEditor({
 
     setValidationError(null);
     commitAndCollapse();
-  }, [commitAndCollapse, editorRef, metricNamesRef]);
+  }, [commitAndCollapse, editorRef, metricNamesRef, recoverDroppedIdentities]);
   handleRunRef.current = handleRun;
 
   // Sync validation error into the CodeMirror decoration field
