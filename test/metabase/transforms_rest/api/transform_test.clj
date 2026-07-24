@@ -1889,7 +1889,7 @@
                                                             {:value 4 :unit "day"}
                                                             merge-target))]
                 (is (string? response))
-                (is (re-find #"only supported for temporal" response))))
+                (is (re-find #"only supported for date or datetime" response))))
             (testing "an unknown lookback unit is rejected by the schema"
               (mt/user-http-request :crowberto :post 400 "transform"
                                     (payload "lookback_bad_unit" ts-field-id
@@ -1953,7 +1953,7 @@
                                                                                                :checkpoint-filter-field-id num-field-id
                                                                                                :lookback {:value 4 :unit "day"}}}})]
                     (is (string? response))
-                    (is (re-find #"only supported for temporal" response))))
+                    (is (re-find #"only supported for date or datetime" response))))
                 (testing "adding a lookback together with a switch to the merge strategy is accepted"
                   (let [updated (mt/user-http-request :crowberto :put 200
                                                       (format "transform/%d" transform-id)

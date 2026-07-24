@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
@@ -10,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -303,12 +305,18 @@
                   ;; watermark after run 1 is 2026-01-31T21:00:04; a 1-day lookback rescans from
                   ;; 2026-01-30T21:00:04. The late row (order 1, 01-31T00:00) is behind the watermark but
                   ;; inside the window; order 1's original row (01-30T10:00) is outside it.
-                  (insert! [[1 "shipped" "2026-01-31T00:00:00"] [4 "created" "2026-02-01T10:00:00"]])
-                  (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
-                                               {:run-method :manual})
-                  (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
-                         (read-target))
-                      "late order 1 upserted, order 4 inserted, re-read rows not duplicated"))
+                  (let [wm-before (watermark (:id transform))]
+                    (insert! [[1 "shipped" "2026-01-31T00:00:00"] [4 "created" "2026-02-01T10:00:00"]])
+                    (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                                                 {:run-method :manual})
+                    (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
+                           (read-target))
+                        "late order 1 upserted, order 4 inserted, re-read rows not duplicated")
+                    (testing "the run's recorded lo is the stored watermark pushed back by the lookback"
+                      (let [run (t2/select-one :model/TransformRun :transform_id (:id transform)
+                                               {:order-by [[:id :desc]]})]
+                        (is (= (u.date/format (t/minus (u.date/parse wm-before) (t/days 1)))
+                               (:checkpoint_lo_value run)))))))
                 (testing "a run with no new rows leaves the target and the watermark unchanged"
                   (let [before (watermark (:id transform))]
                     (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
