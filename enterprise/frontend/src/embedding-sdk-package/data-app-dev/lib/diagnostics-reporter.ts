@@ -9,20 +9,7 @@ export interface DiagnosticsReporterHot {
   send: (event: string, data: DataAppDiagnosticsMessage) => void;
 }
 
-const getNextSessionId = (): string => {
-  if (typeof globalThis.crypto?.getRandomValues !== "function") {
-    throw new Error(
-      "The data-app dev preview needs Web Crypto to identify a session.",
-    );
-  }
-
-  const random = globalThis.crypto.getRandomValues(new Uint8Array(8));
-  const suffix = Array.from(random, (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
-
-  return `${Date.now()}-${suffix}`;
-};
+const getNextSessionId = (): string => `${Date.now()}-${performance.now()}`;
 
 /**
  * Mirrors the page's collector to the dev server over the HMR socket, so the
@@ -31,7 +18,7 @@ const getNextSessionId = (): string => {
  */
 export const installDiagnosticsReporter = (
   hot: DiagnosticsReporterHot,
-): (() => void) => {
+): void => {
   const sessionId = getNextSessionId();
 
   let lastSentId = 0;
@@ -61,14 +48,5 @@ export const installDiagnosticsReporter = (
 
   flush();
 
-  const unsubscribe = devDiagnostics.subscribe(schedule);
-
-  return () => {
-    unsubscribe();
-
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
-  };
+  devDiagnostics.subscribe(schedule);
 };

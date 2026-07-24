@@ -6,12 +6,12 @@ import { installDiagnosticsReporter } from "./diagnostics-reporter";
 
 const setup = () => {
   const sent: DataAppDiagnosticsMessage[] = [];
-  const cleanup = installDiagnosticsReporter({
+  installDiagnosticsReporter({
     send: (_event, data) => {
       sent.push(data);
     },
   });
-  return { sent, cleanup };
+  return { sent };
 };
 
 beforeEach(() => {
@@ -25,16 +25,14 @@ afterEach(() => {
 
 describe("installDiagnosticsReporter", () => {
   it("reports immediately on install, so the server knows a client is alive", () => {
-    const { sent, cleanup } = setup();
+    const { sent } = setup();
 
     expect(sent).toHaveLength(1);
     expect(sent[0].entries).toEqual([]);
-
-    cleanup();
   });
 
   it("sends the toolbar's summary, detail and hint rather than raw fields", () => {
-    const { sent, cleanup } = setup();
+    const { sent } = setup();
 
     devDiagnostics.record({
       kind: "csp-violation",
@@ -47,12 +45,10 @@ describe("installDiagnosticsReporter", () => {
     expect(entry.kind).toBe("csp-violation");
     expect(entry.alert).toBe(true);
     expect(entry.hint).toMatch(/allowed_hosts in data_app.yaml/);
-
-    cleanup();
   });
 
   it("carries the allowed_hosts hint for a blocked request", () => {
-    const { sent, cleanup } = setup();
+    const { sent } = setup();
 
     devDiagnostics.record({
       kind: "blocked-network",
@@ -66,12 +62,10 @@ describe("installDiagnosticsReporter", () => {
     expect(entry.hint).toBe(
       "Add https://api.example.com to allowed_hosts in data_app.yaml (dev server restart required).",
     );
-
-    cleanup();
   });
 
   it("splits a stack into summary and detail", () => {
-    const { sent, cleanup } = setup();
+    const { sent } = setup();
 
     devDiagnostics.record({
       kind: "error",
@@ -82,12 +76,10 @@ describe("installDiagnosticsReporter", () => {
     const [entry] = sent[sent.length - 1].entries;
     expect(entry.summary).toBe("TypeError: nope");
     expect(entry.detail).toBe("    at App (src/App.tsx:1:1)");
-
-    cleanup();
   });
 
   it("marks a failed SDK call as an alert but not a successful one", () => {
-    const { sent, cleanup } = setup();
+    const { sent } = setup();
 
     devDiagnostics.record({
       kind: "sdk-call",
@@ -107,12 +99,10 @@ describe("installDiagnosticsReporter", () => {
 
     const { entries } = sent[sent.length - 1];
     expect(entries.map((entry) => entry.alert)).toEqual([true, false]);
-
-    cleanup();
   });
 
   it("batches a burst into one message and never re-sends an entry", () => {
-    const { sent, cleanup } = setup();
+    const { sent } = setup();
 
     devDiagnostics.record({ kind: "error", message: "one" });
     devDiagnostics.record({ kind: "error", message: "two" });
@@ -128,12 +118,10 @@ describe("installDiagnosticsReporter", () => {
     jest.runOnlyPendingTimers();
 
     expect(sent[2].entries.map((entry) => entry.summary)).toEqual(["three"]);
-
-    cleanup();
   });
 
   it("does not resend earlier entries after the toolbar's Clear", () => {
-    const { sent, cleanup } = setup();
+    const { sent } = setup();
 
     devDiagnostics.record({ kind: "error", message: "before clear" });
     jest.runOnlyPendingTimers();
@@ -144,22 +132,10 @@ describe("installDiagnosticsReporter", () => {
 
     const summaries = sent.at(-1)?.entries.map((entry) => entry.summary);
     expect(summaries).toEqual(["after clear"]);
-
-    cleanup();
-  });
-
-  it("stops sending once torn down", () => {
-    const { sent, cleanup } = setup();
-    cleanup();
-
-    devDiagnostics.record({ kind: "error", message: "ignored" });
-    jest.runOnlyPendingTimers();
-
-    expect(sent).toHaveLength(1);
   });
 
   it("tags every message with a stable per-install sessionId", () => {
-    const { sent, cleanup } = setup();
+    const { sent } = setup();
     devDiagnostics.record({ kind: "error", message: "one" });
     jest.runOnlyPendingTimers();
 
@@ -167,20 +143,16 @@ describe("installDiagnosticsReporter", () => {
     expect(sent[0].sessionId).not.toBe("");
     // Same page load → same sessionId on every message.
     expect(sent[sent.length - 1].sessionId).toBe(sent[0].sessionId);
-
-    cleanup();
   });
 
   it("uses the agreed channel event name", () => {
     const events: string[] = [];
-    const cleanup = installDiagnosticsReporter({
+    installDiagnosticsReporter({
       send: (event) => {
         events.push(event);
       },
     });
 
     expect(events).toEqual([DATA_APP_DIAGNOSTICS_EVENT]);
-
-    cleanup();
   });
 });

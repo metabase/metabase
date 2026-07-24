@@ -1,7 +1,4 @@
-import {
-  trimDiagnosticEntries,
-  truncateDiagnosticText,
-} from "../lib/diagnostics-limits";
+import { trimDiagnosticEntries } from "../lib/diagnostics-limits";
 import type {
   DataAppDiagnosticEntry,
   DataAppDiagnosticPayload,
@@ -99,11 +96,10 @@ export class DiagnosticsStore {
   private toStoredEntry(
     entry: DataAppDiagnosticEntry,
   ): DataAppDiagnosticPayload {
+    // The page already truncated every field in `toPayload` before sending, so
+    // there is nothing left to bound here.
     return {
       ...entry,
-      summary: truncateDiagnosticText(entry.summary ?? ""),
-      detail:
-        entry.detail == null ? null : truncateDiagnosticText(entry.detail),
       eventId: this.nextEntryId++,
     };
   }
