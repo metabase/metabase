@@ -23,7 +23,7 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { type WithRouterProps, push } from "metabase/router";
+import { push, useParams, useRouter } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NotificationId, UserId } from "metabase-types/api";
@@ -51,11 +51,10 @@ import {
 import type { RouteParams } from "./types";
 import { buildListParams, urlStateConfig } from "./utils";
 
-export const NotificationsAdminPage = ({
-  location,
-  params,
-}: WithRouterProps<RouteParams>) => {
-  const notificationId = Urls.extractEntityId(params.notificationId);
+export const NotificationsAdminPage = () => {
+  const { location } = useRouter();
+  const { notificationId: notificationIdParam } = useParams<RouteParams>();
+  const notificationId = Urls.extractEntityId(notificationIdParam);
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const dispatch = useDispatch();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);

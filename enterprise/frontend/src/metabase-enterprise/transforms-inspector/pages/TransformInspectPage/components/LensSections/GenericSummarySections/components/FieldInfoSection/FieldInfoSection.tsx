@@ -70,6 +70,7 @@ export const FieldInfoSection = ({
           </Card>
         ) : (
           <Alert
+            size="compact"
             color="warning"
             icon={<Icon name="warning" />}
           >{t`Missing input data`}</Alert>
@@ -88,6 +89,7 @@ export const FieldInfoSection = ({
           </Card>
         ) : (
           <Alert
+            size="compact"
             color="warning"
             icon={<Icon name="warning" />}
           >{t`No output table`}</Alert>
