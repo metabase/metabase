@@ -129,7 +129,7 @@ export function waitForBreakingDependencies(
   return cy
     .request<ListBreakingGraphNodesResponse>(
       "GET",
-      "/api/ee/dependencies/graph/breaking",
+      "/api/ee/dependencies/graph/breaking?include-personal-collections=true",
     )
     .then((response) => {
       if (filter(response.body.data)) {
