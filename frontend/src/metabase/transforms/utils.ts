@@ -192,7 +192,9 @@ export function isSourceEmpty(
 }
 
 /** Python transforms with no source tables manage their own sync cursor in code, not via a checkpoint field. */
-export function hasCodeManagedSyncCursor(source: DraftTransformSource): boolean {
+export function hasCodeManagedSyncCursor(
+  source: DraftTransformSource,
+): boolean {
   return source.type === "python" && source["source-tables"].length === 0;
 }
 

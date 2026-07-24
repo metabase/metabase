@@ -99,7 +99,9 @@ export function UpdateIncrementalSettings({
     useUpdateIncrementalSettings(transform);
 
   const validationContext = useMemo(
-    () => ({ hasCodeManagedSyncCursor: hasCodeManagedSyncCursor(transform.source) }),
+    () => ({
+      hasCodeManagedSyncCursor: hasCodeManagedSyncCursor(transform.source),
+    }),
     [transform.source],
   );
 
