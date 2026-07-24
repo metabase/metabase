@@ -19,23 +19,13 @@ export class DevDiagnosticsCollector {
   private entries: DevDiagnosticEntry[] = [];
   private connectionStatus: InstanceConnectionStatus | null = null;
   private nextEntryId = 1;
-  private installed = false;
   private uncapturedConsoleError: typeof console.error | null = null;
   private readonly listeners = new Set<() => void>();
 
   /**
-   * Wraps `console.error` and listens for uncaught errors. Idempotent — a second
-   * `install()` is a no-op — so an HMR reload can't re-wrap the already-wrapped
-   * `console.error` and double every capture. Returns a cleanup the caller can
-   * run to restore everything; only the unit tests do.
+   * Wraps `console.error` and listens for uncaught errors.
    */
-  install(): () => void {
-    if (this.installed || typeof window === "undefined") {
-      return () => undefined;
-    }
-
-    this.installed = true;
-
+  install(): void {
     const originalError = console.error.bind(console);
     this.uncapturedConsoleError = originalError;
 
@@ -48,42 +38,29 @@ export class DevDiagnosticsCollector {
       originalError(...args);
     };
 
-    const onError = (event: ErrorEvent) => {
+    window.addEventListener("error", (event) => {
       if (event.error != null || event.message) {
         this.record({
           kind: "error",
           message: this.formatArg(event.error ?? event.message),
         });
       }
-    };
+    });
 
-    const onRejection = (event: PromiseRejectionEvent) => {
+    window.addEventListener("unhandledrejection", (event) => {
       this.record({
         kind: "error",
         message: `Unhandled rejection: ${this.formatArg(event.reason)}`,
       });
-    };
+    });
 
-    const onCspViolation = (event: SecurityPolicyViolationEvent) => {
+    window.addEventListener("securitypolicyviolation", (event) => {
       this.record({
         kind: "csp-violation",
         directive: event.effectiveDirective || event.violatedDirective,
         blockedUri: event.blockedURI,
       });
-    };
-
-    window.addEventListener("error", onError);
-    window.addEventListener("unhandledrejection", onRejection);
-    window.addEventListener("securitypolicyviolation", onCspViolation);
-
-    return () => {
-      console.error = originalError;
-      this.uncapturedConsoleError = null;
-      window.removeEventListener("error", onError);
-      window.removeEventListener("unhandledrejection", onRejection);
-      window.removeEventListener("securitypolicyviolation", onCspViolation);
-      this.installed = false;
-    };
+    });
   }
 
   record(event: DevDiagnosticEvent): void {

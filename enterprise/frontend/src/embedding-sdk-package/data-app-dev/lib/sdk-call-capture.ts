@@ -9,12 +9,9 @@ import { MAX_INSPECTED_BODY_CHARS } from "../constants/diagnostics-channel";
  * SDK's own client would put it within reach of any page embedding the SDK.
  */
 export class SdkCallCapture {
-  private installed = false;
-
-  /** Returns a teardown that restores the original `fetch`; only the tests run it. */
-  install(metabaseUrl: string | undefined): () => void {
-    if (this.installed || typeof window === "undefined" || !metabaseUrl) {
-      return () => undefined;
+  install(metabaseUrl: string | undefined): void {
+    if (!metabaseUrl) {
+      return;
     }
 
     let metabaseOrigin: string;
@@ -25,16 +22,13 @@ export class SdkCallCapture {
       // A sub-path deployment prefixes every path; strip it.
       basePath = parsed.pathname.replace(/\/+$/, "");
     } catch {
-      return () => undefined;
+      return;
     }
 
-    this.installed = true;
-
     const originalFetch = window.fetch;
-    const boundFetch = originalFetch.bind(window);
 
     // Patching is the easiest option that works for now, and `fetch` alone is
-    // enough — Metabase no longer makes XHR calls.
+    // enough - Metabase no longer makes XHR calls.
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = this.resolveUrl(input);
 
@@ -42,7 +36,7 @@ export class SdkCallCapture {
         url?.origin !== metabaseOrigin ||
         (basePath && !url.pathname.startsWith(basePath))
       ) {
-        return boundFetch(input, init);
+        return originalFetch(input, init);
       }
 
       const method = this.resolveMethod(input, init);
@@ -51,7 +45,7 @@ export class SdkCallCapture {
       const durationMs = () => Math.round(performance.now() - startedAt);
 
       try {
-        const response = await boundFetch(input, init);
+        const response = await originalFetch(input, init);
         const requestMs = durationMs();
 
         this.captureFailureReason(response).then((error) => {
@@ -80,11 +74,6 @@ export class SdkCallCapture {
 
         throw error;
       }
-    };
-
-    return () => {
-      window.fetch = originalFetch;
-      this.installed = false;
     };
   }
 

@@ -11,14 +11,13 @@ const getLastEntry = (entries: readonly DevDiagnosticEntry[]) =>
 
 let forwarded: unknown[][] = [];
 let originalConsoleError: typeof console.error;
-let uninstall: () => void;
 
 beforeAll(() => {
   originalConsoleError = console.error;
   console.error = (...args: unknown[]) => {
     forwarded.push(args);
   };
-  uninstall = devDiagnostics.install();
+  devDiagnostics.install();
 });
 
 afterAll(() => {
@@ -153,13 +152,6 @@ describe("dev diagnostics collector", () => {
     console.error("change");
 
     expect(devDiagnostics.getEntries()).not.toBe(before);
-  });
-
-  it("is idempotent — installing again does not double-record", () => {
-    devDiagnostics.install();
-    console.error("once");
-
-    expect(devDiagnostics.getEntries()).toHaveLength(1);
   });
 
   it("trims stored entries to 200, keeping the most recent", () => {
@@ -309,7 +301,6 @@ describe("connection status", () => {
 
 describe("bounded entry size", () => {
   it("truncates a huge logged object instead of retaining it whole", () => {
-    devDiagnostics.install();
     devDiagnostics.clear();
 
     // The count limit alone bounds nothing: one entry can be arbitrarily large,
@@ -323,24 +314,5 @@ describe("bounded entry size", () => {
     const message = entry.kind === "error" ? entry.message : "";
     expect(message.length).toBeLessThan(DATA_APP_DIAGNOSTIC_MAX_CHARS * 2);
     expect(message).toContain("truncated");
-  });
-});
-
-describe("devDiagnostics.install cleanup", () => {
-  it("stops capturing, and a reinstall records once rather than twice", () => {
-    uninstall();
-    devDiagnostics.clear();
-
-    console.error("after cleanup");
-    expect(devDiagnostics.getEntries()).toHaveLength(0);
-
-    // Reinstalling wraps the restored console.error, not the previous wrapper —
-    // without the cleanup resetting `installed`, an HMR reload of the dev entry
-    // would double every capture.
-    uninstall = devDiagnostics.install();
-    devDiagnostics.clear();
-    console.error("once");
-
-    expect(devDiagnostics.getEntries()).toHaveLength(1);
   });
 });

@@ -18,13 +18,14 @@ const errorResponse = (status: number, body: unknown) =>
     headers: { "Content-Type": "application/json" },
   });
 
+const realFetch = window.fetch;
+
 let originalFetch: jest.Mock<Promise<Response>, []>;
-let cleanup: () => void;
 
 const setup = (metabaseUrl: string = METABASE_URL) => {
   originalFetch = jest.fn(async () => jsonResponse({}));
   window.fetch = originalFetch;
-  cleanup = sdkCallCapture.install(metabaseUrl);
+  sdkCallCapture.install(metabaseUrl);
 };
 
 // The capture records off the critical path (the app gets its response first),
@@ -41,7 +42,9 @@ const calls = () =>
 
 describe("SdkCallCapture", () => {
   beforeEach(() => devDiagnostics.clear());
-  afterEach(() => cleanup?.());
+  afterEach(() => {
+    window.fetch = realFetch;
+  });
 
   it("records a Metabase call and ignores everything else", async () => {
     setup();
@@ -283,10 +286,10 @@ describe("SdkCallCapture", () => {
     const untouched = jest.fn(async () => jsonResponse({}));
     window.fetch = untouched;
 
-    const cleanup = sdkCallCapture.install(undefined);
+    sdkCallCapture.install(undefined);
     await call(`${METABASE_URL}/api/card/1`);
-    cleanup();
 
+    // `fetch` is left alone, so nothing is recorded.
     expect(window.fetch).toBe(untouched);
     expect(calls()).toHaveLength(0);
   });
@@ -295,38 +298,10 @@ describe("SdkCallCapture", () => {
     const untouched = jest.fn(async () => jsonResponse({}));
     window.fetch = untouched;
 
-    const cleanup = sdkCallCapture.install("not-a-url");
+    sdkCallCapture.install("not-a-url");
     await call(`${METABASE_URL}/api/card/1`);
-    cleanup();
 
     expect(window.fetch).toBe(untouched);
     expect(calls()).toHaveLength(0);
-  });
-
-  it("stops recording once torn down, and can be reinstalled without double-counting", async () => {
-    setup();
-    cleanup();
-
-    await call(`${METABASE_URL}/api/card/1`);
-    expect(calls()).toHaveLength(0);
-
-    // Reinstalling wraps the restored fetch, not the previous wrapper — without
-    // the cleanup resetting `installed`, a remount would record every call twice.
-    cleanup = sdkCallCapture.install(METABASE_URL);
-    await call(`${METABASE_URL}/api/card/1`);
-
-    expect(calls()).toHaveLength(1);
-  });
-
-  it("restores the exact fetch reference it replaced, not a bound wrapper", () => {
-    const before = window.fetch;
-    setup();
-
-    expect(window.fetch).not.toBe(before);
-
-    cleanup();
-
-    // A bound copy would leave another fetch patcher looking at our wrapper.
-    expect(window.fetch).toBe(originalFetch);
   });
 });
