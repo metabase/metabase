@@ -23,16 +23,18 @@ import type {
   DashCardId,
   DashboardId,
   DashboardTabId,
+  ParameterId,
 } from "metabase-types/api";
 
 import { trackCardMoved } from "../analytics";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
-import { getDashCardById } from "../selectors";
+import { getDashCardById, getDashcards } from "../selectors";
 import {
   calculateDashCardRowAfterUndo,
   generateTemporaryDashcardId,
 } from "../utils";
 
+import { duplicateParameters } from "./parameters";
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = {
@@ -41,6 +43,7 @@ type CreateNewTabPayload = {
 type DuplicateTabPayload = {
   sourceTabId: DashboardTabId | null;
   newTabId: DashboardTabId;
+  sourceToNewParameterIdMap: Record<ParameterId, ParameterId>;
 };
 type DeleteTabPayload = {
   tabId: DashboardTabId | null;
@@ -138,13 +141,35 @@ export function createNewTab() {
 
 const duplicateTabAction = createAction<DuplicateTabPayload>(DUPLICATE_TAB);
 
-export function duplicateTab(sourceTabId: DashboardTabId | null) {
-  // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
-  const newTabId = tempTabId;
-  tempTabId -= 2;
+export const duplicateTab =
+  (sourceTabId: DashboardTabId | null) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
+    const newTabId = tempTabId;
+    tempTabId -= 2;
 
-  return duplicateTabAction({ sourceTabId, newTabId });
-}
+    const sourceTabDashCards = Object.values(getDashcards(getState())).filter(
+      (dashcard) => dashcard.dashboard_tab_id === sourceTabId,
+    );
+    const sourceParameters = sourceTabDashCards.flatMap((dashcard) =>
+      "inline_parameters" in dashcard ? (dashcard.inline_parameters ?? []) : [],
+    );
+    const newParameters = duplicateParameters(
+      dispatch,
+      getState,
+      sourceParameters,
+    );
+    const sourceToNewParameterIdMap = Object.fromEntries(
+      sourceParameters.map((parameter, index) => [
+        parameter,
+        newParameters[index].id,
+      ]),
+    );
+
+    dispatch(
+      duplicateTabAction({ sourceTabId, newTabId, sourceToNewParameterIdMap }),
+    );
+  };
 
 function _selectTab({
   state,
@@ -302,7 +327,10 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase<typeof duplicateTabAction>(
       duplicateTabAction,
-      (state, { type, payload: { sourceTabId, newTabId } }) => {
+      (
+        state,
+        { type, payload: { sourceTabId, newTabId, sourceToNewParameterIdMap } },
+      ) => {
         const { dashId, prevDash, prevTabs } = getPrevDashAndTabs({ state });
         if (!dashId || !prevDash) {
           throw new Error(
@@ -353,12 +381,34 @@ export const tabsReducer = createReducer<DashboardState>(
 
           prevDash.dashcards.push(newDashCardId);
 
-          state.dashcards[newDashCardId] = {
+          const newDashCard = {
             ...sourceDashCard,
             id: newDashCardId,
             dashboard_tab_id: newTabId,
             isDirty: true,
           };
+
+          if (
+            "inline_parameters" in newDashCard &&
+            newDashCard.inline_parameters
+          ) {
+            newDashCard.inline_parameters = newDashCard.inline_parameters.map(
+              (parameterId) => sourceToNewParameterIdMap[parameterId],
+            );
+          }
+
+          if (newDashCard.parameter_mappings) {
+            newDashCard.parameter_mappings = newDashCard.parameter_mappings.map(
+              (mapping) => ({
+                ...mapping,
+                parameter_id:
+                  sourceToNewParameterIdMap[mapping.parameter_id] ??
+                  mapping.parameter_id,
+              }),
+            );
+          }
+
+          state.dashcards[newDashCardId] = newDashCard;
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
           if (isVirtualDashCard(sourceDashCard as StoreDashcard)) {
