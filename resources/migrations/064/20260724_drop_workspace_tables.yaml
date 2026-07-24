@@ -1,0 +1,227 @@
+## Drop the remaining workspace tables (workspace, workspace_database, table_remapping).
+## The workspaces feature (transform workspaces with per-database isolation schemas and
+## table remapping) was removed; these tables are no longer used. Tables are dropped
+## children-first to respect foreign-key dependencies. Each drop has a rollback that
+## recreates the table in its pre-drop state (workspace_database.status keeps the
+## widened varchar(254) from v64.2026-07-18T10:00:05) so the schema is reversible.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.2026-07-24T10:00:00
+      author: ranquild
+      comment: Drop table_remapping table
+      changes:
+        - dropTable:
+            tableName: table_remapping
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: table_remapping
+            remarks: Maps production tables to workspace tables for query remapping
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_db
+                  type: varchar(254)
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_schema
+                  type: varchar(254)
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_table_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_db
+                  type: varchar(254)
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_schema
+                  type: varchar(254)
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_table_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_db, from_schema, from_table_name
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+            columnNames: database_id, to_db, to_schema, to_table_name
+        - addForeignKeyConstraint:
+            baseTableName: table_remapping
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_table_remapping_database_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v64.2026-07-24T10:00:01
+      author: ranquild
+      comment: Drop workspace_database table
+      changes:
+        - dropTable:
+            tableName: workspace_database
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_database
+            remarks: Associates a workspace with a database, with override credentials and schema config
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_details
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: output_namespace
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: input_schemas
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(254)
+                  defaultValue: unprovisioned
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: workspace_database
+            constraintName: idx_unique_workspace_database
+            columnNames: workspace_id, database_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_database_workspace_id
+            deleteCascade: true
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_workspace_database_database_id
+            onDelete: RESTRICT
+        - createIndex:
+            tableName: workspace_database
+            indexName: idx_workspace_database_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: v64.2026-07-24T10:00:02
+      author: ranquild
+      comment: Drop workspace table
+      changes:
+        - dropTable:
+            tableName: workspace
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace
+            remarks: Groups one or more databases with override credentials and per-database schema config
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL

@@ -18,7 +18,7 @@
 
 (def ^String sample-database-name
   "Canonical name of the bundled Sample Database. Shared with consumers that need to
-  identify or validate the sample DB (e.g. workspace-manager config import)."
+  identify or validate the sample DB."
   "Sample Database")
 
 (def ^:private ^String sqlite-sample-database-filename "sample-database.sqlite")
