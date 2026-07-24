@@ -105,6 +105,7 @@ export const createMockTokenFeatures = (
   "schema-viewer": false,
   disable_password_login: false,
   cloud_custom_smtp: false,
+  content_diagnostics: false,
   content_translation: false,
   content_verification: false,
   "custom-viz": false,

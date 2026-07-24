@@ -1,7 +1,3 @@
-// Types for the Content Diagnostics serve API. MUST stay in sync with the
-// response shapes in:
-// enterprise/backend/src/metabase_enterprise/content_diagnostics/api.clj
-
 import type { CollectionId } from "./collection";
 import type { PaginationRequest } from "./pagination";
 import type { SortDirection } from "./sorting";
@@ -20,8 +16,6 @@ export const CONTENT_DIAGNOSTICS_ENTITY_TYPES = [
 export type ContentDiagnosticsEntityType =
   (typeof CONTENT_DIAGNOSTICS_ENTITY_TYPES)[number];
 
-// The set of entity types Content Diagnostics is scoped to surface in the UI
-// (entity-type filter). Matches the entity types the stale checker covers.
 export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
   "card",
   "dashboard",
@@ -31,9 +25,6 @@ export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
 export type ContentDiagnosticsFilterType =
   (typeof CONTENT_DIAGNOSTICS_FILTER_TYPES)[number];
 
-// Server-sortable stale-list columns (denormalized at scan time). A subset of
-// the shown table columns — Collection is hydrated live and has no sort column.
-// Values match the backend `stale-sort-column->field` param keys.
 export const CONTENT_DIAGNOSTICS_SORT_COLUMNS = [
   "name",
   "entity-type",
@@ -44,9 +35,6 @@ export const CONTENT_DIAGNOSTICS_SORT_COLUMNS = [
 export type ContentDiagnosticsSortColumn =
   (typeof CONTENT_DIAGNOSTICS_SORT_COLUMNS)[number];
 
-// Persisted (last-used) filter + sort state, stored per finding-type tab via
-// the `content_diagnostics` user-key-value namespace. Snake_case to match the
-// stored JSON shape.
 export type ContentDiagnosticsUserParams = {
   entity_types?: ContentDiagnosticsFilterType[];
   include_personal_collections?: boolean;
@@ -54,8 +42,6 @@ export type ContentDiagnosticsUserParams = {
   sort_direction?: SortDirection;
 };
 
-// A finding's `owner`/`creator`. A Metabase account carries `id`/`name`; an
-// external (non-account) owner carries only `email`. `type` discriminates them.
 export type ContentDiagnosticsUser =
   | {
       type: "user";
@@ -68,7 +54,6 @@ export type ContentDiagnosticsUser =
       email: string | null;
     };
 
-// Permission-filtered collection breadcrumb, mirroring `:effective_ancestors`.
 export type ContentDiagnosticsCollection = {
   id: CollectionId;
   name: string;
@@ -96,7 +81,6 @@ export type ContentDiagnosticsFinding = {
   details: ContentDiagnosticsFindingDetails;
 };
 
-// Topline of a synchronous scan run (demo/dev `POST /scan`).
 export type ContentDiagnosticsScanResult = {
   scan_id: string;
   finding_count: number;
@@ -105,14 +89,9 @@ export type ContentDiagnosticsScanResult = {
 };
 
 export type ListStaleFindingsRequest = {
-  // Name substring to match against a finding's entity display name.
   query?: string;
-  // Entity types to include. Omit to include every covered type.
   "entity-types"?: ContentDiagnosticsFilterType[];
-  // When false (default), findings whose entity lives in a personal collection
-  // are excluded. Results are always permission-filtered for the current user.
   "include-personal-collections"?: boolean;
-  // Server-side sort. Omit for the backend default (detected-at asc).
   "sort-column"?: ContentDiagnosticsSortColumn;
   "sort-direction"?: SortDirection;
 } & PaginationRequest;

@@ -170,7 +170,6 @@ describe("StaleContentPage", () => {
         name: "Revenue by category",
       }),
     ).not.toBeInTheDocument();
-    // Breadcrumbs show the parent collection path only — not the entity itself.
     const locationRegion = within(sidebarRegion).getByRole("region", {
       name: "Location",
     });
@@ -289,7 +288,6 @@ describe("StaleContentPage", () => {
     const { history } = setup({ findings: FINDINGS });
     await waitForListToLoad();
 
-    // Default request includes personal collections.
     expect(
       getLastRequestUrl().searchParams.get("include-personal-collections"),
     ).toBe("true");
@@ -323,8 +321,6 @@ describe("StaleContentPage", () => {
 
     await waitForListToLoad();
 
-    // Restored filter is reflected in the URL and sent to the server.
-    // (A single value is serialized as a string by the router.)
     expect(history?.getCurrentLocation().query).toEqual({
       "entity-types": "card",
     });

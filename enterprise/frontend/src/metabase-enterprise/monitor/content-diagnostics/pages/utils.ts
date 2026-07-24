@@ -36,8 +36,6 @@ export function parseUrlParams(
   };
 }
 
-// The stored (last-used) filter state is the persisted subset of params —
-// only the filter, not the ephemeral page/query.
 export function getUserParams(
   params: Urls.ContentDiagnosticsParams,
 ): ContentDiagnosticsUserParams {
@@ -49,7 +47,6 @@ export function getUserParams(
   };
 }
 
-// When the value is not previously set, the BE returns an empty string.
 export function parseUserParams(
   params: ContentDiagnosticsUserParams | undefined | "",
 ): Urls.ContentDiagnosticsParams {
