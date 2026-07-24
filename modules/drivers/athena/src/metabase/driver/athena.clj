@@ -64,16 +64,17 @@
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
   (-> (merge
-       {:classname      "com.amazon.athena.jdbc.AthenaDriver"
-        :subprotocol    "athena"
-        :subname       (if (str/blank? hostname)
-                         (endpoint-for-region region)
-                         (str "//" hostname ":443"))
-        :User           access_key
-        :Password       secret_key
-        :OutputLocation s3_staging_dir
-        :WorkGroup      workgroup
-        :Region      region}
+       {:classname       "com.amazon.athena.jdbc.AthenaDriver"
+        :subprotocol     "athena"
+        :subname         (if (str/blank? hostname)
+                           (endpoint-for-region region)
+                           (str "//" hostname ":443"))
+        :User            access_key
+        :Password        secret_key
+        :OutputLocation  s3_staging_dir
+        :WorkGroup       workgroup
+        :Region          region
+        :ApplicationName driver-api/mb-app-id-string}
        (when dbname
          {:database dbname})
        (when (and (not (driver-api/is-hosted?)) (str/blank? access_key))
