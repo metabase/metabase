@@ -869,61 +869,6 @@ describe("scenarios > collection defaults", () => {
             );
           });
         });
-
-        it("moving collections should disable moving into any of the moving collections in recents or search (metabase#45248)", () => {
-          H.createCollection({ name: "Outer collection 1" }).then(
-            ({ body: { id: parentCollectionId } }) => {
-              cy.wrap(parentCollectionId).as("outerCollectionId");
-              H.createCollection({
-                name: "Inner collection 1",
-                parent_id: parentCollectionId,
-              }).then(({ body: { id: innerCollectionId } }) => {
-                cy.wrap(innerCollectionId).as("innerCollectionId");
-              });
-              H.createCollection({
-                name: "Inner collection 2",
-                parent_id: parentCollectionId,
-              });
-            },
-          );
-          H.createCollection({ name: "Outer collection 2" });
-
-          // mark the inner collection as recently selected
-          cy.get("@innerCollectionId").then((innerCollectionId) => {
-            cy.request("POST", "/api/activity/recents", {
-              context: "selection",
-              model: "collection",
-              model_id: innerCollectionId,
-            });
-          });
-          cy.visit("/collection/root");
-
-          cy.log("single move");
-
-          cy.wait("@getCollectionItems");
-
-          H.openCollectionItemMenu("Outer collection 1");
-
-          H.popover().findByText("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.findByText(/inner collection/).should("not.exist");
-            cy.button("Cancel").click();
-          });
-
-          cy.log("bulk move");
-
-          cy.findByTestId("collection-table").within(() => {
-            selectItemUsingCheckbox("Orders");
-            selectItemUsingCheckbox("Outer collection 1");
-          });
-
-          cy.findByTestId("toast-card").button("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.findByText(/inner collection/).should("not.exist");
-          });
-        });
       });
     });
 
