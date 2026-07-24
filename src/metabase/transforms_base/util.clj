@@ -32,7 +32,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -468,43 +467,23 @@
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
-(defn- canonicalize-target
-  "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
-   to-side of an active TableRemapping for `db-id`), return `target` with
-   `:schema` and `:name` swapped back to canonical. Else return `target`
-   unchanged. The transform pipeline mutates `:target.schema` to the workspace
-   output schema in `metabase.transforms.execute/resolve-target` so writes
-   land in isolation; `:model/Table` rows must stay at the canonical schema,
-   so we invert here.
-
-   `canonical-schema+name` returns a `{:db :schema :name}` map with slot
-   values already normalized to `:model/Table` row vocabulary (nil for
-   engines that don't emit a slot, string otherwise) — directly usable as a
-   Table-row predicate without further translation."
-  [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/canonical-schema+name db-id lookup-spec)]
-      (assoc target :db db :schema schema :name name)
-      target)))
-
 (defn- sync-table!
   ([database target] (sync-table! database target nil))
   ([database target {:keys [create?]}]
-   (let [target (canonicalize-target (:id database) target)]
-     (when-let [table (or (target-table (:id database) target)
-                          (when create?
-                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-       ;; If the table has nil schema, check if the physical table actually lives under
-       ;; the driver's default schema. If so, fix the Table record before syncing.
-       (let [table (if (nil? (:schema table))
-                     (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                       (do (t2/update! :model/Table (:id table) {:schema actual-schema})
-                           (-> (t2/select-one :model/Table (:id table))
-                               (t2/hydrate :db)))
-                       table)
-                     table)]
-         (sync/sync-table! table)
-         table)))))
+   (when-let [table (or (target-table (:id database) target)
+                        (when create?
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+     ;; If the table has nil schema, check if the physical table actually lives under
+     ;; the driver's default schema. If so, fix the Table record before syncing.
+     (let [table (if (nil? (:schema table))
+                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                         (-> (t2/select-one :model/Table (:id table))
+                             (t2/hydrate :db)))
+                     table)
+                   table)]
+       (sync/sync-table! table)
+       table))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
@@ -532,37 +511,14 @@
     ;; TODO this should probably be a function in the sync module
     (t2/update! :model/Table (:id table) {:active false})))
 
-(defn- isolated-drop-target
-  "Resolve `target` to the physical warehouse table to drop.
-
-  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
-  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
-  drop must hit that copy — not the canonical table. Looks the copy up via the general
-  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
-  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
-  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
-  the hook returns nil and `target` is dropped unchanged."
-  [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
-      (assoc target :schema (or schema db) :name name)
-      target)))
-
 (defn delete-target-table!
-  "Drop a transform's output table and deactivate its app-db Table row.
-
-  In workspace-isolation mode the transform writes to an isolation-namespace copy, so the drop
-  resolves the canonical `:target` to that copy (see [[isolated-drop-target]]); dropping the
-  canonical name would fail (the workspace user is read-only there) or hit the wrong table. The
-  app-db Table row that gets deactivated is always the canonical `:target`, since that is what
-  sync surfaces. Off-workspace the two are identical."
+  "Drop a transform's output table and deactivate its app-db Table row."
   [{:keys [id target], :as transform}]
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
         (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
-          (let [drop-target (->> (update target :type keyword)
-                                 (isolated-drop-target database-id))]
+          (let [drop-target (update target :type keyword)]
             (driver/drop-transform-target! driver database drop-target)
             (log/info "Deactivating  target " (pr-str target) "for transform" id)
             (deactivate-table! database target))

@@ -21,27 +21,27 @@
   (testing "blank string returns nil"
     (is (nil? (scope/parse-scopes "   "))))
   (testing "single scope"
-    (is (= #{"agent:workspaces"}
-           (scope/parse-scopes "agent:workspaces"))))
+    (is (= #{"agent:reports"}
+           (scope/parse-scopes "agent:reports"))))
   (testing "multiple scopes"
-    (is (= #{"agent:workspaces" "agent:queries" "read:users"}
-           (scope/parse-scopes "agent:workspaces agent:queries read:users"))))
+    (is (= #{"agent:reports" "agent:queries" "read:users"}
+           (scope/parse-scopes "agent:reports agent:queries read:users"))))
   (testing "trims whitespace"
-    (is (= #{"agent:workspaces"}
-           (scope/parse-scopes "  agent:workspaces  "))))
+    (is (= #{"agent:reports"}
+           (scope/parse-scopes "  agent:reports  "))))
   (testing "wildcard scope"
     (is (= #{"*"}
            (scope/parse-scopes "*")))))
 
 (deftest ^:parallel scope-satisfied?-test
   (testing "exact match"
-    (is (scope/scope-satisfied? #{"agent:workspaces"} "agent:workspaces"))
-    (is (not (scope/scope-satisfied? #{"agent:queries"} "agent:workspaces"))))
+    (is (scope/scope-satisfied? #{"agent:reports"} "agent:reports"))
+    (is (not (scope/scope-satisfied? #{"agent:queries"} "agent:reports"))))
   (testing "global wildcard"
-    (is (scope/scope-satisfied? #{"*"} "agent:workspaces"))
+    (is (scope/scope-satisfied? #{"*"} "agent:reports"))
     (is (scope/scope-satisfied? #{"*"} "anything")))
   (testing "hierarchical wildcard"
-    (is (scope/scope-satisfied? #{"agent:*"} "agent:workspaces"))
+    (is (scope/scope-satisfied? #{"agent:*"} "agent:reports"))
     (is (scope/scope-satisfied? #{"agent:*"} "agent:queries"))
     (is (not (scope/scope-satisfied? #{"agent:*"} "read:users"))))
   (testing "deeper hierarchy"
@@ -49,21 +49,21 @@
     (is (scope/scope-satisfied? #{"a:b:*"} "a:b:c"))
     (is (not (scope/scope-satisfied? #{"a:b:*"} "a:x:c"))))
   (testing "empty scopes set never satisfies"
-    (is (not (scope/scope-satisfied? #{} "agent:workspaces"))))
+    (is (not (scope/scope-satisfied? #{} "agent:reports"))))
   (testing "multiple scopes in set"
-    (is (scope/scope-satisfied? #{"read:users" "agent:workspaces"} "agent:workspaces"))
-    (is (not (scope/scope-satisfied? #{"read:users" "agent:queries"} "agent:workspaces")))))
+    (is (scope/scope-satisfied? #{"read:users" "agent:reports"} "agent:reports"))
+    (is (not (scope/scope-satisfied? #{"read:users" "agent:queries"} "agent:reports")))))
 
 (deftest ^:parallel enforce-scope-test
   (let [ok-handler (fn [_request respond _raise]
                      (respond {:status 200 :body "ok"}))
-        middleware (scope/enforce-scope "agent:workspaces")]
+        middleware (scope/enforce-scope "agent:reports")]
     (testing "nil token-scopes (normal session auth) passes through"
       (is (= {:status 200 :body "ok"}
              (invoke-handler (middleware ok-handler) {}))))
     (testing "matching scope passes through"
       (is (= {:status 200 :body "ok"}
-             (invoke-handler (middleware ok-handler) {:token-scopes #{"agent:workspaces"}}))))
+             (invoke-handler (middleware ok-handler) {:token-scopes #{"agent:reports"}}))))
     (testing "wildcard scope passes through"
       (is (= {:status 200 :body "ok"}
              (invoke-handler (middleware ok-handler) {:token-scopes #{"agent:*"}}))))
@@ -78,8 +78,8 @@
           spy-handler  (fn [request respond _raise]
                          (deliver seen-request request)
                          (respond {:status 200}))
-          middleware   (scope/enforce-scope "agent:workspaces")]
-      (invoke-handler (middleware spy-handler) {:token-scopes #{"agent:workspaces"}})
+          middleware   (scope/enforce-scope "agent:reports")]
+      (invoke-handler (middleware spy-handler) {:token-scopes #{"agent:reports"}})
       (is (true? (:token-scopes-checked (deref seen-request 1000 ::timeout)))))))
 
 (deftest ^:parallel ensure-scopes-checked-test
@@ -95,13 +95,13 @@
       (is (= 403
              (:status (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{"*"}})))))
     (testing "scoped request without prior check is rejected with 403"
-      (let [response (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{"agent:workspaces"}})]
+      (let [response (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{"agent:reports"}})]
         (is (= 403 (:status response)))
         (is (= "scope_not_permitted" (get-in response [:body :error])))))
     (testing "scoped request with :token-scopes-checked passes through"
       (is (= {:status 200 :body "ok"}
              (invoke-handler (scope/ensure-scopes-checked ok-handler)
-                             {:token-scopes #{"agent:workspaces"} :token-scopes-checked true}))))
+                             {:token-scopes #{"agent:reports"} :token-scopes-checked true}))))
     (testing "empty token-scopes set without prior check is rejected"
       (is (= 403
              (:status (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{}})))))))

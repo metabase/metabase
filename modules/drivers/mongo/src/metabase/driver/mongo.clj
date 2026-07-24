@@ -464,8 +464,7 @@
                               :index-info                      false
                               :python-transforms               true
                               :transforms/python               true
-                              :database-routing                true
-                              :workspace                       false}]
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
