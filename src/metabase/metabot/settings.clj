@@ -3,12 +3,14 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
 
@@ -129,6 +131,22 @@
                       {:status-code 400
                        :value       value})))))
 
+(defn- validate-bedrock-model!
+  "Validate the model segment of a bedrock connection's model: a vendor prefix the mantle routes serve.
+  The adapter picks its API family from that prefix and throws without one, so a reference missing it is
+  rejected here rather than at the first call. Throws on invalid input."
+  [value model]
+  (when-not (some (fn [prefix]
+                    (and (str/starts-with? (str model) prefix)
+                         ;; the prefix alone names no model
+                         (not (str/blank? (subs (str model) (count prefix))))))
+                  (keys bedrock/model-vendor-prefixes))
+    (throw (ex-info (tru "Invalid Bedrock model {0}. Model ids must start with one of: {1}"
+                         (pr-str value)
+                         (str/join ", " (sort (keys bedrock/model-vendor-prefixes))))
+                    {:status-code 400
+                     :value       value}))))
+
 (defn- validate-google-model!
   "Validate the model segment of a google connection's `{publisher}/{model-id}` model.
   A publisher this provider serves followed by a non-blank model ID without slashes (the ID is one path segment of the
@@ -154,7 +172,7 @@
                            (pr-str model) (str/join ", " (sort allowed)))
                       {:status-code 400 :model model})))))
 
-(defn- validate-model-ref!
+(defn validate-model-ref!
   "Validate that `value` is a `connection-key/model` string with a non-blank model, plus whatever extra rules the
   named connection's provider type imposes on its models.
 
@@ -174,9 +192,26 @@
                       {:status-code 400 :value value})))
     (case (:type (llm.provider/connection (llm.provider/model-ref->connection-key value)))
       "azure"    (validate-azure-model! value model)
+      "bedrock"  (validate-bedrock-model! value model)
       "google"   (validate-google-model! value model)
       "metabase" (validate-managed-model! model)
       nil)))
+
+(defn normalize-model-ref
+  "The value a model-reference setting should persist: nil when `value` is nil or blank, meaning the setting is
+  unset, otherwise the trimmed reference.
+  Throws with `:status-code 400` on a non-string or an unsupported connection/model.
+
+  Blank has to normalize to nil before validation runs. An admin form clears a string setting by sending `\"\"`,
+  and validating that raw rejects the clear as a missing model name instead of unsetting the reference."
+  [value]
+  (cond
+    (nil? value)    nil
+    (string? value) (when-let [trimmed (u/trimmed-string value)]
+                      (validate-model-ref! trimmed)
+                      trimmed)
+    ;; always throws: the validator owns the "must be a string" message
+    :else           (validate-model-ref! value)))
 
 (defsetting llm-metabot-provider
   (deferred-tru "The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.")
@@ -187,9 +222,7 @@
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
   :setter           (fn [new-value]
-                      (when new-value
-                        (validate-model-ref! new-value))
-                      (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+                      (setting/set-value-of-type! :string :llm-metabot-provider (normalize-model-ref new-value))))
 
 (defn- mini-model-ref
   "The model reference for the fastest model of the connection `model-ref` names, or nil when that connection's
@@ -225,9 +258,7 @@
   :export?    false
   :getter     #'-llm-mini-model
   :setter     (fn [new-value]
-                (when new-value
-                  (validate-model-ref! new-value))
-                (setting/set-value-of-type! :string :llm-mini-model new-value)))
+                (setting/set-value-of-type! :string :llm-mini-model (normalize-model-ref new-value))))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."

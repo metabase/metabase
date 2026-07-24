@@ -237,7 +237,7 @@
                 (#'metabot.self/parse-provider-model (metabot.settings/llm-metabot-provider))))))))
 
 ;;; ------------------------------------------- validate-metabot-provider! Tests -------------------------------------------
-;; The validator is private; exercise it through the setting setter.
+;; Exercised through the setting setters, which is the path that has to reject bad input.
 
 (deftest validate-metabot-provider-rejects-non-string-test
   (testing "rejects non-string input"
@@ -413,6 +413,31 @@
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))
         (mt/with-temporary-setting-values [llm-mini-model "anthropic/claude-opus-4-8"]
           (is (= "anthropic/claude-opus-4-8" (metabot.settings/explicit-mini-model))))))))
+
+(deftest model-ref-setters-normalize-test
+  (testing "a padded reference is stored trimmed, on every model-reference setting"
+    (doseq [[setting-name set!*] [["llm-metabot-provider" metabot.settings/llm-metabot-provider!]
+                                  ["llm-mini-model" metabot.settings/llm-mini-model!]]]
+      (testing setting-name
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (set!* "  anthropic/claude-sonnet-4-6  ")
+          (is (= "anthropic/claude-sonnet-4-6"
+                 (setting/get-value-of-type :string (keyword setting-name)))))))))
+
+(deftest model-ref-setters-clear-on-blank-test
+  (testing "blank clears the stored reference instead of failing validation — an admin form clears by sending \"\""
+    (doseq [blank [nil "" "   "]]
+      (testing (pr-str blank)
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (metabot.settings/llm-metabot-provider! "anthropic/claude-haiku-4-5")
+          (metabot.settings/llm-metabot-provider! blank)
+          (is (= metabot.settings/default-llm-metabot-provider
+                 (metabot.settings/llm-metabot-provider))
+              "the metabot model falls back to its default")
+          (metabot.settings/llm-mini-model! "anthropic/claude-haiku-4-5")
+          (metabot.settings/llm-mini-model! blank)
+          (is (nil? (metabot.settings/explicit-mini-model))
+              "the mini model goes back to being derived from the metabot model"))))))
 
 (deftest llm-mini-model-is-validated-like-the-metabot-model-test
   (with-connections [configured-anthropic

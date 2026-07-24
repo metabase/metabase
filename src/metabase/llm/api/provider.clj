@@ -356,7 +356,15 @@
     (when (and composed-ref
                (= conn-key (llm.provider/model-ref->connection-key mini-ref))
                (not= composed-ref mini-ref))
-      (repoint! :llm-mini-model composed-ref))))
+      (repoint! :llm-mini-model composed-ref))
+    ;; Same rule for references owned by other modules: a composed model going stale breaks them identically,
+    ;; and only a stored value moves — a derived one already follows whatever it derives from.
+    (when composed-ref
+      (doseq [setting-key (llm.provider/followed-model-ref-setting-keys)
+              :let [stored-ref (setting/get-value-of-type :string setting-key)]]
+        (when (and (= conn-key (llm.provider/model-ref->connection-key stored-ref))
+                   (not= composed-ref stored-ref))
+          (repoint! setting-key composed-ref))))))
 
 ;;; -------------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -430,6 +438,10 @@
           ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
           ;; the probe exercised, so connecting one leaves the instance working rather than model-less
           (select-model-for-new-connection! conn (or model (:probed-model learned-config))))
+        ;; A reference may name a connection that did not exist yet — `validate-model-ref!` allows that, since
+        ;; an env var, config file or serdes import can land in either order. Once the connection appears, a
+        ;; composed model it does not serve is stale in exactly the way an edit makes it stale.
+        (follow-edited-connection-model! conn model)
         (seed-models-cache! conn listed)
         (connection-response (assoc conn :source :db))))))
 
@@ -490,7 +502,14 @@
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/explicit-mini-model)))
         (setting/set! :llm-mini-model nil))
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
-        (repoint-metabot! (fallback-model-ref)))))
+        (repoint-metabot! (fallback-model-ref)))
+      ;; Same for references owned by other modules. A reference to a deleted connection is dead: clearing
+      ;; it lets the setting fall back to whatever it derives from, which is its documented unset
+      ;; behaviour. Leaving it in place would read as unconfigured instead.
+      (doseq [setting-key (llm.provider/followed-model-ref-setting-keys)
+              :when (= conn-key (llm.provider/model-ref->connection-key
+                                 (setting/get-value-of-type :string setting-key)))]
+        (repoint! setting-key nil))))
   nil)
 
 (api.macros/defendpoint :get "/models"
