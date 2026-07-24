@@ -13,7 +13,6 @@ import { t } from "ttag";
 
 import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
-import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
   useMetabotName,
@@ -318,10 +317,7 @@ export const MetabotComponent = memo(
           <Flex px="md" pb="md" pt="sm" gap="sm" contentEditable={false}>
             <Flex flex={1} my="auto">
               {isLoading ? (
-                <Text
-                  flex={1}
-                  className={MetabotThinkingStyles.toolCallStarted}
-                >
+                <Text flex={1} className={S.toolCallStarted}>
                   {t`Working on it...`}
                 </Text>
               ) : errorText ? (

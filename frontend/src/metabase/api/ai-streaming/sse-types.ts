@@ -67,6 +67,24 @@ export type TextEndEvent = {
   providerMetadata?: ProviderMetadata;
 };
 
+// reasoning events
+export type ReasoningStartEvent = {
+  type: "reasoning-start";
+  id: string;
+  providerMetadata?: ProviderMetadata;
+};
+export type ReasoningDeltaEvent = {
+  type: "reasoning-delta";
+  id: string;
+  delta: string;
+  providerMetadata?: ProviderMetadata;
+};
+export type ReasoningEndEvent = {
+  type: "reasoning-end";
+  id: string;
+  providerMetadata?: ProviderMetadata;
+};
+
 // tool events
 export type ToolInputStartEvent = {
   type: "tool-input-start";
@@ -130,6 +148,9 @@ export type SSEEvent =
   | TextStartEvent
   | TextDeltaEvent
   | TextEndEvent
+  | ReasoningStartEvent
+  | ReasoningDeltaEvent
+  | ReasoningEndEvent
   | ToolInputStartEvent
   | ToolInputDeltaEvent
   | ToolInputAvailableEvent

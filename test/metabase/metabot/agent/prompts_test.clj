@@ -110,6 +110,13 @@
       (is (some? content))
       (is (= "You are Metabot, a data analysis assistant for Metabase." content)))))
 
+(deftest ^:parallel shows-reasoning?-test
+  (testing "surfaces without a chain-of-thought UI keep the narration guidance"
+    (is (false? (#'prompts/shows-reasoning? :embedding_next)))
+    (is (false? (#'prompts/shows-reasoning? :slackbot))))
+  (testing "app surfaces render reasoning, so narration guidance is dropped"
+    (is (true? (#'prompts/shows-reasoning? :internal)))))
+
 (deftest ^:parallel build-system-message-content-test-4
   (testing "uses default template name if not specified"
     (let [profile {}

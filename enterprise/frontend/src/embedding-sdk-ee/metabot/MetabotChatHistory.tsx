@@ -14,6 +14,9 @@ const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
   message.part.type === "data-generated_entity" &&
   message.part.data.type === "card";
 
+const isHiddenInEmbedding = (message: MetabotChatMessage) =>
+  message.type === "chain_of_thought";
+
 const AGENT_ID = "omnibot";
 
 export function MetabotChatHistory() {
@@ -23,7 +26,12 @@ export function MetabotChatHistory() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const chatMessages = useMemo(
-    () => messages.filter((message) => !isQuestionNavigationMessage(message)),
+    () =>
+      messages.filter(
+        (message) =>
+          !isQuestionNavigationMessage(message) &&
+          !isHiddenInEmbedding(message),
+      ),
     [messages],
   );
 

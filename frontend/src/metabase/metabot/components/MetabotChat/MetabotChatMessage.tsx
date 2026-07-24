@@ -9,15 +9,16 @@ import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { useMetabotName } from "metabase/metabot/hooks";
-import type {
-  MetabotAgentChatMessage,
-  MetabotAgentDataPartMessage,
-  MetabotAgentTextChatMessage,
-  MetabotAgentTurnError,
-  MetabotAgentTurnErroredMessage,
-  MetabotChatMessage,
-  MetabotDataPart,
-  MetabotUserChatMessage,
+import {
+  type MetabotAgentChatMessage,
+  type MetabotAgentDataPartMessage,
+  type MetabotAgentTextChatMessage,
+  type MetabotAgentTurnError,
+  type MetabotAgentTurnErroredMessage,
+  type MetabotChatMessage,
+  type MetabotDataPart,
+  type MetabotUserChatMessage,
+  isChainOfThoughtMessage,
 } from "metabase/metabot/state";
 import {
   ActionIcon,
@@ -37,6 +38,7 @@ import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
+import { MetabotChainOfThought } from "./MetabotChainOfThought";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -68,10 +70,14 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
       isUserVisibleDataPartMessage(message),
     )
     .with({ type: "tool_call" }, () => false)
+    .with({ type: "chain_of_thought" }, () => true)
     .with({ type: "turn_aborted" }, () => true)
     .with({ type: "turn_errored" }, () => true)
     .with({ type: "turn_in_progress" }, () => false)
     .exhaustive();
+
+const isConversationContent = (message: MetabotChatMessage) =>
+  !isChainOfThoughtMessage(message) && message.type !== "tool_call";
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotChatMessage;
@@ -232,6 +238,9 @@ export const AgentMessage = ({
         ))
         .with({ type: "tool_call" }, (m) => (
           <AgentToolCallMessage message={m} />
+        ))
+        .with({ type: "chain_of_thought" }, (m) => (
+          <MetabotChainOfThought message={m} isStreaming={isStreaming} />
         ))
         .with({ type: "turn_aborted" }, (m) => (
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
@@ -536,6 +545,9 @@ export const Messages = ({
     <>
       {visibleMessages.map((message, index) => {
         const next = visibleMessages[index + 1];
+        const nextContent = visibleMessages
+          .slice(index + 1)
+          .find(isConversationContent);
         const isLastUserMessage = index > lastUserIndex;
 
         return message.role === "agent" ? (
@@ -557,10 +569,18 @@ export const Messages = ({
                 ? feedbackState.submitted[message.externalId]
                 : undefined
             }
-            hideActions={next?.role === "agent" || (isDoingScience && !next)}
+            hideActions={
+              isChainOfThoughtMessage(message) ||
+              nextContent?.role === "agent" ||
+              (isDoingScience && !nextContent)
+            }
             extraActions={getExtraActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
-            isStreaming={isDoingScience && !next}
+            isStreaming={
+              isChainOfThoughtMessage(message)
+                ? isDoingScience && !nextContent
+                : isDoingScience && !next
+            }
           />
         ) : (
           <UserMessage

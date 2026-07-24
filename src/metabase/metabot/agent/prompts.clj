@@ -124,6 +124,13 @@
 
 ;;; High-Level API
 
+(defn- shows-reasoning?
+  "Whether the surface behind this profile renders the chain-of-thought UI.
+  Surfaces that don't (embedded, Slack) keep the narrate-between-tool-calls
+  guidance; visible reasoning replaces it elsewhere."
+  [profile-name]
+  (not (contains? #{:embedding_next :slackbot} profile-name)))
+
 (defn build-system-message-content
   "Build complete system message content from profile and context.
 
@@ -172,6 +179,7 @@
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
+                                  :shows_reasoning          (shows-reasoning? (:name profile))
                                   :custom_instructions      (not-empty
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search

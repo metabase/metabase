@@ -1,4 +1,7 @@
-import type { KnownDataPart } from "metabase/api/ai-streaming/schemas";
+import type {
+  KnownDataPart,
+  SearchResultItem,
+} from "metabase/api/ai-streaming/schemas";
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
@@ -10,8 +13,16 @@ import type {
 
 export type MetabotDataPart = Exclude<
   KnownDataPart,
-  { type: "data-state" } | { type: "data-conversation-title" }
+  | { type: "data-state" }
+  | { type: "data-conversation-title" }
+  | { type: "data-search_results" }
+  | { type: "data-tool_title" }
 >;
+
+export type MetabotSearchResults = {
+  totalCount: number;
+  results: SearchResultItem[];
+};
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
@@ -89,10 +100,20 @@ export type MetabotAgentTurnInProgressMessage = {
   externalId?: string;
 };
 
+export type MetabotAgentChainOfThoughtMessage = {
+  id: string;
+  role: "agent";
+  type: "chain_of_thought";
+  steps: MetabotChainStep[];
+  startedAtMs?: number;
+  endedAtMs?: number;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
   | MetabotDebugToolCallMessage
+  | MetabotAgentChainOfThoughtMessage
   | MetabotAgentTurnAbortedMessage
   | MetabotAgentTurnErroredMessage
   | MetabotAgentTurnInProgressMessage;
@@ -113,6 +134,18 @@ export type MetabotToolCall = {
   status: "started" | "ended";
 };
 
+export type MetabotChainStep =
+  | { kind: "reasoning"; text: string; startedAtMs?: number }
+  | {
+      kind: "tool";
+      id: string;
+      name: string;
+      title?: string;
+      searchResults?: MetabotSearchResults;
+      status: "started" | "ended";
+      startedAtMs?: number;
+    };
+
 export type MetabotReactionsState = {
   navigateToPath: string | null;
   suggestedCodeEdits: Partial<
@@ -131,6 +164,7 @@ export interface MetabotConverstationState {
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
+  activeChainId: string | undefined;
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;
   experimental: {
