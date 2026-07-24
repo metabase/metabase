@@ -36,7 +36,7 @@
         plugin-uberjar/metabase-core-provided-libs))
 
 (defn- remove-provided-libs [basis driver edition]
-  (plugin-uberjar/prune-provided-libs basis (provided-libs driver edition)))
+  (plugin-uberjar/prune-provided-libs! basis (provided-libs driver edition)))
 
 (defn- uberjar-basis [driver edition]
   (u/step "Determine which dependencies to include"

@@ -57,19 +57,18 @@
         connection-properties))
 
 (defn- make-initialize! [driver load-plugin!]
-  (fn [_]
-    ;; remove *this* implementation of `initialize!`, because as you will see below, we want to give
-    ;; lazy-load drivers the option to implement `initialize!` and do other things, which means we need to
-    ;; manually call it. When we do so we don't want to get stuck in an infinite loop of calls back to this
-    ;; implementation
-    (remove-method driver/initialize! driver)
-    ;; Load the plugin through the shared plugin loader. This adds its JAR to the classpath and runs the
-    ;; initialization steps listed in its manifest exactly once.
+  (fn this-method [_]
+    ;; Load first, so a failed load throws before we touch the method table -- the next `initialize!` retries
+    ;; the load rather than falling through to the no-op default. Adds the JAR to the classpath and runs the
+    ;; manifest init steps exactly once.
     (u/profile (u/format-color 'magenta (trs "Load lazy loading driver {0}" driver))
       (load-plugin!))
-    ;; ok, now go ahead and call `driver/initialize!` a second time on the driver in case it actually has
-    ;; an implementation of `initialize!` other than this one. If it does not, we'll just end up hitting
-    ;; the default implementation, which is a no-op
+    ;; Drop this placeholder now that the plugin is loaded -- unless loading installed the driver's own
+    ;; `initialize!`, in which case removing it would strand the driver on the no-op default. Dropping it also
+    ;; stops the call below from looping back into this method.
+    (when (identical? this-method (get-method driver/initialize! driver))
+      (remove-method driver/initialize! driver))
+    ;; Call `initialize!` again: the driver's own implementation if it installed one, else the no-op default.
     (driver/initialize! driver)))
 
 (defn register-lazy-loaded-driver!
