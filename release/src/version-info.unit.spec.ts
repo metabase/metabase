@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
 import type { VersionInfoFile } from "./types";
-import { generateVersionInfoJson, getSupportedMajors, getSupportedMajorVersions, getVersionInfoUrl, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
+import { generateVersionInfoJson, getSupportedMajors, getSupportedMajorVersions, getVersionInfoUrl, isLtsVersion, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
 
 jest.mock("node-fetch", () => ({
   __esModule: true,
@@ -411,6 +411,61 @@ describe("version-info", () => {
         "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
       );
       expect(majors).toEqual([60]);
+    });
+  });
+
+  describe("isLtsVersion", () => {
+    const majorVersionSupport = [
+      { major: 55, released: "2025-04-15", lts: true, eol: "2027-06-01" },
+      { major: 56, released: "2025-08-01", lts: false, eol: "2026-08-01" },
+    ];
+
+    const mockVersionInfo = (major_version_support: any) => {
+      mockFetch.mockResolvedValue({
+        json: async () => ({ latest: {}, older: [], major_version_support }),
+      } as Awaited<ReturnType<typeof fetch>>);
+    };
+
+    beforeEach(() => {
+      process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
+      process.env.AWS_REGION = "us-north-9";
+      mockFetch.mockReset();
+      mockVersionInfo(majorVersionSupport);
+    });
+
+    it("returns true when the version's major is an lts release", async () => {
+      expect(await isLtsVersion({ version: "v0.55.2" })).toEqual(true);
+    });
+
+    it("returns false when the version's major is not an lts release", async () => {
+      expect(await isLtsVersion({ version: "v0.56.0" })).toEqual(false);
+    });
+
+    it("returns false when the version's major is absent from the support list", async () => {
+      expect(await isLtsVersion({ version: "v0.99.0" })).toEqual(false);
+    });
+
+    it("returns true for an EE (v1.*) version of an lts major", async () => {
+      expect(await isLtsVersion({ version: "v1.55.0" })).toEqual(true);
+    });
+
+    it("resolves the major from patch and pre-release version strings", async () => {
+      expect(await isLtsVersion({ version: "v0.55.1.2" })).toEqual(true);
+      expect(await isLtsVersion({ version: "v0.55.0-RC1" })).toEqual(true);
+    });
+
+    it("throws when major_version_support is missing", async () => {
+      mockVersionInfo(undefined);
+      await expect(isLtsVersion({ version: "v0.55.0" })).rejects.toThrow(
+        /no `major_version_support`/,
+      );
+    });
+
+    it("throws when major_version_support is empty", async () => {
+      mockVersionInfo([]);
+      await expect(isLtsVersion({ version: "v0.55.0" })).rejects.toThrow(
+        /no `major_version_support`/,
+      );
     });
   });
 

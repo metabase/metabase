@@ -8,6 +8,7 @@ import type {
   VersionInfoFile,
 } from "./types";
 import {
+  getMajorVersion,
   getVersionType,
   isEnterpriseVersion,
   isPatchVersion,
@@ -187,4 +188,26 @@ export async function updateVersionInfoLatest({
     existingVersionInfo: existingFile,
     rollout,
   });
+}
+
+// Checks if a version is part of an LTS major release.
+export async function isLtsVersion({
+  version,
+}: {
+  version: string,
+}): Promise<boolean> {
+  const url = getVersionInfoUrl("v0"); // any non-`v1.` string picks the OSS file
+  const versionInfo = (await fetch(url).then(r => r.json())) as VersionInfoFile;
+
+  const majorVersions = versionInfo?.major_version_support;
+  if (!majorVersions || majorVersions.length === 0) {
+    throw new Error(
+      "version-info.json has no `major_version_support`, cannot determine if this version is part of an LTS version",
+    );
+  }
+
+  const versionMajor = getMajorVersion(version);
+  const match = majorVersions.find((v) => v?.lts && String(v.major) === versionMajor);
+
+  return match !== undefined;
 }
