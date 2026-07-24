@@ -70,7 +70,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :bigquery-cloud-sdk, :parent #{:sql
+(driver/register! :bigquery-cloud-sdk, :parent #{:sql-mbql5
                                                  ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

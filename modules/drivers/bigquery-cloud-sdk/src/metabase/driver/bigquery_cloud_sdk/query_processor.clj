@@ -198,7 +198,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :split-part]
-  [driver [_ text divider position]]
+  [driver [_ _opts text divider position]]
   [:coalesce
    [:at
     [:split
@@ -208,13 +208,13 @@
    ""])
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :text]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (h2x/maybe-cast "STRING" (sql.qp/->honeysql driver value)))
 
 ;; BigQuery's string type is `STRING`. Mirrors the `:text` handler above.
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "string")))
 
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
@@ -277,7 +277,7 @@
       (:bigquery-cloud-sdk/base-temporal-type (meta identifier))))
 
 (defmethod temporal-type :absolute-datetime
-  [[_ t _]]
+  [[_ _opts t _unit]]
   (temporal-type t))
 
 (defmethod temporal-type :time
@@ -285,7 +285,7 @@
   :time)
 
 (defmethod temporal-type :field
-  [[_ id-or-name {:keys [base-type effective-type temporal-unit]} :as clause]]
+  [[_ {:keys [base-type effective-type temporal-unit]} id-or-name :as clause]]
   (cond
     (contains? (meta clause) :bigquery-cloud-sdk/temporal-type)
     (:bigquery-cloud-sdk/temporal-type (meta clause))
@@ -396,8 +396,8 @@
         x))))
 
 (defmethod ->temporal-type [:temporal-type :absolute-datetime]
-  [target-type [_ t unit]]
-  [:absolute-datetime (->temporal-type target-type t) unit])
+  [target-type [_ opts t unit]]
+  [:absolute-datetime opts (->temporal-type target-type t) unit])
 
 (def ^:private temporal-type->supported-units
   {:timestamp #{:microsecond :millisecond :second :minute :hour :day}
@@ -406,7 +406,7 @@
    :time      #{:microsecond :millisecond :second :minute :hour}})
 
 (defmethod ->temporal-type [:temporal-type :relative-datetime]
-  [target-type [_ _ unit :as clause]]
+  [target-type [_ _opts _amount unit :as clause]]
   {:post [(= target-type (temporal-type %))]}
   (with-temporal-type
    ;; check and see whether we need to do a conversion. If so, use the parent method which will just wrap this in a
@@ -563,7 +563,7 @@
   (sql.qp/unix-timestamp->honeysql driver :microseconds [:div expr 1000]))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [datetime     (fn [x target-timezone]
                        [:datetime x target-timezone])
         hsql-form    (sql.qp/->honeysql driver arg)
@@ -581,7 +581,7 @@
   :float64)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- percentile->quantile
@@ -616,13 +616,13 @@
     [::approx-quantiles expr offset quantiles]))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :percentile]
-  [driver [_ expr p]]
+  [driver [_ _opts expr p]]
   (let [[offset quantiles] (percentile->quantile p)]
     (approx-quantiles (sql.qp/->honeysql driver expr) offset quantiles)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
-  [driver [_ arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+  [driver [_ _opts arg]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |
@@ -678,13 +678,13 @@
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
 (defn- with-base-temporal-type
-  [[_ _id-or-name {:keys [base-type]} :as clause]]
+  [[_ {:keys [base-type]} _id-or-name :as clause]]
   (if (not (instance? clojure.lang.IObj clause))
     clause
     (vary-meta clause assoc :bigquery-cloud-sdk/base-temporal-type (base-type->temporal-type base-type))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field id-or-name opts :as field-clause]]
+  [driver [_field opts id-or-name :as field-clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
         parent-method (get-method sql.qp/->honeysql [:sql :field])]
@@ -697,9 +697,13 @@
       (let [field-clause (-> field-clause
                              (with-temporal-type (temporal-type field-clause))
                              with-base-temporal-type)
+            ;; convert to the legacy clause shape the [:sql :field] parent method expects ourselves, rather than going
+            ;; through the generic [:sql-mbql5 :field] conversion, which returns a fresh vector that loses the
+            ;; temporal type metadata we just attached
+            legacy-clause (with-meta [:field id-or-name opts] (meta field-clause))
             stored-field  (when (integer? id-or-name)
                             (driver-api/field (driver-api/metadata-provider) id-or-name))
-            result       (parent-method driver field-clause)
+            result       (parent-method driver legacy-clause)
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
@@ -713,7 +717,7 @@
   [driver clause]
   ;; wrap the parent method, converting the result if `clause` itself is typed
   (let [t (temporal-type clause)]
-    (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
+    (cond->> ((get-method sql.qp/->honeysql [:sql-mbql5 :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
 (defn- datetime-diff-check-args
@@ -730,7 +734,7 @@
                      :type  driver-api/qp.error-type.invalid-query}))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
-  [driver [_ x y unit]]
+  [driver [_ _opts x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)]
     (datetime-diff-check-args x y)
@@ -787,7 +791,7 @@
               u/remove-diacritical-marks
               (str/replace #"[^\p{L}\p{N}\p{M}\p{Pc}]" "_")
               (str/replace #"(^[^\p{L}_])" "_$1"))]
-    ((get-method driver/escape-alias :sql) driver s)))
+    ((get-method driver/escape-alias :sql-mbql5) driver s)))
 
 ;; See:
 ;;
@@ -832,21 +836,22 @@
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-count]
   [driver expr]
   (binding [*compiling-cumulative-aggregation* true]
-    ((get-method sql.qp/->honeysql [:sql :cum-count]) driver expr)))
+    ((get-method sql.qp/->honeysql [:sql-mbql5 :cum-count]) driver expr)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-sum]
   [driver expr]
   (binding [*compiling-cumulative-aggregation* true]
-    ((get-method sql.qp/->honeysql [:sql :cum-sum]) driver expr)))
+    ((get-method sql.qp/->honeysql [:sql-mbql5 :cum-sum]) driver expr)))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]
   [driver top-level-clause honeysql-form query]
   (if *compiling-cumulative-aggregation*
-    ((get-method sql.qp/apply-top-level-clause [:sql :breakout]) driver top-level-clause honeysql-form query)
+    ((get-method sql.qp/apply-top-level-clause [:sql-mbql5 :breakout]) driver top-level-clause honeysql-form query)
     ;; If stuff in `:fields` still needs to be qualified like `dataset.table.field`, just the stuff in `:group-by` should
     ;; not. So we'll actually call the parent method twice, once with the fields as is (i.e., qualifiable) and once with
     ;; them removed. Then we'll splice the unqualified `:group-by` in
-    (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+    (let [parent-method (partial (get-method sql.qp/apply-top-level-clause
+                                             [:sql-mbql5 :breakout])
                                  driver top-level-clause honeysql-form)
           qualified     (parent-method query)
           unqualified   (parent-method (update query :breakout sql.qp/rewrite-fields-to-force-using-column-aliases))]
@@ -854,8 +859,8 @@
              (select-keys unqualified #{:group-by})))))
 
 (defn- adjust-order-by-clause
-  [[dir [_clause _id-or-name opts :as clause]]]
-  [dir
+  [[dir outer-opts [_clause opts _id-or-name :as clause]]]
+  [dir outer-opts
    ;; Following code ensures that only selected columns (with exception of those coming from different source than
    ;; this source table and having no binning and no bucketing) are forced to use aliases.
    ;;
@@ -875,13 +880,13 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
   [driver clause]
-  ((get-method sql.qp/->honeysql [:sql :asc])
+  ((get-method sql.qp/->honeysql [:sql-mbql5 :asc])
    driver
    (adjust-order-by-clause clause)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
   [driver clause]
-  ((get-method sql.qp/->honeysql [:sql :desc])
+  ((get-method sql.qp/->honeysql [:sql-mbql5 :desc])
    driver
    (adjust-order-by-clause clause)))
 
@@ -915,7 +920,7 @@
   (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk filter-type]
     [driver clause]
     (reconcile-temporal-types
-     ((get-method sql.qp/->honeysql [:sql filter-type])
+     ((get-method sql.qp/->honeysql [:sql-mbql5 filter-type])
       driver
       clause))))
 
@@ -989,7 +994,7 @@
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver outer-query]
-  (let [parent-method (get-method driver/mbql->native :sql)
+  (let [parent-method (get-method driver/mbql->native :sql-mbql5)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
            :table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
@@ -1033,7 +1038,7 @@
 
 ;; In BigQuery, log syntax is `log(x, base)`
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:log (sql.qp/->honeysql driver field) [:inline 10]])
 
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
@@ -1045,7 +1050,8 @@
    {:keys [field], :as field-filter} :- [:map
                                          [:field driver-api/schema.metadata.column]]]
   (let [field-temporal-type (temporal-type field)
-        parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/field-filter])
+        parent-method       (get-method sql.params.substitution/->replacement-snippet-info
+                                        [:sql-mbql5 :metabase.lib.parameters.parse.types/field-filter])
         result              (parent-method driver field-filter)]
     (cond-> result
       field-temporal-type (update :prepared-statement-args (fn [args]

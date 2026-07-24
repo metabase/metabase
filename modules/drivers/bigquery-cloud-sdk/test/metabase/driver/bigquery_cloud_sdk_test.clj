@@ -847,8 +847,12 @@
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should be able to query a Table that has a :type/Integer column marked as a PK or FK"
-      (is (= [[1 "Plato Yeshua" "2014-04-01T08:30:00Z"]]
-             (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1, :order-by [[:asc $id]]}))))))))
+      (let [mp (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                      (lib/order-by (lib.metadata/field mp (mt/id :users :id)) :asc)
+                      (lib/limit 1))]
+        (is (= [[1 "Plato Yeshua" "2014-04-01T08:30:00Z"]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))))))
 
 (deftest return-errors-test
   (mt/test-driver :bigquery-cloud-sdk
