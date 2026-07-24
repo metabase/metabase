@@ -7,13 +7,23 @@ redirect_from:
 
 # Embedding introduction
 
-You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application. Here are the different ways you can embed Metabase:
+You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application.
 
-- [Modular embedding](#modular-embedding)
-- [Full app embedding](#full-app-embedding)
-- [Public links](#public-links-and-embeds)
+There are two ways to embed Metabase.
+
+- [Modular embedding](#modular-embedding). Embed individual Metabase components like questions, dashboards, AI chat so they seamlessly integrate with your app.
+- [Full-app embedding](#full-app-embedding). Embed the full Metabase app in an iframe, styled like your branding.
+
+Most people go with modular embedding, so they can integrate Metabase components with your app.
 
 ## Modular embedding
+
+There are two ways to embed Metabase components:
+
+- Web components
+- React SDK
+
+Which to use: if your app uses React, use the React SDK. Otherwise, use the web components. The web components are built on top of the React SDK, so either option works for a React app—the SDK just gives you more control.
 
 With [modular embedding](./modular-embedding.md), you can embed individual Metabase components in your web app. You can use guest embeds for basic functionality, or use SSO to take full advantage of Metabase.
 
