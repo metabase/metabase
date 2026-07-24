@@ -38,7 +38,9 @@
     [:indexer_last_seen :timestamp-with-time-zone :null]
     [:indexer_last_seen_id :text :null]
     [:indexer_last_seen_hash :text :null]
-    [:indexer_stalled_at :timestamp-with-time-zone :null]]
+    [:indexer_stalled_at :timestamp-with-time-zone :null]
+    [:repair_orphan_count :bigint :null]
+    [:repair_snapshot_at :timestamp-with-time-zone :null]]
 
    :control
    [[:id :bigint [:primary-key]] ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
@@ -118,6 +120,17 @@
         (sql.helpers/with-columns schema)
         (sql/format :quoted true))))
 
+(defn ensure-health-metric-columns!
+  "Add the non-destructive health-metric columns to an existing metadata table."
+  [pgvector {:keys [metadata-table-name]}]
+  (when (semantic.util/table-exists? pgvector metadata-table-name)
+    (jdbc/execute!
+     pgvector
+     [(format (str "ALTER TABLE %s "
+                   "ADD COLUMN IF NOT EXISTS repair_orphan_count bigint NULL, "
+                   "ADD COLUMN IF NOT EXISTS repair_snapshot_at timestamptz NULL")
+              (semantic.util/quote-table metadata-table-name))])))
+
 (comment
   (create-index-metadata-table-if-not-exists-sql default-index-metadata)
   (create-control-table-if-not-exists-sql default-index-metadata)
@@ -144,7 +157,7 @@
     nil))
 
 (defn create-tables-if-not-exists!
-  "Creates the metadata and control tables if they do not already exist"
+  "Create the metadata, control, and gate tables if needed."
   [pgvector index-metadata]
   (let [{:keys [metadata-table-name control-table-name gate-table-name version]} index-metadata]
     ;; **note** we do not currently deal with version mismatches as there is only one version.

@@ -201,7 +201,8 @@
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/internal-metabot-id})
+                         {:metabot-id metabot.config/internal-metabot-id
+                          :profile-id :slackbot})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
         memory-atom     (atom nil)
@@ -244,13 +245,14 @@
     (try
       (transduce dispatch-xf (constantly nil) nil
                  (agent/run-agent-loop
-                  {:messages      messages
-                   :state         {}
-                   :profile-id    :slackbot
-                   :context       context
-                   :memory-atom   memory-atom
-                   :tracking-opts {:source     "slackbot"
-                                   :session-id conversation-id}}))
+                  {:messages        messages
+                   :state           {}
+                   :profile-id      :slackbot
+                   :conversation-id conversation-id
+                   :context         context
+                   :memory-atom     memory-atom
+                   :tracking-opts   {:source     "slackbot"
+                                     :session-id conversation-id}}))
       (catch Throwable t
         ;; Capture for the finally's `:error` payload, then re-throw so the
         ;; existing slack error-handling path (DM/channel) still surfaces a

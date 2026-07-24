@@ -326,6 +326,7 @@
                    :arguments {:reasoning     "User wants to see orders"
                                :query         external-query
                                :title         "First 10 orders"
+                               :description   "The first 10 orders."
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
                  ;; Iteration 3: Final text response
@@ -361,7 +362,7 @@
                          {:type     :tool-output
                           :function "construct_notebook_query"
                           :result   {:structured-output {:query {:database (mt/id)}}}}
-                         {:type :data :data-type "navigate_to"}
+                         {:type :data :data-type "generated_entity"}
                          {:type :start}
                          ;; has final text part
                          {:type :text}

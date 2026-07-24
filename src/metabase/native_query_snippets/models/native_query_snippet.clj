@@ -110,10 +110,6 @@
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
-(defmethod serdes/hash-fields :model/NativeQuerySnippet
-  [_snippet]
-  [:name (serdes/hydrated-hash :collection) :created_at])
-
 (defmethod mi/can-read? :model/NativeQuerySnippet
   [& args]
   (apply snippet.perms/can-read? args))

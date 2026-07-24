@@ -88,7 +88,11 @@
 
       :else
       (log/infof "Database schema version (%d) is newer than code version (%d). Not performing migration."
-                 db-version semantic.db.migration.impl/schema-version)))
+                 db-version semantic.db.migration.impl/schema-version))
+    ;; Existing schema-version-2 databases predate these additive columns. This compatibility pass must also
+    ;; run when the migration version already matches; newer schemas remain untouched by older code.
+    (when (<= db-version semantic.db.migration.impl/schema-version)
+      (semantic.db.migration.impl/ensure-schema-compatibility! tx opts)))
   nil)
 
 (defn- index-metadata-table-exists?
@@ -106,7 +110,7 @@
       0))
 
 (defn maybe-migrate-dynamic-schema!
-  "Migration for dynamic tables (index_table_xyzs) if appropriate."
+  "Migration for dynamic tables (the index_<provider>_<model>_<dims> index tables) if appropriate."
   [tx {:keys [index-metadata] :as opts}]
   (let [db-version (lowest-dynamic-db-version index-metadata tx)]
     (cond

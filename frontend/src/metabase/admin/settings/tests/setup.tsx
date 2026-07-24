@@ -1,6 +1,5 @@
 import { render as testingLibraryRender } from "@testing-library/react";
 import fetchMock from "fetch-mock";
-import type { ReactNode } from "react";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -26,7 +25,7 @@ import { mockSettings } from "__support__/settings";
 import { getTestStoreAndWrapper, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Outlet, Route } from "metabase/router";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -206,9 +205,7 @@ export const setup = async ({
     initialRoute: `/admin/settings${initialRoute}`,
   });
 
-  const PassThroughGuard = ({ children }: { children: ReactNode }) => (
-    <>{children}</>
-  );
+  const PassThroughGuard = () => <Outlet />;
 
   testingLibraryRender(
     <Route path="admin/settings">

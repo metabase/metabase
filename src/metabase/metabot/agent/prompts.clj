@@ -62,17 +62,7 @@
 
   Parameters:
   - template: Template string (from load-system-prompt-template)
-  - context: Map of template variables
-
-   Common context variables:
-   - :current-user-info - Formatted current user info and glossary
-   - :current-time - User's current time string
-  - :first-day-of-week - Calendar week start (default \"Sunday\")
-  - :sql-dialect - SQL dialect name
-  - :sql-dialect-instructions - Dialect-specific guidance (markdown)
-  - :tool-instructions - Vector of tool instruction maps
-  - :viewing-context - Formatted user viewing context
-  - :recent-views - Formatted recent views"
+  - context: Map of template variables"
   [template context]
   (try
     (selmer/render template context)
@@ -139,7 +129,7 @@
 
   Parameters:
   - profile: Profile map with :prompt-template key
-  - context: Agent context map with user info, viewing context, etc.
+  - context: Template context map; only :sql_dialect (or :sql-dialect) is read
   - tools: Tool registry map (name -> tool def/var)
   - capabilities: Sequence of capability strings/keywords for the request, used to
     gate which skills appear in the manifest.
@@ -149,6 +139,10 @@
   loaded on demand via the `load_skill` tool. SQL dialect instructions are
   preloaded into the message stream (see `metabase.metabot.skills`), not here.
 
+  Per-request user context (current time, user info, viewing context, recent
+  views) is injected into the last user message via [[inject-context]], not
+  rendered here to help keep the system prompt cacheable.
+
   Returns rendered system message string."
   [{:keys [prompt-template] :as profile} context tools capabilities]
   (let [template-name (or prompt-template "internal.selmer")
@@ -157,16 +151,6 @@
       (let [sql-dialect          (or (get context :sql_dialect)
                                      (get context :sql-dialect))
             {:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
-            current-user-info    (or (get context :current_user_info)
-                                     (get context :current-user-info))
-            current-time         (or (get context :current_time)
-                                     (get context :current-time))
-            first-day-of-week    (or (get context :first_day_of_week)
-                                     (get context :first-day-of-week "Sunday"))
-            viewing-context      (or (get context :viewing_context)
-                                     (get context :viewing-context))
-            recent-views         (or (get context :recent_views)
-                                     (get context :recent-views))
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
             ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
@@ -176,9 +160,6 @@
                                       (boolean (some sql-generation-tool-names (keys tools))))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
-                                  :current_time             current-time
-                                  :current_user_info        current-user-info
-                                  :first_day_of_week        first-day-of-week
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
@@ -187,8 +168,6 @@
                                   ;; load, nudging the model into pointless `load_skill` calls.
                                   :skill_catalog            (not-empty catalog)
                                   :skill_always_on          (mapv :body always-on)
-                                  :viewing_context          viewing-context
-                                  :recent_views             recent-views
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
@@ -216,7 +195,7 @@
   (let [;; Injection is performed only when the hardcoded keys are present in in context to avoid
         ;; insertion e.g. insertion of blank xml tags.
         injection (when (some #(string? (not-empty (get context %)))
-                              [:viewing_context :current_time :current_user_info])
+                              [:viewing_context :current_time :current_user_info :recent_views])
                     (selmer/render (get-cached-message-injection-template)
                                    context))]
     (str injection str*)))

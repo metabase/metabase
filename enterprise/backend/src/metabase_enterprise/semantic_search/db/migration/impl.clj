@@ -66,9 +66,14 @@
   (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
   (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))
 
+(defn ensure-schema-compatibility!
+  "Apply non-destructive additions that existing databases at the current schema version also need."
+  [tx {:keys [index-metadata]}]
+  (semantic.index-metadata/ensure-health-metric-columns! tx index-metadata))
+
 (def dynamic-schema-version
-  "Code version of dynamic schema (index_table_xyzs). If higher than what's found in db dynamic schema migration will
-  be attempted."
+  "Code version of dynamic schema (the index_<provider>_<model>_<dims> index tables). If higher than what's found in
+  db dynamic schema migration will be attempted."
   5)
 
 (defn- alter-index-tables!
@@ -282,8 +287,8 @@
                                             {:curated true :official_collection true}))))))))
 
 (defn migrate-dynamic-schema!
-  "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
-  leftovers if necessary."
+  "Migrate runtime-managed schema, i.e. the schema of the `index_...` index tables. Migration author is responsible for
+  removing leftovers if necessary."
   [tx {:keys [index-metadata] :as _opts}]
   ;; migration 1: all tables dropped in schema migration in single function call
   ;; migration 2: add personal_owner_id column to index tables

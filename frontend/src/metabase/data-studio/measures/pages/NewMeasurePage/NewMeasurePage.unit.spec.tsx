@@ -23,7 +23,7 @@ function setup({ table }: SetupOpts) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <NewMeasurePage
           // Unjustified type cast. FIXME
           route={{ path: "/" } as never}
@@ -31,7 +31,7 @@ function setup({ table }: SetupOpts) {
           breadcrumbs={<div />}
           getSuccessUrl={() => "/success"}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

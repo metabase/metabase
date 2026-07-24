@@ -46,10 +46,10 @@ const setup = ({
   setupRecentViewsEndpoints(mockRecentModels);
   return renderWithProviders(
     <>
-      <Route path="/" component={() => <BrowseModels />} />
+      <Route path="/" element={<BrowseModels />} />
       <Route
         path="/model/:slug"
-        component={() => <div data-testid="model-detail-page" />}
+        element={<div data-testid="model-detail-page" />}
       />
     </>,
     {

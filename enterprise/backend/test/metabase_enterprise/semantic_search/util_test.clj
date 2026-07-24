@@ -16,6 +16,13 @@
     (is (= "\"semantic_search\"" (semantic.util/quote-ident "semantic_search")))
     (is (= "\"weird\"\"name\"" (semantic.util/quote-ident "weird\"name")))))
 
+(deftest ^:parallel quote-table-test
+  (testing "a schema-qualified name quotes each part separately, not the whole thing as one identifier"
+    (is (= "\"semantic_search\".\"index_table_1\""
+           (semantic.util/quote-table "semantic_search.index_table_1"))))
+  (testing "an unqualified name is a single quoted identifier"
+    (is (= "\"index_table_1\"" (semantic.util/quote-table "index_table_1")))))
+
 (deftest ^:parallel column-keyword-test
   (testing "a dotted-name keyword (renders as separate identifiers), never a namespaced one"
     (is (= :index_table_1.model (semantic.util/column-keyword "index_table_1" "model")))
@@ -25,6 +32,22 @@
   (testing "conflict-target-column drops the schema — ON CONFLICT names the target by its bare relation"
     (is (= :index_table_1.model
            (semantic.util/conflict-target-column "semantic_search.index_table_1" "model")))))
+
+(deftest index-ready?-catalog-query-test
+  (let [queries (atom [])]
+    (mt/with-dynamic-fn-redefs
+      [jdbc/execute-one! (fn [_ query _]
+                           (swap! queries conj query)
+                           {:index_ready true})]
+      (is (true? (semantic.util/index-ready? ::pgvector "semantic_search.index_1")))
+      (is (true? (semantic.util/index-ready? ::pgvector "index_2"))))
+    (testing "both catalog queries require PostgreSQL to mark the index ready and valid"
+      (doseq [[statement] @queries]
+        (is (re-find #"x\.indisready" statement))
+        (is (re-find #"x\.indisvalid" statement))))
+    (testing "qualified names retain their schema constraint"
+      (is (= ["semantic_search" "index_1"] (rest (first @queries))))
+      (is (= ["index_2"] (rest (second @queries)))))))
 
 (deftest catalog-lookups-schema-scoping-test
   (testing "qualified names scope table/index existence checks to their schema; a same-named object in

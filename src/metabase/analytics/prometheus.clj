@@ -479,6 +479,20 @@
                      {:description "Number of documents in the library entity index, as of the last full reconcile."})
    (prometheus/gauge :metabase-entity-retrieval/index-entities
                      {:description "Number of distinct entities in the library entity index, as of the last full reconcile."})
+   ;; Search-index health, one series per logical index. Implementations publish these through
+   ;; metabase.search.index-health; labels identify stable logical indexes, never physical table names.
+   (prometheus/gauge :metabase-search/index-coverage-ratio
+                     {:description (str "Fraction (0-1) of the items that should be indexed that actually are, "
+                                        "per search index.")
+                      :labels      [:index]})
+   (prometheus/gauge :metabase-search/index-garbage-count
+                     {:description (str "Absolute number of indexed items that should not be indexed "
+                                        "(orphaned or no longer a candidate), per search index.")
+                      :labels      [:index]})
+   (prometheus/gauge :metabase-search/index-staleness-seconds
+                     {:description (str "Age in seconds of the oldest known-pending change not yet reflected "
+                                        "in the index (indexer/reconcile backlog), per search index.")
+                      :labels      [:index]})
    ;; data-complexity-score timing
    ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.
    (prometheus/histogram :metabase-data-complexity/scoring-duration-ms
@@ -531,6 +545,10 @@
    (prometheus/counter :metabase-notification/template-update
                        {:description "Number of notification templates updated."
                         :labels [:channel-type]})
+   (prometheus/counter :metabase-notification/image-buffer-pooled
+                       {:description "Number of chart rasterization images backed by a pooled buffer."})
+   (prometheus/counter :metabase-notification/image-buffer-unpooled
+                       {:description "Number of chart rasterization images too large for the pool, allocated fresh."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
    (prometheus/counter :metabase-gsheets/connection-creation-error

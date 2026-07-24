@@ -1,6 +1,5 @@
 import type { Tag } from "./types";
 import {
-  filterOutNonSupportedPrereleaseIdentifier,
   findNextMinorVersion,
   findNextPatchVersion,
   getBuildRequirements,
@@ -14,11 +13,9 @@ import {
   getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
   getMinorVersion,
-  getNextSdkVersion,
   getNextVersions,
   getOSSVersion,
   getReleaseBranch,
-  getSdkVersionFromReleaseTagName,
   getVersionFromReleaseBranch,
   getVersionType,
   isEnterpriseVersion,
@@ -737,19 +734,6 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("getSdkVersionFromReleaseTagName", () => {
-    it("should resolve sdk package version from assigned release tag", () => {
-      expect(getSdkVersionFromReleaseTagName("embedding-sdk-0.51.9")).toEqual(
-        "0.51.9",
-      );
-      expect(
-        getSdkVersionFromReleaseTagName("embedding-sdk-0.52.2-nightly"),
-      ).toEqual("0.52.2-nightly");
-
-      expect(() => getSdkVersionFromReleaseTagName("v0.51.5.1")).toThrow();
-    });
-  });
-
   describe("getDotXs", () => {
     it("should return the correct major dot Xs", () => {
       expect(getDotXs("v1.75.0", 1)).toEqual("v1.75.x");
@@ -935,28 +919,6 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("filterOutNonSupportedPrereleaseIdentifier", () => {
-    function createTags(versions: string[]): Tag[] {
-      return versions.map(
-        (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
-      );
-    }
-
-    it("should ignore prerelease labels that are not `nightly` when passing refs", () => {
-      const filteredTags = createTags([
-        "0.55.0",
-        "0.55.0-nightly",
-        "0.55.0-rc1",
-        "0.55.0-rc2",
-        "0.55.0-beta",
-        "0.55.0-alpha",
-        "0.55.5-metabot",
-      ]).filter(filterOutNonSupportedPrereleaseIdentifier);
-
-      expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
-    });
-  });
-
   describe("getMajorVersion", () => {
     it.each([
       ["v0.52.3", "52"],
@@ -977,78 +939,4 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("getNextSdkVersion", () => {
-    describe("master branch (pre-release versions)", () => {
-      it("should increment pre-release version if suffix exists", () => {
-        const result = getNextSdkVersion("master", "0.57.0-alpha.1");
-        expect(result).toEqual({
-          version: "0.57.0-alpha.2",
-          preReleaseLabel: "alpha",
-          majorVersion: "57",
-        });
-      });
-
-      it("should set next pre-release version to .1 if no numeric part in suffix", () => {
-        const result = getNextSdkVersion("master", "0.57.0-alpha");
-        expect(result).toEqual({
-          version: "0.57.0-alpha.0",
-          preReleaseLabel: "alpha",
-          majorVersion: "57",
-        });
-      });
-
-      it("should throw an error if no suffix is provided on master branch", () => {
-        expect(() => getNextSdkVersion("master", "0.57.0")).toThrow(
-          "Expected pre-release suffix on master branch, got: 0.57.0",
-        );
-      });
-    });
-
-    describe("release/stable branches (non-master)", () => {
-      it("should increment patch version when no suffix", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.0");
-        expect(result).toEqual({
-          version: "0.57.1",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-
-      it("should set proper initial patch version for a next major release", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.x");
-        expect(result).toEqual({
-          version: "0.57.0",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-
-      it("should set initial pre-release version when suffix is preset, but pre-release version is not", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.0-beta");
-        expect(result).toEqual({
-          version: "0.57.0-beta.0",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-
-      it("should set proper initial patch version when pre-release suffix is preset", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.x-beta");
-        expect(result).toEqual({
-          version: "0.57.0-beta.0",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-
-      it("should increment pre-release version", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.0-beta.0");
-        expect(result).toEqual({
-          version: "0.57.0-beta.1",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-    });
-  });
 });

@@ -72,7 +72,7 @@ export const setup = ({
 
   renderWithProviders(
     <Route
-      component={() => <PythonTransformsUpsellModal onClose={onClose} />}
+      element={<PythonTransformsUpsellModal onClose={onClose} />}
       path="/"
     />,
     {

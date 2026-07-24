@@ -17,9 +17,12 @@ import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermission
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+const RoutedDataPermissionsPage = withRouteProps(DataPermissionsPage);
+const RoutedGroupsPermissionsPage = withRouteProps(GroupsPermissionsPage);
 
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
@@ -49,13 +52,25 @@ const setup = async ({
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   renderWithProviders(
-    <Route path="/admin/permissions/data" component={DataPermissionsPage}>
-      <Route
-        path="group(/:groupId)(/database/:databaseId)(/schema/:schemaName)"
-        component={GroupsPermissionsPage}
-      >
-        {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
-      </Route>
+    <Route
+      path="/admin/permissions/data"
+      element={<RoutedDataPermissionsPage />}
+    >
+      {/*
+       * v7 cannot parse v3 optional groups, so the app spells each depth out as
+       * its own route (see GROUPS_PERMISSIONS_PATHS in permissions/routes.tsx).
+       * Mirror that here.
+       */}
+      {[
+        "group",
+        "group/:groupId",
+        "group/:groupId/database/:databaseId",
+        "group/:groupId/database/:databaseId/schema/:schemaName",
+      ].map((path) => (
+        <Route key={path} path={path} element={<RoutedGroupsPermissionsPage />}>
+          {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
+        </Route>
+      ))}
     </Route>,
     {
       withRouter: true,

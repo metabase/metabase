@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
@@ -15,6 +14,7 @@ import { LighthouseIllustration } from "metabase/common/components/LighthouseIll
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 import { Button, Center, Stack, Text } from "metabase/ui";
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useSetting, useStoreUrl } from "metabase/common/hooks";
-import { Alert, Anchor, Icon, Text } from "metabase/ui";
+import { Alert, Anchor, Icon } from "metabase/ui";
 
 export function DevInstanceBanner() {
   const isDevMode = useSetting("development-mode?");
@@ -38,11 +38,11 @@ function BannerBody({
 }) {
   const storeUrl = useStoreUrl();
   return (
-    <Text lh="1.25rem">
+    <>
       {copyText}{" "}
       <Anchor fw="bold" href={storeUrl} target="_blank">
         {linkText}
       </Anchor>
-    </Text>
+    </>
   );
 }
