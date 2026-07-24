@@ -304,10 +304,14 @@
   top of rows Liquibase just wrote: MySQL's second-precision DATEEXECUTED **rounds** sub-second JDBC timestamps, so a
   row Liquibase wrote at xx.5s is stored one second in the FUTURE -- a row written shortly after it (CURRENT_TIMESTAMP
   truncates; a subsequent run's rows can tie) can then sort at-or-before it and fall outside the rollback window.
-  Real deployments are separated by real wall-clock time; this restores that separation for back-to-back test writes."
+  Real deployments are separated by real wall-clock time; this restores that separation for back-to-back test writes.
+
+  The rewind is computed ON THE SERVER (`CURRENT_TIMESTAMP - INTERVAL '1' MINUTE`, valid on H2/Postgres/MySQL): a
+  client-side `java.sql.Timestamp` parameter is rendered in the JVM's zone while Liquibase's rows and
+  `CURRENT_TIMESTAMP` land in the server's frame, so on a non-UTC dev machine against a UTC MySQL the \"aged\" rows
+  would jump hours into the future instead."
   [spec changelog-table]
-  (jdbc/execute! spec [(format "UPDATE %s SET dateexecuted = ?" changelog-table)
-                       (java.sql.Timestamp/from (.minus (java.time.Instant/now) (java.time.Duration/ofMinutes 1)))]))
+  (jdbc/execute! spec [(format "UPDATE %s SET dateexecuted = CURRENT_TIMESTAMP - INTERVAL '1' MINUTE" changelog-table)]))
 
 (deftest backfill-uses-highest-version-not-latest-executed-test
   (testing "backfill stamps the highest major present, even when a lower-version changeset ran last (e.g. a back-ported patch)"
