@@ -1,4 +1,4 @@
-import { RuleTester } from "eslint";
+import { RuleTester } from "oxlint/plugins-dev";
 
 import rule from "../eslint-plugin-metabase/rules/jtag-missing-key";
 
