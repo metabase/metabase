@@ -52,142 +52,27 @@ dataset_query:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
-- base_type: type/Integer
-  coercion_strategy: null
-  description: null
-  display_name: ID
-  effective_type: type/Integer
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, id]
-  - {base-type: type/Integer}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_audit_log, id]
-  name: id
-  semantic_type: type/PK
-  settings: null
-  visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
-  display_name: Topic
-  effective_type: type/Text
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, topic]
-  - {base-type: type/Text}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_audit_log, topic]
-  name: topic
-  semantic_type: type/Category
-  settings: null
-  visibility_type: normal
-- base_type: type/DateTimeWithLocalTZ
-  coercion_strategy: null
-  description: null
-  display_name: Timestamp
-  effective_type: type/DateTimeWithLocalTZ
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, timestamp]
-  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_audit_log, timestamp]
-  name: timestamp
-  semantic_type: type/CreationTimestamp
-  settings: null
-  unit: default
-  visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
-  display_name: End Timestamp
-  effective_type: type/Text
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, end_timestamp]
-  - {base-type: type/Text}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_audit_log, end_timestamp]
-  name: end_timestamp
-  semantic_type: null
-  settings: null
-  visibility_type: normal
-- base_type: type/Integer
-  coercion_strategy: null
-  description: null
+- {description: null, display_name: ID, fk_target_field_id: null, name: id, semantic_type: type/PK, settings: null, visibility_type: normal}
+- {description: null, display_name: Topic, fk_target_field_id: null, name: topic, semantic_type: type/Category, settings: null, visibility_type: normal}
+- {description: null, display_name: Timestamp, fk_target_field_id: null, name: timestamp, semantic_type: type/CreationTimestamp, settings: null, visibility_type: normal}
+- {description: null, display_name: End Timestamp, fk_target_field_id: null, name: end_timestamp, semantic_type: null, settings: null, visibility_type: normal}
+- description: null
   display_name: User ID
-  effective_type: type/Integer
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, user_id]
-  - {base-type: type/Integer}
   fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
-  id: [Internal Metabase Database, public, v_audit_log, user_id]
   name: user_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
-  display_name: Entity Type
-  effective_type: type/Text
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, entity_type]
-  - {base-type: type/Text}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_audit_log, entity_type]
-  name: entity_type
-  semantic_type: type/Category
-  settings: null
-  visibility_type: normal
-- base_type: type/Integer
-  coercion_strategy: null
-  description: null
-  display_name: Entity ID
-  effective_type: type/Integer
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, entity_id]
-  - {base-type: type/Integer}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_audit_log, entity_id]
-  name: entity_id
-  semantic_type: type/Category
-  settings: null
-  visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
+- {description: null, display_name: Entity Type, fk_target_field_id: null, name: entity_type, semantic_type: type/Category, settings: null, visibility_type: normal}
+- {description: null, display_name: Entity ID, fk_target_field_id: null, name: entity_id, semantic_type: type/Category, settings: null, visibility_type: normal}
+- description: null
   display_name: Entity Qualified ID
-  effective_type: type/Text
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
-  - {base-type: type/Text}
   fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
-  id: [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
-  display_name: Details
-  effective_type: type/Text
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_audit_log, details]
-  - {base-type: type/Text}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_audit_log, details]
-  name: details
-  semantic_type: type/Category
-  settings: null
-  visibility_type: normal
+- {description: null, display_name: Details, fk_target_field_id: null, name: details, semantic_type: type/Category, settings: null, visibility_type: normal}
 visualization_settings: {column_settings: null, table.cell_column: model_id, table.pivot_column: end_timestamp}
 card_schema: 23
 serdes/meta:

@@ -1,6 +1,6 @@
-name: Most viewed questions
-entity_id: _lfXwss_MckZBidbcJsgk
-created_at: '2023-08-18T19:13:04.917177Z'
+name: Most viewed docments
+entity_id: lW4N1ScsUzDOVKzzzsGJW
+created_at: '2026-04-27T13:45:01.012945Z'
 creator_id: internal@metabase.com
 display: table
 collection_id: vG58R8k-QddHWA7_47umn
@@ -24,17 +24,29 @@ dataset_query:
       - [Internal Metabase Database, public, v_content, entity_id]
     filters:
     - - =
-      - {}
+      - {effective-type: type/Boolean}
       - - field
-        - {base-type: type/Text, effective-type: type/Text}
-        - [Internal Metabase Database, public, v_view_log, entity_type]
-      - card
+        - {base-type: type/Text, effective-type: type/Text, lib/uuid: d6c82677-e414-43eb-805b-8dab8953b1ed}
+        - entity_type
+      - document
+    - - =
+      - {effective-type: type/Boolean}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified, lib/uuid: 98310a0b-4961-437f-a726-65e82a6d4b5c}
+        - entity_type
+      - document
     - - =
       - {}
       - - field
-        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
-        - [Internal Metabase Database, public, v_content, entity_type]
-      - question
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Group Members - User, lib/uuid: 0ba14c0a-a3e3-40f6-a5c6-b401aa7954f4}
+        - group_name
+      - All Users
+    - - =
+      - {}
+      - - field
+        - {base-type: type/Boolean, effective-type: type/Boolean, join-alias: People - Creator, lib/uuid: 3dec6512-a413-40ca-8905-0bc97e6779e9}
+        - is_active
+      - true
     joins:
     - alias: Content - Entity Qualified
       conditions:
@@ -120,7 +132,7 @@ visualization_settings:
   table.pivot_column: name
 card_schema: 23
 serdes/meta:
-- {id: _lfXwss_MckZBidbcJsgk, label: most_viewed_questions, model: Card}
+- {id: lW4N1ScsUzDOVKzzzsGJW, label: most_viewed_docments, model: Card}
 dashboard_id: IW64bVIFFkpldy410Pe5F
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question
