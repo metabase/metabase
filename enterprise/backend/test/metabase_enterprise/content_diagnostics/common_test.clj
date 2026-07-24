@@ -17,25 +17,29 @@
     (doseq [[etype model] common/entity-type->model]
       (is (= etype (common/model->entity-type model)))
       (is (= model (common/entity-type->model etype)))))
-  (testing "it covers exactly the four content-diagnostics entity types"
-    (is (= #{:card :dashboard :document :transform} (set (keys common/entity-type->model))))))
+  (testing "it covers exactly the five content-diagnostics entity types"
+    (is (= #{:card :collection :dashboard :document :transform} (set (keys common/entity-type->model))))))
 
 (deftest entity-type-hierarchy-and-registry-test
-  (testing "card/dashboard/document derive ::collection-item; transform is an explicit outlier"
+  (testing "card/dashboard/document derive ::collection-item; transform and collection are explicit outliers"
     (doseq [etype [:card :dashboard :document]]
       (is (isa? common/hierarchy etype ::common/collection-item)
           (str etype " should derive ::collection-item")))
     (is (not (isa? common/hierarchy :transform ::common/collection-item))
-        "transform must not derive ::collection-item - it carries explicit methods"))
+        "transform must not derive ::collection-item - it carries explicit methods")
+    (is (not (isa? common/hierarchy :collection ::common/collection-item))
+        "collection must not derive ::collection-item - it is a distinct, non-column-resident outlier"))
   (testing "the column registry covers every collection-resident type it feeds"
     (doseq [etype [:card :dashboard :document]]
-      (is (vector? (common/context-cols etype)))
+      (is (vector? (common/context-cols etype)) (str etype " should have context-cols"))
       (is (vector? (common/peer-select-cols etype)))
       (is (vector? (common/candidate-cols etype))))
     (testing "transform is column-based for context only - its peer/candidate reads are bespoke methods"
       (is (vector? (common/context-cols :transform)))
       (is (nil? (common/peer-select-cols :transform)))
-      (is (nil? (common/candidate-cols :transform))))))
+      (is (nil? (common/candidate-cols :transform))))
+    (testing "collection has no context-cols entry - its breadcrumb anchor comes from location, not a column"
+      (is (nil? (common/context-cols :collection))))))
 
 (deftest entity-type-multimethods-are-fail-closed-test
   ;; The per-entity-type multimethods all dispatch through `common/hierarchy` with NO permissive :default, so
@@ -46,11 +50,23 @@
                     "hydrate-owner"    @#'api.common/hydrate-owner
                     "entity-context"   @#'api.common/entity-context
                     "candidate-rows"   @#'checkers.duplicated/candidate-rows}]
-    (testing "every covered entity-type resolves a method (registry completeness)"
+    (testing "every duplicated/serve covered entity-type resolves a method (registry completeness)"
       (doseq [[mm-name mm] mm-by-name
               etype        api.common/covered-entity-types]
         (is (some? (get-method mm etype))
             (format "%s has no method for covered type %s" mm-name etype))))
+    (testing "entity-context additionally covers :collection - the imbalanced-only subject the serve layer
+              still hydrates (its context comes from collection-context, keyed off location, not a column)"
+      (is (some? (get-method @#'api.common/entity-context :collection))
+          "entity-context must resolve a method for :collection"))
+    (testing "collection is NOT a hydrate-owner / read-entity-rows / candidate-rows subject: its owner is
+              baked into collection-context, and duplicated detection excludes it (imbalanced-only)"
+      (is (nil? (get-method @#'api.common/hydrate-owner :collection))
+          "collection must not resolve a hydrate-owner method - its owner is baked into collection-context")
+      (is (nil? (get-method @#'api.common/read-entity-rows :collection))
+          "collection must not resolve a read-entity-rows method - duplicated excludes collection")
+      (is (nil? (get-method @#'checkers.duplicated/candidate-rows :collection))
+          "collection must not resolve a candidate-rows method - duplicated excludes collection"))
     (testing "an unregistered entity-type resolves no method (no catch-all :default)"
       (doseq [[mm-name mm] mm-by-name]
         (is (nil? (get-method mm :not-an-entity-type))
@@ -63,11 +79,12 @@
 
 (deftest finding-type-multimethod-is-fail-closed-test
   ;; `finalize-finding` dispatches per row on the stored `finding_type` with NO permissive :default, so a
-  ;; new finding type left unregistered fails here (and at dispatch), not by silently serving an
-  ;; unfinalized row missing its native top-level column / details rewrite.
-  (let [covered-finding-types #{:stale :slow :duplicated}] ; the finding types this branch serves
+  ;; new finding type left unregistered fails here (and at dispatch), not by silently serving an unfinalized
+  ;; row missing its native top-level column / details rewrite.
+  ;; This branch serves stale/slow/duplicated plus the imbalanced umbrella (empty/sparse/crowded).
+  (let [served-finding-types #{:stale :slow :duplicated :empty :sparse :crowded}]
     (testing "every served finding-type resolves a method (registry completeness)"
-      (doseq [ftype covered-finding-types]
+      (doseq [ftype served-finding-types]
         (is (some? (get-method @#'api.common/finalize-finding ftype))
             (format "finalize-finding has no method for finding-type %s" ftype))))
     (testing "an unregistered finding-type resolves no method (no catch-all :default)"
@@ -101,6 +118,17 @@
             (is (= "Ops" (:entity-name f)))
             (is (= (mt/user->id :crowberto) (:entity-creator-id f)))
             (is (= "Crowberto Corv" (:entity-creator-name f)))))))))
+
+(deftest attach-entity-attrs-collection-has-no-creator-test
+  (testing "a collection finding gets name/created_at but NULL creator columns - collections have no
+            creator_id, and a personal collection's owner is not a creator proxy"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Team Reports"}]
+      (let [[out] (common/attach-entity-attrs
+                   [{:entity-type :collection :entity-id coll-id :finding-type :empty}])]
+        (is (= "Team Reports" (:entity-name out)))
+        (is (some? (:entity-created-at out)))
+        (is (nil? (:entity-creator-id out)))
+        (is (nil? (:entity-creator-name out)))))))
 
 (deftest attach-entity-attrs-lets-checker-set-values-win-test
   (testing "a value the checker already set (e.g. stale's scan-time entity-name) is not overwritten"

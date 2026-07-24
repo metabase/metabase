@@ -25,9 +25,8 @@
   "Run a scan and index its `:slow` findings by `[entity-type entity-id]`."
   []
   (let [scan-id (:scan_id (scan/scan!))]
-    (into {}
-          (map (juxt (juxt :entity_type :entity_id) identity))
-          (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id :finding_type :slow))))
+    (t2/select-fn->fn (juxt :entity_type :entity_id) identity
+                      :model/ContentDiagnosticsFinding :scan_id scan-id :finding_type :slow)))
 
 ;;; --------------------------------------------- checker --------------------------------------------------
 
@@ -414,6 +413,27 @@
                       (is (= {:id slow-card :name "Full Orders Export"
                               :entity_type "card" :card_type "model" :view_count 5}
                              (first entities))))))))))))))
+
+(deftest slow-api-transform-root-breadcrumb-test
+  (testing "GET /slow: a root-resident transform's breadcrumb is the Transforms-namespaced root sentinel"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-temporary-setting-values [content-diagnostics-slow-transform-threshold-seconds 10]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (let [now (t/offset-date-time)]
+            (mt/with-temp
+              ;; no :collection_id → the transform sits at the root of the :transforms tree
+              [:model/Transform    {xform :id} {}
+               :model/TransformRun _ {:transform_id xform :status :succeeded
+                                      :start_time (t/minus now (t/minutes 2))
+                                      :end_time   (t/minus now (t/minutes 1))}]
+              (scan/scan!)
+              (let [resp  (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/slow")
+                    by-id (into {} (map (juxt (juxt :entity_type :entity_id) identity)) (:data resp))
+                    f     (by-id ["transform" xform])]
+                (is (some? f))
+                (testing "root sentinel is namespaced to Transforms, not the default \"Our analytics\""
+                  (is (= {:id "root" :name "Transforms" :effective_ancestors []}
+                         (get-in f [:details :collection]))))))))))))
 
 (deftest slow-api-subject-view-count-test
   (testing "GET /slow hydrates each finding's own live view_count into details; a transform omits it"

@@ -7,7 +7,7 @@
   Response shape: a flat identity (`id, finding_type, entity_type, entity_id, detected_at,
   entity_display_name`) plus a nested typed `details` merging the stored verdict with live-hydrated
   `collection`, `description`, `owner`, `creator`, and `view_count` (the entity's usage counter, present
-  for every type but transform)."
+  for card/dashboard/document; not collection or transform)."
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
@@ -15,6 +15,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -147,6 +148,37 @@
     [:duplicate_count :int]
     [:details         DuplicatedDetails]]])
 
+(def ^:private ImbalancedFinding
+  "Response item for the `/imbalanced` umbrella - the stored `empty`/`sparse`/`crowded` finding types
+  share the count-vs-threshold schema, so one open map covers all three; the top-level `finding_type`
+  discriminates. `content_count` is the measured magnitude (0 on every `empty`); `details.threshold` is
+  the bound crossed (floor for sparse, ceiling for crowded, implicit 0 for empty) and `details.unit`
+  what was counted (`items` collection / `dashcards`|`tabs` dashboard / `cards` document / `rows`
+  card + transform). The two evidence-dated empties add `details.as_of`: card = the deciding run's
+  start, transform = the row-count estimate's sync time. `details.view_count` is the entity's live
+  usage counter, present for card/dashboard/document subjects (collection and transform have none)."
+  [:map
+   [:id                  :int]
+   [:finding_type        :keyword]
+   [:entity_type         :keyword]
+   [:entity_id           :int]
+   [:detected_at         some?]
+   [:entity_display_name [:maybe :string]]
+   ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
+   [:created_at          [:maybe some?]]
+   ;; measured magnitude (top-level, SQL-filterable/sortable); always present on imbalanced findings
+   [:content_count       :int]
+   [:details
+    [:map
+     [:collection  [:maybe :map]]
+     [:description [:maybe :string]]
+     [:owner       NormalizedUser]
+     [:creator     Creator]
+     [:view_count  {:optional true} :int]
+     [:threshold   :int]
+     [:unit        :string]
+     [:as_of       {:optional true} some?]]]])
+
 (def ^:private stale-sort-column->field
   "Sortable stale-list params → their native `content_diagnostics_finding` column. The shared base plus
   the stale-specific `last-active-at` magnitude column."
@@ -156,6 +188,23 @@
   "Sortable slow-list params → their native `content_diagnostics_finding` column. The shared base plus
   the slow-specific `duration-ms` magnitude column."
   (assoc api.common/base-sort-column->field :duration-ms :duration_ms))
+
+(def ^:private imbalanced-sort-column->field
+  "Sortable imbalanced-list params → their native `content_diagnostics_finding` column. The shared base
+  plus the imbalanced-specific `content-count` magnitude column (never NULL within this endpoint -
+  every imbalanced finding stamps it)."
+  (assoc api.common/base-sort-column->field :content-count :content_count))
+
+(def ^:private imbalanced-finding-types
+  "The stored finding types the `/imbalanced` umbrella endpoint spans."
+  #{:empty :sparse :crowded})
+
+(def ^:private imbalanced-entity-types
+  "Entity types the imbalanced finding types can emit - all five kinds. Deliberately this endpoint's own
+  enum (not a widened `api.common/covered-entity-types`): `collection` is an imbalanced-only subject,
+  and `card` participates in `empty` only (so `entity-types=card&finding-types=crowded` naturally
+  yields an empty set)."
+  #{:card :collection :dashboard :document :transform})
 
 (def ^:private duplicated-sort-column->field
   "Sortable duplicated-list params → their native `content_diagnostics_finding` column. The shared base
@@ -182,6 +231,18 @@
    "slow" params
    (when min-duration-ms [:>= :duration_ms min-duration-ms])))
 
+(defn- imbalanced-where-clause
+  "The shared finding-list WHERE over the umbrella's finding types (narrowed by the `finding-types`
+  param - the where-clause is the umbrella set intersected with the param) plus the `min-`/`max-content-count`
+  floor/ceiling on the native `content_count` (crowded queries typically use min, empty/sparse max,
+  but both apply to all)."
+  [{:keys [finding-types min-content-count max-content-count] :as params}]
+  (let [types (or (not-empty (u/one-or-many finding-types)) imbalanced-finding-types)]
+    (api.common/findings-where
+     (mapv name types) params
+     (when min-content-count [:>= :content_count min-content-count])
+     (when max-content-count [:<= :content_count max-content-count]))))
+
 (defn- duplicated-where-clause
   "The shared finding-list WHERE plus the duplicated-specific `min-duplicate-count` floor on the native
   `duplicate_count` (the peer count - e.g. names shared by 3+ entities = `min-duplicate-count` 2)."
@@ -189,6 +250,24 @@
   (api.common/findings-where
    "duplicated" params
    (when min-duplicate-count [:>= :duplicate_count min-duplicate-count])))
+
+(defn- findings-response
+  "The shared list-endpoint pipeline: select the sorted, paginated page for `where`, hydrate it
+  (`excluded-personal-ids` gates the culprit hydration; the per-finding-type tail - hoisted columns and
+  any details rewrite - is dispatched inside `api.common/hydrate-findings`), and wrap it in the
+  `{:data :total :limit :offset :last_scan_at}` envelope every finding list returns."
+  [where sort-column->field sort-column sort-direction excluded-personal-ids]
+  (let [page (t2/select :model/ContentDiagnosticsFinding
+                        (cond-> {:where    where
+                                 :order-by [[(sort-column->field sort-column) sort-direction]
+                                            [:id sort-direction]]}
+                          (request/limit)  (assoc :limit (request/limit))
+                          (request/offset) (assoc :offset (request/offset))))]
+    {:data         (api.common/hydrate-findings page excluded-personal-ids)
+     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
+     :limit        (request/limit)
+     :offset       (request/offset)
+     :last_scan_at (api.common/last-scan-at)}))
 
 ;;; ------------------------------------------------ endpoints ------------------------------------------
 
@@ -234,22 +313,13 @@
                                           [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
        [:threshold-days {:optional true} ms/PositiveInt]
        [:query          {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)
-        where (stale-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                   :entity-types                 entity-types
-                                   :threshold-days               threshold-days
-                                   :query                        query})
-        page  (t2/select :model/ContentDiagnosticsFinding
-                         (cond-> {:where    where
-                                  :order-by [[(stale-sort-column->field sort-column) sort-direction]
-                                             [:id sort-direction]]}
-                           (request/limit)  (assoc :limit (request/limit))
-                           (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page excluded-personal-ids)
-     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
-     :limit        (request/limit)
-     :offset       (request/offset)
-     :last_scan_at (api.common/last-scan-at)}))
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
+    (findings-response (stale-where-clause {:excluded-personal-collection-ids excluded-personal-ids
+                                            :entity-types                     entity-types
+                                            :threshold-days                   threshold-days
+                                            :query                            query})
+                       stale-sort-column->field sort-column sort-direction
+                       excluded-personal-ids)))
 
 (api.macros/defendpoint :get "/slow"
   :- [:map
@@ -285,23 +355,70 @@
                                            [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
        [:min-duration-ms {:optional true} ms/PositiveInt]
        [:query           {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)
-        where (slow-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                  :entity-types                 entity-types
-                                  :min-duration-ms              min-duration-ms
-                                  :query                        query})
-        page  (t2/select :model/ContentDiagnosticsFinding
-                         (cond-> {:where    where
-                                  :order-by [[(slow-sort-column->field sort-column) sort-direction]
-                                             [:id sort-direction]]}
-                           (request/limit)  (assoc :limit (request/limit))
-                           (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page excluded-personal-ids)
-     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
-     :limit        (request/limit)
-     :offset       (request/offset)
-     :last_scan_at (api.common/last-scan-at)}))
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
+    (findings-response (slow-where-clause {:excluded-personal-collection-ids excluded-personal-ids
+                                           :entity-types                     entity-types
+                                           :min-duration-ms                  min-duration-ms
+                                           :query                            query})
+                       slow-sort-column->field sort-column sort-direction
+                       excluded-personal-ids)))
 
+(api.macros/defendpoint :get "/imbalanced"
+  :- [:map
+      [:data         [:sequential ImbalancedFinding]]
+      [:total        :int]
+      [:limit        [:maybe :int]]
+      [:offset       [:maybe :int]]
+      [:last_scan_at [:maybe some?]]]
+  "List **imbalanced** findings - the latest valid finding per (entity, finding-type) across the
+  `empty`/`sparse`/`crowded` umbrella, permission-filtered for the current user. The three types are
+  detected by independent checkers with no cross-type precedence, so one entity can surface once per
+  finding type (e.g. a collection whose many items are all empty is both `crowded` and `empty`);
+  rows are findings, not entities, and `total` counts findings.
+  Each item is a flat identity + a top-level `content_count` + a nested `details` (collection,
+  `description`, `owner`, `creator`, `threshold`, `unit`, and - card/transform `empty` only - `as_of`).
+  For a `collection` finding the breadcrumb is the **parent** collection (the root sentinel `{:id \"root\"}`
+  when the collection sits at root), `creator` is
+  always null (collections have none - under the `created-by` sort they land in the null group, and a
+  personal collection's owner is not a creator proxy), and `owner` is the owning user when the
+  collection is personal. Paginated via `limit`/`offset`; `total` is the full valid count.
+
+  Params: `include-personal-collections` (default false) - when false, entities currently in (or, for a
+  collection subject, being) a personal collection are excluded. `entity-types` (repeatable;
+  `card`|`collection`|`dashboard`|`document`|`transform`, omitted = all; `card` emits `empty` only).
+  `finding-types` (repeatable; `empty`|`sparse`|`crowded`, omitted = all three) narrows within the
+  umbrella. `min-content-count`/`max-content-count` (int, 0 or more) floor/ceiling the native
+  `content_count`. `query` case-insensitively substring-matches the entity name. `sort-column`
+  (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`content-count`, default `detected-at`)
+  + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  [_route-params
+   {:keys [include-personal-collections sort-column sort-direction entity-types finding-types
+           min-content-count max-content-count query]
+    :or   {include-personal-collections false
+           sort-column                   :detected-at
+           sort-direction                :asc}}
+   :- [:map
+       [:include-personal-collections {:optional true} :boolean]
+       [:sort-column       {:optional true} (ms/enum-decode-keyword (keys imbalanced-sort-column->field))]
+       [:sort-direction    {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
+       [:entity-types      {:optional true} [:or
+                                             (ms/enum-decode-keyword imbalanced-entity-types)
+                                             [:sequential (ms/enum-decode-keyword imbalanced-entity-types)]]]
+       [:finding-types     {:optional true} [:or
+                                             (ms/enum-decode-keyword imbalanced-finding-types)
+                                             [:sequential (ms/enum-decode-keyword imbalanced-finding-types)]]]
+       [:min-content-count {:optional true} ms/IntGreaterThanOrEqualToZero]
+       [:max-content-count {:optional true} ms/IntGreaterThanOrEqualToZero]
+       [:query             {:optional true} :string]]]
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
+    (findings-response (imbalanced-where-clause {:excluded-personal-collection-ids excluded-personal-ids
+                                                 :entity-types                     entity-types
+                                                 :finding-types                    finding-types
+                                                 :min-content-count                min-content-count
+                                                 :max-content-count                max-content-count
+                                                 :query                            query})
+                       imbalanced-sort-column->field sort-column sort-direction
+                       excluded-personal-ids)))
 (api.macros/defendpoint :get "/duplicated"
   :- [:map
       [:data         [:sequential DuplicatedFinding]]
@@ -336,22 +453,13 @@
                                                [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
        [:min-duplicate-count {:optional true} ms/PositiveInt]
        [:query               {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)
-        where (duplicated-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                        :entity-types                 entity-types
-                                        :min-duplicate-count          min-duplicate-count
-                                        :query                        query})
-        page  (t2/select :model/ContentDiagnosticsFinding
-                         (cond-> {:where    where
-                                  :order-by [[(duplicated-sort-column->field sort-column) sort-direction]
-                                             [:id sort-direction]]}
-                           (request/limit)  (assoc :limit (request/limit))
-                           (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page excluded-personal-ids)
-     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
-     :limit        (request/limit)
-     :offset       (request/offset)
-     :last_scan_at (api.common/last-scan-at)}))
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
+    (findings-response (duplicated-where-clause {:excluded-personal-collection-ids excluded-personal-ids
+                                                 :entity-types                     entity-types
+                                                 :min-duplicate-count              min-duplicate-count
+                                                 :query                            query})
+                       duplicated-sort-column->field sort-column sort-direction
+                       excluded-personal-ids)))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."

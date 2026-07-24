@@ -71,9 +71,13 @@
     finding))
 
 (defn checker
-  "Instance-wide `:duplicated` finding maps across all covered entity types. The denormalized display
-  attrs are stamped by `common/attach-entity-attrs`; `:duration-ms`/`:last-active-at` are left unset
-  (those columns stay NULL on duplicated findings)."
+  "Instance-wide `:duplicated` finding maps across every covered entity type except `:collection` - a
+  duplicate-name check the imbalanced-only `:collection` subject deliberately sits out (it has no
+  `candidate-rows` method; mirrors `api.common/covered-entity-types`). The denormalized display attrs are
+  stamped by `common/attach-entity-attrs`; `:duration-ms`/`:last-active-at` are left unset (those columns
+  stay NULL on duplicated findings)."
   []
   (common/attach-entity-attrs
-   (into [] (mapcat findings-for-type) (keys common/entity-type->model))))
+   ;; exclude :collection - it is an imbalanced-only subject with no candidate-rows method, so iterating it
+   ;; would throw at dispatch. duplicated covers the collection-resident content types only.
+   (into [] (mapcat findings-for-type) (remove #{:collection} (keys common/entity-type->model)))))

@@ -5,10 +5,14 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.checkers.duplicated :as duplicated]
+   [metabase-enterprise.content-diagnostics.checkers.imbalanced.crowded :as imbalanced.crowded]
+   [metabase-enterprise.content-diagnostics.checkers.imbalanced.empty :as imbalanced.empty]
+   [metabase-enterprise.content-diagnostics.checkers.imbalanced.sparse :as imbalanced.sparse]
    [metabase-enterprise.content-diagnostics.checkers.slow :as slow]
    [metabase-enterprise.content-diagnostics.checkers.stale :as stale]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.collections.models.collection :as collection]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -26,7 +30,13 @@
   all-clean scan still resolves the previous scan's findings."
   [{:finding-types #{:stale}      :run stale/checker}
    {:finding-types #{:slow}       :run slow/checker}
-   {:finding-types #{:duplicated} :run duplicated/checker}])
+   {:finding-types #{:duplicated} :run duplicated/checker}
+   ;; the imbalanced family: three independent checkers (one namespace each under checkers/imbalanced/)
+   ;; with no cross-type precedence, so one entity can carry several of these finding types at once;
+   ;; each declared type scopes its own supersession
+   {:finding-types #{:empty}      :run imbalanced.empty/checker}
+   {:finding-types #{:sparse}     :run imbalanced.sparse/checker}
+   {:finding-types #{:crowded}    :run imbalanced.crowded/checker}])
 
 (defn covered-finding-types
   "The set of finding-types the registered checkers own - the supersession scope for post-scan invalidation."
@@ -47,14 +57,20 @@
 (defn- scope-collection-id-lookup
   "Batched `{[entity-type entity-id] → collection_id}` for the findings' entities - **one** query per
   entity-type (over just the flagged entities, F ≪ N). Entity types whose model has no `collection_id`
-  contribute nothing; an entity at the root maps to nil."
+  contribute nothing; an entity at the root maps to nil. A `:collection` subject has no `collection_id`
+  column - \"where it lived when flagged\" is its **parent**, parsed from `location` (nil at root)."
   [findings]
   (into {}
         (for [[entity-type findings-for-type] (group-by :entity-type findings)
               :let       [model (common/entity-type->model entity-type)]
               :when      model
-              :let       [id->coll (t2/select-pk->fn :collection_id [model :id :collection_id]
-                                                     :id [:in (set (map :entity-id findings-for-type))])]
+              :let       [ids      (set (map :entity-id findings-for-type))
+                          id->coll (if (= entity-type :collection)
+                                     (t2/select-pk->fn (comp collection/location-path->parent-id :location)
+                                                       [:model/Collection :id :location]
+                                                       :id [:in ids])
+                                     (t2/select-pk->fn :collection_id [model :id :collection_id]
+                                                       :id [:in ids]))]
               {:keys [entity-id]} findings-for-type]
           [[entity-type entity-id] (get id->coll entity-id)])))
 
@@ -79,8 +95,8 @@
     (t2/with-transaction [_conn]
       (t2/insert! :model/ContentDiagnosticsFinding
                   (for [{:keys [entity-type entity-id finding-type details scope-collection-id last-active-at
-                                duration-ms duplicate-count entity-name entity-created-at entity-creator-id
-                                entity-creator-name]} chunk]
+                                duration-ms content-count duplicate-count entity-name entity-created-at
+                                entity-creator-id entity-creator-name]} chunk]
                     {:scan_id             scan-id
                      :entity_type         entity-type
                      :entity_id           entity-id
@@ -88,6 +104,7 @@
                      :scope_collection_id scope-collection-id
                      :last_active_at      last-active-at
                      :duration_ms         duration-ms
+                     :content_count       content-count
                      :duplicate_count     duplicate-count
                      :entity_name         entity-name
                      :entity_created_at   entity-created-at

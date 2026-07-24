@@ -67,8 +67,11 @@
               ;; recover this run's scan_id from a guaranteed-flagged temp entity — pins that the
               ;; persisted rows (not just scan!'s returned topline) carry the batch's scan_id
               scan-id    (t2/select-one-fn :scan_id :model/ContentDiagnosticsFinding
-                                           :entity_type :card :entity_id stale-card-1)
-              rows       (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id)
+                                           :entity_type :card :entity_id stale-card-1
+                                           :finding_type :stale)
+              ;; :stale rows only - the same batch also carries the other checkers' findings (e.g. the
+              ;; dashcardless fresh dashboard is legitimately imbalanced-empty)
+              rows       (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id :finding_type :stale)
               found-keys (set (map (juxt :entity_type :entity_id) rows))]
           (testing "the run persisted one scan_id batch of findings"
             (is (string? scan-id))
