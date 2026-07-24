@@ -139,16 +139,20 @@
   (testing "a targeted run snapshots and clears the dirty set, reconciling each entity once"
     (let [dirty           @#'entity-retrieval.core/dirty-entities
           do-targeted-run (var-get #'entity-retrieval.core/do-targeted-run)
-          reconciled      (atom [])]
+          reconciled      (atom [])
+          sources         (atom [])]
       (reset! dirty #{["table" 7] ["metric" 9]})
       (mt/with-dynamic-fn-redefs
         [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
          semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
          reconcile/reconcile-entity!                            (fn [_ds _model entity-type entity-local-id]
+                                                                  (swap! sources conj
+                                                                         semantic.embedding/*embedding-request-source*)
                                                                   (swap! reconciled conj [entity-type entity-local-id])
                                                                   {:inserted 1 :deleted 0 :unchanged 0})]
         (do-targeted-run nil)
         (is (= #{["table" 7] ["metric" 9]} (set @reconciled)))
+        (is (= #{"reconcile"} (set @sources)))
         (is (empty? @dirty) "the dirty set is cleared at the run's start")))))
 
 (deftest request-entity-sync-is-fire-and-forget-test
@@ -175,11 +179,14 @@
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
         (let [current @#'entity-retrieval.core/full-current
               nxt     @#'entity-retrieval.core/full-next
-              calls   (atom 0)]
+              calls   (atom 0)
+              sources (atom [])]
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
              semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
              reconcile/reconcile!                                   (fn [_ds _resolve-model]
+                                                                      (swap! sources conj
+                                                                             semantic.embedding/*embedding-request-source*)
                                                                       (swap! calls inc)
                                                                       {:inserted 3 :deleted 1 :unchanged 2})]
             (testing "idle: the caller starts the run, gets its index diff + timing, and the schedule clears"
@@ -188,7 +195,13 @@
                        :execution {:waited_ms int? :ran_ms int?}}
                       (entity-retrieval.core/force-reconcile!)))
               (is (= 1 @calls))
+              (is (= "reconcile" (last @sources)))
               (is (nil? @current)) (is (nil? @nxt)))
+            (testing "an explicit caller source survives the routine default"
+              (reset! current nil) (reset! nxt nil) (reset! calls 0) (reset! sources [])
+              (binding [semantic.embedding/*embedding-request-source* "osi-generation"]
+                (entity-retrieval.core/force-reconcile!))
+              (is (= ["osi-generation"] @sources)))
             (testing "a run in flight: the caller queues a fresh follow-up instead of reusing the in-flight run"
               ;; a completed future stands in for the in-flight run — the caller must still run a fresh pass.
               (reset! current (future {:index {} :execution {}})) (reset! nxt nil) (reset! calls 0)

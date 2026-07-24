@@ -312,5 +312,8 @@
 (defn bedrock
   "Call AWS Bedrock (mantle endpoint), return AISDK stream."
   [& [{:keys [model] :or {model default-model}} :as args]]
-  (let [raw (apply bedrock-raw args)]
-    (eduction (model->aisdk-chunks-xf model) raw)))
+  (let [raw   (apply bedrock-raw args)
+        xform (model->aisdk-chunks-xf model)]
+    (if (= :anthropic (model->family model))
+      (core/completion-safe-eduction xform raw)
+      (eduction xform raw))))
