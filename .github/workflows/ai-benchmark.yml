@@ -1,21 +1,142 @@
 name: AI Benchmark
-
-# Runs the ai-benchmark E2E test suite against a Metabase instance.
-#
-# NOTE: This is a stub. The real workflow — which builds the benchmark Docker
-# image, boots Metabase + Postgres with a preloaded data dump, runs the
-# benchmark suite, and uploads results as artifacts — is being developed on a
-# feature branch. This stub exists on master so that the "Run workflow" button
-# is available in the GitHub Actions UI, which lets us dispatch the real
-# workflow against feature branches during development.
+run-name: "dispatch evals · ${{ github.event_name == 'pull_request' && format('smoke PR#{0}', github.event.pull_request.number) || (inputs.pr != '' && format('PR#{0}', inputs.pr) || (inputs.ref != '' && inputs.ref || 'master')) }}"
 
 on:
+  pull_request:
+    types: [labeled]
   workflow_dispatch:
+    inputs:
+      pr:
+        description: "Metabase PR number (sets ref to the PR head)"
+        required: false
+        default: ""
+      ref:
+        description: "Metabase ref"
+        required: false
+        default: ""
+      scope:
+        description: "Scope"
+        required: true
+        type: choice
+        options: [smoke, full, "all (EXPENSIVE)"]
+        default: smoke
+      sample:
+        description: "Sample (0 = full suite)"
+        required: false
+        default: "5"
+      evals_branch:
+        description: "Evals branch"
+        default: main
+
+concurrency:
+  group: evals-dispatch-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  placeholder:
-    name: Placeholder
+  announce:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.label.name == 'evals/smoke'
+      && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      comment_id: ${{ steps.post.outputs.comment_id }}
     steps:
-      - name: Stub
-        run: echo "ai-benchmark workflow stub — real implementation pending"
+      - name: Comment (building)
+        id: post
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `🤖 **Evals smoke** — ⏳ building the image… ([logs](${runUrl}))`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            core.setOutput('comment_id', String(data.id));
+
+  uberjar:
+    needs: [announce]
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.label.name == 'evals/smoke'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+
+  smoke:
+    needs: [announce, uberjar]
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.label.name == 'evals/smoke'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
+    steps:
+      - name: Dispatch smoke eval-run
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVALS_BRANCH: main
+        run: |
+          gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
+            -f ref="$EVALS_BRANCH" \
+            -f "inputs[pr]=$PR" \
+            -f "inputs[ref]=$HEAD_SHA" \
+            -f "inputs[scope]=smoke" \
+            -f "inputs[sample]=5" \
+            -f "inputs[evals_branch]=$EVALS_BRANCH" \
+            -f "inputs[comment_id]=$COMMENT_ID"
+
+  finalize:
+    # If the build or dispatch fell over, eval-run never took over the comment — leave a
+    # failure verdict instead of a comment stuck at "building the image…".
+    needs: [announce, uberjar, smoke]
+    if: always() && needs.announce.result == 'success' && needs.smoke.result != 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
+      SMOKE_RESULT: ${{ needs.smoke.result }}
+      UBERJAR_RESULT: ${{ needs.uberjar.result }}
+    steps:
+      - name: Comment (build/dispatch failed)
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            // A concurrency-cancelled retrigger lands here too; don't stamp it as an infra failure.
+            const cancelled = [process.env.SMOKE_RESULT, process.env.UBERJAR_RESULT].includes('cancelled');
+            const body = cancelled
+              ? `🤖 **Evals smoke** — ⚪ cancelled before evals started ([logs](${runUrl}))`
+              : `🤖 **Evals smoke** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              comment_id: Number(process.env.COMMENT_ID), body });
+
+  dispatch:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch eval-run
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          EVALS_BRANCH: ${{ github.event.inputs.evals_branch }}
+          PR: ${{ inputs.pr }}
+          REF: ${{ inputs.ref }}
+          SCOPE: ${{ inputs.scope }}
+          SAMPLE: ${{ inputs.sample }}
+        run: |
+          gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
+            -f ref="$EVALS_BRANCH" \
+            -f "inputs[pr]=$PR" \
+            -f "inputs[ref]=$REF" \
+            -f "inputs[scope]=$SCOPE" \
+            -f "inputs[sample]=${SAMPLE:-5}" \
+            -f "inputs[evals_branch]=$EVALS_BRANCH"
