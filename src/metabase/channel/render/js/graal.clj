@@ -347,7 +347,7 @@
 (def ^:private ^Pool untrusted-static-viz-context-pool
   "Pool of `SandboxPolicy/UNTRUSTED` isolate contexts for rendering untrusted custom-viz plugin JS. Mirrors
   [[static-viz-context-pool]] but for the isolate path."
-  (common/create-pool generate-untrusted-context! destroy-untrusted-context! {:max-size 1, :idle-minutes 10}))
+  (u.pool/create-pool generate-untrusted-context! destroy-untrusted-context! {:max-size 1, :idle-minutes 10}))
 
 (defn do-with-untrusted-static-viz-context
   "Acquire a pooled `SandboxPolicy/UNTRUSTED` isolate context"
