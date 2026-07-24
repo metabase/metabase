@@ -149,7 +149,7 @@
     (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
-        (let [{:keys [proxy calls]} (semantic.tu/spy semantic.index/upsert-index!)
+        (let [{:keys [proxy calls]} (semantic.tu/spy (mt/original-fn #'semantic.index/upsert-index!))
               documents (semantic.tu/mock-documents)]
           (mt/with-dynamic-fn-redefs [semantic.index/upsert-index! proxy]
             (testing "check proxies correct args and ret is untouched"
@@ -180,7 +180,7 @@
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
         (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
-        (let [{:keys [calls proxy]} (semantic.tu/spy semantic.index/delete-from-index!)]
+        (let [{:keys [calls proxy]} (semantic.tu/spy (mt/original-fn #'semantic.index/delete-from-index!))]
           (mt/with-dynamic-fn-redefs [semantic.index/delete-from-index! proxy]
             (testing "check proxies correct args and ret is untouched"
               (let [ret1 (sut pgvector index-metadata dash dash-ids)

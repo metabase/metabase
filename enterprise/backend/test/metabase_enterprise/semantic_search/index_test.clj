@@ -421,19 +421,19 @@
           (testing "ensure upsert! and delete! don't realize the full reducible at once"
             (semantic.tu/check-index-has-no-mock-docs)
             (testing "upsert-index!"
-              ;; This function is invoked by an index worker thread; dynamic redefs would not propagate to it.
-              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-              (with-redefs [semantic.index/upsert-index-pooled!
-                            (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
-                (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
+              (let [original-upsert-index-pooled! (mt/original-fn #'semantic.index/upsert-index-pooled!)]
+                (mt/with-dynamic-fn-redefs
+                  [semantic.index/upsert-index-pooled!
+                   (only-first-call realized original-upsert-index-pooled!)]
+                  (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs)))))
               (semantic.tu/check-index-has-mock-card))
             (reset! realized 0)
             (testing "delete-from-index!"
-              ;; This function is invoked by an index worker thread; dynamic redefs would not propagate to it.
-              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-              (with-redefs [semantic.index/delete-from-index-batch-sql
-                            (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
-                (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs)))))
+              (let [original-delete-from-index-batch-sql (mt/original-fn #'semantic.index/delete-from-index-batch-sql)]
+                (mt/with-dynamic-fn-redefs
+                  [semantic.index/delete-from-index-batch-sql
+                   (only-first-call realized original-delete-from-index-batch-sql)]
+                  (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs))))))
               (semantic.tu/check-index-has-no-mock-docs))))))))
 
 (defn- track-concurrency
