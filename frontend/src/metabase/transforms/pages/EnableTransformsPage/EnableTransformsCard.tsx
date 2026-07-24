@@ -73,9 +73,10 @@ export function EnableTransformsCard({
                   )}
                   {!hasDbThatSupportsTransforms && (
                     <Alert
+                      size="compact"
                       color="warning"
                       variant="light"
-                      icon={<Icon name="warning" size={16} />}
+                      icon={<Icon name="warning" />}
                       title={t`No compatible database connection`}
                     >
                       {jt`None of your connected databases can be used with transforms. ${(

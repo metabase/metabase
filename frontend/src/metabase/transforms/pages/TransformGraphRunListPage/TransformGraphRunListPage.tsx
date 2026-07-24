@@ -12,8 +12,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useDispatch } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { replace } from "metabase/router";
+import { replace, useRouter } from "metabase/router";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
@@ -39,13 +38,8 @@ import {
 
 const EMPTY_RUNS: TransformGraphRun[] = [];
 
-type TransformGraphRunListPageProps = {
-  location: Location;
-};
-
-export function TransformGraphRunListPage({
-  location,
-}: TransformGraphRunListPageProps) {
+export function TransformGraphRunListPage() {
+  const { location } = useRouter();
   const params = useMemo(() => getParsedParams(location), [location]);
   const filterOptions = useMemo(() => getFilterOptions(params), [params]);
   const { page = 0 } = params;

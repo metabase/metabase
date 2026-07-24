@@ -2,28 +2,14 @@ import { t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { NewMetricPage } from "metabase/metrics/pages/NewMetricPage";
-import { Link, type Location, type Route } from "metabase/router";
+import { Link } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { dataStudioMetricUrls } from "../../urls";
 
-interface NewMetricPageQuery {
-  collectionId?: string;
-}
-
-interface DataStudioNewMetricPageProps {
-  location: Location<NewMetricPageQuery>;
-  route: Route;
-}
-
-export function DataStudioNewMetricPage({
-  location,
-  route,
-}: DataStudioNewMetricPageProps) {
+export function DataStudioNewMetricPage() {
   return (
     <NewMetricPage
-      location={location}
-      route={route}
       urls={dataStudioMetricUrls}
       showAppSwitcher
       triggeredFrom="data_studio"

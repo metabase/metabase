@@ -8,7 +8,7 @@ type Props = {
   theme: MetabaseTheme | undefined;
 };
 
-// Mimics the frontend/src/metabase/common/components/Alert/Alert.styled.tsx
+// Mimics the error alert styling from metabase/ui
 const DefaultErrorMessage = ({ message, theme }: Props) => {
   return (
     <div

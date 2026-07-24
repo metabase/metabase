@@ -321,6 +321,10 @@
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     {:documents documents :entities entities}))
 
+(defn- capture-reconcile-watermark [conn]
+  (:now (jdbc/execute-one! conn ["SELECT now() AS now"]
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
 ;; Scalability — targeted writes, full-diff backstop.
 ;; The full diff is O(total index size) per run, not O(changes). Embeddings — the only expensive resource —
 ;; are already change-scoped (only a new doc_text is embedded; an idle run embeds nothing), and the O(total)
@@ -334,11 +338,12 @@
 (defn- reconcile-against-appdb!
   "The full diff body — assumes the reconcile advisory lock is held on `conn`. See the namespace docstring."
   [conn embedding-model]
-  (let [desired     (desired-docs)
-        desired-ids (set (map :doc_id desired))
-        stored      (stored-docs conn)
-        to-insert   (remove #(contains? stored (:doc_id %)) desired)
-        orphans     (remove desired-ids (keys stored))
+  (let [reconciled-at (capture-reconcile-watermark conn)
+        desired       (desired-docs)
+        desired-ids   (set (map :doc_id desired))
+        stored        (stored-docs conn)
+        to-insert     (remove #(contains? stored (:doc_id %)) desired)
+        orphans       (remove desired-ids (keys stored))
         ;; entity classes whose insert failed this run — their orphans are spared (see below).
         failed      (volatile! #{})
         inserted    (transduce
@@ -360,6 +365,15 @@
         to-delete   (cond->> orphans
                       (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! conn to-delete)
+    ;; Record freshness when the run converged as far as it can -- no *transient* batch failure this run
+    ;; (@failed is populated only by a caught insert exception). A doc silently dropped for exceeding the
+    ;; per-item token limit is a permanent, expected shortfall (`inserted` < `(count to-insert)` forever), so
+    ;; gating on the insert count instead would freeze reconciled_at the moment one un-embeddable doc enters
+    ;; the library -- NLQ staleness would then climb to critical (or stay NaN) even though every reconcile is
+    ;; doing all it can. Gate on the absence of retryable failures, not on full insertion. Persist the
+    ;; pre-read watermark so changes made during a long reconcile never look newer than the source snapshot.
+    (when (empty? @failed)
+      (index-table/touch-reconciled-at! conn reconciled-at))
     ;; index-size after the writes feeds the document/entity gauges (full reconcile only).
     (merge (diff-result desired to-insert inserted (count to-delete))
            (index-size conn))))

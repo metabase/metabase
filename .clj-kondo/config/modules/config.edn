@@ -3262,7 +3262,9 @@
    :uses #{analytics-interface
            collections
            entity-retrieval
+           health-inspector
            premium-features
+           search
            task
            util
            enterprise/semantic-search}
@@ -3584,6 +3586,7 @@
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
+           metabase-enterprise.semantic-search.embedding-health
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3594,6 +3597,7 @@
            config
            connection-pool
            events
+           health-inspector
            lib-be
            llm
            metabot

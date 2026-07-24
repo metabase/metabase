@@ -89,6 +89,8 @@ run_e2e() {
   if [[ ! -d "$specs_dir" ]]; then
     local closest="" closest_dist=999
     for dir in "$REPO_ROOT"/e2e/cross-version/[0-9]*/; do
+      # Skip the literal pattern when the glob matches no numbered folders
+      [[ -d "$dir" ]] || continue
       local v=$(basename "$dir")
       (( v < major )) && continue
       local dist=$(( v - major ))

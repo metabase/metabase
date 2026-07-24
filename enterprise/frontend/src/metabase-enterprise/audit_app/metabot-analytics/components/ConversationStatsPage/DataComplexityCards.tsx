@@ -161,7 +161,7 @@ function DataComplexityBreakdown({
   return (
     <Stack gap="lg" mt="md">
       {hasError && (
-        <Alert color="warning" icon={<Icon name="warning" />}>
+        <Alert size="compact" color="warning" icon={<Icon name="warning" />}>
           {t`Some component scores could not be computed.`}
         </Alert>
       )}
