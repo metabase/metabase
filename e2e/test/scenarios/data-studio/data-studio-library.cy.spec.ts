@@ -679,6 +679,7 @@ describe("scenarios > data studio > library", () => {
         "aria-level",
         "3",
       );
+      H.DataStudio.Library.expandCollection("Parent Folder");
       H.DataStudio.Library.result("Orders").should(
         "have.attr",
         "aria-level",

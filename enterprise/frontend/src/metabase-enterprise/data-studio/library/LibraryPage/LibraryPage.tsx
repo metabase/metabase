@@ -9,15 +9,12 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
-import { Link } from "metabase/router";
 import { useSelector } from "metabase/redux";
 import {
   Card,
   Flex,
   Icon,
-  type RenderRowLink,
   Stack,
   TextInput,
   TreeTable,
@@ -35,11 +32,6 @@ import { useLibraryCollections, useLibraryTreeTableInstance } from "./hooks";
 import type { LibrarySection } from "./hooks/library-bulk-selection.utils";
 import { useLibraryBulkSelection } from "./hooks/useLibraryBulkSelection";
 import { getWritableCollection } from "./utils";
-
-const renderTreeRowLink: RenderRowLink<TreeItem> = (row, props) => {
-  const href = getTreeRowHref(row);
-  return href ? <Link to={href} {...props} /> : props.children;
-};
 
 export function LibraryPage() {
   const hasLibraryFeature = useHasTokenFeature("library");
