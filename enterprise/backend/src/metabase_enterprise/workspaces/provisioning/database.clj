@@ -19,15 +19,14 @@
    message); there are no rollbacks or retries — both operations may simply be
    invoked again from any status and no-op when there is nothing to do."
   (:require
+   [metabase-enterprise.database-isolation.provisioner :as iso.provisioner]
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.schema :as ws.schema]
-   [metabase.driver :as driver]
-   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.util.malli :as mu]
-   [potemkin.types :as p]
+   [potemkin :as p]
    [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.table-remapping/keep-me
@@ -35,46 +34,16 @@
 
 ;;; ------------------------------------------------- Protocol -------------------------------------------------------
 
-(p/defprotocol+ DatabaseProvisioner
-  "Wrapper around driver workspace-isolation multimethods for testability.
-   The default [[database-provisioner]] delegates to the real driver multimethods.
-   Tests can reify custom implementations that fail on demand, count calls, etc."
-  (details  [this driver database workspace]
-    "Compute {:schema ... :database_details ...} for the workspace without touching
-     the warehouse. Called before init! so destroy! can clean up a partial init.")
-  (init!    [this driver database workspace]
-    "Create isolated schema + user. `workspace` carries the precomputed `:schema`
-     and `:database_details` from [[details]].")
-  (grant!   [this driver database workspace schemas]
-    "Grant read access on `schemas` to the workspace user/role. `schemas` is a
-     vector of driver-opaque schema-name strings. 3-slot drivers (SQL Server,
-     BigQuery) derive the catalog from `database.details`.")
-  (destroy! [this driver database workspace]
-    "Tear down isolated schema + user. Should be idempotent."))
-
-(def database-provisioner
-  "Default DatabaseProvisioner that dispatches to the driver multimethods.
-
-   Each call is wrapped in [[driver.conn/with-admin-connection]] so the underlying
-   driver impls acquire connections via the database's `:admin-details` overlay
-   (when configured). Workspace DDL — `CREATE USER`, `CREATE SCHEMA`, `GRANT` —
-   typically needs higher-privilege credentials than the regular query user, and
-   the admin overlay is how operators provide them. `details` computes no DDL but
-   still binds the overlay: some drivers derive connection strings/catalogs from
-   the effective details."
-  (reify DatabaseProvisioner
-    (details [_ driver database workspace]
-      (driver.conn/with-admin-connection
-        (driver/workspace-isolation-details driver database workspace)))
-    (init! [_ driver database workspace]
-      (driver.conn/with-admin-connection
-        (driver/init-workspace-isolation! driver database workspace)))
-    (grant! [_ driver database workspace schemas]
-      (driver.conn/with-admin-connection
-        (driver/grant-workspace-read-access! driver database workspace schemas)))
-    (destroy! [_ driver database workspace]
-      (driver.conn/with-admin-connection
-        (driver/destroy-workspace-isolation! driver database workspace)))))
+;;; The provisioning seam lives in `metabase-enterprise.database-isolation.provisioner`,
+;;; shared with the database-isolation toolkit; re-exported here for workspace callers.
+(p/import-vars
+ [iso.provisioner
+  DatabaseProvisioner
+  details
+  init!
+  grant!
+  destroy!
+  database-provisioner])
 
 ;;; -------------------------------------------- Engine namespaces ---------------------------------------------------
 
