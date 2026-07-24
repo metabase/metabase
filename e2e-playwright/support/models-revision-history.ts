@@ -1,0 +1,54 @@
+/**
+ * Helpers for the models-revision-history spec port (models-revision-history.cy.spec.js).
+ *
+ * The spec-local `openRevisionHistory` / `revertTo` here are the QUESTION/MODEL
+ * variants (question-info button + `saved-question-history-list` +
+ * `question-revert-button`), distinct from the dashboard-flavoured
+ * openRevisionHistory / clickRevert already in support/revisions.ts.
+ *
+ * sidesheet / questionInfoButton and the revert-response waits are imported
+ * read-only from support/revisions.ts; ORDERS_BY_YEAR_QUESTION_ID mirrors the
+ * Cypress import from cypress_sample_instance_data (as several other support
+ * modules already do it locally).
+ */
+import type { Page } from "@playwright/test";
+
+import { expect } from "./fixtures";
+import {
+  expectRevertSuccess,
+  questionInfoButton,
+  sidesheet,
+  waitForRevert,
+} from "./revisions";
+
+// ORDERS_BY_YEAR_QUESTION_ID is now canonical in ./sample-data; re-exported so
+// this module's consumers keep their import unchanged.
+export { ORDERS_BY_YEAR_QUESTION_ID } from "./sample-data";
+
+/**
+ * Port of the spec-local openRevisionHistory: open the question-info sidesheet,
+ * switch to the History tab, and wait for the revision list to render.
+ */
+export async function openRevisionHistory(page: Page) {
+  await questionInfoButton(page).click();
+  await sidesheet(page)
+    .getByRole("tab", { name: "History", exact: true })
+    .click();
+  await expect(page.getByTestId("saved-question-history-list")).toBeVisible();
+}
+
+/**
+ * Port of the spec-local revertTo(history): find the revision-history-event
+ * whose text matches `history` (Cypress built `new RegExp(history)`, a
+ * case-sensitive substring), then click its revert button. The revert POST is
+ * anchored so the follow-up navigation/location assertion is deterministic.
+ */
+export async function revertTo(page: Page, history: string) {
+  const revert = waitForRevert(page);
+  await page
+    .getByTestId("revision-history-event")
+    .filter({ hasText: new RegExp(history) })
+    .getByTestId("question-revert-button")
+    .click();
+  await expectRevertSuccess(revert);
+}
