@@ -87,6 +87,72 @@
       {:logs  logs
        :error {:message (:message result)}})))
 
+;;; ------------------------------------------------- Ingestion connectors -------------------------------------------------
+
+(api.macros/defendpoint :get "/connector"
+  :- [:sequential [:map
+                   [:id :string]
+                   [:name :string]
+                   [:description :string]
+                   [:secret-key :string]
+                   [:config-fields [:sequential [:map
+                                                 [:key :string]
+                                                 [:label :string]
+                                                 [:required :boolean]]]]
+                   [:default-table :string]
+                   [:merge-key [:sequential :string]]
+                   [:oauth-configured :boolean]]]
+  "List the available ingestion connectors."
+  []
+  (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
+  (vec (connectors/presented-connectors)))
+
+(api.macros/defendpoint :get "/connector/:connector-id/oauth/url"
+  :- [:map [:url :string] [:state :string]]
+  "Start an OAuth handshake for a connector: returns the provider authorize URL and a state nonce."
+  [{:keys [connector-id]} :- [:map [:connector-id ms/NonBlankString]]]
+  (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
+  (connectors/oauth-url connector-id))
+
+(api.macros/defendpoint :get "/connector/oauth/callback/:connector-id" :- :any
+  "OAuth redirect target for connector authorization; exchanges the code and notifies the opener."
+  [{:keys [connector-id]} :- [:map [:connector-id ms/NonBlankString]]
+   {:keys [code state]}   :- [:map
+                              [:code ms/NonBlankString]
+                              [:state ms/NonBlankString]]]
+  (connectors/handle-oauth-callback! connector-id state code)
+  {:status  200
+   :headers {"Content-Type" "text/html"}
+   :body    (str "<html><body><p>Authorization complete. You can close this window.</p>"
+                 "<script>window.opener && window.opener.postMessage("
+                 "{type: 'MB_CONNECTOR_OAUTH', state: '" state "'}, window.location.origin);"
+                 "window.close();</script></body></html>")})
+
+(api.macros/defendpoint :get "/connector/oauth/status"
+  :- [:map [:ready :boolean]]
+  "Whether the OAuth handshake for `state` has completed."
+  [_route-params
+   {:keys [state]} :- [:map [:state ms/NonBlankString]]]
+  {:ready (connectors/oauth-state-ready? state)})
+
+(api.macros/defendpoint :post "/connector/:connector-id/connection" :- :map
+  "Create an ingestion connection: instantiates the connector template as a python transform."
+  [{:keys [connector-id]} :- [:map [:connector-id ms/NonBlankString]]
+   _query-params
+   body :- [:map
+            [:config {:optional true} [:map-of :string :string]]
+            [:auth [:map
+                    [:token {:optional true} ms/NonBlankString]
+                    [:oauth-state {:optional true} ms/NonBlankString]]]
+            [:target [:map
+                      [:database ms/PositiveInt]
+                      [:schema {:optional true} [:maybe :string]]
+                      [:table-name {:optional true} ms/NonBlankString]]]
+            [:name {:optional true} ms/NonBlankString]]]
+  (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (get-in body [:target :database])))
+  (-> (connectors/create-connection! connector-id body)
+      transforms.u/present-secrets))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transforms-python` routes."
   (handlers/routes
