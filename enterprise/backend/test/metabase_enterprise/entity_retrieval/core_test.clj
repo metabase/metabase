@@ -102,7 +102,7 @@
                                                                            (throw (ex-info "model changed"
                                                                                            {:type ::model-changed})))
                   index-table/index-compatible?                           (fn [& _]
-                                                                           (throw (ex-info "must not inspect index" {})))
+                                                                            (throw (ex-info "must not inspect index" {})))
                   semantic.embedding/get-embedding                       (fn [& _]
                                                                            (throw (ex-info "must not embed" {})))
                   reconcile/with-index-read-lock                         (fn [& _]
