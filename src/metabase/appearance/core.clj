@@ -5,6 +5,10 @@
 
 (comment metabase.appearance.settings/keep-me)
 
+(defn default-logo-path
+  []
+  "app/assets/img/logo.png")
+
 (p/import-vars
  [metabase.appearance.settings
   application-color
