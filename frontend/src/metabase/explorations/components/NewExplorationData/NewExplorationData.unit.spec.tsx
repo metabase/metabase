@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useCreateExplorationMutation } from "metabase/api";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
+  createExploration,
   makeMockSelection,
   mockDimensionBlock,
   mockMetricBlock,
@@ -25,6 +27,11 @@ import {
 jest.mock("metabase/explorations/analytics", () => ({
   trackExplorationCreated: jest.fn(),
   trackExplorationPlanEdited: jest.fn(),
+}));
+
+jest.mock("metabase/api", () => ({
+  ...jest.requireActual("metabase/api"),
+  useCreateExplorationMutation: jest.fn(),
 }));
 
 jest.mock("metabase/metabot/hooks", () => ({
@@ -56,14 +63,29 @@ const churnMetric = createMockMetric({
   dimension_ids: [dimPlan.id],
 }) as ExplorationMetric;
 
+const createExplorationMock = jest.fn();
+
 function setup({
   blocks = [],
   timelines = [],
-}: { blocks?: ExplorationBlock[]; timelines?: Timeline[] } = {}) {
+  messages = [],
+}: {
+  blocks?: ExplorationBlock[];
+  timelines?: Timeline[];
+  messages?: { role: string; message: string }[];
+} = {}) {
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
-    messages: [],
+    messages,
   } as any);
+
+  createExplorationMock.mockReturnValue({
+    unwrap: () => Promise.resolve(createExploration()),
+  });
+  jest
+    .mocked(useCreateExplorationMutation)
+    // RTK mutation hook mock only needs trigger + isLoading from the tuple.
+    .mockReturnValue([createExplorationMock, { isLoading: false }] as any);
 
   // The Add* modals fetch this on mount even while closed.
   setupExplorationDataEndpoint([]);
@@ -398,6 +420,73 @@ describe("NewExplorationData (Research plan)", () => {
       expect(request.blocks[0].metrics.map((m) => m.card_id)).toEqual([
         churnMetric.id,
       ]);
+    });
+  });
+
+  describe("contextual interestingness toggle", () => {
+    const metricBlock = mockMetricBlock(revenueMetric, [dimCreatedAt]);
+    const userQuestion = "What drives churn?";
+
+    it("does not render the toggle when there are no user messages", () => {
+      setup({ blocks: [metricBlock] });
+
+      expect(
+        screen.queryByRole("switch", {
+          name: /Use AI to order charts by interestingness/,
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders the toggle on by default when there are user messages", () => {
+      setup({
+        blocks: [metricBlock],
+        messages: [{ role: "user", message: userQuestion }],
+      });
+
+      expect(
+        screen.getByRole("switch", {
+          name: /Use AI to order charts by interestingness/,
+        }),
+      ).toBeChecked();
+    });
+
+    it("sends the prompt when the toggle is on", async () => {
+      setup({
+        blocks: [metricBlock],
+        messages: [{ role: "user", message: userQuestion }],
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Start research" }),
+      );
+
+      await waitFor(() => {
+        expect(createExplorationMock).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt: userQuestion }),
+        );
+      });
+    });
+
+    it("omits the prompt when the toggle is off", async () => {
+      setup({
+        blocks: [metricBlock],
+        messages: [{ role: "user", message: userQuestion }],
+      });
+
+      await userEvent.click(
+        screen.getByRole("switch", {
+          name: /Use AI to order charts by interestingness/,
+        }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Start research" }),
+      );
+
+      await waitFor(() => {
+        expect(createExplorationMock).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt: null }),
+        );
+      });
     });
   });
 
