@@ -28,7 +28,12 @@
 
 (t2/define-before-insert :model/RemoteSyncTask
   [task]
-  (when-let [existing (current-task)]
+  ;; one running task per workspace: a task tagged with a workspace only conflicts with running tasks of
+  ;; that workspace (or untagged ones, which belong to the main app); an untagged task keeps the old
+  ;; instance-wide check
+  (when-let [existing (if-let [workspace-id (:workspace_id task)]
+                        (current-task workspace-id)
+                        (current-task))]
     (throw (ex-info "A running task exists" {:existing-task existing})))
   task)
 
@@ -157,18 +162,25 @@
   "Gets the current active sync task.
 
   Returns the most recent RemoteSyncTask that is still running (started but not ended, and has reported progress
-  within the time limit), or nil if no active task exists."
-  []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]
-                          [:= :ended_at nil]
-                          [:<
-                           (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
-                           :last_progress_report_at]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  within the time limit), or nil if no active task exists. With `workspace-id`, considers tasks running
+  against that workspace plus main-app tasks (nil workspace_id) — a running main-app sync blocks workspace
+  operations too, since both drive the same remote repository."
+  ([]
+   (current-task nil))
+  ([workspace-id]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where (cond-> [:and
+                                   [:<> :started_at nil]
+                                   [:= :ended_at nil]
+                                   [:<
+                                    (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
+                                    :last_progress_report_at]]
+                            workspace-id (conj [:or
+                                                [:= :workspace_id workspace-id]
+                                                [:= :workspace_id nil]]))
+                   :limit 1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]})))
 
 (defn supersede-stale-tasks!
   "Marks any genuinely stale task rows as cancelled and terminated.
@@ -199,30 +211,39 @@
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
 
-  Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
-  []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist.
+  Scoped by `workspace-id`: nil means the main app (tasks with a nil workspace_id), a workspace id means
+  only that workspace's tasks."
+  ([]
+   (most-recent-task nil))
+  ([workspace-id]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where [:and
+                           [:<> :started_at nil]
+                           [:= :workspace_id workspace-id]]
+                   :limit 1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]})))
 
 (defn last-version
   "Gets the version that any changes are built off of.
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
-  tasks exist."
-  []
-  (:version (t2/select-one :model/RemoteSyncTask
-                           {:where [:and
-                                    [:<> nil :ended_at]
-                                    [:= false :cancelled]
-                                    [:= nil :error_message]
-                                    [:<> nil :version]]
-                            :limit 1
-                            :order-by [[:started_at :desc]
-                                       [:id :desc]]})))
+  tasks exist. Scoped by `workspace-id`: nil means the main app (tasks with a nil workspace_id), a workspace
+  id means only tasks that ran against that workspace."
+  ([]
+   (last-version nil))
+  ([workspace-id]
+   (:version (t2/select-one :model/RemoteSyncTask
+                            {:where [:and
+                                     [:<> nil :ended_at]
+                                     [:= false :cancelled]
+                                     [:= nil :error_message]
+                                     [:<> nil :version]
+                                     [:= :workspace_id workspace-id]]
+                             :limit 1
+                             :order-by [[:started_at :desc]
+                                        [:id :desc]]}))))
 
 (defn running?
   "Checks if a task is currently running.

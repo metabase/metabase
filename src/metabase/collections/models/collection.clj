@@ -1778,7 +1778,8 @@
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type)))
+               workspaces/stamp-workspace-id)
     (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!
@@ -2185,7 +2186,8 @@
           :namespace
           :slug
           :type]
-   :skip []
+   ;; workspace membership is instance-local state, not portable content
+   :skip [:workspace_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id

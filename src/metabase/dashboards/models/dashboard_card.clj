@@ -10,6 +10,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -31,10 +32,11 @@
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (merge {:parameter_mappings     []
-          :visualization_settings {}
-          :inline_parameters      []}
-         dashcard))
+  (-> (merge {:parameter_mappings     []
+              :visualization_settings {}
+              :inline_parameters      []}
+             dashcard)
+      workspaces/stamp-workspace-id))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
@@ -394,7 +396,8 @@
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
-   :skip      []
+   :skip      [;; workspace membership is instance-local state, not portable content
+               :workspace_id]
    :transform {:created_at             (serdes/date)
                :dashboard_id           (serdes/parent-ref)
                :card_id                (serdes/fk :model/Card)

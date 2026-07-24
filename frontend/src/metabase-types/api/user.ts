@@ -4,6 +4,7 @@ import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { ConcreteTableId, SchemaName } from "./table";
+import type { WorkspaceId } from "./workspace";
 
 export type UserId = number;
 export type UserAttributeKey = string;
@@ -78,6 +79,7 @@ export interface User extends BaseUser {
     dashboard_id: DashboardId;
   } | null;
   permissions?: UserPermissions;
+  workspace_id?: WorkspaceId | null;
 }
 
 export interface UserListResult {

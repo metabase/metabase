@@ -666,6 +666,27 @@
 (defmethod deserialization-dependencies :default [_]
   nil)
 
+(def ^:dynamic *workspace-id*
+  "Workspace scope for serdes loads. Entity-id matching for [[workspace-scoped-models]] only sees
+  rows whose `workspace_id` equals this value, and newly inserted rows are stamped with it. Nil (the
+  default) is the main app: matching sees only rows with a NULL workspace reference. Bound to a
+  workspace id by remote-sync workspace pulls so a workspace can hold copies of main-app content
+  under the same entity ids."
+  nil)
+
+(def workspace-scoped-models
+  "Serdes models whose tables carry `workspace_id`: the remote-sync content set plus its
+  entity-id-bearing children. Matching and stamping for these is scoped by [[*workspace-id*]]; their
+  entity_id uniqueness is per workspace (`UNIQUE (entity_id, workspace_id_helper)`)."
+  #{"Action" "Card" "Collection" "Dashboard" "DashboardCard" "DashboardTab"
+    "Document" "Measure" "NativeQuerySnippet" "Timeline" "Segment"})
+
+(defn- workspace-scoped?
+  "Whether `model` (a serdes model-name string, or a model keyword/symbol) is scoped by
+  [[*workspace-id*]]."
+  [model]
+  (contains? workspace-scoped-models (if (string? model) model (name model))))
+
 (defmulti load-update!
   "Called by the default [[load-one!]] if there is a corresponding entity already in the appdb.
   `(load-update! \"ModelName\" ingested-and-xformed local-Toucan-entity)`
@@ -710,7 +731,10 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
-  (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
+  (let [ingested (cond-> ingested
+                   (and *workspace-id* (workspace-scoped? model-name))
+                   (assoc :workspace_id *workspace-id*))]
+    (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested))))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -792,9 +816,12 @@
 
 (mu/defn lookup-by-id
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
-  turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
+  turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil.
+  Entity-id lookups for [[workspace-scoped-models]] are scoped by [[*workspace-id*]]."
   [model :- ::model-keyword-or-symbol id-str]
-  (t2/select-one model :entity_id id-str))
+  (if (workspace-scoped? model)
+    (t2/select-one model :entity_id id-str :workspace_id *workspace-id*)
+    (t2/select-one model :entity_id id-str)))
 
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].

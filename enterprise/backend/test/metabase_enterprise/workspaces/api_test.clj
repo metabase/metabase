@@ -6,21 +6,21 @@
 (deftest workspace-crud-test
   (mt/with-premium-features #{:workspaces}
     (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (mt/user-http-request :rasta :post 200 "ee/workspace" {:name "My branch"})]
+      (let [ws (mt/user-http-request :rasta :post 200 "ee/workspace" {:branch "alex/my-branch"})]
         (testing "POST /api/ee/workspace"
-          (is (=? {:name       "My branch"
+          (is (=? {:branch     "alex/my-branch"
                    :creator_id (mt/user->id :rasta)}
                   ws)))
         (testing "GET /api/ee/workspace"
           (is (some #(= (:id %) (:id ws))
                     (mt/user-http-request :rasta :get 200 "ee/workspace"))))
         (testing "GET /api/ee/workspace/:id"
-          (is (=? {:id (:id ws), :name "My branch"}
+          (is (=? {:id (:id ws), :branch "alex/my-branch"}
                   (mt/user-http-request :rasta :get 200 (str "ee/workspace/" (:id ws))))))
         (testing "PUT /api/ee/workspace/:id"
-          (is (=? {:id (:id ws), :name "Renamed"}
+          (is (=? {:id (:id ws), :branch "alex/renamed"}
                   (mt/user-http-request :rasta :put 200 (str "ee/workspace/" (:id ws))
-                                        {:name "Renamed"}))))
+                                        {:branch "alex/renamed"}))))
         (testing "DELETE /api/ee/workspace/:id"
           (mt/user-http-request :rasta :delete 204 (str "ee/workspace/" (:id ws)))
           (mt/user-http-request :rasta :get 404 (str "ee/workspace/" (:id ws))))))))
@@ -32,7 +32,7 @@
 
 (deftest set-current-workspace-test
   (mt/with-premium-features #{:workspaces}
-    (mt/with-temp [:model/Workspace ws {:name "My branch"}]
+    (mt/with-temp [:model/Workspace ws {:branch "My branch"}]
       (testing "a user can set their own active workspace and read it back"
         (is (=? {:workspace_id (:id ws)}
                 (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
@@ -48,7 +48,7 @@
                                       {:workspace_id nil})))))))
 
 (deftest set-current-workspace-requires-feature-test
-  (mt/with-temp [:model/Workspace ws {:name "My branch"}]
+  (mt/with-temp [:model/Workspace ws {:branch "My branch"}]
     (mt/with-premium-features #{}
       (testing "setting an active workspace without the :workspaces feature is a 400"
         (mt/user-http-request :rasta :put 400 (str "user/" (mt/user->id :rasta))

@@ -6,9 +6,11 @@ import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { Workspace } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
+  createMockWorkspace,
 } from "metabase-types/api/mocks";
 
 import { taskUpdated } from "../../sync-task-slice";
@@ -31,6 +33,8 @@ const setup = ({
   syncType = "read-write",
   dirty = [],
   branches = ["main", "develop"],
+  workspaceId,
+  workspace,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
@@ -41,6 +45,8 @@ const setup = ({
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
+  workspaceId?: number;
+  workspace?: Workspace;
 } = {}) => {
   setupRemoteSyncEndpoints({
     branches,
@@ -51,6 +57,12 @@ const setup = ({
   });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
+  if (workspaceId != null) {
+    fetchMock.get(
+      `path:/api/ee/workspace/${workspaceId}`,
+      workspace ?? { status: 404, body: "Not found." },
+    );
+  }
 
   return renderWithProviders(<GitSyncControls />, {
     storeInitialState: createRemoteSyncStoreState({
@@ -58,6 +70,7 @@ const setup = ({
       remoteSyncEnabled,
       currentBranch,
       syncType,
+      workspaceId,
     }),
   });
 };
@@ -383,6 +396,47 @@ describe("GitSyncControls", () => {
           "Failed to check for changes — check your authentication token",
         ),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("workspace indicator", () => {
+    it("shows the workspace branch with the workspace icon when the user has an active workspace", async () => {
+      setup({
+        workspaceId: 5,
+        workspace: createMockWorkspace({ id: 5, branch: "my-workspace" }),
+      });
+
+      expect(await screen.findByText("my-workspace")).toBeInTheDocument();
+      expect(screen.getByLabelText("workspace icon")).toBeInTheDocument();
+      expect(screen.queryByText("main")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("git_branch icon"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the remote-sync branch with the git icon when the user has no workspace", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      expect(screen.getByLabelText("git_branch icon")).toBeInTheDocument();
+      expect(screen.queryByLabelText("workspace icon")).not.toBeInTheDocument();
+    });
+
+    it("keeps the git presentation when the workspace fails to load", async () => {
+      setup({ workspaceId: 5 });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/ee/workspace/5")).toBe(
+          true,
+        );
+      });
+      expect(screen.getByLabelText("git_branch icon")).toBeInTheDocument();
+      expect(screen.queryByLabelText("workspace icon")).not.toBeInTheDocument();
     });
   });
 

@@ -59,6 +59,15 @@
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
+(defn- ledger-workspace-id
+  "Workspace whose ledger tracks a changed entity: its collection's workspace (for a Collection, its
+   own). Nil — the main-app ledger — for main-app content and collection-less trackables (e.g. the
+   transforms sentinel). Content created inside a workspace overlay must land in that workspace's ledger."
+  [model-type model-id collection-id]
+  (when-let [coll-id (if (= model-type "Collection") model-id collection-id)]
+    (when (pos-int? coll-id)
+      (t2/select-one-fn :workspace_id :model/Collection :id coll-id))))
+
 (defn- resolve-status
   "Suppresses a no-op 'update' based on status and content_hash, otherwise keep status unchanged."
   [model-type model-id status existing]
@@ -99,7 +108,8 @@
                      :model_table_id (:table_id model-details)
                      :model_table_name (:table_name model-details)
                      :status status
-                     :status_changed_at (t/offset-date-time)}))
+                     :status_changed_at (t/offset-date-time)
+                     :workspace_id (ledger-workspace-id model-type model-id (:collection_id model-details))}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
       (= "delete" (:status existing))
@@ -156,7 +166,9 @@
                       (merge {:model_type        model-type
                               :model_id          model-id
                               :status            status
-                              :status_changed_at (t/offset-date-time)}
+                              :status_changed_at (t/offset-date-time)
+                              :workspace_id      (ledger-workspace-id model-type model-id
+                                                                      (:model_collection_id fields))}
                              fields)))
 
         (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))

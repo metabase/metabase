@@ -596,6 +596,8 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
+import workspace_component from "./workspace.svg?component";
+import workspace_source from "./workspace.svg?source";
 import zap_component from "./zap.svg?component";
 import zap_source from "./zap.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
@@ -1782,6 +1784,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     webhook: {
       component: webhook_component,
       source: webhook_source,
+    },
+    workspace: {
+      component: workspace_component,
+      source: workspace_source,
     },
     "10k": {
       component: ten_thousand_component,
