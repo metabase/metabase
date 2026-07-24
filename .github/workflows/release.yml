@@ -351,7 +351,7 @@ jobs:
             const version = '${{ inputs.version }}';
             const latestMajorVersion = '${{ vars.LATEST_MAJOR_VERSION }}';
 
-            const extra_tags = getExtraTagsForVersion({ version, latestMajorVersion });
+            const extra_tags = await getExtraTagsForVersion({ version, latestMajorVersion });
 
             console.log({ extra_tags, latestMajorVersion });
             core.setOutput('extra_tags', JSON.stringify(extra_tags));
