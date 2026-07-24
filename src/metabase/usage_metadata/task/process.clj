@@ -3,8 +3,10 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.usage-metadata.batch :as usage-metadata.batch]
+   [metabase.usage-metadata.candidates :as usage-metadata.candidates]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.util.log :as log])
   (:import
@@ -27,15 +29,23 @@
   (triggers/key "metabase.task.usage-metadata-process.trigger"))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Process usage metadata rollups from query execution history."}
+               :doc "Process query-history rollups and refresh Library cleanup candidates."}
   UsageMetadataProcess
   [_]
-  (when (usage-metadata.settings/usage-metadata-enabled?)
-    (try
+  (try
+    (when (usage-metadata.settings/usage-metadata-enabled?)
       (usage-metadata.batch/run-batch!)
-      (catch Throwable e
-        (log/errorf "Error processing usage metadata batch: %s" (ex-message e))
-        (throw e)))))
+      nil)
+    (when (premium-features/has-feature? :library)
+      ;; A manual API request creates a queued run before triggering this job.
+      ;; Scheduled execution creates its own run only when nothing is active.
+      (when-let [run (or (usage-metadata.candidates/active-run)
+                         (usage-metadata.candidates/queue-refresh! :scheduled nil))]
+        (when (= :queued (:status run))
+          (usage-metadata.candidates/run-refresh! run))))
+    (catch Throwable e
+      (log/error e "Error processing usage metadata")
+      (throw e))))
 
 (defn- job []
   (jobs/build
@@ -51,3 +61,8 @@
 
 (defmethod task/init! ::UsageMetadataProcess [_]
   (task/schedule-task! (job) (trigger)))
+
+(defn trigger-refresh!
+  "Ask Quartz to execute the shared usage-metadata processing job now."
+  []
+  (task/trigger-now! job-key))

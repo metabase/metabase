@@ -1018,7 +1018,12 @@
         (testing "an existing Measure with a different display name suppresses the equivalent candidate"
           (is (empty? (candidates-from-card
                        card-id
-                       (insights/candidate-measures {:min-view-count 10 :limit 1000})))))))))
+                       (insights/candidate-measures {:min-view-count 10 :limit 1000})))))
+        (testing "cleanup materialization retains exact matches so raw usage remains visible"
+          (is (= 1
+                 (count (candidates-from-card
+                         card-id
+                         (:measures (insights/cleanup-candidates)))))))))))
 
 (deftest candidate-measures-omit-bare-count-test
   (mt/with-temp [:model/Card {card-id :id} {:name          "candidate mining bare count"
@@ -1037,6 +1042,10 @@
   (testing "map-shaped literal values retain semantically meaningful name keys"
     (is (not= (canonical-signature [:= {:lib/uuid "a"} [:field {:lib/uuid "b"} 1] {:name "A"}])
               (canonical-signature [:= {:lib/uuid "c"} [:field {:lib/uuid "d"} 1] {:name "B"}])))))
+
+(deftest qualified-card-ids-match-default-candidate-population-test
+  (is (= (set (map :id (candidate-source-cards {})))
+         (set (insights/qualified-card-ids)))))
 
 (deftest candidate-measures-support-remaining-direct-aggregations-test
   (let [query (orders-extended-measures-query)]
