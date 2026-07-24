@@ -46,7 +46,9 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     it("should track segment_created event when saving a new segment", () => {
       cy.intercept("POST", "/api/segment").as("createSegment");
-      cy.intercept("GET", `/api/table/${ORDERS_ID}`).as("getTable");
+      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
+        "getTable",
+      );
       cy.visit("/admin/datamodel/segments");
 
       cy.button("New segment").click();
@@ -62,8 +64,12 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.wait("@getTable");
 
       cy.log("add filter");
+      // The "Add filters" button stays disabled until the segment query is built
+      // from the fully-loaded table + foreign-key metadata (after `getTable`).
+      // Gate the click on it being enabled so we don't click the dead button.
       cy.findByTestId("segment-editor")
-        .findByText("Add filters to narrow your answer")
+        .findByRole("button", { name: /Add filters to narrow your answer/ })
+        .should("be.enabled")
         .click();
       H.popover().findByText("Total").click();
       H.selectFilterOperator("Greater than");
