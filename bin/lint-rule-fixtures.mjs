@@ -104,9 +104,12 @@ let output;
 let spawnError;
 let status;
 try {
+  // `--format=json` is required, not a nicety: oxlint switches to GitHub Actions
+  // annotations when it detects CI, and those carry neither the filename nor the
+  // rule name, so any text parsing silently sees zero findings there.
   const result = spawnSync(
     oxlintBin,
-    ["-c", ".oxlintrc.json", ...cases.map((c) => c.file)],
+    ["-c", ".oxlintrc.json", "--format=json", ...cases.map((c) => c.file)],
     { cwd: root, encoding: "utf8" },
   );
   spawnError = result.error;
@@ -130,15 +133,24 @@ if (/No files found to lint/i.test(output)) {
   process.exit(1);
 }
 
-// Collect (file -> set of fired rule names) from the diagnostics.
+// Collect (file -> set of fired rule names) from the diagnostics. `code` reads
+// `plugin(rule)`, e.g. `eslint(no-console)` or `metabase(no-base-color-literals)`.
+let diagnostics;
+try {
+  diagnostics = JSON.parse(output).diagnostics ?? [];
+} catch {
+  console.error("Could not parse oxlint JSON output:");
+  console.error(output.trim() || "  (no output at all)");
+  process.exit(1);
+}
+
 const fired = new Map();
-const line = /^(\S+):\d+:\d+:\s+(?:warning|error)\s+[^(]*\(([^)]+)\)/;
-for (const text of output.split("\n")) {
-  const match = line.exec(text);
-  if (!match) {
+for (const diagnostic of diagnostics) {
+  const rule = /\(([^)]+)\)\s*$/.exec(diagnostic.code ?? "")?.[1];
+  const file = diagnostic.filename;
+  if (!rule || !file) {
     continue;
   }
-  const [, file, rule] = match;
   if (!fired.has(file)) {
     fired.set(file, new Set());
   }
