@@ -84,7 +84,7 @@ export const ErrorOverview = () => {
 
   const handlePageChange = (nextPage: number) => {
     setRowSelection({});
-    patchUrlState({ page: nextPage });
+    patchUrlState({ page: nextPage }, { immediate: true });
   };
 
   // A stale/shrunk `?page=N` can point past the result set: the backend returns

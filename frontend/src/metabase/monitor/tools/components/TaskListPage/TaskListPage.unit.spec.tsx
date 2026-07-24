@@ -151,11 +151,8 @@ describe("TaskListPage", () => {
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
-    expect(history?.getCurrentLocation().search).toEqual("");
-    act(() => {
-      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
-    });
-
+    // Pagination pushes to the URL immediately rather than through the
+    // usual debounce, so no timer advance is needed here.
     expect(previousPage).toBeEnabled();
     expect(nextPage).toBeDisabled();
     expect(history?.getCurrentLocation().search).toEqual("?page=1");
@@ -170,11 +167,6 @@ describe("TaskListPage", () => {
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    expect(history?.getCurrentLocation().search).toEqual("?page=1");
-    act(() => {
-      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
-    });
-
     expect(previousPage).toBeDisabled();
     expect(nextPage).toBeEnabled();
     expect(history?.getCurrentLocation().search).toEqual("");
