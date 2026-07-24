@@ -282,7 +282,27 @@
                                                        :name   "t1_out"}}]
       (mt/with-test-user :crowberto
         (let [row (content-one #{"agent:resource:read"} {:items [{:type "transform" :id id}]})]
-          (is (re-find #"agent:transforms:read" (:error row))))))))
+          (is (re-find #"agent:transforms:read" (:error row)))))))
+  (testing "snippet reads require agent:snippets:read — a snippet body is not readable on the base scope"
+    (mt/with-temp [:model/NativeQuerySnippet {id :id} {:name "snip" :content "wow" :creator_id (mt/user->id :lucky)}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one #{"agent:resource:read"} {:items [{:type "snippet" :id id}]})]
+          (is (re-find #"agent:snippets:read" (:error row))))
+        (testing "granting the scope lets the same read through"
+          (let [row (content-one #{"agent:resource:read" "agent:snippets:read"} {:items [{:type "snippet" :id id}]})]
+            (is (nil? (:error row)))
+            (is (= "wow" (:content row))))))))
+  (testing "document reads require agent:document:read"
+    (mt/with-temp [:model/Document {id :id}
+                   {:document     {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "hello"}]}]}
+                    :content_type "application/json+vnd.prose-mirror"}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one #{"agent:resource:read"} {:items [{:type "document" :id id}]})]
+          (is (re-find #"agent:document:read" (:error row))))
+        (testing "granting the scope lets the same read through"
+          (let [row (content-one #{"agent:resource:read" "agent:document:read"} {:items [{:type "document" :id id}]})]
+            (is (nil? (:error row)))
+            (is (re-find #"hello" (:markdown row)))))))))
 
 (defn- migrate-notification-to-dashboard!
   "Repoint a payload-less notification row to :notification/dashboard via raw SQL, bypassing the
