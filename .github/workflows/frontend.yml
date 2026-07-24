@@ -50,6 +50,11 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
+      # oxlint owns the fast native rules (ESLint defers to it via eslint-plugin-oxlint).
+      # It needs no CLJS build, so run it first for fast failure.
+      - name: Run oxlint linter
+        run: bun run lint-oxlint
+
       - name: Get Eslint cache key
         uses: ./.github/actions/get-cache-keys
         id: get-cache-keys

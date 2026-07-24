@@ -23,6 +23,7 @@ import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
 import boundaries from "eslint-plugin-boundaries";
+import oxlint from "eslint-plugin-oxlint";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
 import {
   elements as boundaryElements,
@@ -1160,5 +1161,11 @@ if (shouldLintCssModules) {
     // eslint-plugin-postcss-modules not installed
   }
 }
+
+// Hybrid linting: oxlint runs the fast native rules (see .oxlintrc.json); these
+// entries must come LAST so they turn OFF in ESLint exactly the rules oxlint already
+// owns, leaving ESLint to enforce only the residual set (custom metabase/* rules,
+// boundaries, i18next/ttag, and the few rules where oxlint's behavior diverges).
+configs.push(...oxlint.buildFromOxlintConfigFile(".oxlintrc.json"));
 
 export default configs;

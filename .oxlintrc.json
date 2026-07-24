@@ -1,0 +1,1128 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "**/*.d.ts",
+    "e2e/support/cypress_sample_database.js",
+    "e2e/support/cypress_sample_instance_data.js",
+    "e2e/support/assets/**",
+    "e2e/embedding-sdk-host-apps/**",
+    "frontend/test/__support__/custom-viz-fixtures/**/*.js",
+    "**/custom-viz/fixtures/example_custom_viz_plugin/**",
+    "**/dist/**",
+    "resources/**",
+    "**/__snapshots__/**",
+    "!.storybook/**"
+  ],
+  "rules": {
+    "constructor-super": "error",
+    "for-direction": "error",
+    "getter-return": "error",
+    "no-async-promise-executor": "error",
+    "no-case-declarations": "error",
+    "no-class-assign": "error",
+    "no-compare-neg-zero": "error",
+    "no-cond-assign": "error",
+    "no-const-assign": "error",
+    "no-constant-binary-expression": "error",
+    "no-constant-condition": "error",
+    "no-control-regex": "error",
+    "no-debugger": "error",
+    "no-delete-var": "error",
+    "no-dupe-class-members": "error",
+    "no-dupe-else-if": "error",
+    "no-dupe-keys": "error",
+    "no-duplicate-case": "error",
+    "no-empty": "error",
+    "no-empty-character-class": "error",
+    "no-empty-pattern": "error",
+    "no-empty-static-block": "error",
+    "no-ex-assign": "error",
+    "no-extra-boolean-cast": "error",
+    "no-fallthrough": "error",
+    "no-func-assign": "error",
+    "no-global-assign": "error",
+    "no-import-assign": "error",
+    "no-invalid-regexp": "error",
+    "no-irregular-whitespace": "error",
+    "no-loss-of-precision": "error",
+    "no-misleading-character-class": "error",
+    "no-new-native-nonconstructor": "error",
+    "no-nonoctal-decimal-escape": "error",
+    "no-obj-calls": "error",
+    "no-prototype-builtins": "error",
+    "no-redeclare": [
+      "error",
+      {
+        "builtinGlobals": false
+      }
+    ],
+    "no-regex-spaces": "error",
+    "no-self-assign": "error",
+    "no-setter-return": "error",
+    "no-shadow-restricted-names": "error",
+    "no-sparse-arrays": "error",
+    "no-this-before-super": "error",
+    "no-unexpected-multiline": "error",
+    "no-unreachable": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-negation": "error",
+    "no-unused-labels": "error",
+    "no-unused-private-class-members": "error",
+    "no-useless-backreference": "error",
+    "no-useless-catch": "error",
+    "no-useless-escape": "error",
+    "no-with": "error",
+    "require-yield": "error",
+    "use-isnan": "error",
+    "valid-typeof": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "rules": {
+        "no-var": "warn",
+        "no-empty": [
+          "warn",
+          {
+            "allowEmptyCatch": true
+          }
+        ],
+        "curly": [
+          "warn",
+          "all"
+        ],
+        "eqeqeq": [
+          "warn",
+          "smart"
+        ],
+        "prefer-const": [
+          "warn",
+          {
+            "destructuring": "all"
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          "close"
+        ],
+        "no-useless-escape": "off",
+        "complexity": [
+          "error",
+          {
+            "max": 55
+          }
+        ],
+        "import/no-default-export": "error",
+        "import/no-named-as-default": "off",
+        "import/no-commonjs": "warn",
+        "react/jsx-key": "error",
+        "react/jsx-no-comment-textnodes": "error",
+        "react/jsx-no-duplicate-props": "error",
+        "react/jsx-no-target-blank": "error",
+        "react/jsx-no-undef": "error",
+        "react/no-children-prop": "error",
+        "react/no-danger-with-children": "error",
+        "react/no-direct-mutation-state": "error",
+        "react/no-find-dom-node": "off",
+        "react/no-is-mounted": "error",
+        "react/no-render-return-value": "error",
+        "react/no-string-refs": "error",
+        "react/no-unescaped-entities": "error",
+        "react/no-unknown-property": "error",
+        "react/no-unsafe": "off",
+        "react/react-in-jsx-scope": "off",
+        "react/prefer-es6-class": "error",
+        "react/no-did-mount-set-state": "off",
+        "react/no-did-update-set-state": "off",
+        "react/forbid-component-props": [
+          "error",
+          {
+            "forbid": [
+              "sx"
+            ]
+          }
+        ],
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": [
+          "warn",
+          {
+            "additionalHooks": "(useRegisterMetabotContextProvider)"
+          }
+        ]
+      },
+      "env": {
+        "es2020": true,
+        "commonjs": true,
+        "jest": true,
+        "browser": true
+      },
+      "plugins": [
+        "import",
+        "react"
+      ]
+    },
+    {
+      "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "rules": {
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-var": "error",
+        "no-with": "off",
+        "prefer-const": [
+          "warn",
+          {
+            "destructuring": "all"
+          }
+        ],
+        "prefer-rest-params": "off",
+        "prefer-spread": "error",
+        "no-unused-expressions": "error",
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-duplicate-enum-values": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "off",
+        "typescript/no-extra-non-null-assertion": "error",
+        "typescript/no-misused-new": "error",
+        "typescript/no-namespace": "error",
+        "typescript/no-non-null-asserted-optional-chain": "error",
+        "typescript/no-require-imports": "error",
+        "typescript/no-this-alias": "off",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-declaration-merging": "off",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-wrapper-object-types": "error",
+        "typescript/prefer-as-const": "error",
+        "typescript/prefer-namespace-keyword": "error",
+        "typescript/triple-slash-reference": "error",
+        "typescript/explicit-module-boundary-types": "off",
+        "typescript/no-inferrable-types": "off",
+        "typescript/consistent-type-imports": [
+          "error",
+          {
+            "fixStyle": "inline-type-imports"
+          }
+        ],
+        "typescript/no-import-type-side-effects": "error"
+      },
+      "plugins": [
+        "typescript"
+      ]
+    },
+    {
+      "files": [
+        "**/*.unit.spec.ts",
+        "**/*.unit.spec.tsx",
+        "**/*.unit.spec.js",
+        "**/*.unit.spec.jsx"
+      ],
+      "rules": {
+        "jest/expect-expect": [
+          "error",
+          {
+            "assertFunctionNames": [
+              "expect*",
+              "assert*"
+            ],
+            "additionalTestBlockFunctions": []
+          }
+        ],
+        "jest/no-alias-methods": "error",
+        "jest/no-commented-out-tests": "warn",
+        "jest/no-deprecated-functions": "error",
+        "jest/no-disabled-tests": "warn",
+        "jest/no-done-callback": "error",
+        "jest/no-export": "error",
+        "jest/no-focused-tests": "error",
+        "jest/no-identical-title": "error",
+        "jest/no-interpolation-in-snapshots": "error",
+        "jest/no-jasmine-globals": "error",
+        "jest/no-mocks-import": "error",
+        "jest/no-standalone-expect": "error",
+        "jest/no-test-prefixes": "error",
+        "jest/valid-describe-callback": "error",
+        "jest/valid-expect": "error",
+        "jest/valid-expect-in-promise": "error",
+        "jest/valid-title": [
+          "error",
+          {
+            "ignoreTypeOfDescribeName": true
+          }
+        ]
+      },
+      "plugins": [
+        "jest"
+      ]
+    },
+    {
+      "files": [
+        "e2e/**/*"
+      ],
+      "rules": {
+        "import/no-commonjs": "off",
+        "no-unused-expressions": "off",
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "metabase-types/api/mocks/presets",
+                "message": "Please use e2e/support/cypress_sample_database instead"
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "**/enterprise/frontend/src/embedding-sdk-package",
+                  "**/enterprise/frontend/src/embedding-sdk-package/*"
+                ],
+                "message": "Please use SDK package name - '@metabase/embedding-sdk-react'"
+              }
+            ]
+          }
+        ],
+        "typescript/no-namespace": "off"
+      },
+      "plugins": [
+        "import",
+        "typescript"
+      ],
+      "env": {
+        "commonjs": true,
+        "node": true
+      }
+    },
+    {
+      "files": [
+        "e2e/test-component/**/*.ts",
+        "e2e/test-component/**/*.tsx"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "warn",
+          {
+            "patterns": [
+              {
+                "regex": "^metabase/(?!utils/promise$|embedding-sdk/test/).*",
+                "allowTypeImports": true,
+                "message": "We should avoid importing `metabase/` code in the component tests, we might accidentally include CLJS in the dependencies and that can create issues. Component tests should only use the code it needs to test, which is in the package."
+              }
+            ]
+          }
+        ]
+      },
+      "plugins": [
+        "typescript"
+      ]
+    },
+    {
+      "files": [
+        "frontend/test/**/*"
+      ],
+      "rules": {
+        "import/no-commonjs": "off"
+      },
+      "plugins": [
+        "import"
+      ],
+      "env": {
+        "commonjs": true,
+        "node": true
+      }
+    },
+    {
+      "files": [
+        "frontend/src/metabase/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please import from `metabase/redux` instead."
+              },
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@emotion/styled",
+                "message": "Please style components using css modules."
+              },
+              {
+                "name": "@emotion/react",
+                "message": "Please use components from `metabase/ui` instead and style them using css modules."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "metabase-enterprise"
+                ]
+              },
+              {
+                "group": [
+                  "metabase-enterprise/*"
+                ]
+              },
+              {
+                "group": [
+                  "cljs/metabase.lib*"
+                ]
+              },
+              {
+                "group": [
+                  "/embedding-sdk-package"
+                ]
+              },
+              {
+                "group": [
+                  "__support__/**",
+                  "!__support__/metadata"
+                ],
+                "message": "Please name your test setup and utils files with a \".spec.*\" in the filename, or put them under \"/tests\", e.g. \"setup.spec.ts\", \"MyComponent.setup.spec.ts\", or \"tests/setup.ts\". This is to ensure they won't be imported in the SDK build."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/metabase/**/*.stories.tsx"
+      ],
+      "rules": {
+        "import/no-default-export": "off",
+        "no-restricted-imports": "off"
+      },
+      "plugins": [
+        "import"
+      ]
+    },
+    {
+      "files": [
+        "frontend/src/metabase/embedding/mcp/**/*",
+        "frontend/src/metabase/utils/redux/hooks.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": [
+        "frontend/src/metabase/**/*.spec.*",
+        "frontend/src/metabase/**/test-utils.*",
+        "frontend/src/metabase/**/tests/**/*",
+        "frontend/src/metabase/**/test/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "metabase-enterprise"
+                ]
+              },
+              {
+                "group": [
+                  "metabase-enterprise/*"
+                ]
+              },
+              {
+                "group": [
+                  "cljs/metabase.lib*"
+                ]
+              },
+              {
+                "group": [
+                  "/embedding-sdk-package"
+                ]
+              }
+            ],
+            "paths": [
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please import from `metabase/redux` instead."
+              },
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@emotion/styled",
+                "message": "Please style components using css modules."
+              },
+              {
+                "name": "@emotion/react",
+                "message": "Please use components from `metabase/ui` instead and style them using css modules."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/metabase/ui/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              "metabase-enterprise",
+              "metabase-enterprise/*",
+              "cljs/metabase.lib*"
+            ],
+            "paths": [
+              {
+                "name": "@emotion/styled",
+                "message": "Please style components using css modules."
+              },
+              {
+                "name": "@emotion/react",
+                "message": "Please use components from `metabase/ui` instead and style them using css modules."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/metabase/metadata/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              "metabase-enterprise",
+              "metabase-enterprise/*",
+              "cljs/metabase.lib*",
+              "/embedding-sdk-package",
+              "/embedding-sdk-bundle",
+              "/embedding-sdk-shared",
+              "metabase/entities",
+              "metabase/entities/*"
+            ],
+            "paths": [
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please import from `metabase/redux` instead."
+              },
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@emotion/styled",
+                "message": "Please style components using css modules."
+              },
+              {
+                "name": "@emotion/react",
+                "message": "Please use components from `metabase/ui` instead and style them using css modules."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/metabase-lib/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "metabase/*",
+                  "!metabase/env",
+                  "!metabase/utils",
+                  "!metabase/querying",
+                  "!metabase/services"
+                ]
+              },
+              {
+                "group": [
+                  "metabase/utils/*",
+                  "!metabase/utils/encoding",
+                  "!metabase/utils/formatting",
+                  "!metabase/utils/number",
+                  "!metabase/utils/time",
+                  "!metabase/utils/time-dayjs",
+                  "!metabase/utils/types",
+                  "!metabase/urls",
+                  "!metabase/utils/clone"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/embedding-sdk-bundle/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please import from `metabase/redux` instead."
+              },
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@emotion/styled",
+                "message": "Please style components using css modules."
+              },
+              {
+                "name": "@emotion/react",
+                "message": "Please use components from `metabase/ui` instead and style them using css modules."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "metabase-enterprise"
+                ]
+              },
+              {
+                "group": [
+                  "metabase-enterprise/*"
+                ]
+              },
+              {
+                "group": [
+                  "cljs/metabase.lib*"
+                ]
+              },
+              {
+                "group": [
+                  "/embedding-sdk-package"
+                ]
+              },
+              {
+                "group": [
+                  "__support__/**",
+                  "!__support__/metadata"
+                ],
+                "message": "Please name your test setup and utils files with a \".spec.*\" in the filename, or put them under \"/tests\", e.g. \"setup.spec.ts\", \"MyComponent.setup.spec.ts\", or \"tests/setup.ts\". This is to ensure they won't be imported in the SDK build."
+              },
+              {
+                "group": [
+                  "metabase/common/components/LogoIcon"
+                ],
+                "importNames": [
+                  "LogoIcon"
+                ],
+                "message": "Do not use LogoIcon in the SDK. With custom Icon, it doesn't work because it uses the Metabase instance's relative path."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/embedding-sdk-bundle/**/*.spec.*",
+        "frontend/src/embedding-sdk-bundle/**/test-utils.*",
+        "frontend/src/embedding-sdk-bundle/**/tests/**/*",
+        "frontend/src/embedding-sdk-bundle/**/test/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "metabase-enterprise"
+                ]
+              },
+              {
+                "group": [
+                  "metabase-enterprise/*"
+                ]
+              },
+              {
+                "group": [
+                  "cljs/metabase.lib*"
+                ]
+              },
+              {
+                "group": [
+                  "/embedding-sdk-package"
+                ]
+              }
+            ],
+            "paths": [
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please import from `metabase/redux` instead."
+              },
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@emotion/styled",
+                "message": "Please style components using css modules."
+              },
+              {
+                "name": "@emotion/react",
+                "message": "Please use components from `metabase/ui` instead and style them using css modules."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/embedding-sdk-shared/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please import from `metabase/redux` instead."
+              },
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@emotion/styled",
+                "message": "Please style components using css modules."
+              },
+              {
+                "name": "@emotion/react",
+                "message": "Please use components from `metabase/ui` instead and style them using css modules."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "metabase-enterprise"
+                ]
+              },
+              {
+                "group": [
+                  "metabase-enterprise/*"
+                ]
+              },
+              {
+                "group": [
+                  "cljs/metabase.lib*"
+                ]
+              },
+              {
+                "group": [
+                  "/embedding-sdk-package"
+                ]
+              },
+              {
+                "group": [
+                  "__support__/**",
+                  "!__support__/metadata"
+                ],
+                "message": "Please name your test setup and utils files with a \".spec.*\" in the filename, or put them under \"/tests\", e.g. \"setup.spec.ts\", \"MyComponent.setup.spec.ts\", or \"tests/setup.ts\". This is to ensure they won't be imported in the SDK build."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/metabase/query_builder/**/*"
+      ],
+      "rules": {
+        "import/no-cycle": "error"
+      },
+      "plugins": [
+        "import"
+      ]
+    },
+    {
+      "files": [
+        "enterprise/frontend/src/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "cljs/metabase.lib*"
+                ]
+              },
+              {
+                "group": [
+                  "__support__/**",
+                  "!__support__/metadata"
+                ],
+                "message": "Please name your test setup and utils files with a \".spec.*\" in the filename, or put them under \"/tests\", e.g. \"setup.spec.ts\", \"MyComponent.setup.spec.ts\", or \"tests/setup.ts\". This is to ensure they won't be imported in the SDK build."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              },
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please use \"useSdkSelector\", \"useSdkDispatch\""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "cljs/metabase.lib*"
+                ]
+              },
+              {
+                "group": [
+                  "__support__/**"
+                ],
+                "message": "Please name your test setup and utils files with a \".spec.*\" in the filename, or put them under \"/tests\", e.g. \"setup.spec.ts\", \"MyComponent.setup.spec.ts\", or \"tests/setup.ts\". This is to ensure they won't be imported in the SDK build."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              },
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please use \"useSdkSelector\", \"useSdkDispatch\""
+              },
+              {
+                "name": "metabase/redux",
+                "importNames": [
+                  "useStore",
+                  "useDispatch"
+                ],
+                "message": "Please use \"useSdkStore\", \"useSdkDispatch\""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "enterprise/frontend/src/**/*.spec.*",
+        "enterprise/frontend/src/**/test-utils.*",
+        "enterprise/frontend/src/**/tests/**/*",
+        "enterprise/frontend/src/**/test/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "cljs/metabase.lib*"
+                ]
+              }
+            ],
+            "paths": [
+              {
+                "name": "@mantine/core",
+                "message": "Please import from `metabase/ui` instead."
+              },
+              {
+                "name": "@storybook/test",
+                "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+              },
+              {
+                "name": "react-redux",
+                "importNames": [
+                  "useSelector",
+                  "useDispatch",
+                  "connect"
+                ],
+                "message": "Please use \"useSdkSelector\", \"useSdkDispatch\""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "enterprise/frontend/src/**/.storybook/*",
+        "enterprise/frontend/src/**/*.stories.tsx"
+      ],
+      "rules": {
+        "import/no-default-export": "off",
+        "no-restricted-imports": "off"
+      },
+      "plugins": [
+        "import"
+      ]
+    },
+    {
+      "files": [
+        "enterprise/frontend/src/embedding/auth-common/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "embedding-sdk-bundle/*",
+                  "metabase/*",
+                  "!embedding-sdk-bundle/errors",
+                  "!embedding-sdk-bundle/types"
+                ],
+                "message": "Keep imports in auth-common to a minimum as it is used in embed.js for iframe embedding."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "custom-viz",
+                "allowTypeImports": true,
+                "message": "Please use only type-only imports from 'custom-viz'."
+              }
+            ]
+          }
+        ]
+      },
+      "plugins": [
+        "typescript"
+      ]
+    },
+    {
+      "files": [
+        "enterprise/frontend/src/custom-viz/src/templates/index.tsx"
+      ],
+      "rules": {
+        "import/no-default-export": "off"
+      },
+      "plugins": [
+        "import"
+      ]
+    },
+    {
+      "files": [
+        "docs/**/snippets/**/*.{ts,tsx,js,jsx}"
+      ],
+      "rules": {
+        "import/no-commonjs": "off",
+        "import/no-default-export": "off",
+        "typescript/no-var-requires": "off"
+      },
+      "plugins": [
+        "typescript",
+        "import"
+      ]
+    },
+    {
+      "files": [
+        "frontend/build/**/*.js",
+        "frontend/lint/**/*.js"
+      ],
+      "rules": {
+        "import/no-commonjs": "off"
+      },
+      "plugins": [
+        "import"
+      ],
+      "env": {
+        "commonjs": true,
+        "node": true
+      }
+    },
+    {
+      "files": [
+        "**/*.stories.tsx",
+        "**/preview.tsx"
+      ],
+      "rules": {
+        "import/no-default-export": "off"
+      },
+      "plugins": [
+        "import"
+      ]
+    },
+    {
+      "files": [
+        "*.config.js",
+        "*.config.mjs",
+        "rspack.*.js",
+        "bin/**/*.js",
+        ".github/scripts/**/*.js"
+      ],
+      "rules": {
+        "import/no-commonjs": "off"
+      },
+      "plugins": [
+        "import"
+      ],
+      "env": {
+        "commonjs": true,
+        "node": true
+      }
+    },
+    {
+      "files": [
+        "**/*.stories.@(ts|tsx|js|jsx|mjs|cjs)",
+        "**/*.story.@(ts|tsx|js|jsx|mjs|cjs)"
+      ],
+      "rules": {
+        "import/no-anonymous-default-export": "off",
+        "react/rules-of-hooks": "off"
+      },
+      "plugins": [
+        "react",
+        "import"
+      ]
+    }
+  ]
+}
