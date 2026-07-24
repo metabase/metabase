@@ -38,36 +38,15 @@ on:
       - enterprise/frontend/src/embedding-sdk-package/package.template.json
 
 concurrency:
-  # The expression below tries three cases, in order (comments can't go inside
-  # it - a `#` there would be literal text):
+  # One release at a time per branch; base.ref is empty on workflow_dispatch, so
+  # it falls back to the ref picker's branch. Never cancel in progress - a queued
+  # release that turns out stale fails loudly at check-git-tag.
   #
-  #   1. a manual dispatch          -> sdk-release-<branch picked in the ref picker>
-  #   2. a merged bump PR           -> sdk-release-<branch that PR targeted>
-  #   3. any other closed PR        -> sdk-release-noop-<run id>
-  #
-  # (Concurrency groups are repo-wide, so the names are prefixed rather than
-  # bare - same reason embedding-sdk-tag-latest.yml uses `npm-dist-tag-latest`.)
-  #
-  # 1 and 2 land in the same group for a given branch, so two releases of that
-  # branch queue instead of racing (both would npm publish and push the same
-  # git tag).
-  #
-  # 3 exists because concurrency is evaluated before any job's `if:` runs, so a
-  # closed PR that this workflow ignores (unmerged, or merged without the label)
-  # still enters a group even though `prepare-release` skips everything. Giving
-  # it a throwaway group keeps it out of the release group entirely.
-  #
-  # cancel-in-progress is false: a release must never be interrupted mid-publish.
-  # A second release queues behind the first, and if it turns out to be stale it
-  # fails loudly at check-git-tag rather than half-publishing.
-  group: >-
-    ${{
-      github.event_name == 'workflow_dispatch'
-        && format('sdk-release-{0}', github.ref_name)
-      || github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'sdk-release-trigger')
-        && format('sdk-release-{0}', github.event.pull_request.base.ref)
-      || format('sdk-release-noop-{0}', github.run_id)
-    }}
+  # Non-release closed PRs queue here too and skip in seconds. GitHub keeps only
+  # one pending run per group and cancels any earlier one, so one could in theory
+  # evict a release waiting to start; that needs two same-branch releases at once.
+  # `queue: max` would fix it, but actionlint cannot parse it (rhysd/actionlint#654).
+  group: sdk-release-${{ github.event.pull_request.base.ref || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -137,7 +116,9 @@ jobs:
 
   send-slack-notification-start:
     name: "Send Slack notification: SDK release started"
-    needs: [build-release-scripts, read-sdk-release-metadata]
+    needs:
+      - build-release-scripts
+      - read-sdk-release-metadata
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -179,17 +160,15 @@ jobs:
   send-slack-notification-failure:
     name: "Send Slack notification: SDK release failed"
     needs:
-      [
-        "build-release-scripts",
-        "read-sdk-release-metadata",
-        "send-slack-notification-start",
-        "check-git-tag",
-        "test",
-        "build-sdk",
-        "publish-npm",
-        "tag-latest",
-        "git-tag",
-      ]
+      - build-release-scripts
+      - read-sdk-release-metadata
+      - send-slack-notification-start
+      - check-git-tag
+      - test
+      - build-sdk
+      - publish-npm
+      - tag-latest
+      - git-tag
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
@@ -236,12 +215,10 @@ jobs:
   send-slack-notification-successful:
     name: "Send Slack notification: SDK release successful"
     needs:
-      [
-        "build-release-scripts",
-        "read-sdk-release-metadata",
-        "send-slack-notification-start",
-        "publish-npm",
-      ]
+      - build-release-scripts
+      - read-sdk-release-metadata
+      - send-slack-notification-start
+      - publish-npm
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
@@ -333,7 +310,9 @@ jobs:
           EOF
 
   check-git-tag:
-    needs: [prepare-release, read-sdk-release-metadata]
+    needs:
+      - prepare-release
+      - read-sdk-release-metadata
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
@@ -357,7 +336,9 @@ jobs:
           fi
 
   test:
-    needs: [prepare-release, check-git-tag]
+    needs:
+      - prepare-release
+      - check-git-tag
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -376,7 +357,9 @@ jobs:
         run: bun run embedding-sdk:test-unit
 
   build-sdk:
-    needs: [prepare-release, test]
+    needs:
+      - prepare-release
+      - test
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -409,7 +392,10 @@ jobs:
           path: ./resources/embedding-sdk
 
   publish-npm:
-    needs: [prepare-release, build-sdk, read-sdk-release-metadata]
+    needs:
+      - prepare-release
+      - build-sdk
+      - read-sdk-release-metadata
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     permissions:
@@ -444,14 +430,19 @@ jobs:
     # branch went gold - see sdk-version-bump-pr.yml, which is where a human
     # sets this to true when appropriate.
     if: ${{ needs.read-sdk-release-metadata.outputs.tag_as_latest == 'true' }}
-    needs: [publish-npm, read-sdk-release-metadata]
+    needs:
+      - publish-npm
+      - read-sdk-release-metadata
     uses: ./.github/workflows/embedding-sdk-tag-latest.yml
     with:
       version: ${{ needs.read-sdk-release-metadata.outputs.sdk_version }}
     secrets: inherit
 
   git-tag:
-    needs: [prepare-release, publish-npm, read-sdk-release-metadata]
+    needs:
+      - prepare-release
+      - publish-npm
+      - read-sdk-release-metadata
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
