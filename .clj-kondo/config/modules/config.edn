@@ -3936,7 +3936,10 @@
      "test\\.impl"                          ; anything that contains `test.impl`
      "test-setup"                           ; anything that contains `test-setup`
      "test[-_]helpers"                      ; anything that contains `test-helpers` or `test_helpers`
-     "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`
+     "^metabase(?:-enterprise)?\\.test"     ; anything starting with `metabase.test` or `metabase-enterprise.test`
+     ;; the OSI-generation benchmark harness: test-tree namespaces (`benchmark-test` matches `-test$`,
+     ;; but its `benchmark.*` helper namespaces don't) that deliberately drive the production stack
+     "^metabase-enterprise\\.osi-generation\\.benchmark\\."}}}}
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                       !!

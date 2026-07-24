@@ -1,0 +1,115 @@
+;; OSI-generation benchmark queries + relevance judgments.
+;;
+;; Written second (after entities), role-playing an analyst who knows the business and not the schema —
+;; phrased as Metabot users phrase things (the tool's own parameter description asks for
+;; natural-language descriptions of the data, not keywords).
+;;
+;; Judgments were made third, from the entity list only — name, type, contents — and NEVER from any
+;; ai_context. Grades: 2 = the entity a competent curator would call *the* answer; 1 = defensible; 0 =
+;; wrong (omitted). Out-of-domain queries carry an empty :judged set on purpose, so the weak-flag arm of
+;; the report has a denominator.
+;;
+;; :holdout true|false — holdout queries are excluded from any PR-6 prompt iteration and reported as a
+;; separate column; if the visible and holdout columns diverge, the prompt is being tuned to the
+;; visible half. Frozen: no query is edited to suit the baseline.
+
+{:queries
+ [;; ------------------------------------ visible, in-domain ------------------------------------
+  {:id      :q-mrr-trend
+   :prompt  "how is our monthly recurring revenue trending"
+   :holdout false
+   :judged  {:mrr-ledger 2, :net-revenue-retention 1}}
+
+  {:id      :q-canceled-customers
+   :prompt  "customers who canceled their subscription recently"
+   :holdout false
+   :judged  {:subscriptions 2, :subscription-events 1}}
+
+  {:id      :q-upgrade-history
+   :prompt  "history of plan upgrades and downgrades for a subscription"
+   :holdout false
+   :judged  {:subscription-events 2, :subscriptions 1}}
+
+  {:id      :q-billed-last-month
+   :prompt  "what did we bill customers last month"
+   :holdout false
+   :judged  {:invoices 2, :invoice-revenue 1}}
+
+  {:id      :q-invoiced-total
+   :prompt  "total invoiced revenue so far this year"
+   :holdout false
+   :judged  {:invoice-revenue 2, :invoices 1}}
+
+  ;; deliberately avoids the words "net revenue retention" — the business-term breaker.
+  {:id      :q-expansion
+   :prompt  "are existing customers spending more with us over time"
+   :holdout false
+   :judged  {:net-revenue-retention 2, :mrr-ledger 1}}
+
+  {:id      :q-paying-subscribers
+   :prompt  "how many paying subscribers do we have right now"
+   :holdout false
+   :judged  {:active-subscribers 2, :subscriptions 1}}
+
+  {:id      :q-signups-by-country
+   :prompt  "new account signups broken down by country"
+   :holdout false
+   :judged  {:customers 2}}
+
+  ;; the empty-description breaker: nothing but the name "coupons" is indexed under :none.
+  {:id      :q-discount-codes
+   :prompt  "which discount codes are customers redeeming"
+   :holdout false
+   :judged  {:coupons 2}}
+
+  {:id      :q-customer-overview
+   :prompt  "a single view of each customer with their plan and open tickets"
+   :holdout false
+   :judged  {:customer-health 2, :customers 1}}
+
+  {:id      :q-ticket-volume
+   :prompt  "how many support requests came in this week"
+   :holdout false
+   :judged  {:support-tickets 2}}
+
+  {:id      :q-large-invoices
+   :prompt  "show me our unusually large invoices"
+   :holdout false
+   :judged  {:big-invoices 2, :invoices 1}}
+
+  {:id      :q-plan-mix
+   :prompt  "breakdown of current subscriptions by plan"
+   :holdout false
+   :judged  {:subscriptions 2}}
+
+  ;; ------------------------------------ visible, out-of-domain --------------------------------
+  {:id      :q-ood-weather
+   :prompt  "weather forecast for the warehouse loading dock"
+   :holdout false
+   :judged  {}}
+
+  {:id      :q-ood-vacation
+   :prompt  "employee vacation balances for the HR team"
+   :holdout false
+   :judged  {}}
+
+  {:id      :q-ood-web-traffic
+   :prompt  "web traffic to the marketing site by campaign"
+   :holdout false
+   :judged  {}}
+
+  ;; ------------------------------------ holdout, in-domain ------------------------------------
+  {:id      :q-hold-unpaid
+   :prompt  "revenue we invoiced but customers have not paid yet"
+   :holdout true
+   :judged  {:invoices 2}}
+
+  {:id      :q-hold-growth-source
+   :prompt  "where did our recurring revenue growth come from last quarter"
+   :holdout true
+   :judged  {:mrr-ledger 2, :net-revenue-retention 1}}
+
+  {:id      :q-hold-cancel-lead-up
+   :prompt  "what happened on subscriptions in the weeks before they canceled"
+   :holdout true
+   :judged  {:subscription-events 2, :subscriptions 1}}]}
