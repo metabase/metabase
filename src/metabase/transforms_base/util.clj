@@ -411,8 +411,7 @@
    :hi                         values in the source table must be <= this :value.
    :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
   [{:keys [source] :as transform}]
-  (let [{:keys [source-incremental-strategy]} source
-        {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
+  (let [{:keys [checkpoint-filter-field-id lookback]} (:source-incremental-strategy source)]
     (validate-incremental-source! transform)
     (when checkpoint-filter-field-id
       (let [{:keys [last_checkpoint_value]} (cond-> transform
@@ -424,7 +423,6 @@
             base-type         (lib.types.isa/column-type column)
             ;; `checkpoint-lo` is the stored watermark; `lo` is the scan bound, pushed back by any lookback.
             checkpoint-lo     (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
-            lookback          (get-in source [:source-incremental-strategy :lookback])
             lo                (cond-> checkpoint-lo
                                 (and checkpoint-lo lookback) (apply-lookback column lookback))
 
