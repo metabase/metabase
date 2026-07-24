@@ -171,25 +171,26 @@
   (boolean (slurp-plugin-manifest-from-archive path)))
 
 (defn- register-plugins! [paths]
-  ;; sort paths so that ones that correspond to JARs with no plugin manifest (e.g. a dependency like the Oracle JDBC
-  ;; driver `ojdbc8.jar`) are always added to the classpath first; that way, plugin manifests can satisfy class
-  ;; dependencies when they are registered.
-  ;;
-  ;; In Clojure world at least `false` < `true` so we can use `sort-by` to get non-Metabase-plugin JARs in front
-  (doseq [^Path path (sort-by has-manifest? paths)]
+  (doseq [^Path path paths]
     (try
       (register-plugin! path)
       (catch Throwable e
         (log/errorf e "Failed to register plugin %s" (.getFileName path))))))
 
 (defn- load! []
-  ;; Load any user-supplied plugin JARs from the plugins directory (e.g. Oracle JDBC driver).
-  ;; System/bundled plugins are no longer extracted to disk — they are flattened into the uberjar
-  ;; and their manifests are loaded from the classpath via load-bundled-plugin-manifests! below.
+  ;; The order here matters, and the middle step is a provenance boundary. `false` (no manifest) sorts before
+  ;; `true`, so the destructuring splits plugins-directory JARs into bare dependencies and manifest plugins.
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))
-  (let [paths (plugins-paths)]
-    (register-plugins! paths))
-  (load-bundled-plugin-manifests!))
+  (let [{dep-jars false, user-manifests true} (group-by has-manifest? (plugins-paths))]
+    ;; 1. Bare dependency JARs (e.g. the Oracle JDBC driver `ojdbc8.jar`) go on the classpath first, so a
+    ;;    bundled manifest's `class:` dependency is satisfiable by the time it is registered.
+    (register-plugins! dep-jars)
+    ;; 2. Bundled manifests next. Their code is compiled into the root-owned uberjar, so registering them here
+    ;;    claims each plugin name before any plugins-directory JAR does. Registration is first-wins, so a JAR
+    ;;    dropped in the writable plugins directory cannot shadow a bundled plugin and run under its identity.
+    (load-bundled-plugin-manifests!)
+    ;; 3. Finally, user-supplied manifest plugins from the plugins directory.
+    (register-plugins! user-manifests)))
 
 (defonce ^:private loaded? (atom false))
 
