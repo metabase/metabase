@@ -3,7 +3,7 @@ import { Route, redirect, withRouteProps } from "metabase/router";
 import {
   McpAnalyticsAvailabilityLayout,
   MetabotAnalyticsAvailabilityLayout,
-} from "./components/AiAuditingAvailabilityLayout";
+} from "./components/AvailabilityLayouts";
 import { McpAnalyticsPage } from "./mcp-analytics/components/McpAnalyticsPage";
 import { ConversationDetailPage } from "./metabot-analytics/components/ConversationDetailPage";
 import { ConversationStatsPage } from "./metabot-analytics/components/ConversationStatsPage";

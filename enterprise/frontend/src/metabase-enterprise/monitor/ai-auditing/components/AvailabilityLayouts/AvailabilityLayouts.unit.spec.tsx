@@ -9,7 +9,7 @@ import * as Urls from "metabase/urls";
 import {
   McpAnalyticsAvailabilityLayout,
   MetabotAnalyticsAvailabilityLayout,
-} from "./AiAuditingAvailabilityLayout";
+} from "./AvailabilityLayouts";
 
 type SetupOpts = {
   aiFeaturesEnabled?: boolean;

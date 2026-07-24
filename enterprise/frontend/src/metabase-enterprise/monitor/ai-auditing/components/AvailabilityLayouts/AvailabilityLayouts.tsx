@@ -36,8 +36,8 @@ function UnavailablePage({
 }
 
 export function MetabotAnalyticsAvailabilityLayout() {
-  const aiFeaturesEnabled = useSetting("ai-features-enabled?") === true;
-  const isConfigured = useSetting("llm-metabot-configured?") === true;
+  const aiFeaturesEnabled = !!useSetting("ai-features-enabled?");
+  const isConfigured = !!useSetting("llm-metabot-configured?");
 
   if (!aiFeaturesEnabled) {
     return (
@@ -65,8 +65,8 @@ export function MetabotAnalyticsAvailabilityLayout() {
 }
 
 export function McpAnalyticsAvailabilityLayout() {
-  const aiFeaturesEnabled = useSetting("ai-features-enabled?") === true;
-  const mcpEnabled = useSetting("mcp-enabled?") === true;
+  const aiFeaturesEnabled = !!useSetting("ai-features-enabled?");
+  const mcpEnabled = !!useSetting("mcp-enabled?");
 
   if (!aiFeaturesEnabled) {
     return (
