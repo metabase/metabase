@@ -58,6 +58,13 @@ export const trackAddDataLaterClicked = (engine?: string) => {
   });
 };
 
+export const trackAiSetupStarted = () => {
+  trackSimpleEvent({
+    event: "ai_setup_started",
+    triggered_from: "setup",
+  });
+};
+
 export const trackAiProviderConnected = (provider?: string) => {
   trackSimpleEvent({
     event: "ai_provider_connected",

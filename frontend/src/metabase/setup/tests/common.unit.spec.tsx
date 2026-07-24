@@ -5,6 +5,7 @@ import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "../constants";
 
+import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
   expectSectionToHaveLabel,
@@ -15,6 +16,7 @@ import {
   setup,
   skipAiConfigStep,
   skipWelcomeScreen,
+  startAiConfigStep,
   submitUserInfoStep,
 } from "./setup";
 
@@ -25,8 +27,7 @@ describe("setup (OSS)", () => {
     expectSectionToHaveLabel("What should we call you?", "1");
     expectSectionToHaveLabel("What will you use Metabase for?", "2");
     expectSectionToHaveLabel("Add your data", "3");
-    expectSectionToHaveLabel("Connect to an AI provider", "4");
-    expectSectionToHaveLabel("Usage data preferences", "5");
+    expectSectionToHaveLabel("Usage data preferences", "4");
 
     expectSectionsToHaveLabelsInOrder();
   });
@@ -44,9 +45,6 @@ describe("setup (OSS)", () => {
 
     await userEvent.click(screen.getByText("Continue with sample data"));
     expectSectionsToHaveLabelsInOrder({ from: 3 });
-
-    await skipAiConfigStep();
-    expectSectionsToHaveLabelsInOrder({ from: 4 });
   });
 
   describe("Usage question", () => {
@@ -70,8 +68,7 @@ describe("setup (OSS)", () => {
         );
 
         expectSectionToHaveLabel("Add your data", "3");
-        expectSectionToHaveLabel("Connect to an AI provider", "4");
-        expectSectionToHaveLabel("Usage data preferences", "5");
+        expectSectionToHaveLabel("Usage data preferences", "4");
       });
     });
 
@@ -82,9 +79,6 @@ describe("setup (OSS)", () => {
         await clickNextStep();
 
         expect(screen.queryByText("Add your data")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText("Connect to an AI provider"),
-        ).not.toBeInTheDocument();
 
         expect(getSection("Usage data preferences")).toHaveAttribute(
           "aria-current",
@@ -109,8 +103,7 @@ describe("setup (OSS)", () => {
         );
 
         expectSectionToHaveLabel("Add your data", "3");
-        expectSectionToHaveLabel("Connect to an AI provider", "4");
-        expectSectionToHaveLabel("Usage data preferences", "5");
+        expectSectionToHaveLabel("Usage data preferences", "4");
       });
     });
 
@@ -128,23 +121,61 @@ describe("setup (OSS)", () => {
         );
 
         expectSectionToHaveLabel("Add your data", "3");
-        expectSectionToHaveLabel("Connect to an AI provider", "4");
-        expectSectionToHaveLabel("Usage data preferences", "5");
+        expectSectionToHaveLabel("Usage data preferences", "4");
       });
     });
   });
 
   describe("AI config step", () => {
-    it("should not show the step when AI features are disabled", async () => {
-      await setup({ settings: { "ai-features-enabled?": false } });
+    const completeSetup = async (opts?: SetupOpts) => {
+      await setup(opts);
       await skipWelcomeScreen();
+      await submitUserInfoStep();
+      await selectUsageReason("self-service-analytics");
+      await clickNextStep();
+      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(screen.getByText("Finish"));
+    };
+
+    it("should not be part of the wizard until it is opted into", async () => {
+      await completeSetup();
 
       expect(
         screen.queryByText("Connect to an AI provider"),
       ).not.toBeInTheDocument();
+      expect(screen.getByText("You're all set up!")).toBeInTheDocument();
+    });
 
-      expectSectionToHaveLabel("Add your data", "3");
-      expectSectionToHaveLabel("Usage data preferences", "4");
+    it("should become the last step when opting in from the completed step", async () => {
+      await completeSetup();
+      await startAiConfigStep();
+
+      expect(getSection("Connect to an AI provider")).toHaveAttribute(
+        "aria-current",
+        "step",
+      );
+      expectSectionToHaveLabel("Connect to an AI provider", "5");
+      expect(screen.queryByText("You're all set up!")).not.toBeInTheDocument();
+    });
+
+    it("should go back to the completed step when skipping, without offering AI again", async () => {
+      await completeSetup();
+      await startAiConfigStep();
+      await skipAiConfigStep();
+
+      expect(await screen.findByText("You're all set up!")).toBeInTheDocument();
+      expect(screen.getByText("I'll set up AI later")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Set up AI" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not offer the step when AI features are disabled", async () => {
+      await completeSetup({ settings: { "ai-features-enabled?": false } });
+
+      expect(
+        screen.queryByRole("button", { name: "Set up AI" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -175,8 +206,6 @@ describe("setup (OSS)", () => {
       await clickNextStep();
 
       await userEvent.click(screen.getByText("Continue with sample data"));
-
-      await skipAiConfigStep();
 
       await userEvent.click(screen.getByText("Finish"));
 
@@ -235,7 +264,6 @@ describe("setup (OSS)", () => {
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(screen.getByText("Continue with sample data"));
-      await skipAiConfigStep();
       await userEvent.click(screen.getByText("Finish"));
 
       await userEvent.click(
@@ -263,8 +291,6 @@ describe("setup (OSS)", () => {
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(screen.getByText("Continue with sample data"));
-
-      await skipAiConfigStep();
 
       await userEvent.click(screen.getByText("Finish"));
 

@@ -46,7 +46,7 @@ const setup = ({
 }: SetupOpts = {}) => {
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
-    setup: createMockSetupState({ step }),
+    setup: createMockSetupState({ step, isAiConfigRequested: true }),
     settings: mockSettings({
       ...settings,
       "token-features": createMockTokenFeatures(tokenFeatures),
@@ -68,7 +68,7 @@ const setup = ({
   fetchMock.get("path:/api/setting", () => settingDefinitions);
   setupPropertiesEndpoints(sessionProperties);
 
-  renderWithProviders(<AIConfigStep stepLabel={4} />, {
+  renderWithProviders(<AIConfigStep stepLabel={5} />, {
     storeInitialState: state,
   });
 
@@ -280,7 +280,7 @@ describe("AIConfigStep", () => {
 
   it("should show the connected provider when completed after connecting", () => {
     setup({
-      step: "data_usage",
+      step: "completed",
       settings: {
         "llm-metabot-configured?": true,
         "llm-metabot-provider": "anthropic/claude-haiku-4-5",
@@ -291,7 +291,7 @@ describe("AIConfigStep", () => {
   });
 
   it("should show the skipped title when completed without connecting", () => {
-    setup({ step: "data_usage" });
+    setup({ step: "completed" });
 
     expect(screen.getByText("I'll set up AI later")).toBeInTheDocument();
   });

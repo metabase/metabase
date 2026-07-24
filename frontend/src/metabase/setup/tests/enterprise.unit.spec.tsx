@@ -20,6 +20,7 @@ import {
   setup,
   skipTokenStep,
   skipWelcomeScreen,
+  startAiConfigStep,
   submitUserInfoStep,
 } from "./setup";
 
@@ -45,9 +46,8 @@ describe("setup (EE build, but no token)", () => {
     expectSectionToHaveLabel("What should we call you?", "1");
     expectSectionToHaveLabel("What will you use Metabase for?", "2");
     expectSectionToHaveLabel("Add your data", "3");
-    expectSectionToHaveLabel("Connect to an AI provider", "4");
-    expectSectionToHaveLabel("Activate your commercial license", "5");
-    expectSectionToHaveLabel("Usage data preferences", "6");
+    expectSectionToHaveLabel("Activate your commercial license", "4");
+    expectSectionToHaveLabel("Usage data preferences", "5");
 
     expectSectionsToHaveLabelsInOrder();
   });
@@ -180,6 +180,7 @@ describe("setup (EE build, but no token)", () => {
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(screen.getByText("Continue with sample data"));
+      await startAiConfigStep();
 
       expect(
         await screen.findByText("About Metabase AI service"),
