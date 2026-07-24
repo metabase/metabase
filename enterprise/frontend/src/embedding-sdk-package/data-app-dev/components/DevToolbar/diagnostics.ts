@@ -26,7 +26,7 @@ export class DevDiagnosticsCollector {
   /**
    * Wraps `console.error` and listens for uncaught errors. Idempotent — a second
    * `install()` is a no-op — so an HMR reload can't re-wrap the already-wrapped
-   * `console.error` and double every capture. Returns a teardown the caller can
+   * `console.error` and double every capture. Returns a cleanup the caller can
    * run to restore everything; only the unit tests do.
    */
   install(): () => void {
@@ -160,11 +160,12 @@ export class DevDiagnosticsCollector {
       return truncateDiagnosticText(arg.stack);
     }
 
+    let json: string | undefined;
     try {
-      return truncateDiagnosticText(JSON.stringify(arg));
-    } catch {
-      return truncateDiagnosticText(String(arg));
-    }
+      json = JSON.stringify(arg);
+    } catch {}
+
+    return truncateDiagnosticText(json ?? String(arg));
   }
 
   private truncateEventText(event: DevDiagnosticEvent): DevDiagnosticEvent {

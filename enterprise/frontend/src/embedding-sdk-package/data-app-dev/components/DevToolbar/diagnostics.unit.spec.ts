@@ -6,12 +6,11 @@ import type { DevDiagnosticEntry } from "../../types/diagnostics";
 
 import { devDiagnostics } from "./diagnostics";
 
-const last = (entries: readonly DevDiagnosticEntry[]) =>
+const getLastEntry = (entries: readonly DevDiagnosticEntry[]) =>
   entries[entries.length - 1];
 
 let forwarded: unknown[][] = [];
 let originalConsoleError: typeof console.error;
-/** The active capture's teardown, so a test can uninstall and reinstall. */
 let uninstall: () => void;
 
 beforeAll(() => {
@@ -75,9 +74,9 @@ describe("dev diagnostics collector", () => {
   it("formats Error arguments using their message", () => {
     console.error(new Error("kaboom"));
 
-    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toContain(
-      "kaboom",
-    );
+    expect(
+      formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries())),
+    ).toContain("kaboom");
   });
 
   it("captures uncaught window errors", () => {
@@ -86,9 +85,9 @@ describe("dev diagnostics collector", () => {
     });
     window.dispatchEvent(event);
 
-    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toContain(
-      "window blew up",
-    );
+    expect(
+      formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries())),
+    ).toContain("window blew up");
   });
 
   it("captures unhandled promise rejections", () => {
@@ -97,7 +96,7 @@ describe("dev diagnostics collector", () => {
     });
     window.dispatchEvent(event);
 
-    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toBe(
+    expect(formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries()))).toBe(
       "Unhandled rejection: nope",
     );
   });
@@ -111,7 +110,7 @@ describe("dev diagnostics collector", () => {
     } satisfies Partial<SecurityPolicyViolationEvent>);
     window.dispatchEvent(event);
 
-    const entry = last(devDiagnostics.getEntries());
+    const entry = getLastEntry(devDiagnostics.getEntries());
     expect(entry).toMatchObject({
       kind: "csp-violation",
       directive: "form-action",
@@ -129,7 +128,7 @@ describe("dev diagnostics collector", () => {
       blockedUri: "",
     });
 
-    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toBe(
+    expect(formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries()))).toBe(
       "Content Security Policy (script-src) blocked inline content",
     );
   });
@@ -171,7 +170,7 @@ describe("dev diagnostics collector", () => {
     const entries = devDiagnostics.getEntries();
     expect(entries).toHaveLength(200);
     expect(formatDevDiagnostic(entries[0])).toBe("error 5");
-    expect(formatDevDiagnostic(last(entries))).toBe("error 204");
+    expect(formatDevDiagnostic(getLastEntry(entries))).toBe("error 204");
   });
 
   it("does not let a flood of requests evict earlier errors", () => {
@@ -251,7 +250,7 @@ describe("sdk-call entries", () => {
       durationMs: 45,
     });
 
-    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toBe(
+    expect(formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries()))).toBe(
       "POST /api/card/1/query → 202 (45ms)",
     );
   });
@@ -266,7 +265,7 @@ describe("sdk-call entries", () => {
       error: 'Table "orders" is not in the manifest',
     });
 
-    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toBe(
+    expect(formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries()))).toBe(
       'POST /api/dataset → 400 (12ms)\nTable "orders" is not in the manifest',
     );
   });
@@ -281,7 +280,7 @@ describe("sdk-call entries", () => {
       error: "Failed to fetch",
     });
 
-    expect(formatDevDiagnostic(last(devDiagnostics.getEntries()))).toBe(
+    expect(formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries()))).toBe(
       "GET /api/user/current → failed (5ms)\nFailed to fetch",
     );
   });
@@ -327,16 +326,16 @@ describe("bounded entry size", () => {
   });
 });
 
-describe("devDiagnostics.install teardown", () => {
+describe("devDiagnostics.install cleanup", () => {
   it("stops capturing, and a reinstall records once rather than twice", () => {
     uninstall();
     devDiagnostics.clear();
 
-    console.error("after teardown");
+    console.error("after cleanup");
     expect(devDiagnostics.getEntries()).toHaveLength(0);
 
     // Reinstalling wraps the restored console.error, not the previous wrapper —
-    // without the teardown resetting `installed`, an HMR reload of the dev entry
+    // without the cleanup resetting `installed`, an HMR reload of the dev entry
     // would double every capture.
     uninstall = devDiagnostics.install();
     devDiagnostics.clear();

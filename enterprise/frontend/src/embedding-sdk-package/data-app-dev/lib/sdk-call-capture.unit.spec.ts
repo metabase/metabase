@@ -27,6 +27,15 @@ const setup = (metabaseUrl: string = METABASE_URL) => {
   cleanup = sdkCallCapture.install(metabaseUrl);
 };
 
+// The capture records off the critical path (the app gets its response first),
+// so let the background read settle before asserting on what was recorded.
+const call = async (input: RequestInfo | URL, init?: RequestInit) => {
+  const response = await window.fetch(input, init);
+  await new Promise((resolve) => setTimeout(resolve));
+
+  return response;
+};
+
 const calls = () =>
   devDiagnostics.getEntries().filter((entry) => entry.kind === "sdk-call");
 
@@ -37,8 +46,8 @@ describe("SdkCallCapture", () => {
   it("records a Metabase call and ignores everything else", async () => {
     setup();
 
-    await window.fetch(`${METABASE_URL}/api/card/1`);
-    await window.fetch("https://example.com/thing");
+    await call(`${METABASE_URL}/api/card/1`);
+    await call("https://example.com/thing");
 
     expect(calls()).toHaveLength(1);
     expect(calls()[0]).toMatchObject({ endpoint: "/api/card/1", status: 200 });
@@ -52,7 +61,7 @@ describe("SdkCallCapture", () => {
     const clone = jest.spyOn(exported, "clone");
     originalFetch.mockResolvedValue(exported);
 
-    await window.fetch(`${METABASE_URL}/api/dataset/json`);
+    await call(`${METABASE_URL}/api/dataset/json`);
 
     expect(clone).toHaveBeenCalled();
     expect(exported.bodyUsed).toBe(false);
@@ -61,12 +70,10 @@ describe("SdkCallCapture", () => {
   it("records the request method from init or a Request", async () => {
     setup();
 
-    await window.fetch(`${METABASE_URL}/api/card/1`, { method: "post" });
+    await call(`${METABASE_URL}/api/card/1`, { method: "post" });
     expect(calls()[0].method).toBe("POST");
 
-    await window.fetch(
-      new Request(`${METABASE_URL}/api/card/2`, { method: "PUT" }),
-    );
+    await call(new Request(`${METABASE_URL}/api/card/2`, { method: "PUT" }));
     expect(calls()[1].method).toBe("PUT");
   });
 
@@ -76,7 +83,7 @@ describe("SdkCallCapture", () => {
       errorResponse(400, { message: 'Table "orders" is not in the manifest' }),
     );
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     // The status alone leaves the author — and an agent reading the feed —
     // with "a query failed" and nowhere to go next.
@@ -92,7 +99,7 @@ describe("SdkCallCapture", () => {
       new Response("<html>502 Bad Gateway</html>", { status: 502 }),
     );
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({
       status: 502,
@@ -106,7 +113,7 @@ describe("SdkCallCapture", () => {
       jsonResponse({ status: "failed", error: "Table does not exist" }),
     );
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({
       status: 200,
@@ -118,7 +125,7 @@ describe("SdkCallCapture", () => {
     setup();
     originalFetch.mockResolvedValue(jsonResponse({ status: "failed" }));
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({ status: 200, error: "Query failed" });
   });
@@ -129,7 +136,7 @@ describe("SdkCallCapture", () => {
       jsonResponse({ status: "completed", data: { rows: [[1]] } }),
     );
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({ status: 200, error: undefined });
   });
@@ -142,7 +149,7 @@ describe("SdkCallCapture", () => {
       jsonResponse({ status: "failed", pad: "x".repeat(200 * 1024) }),
     );
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({ status: 200, error: undefined });
   });
@@ -153,7 +160,7 @@ describe("SdkCallCapture", () => {
       jsonResponse({ status: "completed", rows: 1 }),
     );
 
-    const response = await window.fetch(`${METABASE_URL}/api/dataset`);
+    const response = await call(`${METABASE_URL}/api/dataset`);
 
     expect(await response.json()).toEqual({ status: "completed", rows: 1 });
   });
@@ -162,7 +169,7 @@ describe("SdkCallCapture", () => {
     setup();
     originalFetch.mockResolvedValue(new Response("", { status: 500 }));
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({ status: 500, error: undefined });
   });
@@ -171,7 +178,7 @@ describe("SdkCallCapture", () => {
     setup();
     originalFetch.mockResolvedValue(errorResponse(400, { message: "nope" }));
 
-    const response = await window.fetch(`${METABASE_URL}/api/dataset`);
+    const response = await call(`${METABASE_URL}/api/dataset`);
 
     // We read the body to report the reason. Reading the response itself rather
     // than a clone would leave the SDK's own error handling with a consumed
@@ -184,7 +191,7 @@ describe("SdkCallCapture", () => {
     const message = "x".repeat(DATA_APP_DIAGNOSTIC_MAX_CHARS + 1000);
     originalFetch.mockResolvedValue(errorResponse(400, { message }));
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     // Truncating here as well as in the collector would re-truncate the already
     // truncated string and chop up its own "… (truncated)" marker.
@@ -201,7 +208,7 @@ describe("SdkCallCapture", () => {
       new Response("x".repeat(200 * 1024), { status: 502 }),
     );
 
-    await window.fetch(`${METABASE_URL}/api/dataset`);
+    await call(`${METABASE_URL}/api/dataset`);
 
     const { status, error } = calls()[0];
     expect(status).toBe(502);
@@ -211,7 +218,7 @@ describe("SdkCallCapture", () => {
   it("keeps the querystring out of the recorded endpoint", async () => {
     setup();
 
-    await window.fetch(`${METABASE_URL}/api/card/1?token=secret&foo=bar`);
+    await call(`${METABASE_URL}/api/card/1?token=secret&foo=bar`);
 
     // The feed is served over HTTP and read by tools outside the browser, so
     // anything credential-shaped in a query parameter must not reach it.
@@ -222,7 +229,7 @@ describe("SdkCallCapture", () => {
   it("records the time the call took", async () => {
     setup();
 
-    await window.fetch(`${METABASE_URL}/api/card/1`);
+    await call(`${METABASE_URL}/api/card/1`);
 
     expect(calls()[0].durationMs).toEqual(expect.any(Number));
   });
@@ -255,7 +262,7 @@ describe("SdkCallCapture", () => {
   it("strips the base path of a sub-path deployment", async () => {
     setup("https://acme.com/metabase");
 
-    await window.fetch("https://acme.com/metabase/api/dataset");
+    await call("https://acme.com/metabase/api/dataset");
 
     // Without stripping, every endpoint reads `/metabase/api/...`, which matches
     // neither the paths the author knows nor the ones in the Metabase docs.
@@ -267,7 +274,7 @@ describe("SdkCallCapture", () => {
 
     // Another app on the same host is not the Metabase deployment; recording it
     // would put a tenant's unrelated traffic into the data-app author's feed.
-    await window.fetch("https://acme.com/other-app/api/dataset");
+    await call("https://acme.com/other-app/api/dataset");
 
     expect(calls()).toHaveLength(0);
   });
@@ -276,9 +283,9 @@ describe("SdkCallCapture", () => {
     const untouched = jest.fn(async () => jsonResponse({}));
     window.fetch = untouched;
 
-    const teardownNoop = sdkCallCapture.install(undefined);
-    await window.fetch(`${METABASE_URL}/api/card/1`);
-    teardownNoop();
+    const cleanup = sdkCallCapture.install(undefined);
+    await call(`${METABASE_URL}/api/card/1`);
+    cleanup();
 
     expect(window.fetch).toBe(untouched);
     expect(calls()).toHaveLength(0);
@@ -288,9 +295,9 @@ describe("SdkCallCapture", () => {
     const untouched = jest.fn(async () => jsonResponse({}));
     window.fetch = untouched;
 
-    const teardownNoop = sdkCallCapture.install("not-a-url");
-    await window.fetch(`${METABASE_URL}/api/card/1`);
-    teardownNoop();
+    const cleanup = sdkCallCapture.install("not-a-url");
+    await call(`${METABASE_URL}/api/card/1`);
+    cleanup();
 
     expect(window.fetch).toBe(untouched);
     expect(calls()).toHaveLength(0);
@@ -300,14 +307,26 @@ describe("SdkCallCapture", () => {
     setup();
     cleanup();
 
-    await window.fetch(`${METABASE_URL}/api/card/1`);
+    await call(`${METABASE_URL}/api/card/1`);
     expect(calls()).toHaveLength(0);
 
     // Reinstalling wraps the restored fetch, not the previous wrapper — without
-    // the teardown resetting `installed`, a remount would record every call twice.
+    // the cleanup resetting `installed`, a remount would record every call twice.
     cleanup = sdkCallCapture.install(METABASE_URL);
-    await window.fetch(`${METABASE_URL}/api/card/1`);
+    await call(`${METABASE_URL}/api/card/1`);
 
     expect(calls()).toHaveLength(1);
+  });
+
+  it("restores the exact fetch reference it replaced, not a bound wrapper", () => {
+    const before = window.fetch;
+    setup();
+
+    expect(window.fetch).not.toBe(before);
+
+    cleanup();
+
+    // A bound copy would leave another fetch patcher looking at our wrapper.
+    expect(window.fetch).toBe(originalFetch);
   });
 });

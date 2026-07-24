@@ -30,7 +30,8 @@ export class SdkCallCapture {
 
     this.installed = true;
 
-    const realFetch = window.fetch.bind(window);
+    const originalFetch = window.fetch;
+    const boundFetch = originalFetch.bind(window);
 
     // Patching is the easiest option that works for now, and `fetch` alone is
     // enough — Metabase no longer makes XHR calls.
@@ -41,7 +42,7 @@ export class SdkCallCapture {
         url?.origin !== metabaseOrigin ||
         (basePath && !url.pathname.startsWith(basePath))
       ) {
-        return realFetch(input, init);
+        return boundFetch(input, init);
       }
 
       const method = this.resolveMethod(input, init);
@@ -50,15 +51,18 @@ export class SdkCallCapture {
       const durationMs = () => Math.round(performance.now() - startedAt);
 
       try {
-        const response = await realFetch(input, init);
+        const response = await boundFetch(input, init);
+        const requestMs = durationMs();
 
-        devDiagnostics.record({
-          kind: "sdk-call",
-          method,
-          endpoint,
-          status: response.status,
-          durationMs: durationMs(),
-          error: await this.captureFailureReason(response),
+        this.captureFailureReason(response).then((error) => {
+          devDiagnostics.record({
+            kind: "sdk-call",
+            method,
+            endpoint,
+            status: response.status,
+            durationMs: requestMs,
+            error,
+          });
         });
 
         return response;
@@ -79,7 +83,7 @@ export class SdkCallCapture {
     };
 
     return () => {
-      window.fetch = realFetch;
+      window.fetch = originalFetch;
       this.installed = false;
     };
   }
@@ -116,18 +120,15 @@ export class SdkCallCapture {
     response: Response,
   ): Promise<string | undefined> {
     try {
-      // Read from a clone so the caller still gets an untouched body
       const body = await response.clone().text();
 
       if (!response.ok) {
         return body ? this.getErrorMessage(body) : undefined;
       }
 
-      if (body.length > MAX_INSPECTED_BODY_CHARS) {
-        return undefined;
-      }
-
-      return this.getQueryFailure(body);
+      return body.length > MAX_INSPECTED_BODY_CHARS
+        ? undefined
+        : this.getQueryFailure(body);
     } catch {
       return undefined;
     }
