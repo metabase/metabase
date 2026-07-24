@@ -1,4 +1,3 @@
-/* eslint-env node */
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
