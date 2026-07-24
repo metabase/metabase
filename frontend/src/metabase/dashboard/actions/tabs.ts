@@ -393,7 +393,19 @@ export const tabsReducer = createReducer<DashboardState>(
             newDashCard.inline_parameters
           ) {
             newDashCard.inline_parameters = newDashCard.inline_parameters.map(
-              (parameterId) => sourceToNewParameterIdMap[parameterId],
+              (parameterId) => {
+                const newParameterId = sourceToNewParameterIdMap[parameterId];
+                if (newParameterId == null) {
+                  // Should never happen: the thunk builds this map from the same
+                  // source tab's inline parameters. Fall back rather than abort
+                  // the whole tab duplication.
+                  console.warn(
+                    `Missing mapping for inline parameter ${parameterId} when duplicating tab; keeping original id`,
+                  );
+                  return parameterId;
+                }
+                return newParameterId;
+              },
             );
           }
 
