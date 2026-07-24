@@ -13,6 +13,10 @@ defineGlobalDependencies();
 export { DataAppRouter } from "./components/public/DataAppRouter";
 export { DataAppLink } from "./components/public/DataAppLink";
 export { copy } from "./lib/public/copy";
+export {
+  createDataApp,
+  wrapDataAppFactory,
+} from "./lib/public/create-data-app";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export {
   aggregations,

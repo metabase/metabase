@@ -1,16 +1,43 @@
 import {
+  BLOCKED_TAGS,
   CREATE_ELEMENT,
   CREATE_ELEMENT_NS,
 } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
-const isStyleTag = (tag: string) => tag.toLowerCase() === "style";
+// DISCOVERY MODE (temporary): block only the hard realm-creation / code-exec
+// vectors, allow everything else so a full SDK render completes, and log every
+// tag the shared blocklist would normally forbid — so we can build a tight,
+// security-vetted data-app allowlist from what the SDK *actually* creates
+// instead of guessing. (custom-viz is unaffected — it uses the shared blocklist
+// directly.)
+const HARD_BLOCKED = new Set(["script", "iframe", "object", "embed", "frame"]);
 
-function isStyleQualifiedName(qualifiedName: string) {
-  const localName = qualifiedName.includes(":")
+const loggedTags = new Set<string>();
+
+function classify(tag: string): "block" | "log" | "allow" {
+  const lower = tag.toLowerCase();
+  if (HARD_BLOCKED.has(lower)) {
+    return "block";
+  }
+  if (BLOCKED_TAGS.has(lower)) {
+    return "log";
+  }
+  return "allow";
+}
+
+function logDiscovery(tag: string) {
+  const lower = tag.toLowerCase();
+
+  if (!loggedTags.has(lower)) {
+    loggedTags.add(lower);
+    console.warn(`[data-app] SDK-needed tag (normally blocked): ${lower}`);
+  }
+}
+
+function localNameOf(qualifiedName: string) {
+  return qualifiedName.includes(":")
     ? qualifiedName.slice(qualifiedName.indexOf(":") + 1)
     : qualifiedName;
-
-  return isStyleTag(localName);
 }
 
 /** The shared sandbox distortion callback, as the membrane types it. */
@@ -42,15 +69,14 @@ export function makeCreateElementDistortion(
       tag: string,
       options?: ElementCreationOptions,
     ) {
-      // Data-app bundles inline imported CSS with
-      // `vite-plugin-css-injected-by-js`, which creates a `<style>` tag at
-      // runtime. Allow only that tag while keeping the shared dangerous-tag
-      // blocklist for `script` and other DOM creation.
-      if (isStyleTag(tag)) {
-        return CREATE_ELEMENT.call(this, tag, options);
+      const verdict = classify(tag);
+      if (verdict === "block") {
+        return sharedCreateElement.call(this, tag, options);
       }
-
-      return sharedCreateElement.call(this, tag, options);
+      if (verdict === "log") {
+        logDiscovery(tag);
+      }
+      return CREATE_ELEMENT.call(this, tag, options);
     };
   }
 
@@ -65,23 +91,19 @@ export function makeCreateElementDistortion(
       qualifiedName: string,
       options?: ElementCreationOptions,
     ) {
-      if (isStyleQualifiedName(qualifiedName)) {
-        // Same exception as `createElement("style")`, but for namespaced
-        // creation paths.
-        return CREATE_ELEMENT_NS.call(
+      const verdict = classify(localNameOf(qualifiedName));
+      if (verdict === "block") {
+        return sharedCreateElementNS.call(
           this,
           namespaceURI,
           qualifiedName,
           options,
         );
       }
-
-      return sharedCreateElementNS.call(
-        this,
-        namespaceURI,
-        qualifiedName,
-        options,
-      );
+      if (verdict === "log") {
+        logDiscovery(localNameOf(qualifiedName));
+      }
+      return CREATE_ELEMENT_NS.call(this, namespaceURI, qualifiedName, options);
     };
   }
 

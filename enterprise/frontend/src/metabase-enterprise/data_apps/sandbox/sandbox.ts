@@ -65,7 +65,6 @@ export function createDataAppSandbox({
   label = "",
   targetWindow = window,
   allowedHosts = [],
-  endowments,
   onBlocked,
 }: CreateDataAppSandboxOptions) {
   let captured: unknown;
@@ -81,14 +80,6 @@ export function createDataAppSandbox({
     // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's
     // externals (defined by the SDK build) and these endowments can't drift.
     endowments: Object.getOwnPropertyDescriptors({
-      [DATA_APP_GLOBAL_NAMES.sdk]: {
-        ...endowments.sdkExports,
-        // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
-      },
-      [DATA_APP_GLOBAL_NAMES.dataApp]: {
-        ...endowments.dataAppExports,
-        // Below we can set fallbacks to `dataAppExports` exports that were renamed/removed to prevent breaking changes
-      },
       get [DATA_APP_GLOBAL_NAMES.factory]() {
         return captured;
       },
