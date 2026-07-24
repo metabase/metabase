@@ -533,7 +533,20 @@ databaseChangeLog:
               ALTER TABLE "segment" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
               ALTER TABLE "measure" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
-            dbms: mysql,mariadb
+            dbms: mysql
+            sql: |
+              ALTER TABLE `collection` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `report_card` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `report_dashboard` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `report_dashboardcard` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `dashboard_tab` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `document` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `native_query_snippet` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `timeline` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `segment` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+              ALTER TABLE `measure` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
             sql: |
               ALTER TABLE `collection` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
               ALTER TABLE `report_card` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
@@ -728,7 +741,11 @@ databaseChangeLog:
             sql: |
               ALTER TABLE "action" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
-            dbms: mysql,mariadb
+            dbms: mysql
+            sql: |
+              ALTER TABLE `action` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
             sql: |
               ALTER TABLE `action` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
@@ -806,4 +823,3 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_parameter_card_workspace_id
             deleteCascade: true
-

@@ -96,10 +96,12 @@
     id))
 
 (defenterprise check-valid-workspace-id
-  "Check that `workspace-id` refers to an existing workspace; throw a 400 otherwise. Nil is
+  "Check that `workspace-id` refers to an existing workspace the current user can read (403
+  otherwise — workspaces are admin-only for now); throw a 400 when it does not exist. Nil is
   always fine — it clears the user's active workspace."
   :feature :workspaces
   [workspace-id]
   (when workspace-id
     (api/check-400 (t2/exists? :model/Workspace :id workspace-id)
-                   (tru "Workspace {0} does not exist." workspace-id))))
+                   (tru "Workspace {0} does not exist." workspace-id))
+    (api/read-check :model/Workspace workspace-id)))
