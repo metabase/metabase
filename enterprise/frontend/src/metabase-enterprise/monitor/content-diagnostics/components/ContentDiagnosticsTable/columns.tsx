@@ -18,9 +18,6 @@ import {
   getUserName,
 } from "../utils";
 
-// Sortable columns carry an `id` matching a `CONTENT_DIAGNOSTICS_SORT_COLUMNS`
-// value so the server sort round-trips through the table's sorting state.
-// Collection is hydrated live (no denormalized column), so it can't be sorted.
 export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
   return [
     {
@@ -107,8 +104,6 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
       accessorFn: (finding) => finding.last_active_at,
       cell: ({ row }) => {
         const { last_active_at } = row.original;
-        // A null anchor means the entity was never used/ran — the maximally
-        // stale case, so surface it explicitly rather than as an empty cell.
         if (last_active_at == null) {
           return <Text c="text-secondary">{t`Never`}</Text>;
         }

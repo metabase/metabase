@@ -80,7 +80,6 @@ export function ContentDiagnostics({
   const [runScan, { isLoading: isScanning }] =
     useRunContentDiagnosticsScanMutation();
 
-  // Dev/testing trigger: the production scan runs on a schedule (Quartz job).
   const handleScan = async () => {
     try {
       const result = await runScan().unwrap();

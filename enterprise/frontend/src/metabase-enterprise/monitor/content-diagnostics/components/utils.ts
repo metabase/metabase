@@ -59,9 +59,6 @@ export function getEntityTypeLabel(
   }
 }
 
-// The staleness anchor (`last_active_at`) tracks a different signal per entity
-// type — see the backend find-stale-query arms: cards on last run, dashboards
-// and documents on last view, transforms on last run.
 export function getLastActiveLabel(
   entityType: ContentDiagnosticsEntityType,
 ): string {
@@ -115,9 +112,6 @@ function getCollectionBreadcrumbUrl(
   return Urls.collection({ id: entry.id, name: entry.name });
 }
 
-// Breadcrumb for the finding's location — the collection path only (ancestors →
-// parent collection). The entity itself is the sidebar title, so it is not
-// repeated as a trailing breadcrumb link.
 export function getBreadcrumbLinks(
   finding: ContentDiagnosticsFinding,
 ): ContentDiagnosticsBreadcrumbLink[] {
@@ -208,8 +202,6 @@ export function areFilterOptionsEqual(
   );
 }
 
-// Strip defaults so the URL stays clean (all types selected / personal
-// collections included → omit from the query string).
 export function getFilterParams(
   filterOptions: ContentDiagnosticsFilterOptions,
 ): Pick<
@@ -229,8 +221,6 @@ export function getFilterParams(
   };
 }
 
-// The `entity-types` query param is sent only when the selection is a strict
-// subset (omit = all types). Mirrors how `getFilterParams` strips defaults.
 export function getEntityTypesParam(
   entityTypes: ContentDiagnosticsFilterType[],
 ): ContentDiagnosticsFilterType[] | undefined {

@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -41,26 +41,7 @@ export function ContentDiagnosticsSidebar({
   finding,
   onClose,
 }: ContentDiagnosticsSidebarProps) {
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const entityName = getEntityName(finding);
-
-  // Move focus into the panel when it opens so keyboard/screen-reader users
-  // discover the details, and restore focus to the activating row on close.
-  // The effect runs once per open — selecting a different row reuses this
-  // instance and only swaps the `finding` prop.
-  useEffect(() => {
-    const previouslyFocused = document.activeElement;
-    closeButtonRef.current?.focus();
-
-    return () => {
-      if (
-        previouslyFocused instanceof HTMLElement &&
-        document.contains(previouslyFocused)
-      ) {
-        previouslyFocused.focus();
-      }
-    };
-  }, []);
 
   return (
     <Stack
@@ -72,11 +53,7 @@ export function ContentDiagnosticsSidebar({
       aria-label={t`Details for ${entityName}`}
       data-testid="content-diagnostics-sidebar"
     >
-      <SidebarHeader
-        finding={finding}
-        closeButtonRef={closeButtonRef}
-        onClose={onClose}
-      />
+      <SidebarHeader finding={finding} onClose={onClose} />
       <LocationSection finding={finding} />
       <InfoSection finding={finding} />
     </Stack>
@@ -85,15 +62,10 @@ export function ContentDiagnosticsSidebar({
 
 type SidebarHeaderProps = {
   finding: ContentDiagnosticsFinding;
-  closeButtonRef: Ref<HTMLButtonElement>;
   onClose: () => void;
 };
 
-function SidebarHeader({
-  finding,
-  closeButtonRef,
-  onClose,
-}: SidebarHeaderProps) {
+function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
   const entityUrl = getEntityUrl(finding);
   const entityType = getEntityTypeLabel(finding.entity_type).toLowerCase();
   const viewLabel = t`View ${entityType}`;
@@ -123,11 +95,7 @@ function SidebarHeader({
             <FixedSizeIcon name="external" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon
-          ref={closeButtonRef}
-          aria-label={t`Close`}
-          onClick={onClose}
-        >
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
