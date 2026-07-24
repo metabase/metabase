@@ -98,7 +98,7 @@ jobs:
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
       SMOKE_RESULT: ${{ needs.smoke.result }}
-      UBERJAR_RESULT: ${{ needs.uberjar.result }}
+      IMAGE_RESULT: ${{ needs.image.result }}
     steps:
       - name: Comment (build/dispatch failed)
         uses: actions/github-script@v9
@@ -107,7 +107,7 @@ jobs:
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             // A concurrency-cancelled retrigger lands here too; don't stamp it as an infra failure.
-            const cancelled = [process.env.SMOKE_RESULT, process.env.UBERJAR_RESULT].includes('cancelled');
+            const cancelled = [process.env.SMOKE_RESULT, process.env.IMAGE_RESULT].includes('cancelled');
             const body = cancelled
               ? `🤖 **Evals smoke** — ⚪ cancelled before evals started ([logs](${runUrl}))`
               : `🤖 **Evals smoke** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
