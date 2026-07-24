@@ -21,6 +21,22 @@
   metabase-enterprise.advanced-config.file.users/keep-me
   metabase-enterprise.advanced-config.file.workspace/keep-me)
 
+(defn apply-config-upload!
+  "Apply an uploaded `config.yml` tempfile to this instance, blocking until every
+  section has been applied. Runs the same per-section initializers (`settings`,
+  `databases`, `users`, `api-keys`, `workspace`, ...) the boot-time loader runs.
+
+  Unlike the boot-time loader, `{{env VAR}}` templates are NOT expanded — the
+  file's values are inserted verbatim, so an upload can't read server-side
+  environment variables it didn't intend to.
+
+  Deletes `tempfile` when done."
+  [^java.io.File tempfile]
+  (try
+    (advanced-config.file/initialize! (yaml/from-file tempfile))
+    (finally
+      (io/delete-file tempfile :silently))))
+
 (api.macros/defendpoint :post "/" :- :nil
   "Apply an uploaded `config.yml` to this instance. Runs the same per-section
   initializers (`settings`, `databases`, `users`, `api-keys`, `workspace`, ...)
@@ -41,9 +57,5 @@
                     [:filename :string]
                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (api/check-superuser)
-  (let [tempfile (:tempfile config)]
-    (try
-      (advanced-config.file/initialize! (yaml/from-file tempfile))
-      (finally
-        (io/delete-file tempfile :silently))))
+  (apply-config-upload! (:tempfile config))
   nil)

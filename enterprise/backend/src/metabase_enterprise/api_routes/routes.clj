@@ -8,6 +8,7 @@
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api]
    [metabase-enterprise.advanced-config.api.logs]
+   [metabase-enterprise.advanced-config.api.workspace-config]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
@@ -48,11 +49,13 @@
    [metabase-enterprise.upload-management.api]
    [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+static-apikey]]
    [metabase.api.util.handlers :as handlers]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(comment metabase-enterprise.advanced-config.api.logs/keep-me)
+(comment metabase-enterprise.advanced-config.api.logs/keep-me
+         metabase-enterprise.advanced-config.api.workspace-config/keep-me)
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
@@ -157,6 +160,9 @@
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
+   ;; static-apikey check is outermost so a caller with a bad (or missing) key gets a 403 before
+   ;; learning anything about this instance's token features.
+   "/workspace-config"             (+static-apikey (premium-handler 'metabase-enterprise.advanced-config.api.workspace-config :workspaces))
    "/workspace-instance"           (premium-handler metabase-enterprise.workspaces.api/instance-routes :workspaces)
    "/workspace-manager"            (premium-handler metabase-enterprise.workspaces.api/manager-routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
