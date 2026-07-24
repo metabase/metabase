@@ -2697,3 +2697,31 @@
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
+
+(deftest card-last-used-at-test
+  (let [serialized  (atom nil)
+        eid         (u/generate-nano-id)
+        source-date (t/offset-date-time 2021 3 1 10)]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [db   (ts/create! :model/Database :name "my-db")
+              card (ts/create! :model/Card
+                               :name "old card"
+                               :entity_id eid
+                               :database_id (:id db)
+                               :dataset_query {:database (:id db)
+                                               :type     :native
+                                               :native   {:query "select 1"}})]
+          (t2/update! :model/Card (:id card) {:last_used_at source-date})
+          (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
+      (ts/with-db dest-db
+        (testing "a fresh import brings over last_used_at, so auto-trash can see the card is stale (GDGT-217)"
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (= (t/instant source-date)
+                 (t2/select-one-fn (comp t/instant :last_used_at) :model/Card :entity_id eid))))
+        (testing "re-importing an existing card keeps the destination's own last_used_at"
+          (let [dest-date (t/offset-date-time 2025 6 1 12)]
+            (t2/update! :model/Card :entity_id eid {:last_used_at dest-date})
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (is (= (t/instant dest-date)
+                   (t2/select-one-fn (comp t/instant :last_used_at) :model/Card :entity_id eid)))))))))
