@@ -195,7 +195,7 @@ export async function isLtsVersion({
   version,
 }: {
   version: string,
-}): Promise<Boolean> {
+}): Promise<boolean> {
   const url = getVersionInfoUrl("v0"); // any non-`v1.` string picks the OSS file
   const versionInfo = (await fetch(url).then(r => r.json())) as VersionInfoFile;
 
