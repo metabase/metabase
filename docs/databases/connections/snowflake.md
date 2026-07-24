@@ -61,6 +61,12 @@ The password for the username that you use to connect to the database.
 
 Not required. You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
+### Private key passphrase (optional)
+
+Use this only if your private key is **encrypted**. It is the password you set
+when generating the key, **not** your Snowflake user password. Leave it blank for
+unencrypted keys.
+
 ### Warehouse
 
 Snowflake warehouse. If the user lacks a default warehouse, you'll need to enter the warehouse to connect to.

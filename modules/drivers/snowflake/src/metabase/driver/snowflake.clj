@@ -113,17 +113,21 @@
   []
   (inc (driver.common/start-of-week->int)))
 
-(defn- handle-conn-uri [details user account private-key-file]
+(defn- handle-conn-uri
+  [details user account private-key-file private-key-passphrase]
   (let [existing-conn-uri (or (:connection-uri details)
                               (when-let [sub (:subname details)]
                                 (format "jdbc:snowflake:%s" sub))
                               (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
-        opts-str (sql-jdbc.common/additional-opts->string :url
-                                                          (cond-> {:user (codec/url-encode user)
-                                                                   :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
-                                                            (:db details)
-                                                            (assoc :db (codec/url-encode (:db details)))))
-        new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
+        opts-str          (sql-jdbc.common/additional-opts->string
+                           :url
+                           (cond-> {:user (codec/url-encode user)
+                                    :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
+                             (:db details)
+                             (assoc :db (codec/url-encode (:db details)))
+                             private-key-passphrase
+                             (assoc :private_key_pwd (codec/url-encode private-key-passphrase))))
+        new-conn-uri      (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
         (assoc :connection-uri new-conn-uri)
         ;; The Snowflake driver uses the :account property, but we need to drop the region from it first (#30376 comment)
@@ -134,16 +138,20 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account]
+  [{:keys [user password account private-key-passphrase]
     :as   details}]
-  (if password
-    details
-    (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
-      (-> details
-          (driver-api/clean-secret-properties-from-details :snowflake)
-          (handle-conn-uri user account private-key-file)
-          (assoc :private_key_file private-key-file))
-      (driver-api/clean-secret-properties-from-details details :snowflake))))
+  (let [passphrase (not-empty private-key-passphrase)]
+    (if password
+      (dissoc details :private-key-passphrase)
+      (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
+        (cond-> (-> details
+                    (driver-api/clean-secret-properties-from-details :snowflake)
+                    (handle-conn-uri user account private-key-file passphrase)
+                    (assoc :private_key_file private-key-file)
+                    (dissoc :private-key-passphrase))
+          passphrase (assoc :private_key_pwd passphrase))
+        (-> (driver-api/clean-secret-properties-from-details details :snowflake)
+            (dissoc :private-key-passphrase))))))
 
 (defn- quote-name
   [raw-name]
@@ -281,7 +289,7 @@
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (update :db quote-name)
                    (cond-> use-password
-                     (dissoc :private-key))
+                     (dissoc :private-key :private-key-passphrase))
                    ;; password takes precedence if `use-password` is missing
                    (cond-> (or (false? use-password) (not password))
                      (dissoc :password))
