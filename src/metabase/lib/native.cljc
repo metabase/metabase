@@ -324,17 +324,18 @@
      (fn [_query _path {stage-tags :template-tags, sql :native, :as stage}]
        (when (and (= (:lib/type stage) :mbql.stage/native)
                   (string? sql))
-         (let [stage-renames (select-keys renames (map :name stage-tags))]
+         (let [stage-renames (select-keys renames (keys stage-tags))]
            (when (seq stage-renames)
              (-> stage
-                 (update :template-tags (fn [tags]
-                                          (into []
-                                                (comp (map (fn [{tag-name :name, :as tag}]
-                                                             (if-let [new-name (get stage-renames tag-name)]
-                                                               (rename-tag tag new-name)
-                                                               tag)))
-                                                      (m/distinct-by :name))
-                                                tags)))
+                 (update :template-tags
+                         (fn [tags]
+                           (reduce-kv (fn [acc tag-name tag]
+                                        (let [new-name (get stage-renames tag-name tag-name)]
+                                          (cond-> acc
+                                            (not (contains? acc new-name))
+                                            (assoc new-name (rename-tag tag new-name)))))
+                                      {}
+                                      tags)))
                  (update :native #(reduce-kv replace-tag-in-text % stage-renames))))))))))
 
 (mu/defn native-query-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/native-query-snippet]]
