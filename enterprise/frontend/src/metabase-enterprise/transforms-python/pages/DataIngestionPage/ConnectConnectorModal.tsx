@@ -14,6 +14,7 @@ import {
   Icon,
   Loader,
   Modal,
+  PasswordInput,
   Select,
   Stack,
   Text,
@@ -228,7 +229,7 @@ export function ConnectConnectorModal({
               <Divider label={t`or`} />
             </>
           )}
-          <TextInput
+          <PasswordInput
             label={
               connector["oauth-configured"]
                 ? t`Paste an API token`
