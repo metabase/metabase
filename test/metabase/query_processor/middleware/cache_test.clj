@@ -21,6 +21,7 @@
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.query-processor.middleware.cache.poll :as cache.poll]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -478,6 +479,40 @@
               "the second request should be served the first request's cached results")
           (is (= 1 @exec-count)
               "the second concurrent request should coalesce onto the first, not run the query again"))))))
+
+(deftest concurrent-waiters-share-one-poller-test
+  (testing "any number of local requests waiting on the same query share a single deduplicated DB-polling loop"
+    (with-mock-cache! []
+      (let [exec-count    (atom 0)
+            first-entered (promise)
+            release       (promise)
+            execute       (fn [_driver _query respond]
+                            (when (= 1 (swap! exec-count inc))
+                              (deliver first-entered true)
+                              (u/deref-with-timeout release 10000))
+                            (respond {} *rows*))
+            request-1     (future (run-query-with-execute* execute))]
+        (u/deref-with-timeout first-entered 10000)
+        (let [request-2 (future (run-query-with-execute* execute))
+              request-3 (future (run-query-with-execute* execute))
+              pollers   @#'cache.poll/pollers]
+          ;; wait for at least one waiter to register the poller; by construction the map can never hold more than
+          ;; one entry per query hash, so once it's nonempty there is exactly one polling loop
+          (loop [attempts-remaining 100]
+            (when (and (pos? attempts-remaining)
+                       (zero? (count @pollers)))
+              (Thread/sleep 10)
+              (recur (dec attempts-remaining))))
+          (is (= 1 (count @pollers))
+              "both waiting requests should share a single polling loop")
+          (deliver release true)
+          (is (partial= {:status :completed} (u/deref-with-timeout request-1 10000)))
+          (doseq [waiter [request-2 request-3]]
+            (is (=? {:status        :completed
+                     :cache/details {:cached true}}
+                    (u/deref-with-timeout waiter 10000))))
+          (is (= 1 @exec-count)
+              "the query must have run exactly once across all three requests"))))))
 
 (deftest concurrent-coalescing-falls-back-when-results-not-cached-test
   (testing "when the winner's results never make it into the cache (e.g. the query was too fast to be
