@@ -101,8 +101,12 @@
                                                  [:key :string]
                                                  [:label :string]
                                                  [:required :boolean]]]]
-                   [:default-table :string]
-                   [:merge-key [:sequential :string]]
+                   [:streams [:sequential [:map
+                                           [:key :string]
+                                           [:label :string]
+                                           [:description :string]
+                                           [:default-table :string]
+                                           [:merge-key [:sequential :string]]]]]
                    [:oauth-configured :boolean]]]
   "List the available ingestion connectors."
   []
@@ -137,8 +141,9 @@
    {:keys [state]} :- [:map [:state ms/NonBlankString]]]
   {:ready (connectors/oauth-state-ready? state)})
 
-(api.macros/defendpoint :post "/connector/:connector-id/connection" :- :map
-  "Create an ingestion connection: instantiates the connector template as a python transform."
+(api.macros/defendpoint :post "/connector/:connector-id/connection" :- [:sequential :map]
+  "Create an ingestion connection: instantiates one python transform per selected stream
+  (all streams when unspecified)."
   [{:keys [connector-id]} :- [:map [:connector-id ms/NonBlankString]]
    _query-params
    body :- [:map
@@ -146,6 +151,7 @@
             [:auth [:map
                     [:token {:optional true} ms/NonBlankString]
                     [:oauth-state {:optional true} ms/NonBlankString]]]
+            [:streams {:optional true} [:sequential ms/NonBlankString]]
             [:target [:map
                       [:database ms/PositiveInt]
                       [:schema {:optional true} [:maybe :string]]

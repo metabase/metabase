@@ -56,6 +56,10 @@ export function newPythonTransform() {
   return `${TRANSFORMS_ROOT_URL}/new/python`;
 }
 
+export function transformIngestion() {
+  return `${TRANSFORMS_ROOT_URL}/ingestion`;
+}
+
 export function newTransformFromCard(cardId: CardId) {
   return `${TRANSFORMS_ROOT_URL}/new/card/${cardId}`;
 }

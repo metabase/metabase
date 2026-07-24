@@ -1,4 +1,4 @@
-"""GitHub issues & pull requests connector.
+"""GitHub issues stream (excludes pull requests).
 
 Requires the GITHUB_TOKEN secret (a PAT or OAuth token with repo read scope).
 Syncs incrementally on `updated_at`; pair with an incremental target using
@@ -19,7 +19,6 @@ COLUMNS = [
     "number",
     "title",
     "state",
-    "is_pull_request",
     "author",
     "labels",
     "comments",
@@ -36,7 +35,6 @@ def _row(issue):
         "number": issue["number"],
         "title": issue["title"],
         "state": issue["state"],
-        "is_pull_request": "pull_request" in issue,
         "author": (issue.get("user") or {}).get("login"),
         "labels": [label["name"] for label in issue.get("labels") or []],
         "comments": issue.get("comments"),
@@ -68,7 +66,9 @@ def transform(state=None):
     rows = []
     for page in client.paginate(f"/repos/{GITHUB_REPO}/issues", params=params):
         for issue in page:
-            rows.append(_row(issue))
+            # the issues endpoint interleaves PRs; those belong to the pull-requests stream
+            if "pull_request" not in issue:
+                rows.append(_row(issue))
 
     df = pd.DataFrame(rows).reindex(columns=COLUMNS)
     for col in ("created_at", "updated_at", "closed_at"):

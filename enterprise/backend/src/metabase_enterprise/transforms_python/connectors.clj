@@ -21,15 +21,25 @@
   (delay (slurp (io/resource resource-path))))
 
 (def connectors
-  "Connector registry, keyed by connector id."
+  "Connector registry, keyed by connector id. Each connector exposes `:streams` — independently
+  selectable entities, each becoming its own transform + target table."
   {"github" {:id            "github"
              :name          "GitHub"
              :description   "Issues and pull requests from a GitHub repository."
              :secret-key    "GITHUB_TOKEN"
              :config-fields [{:key "repo", :label "Repository (owner/name)", :required true}]
-             :template      (template "metabase_enterprise/transforms_python/connectors/github.py")
-             :default-table "github_issues"
-             :merge-key     ["id"]
+             :streams       [{:key           "issues"
+                              :label         "Issues"
+                              :description   "Issues, excluding pull requests."
+                              :default-table "github_issues"
+                              :merge-key     ["id"]
+                              :template      (template "metabase_enterprise/transforms_python/connectors/github_issues.py")}
+                             {:key           "pull-requests"
+                              :label         "Pull requests"
+                              :description   "Pull requests with branch and merge info."
+                              :default-table "github_pull_requests"
+                              :merge-key     ["id"]
+                              :template      (template "metabase_enterprise/transforms_python/connectors/github_pulls.py")}]
              :oauth         {:authorize-url "https://github.com/login/oauth/authorize"
                              :token-url     "https://github.com/login/oauth/access_token"
                              :scope         "repo"
@@ -40,9 +50,12 @@
              :description   "Issues from a Linear workspace."
              :secret-key    "LINEAR_API_KEY"
              :config-fields [{:key "team", :label "Team key (blank for all teams)", :required false}]
-             :template      (template "metabase_enterprise/transforms_python/connectors/linear.py")
-             :default-table "linear_issues"
-             :merge-key     ["id"]
+             :streams       [{:key           "issues"
+                              :label         "Issues"
+                              :description   "Issues with status, team, and assignee."
+                              :default-table "linear_issues"
+                              :merge-key     ["id"]
+                              :template      (template "metabase_enterprise/transforms_python/connectors/linear.py")}]
              :oauth         {:authorize-url "https://linear.app/oauth/authorize"
                              :token-url     "https://api.linear.app/oauth/token"
                              :scope         "read"
@@ -60,7 +73,8 @@
   []
   (for [{:keys [oauth] :as conn} (vals connectors)]
     (-> conn
-        (dissoc :template :oauth)
+        (dissoc :oauth)
+        (update :streams (fn [streams] (mapv #(dissoc % :template) streams)))
         (assoc :oauth-configured (boolean (and oauth ((:client-id oauth))))))))
 
 ;;; ------------------------------------------------- OAuth -------------------------------------------------
@@ -156,27 +170,39 @@
           config-fields))
 
 (defn create-connection!
-  "Instantiate `connector-id` as a python transform. `auth` is either {:token \"...\"} (hand-entered)
-  or {:oauth-state \"nonce\"} (token from a completed OAuth handshake). Returns the created transform."
-  [connector-id {:keys [config auth target name] :as _body}]
-  (let [{:keys [config-fields secret-key merge-key default-table template] conn-name :name :as _conn} (connector connector-id)
-        token      (or (:token auth)
-                       (some-> (:oauth-state auth) consume-oauth-token!)
-                       (throw (ex-info (tru "Either a token or a completed OAuth authorization is required.")
-                                       {:status-code 400})))
-        db-id      (:database target)
-        table-name (or (:table-name target) default-table)
-        code       (render-template @template config-fields config)]
-    (transforms.core/create-transform!
-     {:name    (or name (str conn-name " ingestion (" table-name ")"))
-      :source  {:type            :python
-                :source-database db-id
-                :source-tables   []
-                :body            code}
-      :target  {:type     "table-incremental"
-                :database db-id
-                :schema   (:schema target)
-                :name     table-name
-                :target-incremental-strategy {:type       "merge"
-                                              :unique-key (mapv (fn [col] {:name col}) merge-key)}}
-      :secrets {secret-key token}})))
+  "Instantiate `connector-id` as one python transform per selected stream. `auth` is either
+  {:token \"...\"} (hand-entered) or {:oauth-state \"nonce\"} (token from a completed OAuth
+  handshake); the token is shared by all created transforms. `streams` is a vector of stream keys,
+  defaulting to all of the connector's streams. Returns the created transforms."
+  [connector-id {:keys [config auth target name streams] :as _body}]
+  (let [{:keys [config-fields secret-key] conn-name :name :as conn} (connector connector-id)
+        selected (if (seq streams)
+                   (filter (comp (set streams) :key) (:streams conn))
+                   (:streams conn))
+        _        (when (empty? selected)
+                   (throw (ex-info (tru "No valid streams selected.") {:status-code 400})))
+        token    (or (:token auth)
+                     (some-> (:oauth-state auth) consume-oauth-token!)
+                     (throw (ex-info (tru "Either a token or a completed OAuth authorization is required.")
+                                     {:status-code 400})))
+        db-id    (:database target)
+        single?  (= 1 (count selected))]
+    (vec
+     (for [{:keys [label default-table merge-key template]} selected
+           ;; a custom table name only makes sense when a single stream is selected
+           :let [table-name (or (when single? (:table-name target)) default-table)
+                 code       (render-template @template config-fields config)]]
+       (transforms.core/create-transform!
+        {:name    (or (when single? name)
+                      (str conn-name " " label " ingestion (" table-name ")"))
+         :source  {:type            :python
+                   :source-database db-id
+                   :source-tables   []
+                   :body            code}
+         :target  {:type     "table-incremental"
+                   :database db-id
+                   :schema   (:schema target)
+                   :name     table-name
+                   :target-incremental-strategy {:type       "merge"
+                                                 :unique-key (mapv (fn [col] {:name col}) merge-key)}}
+         :secrets {secret-key token}})))))

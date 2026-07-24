@@ -9,6 +9,7 @@ import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_TRANSFORMS_PYTHON,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -171,6 +172,15 @@ export function DataStudioLayout() {
           icon="play_outlined"
           to={Urls.transformGraphRunList()}
           isSelected={currentTab === "runs"}
+          showLabel={isNavbarOpened}
+        />
+      )}
+      {canUseTransforms && PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+        <AreaTab
+          label={t`Data ingestion`}
+          icon="add_data"
+          to={Urls.transformIngestion()}
+          isSelected={currentTab === "ingestion"}
           showLabel={isNavbarOpened}
         />
       )}
