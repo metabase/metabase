@@ -44,6 +44,7 @@ const elements = [
   }),
 
   // basic
+  createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
 
   // shared
@@ -162,7 +163,6 @@ const elements = [
   createElement({ type: "shared", name: "redux" }),
   createElement({ type: "shared", name: "rich_text_editing" }),
   createElement({ type: "shared", name: "route-guards" }),
-  createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
     name: "schema",
