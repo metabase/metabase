@@ -321,7 +321,7 @@
   ;; `defendpoint` edge, so entries here are declared in the internal kebab-case shape the
   ;; handler receives and persists. Open map: snapshot keys beyond these pass through kebab-cased.
   [:map {:decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
-   [:dimension-id   ms/NonBlankString]
+   [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :string]]
    [:semantic-type  {:optional true} [:maybe :string]]])

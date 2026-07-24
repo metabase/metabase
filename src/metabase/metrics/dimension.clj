@@ -93,14 +93,12 @@
 
 (mr/def ::dimension
   "The internal (kebab-case) dimension shape from [[metabase.lib-metric.schema]], annotated with
-   its wire-conversion rules. Entries are overridden only where a wire rule applies. `:id` is
-   loosened from the strict uuid the model boundary enforces to any non-blank string, so
-   endpoint validation stays tolerant of hand-built fixtures and older payloads."
+   its wire-conversion rules. Entries are overridden only where a wire rule applies; `:id` keeps
+   the strict uuid schema the model boundary enforces."
   (wire-map
    [:merge
     ::lm.schema/persisted-dimension
     [:map
-     [:id ms/NonBlankString]
      [:effective-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
      [:semantic-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
      [:has-field-values {:optional true} [:maybe {:encode/api kw->str} :keyword]]
@@ -113,14 +111,12 @@
   "The internal (kebab-case) dimension-mapping shape annotated with its wire-conversion rules.
    `:target` is re-typed as `:any` so the transformer never walks into the MBQL ref and renames
    its option-map keys — it passes through untouched in both directions. `:type` is optional on
-   the wire (FE payloads may omit it) and `:dimension-id` is loosened to any non-blank string
-   (see `::dimension`)."
+   the wire (FE payloads may omit it); `:dimension-id` keeps the strict uuid schema."
   (wire-map
    [:merge
     ::lm.schema/dimension-mapping
     [:map
      [:type {:optional true} ::lm.schema/dimension-mapping.type]
-     [:dimension-id ms/NonBlankString]
      [:target :any]]]
    encode-mapping-map))
 
