@@ -94,10 +94,14 @@
                        (api/read-check (t2/select-one :model/Field :id field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
                                   (t2/select-one :model/Field :id))
-                         field)]
-    {:values          (search-values field search-field query-string)
-     ;; assume there are more if doing a search, otherwise there are no more values
-     :has_more_values (not (str/blank? query-string))
+                         field)
+        limit        default-max-field-search-limit
+        blank-query? (str/blank? query-string)
+        values       (or (search-values field search-field (when-not blank-query? query-string) (inc limit))
+                         [])]
+    {:values          (vec (take limit values))
+     :has_more_values (or (not blank-query?)
+                          (> (count values) limit))
      :field_id        field-id}))
 
 (defn parse-query-param-value-for-field
