@@ -161,8 +161,6 @@ export function setUpDataAppDevServer(clientHost: string) {
     );
   });
 
-  // Vite restarts on the write; wait past the port-drop, then until it's live.
-  cy.wait(3000);
   waitForDataAppDevServerEnv(clientHost, mbUrl);
 }
 
