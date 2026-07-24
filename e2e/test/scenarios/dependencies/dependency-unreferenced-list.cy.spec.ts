@@ -146,8 +146,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
       setupEntities({ withReferences: true });
       // These entities are referenced, so they should never appear in the
       // unreferenced list — we can't poll for their presence. Wait for the
-      // global backfill so the analysis has run before asserting their absence.
-      H.waitForBackfillComplete();
+      // async analysis to reach steady state (every leaf entity present, every
+      // base entity gone) before asserting their absence.
+      waitForReferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
@@ -1141,6 +1142,44 @@ function waitForUnreferencedAnalysis(expectedNames: string[] = ENTITY_NAMES) {
   H.waitForUnreferencedEntities((nodes) => {
     const presentNames = new Set(nodes.map(getNodeName));
     return expectedNames.every((name) => presentNames.has(name));
+  });
+}
+
+// The referencing entities that `setupEntities({ withReferences: true })`
+// creates are themselves unreferenced (nothing depends on e.g.
+// "Model for model data source -> Model"), so once the async analysis
+// (metabase#71037) has processed the reference creation they show up in the
+// unreferenced list — while every base entity in ENTITY_NAMES drops out of it.
+const LEAF_ENTITY_NAMES = [
+  `${MODEL_FOR_MODEL_DATA_SOURCE} -> Model`,
+  `${MODEL_FOR_METRIC_DATA_SOURCE} -> Metric`,
+  `${SEGMENT_FOR_MODEL_FILTER} -> Model`,
+  `${SEGMENT_FOR_SEGMENT_FILTER} -> Segment`,
+  `${SEGMENT_FOR_METRIC_FILTER} -> Metric`,
+  `${METRIC_FOR_MODEL_AGGREGATION} -> Model`,
+  `${METRIC_FOR_METRIC_AGGREGATION} -> Metric`,
+  `${SNIPPET_FOR_SNIPPET_TAG} -> Snippet`,
+];
+
+// Deterministic guard for the referenced-entities test. The base entities are
+// all referenced, so we can never poll for their presence — and waiting only
+// for the global backfill flag is not enough, because that flag does NOT track
+// the per-entity reclassification triggered by creating the references
+// (metabase#71037). The list page fires a single query on load, so visiting
+// before that reclassification finishes renders the base entities as still
+// unreferenced and the `not.exist` assertions time out (4000ms). Poll the
+// unreferenced endpoint until it reaches steady state — every leaf entity
+// present (proving the analysis has run on the new creations, not merely that
+// the base entities haven't been classified yet) AND every base entity gone —
+// before asserting their absence.
+function waitForReferencedAnalysis() {
+  H.waitForBackfillComplete();
+  H.waitForUnreferencedEntities((nodes) => {
+    const presentNames = new Set(nodes.map(getNodeName));
+    return (
+      LEAF_ENTITY_NAMES.every((name) => presentNames.has(name)) &&
+      ENTITY_NAMES.every((name) => !presentNames.has(name))
+    );
   });
 }
 
