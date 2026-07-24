@@ -46,7 +46,8 @@
     (is (contains? scopes "agent:transforms:*"))
     (is (contains? scopes "agent:snippets:*"))
     (is (contains? scopes "agent:search"))
-    (testing "segment/measure are MBQL macros gated by NLQ, not SQL generation"
+    (testing "segment/measure/metric are MBQL macros gated by NLQ, not SQL generation"
+      (is (not (contains? scopes "agent:metric:*")))
       (is (not (contains? scopes "agent:segment:*")))
       (is (not (contains? scopes "agent:measure:*"))))))
 

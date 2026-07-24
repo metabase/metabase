@@ -191,10 +191,18 @@
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
    ;; segment/measure are MBQL query macros authored while building queries, like metric — the NLQ
    ;; bucket, not the raw-SQL one.
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"
-                                        "agent:segment:*" "agent:measure:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
-                                        "agent:notification:*" "agent:collection:*"}})
+   :permission/metabot-nlq            #{"agent:notebook:*"
+                                        "agent:query:*"
+                                        "agent:question:*"
+                                        "agent:metric:*"
+                                        "agent:segment:*"
+                                        "agent:measure:*"}
+   :permission/metabot-other-tools    #{"agent:viz:*"
+                                        "agent:dashboard:*"
+                                        "agent:document:*"
+                                        "agent:alert:*"
+                                        "agent:notification:*"
+                                        "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
