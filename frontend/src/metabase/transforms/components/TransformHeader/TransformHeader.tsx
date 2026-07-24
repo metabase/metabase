@@ -56,7 +56,7 @@ export function TransformHeader({
       data-testid="transforms-header"
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
-          <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+          <Link to={Urls.transformList()}>{t`Data transformation`}</Link>
           {path?.map((folder) => (
             <Link
               key={folder.id}

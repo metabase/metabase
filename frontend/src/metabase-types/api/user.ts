@@ -196,7 +196,7 @@ export type UserKeyValue =
     }
   | {
       namespace: "data_studio";
-      key: string;
+      key: "isNavbarOpened" | "hasSeenGuide";
       value: boolean;
     }
   | {

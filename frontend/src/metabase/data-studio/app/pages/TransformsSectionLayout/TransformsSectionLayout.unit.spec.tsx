@@ -294,7 +294,13 @@ const assertEnableScreen = async () =>
     await screen.findByText("Customize and clean up your data"),
   ).toBeInTheDocument();
 
-const assertNoWritableDatabasesEmptyState = async () =>
+const assertNoWritableDatabasesEmptyState = async () => {
   expect(
     await screen.findByText("No compatible database connection"),
   ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("tab", { name: "Transforms" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: "Jobs" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: "Runs" })).not.toBeInTheDocument();
+};
