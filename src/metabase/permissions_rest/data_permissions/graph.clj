@@ -268,13 +268,18 @@
   [& {:as opts}]
   (reduce-into-graph (data-perms-reducible opts) collapse-uniform-view-data))
 
+(defn- maybe-hide-tenant-groups [groups]
+  (apply dissoc groups (perms/hidden-tenant-group-ids (keys groups))))
+
 (mu/defn api-graph :- ::permissions-rest.schema/data-permissions-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
   - Converts DB value names to API value names
   - Nesting: see [[rename-perm]] to see which keys in `graph` affect which paths in the api permission-graph
-  - Adds sandboxed entries, and impersonations to graph"
+  - Adds sandboxed entries, and impersonations to graph
+  - Hides tenant-group entries when the Tenants feature is disabled, mirroring the visibility rules used by the
+    permissions group listing endpoints."
   ([]
    (api-graph {}))
 
@@ -295,7 +300,8 @@
                 (add-sandboxes-to-permissions-graph opts)
                 (add-impersonations-to-permissions-graph opts)
                 (add-admin-perms-to-permissions-graph opts)
-                (add-data-analyst-perms-to-permissions-graph opts))}))
+                (add-data-analyst-perms-to-permissions-graph opts)
+                (maybe-hide-tenant-groups))}))
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
