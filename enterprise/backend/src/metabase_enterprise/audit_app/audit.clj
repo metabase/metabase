@@ -90,6 +90,7 @@
                                                ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
                                                [:not= :table.name [:inline "DATABASECHANGELOG"]]
                                                [:not= :table.name [:inline "DATABASECHANGELOGLOCK"]] ;; new instances do not get this file, but existing instances may have it
+                                               [:not= :table.name [:inline "DATABASECHANGELOG_VERSION"]]
                                                [:not [:like :table.name [:inline "QRTZ_%"]]]
                                                [:not [:exists {:select [1]
                                                                :from [[(t2/table-name :model/Table) :self_table]]
@@ -110,6 +111,7 @@
                                                     [:= :table.id :field.table_id]]
                                        :where [:and [:= :table.db_id audit-db-id]
                                                [:not= :table.name [:inline "DATABASECHANGELOG"]]
+                                               [:not= :table.name [:inline "DATABASECHANGELOG_VERSION"]]
                                                [:not [:like :table.name [:inline "QRTZ_%"]]]
                                                [:not [:exists {:select [1]
                                                                :from [[(t2/table-name :model/Field) :self_field]]
