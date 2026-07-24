@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -104,9 +105,9 @@ describe("ConversationsPage", () => {
     });
     expect(table).toBeInTheDocument();
 
-    // Sortable columns render with the "columnheader" role; Queries and Searches
-    // aren't sortable, so they're asserted via plain text below instead.
-    const sortableColumnHeaders = [
+    // Every populated header renders with the "columnheader" role, whether or not it's
+    // sortable — screen readers need that association even for Queries/Searches.
+    const columnHeaders = [
       "Title",
       "User",
       "Profile",
@@ -114,17 +115,17 @@ describe("ConversationsPage", () => {
       "Messages",
       "Tokens",
       "Cached tokens",
+      "Queries",
+      "Searches",
       "IP",
     ];
-    for (const name of sortableColumnHeaders) {
+    for (const name of columnHeaders) {
       expect(
         within(table).getByRole("columnheader", {
           name: new RegExp(`^${name}\\b`),
         }),
       ).toBeInTheDocument();
     }
-    expect(within(table).getByText("Queries")).toBeInTheDocument();
-    expect(within(table).getByText("Searches")).toBeInTheDocument();
   });
 
   it("renders a conversation row with formatted cell values", async () => {
@@ -161,6 +162,14 @@ describe("ConversationsPage", () => {
 
     expect(history?.getCurrentLocation().pathname).toBe(
       Urls.monitorAiAuditingConversationDetail("convo-42"),
+    );
+
+    // Regression test: the row is both a router Link (getRowHref) and had a manual
+    // dispatch(push()) on click, which pushed the same destination twice — a single Back
+    // press would land on the detail page again instead of the conversations list.
+    act(() => history?.goBack());
+    expect(history?.getCurrentLocation().pathname).toBe(
+      "/monitor/ai-auditing/conversations",
     );
   });
 

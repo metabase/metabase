@@ -369,10 +369,17 @@ describe("McpAnalyticsPage", () => {
     expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
 
     // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
-    expect(screen.getByRole("tab", { name: "Usage" })).toBeInTheDocument();
+    const usageTab = screen.getByRole("tab", { name: "Usage" });
+    expect(usageTab).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Tool calls" })).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
+
+    // The empty state must render inside the active tab's panel, not as a bare sibling of the
+    // tab list — otherwise the selected tab's aria-controls points at nothing.
+    const panel = screen.getByRole("tabpanel");
+    expect(usageTab).toHaveAttribute("aria-controls", panel.id);
+    expect(within(panel).getByText("No MCP activity")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
 import type { Row } from "@tanstack/react-table";
-import { type MouseEvent, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -88,22 +88,14 @@ export function ConversationsTable({
     [],
   );
 
+  // Pointer navigation is handled by the row's link (getRowHref below), which also gives
+  // modified clicks (Cmd/Ctrl/Shift) their native new-tab/context-menu behavior for free.
+  // This only covers keyboard activation (Enter on a keyboard-focused row).
   const handleRowActivate = useCallback(
     (row: Row<ConversationRow>) => {
       dispatch(push(getRowHref(row)));
     },
     [dispatch, getRowHref],
-  );
-
-  // Let the browser handle modified clicks (new tab / context menu) via the row link.
-  const handleRowClick = useCallback(
-    (row: Row<ConversationRow>, event: MouseEvent) => {
-      const isModifiedClick = event.metaKey || event.ctrlKey || event.shiftKey;
-      if (!isModifiedClick) {
-        handleRowActivate(row);
-      }
-    },
-    [handleRowActivate],
   );
 
   const treeTableInstance = useTreeTableInstance<ConversationRow>({
@@ -156,7 +148,6 @@ export function ConversationsTable({
           emptyState={<MonitorEmptyState label={t`No conversations found`} />}
           getRowProps={() => ({ "data-testid": "conversation" })}
           getRowHref={getRowHref}
-          onRowClick={handleRowClick}
         />
       )}
     </Card>

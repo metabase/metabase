@@ -7,7 +7,7 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
-import { Box, Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
+import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
   // The shared audit filter bar; aliased since it has nothing to do with MCP "conversations".
@@ -28,7 +28,8 @@ import { McpEventsTable } from "./McpEventsTable";
 /**
  * AI Auditing MCP analytics page. Renders live ad-hoc queries over the `v_mcp_tool_calls` audit view
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
- * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
+ * filters. The tabs and filters stay visible when the filtered view has no activity; only the
+ * active tab's content is replaced with an empty state.
  */
 export function McpAnalyticsPage({ location }: WithRouterProps) {
   const [
@@ -84,19 +85,12 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
     errorsOnly: true,
   });
 
-  // The events (Tool calls) tab is a data grid that should scroll internally, like other
-  // Monitor grid views; the charts tab is dashboard-like content that scrolls with the page.
-  // MonitorMain only fills/clips the viewport when its own parent is a flex container, so that
-  // constraint is applied conditionally, matching whichever tab is active.
+  // The events (Tool calls) tab is a data grid that should scroll internally.
   const isEventsTab = tab === "events";
 
   const content = (
     <MonitorMain>
-      <Stack
-        gap="lg"
-        flex={isEventsTab ? 1 : undefined}
-        mih={isEventsTab ? 0 : undefined}
-      >
+      <Stack gap="lg" {...(isEventsTab ? { flex: 1, mih: 0 } : {})}>
         <MonitorHeaderTitle>{t`MCP analytics`}</MonitorHeaderTitle>
 
         <Tabs
@@ -106,10 +100,14 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
             patchUrlState({ tab: val === "events" ? "events" : "charts" })
           }
           keepMounted={false}
-          flex={isEventsTab ? 1 : undefined}
-          mih={isEventsTab ? 0 : undefined}
-          display={isEventsTab ? "flex" : undefined}
-          style={isEventsTab ? { flexDirection: "column" } : undefined}
+          {...(isEventsTab
+            ? {
+                flex: 1,
+                mih: 0,
+                display: "flex",
+                style: { flexDirection: "column" },
+              }
+            : {})}
         >
           <Tabs.List mb="md">
             <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
@@ -134,14 +132,18 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
 
           {match({ isInitialLoading, showEmpty })
             .with({ isInitialLoading: true }, () => (
-              <Flex mih="60vh" align="center" justify="center" mt="md">
-                <Loader size="lg" />
-              </Flex>
+              // Keeps the active tab's panel/tabpanel relationship intact (aria-controls on the
+              // selected tab must point at a rendered element) while the initial load is pending.
+              <Tabs.Panel value={tab} mt="md">
+                <Flex mih="60vh" align="center" justify="center">
+                  <Loader size="lg" />
+                </Flex>
+              </Tabs.Panel>
             ))
             .with({ showEmpty: true }, () => (
-              <Box mt="md">
+              <Tabs.Panel value={tab} mt="md">
                 <McpAnalyticsEmptyState />
-              </Box>
+              </Tabs.Panel>
             ))
             .otherwise(() => (
               <>
