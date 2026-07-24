@@ -34,12 +34,8 @@ export function getStore(
     ...reducers,
   }) as unknown as Reducer<State>;
 
-  // Settings live in the `getSessionProperties` RTK Query cache, not a
-  // reducer. When a `settings` seed field is present (Storybook stores are
-  // built from `createMockState` output), seed the cache entry and strip the
-  // raw field — this keeps each store's settings isolated per store, where
-  // the module-load `window.MetabaseBootstrap` global would leak one story's
-  // settings into every other story.
+  // Settings live in the `getSessionProperties` RTK Query cache, not a reducer.
+  // When a `settings` seed field is present seed the cache entry and strip the raw field
   const { settings, ...preloadedState } = initialState;
   if (settings?.values && reducers[Api.reducerPath]) {
     // Unjustified type cast. FIXME
@@ -86,8 +82,6 @@ function getManifestStore(
 ) {
   return getStore(
     reducers,
-    // `settings` is a seed field, not a reducer key — `getStore` turns it into
-    // the seeded `getSessionProperties` cache entry.
     _.pick(initialState, ...Object.keys(reducers), "settings"),
     middleware,
   );

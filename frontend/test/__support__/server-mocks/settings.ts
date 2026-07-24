@@ -61,8 +61,7 @@ export function setupStatefulSettingsEndpoints(
     new RegExp("/api/setting/(.+)"),
     ({ url, options }) => {
       const key = decodeURIComponent(url.split("/api/setting/")[1]);
-      // Unjustified type cast. FIXME
-      const { value } = JSON.parse(options.body as string);
+      const { value } = JSON.parse(String(options.body));
       store[key] = value;
       return { status: 204 };
     },
@@ -73,8 +72,7 @@ export function setupStatefulSettingsEndpoints(
   fetchMock.put(
     "path:/api/setting",
     ({ options }) => {
-      // Unjustified type cast. FIXME
-      Object.assign(store, JSON.parse(options.body as string));
+      Object.assign(store, JSON.parse(String(options.body)));
       return { status: 204 };
     },
     { name: "update-settings" },

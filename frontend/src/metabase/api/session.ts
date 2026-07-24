@@ -154,8 +154,8 @@ export const useLazyGetSettingsQuery = useLazyGetSessionPropertiesQuery;
 
 /**
  * Force a refetch of the session properties (settings) from non-React code.
- * Dispatch it: `dispatch(refetchSiteSettings())`.
- *  In React, prefer `useLazyGetSettingsQuery()`'s trigger instead.
+ * Dispatch it via `dispatch(refetchSiteSettings())`.
+ * In React, prefer `useLazyGetSettingsQuery()`'s trigger instead.
  */
 export const refetchSiteSettings = () =>
   sessionApi.endpoints.getSessionProperties.initiate(undefined, {

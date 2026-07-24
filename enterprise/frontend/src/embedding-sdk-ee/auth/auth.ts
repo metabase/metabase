@@ -43,7 +43,6 @@ import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import MetabaseSettings from "metabase/utils/settings";
-import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
@@ -106,16 +105,14 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         sessionApi.util.upsertQueryData(
           "getSessionProperties",
           undefined,
-          // Unjustified type cast. FIXME
-          authState.siteSettings as EnterpriseSettings,
+          authState.siteSettings,
         ),
       );
       // Add a subscription so that the entry doesn't get deleted from the cache.
       // RTK will delete entries with no subscribers if they are invalidated,
       // and the SDK host page has no bootstrap to fall back to.
       dispatch(sessionApi.endpoints.getSessionProperties.initiate());
-      // Unjustified type cast. FIXME
-      MetabaseSettings.setAll(authState.siteSettings as Settings);
+      MetabaseSettings.setAll(authState.siteSettings);
 
       // The session handler emits the X-Metabase-Session header on every API
       // call, renewing the token when it expires.
@@ -162,8 +159,9 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       if ((e as Error).name === "MetabaseError") {
         throw e;
       }
-      // Unjustified type cast. FIXME
-      throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(e as Error);
+      throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(
+        e instanceof Error ? e : new Error(String(e)),
+      );
     }
   }
 
