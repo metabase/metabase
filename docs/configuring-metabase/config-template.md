@@ -210,8 +210,26 @@ config:
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
+    llm-anthropic-api-base-url: https://api.anthropic.com
     llm-anthropic-api-key: null
+    llm-anthropic-model: claude-opus-4-5-20251101
+    llm-azure-api-base-url: null
+    llm-azure-api-key: null
+    llm-bedrock-access-key-id: null
+    llm-bedrock-region: us-east-1
+    llm-bedrock-secret-access-key: null
+    llm-bedrock-session-token: null
+    llm-connection-timeout-ms: 5000
+    llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
+    llm-openai-api-base-url: https://api.openai.com
+    llm-openai-api-key: null
+    llm-openai-model: gpt-5.4
+    llm-openrouter-api-base-url: https://openrouter.ai/api
+    llm-openrouter-api-key: null
+    llm-rate-limit-per-ip: 100
+    llm-rate-limit-per-user: 20
+    llm-request-timeout-ms: 60000
     load-analytics-content: true
     loading-message: doing-science
     login-page-illustration: default
