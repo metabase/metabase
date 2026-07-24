@@ -448,9 +448,29 @@
    :fifo/threshold 1))
 
 (defn model-hooks
-  "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
+  "Return an inverted map of data dependencies to search models, used for updating them based on underlying models.
+  Cached against the registered spec* methods: defining or redefining a spec yields a new methods map and
+  thus a fresh computation, while steady-state calls hit the cache."
   []
   (model-hooks* (methods spec*)))
+
+(defn- collect-updated-columns [expr]
+  (let [acc (volatile! (transient #{}))]
+    (walk/postwalk (fn [x]
+                     (when (and (keyword? x) (has-table? :updated x))
+                       (vswap! acc conj! (remove-table :updated x)))
+                     x)
+                   expr)
+    (persistent! @acc)))
+
+(defn hook-where-fields
+  "The columns of `model` whose row values parameterize the where-clauses of the search hooks it feeds.
+  A capture layer must snapshot (at least) these for [[search-models-to-update]] to work on a row that no
+  longer exists, e.g. the pre-image of a deleted row."
+  [model]
+  (not-empty
+   (into #{} (mapcat (comp collect-updated-columns :where))
+         (get (model-hooks) model))))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
