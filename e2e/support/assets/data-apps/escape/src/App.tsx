@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { Component, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 type EscapeTestEnv = {
   target: string;
@@ -37,6 +38,30 @@ async function attemptPrivilegedCall(
   });
 
   return `escaped:${res.status}`;
+}
+
+/**
+ * When the app runs on guest React, rendering a blocked tag makes the guest
+ * `createElement` throw inside the reconciler. This boundary catches that so the
+ * outcome is reported as `blocked:` instead of tearing down the whole tree.
+ */
+class BlockBoundary extends Component<
+  { onError: (msg: string) => void; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    this.props.onError(`blocked:${describeError(error)}`);
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
 }
 
 export default function App() {
@@ -95,38 +120,36 @@ export default function App() {
         </button>
       </div>
 
-      {reactMode === "react-iframe-about-blank" && (
-        <iframe
-          title="escape-target"
-          ref={(element) => {
-            if (element && !escapedRef.current) {
-              escapedRef.current = true;
-              escapeVia(element.contentWindow);
-            }
-          }}
-          style={{ display: "none" }}
-        />
-      )}
-      {reactMode === "react-iframe-src" && (
-        <iframe
-          title="escape-target"
-          src={`${env.instanceUrl}/`}
-          onLoad={(e) => escapeVia(e.currentTarget.contentWindow)}
-          style={{ display: "none" }}
-        />
-      )}
-      {reactMode === "react-iframe-srcdoc" && (
-        <iframe
-          title="escape-target"
-          // A srcdoc document is a distinct inheritance path from the empty
-          // about:blank frame: it too is exempt from `frame-src` and inherits the
-          // parent's CSP, so its pristine `fetch` must still be caught by the
-          // inherited `connect-src`.
-          srcDoc={'<!doctype html><meta charset="utf-8">'}
-          onLoad={(e) => escapeVia(e.currentTarget.contentWindow)}
-          style={{ display: "none" }}
-        />
-      )}
+      <BlockBoundary onError={setResult}>
+        {reactMode === "react-iframe-about-blank" && (
+          <iframe
+            title="escape-target"
+            ref={(element) => {
+              if (element && !escapedRef.current) {
+                escapedRef.current = true;
+                escapeVia(element.contentWindow);
+              }
+            }}
+            style={{ display: "none" }}
+          />
+        )}
+        {reactMode === "react-iframe-src" && (
+          <iframe
+            title="escape-target"
+            src={`${env.instanceUrl}/`}
+            onLoad={(e) => escapeVia(e.currentTarget.contentWindow)}
+            style={{ display: "none" }}
+          />
+        )}
+        {reactMode === "react-iframe-srcdoc" && (
+          <iframe
+            title="escape-target"
+            srcDoc={'<!doctype html><meta charset="utf-8">'}
+            onLoad={(e) => escapeVia(e.currentTarget.contentWindow)}
+            style={{ display: "none" }}
+          />
+        )}
+      </BlockBoundary>
     </div>
   );
 }

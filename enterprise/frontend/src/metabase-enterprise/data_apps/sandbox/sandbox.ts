@@ -81,15 +81,6 @@ export function createDataAppSandbox({
     // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's
     // externals (defined by the SDK build) and these endowments can't drift.
     endowments: Object.getOwnPropertyDescriptors({
-      [DATA_APP_GLOBAL_NAMES.react]: endowments.React,
-      [DATA_APP_GLOBAL_NAMES.reactDom]: endowments.reactDom,
-      [DATA_APP_GLOBAL_NAMES.reactDomClient]: endowments.reactDomClient,
-      [DATA_APP_GLOBAL_NAMES.reactDomServer]: endowments.reactDomServer,
-      [DATA_APP_GLOBAL_NAMES.reactJsxRuntime]: endowments.reactJsxRuntime,
-      ...(!!endowments.reactJsxDevRuntime && {
-        [DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime]:
-          endowments.reactJsxDevRuntime,
-      }),
       [DATA_APP_GLOBAL_NAMES.sdk]: {
         ...endowments.sdkExports,
         // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes

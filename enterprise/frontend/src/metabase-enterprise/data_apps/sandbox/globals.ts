@@ -20,14 +20,10 @@ export const DATA_APP_GLOBAL_NAMES = {
 
 export const DATA_APP_FACTORY_GLOBAL = DATA_APP_GLOBAL_NAMES.factory;
 
-/** Each externalized import mapped to the global the sandbox endows it as. */
+/**
+ * Each externalized import mapped to the global the sandbox endows it as.
+ */
 export const DATA_APP_GLOBALS: Record<string, string> = {
-  react: DATA_APP_GLOBAL_NAMES.react,
-  "react-dom": DATA_APP_GLOBAL_NAMES.reactDom,
-  "react-dom/client": DATA_APP_GLOBAL_NAMES.reactDomClient,
-  "react-dom/server": DATA_APP_GLOBAL_NAMES.reactDomServer,
-  "react/jsx-runtime": DATA_APP_GLOBAL_NAMES.reactJsxRuntime,
-  "react/jsx-dev-runtime": DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime,
   "@metabase/embedding-sdk-react": DATA_APP_GLOBAL_NAMES.sdk,
   "@metabase/embedding-sdk-react/data-app": DATA_APP_GLOBAL_NAMES.dataApp,
 };

@@ -1,20 +1,18 @@
 import { DATA_APP_EXTERNALS, DATA_APP_GLOBALS } from "./bundle";
 
 describe("data-app bundle externals", () => {
-  it("externalizes React DOM imports to endowed globals", () => {
-    expect(DATA_APP_GLOBALS).toEqual(
-      expect.objectContaining({
-        "react-dom": "__react_dom__",
-        "react-dom/client": "__react_dom_client__",
-        "react-dom/server": "__react_dom_server__",
-      }),
-    );
-    expect(DATA_APP_EXTERNALS).toEqual(
-      expect.arrayContaining([
-        "react-dom",
-        "react-dom/client",
-        "react-dom/server",
-      ]),
-    );
+  it("externalizes the SDK to endowed globals but bundles React", () => {
+    expect(DATA_APP_GLOBALS).toEqual({
+      "@metabase/embedding-sdk-react": "__metabase_sdk__",
+      "@metabase/embedding-sdk-react/data-app": "__metabase_data_app__",
+    });
+    expect(DATA_APP_EXTERNALS).toEqual([
+      "@metabase/embedding-sdk-react",
+      "@metabase/embedding-sdk-react/data-app",
+    ]);
+
+    // React is bundled into each app (runs inside the guest realm), not external.
+    expect(DATA_APP_EXTERNALS).not.toContain("react");
+    expect(DATA_APP_EXTERNALS).not.toContain("react-dom");
   });
 });
