@@ -20,8 +20,8 @@
    `run_saved_question`: a stored card by numeric id or entity_id, with parameters resolved
    server-side against the card's own parameter list — the stored target and type always
    apply, and a client-supplied target is ignored, so a caller can set a filter's value but
-   never repoint it at another field. No handle and no cursor: the extract path for a saved
-   card is `export`, not paging."
+   never repoint it at another field. No handle and no cursor: a truncated result steers the
+   caller to narrow through the card's own parameters or to raise `row_limit`."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -40,8 +40,7 @@
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.util.match :as match]))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -457,13 +456,18 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
 
 (defn- resolve-card-parameters
   "Resolve each caller-supplied `{id|slug, value}` against the card's own parameter list (its
-   declared parameters merged with the query's template-tag parameters). Only the stored
-   `:target` and `:type` are forwarded — a client-supplied target or type never reaches the
-   QP, so a caller can set a filter's value but never repoint it at another field.
-   [[qp.card/*allow-arbitrary-mbql-parameters*]] stays false downstream, which restricts this
-   path to template-tag-backed parameters (the same 0.41 control the REST card-query endpoint
-   enforces); a parameter targeting a query dimension directly gets a teaching error here
-   instead of the QP's template-tag mismatch."
+   declared parameters merged with the query's template-tag parameters), returning bare
+   `{:id :value}` entries. Every `:id` resolves against the same
+   [[qp.card/combined-parameters-and-template-tags]] set the QP enriches from, so an accepted
+   id is always one the card itself declares; an unknown id is a teaching error here rather
+   than a downstream QP failure.
+
+   Forwarding value-only — never the caller's `:type` or `:target` — is the load-bearing
+   security property, and what lets [[run-card!]] enable arbitrary-MBQL parameters:
+   [[qp.card/process-query-for-card]] fills type and target back in from the card's own
+   declaration, so a caller can set a declared parameter's value but can never point it at a
+   different field. This covers both native template-tag parameters and a saved question's
+   declared filter-widget (MBQL dimension) parameters with one rule."
   [card parameters]
   (let [card-params (qp.card/combined-parameters-and-template-tags card)]
     (mapv (fn [{:keys [id slug value]}]
@@ -474,41 +478,42 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
                   stored    (or (m/find-first #(= (:id %) requested) card-params)
                                 (m/find-first #(= (:slug %) requested) card-params)
                                 (throw-unknown-parameter card-params requested))]
-              (when-not (match/match-one (:target stored) [:template-tag _tag] true)
-                (common/throw-teaching-error
-                 (format "Parameter %s is not backed by a template tag in the card's query and cannot be set on this path."
-                         (pr-str requested))))
               (check-parameter-value! stored value)
-              {:id     (:id stored)
-               :type   (:type stored)
-               :target (:target stored)
-               :value  value}))
+              {:id (:id stored) :value value}))
           parameters)))
 
 (defn- run-card!
   "Run the saved card through [[qp.card/process-query-for-card]] — the same domain entry the
-   REST card-query endpoint uses, so the read check, parameter validation (with
-   [[qp.card/*allow-arbitrary-mbql-parameters*]] left false), sandboxing, and impersonation
-   all apply — with `row-limit` injected as the userland constraints. Returns the QP result;
-   surfaces a failed run as a teaching error."
+   REST card-query endpoint uses, so the read check, sandboxing, and impersonation all apply —
+   with `row-limit` injected as the userland constraints. Returns the QP result; surfaces a
+   failed run as a teaching error.
+
+   Binds [[qp.card/*allow-arbitrary-mbql-parameters*]] true so a saved question's declared
+   MBQL filter-widget parameters run, not just native template tags — the same relaxation the
+   dashboard path takes once it has validated parameters. It is safe here only because
+   [[resolve-card-parameters]] forwards value-only entries resolved against the card's own
+   parameter list, so every parameter's target comes from the card and none from the caller:
+   the arbitrary-parameter door this opens has nothing arbitrary to walk through."
   [card parameters row-limit]
-  (let [result (qp.card/process-query-for-card
-                card :api
-                :parameters  parameters
-                :context     :question
-                :constraints {:max-results           row-limit
-                              :max-results-bare-rows row-limit}
-                :middleware  {:process-viz-settings? false}
-                :make-run    (fn [qp _export-format]
-                               (fn [query info]
-                                 (qp (update query :info merge info) nil))))]
+  (let [result (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
+                 (qp.card/process-query-for-card
+                  card :api
+                  :parameters  parameters
+                  :context     :question
+                  :constraints {:max-results           row-limit
+                                :max-results-bare-rows row-limit}
+                  :middleware  {:process-viz-settings? false}
+                  :make-run    (fn [qp _export-format]
+                                 (fn [query info]
+                                   (qp (update query :info merge info) nil)))))]
     (when-not (= (:status result) :completed)
       (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))
     result))
 
 (defn- saved-question-steering-line
   [returned]
-  (format "returned %d rows — narrow with `parameters`, or `export` for the full set" returned))
+  (format "returned %d rows, more available — narrow with `parameters`, or raise `row_limit` (max %d)"
+          returned max-row-limit))
 
 (def ^:private run-saved-question-args-schema
   [:map {:closed true}
@@ -528,7 +533,7 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool run-saved-question
-  "Run a saved question (card) by numeric id or entity_id and return its rows inline. Parameters are resolved server-side against the card's own parameter list: pass each as {id, value} where id is the parameter's id or slug — the stored target and type always apply and any client-supplied target or type is ignored, so you can set a filter's value but never repoint it at another field. Only parameters backed by the card's template tags ({{variable}} and field-filter tags) can be set; value types are checked per parameter. Discover a card's parameters with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: when a result is truncated, narrow with parameters or use export for the full set."
+  "Run a saved question (card) by numeric id or entity_id and return its rows inline. Parameters are resolved server-side against the card's own parameter list: pass each as {id, value} where id is the parameter's id or slug — the stored target and type always apply and any client-supplied target or type is ignored, so you can set a filter's value but never repoint it at another field. Both native template-tag parameters ({{variable}} and field-filter tags) and a saved question's declared filter-widget parameters can be set; value types are checked per parameter. Discover a card's parameters with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: when a result is truncated, narrow it through the card's parameters or raise row_limit (max 2000)."
   {:name        "run_saved_question"
    :scope       metabot.scope/agent-query-execute
    :annotations {:readOnlyHint true}
@@ -540,16 +545,18 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
                                                (api/read-check :model/Card card-id)))
         mbql-params (when (seq parameters)
                       (resolve-card-parameters card parameters))
-        result      (run-card! card mbql-params row-limit)
+        ;; One row past the limit, so truncation is *observed* rather than inferred from a full
+        ;; page: a card whose result fills `row_limit` exactly is complete, and says so.
+        result      (run-card! card mbql-params (inc row-limit))
         cols        (get-in result [:data :cols])
         ;; The constraints injected by [[run-card!]] don't bind every display type — a
         ;; `:display :pivot` card routes through `qp.pivot/run-pivot-query`, which replaces
         ;; `:max-results` with its own pivot ceiling — so the cap is enforced on the result
         ;; rows here, where it holds regardless of which QP path ran.
-        all-rows    (get-in result [:data :rows])
-        rows        (into [] (take row-limit) all-rows)
+        all-rows    (vec (get-in result [:data :rows]))
+        truncated?  (> (count all-rows) row-limit)
+        rows        (cond-> all-rows truncated? (subvec 0 row-limit))
         returned    (count rows)
-        truncated?  (and (pos? returned) (>= (count all-rows) row-limit))
         counts      {:returned returned :truncated truncated?}
         payload     (assoc counts
                            :cols (response-cols cols)
