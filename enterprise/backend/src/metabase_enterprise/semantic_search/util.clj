@@ -68,21 +68,20 @@
   "Return the catalog state of `index-name`: `:ready`, `:building`, `:invalid`, or `nil` when absent.
   A schema-qualified name matches only within its schema; an unqualified name matches any schema."
   [pgvector index-name]
-  (let [[schema index] (qualified-table-parts index-name)]
+  (let [[schema index] (qualified-table-parts index-name)
+        columns      (str "x.indisready AS is_ready, x.indisvalid AS is_valid, "
+                          "EXISTS (SELECT 1 FROM pg_stat_progress_create_index p "
+                          "        WHERE p.index_relid = i.oid) AS is_building")]
     (when-some [{:keys [is_ready is_valid is_building]}
                 (jdbc/execute-one! pgvector
                                    (if schema
-                                     [(str "SELECT x.indisready AS is_ready, x.indisvalid AS is_valid, "
-                                           "EXISTS (SELECT 1 FROM pg_stat_progress_create_index p "
-                                           "        WHERE p.index_relid = i.oid) AS is_building "
+                                     [(str "SELECT " columns " "
                                            "FROM pg_class i "
                                            "JOIN pg_namespace n ON n.oid = i.relnamespace "
                                            "JOIN pg_index x ON x.indexrelid = i.oid "
                                            "WHERE n.nspname = ? AND i.relname = ?")
                                       schema index]
-                                     [(str "SELECT x.indisready AS is_ready, x.indisvalid AS is_valid, "
-                                           "EXISTS (SELECT 1 FROM pg_stat_progress_create_index p "
-                                           "        WHERE p.index_relid = i.oid) AS is_building "
+                                     [(str "SELECT " columns " "
                                            "FROM pg_class i "
                                            "JOIN pg_index x ON x.indexrelid = i.oid "
                                            "WHERE i.relname = ?")

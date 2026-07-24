@@ -85,16 +85,13 @@
     (case (semantic.util/index-state conn index-name)
       :ready
       (log/debug "HNSW index is already ready" index-name)
-
       :building
       (log/info "HNSW index build is already in progress" index-name)
-
       :invalid
       (do
         (log/warn "Replacing invalid HNSW index" index-name)
         (semantic.index/drop-index-concurrently-if-exists! conn index-name)
         (semantic.index/create-hnsw-index-if-not-exists! conn index {:concurrently? true}))
-
       nil
       (do
         (log/info "Building HNSW index" index-name)

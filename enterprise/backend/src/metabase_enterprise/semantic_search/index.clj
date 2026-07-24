@@ -1195,8 +1195,9 @@
                    (semantic.util/index-needs-build?
                     db (schema-qualified-index-name index (hnsw-index-name index))))
           (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no usable HNSW index exists. "
-                               "Set the semantic-search-vector-strategy setting to an index-backed strategy "
-                               "(:hnsw or :hnsw-iterative-*) to build it.")
+                               "The index is absent or was abandoned invalid. It will be rebuilt by the next "
+                               "maintenance pass; retry shortly, or pass :vector-search-allow-missing-index? true "
+                               "to bypass this check.")
                           {:table-name (:table-name index)
                            :strategy   (vector-search-strategy search-context)})))
         (let [timer (u/start-timer)

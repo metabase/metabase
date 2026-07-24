@@ -283,10 +283,20 @@
                                              @index-ref
                                              {:search-string "puppy" :vector-search-strategy strategy}))))))
       (testing "an active concurrent build temporarily uses the exact-scan path"
-        (mt/with-dynamic-fn-redefs [semantic.util/index-state (constantly :building)]
-          (is (map? (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
-                                                @index-ref
-                                                {:search-string "puppy" :vector-search-strategy :hnsw}))))))))
+        (let [query (atom nil)]
+          (mt/with-dynamic-fn-redefs
+            [semantic.util/index-state       (constantly :building)
+             semantic.index/reducible-search-query (fn [_ q]
+                                                     (reset! query q)
+                                                     [])]
+            (is (map? (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                                                  @index-ref
+                                                  {:search-string "puppy" :vector-search-strategy :hnsw}))))
+          (let [query-sql (first (sql/format @query :quoted true))]
+            (is (str/includes? query-sql "AS MATERIALIZED")
+                "a building HNSW index must use the materialized exact-scan query")
+            (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" query-sql))
+                "a building HNSW index must not use the approximate HNSW scan")))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}

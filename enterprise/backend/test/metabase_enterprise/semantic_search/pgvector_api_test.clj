@@ -128,6 +128,42 @@
           (#'semantic.pgvector-api/ensure-hnsw-index-under-lock! ::connection index))
         (is (= expected-operations (mapv first @calls)) (str state " maintenance operations"))))))
 
+(deftest with-hnsw-index-lock-serializes-callers-test
+  (let [pgvector   (semantic.env/get-pgvector-datasource!)
+        index-name (str "test-hnsw-lock-" (random-uuid))
+        lock-name  (str "metabase-semantic-hnsw:" index-name)
+        entered   (promise)
+        release   (promise)
+        worker    (future
+                    (#'semantic.pgvector-api/with-hnsw-index-lock
+                     pgvector
+                     index-name
+                     (fn [_]
+                       (deliver entered true)
+                       @release)))]
+    (try
+      (is (true? (deref entered 30000 false)) "the first caller acquired the lock")
+      (with-open [probe (jdbc/get-connection pgvector)]
+        (.setAutoCommit probe true)
+        (is (false? (:locked (jdbc/execute-one!
+                              probe
+                              ["SELECT pg_try_advisory_lock(hashtextextended(?, 0)) AS locked" lock-name]
+                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+            "a second caller cannot acquire the held lock"))
+      (deliver release true)
+      (is (not= ::timeout (deref worker 30000 ::timeout)) "the first caller released the lock")
+      (with-open [probe (jdbc/get-connection pgvector)]
+        (.setAutoCommit probe true)
+        (is (true? (:locked (jdbc/execute-one!
+                             probe
+                             ["SELECT pg_try_advisory_lock(hashtextextended(?, 0)) AS locked" lock-name]
+                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+            "the lock is available after the first caller releases it")
+        (jdbc/execute-one! probe ["SELECT pg_advisory_unlock(hashtextextended(?, 0))" lock-name]))
+      (finally
+        (deliver release true)
+        (deref worker 30000 nil)))))
+
 (defn- open-semantic-search! ^Closeable [pgvector index-metadata embedding-model]
   (semantic.tu/closeable
    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
