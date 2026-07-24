@@ -137,7 +137,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
           model: "claude-sonnet-4-20250514"
           max_turns: "${{ github.event.inputs.max_turns || '75' }}"
-          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
+          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-oxlint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
           prompt: |
             You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
 
@@ -174,9 +174,9 @@ jobs:
                  ```
                  ./bin/mage cljfmt-files <file1> <file2> ...
                  ```
-               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run eslint with auto-fix:
+               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run oxlint with auto-fix:
                  ```
-                 ${{ steps.pkg.outputs.mgr }} run lint-eslint --fix
+                 ${{ steps.pkg.outputs.mgr }} run lint-oxlint-fix
                  ```
             7. Validate resolved files before committing:
                - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run clj-kondo to verify syntax:

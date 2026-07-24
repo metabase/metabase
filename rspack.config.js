@@ -1,5 +1,4 @@
 // @ts-check
-/* eslint-env node */
 /* eslint-disable import/no-commonjs */
 
 const configs = [require("./rspack.main.config")];

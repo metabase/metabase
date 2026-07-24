@@ -19,7 +19,7 @@ on:
         type: boolean
         default: false
       skip-lint:
-        description: "Skip linting jobs (oxfmt, eslint, css variables check)"
+        description: "Skip linting jobs (oxfmt, oxlint, css variables check)"
         type: boolean
         default: false
       skip-custom-viz:
@@ -50,14 +50,21 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
-      - name: Get Eslint cache key
-        uses: ./.github/actions/get-cache-keys
-        id: get-cache-keys
-      - name: Restore ESLint cache
-        uses: actions/cache/restore@v5
-        with:
-          path: ${{ github.workspace}}/.eslintcache
-          key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
+      # oxlint replaces ESLint. It needs no CLJS build, so run it first for fast
+      # failure. The module-boundary pass is a single-threaded JS plugin and far
+      # slower, so it runs as its own parallel job (fe-lint-boundaries).
+      - name: Run oxlint linter
+        run: bun run lint-oxlint
+
+      # Fails if an enabled rule's plugin is not loaded (so it never fires) or the
+      # enforced rule set drifts from frontend/lint/enforced-rules.json.
+      - name: Check oxlint rule wiring
+        run: bun run lint-rules
+
+      # Behavioral canary: lints tiny fixtures to prove pattern-semantic rules
+      # (import bans etc.) actually fire, which the static wiring check cannot see.
+      - name: Check oxlint rule fixtures
+        run: bun run lint-rule-fixtures
 
       - name: Compile CLJS
         run: bun run build-pure:cljs
@@ -65,10 +72,22 @@ jobs:
         run: bun run find-never-defined-css-variables
       - name: Run oxfmt formatting linter
         run: bun run lint-format-pure
-      - name: Run ESLint linter
-        run: bun run lint-eslint-pure
       - name: Run CSS linter
         run: bun run lint-css
+
+  fe-lint-boundaries:
+    if: ${{ !inputs.skip-lint }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      # Module-boundary linting runs eslint-plugin-boundaries, a single-threaded JS
+      # plugin, so it is an order of magnitude slower than the main oxlint pass.
+      # Kept off the critical path as its own job.
+      - name: Run module-boundary linter
+        run: bun run lint-boundaries
 
   fe-type-check:
     if: ${{ !inputs.skip }}
