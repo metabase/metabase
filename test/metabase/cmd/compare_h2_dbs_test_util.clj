@@ -24,8 +24,6 @@
 (def ^:private ignored-table-names
   "Set of Table names to skip diffing (e.g. because they're not ones we migrate.)"
   #{"DATABASECHANGELOG"
-    ;; Liquibase bookkeeping, not copied by load-from-h2/dump-to-h2: both DBs get their own rows (with per-run
-    ;; deployment_ids) from their own migration runs
     "DATABASECHANGELOG_VERSION"
     "QRTZ_BLOB_TRIGGERS"
     "QRTZ_CALENDARS"
