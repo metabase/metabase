@@ -24,6 +24,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.referenced-cards :as qp.referenced-cards]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
@@ -54,7 +55,7 @@
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
-   & {:keys [context export-format was-pivot]
+   & {:keys [context export-format was-pivot referenced-cards-specs]
       :or   {context       :ad-hoc
              export-format :api}}]
   (span/with-span!
@@ -79,31 +80,38 @@
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
-        (if was-pivot
-          (let [constraints (if (= export-format :api)
-                              (qp.constraints/default-query-constraints)
-                              (:constraints query))]
-            (qp.pivot/run-pivot-query (-> query
-                                          (assoc :constraints constraints)
-                                          ;; Use assoc rather than merge so :info comes entirely from the
-                                          ;; server-built map. :info carries :card-id and similar fields the
-                                          ;; server derives, so we replace it rather than combining it with
-                                          ;; whatever was on the incoming query.
-                                          (assoc :info info))
-                                      rff))
-          (qp/process-query (assoc query :info info) rff))))))
+        ;; must run before `process-query` sets up the QP store
+        (let [rff (qp.referenced-cards/maybe-wrap-rff rff referenced-cards-specs)]
+          (if was-pivot
+            (let [constraints (if (= export-format :api)
+                                (qp.constraints/default-query-constraints)
+                                (:constraints query))]
+              (qp.pivot/run-pivot-query (-> query
+                                            (assoc :constraints constraints)
+                                            ;; Use assoc rather than merge so :info comes entirely from the
+                                            ;; server-built map. :info carries :card-id and similar fields the
+                                            ;; server derives, so we replace it rather than combining it with
+                                            ;; whatever was on the incoming query.
+                                            (assoc :info info))
+                                        rff))
+            (qp/process-query (assoc query :info info) rff)))))))
 
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
-  "Execute a query and retrieve the results in the usual format. The query will not use the cache."
+  "Execute a query and retrieve the results in the usual format. The query will not use the cache.
+  `referenced_cards` also runs the given cards' queries and returns their single-row values under
+  `data.referenced_cards`."
   [_route-params
    _query-params
-   query :- [:map
-             [:database {:optional true} [:maybe :int]]]]
+   {:keys [referenced_cards] :as query} :- [:map
+                                            [:database {:optional true} [:maybe :int]]
+                                            [:referenced_cards {:optional true} qp.referenced-cards/specs-schema]]]
   (run-streaming-query
    (-> query
+       (dissoc :referenced_cards)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+       qp/userland-query-with-default-constraints)
+   :referenced-cards-specs referenced_cards))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 

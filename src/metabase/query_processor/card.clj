@@ -23,6 +23,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.referenced-cards :as qp.referenced-cards]
    [metabase.query-processor.schema :as qp.schema]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
@@ -339,6 +340,8 @@
         qp          (if (= :pivot (:display card))
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
+        ;; wrapping the qp (rather than the `:make-run`) covers every card/dashcard/embed/public endpoint
+        qp          (qp.referenced-cards/maybe-wrap-qp-for-card qp merged-viz)
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)
