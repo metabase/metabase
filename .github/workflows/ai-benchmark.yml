@@ -79,7 +79,8 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          EVALS_BRANCH: main
+          # WIP
+          EVALS_BRANCH: evals-docker-registry
         run: |
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
             -f ref="$EVALS_BRANCH" \
