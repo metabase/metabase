@@ -142,8 +142,16 @@ describe("document comments", () => {
       H.documentContent().click();
       cy.realType("{leftarrow}".repeat("lor sit amet.".length));
       cy.realType("{enter}");
+
+      cy.intercept("GET", `/api/document/${targetId}`).as("documentAfterSplit");
       cy.findByRole("button", { name: "Save" }).click();
       cy.findByRole("button", { name: "Save" }).should("not.exist");
+      // Saving navigates the URL back to /document/<id> and refetches the
+      // document. Under network throttling that refetch lands late — after the
+      // node-button click below opens the comments sidebar — and the late
+      // navigation closes the sidebar before getSidebar() can find it. Wait for
+      // the refetch to settle before opening a thread.
+      cy.wait("@documentAfterSplit");
 
       Comments.getDocumentNodeButton({
         targetId,
@@ -154,6 +162,7 @@ describe("document comments", () => {
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 1);
+      H.getParagraph("lor sit amet.").scrollIntoView();
       H.getParagraph("lor sit amet.").realHover();
       Comments.getDocumentNodeButtons()
         .filter(":visible")
@@ -1598,6 +1607,7 @@ function selectCharactersLeft(count: number) {
 function startNewCommentIn1ParagraphDocument() {
   createAndVisit1ParagraphDocument();
 
+  H.getParagraph().scrollIntoView();
   H.getParagraph().realHover();
 
   cy.get<DocumentId>("@documentId").then((targetId) => {
