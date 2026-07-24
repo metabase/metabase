@@ -1,5 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
@@ -55,11 +55,27 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedToolCall, setSelectedToolCall] =
     useState<MetabotDebugToolCallMessage | null>(null);
+  // The element that opened the sidebar, so focus can return to it on close.
+  const triggerElementRef = useRef<HTMLElement | null>(null);
+
+  // React Router reuses this component across `:convoId` changes; drop any open
+  // tool call so the sidebar can't reappear with the previous conversation's data.
+  useEffect(() => {
+    setSelectedToolCall(null);
+  }, [convoId]);
 
   const handleToolCallSelect = (message: MetabotDebugToolCallMessage) => {
-    setSelectedToolCall((current) =>
-      current?.id === message.id ? null : message,
-    );
+    const isClosing = selectedToolCall?.id === message.id;
+    if (!isClosing) {
+      const active = document.activeElement;
+      triggerElementRef.current = active instanceof HTMLElement ? active : null;
+    }
+    setSelectedToolCall(isClosing ? null : message);
+  };
+
+  const handleSidebarClose = () => {
+    setSelectedToolCall(null);
+    triggerElementRef.current?.focus();
   };
 
   const {
@@ -194,7 +210,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         <Sidebar containerWidth={containerWidth}>
           <ToolCallDetailsSidebar
             message={selectedToolCall}
-            onClose={() => setSelectedToolCall(null)}
+            onClose={handleSidebarClose}
           />
         </Sidebar>
       )}

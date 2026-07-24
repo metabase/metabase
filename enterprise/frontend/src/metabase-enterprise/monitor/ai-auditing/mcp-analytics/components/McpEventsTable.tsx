@@ -212,6 +212,24 @@ function McpEventsTableInner({
   sortingOptions,
   onSortingOptionsChange,
 }: InnerProps) {
+  const columns = useMemo(
+    () => eventColumns(hasTenants, hasPii),
+    [hasTenants, hasPii],
+  );
+
+  // `tenant_name`/`ip_address`/`error_message` are only sortable while their columns are visible
+  // (tenants/PII on). A bookmarked or shared URL can still carry one of those as the active sort
+  // after the setting is turned off, which would order by an invisible (and possibly PII) column
+  // with no sort indicator — fall back to the default sort when the column isn't currently shown.
+  const effectiveSorting = useMemo(() => {
+    const visibleSortColumns = new Set(
+      columns.map((column) => column.sort).filter(Boolean),
+    );
+    return visibleSortColumns.has(sortingOptions.sort_column)
+      ? sortingOptions
+      : DEFAULT_SORTING;
+  }, [columns, sortingOptions]);
+
   const query = useMemo(
     () =>
       buildEventsQuery({
@@ -222,8 +240,8 @@ function McpEventsTableInner({
         userId,
         groupId,
         tenantId,
-        sortColumn: sortingOptions.sort_column,
-        sortDirection: sortingOptions.sort_direction,
+        sortColumn: effectiveSorting.sort_column,
+        sortDirection: effectiveSorting.sort_direction,
       }),
     [
       provider,
@@ -233,7 +251,7 @@ function McpEventsTableInner({
       userId,
       groupId,
       tenantId,
-      sortingOptions,
+      effectiveSorting,
     ],
   );
 
@@ -246,11 +264,6 @@ function McpEventsTableInner({
   // page or sort change; we overlay a spinner on the retained rows instead. From here on `data` is
   // simply the warehouse result — the retention is an implementation detail of the hook.
   const data = useRetainedValue(latestData);
-
-  const columns = useMemo(
-    () => eventColumns(hasTenants, hasPii),
-    [hasTenants, hasPii],
-  );
 
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
   // not the curated `columns` we render. So we map each curated column to its position in the
@@ -304,7 +317,7 @@ function McpEventsTableInner({
   );
 
   const { sortingState, onSortingChange } = useSortingStateChange({
-    sortingOptions,
+    sortingOptions: effectiveSorting,
     columns: MCP_EVENT_SORT_COLUMNS,
     defaultSorting: DEFAULT_SORTING,
     onSortingOptionsChange,
@@ -321,7 +334,7 @@ function McpEventsTableInner({
 
   useScrollToTop({
     ref: treeTableInstance.containerRef,
-    keys: [page, sortingOptions],
+    keys: [page, effectiveSorting],
     skip: isFetching,
   });
 

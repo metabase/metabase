@@ -66,6 +66,29 @@ describe("MetabotAnalyticsAvailabilityLayout", () => {
     ).toHaveAttribute("href", Urls.adminAiSettings());
   });
 
+  it("shows the dashboard-bot illustration and secondary CTA for the AI-disabled state", () => {
+    setup(<MetabotAnalyticsAvailabilityLayout />, { aiFeaturesEnabled: false });
+
+    // The decorative illustration has an empty alt, so assert on the raw element.
+    expect(document.querySelector("img")).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("link", { name: "Go to AI Settings" })
+        .querySelector("button"),
+    ).toHaveAttribute("data-variant", "default");
+  });
+
+  it("shows the dashboard-bot illustration and secondary CTA for the not-configured state", () => {
+    setup(<MetabotAnalyticsAvailabilityLayout />, { isConfigured: false });
+
+    expect(document.querySelector("img")).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("link", { name: "Go to AI Settings" })
+        .querySelector("button"),
+    ).toHaveAttribute("data-variant", "default");
+  });
+
   it("renders the child route when AI is enabled and configured", () => {
     setup(<MetabotAnalyticsAvailabilityLayout />);
 
@@ -95,6 +118,32 @@ describe("McpAnalyticsAvailabilityLayout", () => {
     expect(
       screen.getByRole("link", { name: "Go to MCP settings" }),
     ).toHaveAttribute("href", Urls.adminMcpSettings());
+  });
+
+  it("shows the dashboard-bot illustration and secondary CTA for the MCP-disabled state", () => {
+    setup(<McpAnalyticsAvailabilityLayout />, { mcpEnabled: false });
+
+    // The decorative illustration has an empty alt, so assert on the raw element.
+    expect(document.querySelector("img")).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("link", { name: "Go to MCP settings" })
+        .querySelector("button"),
+    ).toHaveAttribute("data-variant", "default");
+  });
+
+  it("shows the dashboard-bot illustration and secondary CTA for the MCP AI-disabled state", () => {
+    setup(<McpAnalyticsAvailabilityLayout />, {
+      aiFeaturesEnabled: false,
+      mcpEnabled: false,
+    });
+
+    expect(document.querySelector("img")).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("link", { name: "Go to AI Settings" })
+        .querySelector("button"),
+    ).toHaveAttribute("data-variant", "default");
   });
 
   it("renders the child route when MCP is enabled", () => {

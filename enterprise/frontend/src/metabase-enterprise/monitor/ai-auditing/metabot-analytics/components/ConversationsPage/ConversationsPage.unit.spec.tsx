@@ -192,6 +192,19 @@ describe("ConversationsPage", () => {
     });
   });
 
+  it("sorts server-side when the Title column header is clicked", async () => {
+    setup();
+
+    await screen.findByRole("treegrid", { name: "Conversations" });
+    await userEvent.click(
+      await screen.findByRole("columnheader", { name: /^Title\b/ }),
+    );
+
+    await waitFor(() => {
+      expect(wasSortedBy("title", "asc")).toBe(true);
+    });
+  });
+
   it("sorts server-side via the custom Cached tokens header", async () => {
     setup();
 

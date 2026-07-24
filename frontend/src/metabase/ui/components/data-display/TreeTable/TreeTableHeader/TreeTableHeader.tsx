@@ -117,6 +117,7 @@ export function TreeTableHeader<TData extends TreeNodeData>({
             }
 
             const sortValue = sortDirection || undefined;
+            const toggleSorting = column.getToggleSortingHandler();
 
             return (
               <Flex
@@ -125,6 +126,7 @@ export function TreeTableHeader<TData extends TreeNodeData>({
                 align="center"
                 style={columnStyle}
                 role={isSortable ? "columnheader" : undefined}
+                tabIndex={isSortable ? 0 : undefined}
                 aria-sort={
                   sortDirection
                     ? sortDirection === "asc"
@@ -132,8 +134,16 @@ export function TreeTableHeader<TData extends TreeNodeData>({
                       : "descending"
                     : undefined
                 }
-                onClick={
-                  isSortable ? column.getToggleSortingHandler() : undefined
+                onClick={isSortable ? toggleSorting : undefined}
+                onKeyDown={
+                  isSortable
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          toggleSorting?.(event);
+                        }
+                      }
+                    : undefined
                 }
               >
                 {typeof headerContent === "string" ? (

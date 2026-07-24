@@ -84,7 +84,11 @@ export const ToolCallDetailsContent = ({
           <Flex gap="xs">
             <Text fw="bold">{t`Request`}</Text>
             <Tooltip label={argsClipboard.copied ? t`Copied!` : t`Copy`}>
-              <ActionIcon h="sm" onClick={() => argsClipboard.copy(parsedArgs)}>
+              <ActionIcon
+                h="sm"
+                aria-label={t`Copy request JSON`}
+                onClick={() => argsClipboard.copy(parsedArgs)}
+              >
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Tooltip>
@@ -109,6 +113,7 @@ export const ToolCallDetailsContent = ({
             <Tooltip label={resultClipboard.copied ? t`Copied!` : t`Copy`}>
               <ActionIcon
                 h="sm"
+                aria-label={t`Copy response JSON`}
                 onClick={() => resultClipboard.copy(parsedResult)}
               >
                 <Icon name="copy" size="1rem" />
@@ -189,6 +194,7 @@ export const AgentToolCallMessage = ({
           <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
             <ActionIcon
               h="sm"
+              aria-label={t`Copy tool call JSON`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleCopy();

@@ -128,6 +128,32 @@ describe("useUrlState", () => {
     expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
   });
 
+  it("consumes the immediate bypass once, then debounces the next patch", async () => {
+    const location = createLocation("?name=abc&score=123");
+    const { result, history } = setup({ location });
+
+    act(() => {
+      const [, { patchUrlState }] = result.current;
+      patchUrlState({ score: 456 }, { immediate: true });
+    });
+
+    // The immediate patch synced right away.
+    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
+
+    act(() => {
+      const [, { patchUrlState }] = result.current;
+      patchUrlState({ name: "xyz" });
+    });
+
+    // The following default patch must still debounce — the bypass was one-shot.
+    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().search).toEqual(
+        "?name=xyz&score=456",
+      );
+    });
+  });
+
   it("removes query params", async () => {
     const location = createLocation("?name=abc&score=123");
     const { result, history } = setup({ location });
