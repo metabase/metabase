@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -424,14 +425,21 @@
        (derive (:model spec#) :hook/search-index)
        (defmethod spec* ~search-model [~'_] spec#))))
 
-;; TODO we should memoize this for production (based on spec values)
+(def ^{:arglists '([spec-methods]), :private true} model-hooks*
+  ;; Specs are immutable in production. Keying on the methods map also does the useful thing after a REPL/test reload.
+  ;; Model resolution can register more methods during the first computation; in that case the next call recomputes.
+  (memoize/fifo
+   (fn [_spec-methods]
+     (->> (specifications)
+          vals
+          (map search-model-hooks)
+          merge-hooks))
+   :fifo/threshold 1))
+
 (defn model-hooks
   "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
   []
-  (->> (specifications)
-       vals
-       (map search-model-hooks)
-       merge-hooks))
+  (model-hooks* (methods spec*)))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
