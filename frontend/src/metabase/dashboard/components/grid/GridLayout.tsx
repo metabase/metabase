@@ -5,7 +5,6 @@ import {
 } from "react-grid-layout";
 
 import { useMantineTheme } from "metabase/ui";
-
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
