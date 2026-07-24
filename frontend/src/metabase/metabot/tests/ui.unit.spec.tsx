@@ -9,7 +9,6 @@ import {
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
 import { act, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
@@ -676,12 +675,6 @@ describe("metabot > ui", () => {
     it("shows an error toast and keeps the current chat when loading fails", async () => {
       setup({
         conversationTitle: null,
-        ui: (
-          <>
-            <Metabot />
-            <UndoListing />
-          </>
-        ),
         conversations: [
           createMockMetabotConversation({
             conversation_id: PAST_CONVERSATION_ID,
