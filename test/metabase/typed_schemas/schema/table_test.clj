@@ -1,11 +1,11 @@
-(ns metabase.typed-schemas.api.schema.table-test
+(ns metabase.typed-schemas.schema.table-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
    [metabase.test :as mt]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
-   [metabase.typed-schemas.api.schema.table :as schema.table]
+   [metabase.typed-schemas.schema.common :as schema.common]
+   [metabase.typed-schemas.schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (def ^:private created-at-field

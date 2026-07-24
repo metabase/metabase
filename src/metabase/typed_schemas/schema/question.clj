@@ -1,10 +1,10 @@
-(ns metabase.typed-schemas.api.schema.question
+(ns metabase.typed-schemas.schema.question
   "Typed schema generation for saved questions."
   (:require
    [medley.core :as m]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.typed-schemas.api.common :as common]
-   [metabase.typed-schemas.api.schema.common :as schema.common]))
+   [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.schema.common :as schema.common]))
 
 (set! *warn-on-reflection* true)
 

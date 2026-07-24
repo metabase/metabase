@@ -1,13 +1,13 @@
-(ns metabase.typed-schemas.api.schema.metric
+(ns metabase.typed-schemas.schema.metric
   "Typed schema generation for metrics and metric dimensions."
   (:require
    [medley.core :as m]
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.typed-schemas.api.common :as common]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
-   [metabase.typed-schemas.api.schema.table :as schema.table]
+   [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.schema.common :as schema.common]
+   [metabase.typed-schemas.schema.table :as schema.table]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
