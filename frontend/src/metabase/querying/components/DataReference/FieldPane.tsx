@@ -40,12 +40,9 @@ export const FieldPane = ({
   }
 
   const columnQuery = columnQueries.get(field);
-
   if (!columnQuery) {
     return <LoadingAndErrorWrapper loading />;
   }
-
-  const { query, column } = columnQuery;
 
   return (
     <SidebarContent
@@ -56,9 +53,9 @@ export const FieldPane = ({
     >
       <SidebarContent.Pane>
         <QueryColumnInfo
-          query={query}
+          query={columnQuery.query}
           stageIndex={STAGE_INDEX}
-          column={column}
+          column={columnQuery.column}
           timezone={table?.db?.timezone}
           showAllFieldValues
           showFingerprintInfo

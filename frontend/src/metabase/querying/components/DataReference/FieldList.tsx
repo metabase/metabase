@@ -62,13 +62,13 @@ export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
           const iconName = field.icon() as IconName;
           const columnQuery = columnQueries.get(field.getPlainObject());
           return (
-            <HoverParent
-              className={S.NodeListItem}
-              as="li"
-              key={field.getUniqueId()}
-            >
-              <NodeListItemLink onClick={() => onFieldClick(field)}>
-                {columnQuery && (
+            columnQuery && (
+              <HoverParent
+                className={S.NodeListItem}
+                as="li"
+                key={field.getUniqueId()}
+              >
+                <NodeListItemLink onClick={() => onFieldClick(field)}>
                   <QueryColumnInfoIcon
                     className={S.nodeListInfoIcon}
                     query={columnQuery.query}
@@ -77,10 +77,10 @@ export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
                     position="left"
                     icon={iconName}
                   />
-                )}
-                <NodeListItemName>{field.name}</NodeListItemName>
-              </NodeListItemLink>
-            </HoverParent>
+                  <NodeListItemName>{field.name}</NodeListItemName>
+                </NodeListItemLink>
+              </HoverParent>
+            )
           );
         })}
       </NodeListContainer>
