@@ -704,6 +704,6 @@
   [& args]
   (let [[family raw] (apply google-raw args)]
     (case family
-      :anthropic        (eduction (raw-predict/->aisdk-chunks-xf) raw)
-      :google           (eduction (stream-generate-content/->aisdk-chunks-xf) raw)
-      :chat-completions (eduction (vllm/vllm->aisdk-chunks-xf) (chat-completions/usage-once raw)))))
+      :anthropic        (core/completion-safe-eduction (raw-predict/->aisdk-chunks-xf) raw)
+      :google           (core/completion-safe-eduction (stream-generate-content/->aisdk-chunks-xf) raw)
+      :chat-completions (core/completion-safe-eduction (vllm/vllm->aisdk-chunks-xf) (chat-completions/usage-once raw)))))
