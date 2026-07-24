@@ -4310,7 +4310,10 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       H.DataStudio.nav().should("be.visible");
 
       cy.log("Verify Transforms menu item is visible");
-      H.DataStudio.nav().findByText("Transforms").should("be.visible");
+      H.DataStudio.nav()
+        .findByText("Data transformation")
+        .should("be.visible")
+        .click();
 
       cy.log("Verify no upsell gem icon is displayed in Transforms menu item");
       H.DataStudio.nav()
