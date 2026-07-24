@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -14,7 +15,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (org.quartz CronTrigger JobDetail)))
+   (org.quartz CronTrigger JobDetail Scheduler TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -161,3 +162,46 @@
         (if scheduler-initialized?
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
+
+(deftest reset-errored-triggers-runs-on-background-daemon-thread-test
+  (testing "reset-errored-triggers! returns immediately and does its work on a named daemon thread"
+    (let [trigger-keys (mapv #(TriggerKey. (str "tk-" %)) (range 50))
+          processed    (atom [])
+          worker-info  (atom nil)
+          ready        (promise) ; delivered by worker once it has entered getTriggerKeys
+          gate         (promise) ; awaited by worker before it returns from getTriggerKeys
+          done         (promise) ; delivered by worker after the final reset call
+          ;; Mock Scheduler that lets us deterministically observe the worker mid-flight: it
+          ;; parks inside getTriggerKeys until the test releases the gate, so we can assert
+          ;; the main thread already returned with no reset work yet performed.
+          mock-scheduler
+          (proxy [Scheduler] []
+            (getTriggerKeys [_matcher]
+              (let [t (Thread/currentThread)]
+                (reset! worker-info {:name (.getName t), :daemon? (.isDaemon t)}))
+              (deliver ready :ready)
+              @gate
+              (java.util.HashSet. ^java.util.Collection trigger-keys))
+            (resetTriggerFromErrorState [tk]
+              (swap! processed conj tk)
+              (when (= (count @processed) (count trigger-keys))
+                (deliver done :all-processed))))]
+      ;; Wrap in a future so a regression to synchronous behavior fails with a timeout instead
+      ;; of deadlocking the suite (the worker parks inside getTriggerKeys before the gate is
+      ;; delivered, so a sync call would never return).
+      (let [call-future (future (#'task.impl/reset-errored-triggers! mock-scheduler))]
+        (testing "function returns before the worker does any reset work"
+          (is (not= :timeout (deref call-future 1000 :timeout))
+              "reset-errored-triggers! must not block the caller while the worker runs")
+          (is (= :ready (deref ready 5000 :timeout))
+              "worker thread should have entered getTriggerKeys")
+          (is (empty? @processed)
+              "no triggers should have been reset yet — worker is parked at the gate")))
+      (testing "worker thread is a daemon with the expected name"
+        (is (= {:name "quartz-error-trigger-reset", :daemon? true}
+               @worker-info)))
+      (deliver gate :go)
+      (testing "background thread completes the sweep"
+        (is (= :all-processed (deref done 5000 :timeout))))
+      (testing "every trigger key was processed"
+        (is (= (set trigger-keys) (set @processed)))))))

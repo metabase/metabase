@@ -108,12 +108,34 @@
   from which it will never recover.
 
   Actually fixing this odd and undesirable behavior would be the ideal solution, but as a stopgap, let's just
-  automatically reset all `ERROR`ed triggers to `WAITING` on startup."
+  automatically reset all `ERROR`ed triggers to `WAITING`.
+
+  Runs on a daemon thread so it doesn't block startup — the sweep can take several minutes on instances with many
+  triggers because each [[Scheduler/resetTriggerFromErrorState]] call is a JDBC round trip under Quartz's
+  `TRIGGER_ACCESS` lock. ERRORed triggers can't fire either way, so deferring just means they resume firing as the
+  sweep progresses instead of all at once."
   [^Scheduler scheduler]
-  (doseq [^TriggerKey tk (.getTriggerKeys scheduler nil)]
-    ;; From dox: "Only affects triggers that are in ERROR state - if identified trigger is not
-    ;; in that state then the result is a no-op."
-    (.resetTriggerFromErrorState scheduler tk)))
+  (doto (Thread.
+         ^Runnable (bound-fn []
+                     (let [timer (u/start-timer)]
+                       (try
+                         (let [trigger-keys (.getTriggerKeys scheduler nil)]
+                           (log/infof "Resetting any ERROR-state Quartz triggers (%d total to check)"
+                                      (count trigger-keys))
+                           (doseq [^TriggerKey tk trigger-keys]
+                             ;; From dox: "Only affects triggers that are in ERROR state - if identified trigger is not
+                             ;; in that state then the result is a no-op."
+                             (.resetTriggerFromErrorState scheduler tk))
+                           (log/infof "Finished resetting ERROR-state Quartz triggers in %s"
+                                      (u/format-milliseconds (u/since-ms timer))))
+                         (catch InterruptedException _
+                           (.interrupt (Thread/currentThread))
+                           (log/info "Quartz trigger error-state reset interrupted"))
+                         (catch Throwable e
+                           (log/error e "Error resetting ERROR-state Quartz triggers")))))
+         "quartz-error-trigger-reset")
+    (.setDaemon true)
+    .start))
 
 (defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
@@ -130,8 +152,11 @@
         ;; Register Prometheus listeners
 
         (delete-jobs-with-no-class!)
-        (reset-errored-triggers! new-scheduler)
-        (init-tasks!)))))
+        (init-tasks!)
+        ;; Run AFTER init-tasks! — the background sweep contends with task scheduling for the
+        ;; Quartz `TRIGGER_ACCESS` lock, so letting init-tasks! finish its rescheduling first
+        ;; keeps that path snappy.
+        (reset-errored-triggers! new-scheduler)))))
 
 ;;; this is a function mostly to facilitate testing.
 (defn- disable-scheduler? []
