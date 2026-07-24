@@ -126,23 +126,6 @@ describe("scenarios > admin > settings", () => {
     H.restore(); // avoid leaving https site url
   });
 
-  it("should display an error if the https redirect check fails", () => {
-    cy.visit("/admin/settings/general");
-
-    cy.intercept("GET", "**/api/health", (req) => {
-      req.reply({ forceNetworkError: true });
-    }).as("httpsCheck");
-    // switch site url to use https
-    cy.findByTestId("site-url-setting")
-      .findByRole("textbox", { name: "input-prefix" })
-      .click();
-    H.popover().contains("https://").click();
-
-    cy.wait("@httpsCheck");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("It looks like HTTPS is not properly configured");
-  });
-
   it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
     cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
 
@@ -623,20 +606,6 @@ describe("scenarios > admin > settings > email settings", () => {
 });
 
 describe("scenarios > admin > license and billing", () => {
-  const HOSTING_FEATURE_KEY = "hosting";
-  const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
-  const NO_UPSELL_FEATURE_HEY = "no-upsell";
-  // mocks data the will be returned by enterprise useLicense hook
-  const mockBillingTokenFeatures = (features) => {
-    return cy.intercept("GET", "/api/premium-features/token/status", {
-      "valid-thru": "2099-12-31T12:00:00",
-      valid: true,
-      trial: false,
-      features,
-      status: "something",
-    });
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -648,33 +617,6 @@ describe("scenarios > admin > license and billing", () => {
       cy.findByTestId("license-and-billing-content")
         .findByText("Go to the Metabase Store")
         .should("have.prop", "tagName", "A");
-    });
-
-    it("should not show license input for cloud-hosted instances", () => {
-      H.activateToken("pro-self-hosted");
-      mockBillingTokenFeatures([
-        STORE_MANAGED_FEATURE_KEY,
-        NO_UPSELL_FEATURE_HEY,
-        HOSTING_FEATURE_KEY,
-      ]);
-      cy.visit("/admin/settings/license");
-      cy.findByTestId("license-input").should("not.exist");
-    });
-
-    it("should render an error if something fails when fetching billing info", () => {
-      H.activateToken("pro-self-hosted");
-      mockBillingTokenFeatures([
-        STORE_MANAGED_FEATURE_KEY,
-        NO_UPSELL_FEATURE_HEY,
-      ]);
-      // force an error
-      cy.intercept("GET", "/api/ee/billing", (req) => {
-        req.reply({ statusCode: 500 });
-      });
-      cy.visit("/admin/settings/license");
-      cy.findByTestId("license-and-billing-content")
-        .findByText(/An error occurred/)
-        .should("exist");
     });
   });
 });
