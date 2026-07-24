@@ -8,9 +8,11 @@
    themselves.
 
    Both object-dependent arguments are checked against the resolved object before any values are
-   fetched. An unknown `parameter_id` answers with the ids that do exist. A `constraints` key
-   that isn't a dashboard parameter is rejected rather than dropped — a dropped constraint would
-   hand back values the agent believes were filtered."
+   fetched. An unknown `parameter_id` answers with the ids that do exist. A `constraints` key is
+   rejected — rather than silently dropped — when it names no dashboard parameter, when it names
+   one that resolves to no queryable field (chain filtering can't use it), or when the target
+   parameter draws its values from a fixed list or a card (a source that never consults
+   constraints). A dropped constraint would hand back values the agent believes were filtered."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -62,12 +64,23 @@
 ;;; --------------------------------------------------- Fetching ---------------------------------------------------
 
 (defn- check-constraints!
+  "Reject a constraints key that names no dashboard parameter, or one that resolves to no queryable
+   field. Chain filtering silently drops the latter — an unmapped filter, or one mapped only via
+   field-refs (model/nested-query columns) or a SQL text variable — so without this check the caller
+   would get unnarrowed values believing they were filtered."
   [resolved-params constraints]
   (doseq [param-key (keys constraints)]
-    (when-not (contains? resolved-params param-key)
-      (common/throw-teaching-error
-       (format "This dashboard has no parameter %s — each constraints key names another of its filters and the value is that filter's current selection. Available: %s."
-               (pr-str param-key) (parameter-catalog (vals resolved-params)))))))
+    (let [param (get resolved-params param-key)]
+      (cond
+        (nil? param)
+        (common/throw-teaching-error
+         (format "This dashboard has no parameter %s — each constraints key names another of its filters and the value is that filter's current selection. Available: %s."
+                 (pr-str param-key) (parameter-catalog (vals resolved-params))))
+
+        (empty? (params/dashboard-param->field-ids param))
+        (common/throw-teaching-error
+         (format "Constraint %s can't narrow this filter — it isn't mapped to a queryable field, so chain filtering would silently ignore it. Drop it from constraints."
+                 (pr-str param-key)))))))
 
 (def ^:private no-values
   {:values [] :has_more_values false})
@@ -94,6 +107,13 @@
         resolved-params (:resolved-params dash)
         constraints     (update-keys constraints u/qualified-name)]
     (check-parameter-id! "dashboard" parameter-id (vals resolved-params))
+    ;; A static-list or card values source never consults the chain-filter constraints, so applying
+    ;; them would silently do nothing — reject rather than hand back a list the caller thinks was
+    ;; narrowed.
+    (when (and (seq constraints)
+               (some? (:values_source_type (get resolved-params parameter-id))))
+      (common/throw-teaching-error
+       "This parameter's values come from a fixed list or a card, not a chain-filterable field, so constraints can't narrow it — fetch without constraints."))
     (check-constraints! resolved-params constraints)
     ;; Chain filtering raises on an unmapped parameter; an empty value list is the honest answer,
     ;; and the one target "question" gives for the same shape of parameter.

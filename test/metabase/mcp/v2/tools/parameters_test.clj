@@ -305,6 +305,31 @@
           (is (re-find #"no parameter \"_NOPE_\"" error))
           (is (re-find #"_PRICE_ \(Price\)" error)))))))
 
+(deftest unresolvable-constraint-key-test
+  (testing "GHY-4141: a constraints key that exists but resolves to no queryable field is rejected —
+            chain filtering silently drops such a key (unmapped, or mapped only via field-refs or a
+            SQL text variable), handing back unnarrowed values the agent believes were filtered"
+    (with-fixtures [{:keys [dashboard]}]
+      (mt/with-test-user :rasta
+        (let [error (params-error {:target       "dashboard"
+                                   :id           (:id dashboard)
+                                   :parameter_id "_CATEGORY_NAME_"
+                                   :constraints  {:_UNMAPPED_ "anything"}})]
+          (is (re-find #"_UNMAPPED_" error))
+          (is (re-find #"queryable field" error)))))))
+
+(deftest constraints-rejected-for-valued-target-test
+  (testing "GHY-4141: constraints against a target whose values come from a static list (or card) are
+            rejected — that value source never consults the chain-filter constraints, so applying them
+            would be a silent no-op"
+    (with-fixtures [{:keys [dashboard]}]
+      (mt/with-test-user :rasta
+        (let [error (params-error {:target       "dashboard"
+                                   :id           (:id dashboard)
+                                   :parameter_id "_STATIC_"
+                                   :constraints  {:_PRICE_ 4}})]
+          (is (re-find #"fixed list or a card" error)))))))
+
 (deftest unknown-parameter-id-test
   (testing "GHY-4141: an unknown parameter_id names the parameters that do exist"
     (with-fixtures [{:keys [dashboard native-card]}]
