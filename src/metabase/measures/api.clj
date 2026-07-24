@@ -63,14 +63,11 @@
                    (lib/primary-source-table-id normalized-definition))
                  (tru "Measure definition must specify a source table.")))
 
-(api.macros/defendpoint :post "/" :- ::measure
-  "Create a new `Measure`. The Measure's table is derived from its `definition`."
-  [_route-params
-   _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ms/Map]
-                                                       [:description {:optional true} [:maybe :string]]]]
+(defn create-measure!
+  "Create-check and insert a new Measure whose table is derived from its `definition`; publishes
+  `:event/measure-create` and returns the hydrated Measure. The shared domain create path, so
+  the create-check runs wherever a Measure is authored."
+  [{:keys [name description definition], :as body}]
   (let [normalized-definition (normalize-input-definition definition)
         table-id (definition-table-id normalized-definition)]
     (api/create-check :model/Measure (assoc body :table_id table-id))
@@ -82,6 +79,16 @@
                                                           :definition  normalized-definition)))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
+
+(api.macros/defendpoint :post "/" :- ::measure
+  "Create a new `Measure`. The Measure's table is derived from its `definition`."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:name        ms/NonBlankString]
+            [:definition  ms/Map]
+            [:description {:optional true} [:maybe :string]]]]
+  (create-measure! body))
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt]
   (api/read-check (t2/select-one :model/Measure :id id))
@@ -103,9 +110,10 @@
     (filter mi/can-read? measures)
     (t2/hydrate measures :creator :definition_description)))
 
-(defn- write-check-and-update-measure!
+(defn write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Measure."
+  event and returns updated/hydrated Measure. The shared domain update path, so the write-check runs
+  wherever a Measure is edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
         clean-body (u/select-keys-when body

@@ -1,6 +1,7 @@
 (ns metabase.queries.core
   (:require
    [metabase.queries.card]
+   [metabase.queries.card-write-checks]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
    [metabase.queries.models.card.metadata]
@@ -10,6 +11,7 @@
 
 (comment metabase.queries.card/keep-me
          metabase.queries.metadata/keep-me
+         metabase.queries.card-write-checks/keep-me
          metabase.queries.models.card/keep-me
          metabase.queries.models.card.metadata/keep-me
          metabase.queries.models.parameter-card/keep-me
@@ -21,6 +23,12 @@
   card-param-remapped-value]
  [metabase.queries.models.card
   create-card!]
+ [metabase.queries.card-write-checks
+  actual-collection-id
+  check-allowed-to-create-card!
+  check-allowed-to-update-card!
+  check-card-can-be-saved!
+  check-no-save-cycle!]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?
@@ -37,6 +45,7 @@
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
   infer-metadata
+  infer-metadata-with-model-overrides
   maybe-async-result-metadata
   refresh-metadata
   save-metadata-async!]
