@@ -548,7 +548,7 @@
   ;; served from the workspace's copy-on-write targets, presented under the requested source IDs
   ;; so query references stay stable.
   (let [id->target     (when-let [model (and id-set (metadata-type->workspace-model metadata-type))]
-                         (not-empty (workspaces/remapped-entity-ids model id-set)))
+                         (perf/not-empty (workspaces/remapped-entity-ids model id-set)))
         metadata-spec  (cond-> metadata-spec
                          id->target (assoc :id (into #{} (map #(id->target % %)) id-set)))
         query          (metadata-spec->honey-sql database-id metadata-spec)
@@ -559,7 +559,7 @@
                                           {:metadata-spec metadata-spec, :query query}
                                           e))))]
     (if-let [target->source (some->> id->target (into {} (map (juxt val key))))]
-      (mapv (fn [instance]
+      (perf/mapv (fn [instance]
               (update instance :id #(get target->source % %)))
             results)
       results)))
