@@ -1169,7 +1169,7 @@
           (data-perms/with-additional-table-permission :perms/view-data db-id table-id :unrestricted
             (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))))))))
 
-(deftest blocked-tables-downgrade-to-blocked-dbs
+(deftest ^:mb/old-migrations-test blocked-tables-downgrade-to-blocked-dbs
   (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
     (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Howard"
                                                         :last_name   "Hughes"
@@ -1196,7 +1196,7 @@
            (t2/select-fn-set :object :model/Permissions :group_id group-id)
            (str "/block/db/" db-id "/"))))))
 
-(deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
+(deftest ^:mb/old-migrations-test dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
   (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
     (let [user-id      (t2/insert-returning-pk! :core_user {:first_name  "Howard"
                                                             :last_name   "Hughes"

@@ -153,7 +153,7 @@
 (def query-explainer
   (mr/explainer ::mbql.s/MBQLInnerQuery))
 
-(deftest migrate-metrics-to-v2-test
+(deftest ^:mb/old-migrations-test migrate-metrics-to-v2-test
   (impl/test-migrations ["v51.2024-05-13T15:30:57" "v51.2024-05-13T16:00:00"] [migrate!]
     (let [add-timestamps (fn [entity]
                            (assoc entity
