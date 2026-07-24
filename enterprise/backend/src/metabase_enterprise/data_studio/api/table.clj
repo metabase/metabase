@@ -7,7 +7,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collection]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
@@ -129,12 +128,7 @@
       (when (seq table-ids-to-update)
         (t2/update! :model/Table :id [:in table-ids-to-update]
                     {:collection_id nil
-                     :is_published  false})
-        ;; Publish events for audit log and remote sync tracking
-        (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
-          (doseq [table updated-tables]
-            (events/publish-event! :event/table-unpublish {:object  table
-                                                           :user-id api/*current-user-id*})))))))
+                     :is_published  false})))))
 
 ;;; ------------------------------------------------ Response Schemas ------------------------------------------------
 
@@ -171,18 +165,22 @@
         update-where       (if (seq upstream-ids)
                              [:or where [:and [:in :id upstream-ids] [:= :is_published false]]]
                              where)
-        ;; Get table IDs before update for event publishing
-        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})
+        ;; intersect so nothing outside the permission-checked set can be updated
+        selected-ids        (set/intersection table-ids-to-update
+                                              (t2/select-pks-set :model/Table {:where where}))
+        upstream-only-ids   (set/difference table-ids-to-update selected-ids)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
-    (when (seq table-ids-to-update)
-      (t2/update! :model/Table :id [:in table-ids-to-update]
+    (when (seq selected-ids)
+      (t2/update! :model/Table :id [:in selected-ids]
                   {:collection_id (:id target-collection)
-                   :is_published  true})
-      ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-publish {:object  table
-                                                       :user-id api/*current-user-id*}))))
+                   :is_published  true}))
+    ;; Recheck is_published at update time: an upstream table published concurrently since the select
+    ;; above must not be moved into this request's collection.
+    (when (seq upstream-only-ids)
+      (t2/update! :model/Table :id [:in upstream-only-ids] :is_published false
+                  {:collection_id (:id target-collection)
+                   :is_published  true}))
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables" :- :nil
@@ -196,18 +194,12 @@
         update-where    (if (seq downstream-ids)
                           [:or where [:in :id downstream-ids]]
                           where)
-        ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in table-ids-to-update]
                   {:collection_id nil
-                   :is_published  false})
-      ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-unpublish {:object  table
-                                                         :user-id api/*current-user-id*}))))
+                   :is_published  false}))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

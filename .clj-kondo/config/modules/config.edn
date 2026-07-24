@@ -2706,6 +2706,7 @@
            audit-app
            collections
            driver
+           events
            lib
            lib-be
            models
@@ -3136,7 +3137,6 @@
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
            collections
-           events
            models
            permissions
            premium-features

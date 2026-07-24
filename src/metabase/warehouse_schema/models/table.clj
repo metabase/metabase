@@ -5,6 +5,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.events.core :as events]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -16,7 +17,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -188,6 +192,45 @@
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :table_id (:id table)))
 
+(def ^:private ^ThreadLocal pending-published-state-events
+  "Map of table id to a staged :event/table-publish or :event/table-unpublish topic.
+  Publish-state transitions are only detectable in before-update (after-update receives re-fetched
+  instances without change information), but events must be emitted after the update so that handlers
+  which re-query the table observe its new state.
+  Both hooks run on the calling thread within one Toucan pipeline, so a thread-local bridges them;
+  emitting from after-update also means a failed update publishes nothing."
+  (ThreadLocal.))
+
+(defn- stage-published-state-event!
+  "Stage :event/table-publish or :event/table-unpublish for after-update to emit when `changes` flip the
+  table's published state, or move a published table to another collection.
+  Skipped during serdes load, which includes remote-sync imports."
+  [table changes]
+  (let [staged         (or (.get pending-published-state-events) {})
+        was-published? (boolean (:is_published (t2/original table)))
+        published?     (boolean (get changes :is_published was-published?))
+        topic          (when-not mi/*deserializing?*
+                         (cond
+                           (not= was-published? published?)
+                           (if published? :event/table-publish :event/table-unpublish)
+
+                           (and published? (contains? changes :collection_id))
+                           :event/table-publish))]
+    (.set pending-published-state-events
+          (if topic
+            (assoc staged (:id table) topic)
+            (dissoc staged (:id table))))))
+
+(t2/define-after-update :model/Table
+  [table]
+  (let [staged (.get pending-published-state-events)]
+    (when-let [topic (get staged (:id table))]
+      (.set pending-published-state-events (dissoc staged (:id table)))
+      ;; realize, since after-update receives lazy TransientRows and event handlers need a full instance
+      (events/publish-event! topic {:object  (t2.realize/realize table)
+                                    :user-id api/*current-user-id*})))
+  nil)
+
 (t2/define-before-update :model/Table
   [table]
   (let [changes        (t2/changes table)
@@ -218,6 +261,7 @@
                    (= new-data-source :metabase-transform))
           (throw (ex-info "Cannot set data_source to metabase-transform"
                           {:status-code 400})))))
+    (stage-published-state-event! table changes)
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond
