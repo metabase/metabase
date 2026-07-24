@@ -108,11 +108,16 @@
 (defn- register-plugin!
   "Register a plugin JAR by its manifest, without adding it to the classpath or loading its code -- both
   wait until the plugin is loaded. A JAR with no manifest is a bare dependency (e.g. a JDBC driver): there
-  is no code to defer, so it goes straight onto the classpath."
-  [^Path jar-path]
+  is no code to defer, so it goes straight onto the classpath. A manifest whose name is in `reserved-names`
+  (a bundled plugin's) is ignored, so a plugins-directory JAR cannot register under a bundled identity."
+  [reserved-names ^Path jar-path]
   (if-let [info (plugin-info jar-path)]
-    ;; Manifest plugin: pass the classpath add as a thunk so it runs at load time, not now.
-    (register-plugin-with-info! (assoc info :add-to-classpath! #(add-to-classpath! jar-path)))
+    (let [plugin-name (get-in info [:info :name])]
+      (if (contains? reserved-names plugin-name)
+        (log/warnf "Ignoring plugins-directory plugin %s: name %s is reserved by a bundled plugin"
+                   (.getFileName jar-path) (pr-str plugin-name))
+        ;; Manifest plugin: pass the classpath add as a thunk so it runs at load time, not now.
+        (register-plugin-with-info! (assoc info :add-to-classpath! #(add-to-classpath! jar-path)))))
     ;; Bare dependency JAR: nothing to load, so add it to the classpath immediately.
     (add-to-classpath! jar-path)))
 
@@ -170,27 +175,37 @@
 (defn- has-manifest? ^Boolean [^Path path]
   (boolean (slurp-plugin-manifest-from-archive path)))
 
-(defn- register-plugins! [paths]
+(defn- register-plugins! [reserved-names paths]
   (doseq [^Path path paths]
     (try
-      (register-plugin! path)
+      (register-plugin! reserved-names path)
       (catch Throwable e
         (log/errorf e "Failed to register plugin %s" (.getFileName path))))))
 
+(defn- bundled-plugin-names
+  "Names of every bundled (classpath) plugin, whether or not its dependencies are yet satisfied. A bundled
+  plugin with an unmet dependency (e.g. Oracle without its JDBC JAR) never registers, so reserving its name
+  explicitly keeps a plugins-directory JAR from claiming that identity."
+  []
+  (into #{}
+        (keep #(get-in (some-> (slurp (str %)) yaml/parse-string) [:info :name]))
+        (bundled-manifest-paths)))
+
 (defn- load! []
-  ;; The order here matters, and the middle step is a provenance boundary. `false` (no manifest) sorts before
-  ;; `true`, so the destructuring splits plugins-directory JARs into bare dependencies and manifest plugins.
+  ;; The order here matters, and step 3 is a provenance boundary. `false` (no manifest) sorts before `true`,
+  ;; so the destructuring splits plugins-directory JARs into bare dependencies and manifest plugins.
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))
   (let [{dep-jars false, user-manifests true} (group-by has-manifest? (plugins-paths))]
     ;; 1. Bare dependency JARs (e.g. the Oracle JDBC driver `ojdbc8.jar`) go on the classpath first, so a
     ;;    bundled manifest's `class:` dependency is satisfiable by the time it is registered.
-    (register-plugins! dep-jars)
-    ;; 2. Bundled manifests next. Their code is compiled into the root-owned uberjar, so registering them here
-    ;;    claims each plugin name before any plugins-directory JAR does. Registration is first-wins, so a JAR
-    ;;    dropped in the writable plugins directory cannot shadow a bundled plugin and run under its identity.
+    (register-plugins! #{} dep-jars)
+    ;; 2. Bundled manifests next: root-owned code compiled into the uberjar.
     (load-bundled-plugin-manifests!)
-    ;; 3. Finally, user-supplied manifest plugins from the plugins directory.
-    (register-plugins! user-manifests)))
+    ;; 3. User-supplied manifest plugins last, and never under a bundled plugin's name. A bundled plugin whose
+    ;;    dependencies are unmet does not register, so we reserve all bundled names explicitly rather than
+    ;;    rely on registration order alone -- otherwise a JAR in the writable plugins directory could run
+    ;;    under a bundled identity.
+    (register-plugins! (bundled-plugin-names) user-manifests)))
 
 (defonce ^:private loaded? (atom false))
 
