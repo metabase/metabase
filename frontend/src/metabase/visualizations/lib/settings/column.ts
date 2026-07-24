@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import {
   type TimeEnabled,
   currency,
@@ -534,7 +535,7 @@ export const getTitleForColumn = (
   const pivoted = isPivoted(series, settings);
 
   if (pivoted) {
-    return displayNameForColumn(column) || t`Unset`;
+    return displayNameForColumn(column) || NULL_DISPLAY_VALUE;
   }
 
   return (

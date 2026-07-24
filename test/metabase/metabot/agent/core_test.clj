@@ -813,16 +813,20 @@
       (testing "sql profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
+        (is (nil? (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "nlq profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :no})))
-        (is (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes})))
+        (is (nil? (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes}))))
       (testing "transforms_codegen profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
+        (is (nil? (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "document-generate-content profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :no})))
-        (is (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :yes}))))))
+        (is (nil? (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :yes}))))
+      (testing "explorations profile (gated on NLQ permission)"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                              (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
+        (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))

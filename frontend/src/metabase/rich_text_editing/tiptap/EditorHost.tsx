@@ -7,6 +7,7 @@ import type {
   Card,
   Dataset,
   Document,
+  EntityId,
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -106,6 +107,7 @@ export interface EditorCommentsHost {
     getChildTargetId: Selector<string | undefined>;
     getHoveredChildTargetId: Selector<string | undefined>;
   };
+  useCommentUrl: (opts: { childTargetId: EntityId | null }) => string;
   useUnresolvedCommentsCount: (
     nodeId: string,
     opts?: { skip?: boolean },
@@ -188,6 +190,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   navigateToCard: () => ({ type: "@@editor-host/noop" }),
   useCardData: () => ({ isLoading: false, series: null }),
   useExternalCardDataLoader: () => ({ isLoading: false, series: null }),
+  useCommentUrl: () => "",
   useUnresolvedCommentsCount: () => 0,
   useNodeInViewport: () => ({
     ref: () => undefined,

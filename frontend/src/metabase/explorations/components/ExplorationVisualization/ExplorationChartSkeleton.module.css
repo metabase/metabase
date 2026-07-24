@@ -1,0 +1,47 @@
+.root {
+  width: 100%;
+}
+
+.titleBlock {
+  width: 100%;
+}
+
+.chartBlock {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  min-height: 6rem;
+  min-width: 0;
+}
+
+.yAxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 3rem;
+  padding: 0.5rem 0;
+}
+
+.chartCanvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.chartSilhouette {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.chartArea {
+  fill: var(--mb-color-background-secondary);
+}
+
+.chartLine {
+  fill: none;
+  stroke: var(--mb-color-border);
+  stroke-width: 0.4;
+}

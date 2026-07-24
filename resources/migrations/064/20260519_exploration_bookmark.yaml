@@ -1,0 +1,105 @@
+## Adds per-user bookmark support for explorations.
+##
+## Mirrors the document_bookmark pattern from v57 (see
+## resources/migrations/057_update_migrations.yaml). One row per
+## (user_id, exploration_id) pair with FKs cascading on delete of
+## either side, plus a unique constraint so duplicate bookmarks
+## are rejected at the database level.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-05-19T10:00:00
+      author: denisberezin
+      comment: Create exploration_bookmark table
+      changes:
+        - createTable:
+            tableName: exploration_bookmark
+            remarks: Store user bookmarks for explorations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  remarks: User who bookmarked the exploration
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: exploration_id
+                  remarks: The exploration that was bookmarked
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: The timestamp when the bookmark was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-05-19T10:00:01
+      author: denisberezin
+      comment: Add index on exploration_bookmark.user_id
+      changes:
+        - createIndex:
+            tableName: exploration_bookmark
+            indexName: idx_exploration_bookmark_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v64.2026-05-19T10:00:02
+      author: denisberezin
+      comment: Add index on exploration_bookmark.exploration_id
+      changes:
+        - createIndex:
+            tableName: exploration_bookmark
+            indexName: idx_exploration_bookmark_exploration_id
+            columns:
+              - column:
+                  name: exploration_id
+
+  - changeSet:
+      id: v64.2026-05-19T10:00:03
+      author: denisberezin
+      comment: Add foreign key constraint for exploration_bookmark.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_bookmark
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_exploration_bookmark_user_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-05-19T10:00:04
+      author: denisberezin
+      comment: Add foreign key constraint for exploration_bookmark.exploration_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_bookmark
+            baseColumnNames: exploration_id
+            referencedTableName: exploration
+            referencedColumnNames: id
+            constraintName: fk_exploration_bookmark_exploration_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-05-19T10:00:05
+      author: denisberezin
+      comment: Add unique constraint for exploration_bookmark user_id and exploration_id
+      changes:
+        - addUniqueConstraint:
+            tableName: exploration_bookmark
+            columnNames: user_id, exploration_id
+            constraintName: idx_exploration_bookmark_user_exploration_unique

@@ -136,6 +136,7 @@ export function getScatterPlotModel(
     transformedDataset,
     seriesModels,
     yAxisScaleTransforms,
+    cardsColumns,
     columnByDataKey,
     dimensionModel,
     xAxisModel,

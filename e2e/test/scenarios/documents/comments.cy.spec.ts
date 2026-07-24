@@ -575,8 +575,14 @@ describe("document comments", () => {
     cy.get<DocumentId>("@documentId").then((documentId) => {
       H.visitDocumentComment(documentId, PARAGRAPH_ID);
 
+      // The empty sidebar's new-thread composer autofocuses when it
+      // mounts — wait for that to settle so it can't steal focus back
+      // after we click into the document below.
+      Comments.getNewThreadInput().find(".ProseMirror-focused").should("exist");
+
       cy.get("main").within(() => {
         H.documentContent().click();
+        H.documentContent().find(".ProseMirror-focused").should("exist");
 
         cy.realType("test");
         cy.findByRole("button", { name: "Save" }).should("exist");
@@ -1398,17 +1404,6 @@ describe("document comments", () => {
       H.getBulletList("ul", Comments.getSidebar()).should("be.visible");
       H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
     });
-  });
-
-  it("should remove ?new=true from the url after creating a comment", () => {
-    startNewCommentIn1ParagraphDocument();
-
-    cy.url().should("include", "?new=true");
-
-    cy.realType("Test");
-    cy.realPress([META_KEY, "Enter"]);
-
-    cy.url().should("not.include", "?new=true");
   });
 
   describe("email notifications", () => {

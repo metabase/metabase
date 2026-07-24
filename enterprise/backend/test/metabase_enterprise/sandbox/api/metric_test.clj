@@ -18,14 +18,15 @@
   (:dimensions (mt/user-http-request user-kw :get 200 (str "metric/" metric-id))))
 
 (defn- dimension-names
-  "Extract the set of display-name (or name) values from a seq of dimensions."
+  "Extract the set of display_name (or name) values from a seq of wire-form (snake_case)
+   dimensions, as served by the HTTP API."
   [dims]
-  (into #{} (map #(or (:display-name %) (:name %))) dims))
+  (into #{} (map #(or (:display_name %) (:name %))) dims))
 
 (defn- dimension-group-names
-  "Extract the set of group display-names from a seq of dimensions."
+  "Extract the set of group display_names from a seq of wire-form (snake_case) dimensions."
   [dims]
-  (into #{} (map #(get-in % [:group :display-name])) dims))
+  (into #{} (map #(get-in % [:group :display_name])) dims))
 
 ;;; ------------------------------------------------- Sandbox Column Filtering Tests -------------------------------------------------
 

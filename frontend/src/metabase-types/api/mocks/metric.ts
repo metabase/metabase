@@ -8,29 +8,45 @@ export const createMockMetricDimension = (
   opts?: Partial<MetricDimension>,
 ): MetricDimension => ({
   id: "1",
+  name: "Dimension",
   display_name: "Dimension",
   effective_type: "type/Text",
   semantic_type: null,
   ...opts,
 });
 
-export const createMockMetric = (opts?: Partial<Metric>): Metric => ({
-  id: 1,
-  name: "Metric",
-  description: null,
-  dimensions: [createMockMetricDimension()],
-  collection_id: null,
-  collection: null,
-  ...opts,
-});
+export const createMockMetric = (opts?: Partial<Metric>): Metric => {
+  const merged: Metric = {
+    id: 1,
+    name: "Metric",
+    description: null,
+    dimension_mappings: [],
+    collection_id: null,
+    ...opts,
+  };
+  const dimensions = merged.dimensions ?? [createMockMetricDimension()];
+  return {
+    ...merged,
+    dimensions,
+    dimension_ids: opts?.dimension_ids ?? dimensions.map((d) => d.id),
+  };
+};
 
 export const createMockNormalizedMetric = (
   opts?: Partial<NormalizedMetric>,
-): NormalizedMetric => ({
-  id: 1,
-  name: "Metric",
-  description: null,
-  dimensions: [createMockMetricDimension()],
-  collection_id: null,
-  ...opts,
-});
+): NormalizedMetric => {
+  const merged: NormalizedMetric = {
+    id: 1,
+    name: "Metric",
+    description: null,
+    dimension_mappings: [],
+    collection_id: null,
+    ...opts,
+  };
+  const dimensions = merged.dimensions ?? [createMockMetricDimension()];
+  return {
+    ...merged,
+    dimensions,
+    dimension_ids: opts?.dimension_ids ?? dimensions.map((d) => d.id),
+  };
+};

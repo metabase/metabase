@@ -16,6 +16,7 @@ const MODEL_TYPE_DISPLAY_NAMES: Record<EnabledSearchModel, string> = {
   table: "Table",
   "indexed-entity": "Indexed record",
   document: "Document",
+  exploration: "Research",
   transform: "Transform",
 };
 

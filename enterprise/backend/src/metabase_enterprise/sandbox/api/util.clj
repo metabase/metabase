@@ -78,19 +78,23 @@
     (let [enforced-sandboxes-for-user (perms/sandboxes-for-user)]
       (filter #((set table-ids) (:table_id %)) enforced-sandboxes-for-user))))
 
-(defn sandboxed-user-for-db?
+(defenterprise sandboxed-user-for-db?
   "Returns true if the currently logged in user has any enforced sandboxes for the provided database. Throws an
-  exception if no current user is bound."
+  exception if no current user is bound. Uses `:feature :none` so callers can recognize a sandboxed user even when
+  the `:sandboxes` feature is temporarily unavailable (e.g. during a transient token-check failure) and fail closed
+  instead of leaking data."
+  :feature :none
   [database-id]
-  (when-not *is-superuser?*
-    (if *current-user-id*
-      (let [sandboxes (t2/hydrate (seq (perms/sandboxes-for-user)) :table)]
-        (some #(= (get-in % [:table :db_id]) database-id)
-              sandboxes))
-      ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
-      ;; returning `false` for users who should actually be sandboxes.
-      (throw (ex-info (str (tru "No current user found"))
-                      {:status-code 403})))))
+  (boolean
+   (when-not *is-superuser?*
+     (if *current-user-id*
+       (let [sandboxes (t2/hydrate (seq (perms/sandboxes-for-user)) :table)]
+         (some #(= (get-in % [:table :db_id]) database-id)
+               sandboxes))
+       ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
+       ;; returning `false` for users who should actually be sandboxes.
+       (throw (ex-info (str (tru "No current user found"))
+                       {:status-code 403}))))))
 
 (defenterprise sandboxed-user?
   "Returns true if the currently logged in user has any enforced sandboxes. Throws an exception if no current user is

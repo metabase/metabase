@@ -141,9 +141,9 @@ const SupportingTextComponent = ({
     skip: !isInViewport,
   });
   const isOpen = childTargetId === _id;
-  const commentsPath = document
-    ? `/document/${document.id}/comments/${_id}`
-    : "";
+  const commentsPath = host.useCommentUrl({
+    childTargetId: _id,
+  });
   const dispatch = useDispatch();
 
   const canWrite = editor.options.editable;
@@ -236,13 +236,7 @@ const SupportingTextComponent = ({
             unresolvedCommentsCount={unresolvedCommentsCount}
             onClick={(e) => {
               e.preventDefault();
-              dispatch(
-                push(
-                  unresolvedCommentsCount > 0
-                    ? commentsPath
-                    : `${commentsPath}?new=true`,
-                ),
-              );
+              dispatch(push(commentsPath));
             }}
           />
         </Box>

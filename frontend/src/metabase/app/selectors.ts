@@ -6,6 +6,7 @@ import {
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
 import { getCurrentDocument } from "metabase/documents/selectors";
+import { getCurrentExploration } from "metabase/explorations/selectors";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
@@ -111,8 +112,17 @@ export const getIsCollectionPathVisible = createSelector(
     getRouterPath,
     getIsEmbeddingIframe,
     getEmbedOptions,
+    getCurrentExploration,
   ],
-  (question, dashboard, document, path, isEmbedded, embedOptions) => {
+  (
+    question,
+    dashboard,
+    document,
+    path,
+    isEmbedded,
+    embedOptions,
+    exploration,
+  ) => {
     if (isEmbedded && !embedOptions.breadcrumbs) {
       return false;
     }
@@ -133,7 +143,8 @@ export const getIsCollectionPathVisible = createSelector(
     return (
       ((question != null && question.isSaved()) ||
         dashboard != null ||
-        document !== null) &&
+        document !== null ||
+        exploration != null) &&
       PATHS_WITH_COLLECTION_BREADCRUMBS.some((pattern) => pattern.test(path))
     );
   },
@@ -238,8 +249,17 @@ export const getCollectionId = createSelector(
     getCurrentDocument,
     getDetailViewState,
     getRouterPath,
+    getCurrentExploration,
   ],
-  (question, dashboard, dashboardId, document, detailView, path) => {
+  (
+    question,
+    dashboard,
+    dashboardId,
+    document,
+    detailView,
+    path,
+    exploration,
+  ) => {
     if (detailView) {
       return detailView.collectionId;
     }
@@ -255,6 +275,10 @@ export const getCollectionId = createSelector(
     const questionCollectionId = question?.collectionId();
     if (questionCollectionId != null) {
       return questionCollectionId;
+    }
+
+    if (exploration) {
+      return exploration.collection_id;
     }
 
     // On a collection page the URL itself identifies the current collection.

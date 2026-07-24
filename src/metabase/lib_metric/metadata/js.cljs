@@ -98,11 +98,12 @@
 
 ;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
 
-(defn- parse-dimension
+(defn parse-dimension
   "Parse a single dimension, converting keys to kebab-case keywords and type values to keywords.
    Similar to how metabase.lib.js.metadata parses fields."
   [dim]
-  (let [converted (update-keys dim (comp keyword u/->kebab-case-en))]
+  (let [m         (if (map? dim) dim (js->clj dim :keywordize-keys true))
+        converted (update-keys m (comp keyword u/->kebab-case-en))]
     (cond-> converted
       (:effective-type converted)   (update :effective-type keyword)
       (:semantic-type converted)    (update :semantic-type keyword)
@@ -119,10 +120,12 @@
     [{:type :field, :field-id field-id}]))
 
 (defn- extract-dimensions-from-entity
-  "Extract dimensions from a parsed metric or measure, annotating with source info."
+  "Extract dimensions from a parsed metric or measure, annotating with source info.
+   Mappings are normalized to the canonical kebab-case shape; `:target` (an MBQL ref)
+   passes through untouched."
   [entity source-type]
   (let [dims     (:dimensions entity)
-        mappings (:dimension-mappings entity)
+        mappings (mapv u/normalize-map (:dimension-mappings entity))
         mappings-by-dim-id (into {} (map (juxt :dimension-id identity) mappings))]
     (for [dim dims
           :let [parsed-dim (parse-dimension dim)

@@ -65,6 +65,7 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      ;; internal permission signal (published tables) — never surfaced in API responses
       (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)

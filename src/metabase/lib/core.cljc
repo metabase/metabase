@@ -119,6 +119,7 @@
    [metabase.lib.table :as lib.table]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
@@ -1622,6 +1623,8 @@
   raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
+ [lib.underlying
+  aggregation-sourced?]
  [lib.util
   clause?
   clause-of-type?

@@ -25,6 +25,7 @@ export const TAG_TYPES = [
   "public-document",
   "comment",
   "embedding-hub-checklist",
+  "exploration",
   "field",
   "field-values",
   "glossary",
@@ -97,4 +98,5 @@ export const TAG_TYPE_MAPPING = {
   snippet: "snippet",
   pulse: "subscription",
   transform: "transform",
+  exploration: "exploration",
 } as const;

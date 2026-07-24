@@ -54,7 +54,7 @@ import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartSc
 import type { TreemapGroupsPickerProps } from "../visualizations/TreemapChart/TreemapGroupsPicker";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
-import type { HoveredObject } from "./hover";
+import type { HighlightedObject, HoveredObject } from "./hover";
 
 export interface Padding {
   top: number;
@@ -171,6 +171,7 @@ export interface VisualizationProps {
   isRawTable?: boolean;
   scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
+  highlighted?: HighlightedObject | null;
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
@@ -206,6 +207,7 @@ export interface VisualizationProps {
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
+  onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -230,6 +232,7 @@ export type VisualizationPassThroughProps = {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table
   isShowingDetailsOnlyColumns?: boolean;

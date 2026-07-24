@@ -49,6 +49,14 @@
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
     :model/EmbeddingTheme                    metabase.embedding.models.theme
+    :model/Exploration                       metabase.explorations.models.exploration
+    :model/ExplorationBlock                  metabase.explorations.models.exploration-block
+    :model/ExplorationBookmark               metabase.bookmarks.models.bookmark
+    :model/ExplorationPage                   metabase.explorations.models.exploration-page
+    :model/ExplorationQuery                  metabase.explorations.models.exploration-query
+    :model/ExplorationQueryResult            metabase.explorations.models.exploration-query-result
+    :model/ExplorationThread                 metabase.explorations.models.exploration-thread
+    :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
@@ -121,6 +129,8 @@
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
+    :model/StoredResult                      metabase.queries.models.stored-result
+    :model/StoredResultUse                   metabase.queries.models.stored-result-use
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping

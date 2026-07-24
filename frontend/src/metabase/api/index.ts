@@ -19,6 +19,7 @@ export * from "./dataset";
 export * from "./document";
 export * from "./embed";
 export * from "./entity-id";
+export * from "./exploration";
 export * from "./field";
 export * from "./frontend-errors";
 export * from "./glossary";

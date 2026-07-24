@@ -400,7 +400,11 @@
   - :first_day_of_week - Calendar week start (default 'Sunday')
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
-  - :recent_views - Formatted recent views"
+  - :recent_views - Formatted recent views
+
+  This is the user-message injection context only. Per-profile, feature-specific system-prompt
+  content is contributed separately, via a profile's `:system-prompt-context` hook (see
+  `metabase.metabot.agent.messages/build-system-message`)."
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")

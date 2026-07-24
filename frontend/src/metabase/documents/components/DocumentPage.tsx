@@ -1,7 +1,6 @@
 import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import dayjs from "dayjs";
 import {
   type ReactNode,
   useCallback,
@@ -28,6 +27,7 @@ import {
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyModal } from "metabase/common/components/CopyModal";
+import { getFormattedTime } from "metabase/common/components/DateTime";
 import {
   LeaveConfirmModal,
   LeaveRouteConfirmModal,
@@ -360,7 +360,7 @@ export const DocumentPage = ({
         const documentAst = editorInstance.getJSON();
         const name =
           documentTitle ||
-          t`Untitled document - ${dayjs().local().format("MMMM D, YYYY")}`;
+          t`Untitled document - ${getFormattedTime(new Date(), "day", { local: true })}`;
 
         const newDocumentData = {
           name,

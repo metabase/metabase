@@ -1,0 +1,53 @@
+.chart {
+  & :global(.CardVisualization) {
+    padding: 0;
+  }
+}
+
+.chartGridContainer {
+  overflow-y: auto;
+}
+
+.chartGrid {
+  display: grid;
+  flex: 1;
+  gap: 1.5rem;
+  /* default: single column — charts stack, the area scrolls when tall */
+  grid-template-columns: 1fr;
+  grid-auto-rows: minmax(10rem, auto);
+  /* never let the grid itself be widened past its container */
+  min-width: 0;
+  /* contain leaflet pane z-indexes (up to ~700) so the sticky toolbar floats above maps */
+  isolation: isolate;
+}
+
+/*
+ * Grid items default to `min-width: auto`, which lets wide chart content
+ * (e.g. an x-axis with many labels) stretch its column past the `1fr`
+ * track and scroll the whole section sideways. Pin every chart cell to
+ * `min-width: 0` so charts always shrink to their allocated column.
+ */
+.chartGrid > * {
+  min-width: 0;
+}
+
+.warnings {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  margin-top: var(--mantine-spacing-md);
+  margin-right: var(--mantine-spacing-md);
+}
+
+.commentsSidebar {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.commentBadge {
+  background-color: var(--mb-color-background-secondary);
+
+  &:hover {
+    background-color: var(--mb-color-background-tertiary);
+  }
+}

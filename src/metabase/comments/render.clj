@@ -63,7 +63,7 @@
    "dataset"    channel.urls/card-url
    "dashboard"  channel.urls/dashboard-url
    "collection" channel.urls/collection-url
-   "document"   #(format "%s/document/%d" (channel.urls/site-url) %)})
+   "document"   channel.urls/document-url})
 
 (defn- smart-link->hiccup
   "Convert a smartLink node to hiccup. Builds URLs from model + entityId rather than

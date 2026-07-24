@@ -255,10 +255,17 @@
             (testing "Returns results from sync-database step"
               (is (= ["metadata" "analyze" "field-values"]
                      (map :name results)))))
-          (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]
+          (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))
+                ;; a full sync runs the analyze step, which scores dimension_interestingness
+                ;; (a double in [0.0, 1.0]) for every field — including non-fingerprinted/PK
+                ;; fields, which hard-zero to 0.0
+                all-fields-scored (fn [table]
+                                    (update table :fields
+                                            (fn [fields]
+                                              (mapv #(assoc % :dimension_interestingness true) fields))))]
             (testing "Tables and Fields are synced"
-              (is (= (expected-movie-table) movie))
-              (is (= (expected-studio-table) studio)))))))))
+              (is (= (all-fields-scored (expected-movie-table)) movie))
+              (is (= (all-fields-scored (expected-studio-table)) studio)))))))))
 
 (deftest sync-table-test
   (doseq [supports-schemas? [true false]]

@@ -3,11 +3,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -32,33 +33,25 @@
                                              [:name :string]]]]])
 
 (mr/def ::MetricWithDimensions
-  "Schema for a Metric with hydrated dimensions (returned from GET /:id)."
+  "Schema for a Metric with hydrated dimensions (returned from GET /:id). Dimensions and mappings
+  reference the wire-annotated schemas in [[metabase.metrics.dimension]]: the handler returns them
+  in the internal kebab-case shape, is validated against it, and `defendpoint` encodes them to the
+  snake_case wire shape on the way out."
   [:merge
    ::Metric
    [:map
-    [:dimensions           {:optional true} [:maybe [:sequential :map]]]
-    [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
+    [:dimensions           [:sequential ::metrics.dimension/dimension]]
+    [:dimension_mappings   [:sequential ::metrics.dimension/dimension-mapping]]
     [:dataset_query        {:optional true} :map]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
-(def ^:private visibility-config
-  {:include-trash-collection? false
-   :include-archived-items    :exclude
-   :permission-level          :read})
-
-(defn- metrics-where-clause []
-  [:and
-   [:= :type "metric"]
-   [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id visibility-config)])
-
 (defn- count-metrics []
-  (t2/count :model/Card {:where (metrics-where-clause)}))
+  (t2/count :model/Card {:where (queries/visible-metric-cards-where-clause)}))
 
 (defn- select-metrics [limit offset]
   (-> (t2/select [:model/Card :id :name :description :collection_id]
-                 {:where    (metrics-where-clause)
+                 {:where    (queries/visible-metric-cards-where-clause)
                   :order-by [[:name :asc]]
                   :limit    limit
                   :offset   offset})
@@ -89,12 +82,15 @@
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
   (-> (t2/select-one :model/Card :id id :type "metric")
-      metrics.perms/filter-dimensions-for-user))
+      metrics.perms/filter-dimensions-for-user
+      (update :dimensions #(or % []))
+      (update :dimension_mappings #(or % []))))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
-  Returns the metric with hydrated dimensions and dimension mappings."
+  Returns the metric with hydrated dimensions and dimension mappings; the `::MetricWithDimensions`
+  schema encodes them to the snake_case wire shape at the `defendpoint` edge."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [metric (hydrated-metric id)]
     (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))

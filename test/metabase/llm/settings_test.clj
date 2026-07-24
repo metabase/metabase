@@ -1,6 +1,7 @@
 (ns metabase.llm.settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt]))
 
@@ -212,6 +213,49 @@
            #"Setting ai-service-base-url is not enabled"
            (llm.settings/ai-service-base-url! "https://ai-service.example"))))))
 
+;;; ------------------------------------------- assert-llm-host-allowed! Tests -------------------------------------------
+
+(deftest assert-llm-host-allowed!-test
+  (testing "is a no-op outside of e2e mode, even for a real provider URL"
+    (with-redefs [config/is-e2e? false]
+      (is (nil? (llm.settings/assert-llm-host-allowed! "https://api.anthropic.com")))))
+  (testing "in e2e mode"
+    (with-redefs [config/is-e2e? true]
+      (testing "allows localhost / loopback URLs (the e2e mock LLM server)"
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://localhost:6123")))
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://127.0.0.1:6123")))
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://LOCALHOST:6123/v1/messages"))))
+      (testing "allows IPv6 loopback URLs"
+        ;; `java.net.URL.getHost` returns IPv6 hosts wrapped in brackets, so the
+        ;; whitelist's `[::1]` entry is the one a URL can actually hit; the bare
+        ;; `::1` entry is belt-and-braces for hosts arriving without brackets.
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://[::1]:6123")))
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://[::1]:6123/v1/messages")))
+        (is (contains? @#'llm.settings/loopback-hosts "::1")
+            "the bracket-less IPv6 loopback form stays whitelisted"))
+      (testing "throws for any non-localhost URL so we never hit a real provider"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"non-localhost"
+             (llm.settings/assert-llm-host-allowed! "https://api.anthropic.com")))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"non-localhost"
+             (llm.settings/assert-llm-host-allowed! "http://host.docker.internal:6123"))))
+      (testing "fails closed with the friendly message for malformed URLs instead of throwing raw"
+        (doseq [url ["not-a-url" "example.com/v1"]]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Refusing to send an LLM request"
+               (llm.settings/assert-llm-host-allowed! url))
+              url)
+          (is (= {:status-code 400 :llm-url url}
+                 (try (llm.settings/assert-llm-host-allowed! url)
+                      (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+      (testing "is a no-op for blank / nil URLs (lets normal not-configured handling run)"
+        (is (nil? (llm.settings/assert-llm-host-allowed! nil)))
+        (is (nil? (llm.settings/assert-llm-host-allowed! "")))))))
+
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 
 (deftest llm-max-tokens-test
@@ -223,20 +267,20 @@
       (is (= 8192 (llm.settings/llm-max-tokens))))))
 
 (deftest llm-request-timeout-ms-test
-  (testing "default value is 60000 (60 seconds)"
+  (testing "default value is 120000 (120 seconds)"
     (mt/with-temporary-setting-values [llm-request-timeout-ms nil]
-      (is (= 60000 (llm.settings/llm-request-timeout-ms)))))
+      (is (= 120000 (llm.settings/llm-request-timeout-ms)))))
   (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-request-timeout-ms 120000]
-      (is (= 120000 (llm.settings/llm-request-timeout-ms))))))
+    (mt/with-temporary-setting-values [llm-request-timeout-ms 30000]
+      (is (= 30000 (llm.settings/llm-request-timeout-ms))))))
 
 (deftest llm-connection-timeout-ms-test
-  (testing "default value is 5000 (5 seconds)"
+  (testing "default value is 10000 (10 seconds)"
     (mt/with-temporary-setting-values [llm-connection-timeout-ms nil]
-      (is (= 5000 (llm.settings/llm-connection-timeout-ms)))))
+      (is (= 10000 (llm.settings/llm-connection-timeout-ms)))))
   (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-connection-timeout-ms 10000]
-      (is (= 10000 (llm.settings/llm-connection-timeout-ms))))))
+    (mt/with-temporary-setting-values [llm-connection-timeout-ms 3000]
+      (is (= 3000 (llm.settings/llm-connection-timeout-ms))))))
 
 (deftest llm-rate-limit-per-user-test
   (testing "default value is 20 requests per minute"

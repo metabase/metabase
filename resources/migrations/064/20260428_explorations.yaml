@@ -1,0 +1,1374 @@
+## Initial exploration related tables
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.g43w3qr4
+      author: nvoxland
+      comment: Create exploration table
+      changes:
+        - createTable:
+            tableName: exploration
+            remarks: A user-created data investigation, e.g. "why is revenue down".
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: Human-readable name for the exploration
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Optional longer description of what is being investigated
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created the exploration; owns it for permissions
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: Collection this exploration lives in. NULL means the root collection ("Our Analytics"). The API stores whatever collection_id the caller supplies (the frontend pre-selects the creator's Personal Collection when creating a new exploration).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether the exploration has been archived
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the user archived this exploration itself; false when it became archived because a parent collection was archived
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_position
+                  type: int
+                  remarks: Ordering of pinned items within a collection; null = not pinned
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the exploration was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the exploration was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.92fasdf
+      author: nvoxland
+      comment: Index on exploration.creator_id
+      changes:
+        - createIndex:
+            tableName: exploration
+            indexName: idx_exploration_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v64.g442xf
+      author: nvoxland
+      comment: FK exploration.creator_id -> core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_exploration_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.expcollidx
+      author: jdswanson
+      comment: Index on exploration.collection_id
+      changes:
+        - createIndex:
+            tableName: exploration
+            indexName: idx_exploration_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v64.expcollfk
+      author: jdswanson
+      comment: FK exploration.collection_id -> collection.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_exploration_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.bnweradf
+      author: nvoxland
+      comment: Create exploration_thread table
+      changes:
+        - createTable:
+            tableName: exploration_thread
+            remarks: A hypothesis / iteration within an exploration.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_id
+                  type: int
+                  remarks: The exploration this thread belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: Optional name for the thread / hypothesis
+                  constraints:
+                    nullable: true
+              - column:
+                  name: prompt
+                  type: ${text.type}
+                  remarks: Natural-language prompt the user typed for this thread
+                  constraints:
+                    nullable: true
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Ordering of threads within an exploration
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_page_id
+                  type: int
+                  remarks: Page (chart) this thread was drilled from via explore-further; null for top-level threads
+                  constraints:
+                    nullable: true
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: Set when the user clicks "Start exploration"; null means draft
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the thread was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the thread was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.g89asrdg
+      author: nvoxland
+      comment: Index on exploration_thread.exploration_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread
+            indexName: idx_exploration_thread_exploration_id
+            columns:
+              - column:
+                  name: exploration_id
+
+  - changeSet:
+      id: v64.gpores
+      author: nvoxland
+      comment: FK exploration_thread.exploration_id -> exploration.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread
+            baseColumnNames: exploration_id
+            referencedTableName: exploration
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_exploration_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.bhresdfg
+      author: nvoxland
+      comment: Create exploration_thread_timeline join table
+      changes:
+        - createTable:
+            tableName: exploration_thread_timeline
+            remarks: Timelines associated with a thread.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_thread_id
+                  type: int
+                  remarks: The thread this timeline belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timeline_id
+                  type: int
+                  remarks: The associated timeline
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Ordering of timelines within a thread
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the selection was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the selection was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.89yrbea
+      author: nvoxland
+      comment: Unique constraint on exploration_thread_timeline (thread, timeline)
+      changes:
+        - addUniqueConstraint:
+            tableName: exploration_thread_timeline
+            columnNames: exploration_thread_id, timeline_id
+            constraintName: uq_exploration_thread_timeline_thread_timeline
+
+  - changeSet:
+      id: v64.b89rae
+      author: nvoxland
+      comment: FK exploration_thread_timeline.exploration_thread_id -> exploration_thread.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread_timeline
+            baseColumnNames: exploration_thread_id
+            referencedTableName: exploration_thread
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_timeline_thread_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.ettltimelineidx
+      author: nvoxland
+      comment: Index on exploration_thread_timeline.timeline_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread_timeline
+            indexName: idx_exploration_thread_timeline_timeline_id
+            columns:
+              - column:
+                  name: timeline_id
+
+  - changeSet:
+      id: v64.hvdawe
+      author: nvoxland
+      comment: FK exploration_thread_timeline.timeline_id -> timeline.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread_timeline
+            baseColumnNames: timeline_id
+            referencedTableName: timeline
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_timeline_timeline_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.iowdfzx
+      author: nvoxland
+      comment: Create exploration_query table
+      changes:
+        - createTable:
+            tableName: exploration_query
+            remarks: A chart definition produced when "Start exploration" is run on a thread.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_thread_id
+                  type: int
+                  remarks: The thread this query belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: page_id
+                  type: int
+                  remarks: The exploration_page this query is reconciled under. The reconciler stamps it on every query, so it's required from the start.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: Optional display name for the chart
+                  constraints:
+                    nullable: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The metric Card this chart is for
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: Database the snapshot MBQL runs against, frozen alongside `dataset_query` at plan time. Lets the worker build the metadata provider and the data-permission gate read the database without parsing `dataset_query` or joining to the Card.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: segment_id
+                  type: int
+                  remarks: Optional segment applied as a filter on top of (card, dimension); null for the unsegmented base query
+                  constraints:
+                    nullable: true
+              - column:
+                  name: dimension_id
+                  type: ${text.type}
+                  remarks: Virtual dimension ID used as the breakout for this chart
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query_type
+                  type: varchar(32)
+                  defaultValue: default
+                  remarks: Generator variant — one of default, temporal-pattern-day, temporal-pattern-hour, time-facet, top-n-other, per-value-time-series, filtered-subset
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display
+                  type: varchar(64)
+                  remarks: Chart display type (line, bar, etc.)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: JSON visualization settings for this chart
+                  constraints:
+                    nullable: true
+              - column:
+                  name: dataset_query
+                  type: ${text.type}
+                  remarks: Snapshot MBQL produced at "Start" time; null until the runner lazily builds it at execution time
+                  constraints:
+                    nullable: true
+              - column:
+                  name: params
+                  type: ${text.type}
+                  remarks: JSON-encoded variant params consumed by the runner when finalizing the chart MBQL just before execution. Shape depends on variant — top-n-other carries a k; filtered-subset carries filter_values; per-value-time-series carries k plus value_index plus optional temporal_dimension_id.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Ordering of queries within a thread
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  defaultValue: pending
+                  remarks: Worker state machine; one of pending, running, done, error
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: Error message captured when the worker fails to execute the query
+                  constraints:
+                    nullable: true
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: When the worker started executing this query
+                  constraints:
+                    nullable: true
+              - column:
+                  name: finished_at
+                  type: ${timestamp_type}
+                  remarks: When the worker finished executing this query (success or error)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes; nullable so serdes drop-entity-ids! can NULL it
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the query was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the query was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.badwes
+      author: nvoxland
+      comment: Index on exploration_query.exploration_thread_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_thread_id
+            columns:
+              - column:
+                  name: exploration_thread_id
+
+  - changeSet:
+      id: v64.bwbaxcz
+      author: nvoxland
+      comment: FK exploration_query.exploration_thread_id -> exploration_thread.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: exploration_thread_id
+            referencedTableName: exploration_thread
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_thread_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.expquerycardidx
+      author: nvoxland
+      comment: Index on exploration_query.card_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v64.28easd
+      author: nvoxland
+      comment: FK exploration_query.card_id -> report_card.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.expquerysegidx
+      author: nvoxland
+      comment: Index on exploration_query.segment_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_segment_id
+            columns:
+              - column:
+                  name: segment_id
+
+  - changeSet:
+      id: v64.qsegfk
+      author: johnswanson
+      comment: FK exploration_query.segment_id -> segment.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: segment_id
+            referencedTableName: segment
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_segment_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.qstatusidx
+      author: nvoxland
+      comment: Index on exploration_query.status for the worker poll
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_status
+            columns:
+              - column:
+                  name: status
+
+  - changeSet:
+      id: v64.expqdbidx
+      author: nvoxland
+      comment: Index on exploration_query.database_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_database_id
+            columns:
+              - column:
+                  name: database_id
+
+  - changeSet:
+      id: v64.expqdbfk
+      author: nvoxland
+      comment: FK exploration_query.database_id -> metabase_database.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_database_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.storedresult
+      author: nvoxland
+      comment: Create stored_result table
+      changes:
+        - createTable:
+            tableName: stored_result
+            remarks: Cached query result snapshots referenced by static `cardEmbed` nodes in documents. Decoupled from any one feature so future tools can write static charts without going through explorations.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: result_data
+                  type: ${blob.type}
+                  remarks: gzipped+nippy serialized query result bytes
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who produced this snapshot. Used for the can-read? bypass and for the data-permission gate (sandboxing/impersonation) applied to non-creator readers.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: Database the snapshot was produced against. Used by the data-permission gate without needing to parse `dataset_query`. NULL when the snapshot isn't tied to a database (e.g. a synthetic chart).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: dataset_query
+                  type: ${text.type}
+                  remarks: JSON-encoded MBQL/native query that produced this snapshot.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: data_access_token
+                  type: ${text.type}
+                  remarks: EDN-encoded effective-data-access token (sandbox/impersonation/routing fingerprint) for the creator's lens this snapshot was computed under. Compared against a viewer's token to gate cached reads. NULL means creator+admin only.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: row_count
+                  type: int
+                  remarks: Number of rows in the snapshot
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the snapshot was written
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the snapshot was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.storedresultcreatoridx
+      author: nvoxland
+      comment: Index on stored_result.creator_id
+      changes:
+        - createIndex:
+            tableName: stored_result
+            indexName: idx_stored_result_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v64.storedresultcreatorfk
+      author: nvoxland
+      comment: FK stored_result.creator_id -> core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: stored_result
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_stored_result_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.storedresultdbidx
+      author: nvoxland
+      comment: Index on stored_result.database_id
+      changes:
+        - createIndex:
+            tableName: stored_result
+            indexName: idx_stored_result_database_id
+            columns:
+              - column:
+                  name: database_id
+
+  - changeSet:
+      id: v64.storedresultdbfk
+      author: nvoxland
+      comment: >-
+        FK stored_result.database_id -> metabase_database.id. CASCADE rather than SET NULL: the
+        read-side gate recomputes the viewer's data-access lens from this column, so nulling it
+        would silently compare the stored token against a lens computed for "no database" instead
+        of denying. The snapshot is unreadable once its Database is gone, so drop the row.
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: stored_result
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_stored_result_database_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.qrescreate
+      author: nvoxland
+      comment: Create exploration_query_result table
+      changes:
+        - createTable:
+            tableName: exploration_query_result
+            remarks: Per-exploration_query record pointing at the cached snapshot in stored_result plus the exploration-specific scoring metadata. Keyed 1:1 to exploration_query.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_query_id
+                  type: int
+                  remarks: The exploration_query this result belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stored_result_id
+                  type: int
+                  remarks: FK to the cached snapshot in stored_result
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the result was written
+                  constraints:
+                    nullable: false
+              - column:
+                  name: interestingness_score
+                  type: double
+                  remarks: Chart interestingness score in [0.0, 1.0]; null when the result can't be meaningfully scored (e.g. empty rows, no numeric measure).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: contextual_interestingness_score
+                  type: double
+                  remarks: LLM-backed relevance score in [0.0, 1.0] for the chart vs. the thread prompt; null when the LLM is unconfigured, the prompt is blank, or the call failed.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: chart_stats
+                  type: ${text.type}
+                  remarks: EDN-encoded raw stats on the chart
+                  constraints:
+                    nullable: true
+              - column:
+                  name: metric_description
+                  type: ${text.type}
+                  remarks: Description of the underlying metric in business terms
+                  constraints:
+                    nullable: true
+              - column:
+                  name: chart_description
+                  type: ${text.type}
+                  remarks: Description of the metric+dimension combination
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.qresuq
+      author: nvoxland
+      comment: Unique constraint on exploration_query_result.exploration_query_id (1:1)
+      changes:
+        - addUniqueConstraint:
+            tableName: exploration_query_result
+            columnNames: exploration_query_id
+            constraintName: uq_exploration_query_result_query_id
+
+  - changeSet:
+      id: v64.qresfk
+      author: nvoxland
+      comment: FK exploration_query_result.exploration_query_id -> exploration_query.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query_result
+            baseColumnNames: exploration_query_id
+            referencedTableName: exploration_query
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_result_query_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.qresstoredidx
+      author: nvoxland
+      comment: Index on exploration_query_result.stored_result_id
+      changes:
+        - createIndex:
+            tableName: exploration_query_result
+            indexName: idx_exploration_query_result_stored_result_id
+            columns:
+              - column:
+                  name: stored_result_id
+
+  - changeSet:
+      id: v64.qresstoredfk
+      author: nvoxland
+      comment: FK exploration_query_result.stored_result_id -> stored_result.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query_result
+            baseColumnNames: stored_result_id
+            referencedTableName: stored_result
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_result_stored_result_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.643243
+      author: nvoxland
+      comment: Backfill dimension_interestingness=0 for hard-zero semantic types
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: dimension_interestingness
+                  valueNumeric: 0
+            where: >-
+              semantic_type IN (
+                'type/PK',
+                'type/Collection',
+                'type/Dictionary',
+                'type/Array',
+                'type/Structured',
+                'type/SerializedJSON',
+                'type/JSON',
+                'type/XML',
+                'type/UpdatedTemporal',
+                'type/UpdatedTimestamp',
+                'type/UpdatedDate',
+                'type/UpdatedTime',
+                'type/DeletionTemporal',
+                'type/DeletionTimestamp',
+                'type/DeletionDate',
+                'type/DeletionTime'
+              )
+              AND (dimension_interestingness IS NULL OR dimension_interestingness <> 0)
+      rollback:
+
+  - changeSet:
+      id: v64.gjdases
+      author: nvoxland
+      comment: Force re-analyze for any Field with an out-of-date dimension_interestingness score.
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: dimension_interestingness
+                  value: null
+            where: >-
+              dimension_interestingness IS NOT NULL
+              AND (semantic_type IS NULL OR semantic_type NOT IN (
+                'type/PK',
+                'type/Collection',
+                'type/Dictionary',
+                'type/Array',
+                'type/Structured',
+                'type/SerializedJSON',
+                'type/JSON',
+                'type/XML',
+                'type/UpdatedTemporal',
+                'type/UpdatedTimestamp',
+                'type/UpdatedDate',
+                'type/UpdatedTime',
+                'type/DeletionTemporal',
+                'type/DeletionTimestamp',
+                'type/DeletionDate',
+                'type/DeletionTime'
+              ))
+      rollback:
+
+  - changeSet:
+      id: v64.g4ersd
+      author: nvoxland
+      comment: Add exploration_thread.completed_at
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: completed_at
+                  type: ${timestamp_type}
+                  remarks: Set once when every query in the thread has reached a terminal status (done or error). Used as a CAS gate so completion handlers fire exactly once.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.startedat
+      author: nvoxland
+      comment: Add exploration_thread.analysis_started_at
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: analysis_started_at
+                  type: ${timestamp_type}
+                  remarks: Set once when every query in the thread has reached a terminal status. CAS gate that ensures the auto-insights handler fires exactly once per thread. completed_at is set later, when the handler finishes.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.sruse
+      author: nvoxland
+      comment: Create stored_result_use table tracking what references a stored_result
+      changes:
+        - createTable:
+            tableName: stored_result_use
+            remarks: Records each reference to a stored_result snapshot.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: stored_result_id
+                  type: int
+                  remarks: The cached snapshot this row references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: exploration_id
+                  type: int
+                  remarks: The referencing exploration
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the reference was recorded
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the reference row was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.srusesridx
+      author: nvoxland
+      comment: Index on stored_result_use.stored_result_id
+      changes:
+        - createIndex:
+            tableName: stored_result_use
+            indexName: idx_stored_result_use_stored_result_id
+            columns:
+              - column:
+                  name: stored_result_id
+
+  - changeSet:
+      id: v64.srusesrfk
+      author: nvoxland
+      comment: FK stored_result_use.stored_result_id -> stored_result.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: stored_result_use
+            baseColumnNames: stored_result_id
+            referencedTableName: stored_result
+            referencedColumnNames: id
+            constraintName: fk_stored_result_use_stored_result_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.sruseexplidx
+      author: nvoxland
+      comment: Index on stored_result_use.exploration_id
+      changes:
+        - createIndex:
+            tableName: stored_result_use
+            indexName: idx_stored_result_use_exploration_id
+            columns:
+              - column:
+                  name: exploration_id
+
+  - changeSet:
+      id: v64.sruseexplfk
+      author: nvoxland
+      comment: FK stored_result_use.exploration_id -> exploration.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: stored_result_use
+            baseColumnNames: exploration_id
+            referencedTableName: exploration
+            referencedColumnNames: id
+            constraintName: fk_stored_result_use_exploration_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.qplanstate
+      author: johnswanson
+      comment: Add query_plan_started_at column to exploration_thread
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: query_plan_started_at
+                  type: ${timestamp_type}
+                  remarks: CAS-claim marker for the background query-planning step. Set by the planning worker the moment it begins; subsequent workers skip threads whose marker is already set so planning runs exactly once per thread.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.h9yuhk
+      author: johnswanson
+      comment: Add query_plan_transcript column to exploration_thread
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: query_plan_transcript
+                  type: ${text.type}
+                  remarks: EDN-encoded transcript of the planning run (planner, outcome, validation errors, final plan) used to materialize this thread's exploration_query rows. Debug-only — not surfaced to the user.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.expeidnull
+      author: nvoxland
+      comment: Make exploration.entity_id nullable so serdes drop-entity-ids! can NULL it
+      changes:
+        - dropNotNullConstraint:
+            tableName: exploration
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.expthreadeidnull
+      author: nvoxland
+      comment: Make exploration_thread.entity_id nullable so serdes drop-entity-ids! can NULL it
+      changes:
+        - dropNotNullConstraint:
+            tableName: exploration_thread
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.expthreadcancelat
+      author: johnswanson
+      comment: Add exploration_thread.canceled_at
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: canceled_at
+                  type: ${timestamp_type}
+                  remarks: Set when the user stops a running thread via the cancel endpoint. Set together with `completed_at` so existing terminal-state predicates keep working; `canceled_at IS NOT NULL` is the cause marker that distinguishes a cancel from a natural completion.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.expblocktable
+      author: johnswanson
+      comment: Create exploration_block table
+      changes:
+        - createTable:
+            tableName: exploration_block
+            remarks: One Research-plan block selected on a thread — a set of metrics crossed with a set of dimensions. Immutable after create.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key — surfaced to the FE as the block id
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_thread_id
+                  type: int
+                  remarks: The thread this block belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: metrics
+                  type: ${text.type}
+                  remarks: JSON array of selected metrics ({card_id, dimension_mappings}) for this block
+                  constraints:
+                    nullable: true
+              - column:
+                  name: dimensions
+                  type: ${text.type}
+                  remarks: JSON array of selected dimensions ({dimension_id, display_name, effective_type, semantic_type}) for this block
+                  constraints:
+                    nullable: true
+              - column:
+                  name: type
+                  type: ${text.type}
+                  remarks: Block anchor — "metric" or "dimension"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Authoring order of the block within a thread
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the block was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the block was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.expblockthreadidx
+      author: nvoxland
+      comment: Index on exploration_block.exploration_thread_id
+      changes:
+        - createIndex:
+            tableName: exploration_block
+            indexName: idx_exploration_block_thread_id
+            columns:
+              - column:
+                  name: exploration_thread_id
+
+  - changeSet:
+      id: v64.expblockthreadfk
+      author: johnswanson
+      comment: FK exploration_block.exploration_thread_id -> exploration_thread.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_block
+            baseColumnNames: exploration_thread_id
+            referencedTableName: exploration_thread
+            referencedColumnNames: id
+            constraintName: fk_exploration_block_thread_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.exppagetable
+      author: johnswanson
+      comment: Create exploration_page table — the persisted (block, card, dimension, query_type) page. Surrogate id is the page's identity; the (block, card, dim, query_type) columns are its mutable grouping/reconciliation key. Queries are reconciled to a page on (re)run so its id (and any comments/stars hanging off it) survives.
+      changes:
+        - createTable:
+            tableName: exploration_page
+            remarks: A page within a block — the queries for one (card, dimension, query_type), bundled under a stable id so comments/stars can anchor to it across reruns.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key — the page's stable identity, surfaced to the FE
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: exploration_block_id
+                  type: int
+                  remarks: The block this page belongs to. Mutable parent — a future re-grouping can move a page between blocks without changing its id.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: Metric Card — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dimension_id
+                  type: ${text.type}
+                  remarks: Virtual dimension ID — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query_type
+                  type: varchar(32)
+                  defaultValue: default
+                  remarks: Generator variant — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: First-seen authoring order of the page within its block
+                  constraints:
+                    nullable: false
+              - column:
+                  name: starred
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True if the page is starred
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hidden
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True if the page is hidden from the sidebar
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the page was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the page was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.exppageblockidx
+      author: johnswanson
+      comment: Index on exploration_page.exploration_block_id (load a block's pages for reconciliation)
+      changes:
+        - createIndex:
+            tableName: exploration_page
+            indexName: idx_exploration_page_block_id
+            columns:
+              - column:
+                  name: exploration_block_id
+
+  - changeSet:
+      id: v64.exppageblockfk
+      author: johnswanson
+      comment: FK exploration_page.exploration_block_id -> exploration_block.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_page
+            baseColumnNames: exploration_block_id
+            referencedTableName: exploration_block
+            referencedColumnNames: id
+            constraintName: fk_exploration_page_block_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.exppagecardidx
+      author: johnswanson
+      comment: Index on exploration_page.card_id
+      changes:
+        - createIndex:
+            tableName: exploration_page
+            indexName: idx_exploration_page_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v64.exppagecardfk
+      author: johnswanson
+      comment: FK exploration_page.card_id -> report_card.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_page
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_exploration_page_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.expqpageidx
+      author: johnswanson
+      comment: Index exploration_query.page_id for read-side grouping
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_page_id
+            columns:
+              - column:
+                  name: page_id
+
+  - changeSet:
+      id: v64.expqpagefk
+      author: johnswanson
+      comment: FK exploration_query.page_id -> exploration_page.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: page_id
+            referencedTableName: exploration_page
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_page_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.expthreadsrcpageidx
+      author: nvoxland
+      comment: Index on exploration_thread.source_page_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread
+            indexName: idx_exploration_thread_source_page_id
+            columns:
+              - column:
+                  name: source_page_id
+
+  - changeSet:
+      id: v64.expthreadsrcpagefk
+      author: nvoxland
+      comment: >-
+        FK exploration_thread.source_page_id -> exploration_page.id. SET NULL: the column is already
+        nullable and null means "top-level thread", which stays truthful for a thread whose source
+        page was deleted.
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread
+            baseColumnNames: source_page_id
+            referencedTableName: exploration_page
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_source_page_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.guiswezd
+      author: kevinkelleher12
+      comment: Add context column to comment table for storing comment context metadata
+      changes:
+        - addColumn:
+            tableName: comment
+            columns:
+              - column:
+                  name: context
+                  type: ${text.type}
+                  remarks: Optional context metadata about the comment (e.g., active timeline for exploration comments)
+                  constraints:
+                    nullable: true

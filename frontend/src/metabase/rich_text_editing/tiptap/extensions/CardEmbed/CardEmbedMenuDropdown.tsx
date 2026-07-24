@@ -15,7 +15,6 @@ export interface CardEmbedMenuContext {
   isNativeQuestion: boolean | undefined;
   commentsPath: string;
   hasUnsavedChanges: boolean;
-  unresolvedCommentsCount: number;
 }
 
 export interface CardEmbedMenuActions {
@@ -48,7 +47,6 @@ export const CardEmbedMenuDropdown = ({
   isNativeQuestion,
   commentsPath,
   hasUnsavedChanges,
-  unresolvedCommentsCount,
   // Actions
   handleDownload,
   handleEditVisualizationSettings,
@@ -81,11 +79,7 @@ export const CardEmbedMenuDropdown = ({
         <Menu.Item
           leftSection={<Icon name="add_comment" size={14} />}
           component={ForwardRefLink}
-          to={
-            unresolvedCommentsCount > 0
-              ? commentsPath
-              : `${commentsPath}?new=true`
-          }
+          to={commentsPath}
           onClick={(e) => {
             if (!commentsPath || hasUnsavedChanges) {
               e.preventDefault();

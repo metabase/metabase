@@ -484,6 +484,33 @@
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
           "removal-conditions falls back to :conditions for TransformTag"))))
 
+(deftest removal-condition-clauses-value-shapes-test
+  (testing "removal conditions render each value shape into a well-formed HoneySQL fragment"
+    (testing "a scalar value renders as [:= k v]"
+      (is (= [[:= :built_in_type nil]]
+             (spec/removal-where-clauses {:removal-conditions {:built_in_type nil}} #{} []))))
+    (testing "an :entity_id [op value] pair keeps its operator"
+      (is (= [[:not= :entity_id "builtin-eid"]]
+             (spec/removal-where-clauses {:removal-conditions {:entity_id [:not= "builtin-eid"]}} #{} []))))
+    (testing "a vector value on any other key renders as [:in k v], not a broken scalar [:= k v]"
+      (is (= [[:in :status ["removed" "delete"]]]
+             (spec/removal-where-clauses {:removal-conditions {:status ["removed" "delete"]}} #{} []))))))
+
+(deftest check-eligibility-applies-conditions-uniformly-test
+  (testing ":conditions are enforced for non-:collection eligibility types"
+    (testing "TransformTag (:setting): built-in tags fail eligibility even when the setting is on"
+      (mt/with-temporary-setting-values [remote-sync-transforms true]
+        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+          (is (true?  (spec/check-eligibility spec {:id 1 :name "user-tag"   :built_in_type nil})))
+          (is (false? (spec/check-eligibility spec {:id 2 :name "system-tag" :built_in_type "system"}))
+              "built-in TransformTag must NOT be eligible — was previously creating wasteful RSO churn")
+          (is (= {1 true 2 false}
+                 (spec/batch-check-eligibility spec [{:id 1 :built_in_type nil}
+                                                     {:id 2 :built_in_type "system"}]))))))
+    (testing "TransformTag (:setting): setting off short-circuits regardless of conditions"
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+          (is (false? (spec/check-eligibility spec {:id 1 :built_in_type nil}))))))))
 (deftest check-deletion-conflicts-test
   (testing "unsynced transform-family content absent from an import is flagged; synced content is excluded"
     (mt/with-temporary-setting-values [remote-sync-transforms true]

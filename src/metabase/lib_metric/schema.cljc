@@ -317,16 +317,16 @@
    and any issues that prevent them from being used.
    Note: target field references are stored in dimension-mappings, not here."
   [:map
-   [:id              ::dimension-id]
-   [:name            {:optional true} [:maybe :string]]
-   [:display-name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective-type  {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:id               ::dimension-id]
+   [:name             {:optional true} [:maybe :string]]
+   [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
-   [:status          {:optional true} [:maybe ::dimension-status]]
-   [:status-message  {:optional true} [:maybe :string]]
-   [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]
-   [:group           {:optional true} [:maybe ::dimension-group]]])
+   [:status           {:optional true} [:maybe ::dimension-status]]
+   [:status-message   {:optional true} [:maybe :string]]
+   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group            {:optional true} [:maybe ::dimension-group]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."

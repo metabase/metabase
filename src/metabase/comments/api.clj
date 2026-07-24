@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.urls :as channel.urls]
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.render :as comments.render]
@@ -20,21 +21,34 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
 (def ^:private type->model
-  {"document" :model/Document})
+  {"document"    :model/Document
+   "exploration" :model/Exploration})
+
+(def ^:private TargetType
+  "Malli enum of valid comment target types, derived from [[type->model]]."
+  (into [:enum] (keys type->model)))
 
 (defn- entity-archived?
   "Check if the target entity is archived"
   [entity]
   (case (t2/model entity)
-    :model/Document (:archived entity)))
+    :model/Document    (:archived entity)
+    :model/Exploration (:archived entity)))
 
 (defn- urlpath-for
-  "Generate an URL to an entity"
+  "Generate a relative URL path to an entity."
   [entity]
   (case (t2/model entity)
-    :model/Document (str "/document/" (:id entity))))
+    :model/Document    (channel.urls/document-path (:id entity))
+    :model/Exploration (channel.urls/exploration-path (:id entity))))
+
+(defn- friendly-entity-type-for
+  "Generate a friendly name for a comment target type."
+  [entity]
+  (case (t2/model entity)
+    :model/Document    "document"
+    :model/Exploration "research project"))
 
 ;;; schemas
 
@@ -47,13 +61,23 @@
     [:map]]
    (deferred-tru "Comment content must be valid JSON.")))
 
+(def CommentContext
+  "Validation for comment context - expects JSON map"
+  (mu/with-api-error-message
+   [:and
+    {:error/message "Comment context must be a valid JSON object"
+     :json-schema   {:type "object"}}
+    [:map]]
+   (deferred-tru "Comment context must be a valid JSON object.")))
+
 (def CreateComment
   "Schema for creating a new comment"
   [:map
-   [:target_type [:enum "document"]]
+   [:target_type TargetType]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
    [:child_target_id {:optional true} [:maybe :string]]
+   [:context {:optional true} [:maybe CommentContext]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def UpdateComment
@@ -99,7 +123,7 @@
   "Get comments for an entity"
   [_route-params
    {:keys [target_type target_id]} :- [:map
-                                       [:target_type [:enum "document"]]
+                                       [:target_type TargetType]
                                        [:target_id ms/PositiveInt]]
    _body
    req]
@@ -136,10 +160,10 @@
                                          (cond-> clause
                                            (seq mentions) (sql.helpers/where :or [:in :id mentions])))
                        (disj (:email @api/*current-user*)))
-        payload    {:entity_type    (:target_type comment)
+        payload    {:entity_type    (friendly-entity-type-for entity)
                     :entity_title   (:name entity)
                     :comment_href   (comment/url entity comment)
-                    :document_href  (urlpath-for entity)
+                    :entity_href    (urlpath-for entity)
                     :created_at     (:created_at comment)
                     :author         (:common_name (:creator comment))
                     :comment        (comments.render/content->html (:content comment))
@@ -165,7 +189,7 @@
   "Create a new comment"
   [_route-params
    _query-params
-   {:keys [target_type target_id child_target_id parent_comment_id content]} :- CreateComment]
+   {:keys [target_type target_id child_target_id context parent_comment_id content]} :- CreateComment]
   (let [entity     (-> (api/read-check (type->model target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
                                                "Cannot comment on archived entities")))
@@ -181,6 +205,7 @@
                                                       {:target_type       target_type
                                                        :target_id         target_id
                                                        :child_target_id   child_target_id
+                                                       :context           context
                                                        :parent_comment_id parent_comment_id
                                                        :content           content
                                                        :creator_id        api/*current-user-id*})

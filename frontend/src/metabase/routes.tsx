@@ -36,6 +36,12 @@ import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
+import {
+  ExplorationPage,
+  NewExplorationDraftProvider,
+  NewExplorationPage,
+  NewExplorationPlanPage,
+} from "metabase/explorations";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
@@ -110,6 +116,12 @@ const RoutedSearchApp = withRouteProps(SearchApp);
 const RoutedCollectionLanding = withRouteProps(CollectionLanding);
 const RoutedQueryBuilder = withRouteProps(QueryBuilder);
 const RoutedMetabotQueryBuilder = withRouteProps(MetabotQueryBuilder);
+const RoutedNewExplorationDraftProvider = withRouteProps(
+  NewExplorationDraftProvider,
+);
+const RoutedNewExplorationPage = withRouteProps(NewExplorationPage);
+const RoutedNewExplorationPlanPage = withRouteProps(NewExplorationPlanPage);
+const RoutedExplorationPage = withRouteProps(ExplorationPage);
 const RoutedNewModelOptions = withRouteProps(NewModelOptions);
 const RoutedBrowseSchemas = withRouteProps(BrowseSchemas);
 const RoutedBrowseTables = withRouteProps(BrowseTables);
@@ -282,6 +294,17 @@ export const getRoutes = (store: AppStore) => {
             <Route index element={<RoutedQueryBuilder />} />
             <Route path="notebook" element={<RoutedQueryBuilder />} />
             <Route path="ask" element={<RoutedMetabotQueryBuilder />} />
+            <Route path="research">
+              <Route element={<RoutedNewExplorationDraftProvider />}>
+                <Route index element={<RoutedNewExplorationPage />} />
+                <Route path="plan" element={<RoutedNewExplorationPlanPage />} />
+              </Route>
+              <Route path=":id" element={<RoutedExplorationPage />} />
+              <Route
+                path=":id/page/:pageId"
+                element={<RoutedExplorationPage />}
+              />
+            </Route>
             <Route path=":slug" element={<RoutedQueryBuilder />} />
             <Route path=":slug/notebook" element={<RoutedQueryBuilder />} />
             <Route path=":slug/metabot" element={<RoutedQueryBuilder />} />

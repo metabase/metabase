@@ -2,10 +2,13 @@
   "Settings for LLM integration (provider credentials, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
+   (java.net MalformedURLException URL)
    (software.amazon.awssdk.regions Region)))
 
 (set! *warn-on-reflection* true)
@@ -24,6 +27,29 @@
   "Set a string setting to the trimmed `new-value`; blank values are stored as nil."
   [setting-key new-value]
   (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
+
+(def ^:private loopback-hosts
+  "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
+  wrapped in brackets, e.g. `[::1]`."
+  #{"localhost" "127.0.0.1" "[::1]" "::1"})
+
+(defn assert-llm-host-allowed!
+  "Safeguard for Cypress e2e tests: refuse to send an LLM request to any host
+  other than localhost. e2e tests are expected to point the LLM URL at a local
+  mock server (see `startMockLlmServer`), so throwing here keeps a misconfigured
+  test run from sending traffic to a real provider. No-op outside of e2e mode and
+  for blank URLs (so the normal not-configured handling still runs)."
+  [url]
+  (when (and config/is-e2e? (not (str/blank? url)))
+    (let [host (try
+                 (u/lower-case-en (.getHost (URL. ^String url)))
+                 ;; A malformed URL can't be verified as localhost — treat it as
+                 ;; not allowed (fail closed) rather than throwing raw.
+                 (catch MalformedURLException _ nil))]
+      (when-not (and host (contains? loopback-hosts host))
+        (throw (ex-info (tru "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server." (or host url))
+                        {:status-code 400
+                         :llm-url     url}))))))
 
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]
@@ -250,16 +276,25 @@
   :export? false)
 
 (defsetting llm-request-timeout-ms
-  (deferred-tru "Socket timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "Socket (inter-byte read) timeout in milliseconds for LLM API requests. "
+        "For streaming responses this bounds the gap between successive chunks, "
+        "NOT the total response time. Picked generously: extended thinking can "
+        "pause for tens of seconds between chunks. Without it, a hung read inside "
+        "the stream blocks the worker indefinitely — observed in production when "
+        "an upstream proxy held the connection open without sending data."))
   :type :integer
-  :default 60000
+  :default 120000
   :visibility :settings-manager
   :export? false)
 
 (defsetting llm-connection-timeout-ms
-  (deferred-tru "Connection timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "TCP connection timeout in milliseconds for LLM API requests. A provider "
+        "that is down or unreachable should fail fast instead of holding a worker "
+        "thread forever."))
   :type :integer
-  :default 5000
+  :default 10000
   :visibility :settings-manager
   :export? false)
 

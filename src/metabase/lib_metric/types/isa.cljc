@@ -26,6 +26,15 @@
   [column]
   (or (:effective-type column) (:base-type column)))
 
+(defn type-isa?
+  "Does `column`'s type derive from `parent`? Checks the effective type (falling back to the
+   base type) and the semantic type, mirroring the semantics of `metabase.lib.types.isa/isa?`
+   for the snake_case dimension shape."
+  [column parent]
+  (clojure.core/boolean
+   (or (clojure.core/isa? (column-type column) parent)
+       (clojure.core/isa? (:semantic-type column) parent))))
+
 (defn field-type?
   "Returns true if `column` matches the type definition for `category`.
    The category is a key in [[constants/type-hierarchies]].

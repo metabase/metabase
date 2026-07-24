@@ -121,7 +121,7 @@
     [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
     [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document" "measure"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document" "measure" "exploration"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
@@ -242,7 +242,7 @@
       [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
-               "transform" "measure"]]
+               "transform" "measure" "exploration"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause
@@ -313,7 +313,7 @@
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
 
 ;; Collection filter - filters by collection and all descendants
-(doseq [model ["card" "dataset" "metric" "dashboard" "collection" "document"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "collection" "document" "exploration"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter model query collection-id]
     (let [collection-col (search.config/column-with-model-alias model :collection_id)]

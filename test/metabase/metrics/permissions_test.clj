@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -19,14 +20,21 @@
   (:dimensions (mt/user-http-request user-kw :get 200 (str "metric/" metric-id))))
 
 (defn- dimension-names
-  "Extract the set of display-name (or name) values from a seq of dimensions."
+  "Extract the set of display_name (or name) values from a seq of wire-form (snake_case)
+   dimensions, as served by the HTTP API."
+  [dims]
+  (into #{} (map #(or (:display_name %) (:name %))) dims))
+
+(defn- internal-dimension-names
+  "Extract the set of display-name (or name) values from a seq of internal (kebab-case)
+   dimensions, as returned by `filter-dimensions-for-user` and friends."
   [dims]
   (into #{} (map #(or (:display-name %) (:name %))) dims))
 
 (defn- dimension-group-names
-  "Extract the set of group display-names from a seq of dimensions."
+  "Extract the set of group display_names from a seq of wire-form (snake_case) dimensions."
   [dims]
-  (into #{} (map #(get-in % [:group :display-name])) dims))
+  (into #{} (map #(get-in % [:group :display_name])) dims))
 
 ;;; ------------------------------------------------- Field Visibility Tests -------------------------------------------------
 
@@ -130,7 +138,7 @@
         (data-perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
         (let [response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
               dim-ids  (into #{} (map :id) (:dimensions response))
-              mapping-dim-ids (into #{} (map :dimension-id) (:dimension_mappings response))]
+              mapping-dim-ids (into #{} (map :dimension_id) (:dimension_mappings response))]
           (testing "every mapping references an existing dimension"
             (is (every? #(contains? dim-ids %) mapping-dim-ids)))
           (testing "every dimension has a mapping"
@@ -145,7 +153,7 @@
       (let [all-response (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric)))
             ;; Find a dimension from the Product group (FK-joined from Products table)
             product-dim (->> (:dimensions all-response)
-                             (filter #(= "Product" (get-in % [:group :display-name])))
+                             (filter #(= "Product" (get-in % [:group :display_name])))
                              first)]
         (when product-dim
           ;; Block access to Products table for rasta
@@ -179,7 +187,45 @@
           result      (mt/with-test-user :rasta
                         (metrics.perms/filter-dimensions-for-user fake-metric))]
       (testing "unresolvable dimension is preserved"
-        (is (= #{"Tax" "Mystery"} (dimension-names (:dimensions result)))))
+        (is (= #{"Tax" "Mystery"}
+               (internal-dimension-names (:dimensions result)))))
       (testing "both mappings are preserved"
         (is (= #{"resolvable" "unresolvable"}
                (into #{} (map :dimension-id) (:dimension_mappings result))))))))
+
+;;; ------------------------------------------------- Batch Variant -------------------------------------------------
+
+(deftest filter-dimensions-for-user-batch-preserves-order-and-filters-per-metric-test
+  (testing "batch returns one result per input metric, in order, filtered independently"
+    (let [m1 {:dimensions         [{:id "tax" :display-name "Tax"
+                                    :sources [{:field-id (mt/id :orders :tax)}]}]
+              :dimension_mappings [{:dimension-id "tax" :target [:field {} (mt/id :orders :tax)]}]}
+          m2 {:dimensions         [{:id "mystery" :display-name "Mystery" :sources []}]
+              :dimension_mappings [{:dimension-id "mystery" :target [:some-other-ref {}]}]}
+          batched (mt/with-test-user :rasta
+                    (metrics.perms/filter-dimensions-for-user-batch [m1 m2]))]
+      (is (= 2 (count batched)))
+      (testing "resolvable, accessible field is kept on the first metric"
+        (is (= ["tax"] (mapv :id (:dimensions (first batched))))))
+      (testing "unresolvable field is conservatively kept on the second metric"
+        (is (= ["mystery"] (mapv :id (:dimensions (second batched))))))
+      (testing "batch matches mapping the single-metric fn over each"
+        (is (= (mt/with-test-user :rasta
+                 (mapv metrics.perms/filter-dimensions-for-user [m1 m2]))
+               batched))))))
+
+(deftest filter-dimensions-for-user-batch-memoizes-table-access-test
+  (testing "table access is checked once per (db,table) across the whole batch, not per dimension"
+    (let [fid-tax   (mt/id :orders :tax)
+          fid-total (mt/id :orders :total)
+          mk        (fn [] {:dimensions         [{:id "d-tax" :sources [{:field-id fid-tax}]}
+                                                 {:id "d-total" :sources [{:field-id fid-total}]}]
+                            :dimension_mappings [{:dimension-id "d-tax" :target [:field {} fid-tax]}
+                                                 {:dimension-id "d-total" :target [:field {} fid-total]}]})
+          calls     (atom 0)]
+      ;; Two metrics × two dimensions all live on the Orders table -> a single distinct
+      ;; (db, table), so the access check must fire exactly once.
+      (mt/with-test-user :rasta
+        (with-redefs [perms/user-has-permission-for-table? (fn [& _] (swap! calls inc) true)]
+          (metrics.perms/filter-dimensions-for-user-batch [(mk) (mk)])))
+      (is (= 1 @calls)))))

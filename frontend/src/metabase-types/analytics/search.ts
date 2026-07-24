@@ -46,6 +46,7 @@ const SNOWPLOW_CONTENT_TYPES = [
   "action",
   "indexed-entity",
   "document",
+  "exploration",
   "transform",
   "other",
 ] as const;

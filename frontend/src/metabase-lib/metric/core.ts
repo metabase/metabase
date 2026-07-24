@@ -7,6 +7,7 @@ import type {
   ConcreteTableId,
   JsMetricDefinition,
   MeasureId,
+  MetricDimension,
   MetricId,
   SegmentId,
 } from "metabase-types/api";
@@ -751,6 +752,24 @@ export function isSameSource(
   dimension2: DimensionMetadata,
 ): boolean {
   return LibMetric.isSameSource(dimension1, dimension2) as boolean;
+}
+
+export function fromMetricDimension(
+  dimension: MetricDimension,
+): DimensionMetadata {
+  return LibMetric.fromMetricDimension(dimension) as DimensionMetadata;
+}
+
+export function toMetricDimension(
+  dimension: DimensionMetadata,
+): MetricDimension {
+  return LibMetric.toMetricDimension(dimension) as MetricDimension;
+}
+
+export function groupDimensionsBySource(
+  dimensions: DimensionMetadata[],
+): DimensionMetadata[][] {
+  return LibMetric.groupDimensionsBySource(dimensions) as DimensionMetadata[][];
 }
 
 export function isCompatibleType(

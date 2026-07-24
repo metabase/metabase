@@ -251,6 +251,7 @@ const elements = [
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
   }),
+  createElement({ type: "feature", name: "explorations" }),
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),

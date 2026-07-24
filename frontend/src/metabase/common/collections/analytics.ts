@@ -40,7 +40,8 @@ export const trackCollectionItemBookmarked = (
       | "dataset"
       | "document"
       | "card"
-      | "table",
+      | "table"
+      | "exploration",
   ) => {
     switch (analyticsModel) {
       case "card":

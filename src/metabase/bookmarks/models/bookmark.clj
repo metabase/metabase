@@ -10,17 +10,19 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/CardBookmark       [_model] :card_bookmark)
-(methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
-(methodical/defmethod t2/table-name :model/CollectionBookmark [_model] :collection_bookmark)
-(methodical/defmethod t2/table-name :model/BookmarkOrdering   [_model] :bookmark_ordering)
-(methodical/defmethod t2/table-name :model/DocumentBookmark   [_model] :document_bookmark)
+(methodical/defmethod t2/table-name :model/CardBookmark        [_model] :card_bookmark)
+(methodical/defmethod t2/table-name :model/DashboardBookmark   [_model] :dashboard_bookmark)
+(methodical/defmethod t2/table-name :model/CollectionBookmark  [_model] :collection_bookmark)
+(methodical/defmethod t2/table-name :model/BookmarkOrdering    [_model] :bookmark_ordering)
+(methodical/defmethod t2/table-name :model/DocumentBookmark    [_model] :document_bookmark)
+(methodical/defmethod t2/table-name :model/ExplorationBookmark [_model] :exploration_bookmark)
 
 (derive :model/CardBookmark :metabase/model)
 (derive :model/DashboardBookmark :metabase/model)
 (derive :model/CollectionBookmark :metabase/model)
 (derive :model/BookmarkOrdering :metabase/model)
 (derive :model/DocumentBookmark :metabase/model)
+(derive :model/ExplorationBookmark :metabase/model)
 
 (defn- unqualify-key
   [k]
@@ -32,7 +34,7 @@
   although the compound key can be inferred from it."
   [:map {:closed true}
    [:id                                  :string]
-   [:type [:enum "card" "collection" "dashboard" "document"]]
+   [:type [:enum "card" "collection" "dashboard" "document" "exploration"]]
    [:item_id                             ms/PositiveInt]
    [:name                                ms/NonBlankString]
    [:authority_level    {:optional true} [:maybe :string]]
@@ -42,8 +44,8 @@
    [:display            {:optional true} [:maybe :string]]])
 
 (mu/defn- normalize-bookmark-result :- BookmarkResult
-  "Normalizes bookmark results. Bookmarks are left joined against the card, collection, dashboard, and document tables, but only
-  points to one of them. Normalizes it so it has just the desired fields."
+  "Normalizes bookmark results. Bookmarks are left joined against the card, collection, dashboard, document,
+  and exploration tables, but only points to one of them. Normalizes it so it has just the desired fields."
   [result]
   (let [result            (cond-> (into {} (remove (comp nil? second) result))
                             ;; If not a collection then remove collection properties
@@ -53,7 +55,11 @@
                             ;; If not a document then remove document properties
                             ;; to avoid shadowing the "real" properties.
                             (not= (:type result) "document")
-                            (dissoc :document.name))
+                            (dissoc :document.name)
+                            ;; If not an exploration then remove exploration properties
+                            ;; to avoid shadowing the "real" properties.
+                            (not= (:type result) "exploration")
+                            (dissoc :exploration.name :exploration.description))
         normalized-result (zipmap (map unqualify-key (keys result)) (vals result))
         id-str            (str (:type normalized-result) "-" (:item_id normalized-result))
         normalized-result (cond-> normalized-result
@@ -70,6 +76,7 @@
                                 [as-null :dashboard_id]
                                 [as-null :collection_id]
                                 [as-null :document_id]
+                                [as-null :exploration_id]
                                 [:card_id :item_id]
                                 [(h2x/literal "card") :type]
                                 :created_at]
@@ -79,6 +86,7 @@
                                 :dashboard_id
                                 [as-null :collection_id]
                                 [as-null :document_id]
+                                [as-null :exploration_id]
                                 [:dashboard_id :item_id]
                                 [(h2x/literal "dashboard") :type]
                                 :created_at]
@@ -88,20 +96,32 @@
                                 [as-null :dashboard_id]
                                 :collection_id
                                 [as-null :document_id]
+                                [as-null :exploration_id]
                                 [:collection_id :item_id]
                                 [(h2x/literal "collection") :type]
                                 :created_at]
                        :from   [:collection_bookmark]
+                       :where [:= :user_id user-id]}
+                      {:select [[as-null :card_id]
+                                [as-null :dashboard_id]
+                                [as-null :collection_id]
+                                :document_id
+                                [as-null :exploration_id]
+                                [:document_id :item_id]
+                                [(h2x/literal "document") :type]
+                                :created_at]
+                       :from [:document_bookmark]
                        :where [:= :user_id user-id]}]]
     {:union-all (conj base-queries
                       {:select [[as-null :card_id]
                                 [as-null :dashboard_id]
                                 [as-null :collection_id]
-                                :document_id
-                                [:document_id :item_id]
-                                [(h2x/literal "document") :type]
+                                [as-null :document_id]
+                                :exploration_id
+                                [:exploration_id :item_id]
+                                [(h2x/literal "exploration") :type]
                                 :created_at]
-                       :from [:document_bookmark]
+                       :from [:exploration_bookmark]
                        :where [:= :user_id user-id]})}))
 
 (mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
@@ -125,7 +145,10 @@
                        [:collection.description       (mdb/qualify :model/Collection :description)]
                        [:collection.archived          (mdb/qualify :model/Collection :archived)]
                        [:document.name (mdb/qualify :model/Document :name)]
-                       [:document.archived (mdb/qualify :model/Document :archived)]]
+                       [:document.archived (mdb/qualify :model/Document :archived)]
+                       [:exploration.name        (mdb/qualify :model/Exploration :name)]
+                       [:exploration.description (mdb/qualify :model/Exploration :description)]
+                       [:exploration.archived    (mdb/qualify :model/Exploration :archived)]]
         left-joins [[:report_card :card] [:= :bookmark.card_id :card.id]
                     [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
                     ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
@@ -135,9 +158,10 @@
                                                              [:= :bookmark_ordering.user_id user-id]
                                                              [:= :bookmark_ordering.type :bookmark.type]
                                                              [:= :bookmark_ordering.item_id :bookmark.item_id]]
-                    [:document :document] [:= :bookmark.document_id :document.id]]
+                    [:document :document] [:= :bookmark.document_id :document.id]
+                    [:exploration :exploration] [:= :bookmark.exploration_id :exploration.id]]
         where-conditions (into [:and]
-                               (for [table [:card :dashboard :collection :document]
+                               (for [table [:card :dashboard :collection :document :exploration]
                                      :let  [field (keyword (str (name table) "." "archived"))]]
                                  [:or [:= field false] [:= field nil]]))]
     (->> (mdb/query

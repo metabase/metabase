@@ -793,11 +793,12 @@ export const retryPrompt = createAsyncThunk<
     context: MetabotChatContext;
     metabot_id?: string;
     agentId: MetabotAgentId;
+    profile?: MetabotProfileId;
   }
 >(
   "metabase/metabot/retryPrompt",
   async (
-    { messageId, context, metabot_id, agentId },
+    { messageId, context, metabot_id, agentId, profile },
     { getState, dispatch },
   ) => {
     const state = getState();
@@ -824,6 +825,7 @@ export const retryPrompt = createAsyncThunk<
         message: prompt.message,
         context,
         metabot_id,
+        profile,
         retryMessageId: prompt.externalId,
       }),
     ).unwrap();

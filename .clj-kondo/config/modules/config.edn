@@ -301,6 +301,7 @@
                     :model/Database
                     :model/Dimension
                     :model/Document
+                    :model/Exploration
                     :model/Measure
                     :model/ModelIndexValue
                     :model/NativeQuerySnippet
@@ -444,7 +445,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Document}}
+                    :model/Document
+                    :model/Exploration}}
 
   bug-reporting
   {:team "UX West"
@@ -609,6 +611,7 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Document
+                    :model/Exploration
                     :model/NativeQuerySnippet
                     :model/Permissions
                     :model/Pulse
@@ -643,6 +646,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Document
+                    :model/Exploration
                     :model/NativeQuerySnippet
                     :model/Pulse
                     :model/Table
@@ -662,7 +666,7 @@
            users
            util}
    :model-exports #{:model/Comment}
-   :model-imports #{:model/Document :model/User}}
+   :model-imports #{:model/Document :model/Exploration :model/User}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
@@ -693,6 +697,14 @@
            util}
    :model-exports #{:model/ModerationReview}
    :model-imports #{:model/Card :model/Dashboard}}
+
+  contextual-interestingness
+  {:team "UX West"
+   :api  #{metabase.contextual-interestingness.core}
+   :uses #{interestingness
+           metabot
+           query-processor
+           util}}
 
   core
   {:team "UX West"
@@ -928,6 +940,7 @@
                     :model/DashboardTab
                     :model/Dimension
                     :model/Document
+                    :model/Exploration
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/PermissionsGroup
@@ -1000,6 +1013,45 @@
                     :model/Pulse
                     :model/Segment
                     :model/Table
+                    :model/User}}
+
+  explorations
+  {:team "UX West"
+   :api  #{metabase.explorations.api
+           metabase.explorations.core
+           metabase.explorations.init}
+   :uses #{analytics
+           analytics-interface
+           api
+           app-db
+           collections
+           contextual-interestingness
+           events
+           interestingness
+           lib
+           lib-be
+           lib-metric
+           metrics
+           models
+           mq
+           permissions
+           queries
+           query-permissions
+           query-processor
+           request
+           search
+           settings
+           timeline
+           types
+           util}
+   :model-exports #{:model/Exploration}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Comment
+                    :model/Segment
+                    :model/StoredResult
+                    :model/StoredResultUse
+                    :model/Timeline
                     :model/User}}
 
   formatter
@@ -1212,6 +1264,7 @@
            metabase.llm.startup}
    :uses #{analytics
            api
+           config
            driver
            lib
            lib-be
@@ -1326,6 +1379,7 @@
               driver
               entity-retrieval
               events
+              explorations
               interestingness
               legacy-mbql
               lib
@@ -1350,6 +1404,7 @@
               sync
               system
               task
+              timeline
               transforms
               transforms-base
               util
@@ -1381,7 +1436,6 @@
    :api  #{metabase.metrics.api
            metabase.metrics.core}
    :uses #{api
-           collections
            lib
            lib-be
            lib-metric
@@ -1389,6 +1443,7 @@
            parameters
            permissions
            premium-features
+           queries
            query-processor
            request
            server
@@ -1456,7 +1511,8 @@
 
   mq
   {:team "UX West"
-   :api  #{metabase.mq.init}
+   :api  #{metabase.mq.core
+           metabase.mq.init}
    :uses #{analytics-interface
            app-db
            classloader
@@ -1803,7 +1859,9 @@
    :model-exports #{:model/Card
                     :model/Query
                     :model/QueryExecution
-                    :model/QueryTable}
+                    :model/QueryTable
+                    :model/StoredResult
+                    :model/StoredResultUse}
    :model-imports #{:model/Action
                     :model/CardBookmark
                     :model/Collection
@@ -1986,6 +2044,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/Document
+                    :model/Exploration
                     :model/Measure
                     :model/Segment
                     :model/Transform}}

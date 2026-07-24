@@ -358,6 +358,13 @@
   [:name
    :document])
 
+;; mirrors the appdb spec's :search-terms [:name :description] (see
+;; metabase.explorations.models.exploration)
+(defmethod searchable-columns "exploration"
+  [_ _]
+  [:name
+   :description])
+
 (def ^:private default-columns
   "Columns returned for all models."
   [:id :name :description :archived :created_at :updated_at])
@@ -414,6 +421,10 @@
 (defmethod columns-for-model "document"
   [_]
   [:id :name :archived :created_at :updated_at :collection_id :creator_id :document])
+
+(defmethod columns-for-model "exploration"
+  [_]
+  [:id :name :description :archived :created_at :updated_at :collection_id :creator_id])
 
 (defmethod columns-for-model "transform"
   [_]
@@ -595,6 +606,11 @@
                              [:and
                               [:= :bookmark.document_id :document.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (add-collection-join-and-where-clauses model search-ctx)))
+
+(defmethod search-query-for-model "exploration"
+  [model search-ctx]
+  (-> (base-query-for-model "exploration" search-ctx)
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "transform"

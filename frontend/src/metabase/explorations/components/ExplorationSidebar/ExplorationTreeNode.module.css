@@ -1,0 +1,158 @@
+.treeRow {
+  /* Tree geometry (see also .treeChevron and .treeRowNested::before):
+   *   - each row reserves a fixed gutter on the left for the collapse chevron,
+   *     then its type icon, then the label;
+   *   - children indent by --tree-indent per level;
+   *   - the indent step is wider than the chevron gutter so a level's connector
+   *     line lands in the whitespace just left of the child's chevron rather
+   *     than on top of it.
+   * `--tree-depth` is set inline on each row. */
+  --tree-indent: 1.5rem;
+  --tree-chevron-gutter: 1rem;
+
+  /* Every row is one text line (1rem) plus 0.5rem padding on each side. The
+   * sticky-heading stack below leans on this: a level-N heading pins exactly
+   * below its N ancestors' pinned headings. */
+  --tree-row-height: 2rem;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  padding-left: calc(
+    0.5rem + var(--tree-chevron-gutter) + var(--tree-depth, 0) *
+      var(--tree-indent)
+  );
+  border-radius: var(--default-border-radius);
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  scroll-margin-top: calc(var(--tree-depth, 0) * var(--tree-row-height));
+}
+
+.treeChevron {
+  position: absolute;
+  top: 50%;
+  left: calc(0.5rem + var(--tree-depth, 0) * var(--tree-indent));
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tree-chevron-gutter);
+  height: var(--tree-chevron-gutter);
+  background-color: var(--mb-color-background-secondary);
+}
+
+.treeRow:hover .treeChevron {
+  background:
+    linear-gradient(
+      var(--mb-color-background-hover),
+      var(--mb-color-background-hover)
+    ),
+    var(--mb-color-background-secondary);
+}
+
+.treeRowNested .treeChevron {
+  left: calc(0.5rem + var(--tree-depth, 0) * var(--tree-indent) - 0.4375rem);
+}
+
+.treeRow:hover {
+  background: var(--mb-color-background-hover);
+}
+
+.treeRowThreadSeparated {
+  margin-top: 0.75rem;
+}
+
+/* Group headings stick while their group is scrolled through, and the whole
+ * ancestor hierarchy stays visible: each heading pins just below its ancestors'
+ * pinned headings (top = depth × row height). Each node and its subtree are
+ * wrapped in their own <li> (Tree's `wrapNodes`), so that <li> is the sticky
+ * containing block: a heading is pushed out by the end of its own group.
+ * Ancestors get a higher z-index than descendants so an exiting child heading
+ * slides up *underneath* its still-pinned parent rather than over it. An
+ * opaque background masks the rows scrolling beneath. */
+.treeRowHeading {
+  position: sticky;
+  top: calc(var(--tree-depth, 0) * var(--tree-row-height));
+  z-index: calc(10 - var(--tree-depth, 0));
+  background: var(--mb-color-background-secondary);
+}
+
+.treeRowHeading:hover {
+  background:
+    linear-gradient(
+      var(--mb-color-background-hover),
+      var(--mb-color-background-hover)
+    ),
+    var(--mb-color-background-secondary);
+}
+
+.treeRowNested::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(0.5rem + var(--tree-chevron-gutter) + 0.5rem);
+  width: calc((var(--tree-depth) - 1) * var(--tree-indent) + 0.0625rem);
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--mb-color-border-neutral) 0,
+    var(--mb-color-border-neutral) 0.0625rem,
+    transparent 0.0625rem,
+    transparent var(--tree-indent)
+  );
+}
+
+.groupMenuTrigger {
+  flex: none;
+  opacity: 0;
+}
+
+.treeRow:hover .groupMenuTrigger,
+.groupMenuTrigger:focus-visible,
+.groupMenuTrigger[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.treeRowSelected {
+  background: var(--mb-color-background-brand);
+  color: var(--mb-color-brand);
+}
+
+.shimmerText {
+  --shimmer-spread: 3rem;
+
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-size:
+    250% 100%,
+    auto;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--shimmer-spread)),
+      var(--mb-color-background-primary),
+      transparent calc(50% + var(--shimmer-spread))
+    ),
+    linear-gradient(
+      var(--mb-color-text-secondary),
+      var(--mb-color-text-secondary)
+    );
+  background-position: 50%;
+  animation: exploration-shimmer 2500ms ease infinite;
+  animation-delay: var(--shimmer-delay, 0ms);
+}
+
+@keyframes exploration-shimmer {
+  0% {
+    background-position: 120%;
+  }
+
+  100% {
+    background-position: -20%;
+  }
+}

@@ -2,7 +2,10 @@ import { screen, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { setupAnalyzeChartEndpoint } from "__support__/server-mocks";
+import {
+  setupAnalyzeChartEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
@@ -156,6 +159,8 @@ describe("AIAnalysisSidebar", () => {
 
   it("should show a configuration notice instead of running analysis when AI is not configured", async () => {
     const question = new Question(createMockCard());
+
+    setupUserMetabotPermissionsEndpoint();
 
     renderWithProviders(
       <AIAnalysisSidebar

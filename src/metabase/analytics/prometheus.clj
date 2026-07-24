@@ -502,6 +502,14 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
+   ;; explorations
+   (prometheus/gauge :metabase-explorations/pending-queue-depth
+                     {:description "Number of exploration_query rows currently in 'pending' status (awaiting execution by the explorations background runner)."})
+   (prometheus/gauge :metabase-explorations/oldest-pending-age-seconds
+                     {:description "Age in seconds of the oldest still-pending exploration_query (0 when the queue is empty)."})
+   (prometheus/counter :metabase-explorations/queries-processed
+                       {:description "Exploration queries processed."
+                        :labels [:status]})
    ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."

@@ -1,0 +1,44 @@
+## Update v_ai_usage_log to v4 — add CASE branches for the new explorations LLM usage
+## sources (contextual_interestingness, exploration), so they display friendly names
+## instead of raw machine identifiers in AI usage analytics.
+##
+## v_metabot_conversations needs the same explorations CASE branches, but they are not added
+## here — 20260714_metabot_conversation_title.yaml sorts later and recreates that view as v5,
+## dropping anything installed at this point. They live in v6, installed by
+## 20260721_metabot_conversations_v6_explorations_sources.yaml.
+##
+## Keep the CASE branches in sync with the known-sources / known-profile-ids allow-lists in
+## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-13T00:00:02
+      author: johnswanson
+      runOnChange: true
+      comment: Update v_ai_usage_log to v4 - add explorations usage sources to source_name CASE
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v4/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v4/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v4/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v3/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v3/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v3/h2-ai_usage_log.sql
+            relativeToChangelogFile: true

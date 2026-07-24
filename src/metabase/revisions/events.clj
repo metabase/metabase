@@ -79,3 +79,11 @@
 (methodical/defmethod events/publish-event! ::document-event
   [topic event]
   (push-revision! :model/Document event {:is-creation? (= topic :event/document-create)}))
+
+(derive ::exploration-event ::event)
+(derive :event/exploration-create ::exploration-event)
+(derive :event/exploration-update ::exploration-event)
+
+(methodical/defmethod events/publish-event! ::exploration-event
+  [topic event]
+  (push-revision! :model/Exploration event {:is-creation? (= topic :event/exploration-create)}))

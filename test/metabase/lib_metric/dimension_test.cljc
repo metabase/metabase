@@ -451,3 +451,58 @@
   (testing "no-op when optional fields are absent"
     (let [dim {:id "dim-3" :name "col"}]
       (is (= dim (lib-metric.dimension/normalize-persisted-dimension dim))))))
+
+;;; -------------------------------------------------- group-by-source --------------------------------------------------
+
+(deftest ^:parallel group-by-source-empty-input-test
+  (is (= [] (lib-metric.dimension/group-by-source []))))
+
+(deftest ^:parallel group-by-source-single-dimension-test
+  (let [dim {:id "d1" :sources [{:type :field :field-id 1}]}]
+    (is (= [[dim]] (lib-metric.dimension/group-by-source [dim])))))
+
+(deftest ^:parallel group-by-source-shared-source-groups-together-test
+  (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+        dim-b {:id "b" :sources [{:type :field :field-id 1}]}]
+    (is (= [[dim-a dim-b]]
+           (lib-metric.dimension/group-by-source [dim-a dim-b])))))
+
+(deftest ^:parallel group-by-source-disjoint-sources-separate-test
+  (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+        dim-b {:id "b" :sources [{:type :field :field-id 2}]}]
+    (is (= #{#{"a"} #{"b"}}
+           (set (map (fn [g] (set (map :id g)))
+                     (lib-metric.dimension/group-by-source [dim-a dim-b])))))))
+
+(deftest ^:parallel group-by-source-transitive-grouping-test
+  (testing "A shares source 1 with B, B shares source 2 with C → all three in one group"
+    (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+          dim-b {:id "b" :sources [{:type :field :field-id 1} {:type :field :field-id 2}]}
+          dim-c {:id "c" :sources [{:type :field :field-id 2}]}]
+      (is (= #{#{"a" "b" "c"}}
+             (set (map (fn [g] (set (map :id g)))
+                       (lib-metric.dimension/group-by-source [dim-a dim-b dim-c]))))))))
+
+(deftest ^:parallel group-by-source-deduplicates-by-id-test
+  (let [dim-1a {:id "d1" :display-name "Version A" :sources [{:type :field :field-id 1}]}
+        dim-1b {:id "d1" :display-name "Version B" :sources [{:type :field :field-id 1}]}
+        groups (lib-metric.dimension/group-by-source [dim-1a dim-1b])]
+    (is (= 1 (count groups)))
+    (is (= 1 (count (first groups))))
+    (is (= "Version A" (:display-name (ffirst groups))))))
+
+(deftest ^:parallel group-by-source-no-sources-get-own-group-test
+  (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+        dim-b {:id "b"}
+        dim-c {:id "c" :sources []}
+        groups (lib-metric.dimension/group-by-source [dim-a dim-b dim-c])]
+    (is (= 3 (count groups)))))
+
+(deftest ^:parallel group-by-source-multiple-sources-test
+  (testing "dimension with multiple sources is grouped with all that share any source"
+    (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+          dim-b {:id "b" :sources [{:type :field :field-id 2}]}
+          dim-c {:id "c" :sources [{:type :field :field-id 1} {:type :field :field-id 2}]}]
+      (is (= #{#{"a" "b" "c"}}
+             (set (map (fn [g] (set (map :id g)))
+                       (lib-metric.dimension/group-by-source [dim-a dim-b dim-c]))))))))

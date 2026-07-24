@@ -1,0 +1,44 @@
+## Reinstall v_metabot_conversations as v6 — master's v5 (#77549, the summary->title rename) recreated the
+## view without the explorations CASE branches that v4 carried, so the `exploration` /
+## `contextual_interestingness` sources and the `explorations` profile were surfacing as raw machine names
+## in AI usage analytics. v6 = v5 plus those branches.
+##
+## runOnChange so editing the v6 SQL re-runs this on upgrade (matches the v4 installers, and unlike the
+## non-runOnChange v5 installer we must not edit in place). Ordered after
+## 20260714_metabot_conversation_title.yaml (which installs v5) via includeAll's alphabetical filename sort.
+##
+## Keep the CASE branches in sync with the known-sources / known-profile-ids allow-lists in
+## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T12:00:00
+      author: nvoxland
+      runOnChange: true
+      comment: Reinstall v_metabot_conversations (v6) with explorations source/profile CASE branches
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v6/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v6/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v6/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v5/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v5/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v5/h2-metabot_conversations.sql
+            relativeToChangelogFile: true

@@ -152,8 +152,8 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
+    const { _id, id, name } = node.attrs;
     const host = useEditorHost();
-    const { _id } = node.attrs;
     const {
       ref: viewportRef,
       isInViewport,
@@ -172,10 +172,9 @@ export const CardEmbedComponent = memo(
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const commentsPath = document
-      ? `/document/${document.id}/comments/${_id}`
-      : "";
-    const { id, name } = node.attrs;
+    const commentsPath = host.useCommentUrl({
+      childTargetId: _id,
+    });
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
@@ -189,7 +188,6 @@ export const CardEmbedComponent = memo(
 
     const embedIndex = getEmbedIndex(editor, getPos);
 
-    // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
     const isExternalDocument = externalCardData != null;
     const regularCardData = host.useCardData({ id, skip: !shouldLoadData });
     const externalCardDataResult = host.useExternalCardDataLoader(id, {
@@ -628,7 +626,6 @@ export const CardEmbedComponent = memo(
                             handleRemoveNode={handleRemoveNode}
                             commentsPath={commentsPath}
                             hasUnsavedChanges={hasUnsavedChanges}
-                            unresolvedCommentsCount={unresolvedCommentsCount}
                           />
                         </Menu.Dropdown>
                       </Menu>

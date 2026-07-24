@@ -45,6 +45,7 @@ const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   action: "Action",
   "indexed-entity": "Indexed record",
   document: "Document",
+  exploration: "Research",
   transform: "Transform",
 };
 
