@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { memo } from "react";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import ListS from "metabase/reference/components/List/List.module.css";
-import { Link } from "metabase/router";
 import { Box, Card, Ellipsified, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 

@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Ellipsified, Flex, Group, Text } from "metabase/ui";
 
 import S from "./Breadcrumbs.module.css";

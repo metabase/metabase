@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { Link } from "metabase/common/components/Link";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -11,7 +12,6 @@ import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store";
 import {
   type InjectedRouter,
-  Link,
   type Location,
   Route,
   type WithRouterProps,

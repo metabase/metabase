@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Alert,

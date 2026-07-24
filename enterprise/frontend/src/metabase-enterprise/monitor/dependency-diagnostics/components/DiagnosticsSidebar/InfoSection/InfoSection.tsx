@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Link } from "metabase/router";
 import { Anchor, Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";

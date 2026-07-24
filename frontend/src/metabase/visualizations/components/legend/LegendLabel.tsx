@@ -9,9 +9,9 @@ import {
   useCallback,
 } from "react";
 
+import type { LinkProps } from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { LinkProps } from "metabase/router";
-import { Link } from "metabase/router";
 import { Box } from "metabase/ui";
 
 import S from "./LegendLabel.module.css";

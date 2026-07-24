@@ -2,7 +2,7 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

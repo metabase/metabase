@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Ellipsified } from "metabase/ui";
 import { Box, type BoxProps, Group, Icon, rem } from "metabase/ui";
 import type { IconName } from "metabase-types/api";

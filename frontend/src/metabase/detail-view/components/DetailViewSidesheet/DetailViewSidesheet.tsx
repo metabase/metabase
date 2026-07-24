@@ -12,6 +12,7 @@ import {
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   DetailsGroup,
@@ -24,7 +25,6 @@ import {
   getRowName,
 } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/redux";
-import { Link } from "metabase/router";
 import {
   Box,
   Button,

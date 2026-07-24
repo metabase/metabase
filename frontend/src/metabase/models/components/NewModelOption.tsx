@@ -1,4 +1,4 @@
-import { Link, type LinkProps } from "metabase/router";
+import { Link, type LinkProps } from "metabase/common/components/Link";
 import { Box, Flex, Text, Title } from "metabase/ui";
 
 import S from "./NewModelOption.module.css";
