@@ -234,8 +234,8 @@
   (when (seq created-dashcards)
     (events/publish-event! :event/dashboard-add-cards
                            {:object dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
-    (for [{:keys [card_id]} created-dashcards
-          :when             (pos-int? card_id)]
+    (doseq [{:keys [card_id]} created-dashcards
+            :when             (pos-int? card_id)]
       (analytics/track-event! :snowplow/dashboard
                               {:event        :question-added-to-dashboard
                                :dashboard-id dashboard-id
