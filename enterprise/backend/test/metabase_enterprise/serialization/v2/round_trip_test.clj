@@ -89,6 +89,8 @@
      (cond
        (map? x) (reduce dissoc x ignored-fields)
        (string? x) (replace-entropy x)
+       ;; template tags are stored as a map keyed by tag name, so the slug also shows up as a key
+       (simple-keyword? x) (keyword (replace-entropy (name x)))
        :else x))
    (yaml/parse-string (slurp file))))
 
