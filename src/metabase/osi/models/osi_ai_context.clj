@@ -8,19 +8,20 @@
   This table is authoritative.
   An enterprise pgvector index (`library_entity_index`) is reconciled against this table plus live
   library membership and serves the `retrieve_library_entities` Metabot tool's similarity search.
-  Writes here only nudge a targeted reconcile of the entity's slice
-  ([[mirror/request-entity-sync!]]); they never touch the embedding service or the pgvector store
-  themselves."
+  Writes here have no index side effects: a writer that wants the index refreshed promptly calls
+  `mirror/request-entity-sync!` itself (the CRUD API does), and the periodic full reconcile is the
+  guarantee for everyone else — a forgotten nudge costs freshness until the next reconcile, never
+  correctness."
   (:require
    [clojure.string :as str]
-   [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
-   [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
 
 (methodical/defmethod t2/table-name :model/OsiAiContext [_model] :osi_ai_context)
 
@@ -30,6 +31,14 @@
 
 ;; The logical (entity_type, entity_local_id) pair is the primary key — no surrogate id.
 (methodical/defmethod t2/primary-keys :model/OsiAiContext [_model] [:entity_type :entity_local_id])
+
+;; Toucan's generic transformed-model `insert.pks` result handler mishandles this model's compound,
+;; non-integer key (it isn't a single auto-increment id), so a plain insert fails with "Key must be
+;; integer". Neither primary-key column has an output transform, so returning the JDBC layer's raw
+;; `[entity_type id]` pair unchanged is correct here.
+(methodical/defmethod t2.pipeline/results-transform [:toucan.query-type/insert.pks :model/OsiAiContext]
+  [_query-type _model]
+  identity)
 
 (defn ->ai-context
   "Coerce the OSI `ai_context` oneOf into the object form we store.
@@ -42,37 +51,86 @@
   [ai-context]
   (if (string? ai-context) {:instructions ai-context} ai-context))
 
+(def AiContext
+  "Closed, bounded OSI ai_context schema for API and generated writes."
+  entity-retrieval/AiContext)
+
+(def ^:private StoredAiContext
+  "Forward-compatible storage schema: known fields retain the write limits, while unknown keys from a newer
+  Metabase export survive import and re-export. API and generated writes validate the closed [[AiContext]]
+  before they reach this boundary."
+  [:map {:closed false}
+   [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
+   [:synonyms     {:optional true} [:sequential {:max entity-retrieval/max-list-len}
+                                    [:string {:max entity-retrieval/max-item-len}]]]
+   [:examples     {:optional true} [:sequential {:max entity-retrieval/max-list-len}
+                                    [:string {:max entity-retrieval/max-item-len}]]]])
+
+(defn- validate-ai-context!
+  [row]
+  (when (contains? row :ai_context)
+    (mu/validate-throw StoredAiContext (->ai-context (:ai_context row))))
+  row)
+
+(def data-sources
+  "Permitted values of `data_source`.
+  `:human` means the content was approved by a person, not that a person authored it: an admin editing a
+  generated blob through the CRUD API approves it, and the generation job never overwrites a `:human` row."
+  #{:human :metabot})
+
+(def DataSource
+  "Malli schema for `data_source` — strict, for writes.
+  Reads are deliberately lenient (see the CRUD API's `Entry`) so one row written by a newer node cannot fail
+  response validation for a whole list during a rolling deploy."
+  (into [:enum] (sort data-sources)))
+
+(defn- validate-data-source!
+  "Reject unknown approval states at the model boundary, including direct Toucan and serdes writes."
+  [row]
+  (when (contains? row :data_source)
+    (let [data-source (some-> (:data_source row) keyword)]
+      (when-not (contains? data-sources data-source)
+        (throw (ex-info (str "data_source must be one of: " (str/join ", " (sort (map name data-sources))))
+                        {:status-code 400 :data_source (:data_source row)})))))
+  row)
+
+(def api-columns
+  "Columns the CRUD API selects — every column except `basis`.
+  `basis` is an unbounded generation input with no reader outside the generation job, so it never rides a
+  read response."
+  [:entity_type :entity_local_id :ai_context :data_source
+   :generated_at :invalidated_at :basis_invalidated_at :rewrite_requested_at :generator_version
+   :created_at :updated_at])
+
 (t2/deftransforms :model/OsiAiContext
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly. On write
   ;; the string shorthand is migrated to {:instructions s}, so storage is always the object form and every
   ;; write path (CRUD API, serdes import, direct appdb write) is normalized at this one boundary.
-  {:ai_context {:in  (comp mi/json-in ->ai-context)
-                :out mi/json-out-with-keywordization}})
+  {:ai_context  {:in  (comp mi/json-in ->ai-context)
+                 :out mi/json-out-with-keywordization}
+   :data_source mi/transform-keyword
+   ;; basis is keywordized on read so the generation job compares a stored basis with a freshly built one by
+   ;; value. That comparison is the diff that gates every LLM call, so a basis that does not survive a JSON
+   ;; round-trip `=`-unchanged reports a phantom change — and an LLM bill — on every run.
+   :basis       {:in  mi/json-in
+                 :out mi/json-out-with-keywordization}})
 
 ;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
 ;;; ai_context row survives a type relabel and keys on a stable `(card, entity_local_id)`. The CRUD and tool
 ;;; APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
 (t2/define-before-insert :model/OsiAiContext
   [row]
-  (cond-> row
+  (cond-> (-> row validate-data-source! validate-ai-context!)
     (:entity_type row) (update :entity_type entity-retrieval/normalize-entity-type)))
 
-;;; Each write nudges a targeted reconcile of just this entity's index slice (fire-and-forget: no-op in
-;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The nudge
-;;; is deferred until *after* the surrounding transaction commits, so the reconcile future always reads
-;;; committed state — e.g. a delete buried in a long transaction is seen as gone, GC'ing its synonym/example
-;;; docs (name/description stay if the entity is still in the library), rather than racing the commit and
-;;; lingering until the periodic full reconcile. Outside a transaction the write has already committed, so
-;;; [[app-db/do-after-commit]] runs the nudge immediately.
-(defn- nudge-entity-sync!
-  "After the surrounding transaction commits, nudge a targeted reconcile of `row`'s entity slice. Returns `row`."
-  [{:keys [entity_type entity_local_id] :as row}]
-  (u/prog1 row
-    (app-db/do-after-commit #(mirror/request-entity-sync! entity_type entity_local_id))))
+(t2/define-before-update :model/OsiAiContext
+  [row]
+  (-> (t2/changes row) validate-data-source! validate-ai-context!)
+  row)
 
-(t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
-(t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
-(t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row))
+;;; No write hooks, deliberately: the nudge is an ordinary call the writer makes, so a batch writer
+;;; (the generation job) writes N rows with no per-row reconcile cascade and runs one coalesced
+;;; reconcile itself. Reconciliation is the guarantee, nudges are latency.
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 ;;;
@@ -141,12 +199,25 @@
       :key   (pr-str (mapv (juxt :model :id) parent))}]))
 
 ;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
-;; verbatim. The key columns are carried by the path, not as fields: `entity_local_id` is resolved from the
-;; parent path on import, and `entity_type` is read back from the parent segment's model.
+;; verbatim. `data_source` copies with it: whether the content was approved by a person is a property of the
+;; content, and an export that dropped it would land every curated blob on a target instance as machine-owned
+;; and eligible for overwrite. The key columns are carried by the path, not as fields: `entity_local_id` is
+;; resolved from the parent path on import, and `entity_type` is read back from the parent segment's model.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
   {:copy      [:ai_context]
+   ;; Generation state is local: it describes this instance's generation run against this instance's
+   ;; entities, and the target instance's entities have their own histories. An imported row carries no
+   ;; `basis`, so a new row is a forced candidate on the target. Updating an existing row explicitly clears
+   ;; stale generation claims below when the imported content differs.
+   :skip      [:generated_at :invalidated_at :basis_invalidated_at :basis :rewrite_requested_at
+               :generator_version]
    :transform {:created_at      (serdes/date)
                :updated_at      (serdes/date)
+               :data_source     {:export name
+                                 ;; Every pre-metadata export was curated through the CRUD API, so absence
+                                 ;; means human-approved on both insert and update. Preserving a target's
+                                 ;; local :metabot flag would make identical imported content overwritable.
+                                 :import (fn [v] (if v (keyword v) :human))}
                :entity_type     {:export (constantly ::serdes/skip)
                                  :import-with-context
                                  (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}
@@ -172,8 +243,19 @@
   [_model-name ingested local]
   ;; The default keys updates on (first (primary-keys)), which for this compound key is just :entity_type —
   ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
-  (t2/update! :model/OsiAiContext
-              :entity_type (:entity_type local) :entity_local_id (:entity_local_id local)
-              ingested)
+  (let [content-changed? (and (contains? ingested :ai_context)
+                              (not= (->ai-context (:ai_context ingested)) (:ai_context local)))
+        ingested         (cond-> ingested
+                           ;; Imported content has no valid claim to this instance's generation basis,
+                           ;; version, or timestamps. Clear those claims atomically with the content so the
+                           ;; next sweep cannot mistake a stale local basis for convergence.
+                           content-changed? (assoc :generated_at nil
+                                                   :basis_invalidated_at nil
+                                                   :basis nil
+                                                   :rewrite_requested_at nil
+                                                   :generator_version nil))]
+    (t2/update! :model/OsiAiContext
+                :entity_type (:entity_type local) :entity_local_id (:entity_local_id local)
+                ingested))
   (t2/select-one :model/OsiAiContext
                  :entity_type (:entity_type local) :entity_local_id (:entity_local_id local)))
