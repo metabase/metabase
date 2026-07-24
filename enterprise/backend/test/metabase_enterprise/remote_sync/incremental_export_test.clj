@@ -220,7 +220,7 @@
           ;; longer in the remote, so the import cannot re-enable it.
           (let [task   (new-task!)
                 result (impl/import! (source.p/snapshot mock) task)]
-            (is (not= :error (:status result))
+            (is (= :success (:status result))
                 "the pull itself succeeds — otherwise the assertion below passes vacuously"))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id coll-id))
               "a pull does not re-enable a collection that was disabled and pushed"))))))

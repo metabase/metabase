@@ -141,6 +141,14 @@
                                     {:where [:and [:= :model_type model-type] [:= :model_id model-id]]
                                      :for   :update})]
       (cond
+        ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
+        ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
+        ;; an entity that has since left the synced set. This narrows, but cannot fully close, that window.
+        (and (not existing)
+             (not (contains? #{"removed" "delete"} status))
+             (not (still-eligible? model-spec model-id)))
+        nil
+
         (not existing)
         (let [model-details (spec/hydrate-model-details model-spec model-id)
               fields        (spec/build-sync-object-fields model-spec model-details)]

@@ -1203,65 +1203,103 @@
     (is (isa? :event/field-delete ::remote-sync.events/field-change-event))))
 
 ;;; ------------------------------------- Concurrent Un-Sync Race Tests -------------------------------------
+;;;
+;;; When a card-update event and a collection disable run concurrently, the handler must not resurrect the
+;;; pending 'removed' status the disable records. Two orderings, each guarded by a different mechanism:
+;;;   - disable commits first  -> the handler's write-time eligibility re-check keeps the removal
+;;;   - handler locks first     -> the disable blocks on the row lock and records the removal last
+;;; Both are exercised below by parking the handler at a chosen point and driving the disable around it.
 
-(deftest disable-racing-card-update-event-does-not-lose-removal-test
-  (testing "a card-update event whose eligibility check read pre-disable state must not clobber the
-            'removed' status a concurrent disable wrote — the pending removal must survive (GHY-4189)"
-    ;; Rows must be committed: the event handler runs on another thread, with its own connection.
-    (binding [tu.thread-local/*thread-local* false]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Race-Sync" :location "/" :is_remote_synced true}
-                     :model/Card card {:name "Race Card" :collection_id coll-id
-                                       :database_id (mt/id)
-                                       :dataset_query (mt/mbql-query venues)}]
-        (try
-          ;; Both entities are already on the remote, as after an export. No content_hash, so the
-          ;; handler's no-op-update suppression does not kick in.
-          (t2/delete! :model/RemoteSyncObject)
-          (t2/insert! :model/RemoteSyncObject
-                      [{:model_type "Collection" :model_id coll-id :model_name "Race-Sync"
-                        :status "synced" :status_changed_at (t/offset-date-time)
-                        :file_path "collections/rs/rs.yaml"}
-                       {:model_type "Card" :model_id (:id card) :model_name "Race Card"
-                        :model_collection_id coll-id :status "synced"
-                        :status_changed_at (t/offset-date-time)
-                        :file_path "collections/rs/cards/race.yaml"}])
-          (let [handler-read (promise)
-                unpark       (promise)
-                parked?      (atom false)
-                orig         t2/select-one]
-            ;; Park the card-update handler exactly once, after its eligibility check has read
-            ;; pre-disable state and it holds the entry's row lock. This is the interleaving a real
-            ;; concurrent card edit produces under read committed.
-            ;;
-            ;; The disable runs on its own thread and the unpark does NOT wait for it to finish: the
-            ;; handler holds the row lock while parked, so a disable the main thread waited on would
-            ;; block on that lock and deadlock against the unpark it is responsible for delivering.
-            (with-redefs [t2/select-one (fn [& args]
-                                          (let [res (apply orig args)]
-                                            (when (and (= (first args) :model/RemoteSyncObject)
-                                                       (compare-and-set! parked? false true))
-                                              (deliver handler-read true)
-                                              (deref unpark 10000 nil))
-                                            res))]
-              (let [event (future
-                            (events/publish-event! :event/card-update
-                                                   {:object card :previous-object card
-                                                    :user-id (mt/user->id :rasta)}))]
-                (is (true? (deref handler-read 10000 false))
-                    "the event handler ran and read pre-disable state")
-                (let [disable (future (remote-sync.core/bulk-set-remote-sync {coll-id false}))]
-                  ;; Let the disable reach the point where it contends with the parked handler — it
-                  ;; blocks on the row lock, so this deref is expected to time out. The assertion below
-                  ;; must hold for either order, so this only biases which one we exercise.
-                  (deref disable 300 ::still-blocked)
-                  (deliver unpark true)
-                  (deref disable 10000 nil)
-                  (deref event 10000 nil)))))
-          (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
-                                             :model_type "Card" :model_id (:id card)))
-              "the pending removal survives a concurrent card-update event")
-          (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
-                                             :model_type "Collection" :model_id coll-id))
-              "the collection's pending removal is untouched")
-          (finally
-            (t2/delete! :model/RemoteSyncObject)))))))
+(defn- once-parking-select-one!
+  "Wraps `t2/select-one` to park the first call whose args match `park-pred` — signalling `reached`, then
+   blocking on `release` (10s cap) — so a test can freeze the handler at a precise point."
+  [park-pred reached release]
+  (let [orig  t2/select-one
+        fired (atom false)]
+    (fn [& args]
+      (let [res (apply orig args)]
+        (when (and (park-pred args) (compare-and-set! fired false true))
+          (deliver reached true)
+          (deref release 10000 nil))
+        res))))
+
+(defn- rso-lookup-select?
+  "The handler's plain (non-locking) existing-entry read: `(t2/select-one :model/RemoteSyncObject :model_type … :model_id …)`."
+  [[model second-arg]]
+  (and (= model :model/RemoteSyncObject) (keyword? second-arg)))
+
+(defn- rso-locking-select?
+  "The `FOR UPDATE` read inside create-or-update: `(t2/select-one :model/RemoteSyncObject {:where … :for :update})`."
+  [[model second-arg]]
+  (and (= model :model/RemoteSyncObject) (map? second-arg) (= :update (:for second-arg))))
+
+(defn- do-with-unsync-race-fixture
+  "Sets up a remote-synced collection + card already on the remote (status 'synced', as after an export;
+   no content_hash, so the handler's no-op suppression stays out of the way) and calls `(f coll-id card)`.
+   Rows are committed because the event handler runs on another thread with its own connection."
+  [f]
+  (binding [tu.thread-local/*thread-local* false]
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Race-Sync" :location "/" :is_remote_synced true}
+                   :model/Card card {:name "Race Card" :collection_id coll-id
+                                     :database_id (mt/id)
+                                     :dataset_query (mt/mbql-query venues)}]
+      (try
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject
+                    [{:model_type "Collection" :model_id coll-id :model_name "Race-Sync"
+                      :status "synced" :status_changed_at (t/offset-date-time)
+                      :file_path "collections/rs/rs.yaml"}
+                     {:model_type "Card" :model_id (:id card) :model_name "Race Card"
+                      :model_collection_id coll-id :status "synced"
+                      :status_changed_at (t/offset-date-time)
+                      :file_path "collections/rs/cards/race.yaml"}])
+        (f coll-id card)
+        (finally
+          (t2/delete! :model/RemoteSyncObject))))))
+
+(defn- fire-card-update! [card]
+  (future (events/publish-event! :event/card-update
+                                 {:object card :previous-object card :user-id (mt/user->id :rasta)})))
+
+(defn- assert-removal-survived [coll-id card]
+  (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))
+      "the card's pending removal survives the concurrent event")
+  (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
+      "the collection's pending removal is untouched"))
+
+(deftest disable-first-recheck-preserves-removal-test
+  (testing "disable commits between the handler's stale eligibility read and its write: the write-time
+            eligibility re-check must keep the pending removal (GHY-4189)"
+    (do-with-unsync-race-fixture
+     (fn [coll-id card]
+       (let [reached (promise)
+             release (promise)]
+         ;; Park at the handler's plain existing-entry read — before it takes any row lock. Nothing is
+         ;; locked while parked, so the disable runs to completion first (the disable-first ordering).
+         (with-redefs [t2/select-one (once-parking-select-one! rso-lookup-select? reached release)]
+           (let [handler (fire-card-update! card)]
+             (is (true? (deref reached 10000 false)) "handler parked after reading pre-disable state")
+             (remote-sync.core/bulk-set-remote-sync {coll-id false})
+             (deliver release true)
+             (deref handler 10000 nil))))
+       (assert-removal-survived coll-id card)))))
+
+(deftest handler-first-lock-preserves-removal-test
+  (testing "the handler holds the entry's row lock when the disable arrives: the disable blocks until the
+            handler commits, then records the removal last, so it survives (GHY-4189)"
+    (do-with-unsync-race-fixture
+     (fn [coll-id card]
+       (let [reached (promise)
+             release (promise)]
+         ;; Park at the FOR UPDATE read, i.e. while the handler holds the entry's row lock (the
+         ;; handler-first ordering).
+         (with-redefs [t2/select-one (once-parking-select-one! rso-locking-select? reached release)]
+           (let [handler (fire-card-update! card)]
+             (is (true? (deref reached 10000 false)) "handler parked holding the row lock")
+             (let [disable (future (remote-sync.core/bulk-set-remote-sync {coll-id false}))]
+               (is (= ::blocked (deref disable 300 ::blocked))
+                   "the disable blocks on the row lock the handler holds")
+               (deliver release true)
+               (deref disable 10000 nil)
+               (deref handler 10000 nil)))))
+       (assert-removal-survived coll-id card)))))

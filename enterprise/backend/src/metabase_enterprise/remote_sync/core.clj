@@ -116,8 +116,10 @@
                   {:status "removed" :status_changed_at (t/offset-date-time)}))))
 
 (defn- restore-removed-rsos!
-  "Clears a pending removal recorded by [[record-removed-rsos!]] when a collection is re-synced before that
-  removal was ever pushed, so the next export does not delete its contents from the remote.
+  "Clears any pending 'removed' status on the given collections' and contents' RemoteSyncObject rows when the
+  collections are re-synced, so the next export does not delete them from the remote. This targets every
+  'removed' row in the subtree regardless of what recorded it (typically [[record-removed-rsos!]] from an
+  earlier un-sync, but also e.g. an unpublished table's pending removal).
 
   Restores to 'update' rather than 'synced': edits made while the collection was un-synced are not tracked,
   so the entity must be re-serialized for the remote to be guaranteed to match local."
