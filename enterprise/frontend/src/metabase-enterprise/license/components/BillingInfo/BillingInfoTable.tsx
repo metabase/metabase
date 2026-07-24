@@ -6,7 +6,7 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
-import { Card, Flex, Icon, Text } from "metabase/ui";
+import { Box, Card, Flex, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
@@ -30,7 +30,7 @@ const BillingInfoValue = ({
 
   if (lineItem.display === "value") {
     return (
-      <Text fw="bold" color="currentColor" {...props}>
+      <Text fw="bold" color="currentColor" ta="right" {...props}>
         {formattedValue}
       </Text>
     );
@@ -69,11 +69,9 @@ const BillingInfoValue = ({
 
 function BillingInfoRow({
   lineItem,
-  extraPadding,
   ...props
 }: {
   lineItem: BillingInfoLineItem;
-  extraPadding: boolean;
 }) {
   // avoid rendering the entire row if we can't format/display the value
   if (!isSupportedLineItem(lineItem)) {
@@ -97,13 +95,14 @@ function BillingInfoRow({
         className={S.row}
         align="center"
         justify="space-between"
-        px="md"
-        py={extraPadding ? "lg" : "sm"}
+        gap="lg"
+        px="lg"
+        py="md"
         {...props}
       >
         <Text
+          className={S.label}
           c="text-secondary"
-          maw="15rem"
           data-testid={`billing-info-key-${id}`}
         >
           {lineItem.name}
@@ -124,19 +123,15 @@ export const BillingInfoTable = ({
 }) => {
   const airgap_enabled = useSetting("airgap-enabled");
   return (
-    <>
+    <Box>
       <SettingHeader id="billing" title={t`Billing`} />
       <Card mt="md" p={0} radius="md" shadow="none" withBorder>
-        {billingInfo.content?.map((lineItem, index, arr) => (
-          <BillingInfoRow
-            key={lineItem.name}
-            lineItem={lineItem}
-            extraPadding={arr.length === index + 1}
-          />
+        {billingInfo.content?.map((lineItem) => (
+          <BillingInfoRow key={lineItem.name} lineItem={lineItem} />
         ))}
       </Card>
       {airgap_enabled && <StillNeedHelp />}
-    </>
+    </Box>
   );
 };
 

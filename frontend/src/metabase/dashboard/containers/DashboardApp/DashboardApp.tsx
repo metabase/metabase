@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -32,6 +31,7 @@ import {
 } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { Location } from "metabase/router";
 import { Outlet, replace, useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";

@@ -13,13 +13,11 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { TransformListPage } from "./TransformListPage";
-
-const RoutedTransformListPage = withRouteProps(TransformListPage);
 
 type MockInstance = {
   table: {
@@ -68,14 +66,11 @@ async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
   });
 
   const path = "/transforms";
-  renderWithProviders(
-    <Route path={path} element={<RoutedTransformListPage />} />,
-    {
-      storeInitialState: state,
-      withRouter: true,
-      initialRoute: path,
-    },
-  );
+  renderWithProviders(<Route path={path} element={<TransformListPage />} />, {
+    storeInitialState: state,
+    withRouter: true,
+    initialRoute: path,
+  });
 
   await waitForLoaderToBeRemoved();
 }

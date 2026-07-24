@@ -145,8 +145,8 @@
               (is (str/starts-with? instructions "The SQL query has a syntax error"))
               (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
 
-(deftest edit-sql-query-inline-viz-test
-  (testing "edit_sql_query surfaces results inline in the NLQ profile and navigate otherwise"
+(deftest edit-sql-query-viz-part-test
+  (testing "edit_sql_query emits a generated_entity card unless an open code-editor buffer wins"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {:as db} {:engine :h2}]
@@ -154,30 +154,24 @@
             (let [mp       (mt/metadata-provider)
                   query-id "test-inline-q"
                   query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)
-                  run      (fn [{:keys [context profile-id]}]
+                  run      (fn [context]
                              (let [memory (atom {:state   {:queries {query-id query}}
                                                  :context context})]
-                               (binding [shared/*memory-atom* memory
-                                         shared/*profile-id* profile-id]
+                               (binding [shared/*memory-atom* memory]
                                  (agent-sql/edit-sql-query-tool
                                   {:query_id  query-id
                                    :checklist "- [x] checked"
                                    :edits     [{:old_string "SELECT *" :new_string "SELECT id"}]
                                    :title     "Results"}))))]
-              (testing "NLQ profile -> a single generated_entity (native) part"
-                (let [parts  (:data-parts (run {:profile-id :nlq}))
+              (testing "no code-editor buffer -> a single generated_entity (native) part"
+                (let [parts  (:data-parts (run {}))
                       entity (:data (first parts))]
                   (is (= 1 (count parts)))
                   (is (= "generated_entity" (:data-type (first parts))))
                   (is (= "card" (:type entity)))
                   (is (= :native (get-in entity [:query :query :type])))))
-              (testing "non-NLQ profile -> a single navigate_to part"
-                (let [parts (:data-parts (run {:profile-id :sql}))]
-                  (is (= 1 (count parts)))
-                  (is (= "navigate_to" (:data-type (first parts))))))
-              (testing "an open code-editor buffer wins regardless of profile"
-                (let [parts (:data-parts (run {:profile-id :nlq
-                                               :context    {:user_is_viewing [{:type    "code_editor"
-                                                                               :buffers [{:id "buf-1"}]}]}}))]
+              (testing "an open code-editor buffer wins"
+                (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
+                                                                  :buffers [{:id "buf-1"}]}]}))]
                   (is (= 1 (count parts)))
                   (is (= "code_edit" (:data-type (first parts)))))))))))))

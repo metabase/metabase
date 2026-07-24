@@ -14,6 +14,7 @@ export function MetabotDataStudioSidebar() {
     <Metabot
       hide={disabled}
       config={{
+        agentId: "omnibot",
         preventRetryMessage: true,
         hideSuggestedPrompts: true,
         emptyText: t`Let's transform your data together!`,

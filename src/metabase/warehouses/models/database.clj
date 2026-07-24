@@ -175,7 +175,7 @@
   "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
    is about to be SET NULL by the FK action survive the delete (so the analyst can read the
    SQL/Python and rebuild against a new DB), but their dependency-analysis findings need to
-   be re-run so they surface on `/data-studio/dependency-diagnostics/broken`. OSS is a no-op
+   be re-run so they surface on `/monitor/dependency-diagnostics/broken`. OSS is a no-op
    (no dependencies module)."
   metabase-enterprise.dependencies.events
   [_db-id]
@@ -555,10 +555,6 @@
       maybe-disable-uploads-for-all-dbs!
       infer-db-schedules))
 
-(defmethod serdes/hash-fields :model/Database
-  [_database]
-  [:name :engine])
-
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field table-alias %)]
@@ -734,25 +730,6 @@
                               (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)
                               (:admin_details ingested)      (update :admin_details driver/sanitize-db-details))
                             maybe-local))
-
-(def ^:private metadata-export-perms
-  {:perms/view-data      :unrestricted
-   :perms/create-queries :query-builder})
-
-(defmethod serdes/metadata-query :model/Database
-  [model opts]
-  (t2/reducible-query {:select [:id :name :engine]
-                       :from   [[(t2/table-name model) :db]]
-                       :where  (serdes/metadata-query-filter model :db opts)}))
-
-(defmethod serdes/metadata-query-filter :model/Database
-  [_model alias {:keys [user-info database-ids]}]
-  (cond-> [:and
-           [:= (u/qualified-key alias :is_audit) false]
-           [:= (u/qualified-key alias :router_database_id) nil]
-           [:in (u/qualified-key alias :id)
-            (perms/visible-database-filter-select user-info metadata-export-perms)]]
-    (seq database-ids) (conj [:in (u/qualified-key alias :id) database-ids])))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

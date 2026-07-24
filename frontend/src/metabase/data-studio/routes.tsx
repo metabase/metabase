@@ -1,5 +1,4 @@
-import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
-import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -13,6 +12,7 @@ import {
   Navigate,
   Route,
   type RouteComponent,
+  redirect,
   withRouteProps,
 } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
@@ -42,57 +42,73 @@ export function getDataStudioRoutes(
   IsAdmin: RouteComponent,
 ) {
   return (
-    <Route element={<CanAccessDataStudio />}>
-      <Route path="data-studio" element={<DataStudioLayout />}>
-        <Route index element={<DataStudioIndexRedirect />} />
-        <Route path="data" element={<CanAccessDataModel />}>
-          <Route element={<DataSectionLayout />}>
-            {getDataStudioMetadataRoutes(IsAdmin)}
+    <>
+      {/* These redirects sit
+       * OUTSIDE the CanAccessDataStudio guard — users without Data Studio access must
+       * still be forwarded —
+       * and are declared BEFORE the guarded subtree so they win over its `path="*"`
+       * catch-all
+       */}
+
+      {getDataStudioDependencyDiagnosticsRedirects()}
+      <Route element={<CanAccessDataStudio />}>
+        <Route path="data-studio" element={<DataStudioLayout />}>
+          <Route index element={<DataStudioIndexRedirect />} />
+          <Route path="data" element={<CanAccessDataModel />}>
+            <Route element={<DataSectionLayout />}>
+              {getDataStudioMetadataRoutes(IsAdmin)}
+            </Route>
           </Route>
+          <Route path="transforms" element={<RoutedTransformsSectionLayout />}>
+            {getDataStudioTransformRoutes()}
+          </Route>
+          <Route element={<WorkspacesSectionLayout />}>
+            {PLUGIN_WORKSPACES.getDataStudioRoutes()}
+          </Route>
+          {getDataStudioGlossaryRoutes()}
+          {getDataStudioSettingsRoutes()}
+          {PLUGIN_LIBRARY.isEnabled ? (
+            PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
+          ) : (
+            <Route path="library" element={<LibraryUpsellPage />} />
+          )}
+          {PLUGIN_DEPENDENCIES.isEnabled ? (
+            <Route path="dependencies" element={<DependenciesSectionLayout />}>
+              {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
+            </Route>
+          ) : (
+            <Route path="dependencies" element={<DependenciesUpsellPage />} />
+          )}
+          {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
+            <Route path="schema-viewer">
+              {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
+            </Route>
+          ) : (
+            <Route path="schema-viewer" element={<SchemaViewerUpsellPage />} />
+          )}
+          <Route path="git-sync" element={<GitSyncSectionLayout />} />
+
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="transforms" element={<RoutedTransformsSectionLayout />}>
-          {getDataStudioTransformRoutes()}
-        </Route>
-        <Route element={<WorkspacesSectionLayout />}>
-          {PLUGIN_WORKSPACES.getDataStudioRoutes()}
-        </Route>
-        {getDataStudioGlossaryRoutes()}
-        {getDataStudioSettingsRoutes()}
-        {PLUGIN_LIBRARY.isEnabled ? (
-          PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
-        ) : (
-          <Route path="library" element={<LibraryUpsellPage />} />
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled ? (
-          <Route path="dependencies" element={<DependenciesSectionLayout />}>
-            {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
-          </Route>
-        ) : (
-          <Route path="dependencies" element={<DependenciesUpsellPage />} />
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled ? (
-          <Route
-            path="dependency-diagnostics"
-            element={<DependencyDiagnosticsSectionLayout />}
-          >
-            {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
-          </Route>
-        ) : (
-          <Route
-            path="dependency-diagnostics"
-            element={<DependencyDiagnosticsUpsellPage />}
-          />
-        )}
-        {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
-          <Route path="schema-viewer">
-            {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
-          </Route>
-        ) : (
-          <Route path="schema-viewer" element={<SchemaViewerUpsellPage />} />
-        )}
-        <Route path="git-sync" element={<GitSyncSectionLayout />} />
       </Route>
-    </Route>
+    </>
+  );
+}
+
+/**
+ * Dependency Diagnostics moved from Data Studio to Monitor.  */
+export function getDataStudioDependencyDiagnosticsRedirects() {
+  return (
+    <>
+      <Route
+        path="data-studio/dependency-diagnostics"
+        element={redirect(Urls.dependencyDiagnostics())}
+      />
+      <Route
+        path="data-studio/dependency-diagnostics/*"
+        element={redirect(`${Urls.dependencyDiagnostics()}/*`)}
+      />
+    </>
   );
 }
 

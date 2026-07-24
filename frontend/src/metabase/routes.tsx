@@ -43,6 +43,7 @@ import { getMetricRoutes } from "metabase/metrics/routes";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
+import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_APPS,
@@ -67,10 +68,20 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
-import { Route, redirect, withRouteProps } from "metabase/router";
 import {
+  Navigate,
+  Route,
+  redirect,
+  useParams,
+  withRouteProps,
+} from "metabase/router";
+import {
+  CanAccessAlertsManagement,
   CanAccessDataModel,
   CanAccessDataStudio,
+  CanAccessMonitor,
+  CanAccessMonitorDiagnostics,
+  CanAccessMonitoringTools,
   CanAccessOnboarding,
   CanAccessSettings,
   IsAdmin,
@@ -106,6 +117,24 @@ const RoutedTablePermalinkRedirect = withRouteProps(TablePermalinkRedirect);
 const RoutedMetricsViewerPage = withRouteProps(MetricsViewerPage);
 const RoutedTableDetailPage = withRouteProps(TableDetailPage);
 const RoutedUnsubscribePage = withRouteProps(UnsubscribePage);
+
+/**
+ * v48 and earlier linked databases as `/browse/<dbId>-<slug>`. That was a
+ * `:dbId-:slug` route, which react-router v7 cannot express: a dynamic segment
+ * has to span the whole path segment. Match the segment as a whole instead, and
+ * only redirect when it has the legacy hyphenated shape, so anything else still
+ * falls through to the not-found page rather than being sent to a database that
+ * cannot exist.
+ */
+export function LegacyBrowseRedirect() {
+  const { dbIdAndSlug } = useParams();
+
+  if (!dbIdAndSlug?.includes("-")) {
+    return <NotFoundFallbackPage />;
+  }
+
+  return <Navigate to={`/browse/databases/${dbIdAndSlug}`} replace />;
+}
 
 export const getRoutes = (store: AppStore) => {
   return (
@@ -300,10 +329,7 @@ export const getRoutes = (store: AppStore) => {
             {PLUGIN_TABLE_EDITING.getRoutes()}
 
             {/* These two Redirects support legacy paths in v48 and earlier */}
-            <Route
-              path=":dbId-:slug"
-              element={redirect("databases/:dbId-:slug")}
-            />
+            <Route path=":dbIdAndSlug" element={<LegacyBrowseRedirect />} />
             <Route
               path=":dbId/schema/:schemaName"
               element={redirect("databases/:dbId/schema/:schemaName")}
@@ -388,6 +414,14 @@ export const getRoutes = (store: AppStore) => {
             CanAccessDataModel,
             IsAdmin,
           )}
+
+          {/* MONITOR */}
+          {getMonitorRoutes(
+            CanAccessMonitor,
+            CanAccessMonitorDiagnostics,
+            CanAccessMonitoringTools,
+            CanAccessAlertsManagement,
+          )}
         </Route>
       </Route>
 
@@ -413,6 +447,9 @@ export const getRoutes = (store: AppStore) => {
         path="/admin/transforms/*"
         element={redirect("/data-studio/transforms/*")}
       />
+
+      {/* Dependency diagnostics moved from /data-studio to /monitor */}
+      {getMonitorRedirects()}
 
       {/* MISC */}
       <Route path="/unsubscribe" element={<RoutedUnsubscribePage />} />

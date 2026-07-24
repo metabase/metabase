@@ -111,7 +111,7 @@ const lifecycleFinishFor = (events: SSEEvent[]): (SSEEvent | "[DONE]")[] => {
  * Arguments are flattened one level, so parts compose without spreading:
  *   createMetabotSSEBody(
  *     metabotTextPart("Here is the link"),
- *     metabotDataPart("navigate_to", path),
+ *     metabotDataPart("generated_entity", card),
  *   )
  *
  * Each event is emitted as a `data: {JSON}\n\n` chunk, wrapped in the backend

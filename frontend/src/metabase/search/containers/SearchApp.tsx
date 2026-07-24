@@ -1,4 +1,3 @@
-import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -23,6 +22,7 @@ import type {
 } from "metabase/common/search/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
+import type { LocationDescriptorObject } from "metabase/router";
 import { push } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {

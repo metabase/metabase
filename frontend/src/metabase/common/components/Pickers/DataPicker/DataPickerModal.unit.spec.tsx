@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCollectionByIdEndpoint,
@@ -10,8 +11,10 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { DatabaseId, RecentItem, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -143,6 +146,31 @@ describe("DataPickerModal", () => {
       expect(await screen.findByText("DB 1 question")).toBeInTheDocument();
       expect(screen.queryByText("DB 2 table")).not.toBeInTheDocument();
       expect(screen.queryByText("DB 2 question")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("search", () => {
+    it("should exclude other users' personal collections from search results", async () => {
+      await setup({
+        searchItems: [
+          createMockSearchResult({ id: 1, name: "accounts", model: "table" }),
+        ],
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText(/search/i),
+        "accounts",
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.lastCall("path:/api/search")).toBeTruthy();
+      });
+
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
+      const url = new URL(checkNotNull(call?.request?.url));
+      expect(url.searchParams.get("filter_items_in_personal_collection")).toBe(
+        "exclude-others",
+      );
     });
   });
 });
