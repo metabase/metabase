@@ -166,7 +166,14 @@ export const runQuestionQuery = ({
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
-      .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
+      .then((queryResults) => {
+        const lastRunCardQuestion = overrideWithQuestion
+          ? getQuestion(getState())
+          : null;
+        dispatch(
+          queryCompleted(question, queryResults, lastRunCardQuestion),
+        );
+      })
       .catch((error) => dispatch(queryErrored(startTime, error)));
 
     dispatch({ type: RUN_QUERY_TYPE, payload: { cancelQueryController } });
@@ -196,7 +203,11 @@ const loadStartUIControls = createThunkAction(
   },
 );
 
-export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
+export const queryCompleted = (
+  question: Question,
+  queryResults: Dataset[],
+  lastRunCardQuestion?: Question | null,
+) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const [{ data, error }] = queryResults;
     const prevCard = getCard(getState());
@@ -234,11 +245,13 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
     }
 
     const card = question.card();
+    const lastRunCard = lastRunCardQuestion?.card() ?? card;
 
     dispatch({
       type: QUERY_COMPLETED_TYPE,
       payload: {
         card,
+        lastRunCard,
         queryResults,
       },
     });

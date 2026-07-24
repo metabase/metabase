@@ -449,9 +449,12 @@ export const tableForeignKeyReferences = createReducer<Record<
 export const lastRunCard = createReducer<Card | null>(null, (builder) => {
   builder
     .addCase(RESET_QB, () => null)
-    .addCase<string, { type: string; payload: { card: Card } }>(
+    .addCase<
+      string,
+      { type: string; payload: { card: Card; lastRunCard?: Card } }
+    >(
       QUERY_COMPLETED,
-      (_state, action) => action.payload.card,
+      (_state, action) => action.payload.lastRunCard ?? action.payload.card,
     )
     .addCase(QUERY_ERRORED, () => null);
 });
