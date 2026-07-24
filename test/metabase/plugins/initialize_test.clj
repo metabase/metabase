@@ -83,6 +83,30 @@
       (is (= :ok (initialize/register-plugin-with-info! plugin))))
     (is (= [:classpath [:init (:init plugin)]] @calls))))
 
+(deftest lazy-driver-load-failure-is-retryable-test
+  (let [calls       (atom [])
+        attempts    (atom 0)
+        driver-name (str "test-lazy-retry-" (random-uuid))
+        plugin-name (str "test lazy retry plugin " (random-uuid))
+        plugin      {:info              {:name plugin-name :version "1.0.0"}
+                     :driver            {:name driver-name :abstract true :lazy-load true}
+                     :init              [{:step "load-namespace" :namespace "example.driver"}]
+                     :add-to-classpath! #(swap! calls conj :classpath)}]
+    (with-redefs [deps/all-dependencies-satisfied? (constantly true)
+                  deps/update-unsatisfied-deps!    (constantly [])
+                  ;; throw on the first activation, succeed on the retry
+                  init-steps/do-init-steps!        (fn [steps]
+                                                     (swap! calls conj [:init steps])
+                                                     (when (= 1 (swap! attempts inc))
+                                                       (throw (ex-info "transient load failure" {}))))]
+      (is (= :ok (initialize/register-plugin-with-info! plugin)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"transient load failure"
+                            (driver/initialize! (keyword driver-name))))
+      ;; the failed load did not remove the placeholder, so the driver still loads on a second attempt
+      (driver/initialize! (keyword driver-name)))
+    (is (= [:classpath [:init (:init plugin)] :classpath [:init (:init plugin)]] @calls)
+        "a failed load leaves the driver retryable; the retry re-runs classpath + init")))
+
 (deftest load-plugin-requires-registered-plugin-test
   (let [plugin-name (str "test missing plugin " (random-uuid))]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

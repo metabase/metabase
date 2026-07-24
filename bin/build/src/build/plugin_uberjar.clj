@@ -25,7 +25,7 @@
   metabase-core-provided-libs
   (into {} (map (fn [lib] [lib 'metabase-core])) (keys (:libs metabase-core-basis))))
 
-(defn prune-provided-libs
+(defn prune-provided-libs!
   "Remove `lib->provider`'s libraries and classpath entries from `basis`.
 
   Runtime-loaded plugins share the core classloader, so packaging those libraries again risks duplicate

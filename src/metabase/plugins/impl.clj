@@ -106,12 +106,14 @@
   (plugins.init/register-plugin-with-info! info))
 
 (defn- register-plugin!
-  "Register a plugin JAR without loading its code. JARs without a manifest are dependency JARs and are added directly
-  to the classpath."
+  "Register a plugin JAR by its manifest, without adding it to the classpath or loading its code -- both
+  wait until the plugin is loaded. A JAR with no manifest is a bare dependency (e.g. a JDBC driver): there
+  is no code to defer, so it goes straight onto the classpath."
   [^Path jar-path]
   (if-let [info (plugin-info jar-path)]
+    ;; Manifest plugin: pass the classpath add as a thunk so it runs at load time, not now.
     (register-plugin-with-info! (assoc info :add-to-classpath! #(add-to-classpath! jar-path)))
-    ;; for all other JARs just add to classpath and call it a day
+    ;; Bare dependency JAR: nothing to load, so add it to the classpath immediately.
     (add-to-classpath! jar-path)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
