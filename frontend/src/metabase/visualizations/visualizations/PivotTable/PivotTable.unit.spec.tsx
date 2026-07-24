@@ -297,6 +297,65 @@ describe("Visualizations > PivotTable > PivotTable", () => {
   });
 });
 
+describe("Visualizations > PivotTable > Grand Totals", () => {
+  const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "offsetHeight",
+  ) as number;
+  const originalOffsetWidth = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "offsetWidth",
+  ) as number;
+
+  beforeAll(() => {
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      value: 500,
+    });
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      value: 500,
+    });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "offsetHeight",
+      originalOffsetHeight,
+    );
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "offsetWidth",
+      originalOffsetWidth,
+    );
+  });
+
+  it("should show Grand totals row by default", async () => {
+    setupPivotTable();
+    expect(await screen.findByText("Grand totals")).toBeInTheDocument();
+  });
+
+  it("should hide Grand totals row when show_grand_totals is false", async () => {
+    const hiddenGrandTotalsSettings = createMockVisualizationSettings({
+      ...settings,
+      "pivot.show_grand_totals": false,
+    });
+    setupPivotTable({ initialSettings: hiddenGrandTotalsSettings });
+    expect(await screen.findByTestId("pivot-table")).toBeInTheDocument();
+    expect(screen.queryByText("Grand totals")).not.toBeInTheDocument();
+  });
+
+  it("should show Grand totals row when show_grand_totals is true", async () => {
+    const grandTotalsSettings = createMockVisualizationSettings({
+      ...settings,
+      "pivot.show_grand_totals": true,
+    });
+    setupPivotTable({ initialSettings: grandTotalsSettings });
+    expect(await screen.findByText("Grand totals")).toBeInTheDocument();
+  });
+});
+
 describe("Visualizations > PivotTable > Chart Settings", () => {
   it("should allow you to update a column name", async () => {
     setupPivotSettings();

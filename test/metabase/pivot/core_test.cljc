@@ -783,4 +783,33 @@
          (is (= [0] first-call) "pivot-group 6 with 3 breakouts should return [0]")
          (let [equivalent-pivot-group (BigDecimal. "6.0")
                third-call (#'pivot/get-active-breakout-indexes equivalent-pivot-group num-breakouts)]
-           (is (= first-call third-call) "Equivalent BigDecimal values should return same result"))))))
+           (is (= first-call third-call) "Equivalent BigDecimal values should return same result")))))
+
+(deftest grand-totals-row-visibility-test
+  (let [rows [[1 "A" "Y" 0 10]
+              [2 "B" "Z" 0 20]
+              [nil nil nil 7 30]]
+        cols [{:name "col0" :source "breakout"}
+              {:name "col1" :source "breakout"}
+              {:name "col2" :source "breakout"}
+              {:name "pivot-grouping" :source "breakout"}
+              {:name "count" :source "aggregation"}]
+        row-indexes [0 1]
+        col-indexes [2]
+        val-indexes [4]
+        col-settings [{} {} {} {} {}]
+        row-tree (:row-tree (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes {} col-settings))
+        last-row-grand-total? (fn [settings]
+                                (let [with-totals (lists-to-vecs-recursively
+                                                    (#'pivot/maybe-add-grand-totals-row row-tree settings))]
+                                  (= true (:isGrandTotal (last with-totals)))))]
+    (testing "Grand totals row is present by default (show_column_totals defaults true)"
+      (is (last-row-grand-total? {})))
+    (testing "Grand totals row is present when both show_column_totals and show_grand_totals are true"
+      (is (last-row-grand-total? {:pivot.show_column_totals true :pivot.show_grand_totals true})))
+    (testing "Grand totals row is absent when show_grand_totals is false (even with show_column_totals true)"
+      (is (not (last-row-grand-total? {:pivot.show_column_totals true :pivot.show_grand_totals false}))))
+    (testing "Grand totals row is absent when show_column_totals is false"
+      (is (not (last-row-grand-total? {:pivot.show_column_totals false}))))
+    (testing "Grand totals row is absent when both show_column_totals and show_grand_totals are false"
+      (is (not (last-row-grand-total? {:pivot.show_column_totals false :pivot.show_grand_totals false})))))))

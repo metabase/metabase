@@ -163,6 +163,22 @@ export const settings = {
     getDefault: () => true,
     inline: true,
   },
+  "pivot.show_grand_totals": {
+    getSection: () => t`Columns`,
+    get title() {
+      return t`Show grand totals`;
+    },
+    widget: "toggle",
+    getDefault: () => true,
+    inline: true,
+    getHidden: (
+      _series: RawSeries,
+      settings: ComputedVisualizationSettings,
+    ) => {
+      return !settings["pivot.show_column_totals"];
+    },
+    readDependencies: ["pivot.show_column_totals"],
+  },
   "pivot.condense_duplicate_totals": {
     getSection: () => t`Columns`,
     get title() {
