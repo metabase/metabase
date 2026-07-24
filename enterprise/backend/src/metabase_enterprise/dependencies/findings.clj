@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -23,7 +24,7 @@
 
 (defmethod instance-db-id :model/Transform
   [toucan-instance]
-  (some-> toucan-instance :source :query lib/database-id))
+  (transforms-base.i/source-db-id toucan-instance))
 
 (defmethod instance-db-id :model/Segment
   [toucan-instance]
@@ -47,7 +48,12 @@
 (defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
 
-  If any row exists already, it is replaced. If it does not exist, it is created."
+  If any row exists already, it is replaced. If it does not exist, it is created.
+
+  If the entity has no resolvable source database (e.g. a Python transform with no
+  MBQL query, or a custom transform type with no `source-db-id` impl), writes an
+  empty successful finding so the entity-check task does not re-pick the same
+  instance forever."
   [toucan-instance]
   (when-not (lib-be/metadata-provider-cache)
     (throw (ex-info "FIXME: deps.findings/upsert-analysis! ran without reusing `MetadataProvider`s"
