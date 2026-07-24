@@ -12,13 +12,18 @@
    [metabase.util.json :as json]
    [stencil.core :as stencil]))
 
+(defn- header->directive
+  [csp-header directive]
+  (-> csp-header
+      (str/split #"; *")
+      (as-> xs (filter #(str/starts-with? % (str directive " ")) xs))
+      first))
+
 (defn- csp-directive
   [directive]
   (-> (mw.security/security-headers)
       (get "Content-Security-Policy")
-      (str/split #"; *")
-      (as-> xs (filter #(str/starts-with? % (str directive " ")) xs))
-      first))
+      (header->directive directive)))
 
 (defn- csp-directive-from-response
   [response directive]
@@ -774,6 +779,27 @@
       (testing "a relative tile template contributes no host"
         (mt/with-temporary-setting-values [map-tile-server-url "/local/{z}/{x}/{y}.png"]
           (is (= "img-src 'self' data:" (csp-directive "img-src"))))))))
+
+(defn- csp-directive-for-uri
+  "Runs the full security middleware for a request to `uri` and returns its CSP `directive`."
+  [uri directive]
+  (let [wrapped-handler (mw.security/add-security-headers
+                         (fn [_request respond _raise]
+                           (respond {:status 200 :headers {} :body "ok"})))
+        response        (wrapped-handler {:headers {} :uri uri} identity identity)]
+    (header->directive (get-in response [:headers "Content-Security-Policy"]) directive)))
+
+(deftest csp-header-img-src-blob-eajs-embed-tests
+  (testing "the EAJS embed page (/embed/sdk/v1) allows blob: in img-src for custom viz icons"
+    (is (str/includes? (csp-directive-for-uri "/embed/sdk/v1" "img-src") "blob:")))
+  (testing "a future versioned entrypoint is covered on purpose"
+    (is (str/includes? (csp-directive-for-uri "/embed/sdk/v2" "img-src") "blob:")))
+  (testing "a normal app request does not allow blob: in img-src"
+    (is (not (str/includes? (csp-directive-for-uri "/" "img-src") "blob:"))))
+  (testing "other /embed/sdk/* URIs are served the static embed page and do not allow blob:"
+    (is (not (str/includes? (csp-directive-for-uri "/embed/sdk/foo" "img-src") "blob:"))))
+  (testing "a static/public embed request does not allow blob: in img-src"
+    (is (not (str/includes? (csp-directive-for-uri "/embed/question/abc" "img-src") "blob:")))))
 
 (deftest csp-header-font-src-tests
   (testing "font-src is restricted to 'self' and data: when no custom fonts are configured"

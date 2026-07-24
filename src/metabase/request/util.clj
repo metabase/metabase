@@ -60,6 +60,14 @@
   [{:keys [uri]}]
   (re-matches data-app-uri-regex uri))
 
+(defn embed-sdk-eajs-entrypoint?
+  "Is this ring request the modular embedding (EAJS) entrypoint page, served by `index/embed-sdk`?
+  Matches exactly `/embed/sdk/v1` and, on purpose, any future `/embed/sdk/vN` version. Any other
+  `/embed/sdk/*` URI falls through to the static embed page and does not match. The react embedding
+  SDK renders on the host page and never requests this route."
+  [{:keys [uri]}]
+  (re-matches #"^/embed/sdk/v\d+$" uri))
+
 (defn cacheable?
   "Can the ring request be permanently cached?"
   [{:keys [request-method uri], :as _request}]

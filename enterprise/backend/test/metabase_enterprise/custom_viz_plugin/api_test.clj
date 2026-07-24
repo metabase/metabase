@@ -445,41 +445,123 @@
 
 ;;; ------------------------------------------------ Sandbox-host Endpoint ------------------------------------------------
 
+;; Pinned independently of the source constant on purpose: the donor is unauthed, so a change to
+;; the served body must break a test rather than silently ride along with the source.
+(def ^:private inert-donor-doc
+  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
+
 (deftest sandbox-host-endpoint-test
   (testing "GET /sandbox-host returns minimal HTML with a per-document CSP"
     (mt/with-premium-features #{:custom-viz}
       (let [resp (mt/user-http-request-full-response
                   :rasta :get 200 "ee/custom-viz-plugin/sandbox-host")
             headers (:headers resp)]
-        (testing "returns a tiny HTML body"
-          (is (string? (:body resp)))
-          (is (str/includes? (:body resp) "<!doctype html>"))
-          (is (str/includes? (:body resp) "<body></body>")))
+        (testing "the body is exactly the inert donor document (pinned: this endpoint is unauthed, nothing may be added to it)"
+          (is (= inert-donor-doc (:body resp))))
         (testing "response is served as HTML"
           (is (str/starts-with? (get headers "Content-Type") "text/html")))
-        (testing "Content-Security-Policy allows unsafe-eval only inside the sandbox doc"
-          (let [csp (get headers "Content-Security-Policy")]
-            (is (some? csp))
-            (is (str/includes? csp "default-src 'none'"))
-            (is (str/includes? csp "script-src 'unsafe-eval'"))
-            (is (not (str/includes? csp "sandbox")))
-            (is (str/includes? csp "frame-ancestors 'self'"))))
-        (testing "framing is allowed for same-origin (overrides the global X-Frame-Options: DENY)"
-          (is (= "SAMEORIGIN" (get headers "X-Frame-Options"))))
+        (testing "the CSP is exactly the per-document sandbox policy (pinned)"
+          (is (= "default-src 'none'; script-src 'unsafe-eval'; frame-ancestors *;"
+                 (get headers "Content-Security-Policy"))))
+        (testing "no X-Frame-Options is served (frame-ancestors is the framing policy, so EAJS customer pages can frame it)"
+          (is (nil? (get headers "X-Frame-Options"))))
         (testing "hardening headers are present"
           (is (= "nosniff"     (get headers "X-Content-Type-Options")))
           (is (= "no-referrer" (get headers "Referrer-Policy")))
           (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
-          (is (= "public, max-age=60" (get headers "Cache-Control")))))))
+          ;; no-store, not public: the gate's 200-vs-404 depends on headers/session a
+          ;; URL-keyed shared cache can't see, so a cached 200 must never be replayable.
+          (is (= "no-store" (get headers "Cache-Control")))))))
   (testing "GET /sandbox-host requires the :custom-viz premium feature"
     (mt/with-premium-features #{}
       (mt/assert-has-premium-feature-error
        "Custom Visualizations"
        (mt/user-http-request :rasta :get 402 "ee/custom-viz-plugin/sandbox-host"))))
-  (testing "GET /sandbox-host requires authentication"
+  (testing "GET /sandbox-host does not require authentication (an iframe src cannot carry session auth)"
     (mt/with-premium-features #{:custom-viz}
-      (is (= "Unauthenticated"
-             (client/client :get 401 "ee/custom-viz-plugin/sandbox-host"))))))
+      (let [resp (client/client-full-response :get 200 "ee/custom-viz-plugin/sandbox-host"
+                                              {:request-options {:headers {"sec-fetch-site" "same-origin"
+                                                                           "sec-fetch-dest" "iframe"}}})]
+        (is (str/includes? (:body resp) "<!doctype html>")))))
+  (testing "GET /sandbox-host is a 404 when the custom-viz kill switch is off"
+    (mt/with-premium-features #{:custom-viz}
+      (mt/with-temporary-setting-values [custom-viz-enabled false]
+        (let [resp (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host")]
+          (testing "and the 404 never carries the eval-permitting CSP"
+            (is (not (str/includes? (str (get-in resp [:headers "Content-Security-Policy"])) "unsafe-eval")))))))))
+
+(deftest sandbox-host-sec-fetch-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "a browser-attested same-origin iframe navigation is served"
+      (let [resp (client/client-full-response :get 200 "ee/custom-viz-plugin/sandbox-host"
+                                              {:request-options {:headers {"sec-fetch-site" "same-origin"
+                                                                           "sec-fetch-dest" "iframe"}}})]
+        (is (str/includes? (:body resp) "<!doctype html>"))))
+    (testing "cross-site framing of the donor URL is a 404"
+      (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host"
+                                   {:request-options {:headers {"sec-fetch-site" "cross-site"
+                                                                "sec-fetch-dest" "iframe"}}}))
+    (testing "a top-level navigation (URL pasted in a tab) is a 404"
+      (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host"
+                                   {:request-options {:headers {"sec-fetch-site" "none"
+                                                                "sec-fetch-dest" "document"}}}))
+    (testing "a non-iframe use (script/img/fetch) is a 404"
+      (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host"
+                                   {:request-options {:headers {"sec-fetch-site" "same-origin"
+                                                                "sec-fetch-dest" "empty"}}}))
+    (testing "absent fetch-metadata headers are rejected (the unauthed donor requires an attested same-origin iframe load)"
+      (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host"))
+    (testing "a partial fetch-metadata set (only one of the two headers) is rejected"
+      (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host"
+                                   {:request-options {:headers {"sec-fetch-site" "same-origin"}}}))
+    (testing "a session-authed (core-app) request with no fetch metadata is served (older browsers)"
+      (let [resp (mt/user-http-request-full-response
+                  :rasta :get 200 "ee/custom-viz-plugin/sandbox-host")]
+        (is (str/includes? (:body resp) "<!doctype html>"))))
+    (testing "a session-authed same-origin iframe navigation is served"
+      (let [resp (mt/user-http-request-full-response
+                  :rasta :get 200 "ee/custom-viz-plugin/sandbox-host"
+                  {:request-options {:headers {"sec-fetch-site" "same-origin"
+                                               "sec-fetch-dest" "iframe"}}})]
+        (is (str/includes? (:body resp) "<!doctype html>"))))
+    (testing "a session-authed request with a present cross-site attestation is a 404 (an authed user must not be framable cross-site)"
+      (mt/user-http-request-full-response
+       :rasta :get 404 "ee/custom-viz-plugin/sandbox-host"
+       {:request-options {:headers {"sec-fetch-site" "cross-site"
+                                    "sec-fetch-dest" "document"}}}))
+    (testing "the same cross-site load without a session is a 404"
+      (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host"
+                                   {:request-options {:headers {"sec-fetch-site" "cross-site"
+                                                                "sec-fetch-dest" "document"}}}))))
+
+(deftest sandbox-host-body-always-inert-test
+  ;; The donor is reachable without authentication and its response carries an eval-permitting CSP.
+  ;; The body must ALWAYS be this exact empty document: never add content, data, or anything
+  ;; request-dependent to it, or you may be exposing it through an unauthed endpoint.
+  (mt/with-premium-features #{:custom-viz}
+    (doseq [[context resp]
+            {"unauthed, same-origin iframe navigation"
+             (client/client-full-response :get 200 "ee/custom-viz-plugin/sandbox-host"
+                                          {:request-options {:headers {"sec-fetch-site" "same-origin"
+                                                                       "sec-fetch-dest" "iframe"}}})
+
+             "session-authed"
+             (mt/user-http-request-full-response
+              :rasta :get 200 "ee/custom-viz-plugin/sandbox-host")
+
+             "session-authed, same-origin iframe navigation"
+             (mt/user-http-request-full-response
+              :rasta :get 200 "ee/custom-viz-plugin/sandbox-host"
+              {:request-options {:headers {"sec-fetch-site" "same-origin"
+                                           "sec-fetch-dest" "iframe"}}})}]
+      (testing (str "content is exactly the inert empty document when " context)
+        (is (= inert-donor-doc (:body resp)))))))
+
+(deftest custom-viz-list-still-requires-auth-test
+  (testing "splitting out the unauthed donor route must not expose the other custom-viz routes"
+    (mt/with-premium-features #{:custom-viz}
+      (is (= "Unauthenticated" (client/client :get 401 "ee/custom-viz-plugin/list")))
+      (is (= "Unauthenticated" (client/client :get 401 "ee/custom-viz-plugin/"))))))
 
 ;;; ------------------------------------------------ Bundle Endpoint ------------------------------------------------
 
