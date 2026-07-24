@@ -3,6 +3,7 @@ import { Route } from "metabase/router";
 import { NewPythonTransformPage } from "metabase/transforms/pages/NewTransformPage";
 import { TransformListPage } from "metabase/transforms/pages/TransformListPage";
 
+import { DataIngestionPage } from "./pages/DataIngestionPage";
 import { PythonLibraryEditorPage } from "./pages/PythonLibraryEditorPage";
 import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellModal";
 
@@ -11,6 +12,7 @@ export function getPythonTransformsRoutes() {
     <>
       <Route path="library/:path" element={<PythonLibraryEditorPage />} />
       <Route path="new/python" element={<NewPythonTransformPage />} />
+      <Route path="ingestion" element={<DataIngestionPage />} />
     </>
   );
 }

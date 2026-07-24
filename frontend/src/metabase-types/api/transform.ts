@@ -480,6 +480,47 @@ export type UpdatePythonLibraryRequest = {
   source: string;
 };
 
+export type IngestionConnectorConfigField = {
+  key: string;
+  label: string;
+  required: boolean;
+};
+
+export type IngestionConnector = {
+  id: string;
+  name: string;
+  description: string;
+  "secret-key": string;
+  "config-fields": IngestionConnectorConfigField[];
+  "default-table": string;
+  "merge-key": string[];
+  "oauth-configured": boolean;
+};
+
+export type ConnectorOauthUrlResponse = {
+  url: string;
+  state: string;
+};
+
+export type ConnectorOauthStatusResponse = {
+  ready: boolean;
+};
+
+export type CreateConnectorConnectionRequest = {
+  connectorId: string;
+  config?: Record<string, string>;
+  auth: {
+    token?: string;
+    "oauth-state"?: string;
+  };
+  target: {
+    database: DatabaseId;
+    schema?: string;
+    "table-name"?: string;
+  };
+  name?: string;
+};
+
 export type InspectorFieldStats = {
   distinct_count?: number;
   nil_percent?: number;
