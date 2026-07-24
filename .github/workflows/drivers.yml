@@ -127,7 +127,7 @@ jobs:
             --skip="${{ inputs.skip }}"
           )
           echo "Running:"
-          echo "./bin/mage -driver-decisions ${MAGE_ARGS[@]}"
+          echo "./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
           echo ""
           # First call: show human-readable output for debugging
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}"
@@ -135,7 +135,7 @@ jobs:
           echo "Want to force-run a specific driver? Add a ci:run-<driver> or ci:run-all-drivers label to your PR."
           echo "Run './bin/mage -driver-decisions -h' locally for the full list of drivers and labels."
           # Second call: output only key=value lines for GITHUB_OUTPUT
-          ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
+          ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
           IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-x') }}
@@ -193,7 +193,6 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.athena-status }}
-        report-variant: ${{ matrix.job.name }}
         run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-bigquery-cloud-sdk-ee:
@@ -279,7 +278,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
@@ -366,7 +365,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
@@ -1240,7 +1239,7 @@ jobs:
          port: ${{ env.MB_PRESTO_JDBC_TEST_PORT }}
       timeout-minutes: 5
     - name: Create temp cacerts file based on bundled JDK one
-      run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+      run: cp "$JAVA_HOME/lib/security/cacerts" /tmp/cacerts-with-presto-ssl.jks
     - name: Capture Presto server self signed CA
       run: |
           while [[ ! -s /tmp/presto-ssl-ca.pem ]]; do
@@ -1377,7 +1376,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-snowflake-ee:
     needs: determine-driver-skips
@@ -1465,7 +1464,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
@@ -1708,9 +1707,11 @@ jobs:
 
         REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com"
 
-        echo "docker_username=AWS" >> $GITHUB_OUTPUT
-        echo "docker_password=$PASSWORD" >> $GITHUB_OUTPUT
-        echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+        {
+          echo "docker_username=AWS"
+          echo "docker_password=$PASSWORD"
+          echo "registry=$REGISTRY"
+        } >> "$GITHUB_OUTPUT"
     outputs:
       registry: ${{ steps.login-ecr.outputs.registry }}
       docker_username: ${{ steps.login-ecr.outputs.docker_username }}
