@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
+   [metabase.config.jekyll :as jekyll]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.util :as u]
@@ -134,6 +135,14 @@
             (cond
               (:is_stub database)
               (log/info "Created stub database; skipping sync.")
+
+              ;; Jekyll mode never syncs the warehouse — metadata is supplied
+              ;; externally (serdes import / parent instance). Mark initial sync
+              ;; complete: nothing will ever run, and "incomplete" renders as a
+              ;; perpetual "Syncing…" in the admin UI.
+              (jekyll/jekyll?)
+              (do (t2/update! :model/Database (:id db) {:initial_sync_status "complete"})
+                  (log/info "Jekyll mode; skipping sync."))
 
               (advanced-config.settings/config-from-file-sync-databases)
               (let [sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]

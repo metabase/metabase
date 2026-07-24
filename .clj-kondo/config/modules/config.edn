@@ -668,7 +668,8 @@
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
   config
   {:team "DevEx"
-   :api  #{metabase.config.core}
+   :api  #{metabase.config.core
+           metabase.config.jekyll}
    :uses #{}}
 
   ;; this is not actually a real module, but comes from one of our libraries.

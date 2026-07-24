@@ -52,6 +52,22 @@
   :type       :integer
   :default    10000)
 
+(defsetting jekyll-parent-url
+  "Base url of the parent Metabase a Jekyll box fetches warehouse metadata from at boot (e.g.
+  `https://stats.metabase.com`). Jekyll boxes never run driver sync; the parent already has. Unset = no ingestion."
+  :type       :string
+  :visibility :internal
+  :export?    false
+  :encryption :no)
+
+(defsetting jekyll-parent-api-key
+  "API key used to authenticate against `jekyll-parent-url`."
+  :type       :string
+  :visibility :internal
+  :export?    false
+  :sensitive? true
+  :encryption :when-encryption-key-set)
+
 (defsetting fingerprint-max-fields-per-table
   "Maximum number of fields per table to fingerprint. If a table has more eligible fields than this, the rest are
   skipped during fingerprinting analysis -- loading that many fields into memory at once can exhaust the heap (this has

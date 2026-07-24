@@ -190,6 +190,18 @@
   [stream snapshot]
   (remote-sync.merge/force-push-casualties [] (serialize-specs stream nil) (snapshot->specs snapshot)))
 
+(defn branch-names
+  "Branch names on the remote, as strings. Normalizes the two shapes Source
+  implementations return: the git source yields name strings, the test mock
+  yields [name ref] pairs."
+  [source]
+  (map #(if (coll? %) (first %) %) (source.p/branches source)))
+
+(defn branch-exists?
+  "True when `branch` exists on the remote `source`."
+  [source branch]
+  (boolean (some #{branch} (branch-names source))))
+
 (defn source-from-settings
   "Creates a git source from the current remote sync settings.
 

@@ -160,6 +160,33 @@
                                     (u/since-ms timer))
                 (throw t)))))))))
 
+(api.macros/defendpoint :post "/:id/preview"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
+  "Preview a transform's source query (Jekyll mode). Runs the transform's `:query`
+  source through the read-only query processor with a row limit, returning sample
+  rows. Materializes no target table, records no `transform_run`, writes no
+  QueryExecution log, and triggers no sync — a side-effect-free iteration loop.
+
+  Only `:query` (MBQL + native) sources are supported; Python preview is out of
+  scope. `:limit` defaults to 100."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [limit]} :- [:map [:limit {:optional true} [:maybe ms/PositiveInt]]]]
+  (let [transform (api/read-check :model/Transform id)
+        _         (transforms.core/check-feature-enabled! transform)
+        source    (:source transform)
+        limit     (or limit 100)]
+    (when-not (= :query (keyword (:type source)))
+      (throw (ex-info "Only :query transform sources can be previewed"
+                      {:status-code 400 :source-type (:type source)})))
+    ;; :constraints caps row count for both MBQL and native sources (a top-level
+    ;; :limit only works for MBQL). This is the read-only QP path — no write conn,
+    ;; no target, no run row.
+    (let [query (assoc (:query source)
+                       :constraints {:max-results limit :max-results-bare-rows limit})]
+      (qp.streaming/streaming-response [rff :api]
+        (qp/process-query query rff)))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transforms` routes."
   (handlers/routes

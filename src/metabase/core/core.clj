@@ -10,6 +10,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config.core :as config]
+   [metabase.config.jekyll :as jekyll]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
    [metabase.core.perf :as perf]
@@ -23,12 +24,13 @@
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
+   [metabase.sync.core :as sync]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
@@ -124,6 +126,11 @@
   (log/info "Not installing EE audit app DB")
   ::noop)
 
+(defenterprise jekyll-boot-import!
+  "OSS no-op. In EE, reloads content from the configured git branch at Jekyll boot."
+  metabase-enterprise.remote-sync.task.import []
+  ::noop)
+
 (defn- signal-handler
   "Create a signal handler that logs the received signal and then delegates to the original handler."
   [^String signal-name ^SignalHandler original-handler]
@@ -185,7 +192,10 @@
   ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
-  (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  ;; Jekyll mode: no sample content — the box holds nothing precious, content
+  ;; comes from git via remote-sync import (Phase 2).
+  (mdb/setup-db! :create-sample-content? (and (not config/is-test?)
+                                              (not (jekyll/jekyll?))))
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.
@@ -195,8 +205,11 @@
   (init-status/set-progress! 0.4)
   (analytics.core/observe-initial-values)
   (init-status/set-progress! 0.5)
-  (task/init-scheduler!)
-  (analytics.core/add-listeners-to-scheduler!)
+  ;; Jekyll mode: skip scheduler init entirely — no Quartz, no QRTZ_* app-db
+  ;; coupling, no sync/alert/pulse task registration. No-op when not Jekyll.
+  (when-not (jekyll/jekyll?)
+    (task/init-scheduler!)
+    (analytics.core/add-listeners-to-scheduler!))
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
@@ -213,18 +226,36 @@
       ;; The instance is already set up. Clear out any stale setup token.
       (setup/clear-token!))
     (init-status/set-progress! 0.7)
-    ;; deal with our sample database as needed
-    (if new-install?
-      ;; add the sample database DB for fresh installs (only when sample content is enabled)
-      (when (config/load-sample-content?)
-        (sample-data/extract-and-sync-sample-database!))
-      ;; On existing installs always reconcile: if the bundled engine changed (H2 <-> SQLite) the old
-      ;; sample database must be cleaned up and replaced regardless of whether sample content is
-      ;; currently enabled. Otherwise just refresh its connection details.
-      (sample-data/update-sample-database-if-needed!))
+    ;; deal with our sample database as needed. Jekyll mode: no sample database —
+    ;; the only warehouse is supplied via config; metadata comes from the parent.
+    (when-not (jekyll/jekyll?)
+      (if new-install?
+        ;; add the sample database DB for fresh installs (only when sample content is enabled)
+        (when (config/load-sample-content?)
+          (sample-data/extract-and-sync-sample-database!))
+        ;; On existing installs always reconcile: if the bundled engine changed (H2 <-> SQLite) the old
+        ;; sample database must be cleaned up and replaced regardless of whether sample content is
+        ;; currently enabled. Otherwise just refresh its connection details.
+        (sample-data/update-sample-database-if-needed!)))
     (init-status/set-progress! 0.8))
-  (ensure-audit-db-installed!)
-  (notification/seed-notification!)
+  ;; Jekyll mode: no audit DB, no notification seeding — a preview/authoring box
+  ;; never analyzes usage or sends anything.
+  (when-not (jekyll/jekyll?)
+    (ensure-audit-db-installed!)
+    (notification/seed-notification!))
+  ;; Jekyll mode: ingest warehouse metadata from the parent Metabase (no driver
+  ;; sync on a Jekyll box), then reload content from the configured git branch so
+  ;; a fresh/wiped app-db converges to the branch. Metadata comes first so
+  ;; imported MBQL content can resolve fields. Both no-op when unconfigured.
+  (when (jekyll/jekyll?)
+    ;; a Jekyll box is built around remote-sync and transforms, which are premium
+    ;; routes: with a token missing the features the box still boots, but sync
+    ;; no-ops and the API 402s — which reads as an auth bug. Warn loudly instead.
+    (doseq [feature [:remote-sync :transforms-basic]
+            :when (not (premium-features/has-feature? feature))]
+      (log/warnf "Jekyll mode: premium token lacks feature %s — remote-sync/transforms will be unavailable" feature))
+    (sync/ingest-parent-metadata!)
+    (jekyll-boot-import!))
 
   (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
@@ -235,7 +266,10 @@
   (startup/run-startup-logic!)
   (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
-  (task/start-scheduler!)
+  ;; Jekyll mode: start-scheduler! internally re-runs init-scheduler! (task
+  ;; registration + JDBC store). Guard both call sites, not just :init above.
+  (when-not (jekyll/jekyll?)
+    (task/start-scheduler!))
   (queue/start-listeners!)
   (init-status/set-complete!)
   (log/info "Metabase Initialization COMPLETE"))
