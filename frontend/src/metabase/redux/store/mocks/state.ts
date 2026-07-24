@@ -1,5 +1,5 @@
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
-import type { State } from "metabase/redux/store";
+import type { SettingsState, State } from "metabase/redux/store";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { createMockAdminState } from "./admin";
@@ -19,12 +19,22 @@ import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
 import { createMockVisualizerState } from "./visualizer";
 
-export function createMockState(
-  opts: Partial<State> & SdkSharedStoreState,
-): State & SdkSharedStoreState;
-export function createMockState(opts?: Partial<State>): State;
+/**
+ * The shape accepted (and returned) by mock-state builders and test render
+ * harnesses: `State` plus seed-only fields with no reducer behind them.
+ * `settings` is mirrored into `window.MetabaseBootstrap` below; the render
+ * harnesses strip it before it reaches `preloadedState`.
+ */
+export type StoreSeedState = State & {
+  settings: SettingsState;
+};
+
+export function createMockState<S extends Pick<SdkSharedStoreState, "sdk">>(
+  opts: Partial<StoreSeedState> & S,
+): StoreSeedState & S;
+export function createMockState(opts?: Partial<StoreSeedState>): StoreSeedState;
 export function createMockState(opts: any) {
-  return {
+  const state = {
     admin: createMockAdminState(),
     app: createMockAppState(),
     auth: createMockAuthState(),
@@ -48,4 +58,22 @@ export function createMockState(opts: any) {
     modal: createMockModalState(),
     ...opts,
   };
+
+  // Settings resolve from the `getSessionProperties` cache, falling back to
+  // `window.MetabaseBootstrap`. Mirror the mock settings into the bootstrap so
+  // store-less/selector tests can read them. This is only for jest, as the
+  // the global would leak across Storybook stories).
+  // Nothing is lost by replacing, because the consumers of that metadata read
+  // the global once at module load, before any test body runs.
+  const hasExplicitSettings = opts?.settings != null;
+  if (
+    process.env.NODE_ENV === "test" &&
+    typeof window !== "undefined" &&
+    state.settings?.values &&
+    (hasExplicitSettings || window.MetabaseBootstrap === undefined)
+  ) {
+    window.MetabaseBootstrap = state.settings.values;
+  }
+
+  return state;
 }

@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { c } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
@@ -9,27 +9,26 @@ import type {
   EnterpriseSettingValue,
 } from "metabase-types/api";
 
+import { useHydratedInput } from "./useHydratedInput";
+
 export const SAVE_DEBOUNCE_MS = 500;
 
 export function useAdminSettingWithDebouncedInput<T>(
   settingName: EnterpriseSettingKey,
   defaultValue: T | null = null,
 ) {
-  const { value: settingValue, updateSetting } = useAdminSetting(settingName);
-  // Unjustified type cast. FIXME
-  const [inputValue, setInputValue] = useState<T>(settingValue as T);
+  const {
+    value: settingValue,
+    isLoading,
+    updateSetting,
+  } = useAdminSetting(settingName);
   const { sendErrorToast } = useMetadataToasts();
 
-  // Local input state initialization
-  useEffect(() => {
-    if (
-      inputValue === undefined && // Input has not been initialized
-      settingValue !== undefined // and setting has been fetched
-    ) {
-      // Unjustified type cast. FIXME
-      setInputValue((settingValue || defaultValue) as T);
-    }
-  }, [defaultValue, inputValue, settingValue]);
+  const { inputValue, setInputValueFromUser } = useHydratedInput<T>({
+    // Unjustified type cast. FIXME
+    value: (settingValue ?? defaultValue) as T,
+    isLoading,
+  });
 
   const debouncedSaveSetting = useDebouncedCallback(async (value: T) => {
     const response = await updateSetting({
@@ -48,10 +47,10 @@ export function useAdminSettingWithDebouncedInput<T>(
 
   const handleInputChange = useCallback(
     (newValue: T) => {
-      setInputValue(newValue);
+      setInputValueFromUser(newValue);
       debouncedSaveSetting(newValue);
     },
-    [debouncedSaveSetting],
+    [setInputValueFromUser, debouncedSaveSetting],
   );
 
   return {
