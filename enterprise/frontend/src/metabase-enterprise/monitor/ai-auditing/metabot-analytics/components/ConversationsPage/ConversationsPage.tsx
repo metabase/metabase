@@ -2,13 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
 import { Flex } from "metabase/ui";
 
-import { useListMetabotAnalyticsConversationsQuery } from "../../api";
+import { useLazyListMetabotAnalyticsConversationsQuery } from "../../api";
 import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
@@ -36,7 +37,8 @@ export function ConversationsPage({ location }: WithRouterProps) {
     isLoading,
     isFetching,
     error,
-  } = useListMetabotAnalyticsConversationsQuery(
+  } = useAbortableQuery(
+    useLazyListMetabotAnalyticsConversationsQuery,
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
@@ -92,8 +94,12 @@ export function ConversationsPage({ location }: WithRouterProps) {
         {!isLoading && error == null && (
           <Flex justify="flex-end">
             <PaginationControls
-              onPreviousPage={() => patchUrlState({ page: page - 1 })}
-              onNextPage={() => patchUrlState({ page: page + 1 })}
+              onPreviousPage={() =>
+                patchUrlState({ page: page - 1 }, { immediate: true })
+              }
+              onNextPage={() =>
+                patchUrlState({ page: page + 1 }, { immediate: true })
+              }
               page={page}
               pageSize={PAGE_SIZE}
               itemsLength={conversations.length}

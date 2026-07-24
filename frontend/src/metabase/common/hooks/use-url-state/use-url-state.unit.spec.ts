@@ -114,6 +114,20 @@ describe("useUrlState", () => {
     });
   });
 
+  it("syncs the URL right away when patched with immediate: true", () => {
+    const location = createLocation("?name=abc&score=123");
+    const { result, history } = setup({ location });
+    const [_state, { patchUrlState }] = result.current;
+
+    act(() => {
+      patchUrlState({ score: 456 }, { immediate: true });
+    });
+
+    const [state] = result.current;
+    expect(state).toEqual({ name: "abc", score: 456 });
+    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
+  });
+
   it("removes query params", async () => {
     const location = createLocation("?name=abc&score=123");
     const { result, history } = setup({ location });

@@ -220,7 +220,9 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
                     hasPii={hasPii}
                     page={page}
                     total={count}
-                    onPageChange={(newPage) => patchUrlState({ page: newPage })}
+                    onPageChange={(newPage) =>
+                      patchUrlState({ page: newPage }, { immediate: true })
+                    }
                     sortingOptions={sortingOptions}
                     onSortingOptionsChange={(newSorting) =>
                       patchUrlState({

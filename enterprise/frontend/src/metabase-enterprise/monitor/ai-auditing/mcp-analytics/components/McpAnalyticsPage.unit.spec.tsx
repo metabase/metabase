@@ -313,6 +313,22 @@ describe("McpAnalyticsPage", () => {
     });
   });
 
+  it("updates the page URL param immediately when Next is clicked", async () => {
+    const { history } = setup({ dataset: multiPageDatasetResponse });
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    const pagination = await screen.findByRole("navigation", {
+      name: "pagination",
+    });
+    await userEvent.click(within(pagination).getByLabelText("Next page"));
+
+    expect(history?.getCurrentLocation().search).toContain("page=1");
+  });
+
   it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
     setup();
 

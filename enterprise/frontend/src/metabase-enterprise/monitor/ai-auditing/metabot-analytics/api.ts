@@ -50,6 +50,7 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListMetabotAnalyticsConversationsQuery,
+  useLazyListMetabotAnalyticsConversationsQuery,
   useGetMetabotAnalyticsConversationQuery,
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,

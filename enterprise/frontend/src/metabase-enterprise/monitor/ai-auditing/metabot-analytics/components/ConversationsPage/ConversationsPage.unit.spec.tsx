@@ -53,10 +53,13 @@ function createConversation(
   };
 }
 
-function setupEndpoints(conversations: ConversationSummary[]) {
+function setupEndpoints(
+  conversations: ConversationSummary[],
+  total = conversations.length,
+) {
   const response: ConversationsResponse = {
     data: conversations,
-    total: conversations.length,
+    total,
     limit: 25,
     offset: 0,
   };
@@ -67,13 +70,14 @@ function setupEndpoints(conversations: ConversationSummary[]) {
 
 function setup({
   conversations = [createConversation()],
-}: { conversations?: ConversationSummary[] } = {}) {
+  total,
+}: { conversations?: ConversationSummary[]; total?: number } = {}) {
   // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
   // for its virtualized rows to render. A wide viewport keeps every column
   // (there are nine) within the horizontal virtualizer's rendered range.
   mockGetBoundingClientRect({ width: 2000, height: 100 });
   setupEnterprisePlugins();
-  setupEndpoints(conversations);
+  setupEndpoints(conversations, total);
 
   return renderWithProviders(
     <Route path="/monitor/ai-auditing">
@@ -201,6 +205,18 @@ describe("ConversationsPage", () => {
     await waitFor(() => {
       expect(wasSortedBy("cache_read_tokens", "asc")).toBe(true);
     });
+  });
+
+  it("updates the page URL param immediately when Next is clicked", async () => {
+    const { history } = setup({
+      conversations: [createConversation()],
+      total: 100,
+    });
+
+    await screen.findByRole("treegrid", { name: "Conversations" });
+    await userEvent.click(screen.getByTestId("next-page-btn"));
+
+    expect(history?.getCurrentLocation().search).toContain("page=1");
   });
 
   it("renders the empty state when there are no conversations", async () => {
