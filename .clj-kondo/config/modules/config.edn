@@ -2182,6 +2182,7 @@
            dashboards
            documents
            embedding
+           entity-retrieval
            events
            lib
            lib.be
@@ -2615,6 +2616,7 @@
   {:team "Graphy"
    :api  #{metabase.segments.rest.api}
    :uses #{api
+           entity-retrieval
            events
            lib
            lib.be
@@ -3416,6 +3418,7 @@
            collections
            database-routing
            driver
+           entity-retrieval
            lib
            lib.be
            lib.metadata

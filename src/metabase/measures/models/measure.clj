@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.search.entity-retrieval.spec :as entity-retrieval.spec]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -278,6 +279,42 @@
                          [:= :collection.id [:case
                                              [:not= :settings.is_published nil] :settings.collection_id
                                              :else :table.collection_id]]]]}})
+
+;;;; -------------------------------------------- Library retrieval ----------------------------------------------------
+
+(defn- measure->index-docs
+  "The `:library-index` projection for a Measure: the shared doc derivation over the hydrated entity."
+  [measure]
+  (entity-retrieval.spec/library-index-docs measure))
+
+(defn- measure->llm-input
+  "The `:osi-context` projection for a Measure: the deterministic map handed to the generation prompt."
+  [measure]
+  ;; Complete v1 prompt projection. Future parent/query context may be added here without becoming a
+  ;; volatile basis invalidator.
+  {:entity-type "measure"
+   :name        (:name measure)
+   :description (:description measure)})
+
+(def ^:private library-measure-membership
+  ;; shared by both projections — :osi-context membership is fixed to :library-index's for v1.
+  ;; A measure is a library member iff its parent table is a current library table.
+  {:where      [:= :archived false]
+   :via-parent {:model :model/Table, :fk :table_id}})
+
+(entity-retrieval.spec/define-source :model/Measure
+  {:entity-type "measure"
+   :fields      [:id :name :description :table_id :archived]})
+
+(entity-retrieval.spec/define-projection :library-index :model/Measure
+  {:membership library-measure-membership
+   :project    #'measure->index-docs
+   :hydrate    {:ai-context #'entity-retrieval.spec/ai-context-by-entity}})
+
+(entity-retrieval.spec/define-projection :osi-context :model/Measure
+  {:membership library-measure-membership
+   :project    #'measure->llm-input
+   :basis      [:name :description]})
 
 ;;; ------------------------------------------------- Dimension Persistence --------------------------------------------------
 
