@@ -3154,7 +3154,8 @@
 
   enterprise/database-isolation
   {:team "Graphy"
-   :api  #{metabase-enterprise.database-isolation.provisioner}
+   :api  #{metabase-enterprise.database-isolation.core
+           metabase-enterprise.database-isolation.provisioner}
    :uses #{api
            driver
            models
@@ -3796,7 +3797,8 @@
            transforms
            transforms-base
            upload
-           util}
+           util
+           enterprise/database-isolation}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field

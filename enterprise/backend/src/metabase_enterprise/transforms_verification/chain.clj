@@ -15,6 +15,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.database-isolation.core :as isolation]
    [metabase-enterprise.transforms-verification.assertions :as assertions]
    [metabase-enterprise.transforms-verification.card-refs :as card-refs]
    [metabase-enterprise.transforms-verification.diff :as diff]
@@ -124,7 +125,7 @@
   self-elevate to the transform connection; the caller runs in ambient `:default`
   and owns dropping everything in those atoms."
   [{:keys [order leaf-deps db db-id driver schema fixtures-by-table-id id->transform
-           mapping* outputs*]}]
+           mapping* outputs* isolated?]}]
   (let [leaves      (leaf-table-infos leaf-deps)
         _           (inputs/match-fixtures leaves (set (keys fixtures-by-table-id)))
         seed-inputs (mapv (fn [{:keys [id columns] :as table-info}]
@@ -135,7 +136,11 @@
         nonce       (scratch/new-nonce)
         catalog     (driver.sql/db-slot-value driver db)]
     ;; Reap orphans left by prior runs that died before cleanup (JVM kill, timeout).
-    (scratch/sweep-old-test-tables! db-id db schema)
+    ;; Not in an isolation frame: there the scratch schema is a dedicated isolation
+    ;; the stale-isolation sweep GCs wholesale, and a live-schema prefix scan could
+    ;; race a concurrent run sharing the standing isolation.
+    (when-not isolated?
+      (scratch/sweep-old-test-tables! db-id db schema))
     (reset! mapping* (scratch/seed! db-id db schema seed-inputs nonce))
     (reduce
      (fn [acc node-id]
@@ -226,6 +231,13 @@
   scratch table in a `finally` — including partial state from a mid-slice
   failure (see [[run-slice!]]).
 
+  `opts` may carry `:isolation-id`, a `database-isolation` handle: the whole
+  run then executes inside `isolation/with-isolation` — every warehouse
+  connection resolves the confined isolation principal, and the scratch schema
+  is the isolation's dedicated schema, so a mis-targeted write is a DB-level
+  permission error underneath the app-side guards. An invalid id fails loud
+  before any warehouse work.
+
   `produce-actual` is called with `{:mapping :outputs :db-id :driver}` after the
   slice has run and must return
   `{:qp-result <QP result map> :output-sql <test_output SQL> :extra <map>}`;
@@ -236,15 +248,24 @@
         timeout-ms     (get opts :timeout-ms default-test-run-timeout-ms)
         ignore-cols    (get opts :ignore-columns #{})
         assertion-defs (get opts :assertions [])
+        isolation-id   (get opts :isolation-id)
+        schema         (if isolation-id (isolation/isolation-schema isolation-id) schema)
         _              (assert-single-database! slice id->transform db-id)
         db             (t2/select-one :model/Database :id db-id)
         driver         (keyword (:engine db))
         mapping*       (atom {})
-        outputs*       (atom {})]
+        outputs*       (atom {})
+        in-isolation   (fn [thunk]
+                         (if isolation-id
+                           (isolation/with-isolation isolation-id (thunk))
+                           (thunk)))]
     ;; Ambient scope stays at least-privilege :default (read) for the whole run;
     ;; the write seams (sweep, seed!, node CTAS, cleanup!) self-elevate to :transform.
     ;; The read-back, card query, and the user's assertion SQL — which must never
     ;; touch write-data credentials — run under the ambient default connection.
+    ;; Inside an isolation frame the elevation is inert: the frame's connection
+    ;; swap overrides every connection type's credentials with the confined
+    ;; principal's, so all scopes resolve the same (isolated) principal.
     ;;
     ;; One statement-level timeout for everything the run executes: the node
     ;; transforms, the read-back / card query, and the assertion queries. And one
@@ -252,46 +273,49 @@
     ;; assertions) — a mid-run settings flip must not mix backends.
     (sql-tools/with-parser-backend (sql-tools/parser-backend)
       (binding [driver.settings/*query-timeout-ms* timeout-ms]
-        (try
-          (let [{:keys [mapping outputs parser-backend]}
-                (run-slice! {:order                order
-                             :leaf-deps            leaf-deps
-                             :db                   db
-                             :db-id                db-id
-                             :driver               driver
-                             :schema               schema
-                             :fixtures-by-table-id fixtures-by-table-id
-                             :id->transform        id->transform
-                             :mapping*             mapping*
-                             :outputs*             outputs*})
-                {:keys [qp-result output-sql extra]}
-                (produce-actual {:mapping mapping :outputs outputs :db-id db-id :driver driver})
-                actual-cols (get-in qp-result [:data :cols])
-                actual-rows (get-in qp-result [:data :rows])
-                report      (when expected-csv-file
-                              (let [expected (fixtures/parse-fixture expected-csv-file
-                                                                     (execute/actual->schema actual-cols)
-                                                                     ignore-cols)]
-                                (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
-                ;; Run assertions while the scratch tables still exist: after
-                ;; produce-actual, before cleanup.
-                backend     (sql-tools/parser-backend)
-                assertion-results (assertions/run-assertions! db-id driver backend mapping output-sql assertion-defs)
-                overall     (assertions/overall-status (or (:status report) :passed)
-                                                       assertion-results)]
-            (merge {:status         overall
-                    :diff           report
-                    ;; nil, not [], when no assertions ran — the wire serializes null.
-                    :assertions     (not-empty assertion-results)
-                    :parser-backend parser-backend
-                    :order          order}
-                   extra))
-          (finally
-            ;; Drop node output scratch tables (one per slice node)...
-            (doseq [out-spec (vals @outputs*)]
-              (scratch/cleanup! db-id db {} out-spec))
-            ;; ...then the leaf input scratch tables.
-            (scratch/cleanup! db-id db @mapping* nil)))))))
+        (in-isolation
+         (fn []
+           (try
+             (let [{:keys [mapping outputs parser-backend]}
+                   (run-slice! {:order                order
+                                :leaf-deps            leaf-deps
+                                :db                   db
+                                :db-id                db-id
+                                :driver               driver
+                                :schema               schema
+                                :fixtures-by-table-id fixtures-by-table-id
+                                :id->transform        id->transform
+                                :mapping*             mapping*
+                                :outputs*             outputs*
+                                :isolated?            (some? isolation-id)})
+                   {:keys [qp-result output-sql extra]}
+                   (produce-actual {:mapping mapping :outputs outputs :db-id db-id :driver driver})
+                   actual-cols (get-in qp-result [:data :cols])
+                   actual-rows (get-in qp-result [:data :rows])
+                   report      (when expected-csv-file
+                                 (let [expected (fixtures/parse-fixture expected-csv-file
+                                                                        (execute/actual->schema actual-cols)
+                                                                        ignore-cols)]
+                                   (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
+                   ;; Run assertions while the scratch tables still exist: after
+                   ;; produce-actual, before cleanup.
+                   backend     (sql-tools/parser-backend)
+                   assertion-results (assertions/run-assertions! db-id driver backend mapping output-sql assertion-defs)
+                   overall     (assertions/overall-status (or (:status report) :passed)
+                                                          assertion-results)]
+               (merge {:status         overall
+                       :diff           report
+                       ;; nil, not [], when no assertions ran — the wire serializes null.
+                       :assertions     (not-empty assertion-results)
+                       :parser-backend parser-backend
+                       :order          order}
+                      extra))
+             (finally
+               ;; Drop node output scratch tables (one per slice node)...
+               (doseq [out-spec (vals @outputs*)]
+                 (scratch/cleanup! db-id db {} out-spec))
+               ;; ...then the leaf input scratch tables.
+               (scratch/cleanup! db-id db @mapping* nil)))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public entry points
@@ -330,8 +354,11 @@
   - `expected-csv-file`    — `java.io.File` or nil, the expected output of the target.
                              When nil, the diff is skipped and only assertions determine
                              the run status (requires `assertions` to be non-empty).
-  - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms> :assertions [...]}`.
+  - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms> :assertions [...]
+                             :isolation-id <id>}`.
     - `:assertions` — seq of `{:name :sql :severity}` maps (default `[]`).
+    - `:isolation-id` — optional `database-isolation` handle; the run then executes
+      inside the isolation frame (see [[run-test!]]).
   - `all-transforms`       — every `:model/Transform` row; one snapshot shared with
                              the caller's permission checks and slice resolution.
 
@@ -394,8 +421,11 @@
                              table id.
   - `expected-csv-file`    — `java.io.File` or nil, the expected output of the card.
                              When nil, only assertions determine the run status.
-  - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms> :assertions [...]}`.
+  - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms> :assertions [...]
+                             :isolation-id <id>}`.
     - `:assertions` — seq of `{:name :sql :severity}` maps (default `[]`).
+    - `:isolation-id` — optional `database-isolation` handle; the run then executes
+      inside the isolation frame (see [[run-test!]]).
   - `all-transforms`       — every `:model/Transform` row; one snapshot shared with
                              the caller's permission checks and slice resolution.
 

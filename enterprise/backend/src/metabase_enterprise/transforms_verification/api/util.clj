@@ -139,13 +139,18 @@
 
   Returns a map with:
   - `:ignore-columns` — set of column name strings (default `#{}`).
+  - `:isolation-id`   — database-isolation handle the run executes inside (optional).
 
-  Throws 400 on malformed JSON or unknown keys."
+  Throws 400 on malformed JSON, unknown keys, or a non-positive-int isolation_id."
   [options-part]
   (let [validate-keys! (fn [opts]
-                         (when-let [unknown (seq (remove #{:ignore_columns} (keys opts)))]
-                           (throw-400! (tru "Unknown option keys: {0}. Supported: ignore_columns." (pr-str unknown))
-                                       {:unknown-keys unknown})))]
+                         (when-let [unknown (seq (remove #{:ignore_columns :isolation_id} (keys opts)))]
+                           (throw-400! (tru "Unknown option keys: {0}. Supported: ignore_columns, isolation_id." (pr-str unknown))
+                                       {:unknown-keys unknown})))
+        validate-isolation-id! (fn [v]
+                                 (when-not (pos-int? v)
+                                   (throw-400! (tru "Option ''isolation_id'' must be a positive integer.")
+                                               {:isolation-id v})))]
     (if (nil? options-part)
       {}
       (let [opts (part->json options-part json/decode+kw
@@ -153,7 +158,10 @@
         (validate-keys! opts)
         (cond-> {}
           (:ignore_columns opts)
-          (assoc :ignore-columns (set (:ignore_columns opts))))))))
+          (assoc :ignore-columns (set (:ignore_columns opts)))
+
+          (contains? opts :isolation_id)
+          (assoc :isolation-id (doto (:isolation_id opts) validate-isolation-id!)))))))
 
 (defn- parse-assertion-entry
   [entry]

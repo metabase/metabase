@@ -103,6 +103,14 @@
         expected-file     (when expected-part (:tempfile expected-part))
         source-ids        (api-util/parse-source-ids (get multipart-params "sources"))
         fixtures-by-id    (api-util/parse-input-table-ids multipart-params #{"sources" "assertions"})
+        ;; TODO(GHY-4188 follow-up): the `options` `isolation_id` — a
+        ;; database-isolation handle the run executes inside — is optional for
+        ;; now. Once the consumer-side premium gate lands (likely
+        ;; :transform-verification), it slots in HERE: gate the endpoint on the
+        ;; feature and require a valid isolation id (provisioning one when
+        ;; absent) for drivers with an isolation impl, so no run can touch the
+        ;; warehouse outside a confined-principal frame. Deferred product
+        ;; decision — do not invent the feature flag ahead of it.
         opts              (assoc (api-util/parse-test-run-options (get multipart-params "options"))
                                  :assertions parsed-assertions)]
     (test-run-response
