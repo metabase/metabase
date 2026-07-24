@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
 
+import { useParams } from "metabase/router";
 import { Box } from "metabase/ui";
 
 import S from "./DataAppLayout.module.css";
 
 interface DataAppLayoutProps {
-  params: { name: string };
   children: ReactNode;
 }
 
-export function DataAppLayout({ params, children }: DataAppLayoutProps) {
-  const { name } = params;
+export function DataAppLayout({ children }: DataAppLayoutProps) {
+  const { name } = useParams<{ name: string }>();
 
   return (
     <Box className={S.root}>

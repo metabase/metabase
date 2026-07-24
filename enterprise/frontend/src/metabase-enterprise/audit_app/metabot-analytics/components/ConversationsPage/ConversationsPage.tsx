@@ -5,7 +5,7 @@ import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Card, Flex, Title } from "metabase/ui";
 
 import { useListMetabotAnalyticsConversationsQuery } from "../../api";
@@ -14,7 +14,8 @@ import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
 
-export function ConversationsPage({ location }: WithRouterProps) {
+export function ConversationsPage() {
+  const { location } = useRouter();
   const [
     { page, sort_column, sort_direction, date, user, group, tenant },
     { patchUrlState },

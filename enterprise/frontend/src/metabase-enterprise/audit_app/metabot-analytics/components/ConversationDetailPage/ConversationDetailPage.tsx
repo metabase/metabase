@@ -19,7 +19,7 @@ import type {
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
-import type { WithRouterProps } from "metabase/router";
+import { useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -46,8 +46,8 @@ import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
 
-export function ConversationDetailPage({ params }: WithRouterProps) {
-  const convoId = params.convoId;
+export function ConversationDetailPage() {
+  const { convoId = "" } = useParams();
 
   const {
     data: conversation,

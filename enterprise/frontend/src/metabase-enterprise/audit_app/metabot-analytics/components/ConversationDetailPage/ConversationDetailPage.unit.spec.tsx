@@ -6,14 +6,12 @@ import {
   setupPermissionMembershipEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { ConversationDetail, ConversationFeedback } from "../../types";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
-
-const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
 
 jest.mock("metabase/admin/ai/MetabotAdminLayout", () => ({
   MetabotAdminLayout: ({ children }: { children: React.ReactNode }) => children,
@@ -93,7 +91,7 @@ function setup(conversation: ConversationDetail) {
   return renderWithProviders(
     <Route
       path="/conversations/:convoId"
-      element={<RoutedConversationDetailPage />}
+      element={<ConversationDetailPage />}
     />,
     {
       withRouter: true,
