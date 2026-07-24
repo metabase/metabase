@@ -1,9 +1,7 @@
 (ns metabase.sql-tools.sqlglot.returned-columns-test
   "Tests for SQLGlot returned-columns implementation.
-   Ported from metabase.sql-tools.macaw.references-test.
 
-   Note: These tests verify that returned-columns produces correct output,
-   not that it matches Macaw's exact format. The key assertions are:
+   The key assertions are:
    - Correct column names
    - Correct column count
    - Type information when schema allows"

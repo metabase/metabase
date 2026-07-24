@@ -11,14 +11,14 @@
 (deftest with-operation-timing-success-test
   (testing "with-operation-timing increments counters on success"
     (mt/with-prometheus-system! [_ system]
-      (metrics/with-operation-timing [:macaw "returned-columns"]
+      (metrics/with-operation-timing [:sqlglot "returned-columns"]
         :ok)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-tools/operations-total
-                                                      {:parser "macaw" :operation "returned-columns"})))
+                                                      {:parser "sqlglot" :operation "returned-columns"})))
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-tools/operations-completed
-                                                      {:parser "macaw" :operation "returned-columns"})))
+                                                      {:parser "sqlglot" :operation "returned-columns"})))
       (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-sql-tools/operations-failed
-                                                      {:parser "macaw" :operation "returned-columns"}))))))
+                                                      {:parser "sqlglot" :operation "returned-columns"}))))))
 
 (deftest with-operation-timing-failure-test
   (testing "with-operation-timing increments failure counter on exception"
@@ -37,24 +37,24 @@
   (testing "with-operation-timing returns the body's value"
     (mt/with-prometheus-system! [_ _system]
       (is (= :result
-             (metrics/with-operation-timing [:macaw "simple-query?"]
+             (metrics/with-operation-timing [:sqlglot "simple-query?"]
                :result))))))
 
 (deftest with-operation-timing-duration-test
   (testing "with-operation-timing records duration in histogram"
     (mt/with-prometheus-system! [_ system]
-      (metrics/with-operation-timing [:macaw "replace-names"]
+      (metrics/with-operation-timing [:sqlglot "replace-names"]
         (Thread/sleep 10))
       (let [histogram-val (mt/metric-value system :metabase-sql-tools/operation-duration-ms
-                                           {:parser "macaw" :operation "replace-names"})]
+                                           {:parser "sqlglot" :operation "replace-names"})]
         (is (pos? (:sum histogram-val)))))))
 
 (deftest record-functions-test
   (testing "record-operation-start! increments operations-total"
     (mt/with-prometheus-system! [_ system]
-      (metrics/record-operation-start! :macaw "field-references")
+      (metrics/record-operation-start! :sqlglot "field-references")
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-tools/operations-total
-                                                      {:parser "macaw" :operation "field-references"})))))
+                                                      {:parser "sqlglot" :operation "field-references"})))))
   (testing "record-operation-completion! increments completed and observes duration"
     (mt/with-prometheus-system! [_ system]
       (metrics/record-operation-completion! :sqlglot "referenced-tables" 42)
@@ -64,11 +64,11 @@
                                                              {:parser "sqlglot" :operation "referenced-tables"}))))))
   (testing "record-operation-failure! increments failed and observes duration"
     (mt/with-prometheus-system! [_ system]
-      (metrics/record-operation-failure! :macaw "add-into-clause" 100)
+      (metrics/record-operation-failure! :sqlglot "add-into-clause" 100)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-tools/operations-failed
-                                                      {:parser "macaw" :operation "add-into-clause"})))
+                                                      {:parser "sqlglot" :operation "add-into-clause"})))
       (is (prometheus-test/approx= 100 (:sum (mt/metric-value system :metabase-sql-tools/operation-duration-ms
-                                                              {:parser "macaw" :operation "add-into-clause"})))))))
+                                                              {:parser "sqlglot" :operation "add-into-clause"})))))))
 
 (deftest pool-metrics-registered-test
   (testing "Pool metrics are registered in prometheus"

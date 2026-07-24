@@ -135,7 +135,7 @@
       [:card_ids [:sequential pos-int?]]]
   "Parse native query sources and return referenced tables and cards/models.
 
-    Uses Macaw to parse the SQL, resolves table names to IDs,
+    Parses the SQL, resolves table names to IDs,
     and returns permission-filtered tables with column metadata. Card and model
     references are extracted from native query template tags.
 

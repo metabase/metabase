@@ -6,9 +6,60 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
+
+;;; Schemas for the col-spec maps produced by field-references implementations and
+;;; consumed by [[resolve-field]].
+
+(mr/def ::single-column
+  [:map
+   [:type [:= :single-column]]
+   [:column :string]
+   [:source-columns [:sequential [:sequential [:ref ::col-spec]]]]
+   [:alias [:maybe :string]]])
+
+(mr/def ::all-columns
+  [:map
+   [:type [:= :all-columns]]
+   [:table [:map
+            [:table :string]
+            [:schema {:optional true} :string]
+            [:database {:optional true} :string]
+            [:table-alias {:optional true} :string]]]])
+
+(mr/def ::unknown-columns
+  [:map
+   [:type [:= :unknown-columns]]])
+
+(mr/def ::custom-field
+  [:map
+   [:type [:= :custom-field]]
+   [:alias [:maybe :string]]
+   [:used-fields [:set [:ref ::col-spec]]]])
+
+(mr/def ::composite-field
+  [:map
+   [:type [:= :composite-field]]
+   [:alias [:maybe :string]]
+   [:member-fields [:sequential ::col-spec]]])
+
+(mr/def ::col-spec
+  [:multi {:dispatch :type}
+   [:single-column [:ref ::single-column]]
+   [:all-columns [:ref ::all-columns]]
+   [:unknown-columns [:ref ::unknown-columns]]
+   [:custom-field [:ref ::custom-field]]
+   [:composite-field [:ref ::composite-field]]])
+
+(mr/def ::field-references
+  [:map
+   [:used-fields [:set [:ref ::col-spec]]]
+   [:returned-fields [:sequential [:ref ::col-spec]]]
+   [:errors [:set [:ref ::lib.schema.validate/error]]]])
 
 (defn normalize-name
   "Normalize a name by per driver rules."
@@ -59,8 +110,8 @@
 (defmulti resolve-field
   "Resolves a field reference to one or more actual database fields.
 
-  This uses a supplied metadata provider instead of hitting the db directly.  'Field reference' refers to the field
-  references returned by sql-tools.macaw.references/field-references.
+  This uses a supplied metadata provider instead of hitting the db directly.  'Field reference' refers to the
+  col-spec maps returned by field-references implementations (see the `::col-spec` schema).
 
   Note: this currently sets :lib/desired-column-alias but no other :lib/* fields, because the callers of this function
   don't need the other fields.  If we care about other :lib/* fields in the future, we can add them then."
@@ -89,7 +140,7 @@
                          ;; column in both the inner query and the outer query, the column from the inner
                          ;; query will be preferred.  However, if blah doesn't refer to something in the
                          ;; inner query, it can also refer to something in the outer query.
-                         ;; sql-tools.macaw.references/field-references organizes source-cols into a list of lists
+                         ;; field-references implementations organize source-cols into a list of lists
                          ;; to account for this.
                          (->> (mapcat (fn [current-col]
                                         ;; :unknown-columns is a placeholder for "we know there are columns being

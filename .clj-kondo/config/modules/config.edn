@@ -2231,7 +2231,6 @@
            analytics-interface
            driver
            lib
-           settings
            sql-parsing
            util}}
 

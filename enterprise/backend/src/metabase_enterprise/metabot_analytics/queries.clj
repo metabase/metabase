@@ -23,7 +23,7 @@
       (or (:structured_output output) (:structured-output output)))))
 
 (defn- referenced-table-names
-  "Use Macaw to extract distinct referenced table names from a SQL string.
+  "Extract distinct referenced table names from a SQL string using sql-tools.
   Returns `[]` on parse failure or when the database id can't be resolved
   to a driver — we degrade gracefully so the SQL still renders without a
   Tables line."

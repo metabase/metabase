@@ -65,7 +65,7 @@
                               :schema (or table-schema default-schema)}))))
             query-tables))
     (catch Exception e
-      ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
+      ;; Return empty set on parse error rather than propagating it.
       (if (sql-parsing/parse-error? e)
         #{}
         (throw e)))))
@@ -77,13 +77,12 @@
 ;;;; field-references
 
 (def ^:private ^:const normalizable-keys
-  "Keys that should have their string values normalized for case.
-   Matches Macaw's col-fields which normalizes [:type :column :table :schema :database :alias]."
+  "Keys whose string values are SQL identifiers and should be normalized for case."
   #{:type :column :table :schema :database :alias})
 
 (defn- normalize-field
   "Normalize identifier strings in a field spec using driver-specific case rules.
-   Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields."
+   Only normalizes the identifier keys (column, table, schema, etc.)."
   [driver field]
   (if (map? field)
     (reduce-kv (fn [m k v]
@@ -121,15 +120,13 @@
   (sql-tools.common/referenced-fields parser driver query))
 
 ;;;; Validation
-;; SQLGlot validation uses the same pipeline as Macaw:
-;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
+;; Pipeline: field-references (dispatched to :sqlglot) → resolve-field
 (defmethod sql-tools/validate-query-impl :sqlglot
   [parser driver query]
   (sql-tools.common/validate-query parser driver query))
 
 ;;;; returned-columns
-;; SQLGlot returned-columns uses the same pipeline as Macaw:
-;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
+;; Pipeline: field-references (dispatched to :sqlglot) → resolve-field
 (defmethod sql-tools/returned-columns-impl :sqlglot
   [parser driver query]
   (sql-tools.common/returned-columns parser driver query))
@@ -144,13 +141,12 @@
           ;; (e.g., uppercase for Snowflake, lowercase for Postgres). Additional normalization
           ;; via normalize-table-spec would incorrectly lowercase Snowflake identifiers, breaking
           ;; AppDB lookups where identifiers are stored in their native case.
-          ;; This matches the Macaw implementation which also returns raw identifiers.
           table-tuples (sql-parsing/referenced-tables dialect sql-str)]
       (mapv (fn [[_catalog schema table]]
               {:schema schema :table table})
             table-tuples))
     (catch Exception e
-      ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
+      ;; Return empty sequence on parse error rather than propagating it.
       (if (sql-parsing/parse-error? e)
         []
         (throw e)))))
