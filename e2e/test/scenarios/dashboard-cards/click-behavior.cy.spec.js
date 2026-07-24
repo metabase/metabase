@@ -3009,9 +3009,15 @@ function getClickMapping(columnName) {
 // Applying a mapping re-renders the unset-mappings list; without this barrier the
 // next index-based lookup (.first()/.last()/.eq()) can resolve mid-re-render and
 // land on the wrong target, producing a stable-but-wrong filter set.
+//
+// The barrier scopes to the *visible* popover: a bare
+// `cy.get(POPOVER_ELEMENT).should("not.exist")` never settles here because the
+// click-behavior sidebar keeps ~60 mantine popover/combobox dropdowns
+// mounted-but-hidden, so they are "continuously found" in the DOM. Filtering to
+// `:visible` leaves only the open source picker, which disappears once selected.
 function selectClickMappingSource(sourceName) {
   H.popover().findByText(sourceName).click();
-  cy.get(H.POPOVER_ELEMENT).should("not.exist");
+  cy.get(H.POPOVER_ELEMENT).filter(":visible").should("not.exist");
 }
 
 function verifyAvailableClickTargetColumns(columns) {
