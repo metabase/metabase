@@ -101,6 +101,20 @@
     (is (true? (transforms-base.u/full-incremental-run?
                 {:target {:type :table-incremental} :last_checkpoint_value nil})))))
 
+(deftest ^:parallel supported-incremental-filter-type?-test
+  (testing "numeric and date/datetime types are supported"
+    (is (transforms-base.u/supported-incremental-filter-type? :type/Integer))
+    (is (transforms-base.u/supported-incremental-filter-type? :type/Float))
+    (is (transforms-base.u/supported-incremental-filter-type? :type/Date))
+    (is (transforms-base.u/supported-incremental-filter-type? :type/DateTime))
+    (is (transforms-base.u/supported-incremental-filter-type? :type/DateTimeWithTZ))
+    (is (transforms-base.u/supported-incremental-filter-type? :type/Instant)))
+  (testing "time-only and non-orderable types are not"
+    (is (not (transforms-base.u/supported-incremental-filter-type? :type/Time)))
+    (is (not (transforms-base.u/supported-incremental-filter-type? :type/TimeWithTZ)))
+    (is (not (transforms-base.u/supported-incremental-filter-type? :type/Text)))
+    (is (not (transforms-base.u/supported-incremental-filter-type? :type/Boolean)))))
+
 (deftest ^:parallel apply-lookback-test
   (let [apply-lookback @#'transforms-base.u/apply-lookback]
     (testing "temporal checkpoints are pushed back by value units"

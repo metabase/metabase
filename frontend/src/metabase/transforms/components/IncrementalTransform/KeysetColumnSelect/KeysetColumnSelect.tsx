@@ -39,7 +39,11 @@ export function getSourceFieldOptions(
   const options: Array<SelectOption> = [];
 
   for (const column of sourceColumns) {
-    if (!Lib.isNumeric(column) && !Lib.isTemporal(column)) {
+    // Numeric or date/datetime only — time-only columns are excluded since their
+    // watermarks wrap at midnight
+    const isSupported =
+      (Lib.isNumeric(column) || Lib.isTemporal(column)) && !Lib.isTime(column);
+    if (!isSupported) {
       continue;
     }
 

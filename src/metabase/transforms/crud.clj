@@ -64,6 +64,11 @@
       (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
                      (deferred-tru "A target schema is required for this database.")))))
 
+(defn- field->column
+  "Adapt a t2 Field row to the kebab-case column shape `lib.types.isa` predicates expect."
+  [field]
+  {:base-type (:base_type field), :effective-type (:effective_type field)})
+
 (defn validate-incremental-column-type!
   "Validates that the checkpoint column for an incremental transform has a supported type.
 
@@ -74,10 +79,11 @@
     (let [checkpoint-filter-field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
           field (t2/select-one :model/Field checkpoint-filter-field-id)]
       (api/check-400 field (deferred-tru "Checkpoint field not found."))
-      (api/check-400 (transforms-base.u/supported-incremental-filter-type? (:base_type field))
-                     (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
-                                   (:name field)
-                                   (pr-str (:base_type field)))))))
+      (let [checkpoint-type (lib.types.isa/column-type (field->column field))]
+        (api/check-400 (transforms-base.u/supported-incremental-filter-type? checkpoint-type)
+                       (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
+                                     (:name field)
+                                     (pr-str checkpoint-type)))))))
 
 (defn validate-lookback!
   "Validates a configured lookback window: only date and datetime checkpoint columns support one
@@ -86,7 +92,7 @@
   (let [{:keys [lookback checkpoint-filter-field-id]} (:source-incremental-strategy source)]
     (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform) lookback)]
       (when-let [field (t2/select-one :model/Field checkpoint-filter-field-id)]
-        (let [column {:base-type (:base_type field), :effective-type (:effective_type field)}]
+        (let [column (field->column field)]
           (api/check-400 (lib.types.isa/date-or-datetime? column)
                          (deferred-tru "A lookback window is only supported for date or datetime checkpoint columns."))
           (when (lib.types.isa/date-without-time? column)

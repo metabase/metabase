@@ -241,9 +241,11 @@
 (defn supported-incremental-filter-type?
   "Returns true if the given base-type is supported for incremental filtering.
 
-  We only support temporal (timestamp/tz) and numeric (int/float) types."
+  We support date/datetime and numeric (int/float) types. Time-only columns are excluded:
+  their watermarks wrap at midnight, so `>` comparisons against them are meaningless."
   [base-type]
-  (or (isa? base-type :type/Temporal)
+  (or (and (isa? base-type :type/Temporal)
+           (not (isa? base-type :type/Time)))
       (isa? base-type :type/Number)))
 
 (defn- encode-checkpoint-value [v]
