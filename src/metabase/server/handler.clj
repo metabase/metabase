@@ -7,6 +7,7 @@
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
    [metabase.server.middleware.exceptions :as mw.exceptions]
+   [metabase.server.middleware.ip-allowlist :as mw.ip-allowlist]
    [metabase.server.middleware.json :as mw.json]
    [metabase.server.middleware.log :as mw.log]
    [metabase.server.middleware.metadata-provider-cache :as mw.mp-cache]
@@ -108,6 +109,7 @@
         #'wrap-gzip                                  ; GZIP response if client can handle it
         #'mw.trace/wrap-trace                         ; Create root OpenTelemetry span per request (after request-id is available)
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
+        #'mw.ip-allowlist/wrap-ip-allowlist          ; reject requests from IPs not in the allowlist
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
