@@ -3011,7 +3011,7 @@ function getClickMapping(columnName) {
 // land on the wrong target, producing a stable-but-wrong filter set.
 function selectClickMappingSource(sourceName) {
   H.popover().findByText(sourceName).click();
-  H.popover().should("not.exist");
+  cy.get(H.POPOVER_ELEMENT).should("not.exist");
 }
 
 function verifyAvailableClickTargetColumns(columns) {
