@@ -421,12 +421,18 @@
           (testing "ensure upsert! and delete! don't realize the full reducible at once"
             (semantic.tu/check-index-has-no-mock-docs)
             (testing "upsert-index!"
-              (with-redefs [semantic.index/upsert-index-pooled! (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
+              ;; This function is invoked by an index worker thread; dynamic redefs would not propagate to it.
+              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+              (with-redefs [semantic.index/upsert-index-pooled!
+                            (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
                 (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
               (semantic.tu/check-index-has-mock-card))
             (reset! realized 0)
             (testing "delete-from-index!"
-              (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
+              ;; This function is invoked by an index worker thread; dynamic redefs would not propagate to it.
+              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+              (with-redefs [semantic.index/delete-from-index-batch-sql
+                            (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
                 (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs)))))
               (semantic.tu/check-index-has-no-mock-docs))))))))
 
@@ -450,6 +456,8 @@
                 update-fn      @#'semantic.index/upsert-index-batch!
                 docs          (take 100 (map-indexed (fn [i doc] (assoc doc :id (str i)))
                                                      (cycle (semantic.tu/mock-documents))))]
+            ;; This function is invoked by multiple index worker threads; dynamic redefs would not propagate to them.
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [semantic.index/upsert-index-batch! (track-concurrency
                                                               max-concurrent
                                                               (fn [& args] (apply update-fn args)))]
@@ -532,6 +540,8 @@
     (binding [semantic.index/*batch-size* batch-size]
       (let [{:keys [calls proxy]} (semantic.tu/spy semantic.embedding/process-embeddings-streaming)
             inter-batch-cache-hit? (atom false)]
+        ;; These functions are invoked by the embedding worker; dynamic redefs would not propagate to it.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [semantic.embedding/process-embeddings-streaming proxy
                       semantic.index/partition-existing-embeddings
                       (let [orig @#'semantic.index/partition-existing-embeddings]

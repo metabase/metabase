@@ -151,7 +151,7 @@
       (testing "is only a proxy for the active index call"
         (let [{:keys [proxy calls]} (semantic.tu/spy semantic.index/upsert-index!)
               documents (semantic.tu/mock-documents)]
-          (with-redefs [semantic.index/upsert-index! proxy]
+          (mt/with-dynamic-fn-redefs [semantic.index/upsert-index! proxy]
             (testing "check proxies correct args and ret is untouched"
               (let [ret (sut pgvector index-metadata documents)]
                 (is (= [{:args [pgvector @index-ref documents]
@@ -181,7 +181,7 @@
       (testing "is only a proxy for the active index call"
         (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
         (let [{:keys [calls proxy]} (semantic.tu/spy semantic.index/delete-from-index!)]
-          (with-redefs [semantic.index/delete-from-index! proxy]
+          (mt/with-dynamic-fn-redefs [semantic.index/delete-from-index! proxy]
             (testing "check proxies correct args and ret is untouched"
               (let [ret1 (sut pgvector index-metadata dash dash-ids)
                     ret2 (sut pgvector index-metadata card card-ids)

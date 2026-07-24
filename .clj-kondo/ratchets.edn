@@ -22,7 +22,7 @@
                  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 14
                  :metabase/modules                                                    8
                  :metabase/namespace-name                                             4
-                 :metabase/prefer-with-dynamic-fn-redefs                              25
+                 :metabase/prefer-with-dynamic-fn-redefs                              29
                  :metabase/test-helpers-use-non-thread-safe-functions                 17
                  :metabase/validate-defendpoint-has-response-schema                   441
                  :metabase/validate-defendpoint-query-params-use-kebab-case           40
