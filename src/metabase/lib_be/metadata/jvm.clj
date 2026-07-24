@@ -22,6 +22,7 @@
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -533,16 +534,35 @@
      {}
      where-clauses)))
 
+(def ^:private metadata-type->workspace-model
+  "Metadata types whose by-ID fetches go through workspace copy-on-write remapping."
+  {:metadata/card                 :model/Card
+   :metadata/segment              :model/Segment
+   :metadata/measure              :model/Measure
+   :metadata/native-query-snippet :model/NativeQuerySnippet})
+
 (mu/defn- metadatas
-  [database-id                                  :- ::lib.schema.id/database
-   {metadata-type :lib/type, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
-  (let [query (metadata-spec->honey-sql database-id metadata-spec)]
-    (lib.util/recover
-     (fn [] (t2/select metadata-type query))
-     (fn [e]
-       (throw (ex-info "Error fetching metadata with spec"
-                       {:metadata-spec metadata-spec, :query query}
-                       e))))))
+  [database-id                                         :- ::lib.schema.id/database
+   {metadata-type :lib/type, id-set :id, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  ;; When the current user has an active workspace, by-ID reads of cards/segments/measures are
+  ;; served from the workspace's copy-on-write targets, presented under the requested source IDs
+  ;; so query references stay stable.
+  (let [id->target     (when-let [model (and id-set (metadata-type->workspace-model metadata-type))]
+                         (not-empty (workspaces/remapped-entity-ids model id-set)))
+        metadata-spec  (cond-> metadata-spec
+                         id->target (assoc :id (into #{} (map #(id->target % %)) id-set)))
+        query          (metadata-spec->honey-sql database-id metadata-spec)
+        results        (lib.util/recover
+                        (fn [] (t2/select metadata-type query))
+                        (fn [e]
+                          (throw (ex-info "Error fetching metadata with spec"
+                                          {:metadata-spec metadata-spec, :query query}
+                                          e))))]
+    (if-let [target->source (some->> id->target (into {} (map (juxt val key))))]
+      (mapv (fn [instance]
+              (update instance :id #(get target->source % %)))
+            results)
+      results)))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider

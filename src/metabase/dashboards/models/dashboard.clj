@@ -33,6 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -577,3 +578,38 @@
             (when (contains? (:collection-ids args) nil)
               [:is :report_dashboard.collection_id nil])
             [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/Dashboard
+  [_model id]
+  ;; Shallow deep-copy: the dashboard row plus its tabs, dashcards, and series, with
+  ;; dashcards still pointing at the source card ids (cards get their own workspace copies
+  ;; when edited).
+  (t2/with-transaction [_conn]
+    (let [dash        (t2/select-one :model/Dashboard :id id)
+          new-dash-id (t2/insert-returning-pk!
+                       :model/Dashboard
+                       (-> (select-keys dash [:name :description :parameters :collection_id
+                                              :cache_ttl :width :auto_apply_filters :archived])
+                           (assoc :creator_id api/*current-user-id*)))
+          tab-id->new (into {}
+                            (for [tab (t2/select :model/DashboardTab :dashboard_id id
+                                                 {:order-by [[:position :asc]]})]
+                              [(:id tab) (t2/insert-returning-pk!
+                                          :model/DashboardTab
+                                          (-> (select-keys tab [:name :position])
+                                              (assoc :dashboard_id new-dash-id)))]))]
+      (doseq [dashcard (t2/select :model/DashboardCard :dashboard_id id)]
+        (let [new-dashcard-id (t2/insert-returning-pk!
+                               :model/DashboardCard
+                               (-> (select-keys dashcard [:card_id :action_id :row :col :size_x :size_y
+                                                          :parameter_mappings :visualization_settings
+                                                          :inline_parameters])
+                                   (assoc :dashboard_id new-dash-id
+                                          :dashboard_tab_id (get tab-id->new (:dashboard_tab_id dashcard)))))]
+          (doseq [series (t2/select :model/DashboardCardSeries :dashboardcard_id (:id dashcard))]
+            (t2/insert! :model/DashboardCardSeries
+                        (-> (select-keys series [:card_id :position])
+                            (assoc :dashboardcard_id new-dashcard-id))))))
+      new-dash-id)))

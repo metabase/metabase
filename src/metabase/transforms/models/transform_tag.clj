@@ -6,6 +6,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.transforms.models.transform :as transform]
    [metabase.util.i18n :as i18n]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -132,3 +133,12 @@
 (t2/define-before-delete :model/TransformTag [tag]
   (events/publish-event! :event/transform-tag-delete {:object tag})
   tag)
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/TransformTag
+  [_model id]
+  ;; TransformTag has no `creator_id` column, so insert directly instead of using
+  ;; `workspaces/clone-row!`. `str` materializes the translated name of built-in tags.
+  (let [source (t2/select-one :model/TransformTag :id id)]
+    (t2/insert-returning-pk! :model/TransformTag {:name (str (:name source))})))

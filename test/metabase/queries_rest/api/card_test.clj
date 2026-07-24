@@ -45,6 +45,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.workspaces.test-util :as workspaces.tu]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -5269,3 +5270,100 @@
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (is (= [[9]] (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id outer)))))))))))))
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defn- ws-count-query
+  "Legacy-MBQL count aggregation over `table-kw` — 100 rows for :venues, 75 for :categories."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/aggregate (lib/count))
+        lib/->legacy-MBQL)))
+
+(defn- ws-source-card-query
+  "Legacy-MBQL passthrough query on `card-id` as a source card."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/card mp card-id))
+        lib/->legacy-MBQL)))
+
+(deftest workspace-card-copy-on-write-test
+  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Card card {:name "A" :dataset_query (ws-count-query :venues)}]
+        (let [card-url (str "card/" (:id card))]
+          (workspaces.tu/in-workspace (:id ws)
+                                      (testing "PUT in a workspace clones the card and presents the clone under the main id"
+                                        (let [updated (mt/user-http-request :crowberto :put 200 card-url {:name "A (ws)"})]
+                                          (is (= (:id card) (:id updated)))
+                                          (is (= "A (ws)" (:name updated)))))
+                                      (testing "main is untouched"
+                                        (is (= "A" (t2/select-one-fn :name :model/Card :id (:id card)))))
+                                      (testing "GET in the workspace shows the copy under the main id"
+                                        (is (= "A (ws)" (:name (mt/user-http-request :crowberto :get 200 card-url)))))
+                                      (testing "another user without the workspace still sees main"
+                                        (is (= "A" (:name (mt/user-http-request :rasta :get 200 card-url))))))
+          (testing "with the workspace deactivated, everything is main again"
+            (is (= "A" (:name (mt/user-http-request :crowberto :get 200 card-url))))))))))
+
+(deftest workspace-query-remapping-test
+  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Card card-a {:name "A" :dataset_query (ws-count-query :venues)}
+                     :model/Card card-b {:name "B" :dataset_query (ws-source-card-query (:id card-a))}]
+        (let [run-b (fn [user] (-> (mt/user-http-request user :post 202 (format "card/%d/query" (:id card-b)))
+                                   mt/rows first first))]
+          (testing "baseline: B counts venues through A"
+            (is (= 100 (run-b :crowberto))))
+          (workspaces.tu/in-workspace (:id ws)
+                                      (testing "editing A in the workspace changes what B sees there"
+                                        (mt/user-http-request :crowberto :put 200 (str "card/" (:id card-a))
+                                                              {:dataset_query (ws-count-query :categories)})
+                                        (is (= 75 (run-b :crowberto)) "in the workspace, B resolves A to its workspace copy")
+                                        (is (= 100 (run-b :rasta)) "without the workspace, B still sees the main A"))
+                                      (testing "ad-hoc /dataset queries remap in the workspace too"
+                                        (is (= 75 (-> (mt/user-http-request :crowberto :post 202 "dataset"
+                                                                            (ws-source-card-query (:id card-a)))
+                                                      mt/rows first first)))))
+          (testing "with the workspace deactivated everything is main again"
+            (is (= 100 (run-b :crowberto)))))))))
+
+(deftest workspace-create-and-delete-test
+  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+    (mt/with-model-cleanup [:model/Card]
+      (testing "POST in a workspace registers the new entity as workspace-owned"
+        (workspaces.tu/in-workspace (:id ws)
+                                    (let [created (mt/user-http-request :crowberto :post 200 "card"
+                                                                        {:name                   "born in workspace"
+                                                                         :dataset_query          (ws-count-query :venues)
+                                                                         :display                "table"
+                                                                         :visualization_settings {}})]
+                                      (is (=? {:workspace_id     (:id ws)
+                                               :source_entity_id (:id created)
+                                               :target_entity_id (:id created)}
+                                              (t2/select-one :model/WorkspaceEntityRemapping
+                                                             :entity_type :model/Card
+                                                             :source_entity_id (:id created))))
+                                      (testing "DELETE in the workspace removes the row and its remapping"
+                                        (mt/user-http-request :crowberto :delete 204 (str "card/" (:id created)))
+                                        (is (nil? (t2/select-one :model/Card :id (:id created))))
+                                        (is (nil? (t2/select-one :model/WorkspaceEntityRemapping
+                                                                 :entity_type :model/Card
+                                                                 :source_entity_id (:id created))))))))
+      (testing "DELETE of a shadowed card in a workspace deletes the copy, not main"
+        (mt/with-temp [:model/Card card {:name "A" :dataset_query (ws-count-query :venues)}]
+          (workspaces.tu/in-workspace (:id ws)
+                                      (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:name "A (ws)"})
+                                      (let [copy-id (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
+                                                                      :workspace_id (:id ws)
+                                                                      :entity_type :model/Card
+                                                                      :source_entity_id (:id card))]
+                                        (mt/user-http-request :crowberto :delete 204 (str "card/" (:id card)))
+                                        (is (nil? (t2/select-one :model/Card :id copy-id)) "workspace copy is gone")
+                                        (is (some? (t2/select-one :model/Card :id (:id card))) "main row survives")
+                                        (is (nil? (t2/select-one :model/WorkspaceEntityRemapping
+                                                                 :workspace_id (:id ws)
+                                                                 :entity_type :model/Card
+                                                                 :source_entity_id (:id card)))
+                                            "remapping row is cleaned up"))))))))

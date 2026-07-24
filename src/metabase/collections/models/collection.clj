@@ -26,6 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -2493,3 +2494,15 @@
   "Return all collections in the given namespace."
   [namespace]
   (t2/select :model/Collection :namespace (name namespace)))
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/Collection
+  [_model id]
+  ;; Collection has no `creator_id` column, so insert directly instead of using
+  ;; `workspaces/clone-row!`. `:slug` is recomputed by the before-insert hook, and
+  ;; `:is_remote_synced` is copied so the remote-synced-parent check keeps passing.
+  (let [source (t2/select-one :model/Collection :id id)]
+    (t2/insert-returning-pk! :model/Collection
+                             (select-keys source [:name :description :namespace :authority_level
+                                                  :location :archived :is_remote_synced]))))

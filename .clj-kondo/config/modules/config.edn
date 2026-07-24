@@ -599,7 +599,8 @@
            premium-features
            remote-sync
            search
-           util}
+           util
+           workspaces}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
@@ -637,7 +638,8 @@
            tracing
            transforms
            upload
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -726,7 +728,8 @@
            settings
            staleness
            sync
-           util}
+           util
+           workspaces}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -768,6 +771,7 @@
            request
            revisions
            util
+           workspaces
            xrays}
    :model-imports #{:model/Card
                     :model/Collection
@@ -825,7 +829,8 @@
            revisions
            search
            util
-           view-log}
+           view-log
+           workspaces}
    :model-exports #{:model/Document}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1174,7 +1179,8 @@
    :uses #{lib
            models
            settings
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Dimension
@@ -1286,7 +1292,8 @@
            permissions
            remote-sync
            search
-           util}
+           util
+           workspaces}
    :model-exports #{:model/Measure}
    :model-imports #{:model/Collection :model/Table :model/User}}
 
@@ -1470,7 +1477,8 @@
            permissions
            premium-features
            remote-sync
-           util}
+           util
+           workspaces}
    :model-exports #{:model/NativeQuerySnippet}
    :model-imports #{:model/Collection :model/User}}
 
@@ -1572,7 +1580,8 @@
            models
            query-processor
            util
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -1792,7 +1801,8 @@
            sync
            util
            view-log
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :model-exports #{:model/Card
                     :model/Query
                     :model/QueryExecution
@@ -1833,7 +1843,8 @@
            request
            revisions
            search
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
@@ -2063,6 +2074,7 @@
            remote-sync
            search
            util
+           workspaces
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
@@ -2390,8 +2402,9 @@
            collections
            events
            models
-           util}
-   :model-exports #{:model/Timeline}
+           util
+           workspaces}
+   :model-exports #{:model/Timeline :model/TimelineEvent}
    :model-imports #{:model/Collection :model/User}}
 
   tracing
@@ -2436,7 +2449,8 @@
            task-history
            tracing
            transforms-base
-           util}
+           util
+           workspaces}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2495,7 +2509,8 @@
            request
            transforms
            transforms-base
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
@@ -2814,7 +2829,22 @@
            models
            premium-features
            util}
-   :model-exports #{:model/Workspace}}
+   :model-exports #{:model/Workspace}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/Document
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/PythonLibrary
+                    :model/Segment
+                    :model/Timeline
+                    :model/TimelineEvent
+                    :model/Transform
+                    :model/TransformTag}}
 
   xrays
   {:team "Graphy"

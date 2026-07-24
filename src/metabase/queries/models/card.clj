@@ -49,6 +49,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -1615,3 +1616,14 @@
             (when (contains? (:collection-ids args) nil)
               [:is :report_card.collection_id nil])
             [:in :report_card.collection_id (-> args :collection-ids)]]]})
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/Card
+  [_model id]
+  (let [source (t2/select-one :model/Card :id id)]
+    (:id (create-card! (select-keys source
+                                    [:name :description :display :dataset_query :visualization_settings
+                                     :type :parameters :parameter_mappings :collection_id :database_id
+                                     :table_id :query_type :result_metadata :cache_ttl])
+                       @api/*current-user*))))

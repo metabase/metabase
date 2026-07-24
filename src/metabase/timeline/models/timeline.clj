@@ -1,9 +1,11 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -64,3 +66,22 @@
                :creator_id    (serdes/fk :model/User)
                :events        (serdes/nested :model/TimelineEvent :timeline_id (merge {:sort-by (juxt :name :created_at)} opts))}
    :defaults  {:archived false :default false}})
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/Timeline
+  [_model id]
+  ;; Deep copy: the timeline row plus its events. Events are inlined children (like dashboard
+  ;; cards) — they get fresh rows pointing at the new timeline, with no remapping of their own.
+  (t2/with-transaction [_conn]
+    (let [timeline  (t2/select-one :model/Timeline :id id)
+          new-tl-id (t2/insert-returning-pk!
+                     :model/Timeline
+                     (-> (select-keys timeline [:name :description :icon :collection_id :archived :default])
+                         (assoc :creator_id api/*current-user-id*)))]
+      (doseq [event (t2/select :model/TimelineEvent :timeline_id id)]
+        (t2/insert! :model/TimelineEvent
+                    (-> (select-keys event [:name :description :timestamp :time_matters :timezone :icon :archived])
+                        (assoc :timeline_id new-tl-id
+                               :creator_id  api/*current-user-id*))))
+      new-tl-id)))

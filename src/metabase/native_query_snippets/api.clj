@@ -11,6 +11,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -50,7 +51,8 @@
   "Fetch native query snippet with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (get-native-query-snippet id))
+  (-> (get-native-query-snippet (workspaces/remapped-entity-id :model/NativeQuerySnippet id))
+      (workspaces/with-source-entity-id id)))
 
 (defn- check-snippet-name-is-unique [snippet-name]
   (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
@@ -77,7 +79,8 @@
                  :name          name
                  :collection_id collection_id}]
     (api/create-check :model/NativeQuerySnippet snippet)
-    (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
+    (u/prog1 (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))
+      (workspaces/add-remapping! :model/NativeQuerySnippet (:id <>) (:id <>)))))
 
 (defn- check-perms-and-update-snippet!
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
@@ -112,4 +115,5 @@
             [:description   {:optional true} [:maybe :string]]
             [:name          {:optional true} [:maybe native-query-snippet/NativeQuerySnippetName]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-perms-and-update-snippet! id body))
+  (-> (check-perms-and-update-snippet! (workspaces/ensure-workspace-copy! :model/NativeQuerySnippet id) body)
+      (workspaces/with-source-entity-id id)))
