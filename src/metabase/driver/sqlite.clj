@@ -203,7 +203,17 @@
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
 
-(defmethod sql.qp/date [:sqlite :default] [_driver _unit expr] expr)
+;; SQLite stores datetimes as text and the QP wraps datetime literals in `DATETIME(...)` (space-separated),
+;; so raw column reads (T-separated) don't compare equal to those literals. Wrap only when we can
+;; confirm the expr is a table-level datetime column (via its `:database-type`) so both sides
+;; normalize to the same canonical form. Nested-query outer refs lose `:database-type`; leaving them
+;; alone avoids widening `DATE(...)`-typed inner projections to datetime, and keeps value-side date/time
+;; literals from being wrapped in `DATETIME(DATE(...))` or `DATETIME(TIME(...))`.
+(defmethod sql.qp/date [:sqlite :default]
+  [_driver _unit expr]
+  (if (#{"datetime" "timestamp"} (some-> (h2x/database-type expr) u/lower-case-en))
+    (->datetime expr)
+    expr))
 
 (defmethod sql.qp/date [:sqlite :second]
   [_driver _unit expr]

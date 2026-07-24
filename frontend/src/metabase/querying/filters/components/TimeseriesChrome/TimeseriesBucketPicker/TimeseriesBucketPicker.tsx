@@ -27,6 +27,7 @@ export function TimeseriesBucketPicker({
     const bucket = Lib.temporalBucket(breakout);
     return bucket ? Lib.displayInfo(query, stageIndex, bucket) : undefined;
   }, [query, stageIndex, breakout]);
+  const isExplicitlyUnbucketed = bucketInfo?.shortName === "default";
 
   const handleChange = (newColumn: Lib.ColumnMetadata) => {
     onChange(newColumn);
@@ -41,7 +42,9 @@ export function TimeseriesBucketPicker({
           data-testid="timeseries-bucket-button"
           onClick={() => setIsOpened(!isOpened)}
         >
-          {bucketInfo ? bucketInfo.displayName : t`Unbinned`}
+          {bucketInfo && !isExplicitlyUnbucketed
+            ? bucketInfo.displayName
+            : t`Unbinned`}
         </Button>
       </Popover.Target>
       <Popover.Dropdown>
@@ -78,13 +81,19 @@ function TimeseriesBucketDropdown({
     column,
   );
 
-  const availableItems = availableBuckets.map((bucket) => {
+  const availableItems = availableBuckets.flatMap((bucket) => {
     const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
-    return {
-      bucket,
-      value: bucketInfo.shortName,
-      label: bucketInfo.displayName,
-    };
+    // `availableTemporalBuckets` never returns the `:default` synthetic bucket, but the type
+    // permits it; skip it here so the picker's `value: TemporalUnit` contract holds.
+    return bucketInfo.shortName === "default"
+      ? []
+      : [
+          {
+            bucket,
+            value: bucketInfo.shortName,
+            label: bucketInfo.displayName,
+          },
+        ];
   });
 
   const handleChange = (newValue: TemporalUnit) => {
@@ -95,13 +104,17 @@ function TimeseriesBucketDropdown({
   };
 
   const handleRemove = () => {
-    const newColumn = Lib.withTemporalBucket(column, null);
+    const newColumn = Lib.withTemporalBucket(column, "default");
     onChange(newColumn);
   };
 
   return (
     <TemporalUnitPicker
-      value={bucketInfo?.shortName}
+      value={
+        bucketInfo && bucketInfo.shortName !== "default"
+          ? bucketInfo.shortName
+          : undefined
+      }
       availableItems={availableItems}
       canRemove
       onChange={handleChange}
