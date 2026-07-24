@@ -24,7 +24,19 @@
       (is (= {:table-name "bar"} (sut {:table-name "bar"} {:index-table-qualifier "%s"})))
       (testing "qualifier applies to derived index names"
         (is (= "foo_bar_embed_hnsw_idx" (-> (sut {:table-name "bar"} {:index-table-qualifier "foo_%s"})
-                                            semantic.index/hnsw-index-name)))))))
+                                            semantic.index/hnsw-index-name)))))
+    (testing "hashes over-long identifiers within Postgres's 63-byte limit"
+      (let [long-table (apply str "index_" (repeat 60 "x"))
+            fits-table (apply str "index_" (repeat 42 "x"))]
+        (testing "an unqualified over-long name is hashed whole"
+          (is (= (semantic.index/hash-identifier-if-exceeds-pg-limit long-table)
+                 (:table-name (sut {:table-name long-table} {:index-table-qualifier "%s"})))))
+        (testing "a schema qualifier is preserved; only the table component is hashed"
+          (is (= (str "semantic_search." (semantic.index/hash-identifier-if-exceeds-pg-limit long-table))
+                 (:table-name (sut {:table-name long-table} {:index-table-qualifier "semantic_search.%s"})))))
+        (testing "a schema-qualified name over 63 bytes whose table component fits is left intact"
+          (is (= (str "semantic_search." fits-table)
+                 (:table-name (sut {:table-name fits-table} {:index-table-qualifier "semantic_search.%s"})))))))))
 
 (deftest create-tables-if-not-exists!-test
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
