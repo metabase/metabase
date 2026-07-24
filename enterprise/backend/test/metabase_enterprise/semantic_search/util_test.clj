@@ -65,7 +65,9 @@
         (is (re-find #"pg_stat_progress_create_index" statement))))
     (testing "qualified names retain their schema constraint"
       (is (= ["semantic_search" "index_1"] (rest (first @queries))))
-      (is (= ["index_2"] (rest (second @queries)))))))
+      (is (= ["index_2"] (rest (second @queries))))
+      (is (re-find #"ORDER BY CASE" (first (second @queries)))
+          "unqualified names choose the best state deterministically"))))
 
 (deftest catalog-lookups-schema-scoping-test
   (testing "qualified names scope table/index existence checks to their schema; a same-named object in

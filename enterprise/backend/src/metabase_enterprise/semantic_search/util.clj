@@ -84,7 +84,14 @@
                                      [(str "SELECT " columns " "
                                            "FROM pg_class i "
                                            "JOIN pg_index x ON x.indexrelid = i.oid "
-                                           "WHERE i.relname = ?")
+                                           "WHERE i.relname = "
+                                           "? "
+                                           "ORDER BY CASE "
+                                           "WHEN x.indisready AND x.indisvalid THEN 0 "
+                                           "WHEN EXISTS (SELECT 1 FROM pg_stat_progress_create_index p "
+                                           "             WHERE p.index_relid = i.oid) THEN 1 "
+                                           "ELSE 2 END "
+                                           "LIMIT 1")
                                       index])
                                    {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (cond
