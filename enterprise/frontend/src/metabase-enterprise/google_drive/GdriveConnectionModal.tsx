@@ -43,7 +43,7 @@ export function GdriveConnectionModal({
   onClose: (success?: boolean) => void;
   reconnect: boolean;
 }) {
-  const shouldShow = useShowGdrive();
+  const { showGdrive: shouldShow } = useShowGdrive();
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
