@@ -63,7 +63,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:04
       author: ranquild
-      comment: FK collection.workspace_id -> remote_sync_workspace
+      comment: FK collection.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: collection
@@ -103,7 +103,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:07
       author: ranquild
-      comment: FK remote_sync_object.workspace_id -> remote_sync_workspace
+      comment: FK remote_sync_object.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: remote_sync_object
@@ -143,7 +143,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:10
       author: ranquild
-      comment: FK remote_sync_task.workspace_id -> remote_sync_workspace
+      comment: FK remote_sync_task.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: remote_sync_task
@@ -172,7 +172,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:12
       author: ranquild
-      comment: Drop entity_id unique constraints on workspace-materializable tables (postgres)
+      comment: Drop entity_id unique constraints on workspace-scoped tables (per-dialect; one changeset so the rollback re-adds them exactly once)
       changes:
         - sql:
             dbms: postgresql
@@ -188,57 +188,6 @@ databaseChangeLog:
               ALTER TABLE "segment" DROP CONSTRAINT IF EXISTS "segment_entity_id_key";
               ALTER TABLE "measure" DROP CONSTRAINT IF EXISTS "measure_entity_id_key";
               ALTER TABLE "action" DROP CONSTRAINT IF EXISTS "action_entity_id_key";
-      rollback:
-        - addUniqueConstraint:
-            tableName: collection
-            columnNames: entity_id
-            constraintName: unique_collection_entity_id
-        - addUniqueConstraint:
-            tableName: report_card
-            columnNames: entity_id
-            constraintName: unique_report_card_entity_id
-        - addUniqueConstraint:
-            tableName: report_dashboard
-            columnNames: entity_id
-            constraintName: unique_report_dashboard_entity_id
-        - addUniqueConstraint:
-            tableName: report_dashboardcard
-            columnNames: entity_id
-            constraintName: unique_report_dashboardcard_entity_id
-        - addUniqueConstraint:
-            tableName: dashboard_tab
-            columnNames: entity_id
-            constraintName: unique_dashboard_tab_entity_id
-        - addUniqueConstraint:
-            tableName: document
-            columnNames: entity_id
-            constraintName: unique_document_entity_id
-        - addUniqueConstraint:
-            tableName: native_query_snippet
-            columnNames: entity_id
-            constraintName: unique_native_query_snippet_entity_id
-        - addUniqueConstraint:
-            tableName: timeline
-            columnNames: entity_id
-            constraintName: unique_timeline_entity_id
-        - addUniqueConstraint:
-            tableName: segment
-            columnNames: entity_id
-            constraintName: unique_segment_entity_id
-        - addUniqueConstraint:
-            tableName: measure
-            columnNames: entity_id
-            constraintName: unique_measure_entity_id
-        - addUniqueConstraint:
-            tableName: action
-            columnNames: entity_id
-            constraintName: unique_action_entity_id
-
-  - changeSet:
-      id: v64.2026-07-25T10:00:50
-      author: ranquild
-      comment: Drop entity_id unique indexes on workspace-materializable tables (mysql, mariadb)
-      changes:
         - sql:
             dbms: mysql,mariadb
             sql: |
@@ -253,57 +202,6 @@ databaseChangeLog:
               ALTER TABLE `segment` DROP INDEX `entity_id`;
               ALTER TABLE `measure` DROP INDEX `entity_id`;
               ALTER TABLE `action` DROP INDEX `entity_id`;
-      rollback:
-        - addUniqueConstraint:
-            tableName: collection
-            columnNames: entity_id
-            constraintName: unique_collection_entity_id
-        - addUniqueConstraint:
-            tableName: report_card
-            columnNames: entity_id
-            constraintName: unique_report_card_entity_id
-        - addUniqueConstraint:
-            tableName: report_dashboard
-            columnNames: entity_id
-            constraintName: unique_report_dashboard_entity_id
-        - addUniqueConstraint:
-            tableName: report_dashboardcard
-            columnNames: entity_id
-            constraintName: unique_report_dashboardcard_entity_id
-        - addUniqueConstraint:
-            tableName: dashboard_tab
-            columnNames: entity_id
-            constraintName: unique_dashboard_tab_entity_id
-        - addUniqueConstraint:
-            tableName: document
-            columnNames: entity_id
-            constraintName: unique_document_entity_id
-        - addUniqueConstraint:
-            tableName: native_query_snippet
-            columnNames: entity_id
-            constraintName: unique_native_query_snippet_entity_id
-        - addUniqueConstraint:
-            tableName: timeline
-            columnNames: entity_id
-            constraintName: unique_timeline_entity_id
-        - addUniqueConstraint:
-            tableName: segment
-            columnNames: entity_id
-            constraintName: unique_segment_entity_id
-        - addUniqueConstraint:
-            tableName: measure
-            columnNames: entity_id
-            constraintName: unique_measure_entity_id
-        - addUniqueConstraint:
-            tableName: action
-            columnNames: entity_id
-            constraintName: unique_action_entity_id
-
-  - changeSet:
-      id: v64.2026-07-25T10:00:51
-      author: ranquild
-      comment: Drop entity_id unique constraints on workspace-materializable tables (h2, dev-grade; names from the bundled H2's deterministic DDL replay, IF EXISTS tolerates drift)
-      changes:
         - sql:
             dbms: h2
             sql: |
@@ -382,7 +280,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:14
       author: ranquild
-      comment: FK report_card.workspace_id -> remote_sync_workspace
+      comment: FK report_card.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
@@ -410,7 +308,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:16
       author: ranquild
-      comment: FK report_dashboard.workspace_id -> remote_sync_workspace
+      comment: FK report_dashboard.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboard
@@ -438,7 +336,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:18
       author: ranquild
-      comment: FK report_dashboardcard.workspace_id -> remote_sync_workspace
+      comment: FK report_dashboardcard.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboardcard
@@ -466,7 +364,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:20
       author: ranquild
-      comment: FK dashboard_tab.workspace_id -> remote_sync_workspace
+      comment: FK dashboard_tab.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboard_tab
@@ -494,7 +392,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:22
       author: ranquild
-      comment: FK document.workspace_id -> remote_sync_workspace
+      comment: FK document.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: document
@@ -522,7 +420,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:24
       author: ranquild
-      comment: FK native_query_snippet.workspace_id -> remote_sync_workspace
+      comment: FK native_query_snippet.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: native_query_snippet
@@ -550,7 +448,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:26
       author: ranquild
-      comment: FK timeline.workspace_id -> remote_sync_workspace
+      comment: FK timeline.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: timeline
@@ -578,7 +476,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:28
       author: ranquild
-      comment: FK segment.workspace_id -> remote_sync_workspace
+      comment: FK segment.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: segment
@@ -606,7 +504,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:30
       author: ranquild
-      comment: FK measure.workspace_id -> remote_sync_workspace
+      comment: FK measure.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: measure
@@ -810,7 +708,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:42
       author: ranquild
-      comment: FK action.workspace_id -> remote_sync_workspace
+      comment: FK action.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: action
@@ -870,7 +768,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:45
       author: ranquild
-      comment: FK glossary.workspace_id -> remote_sync_workspace
+      comment: FK glossary.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: glossary
@@ -899,7 +797,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:48
       author: ranquild
-      comment: FK parameter_card.workspace_id -> remote_sync_workspace
+      comment: FK parameter_card.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: parameter_card
