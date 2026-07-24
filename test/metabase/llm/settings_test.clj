@@ -131,6 +131,14 @@
            #"Setting llm-proxy-base-url is not enabled"
            (llm.settings/llm-proxy-base-url! "https://proxy.example"))))))
 
+(deftest llm-proxy-configured-requires-a-nonblank-url-test
+  (mt/with-premium-features #{:metabase-ai-managed}
+    (doseq [[url configured?] [["https://proxy.example" true]
+                               ["   " false]
+                               [nil false]]]
+      (mt/with-temporary-setting-values [llm-proxy-base-url url]
+        (is (= configured? (llm.settings/llm-proxy-configured?)) (pr-str url))))))
+
 (deftest ai-service-base-url-feature-guard-test
   (testing "can be set and read when :metabase-ai-managed feature is enabled"
     (mt/with-premium-features #{:metabase-ai-managed}

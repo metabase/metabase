@@ -282,6 +282,9 @@
         (is (true? (llm.provider/type-available? "metabase"))))
       (mt/with-temporary-setting-values [llm-proxy-base-url nil]
         (is (false? (llm.provider/config-complete? "metabase" {})))
+        (is (false? (llm.provider/type-available? "metabase"))))
+      (mt/with-temporary-setting-values [llm-proxy-base-url "   "]
+        (is (false? (llm.provider/config-complete? "metabase" {})))
         (is (false? (llm.provider/type-available? "metabase")))))))
 
 (deftest managed-type-is-available-to-instances-that-can-buy-it-test

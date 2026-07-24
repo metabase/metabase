@@ -58,6 +58,7 @@ SELECT
                 WHEN 'slackbot'                          THEN 'Slackbot'
                 WHEN 'oss-sql-gen'                       THEN 'SQL'
                 WHEN 'sql-gen'                           THEN 'SQL'
+                WHEN 'osi-generation'                    THEN 'Library Metadata Generation'
                 WHEN 'unknown'                           THEN 'Unknown'
                 WHEN 'contextual_interestingness'        THEN 'Research'
                 WHEN 'exploration'                       THEN 'Research'

@@ -61,6 +61,27 @@
               (finally
                 (t2/delete! :model/AiUsageLog :user_id user-id :source "metabot_agent")))))))))
 
+(deftest log-ai-usage!-records-osi-generation-source-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "osi-generation is a registered source, so a background generation call persists its spend"
+      (let [user-id (mt/user->id :rasta)]
+        (mt/with-test-user :rasta
+          (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "osi-generation")]
+            (usage/log-ai-usage!
+             {:source            "osi-generation"
+              :model             "anthropic/claude-test"
+              :prompt-tokens     100
+              :completion-tokens 50})
+            (try
+              (is (= (inc before-count)
+                     (t2/count :model/AiUsageLog :user_id user-id :source "osi-generation")))
+              (let [row (t2/select-one :model/AiUsageLog :user_id user-id :source "osi-generation"
+                                       {:order-by [[:id :desc]]})]
+                (is (= "anthropic/claude-test" (:model row)))
+                (is (= 150 (:total_tokens row))))
+              (finally
+                (t2/delete! :model/AiUsageLog :user_id user-id :source "osi-generation")))))))))
+
 (deftest log-ai-usage!-skips-intent-classification-test
   (mt/with-premium-features #{:ai-controls}
     (testing "log-ai-usage! skips user-intent-classification source"

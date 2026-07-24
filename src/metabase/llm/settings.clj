@@ -486,7 +486,7 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   :visibility       :settings-manager
   :export?          false
   :setter           :none
-  :getter           #(some? (llm-proxy-base-url))
+  :getter           #(boolean (u/trimmed-string (llm-proxy-base-url)))
   :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------
