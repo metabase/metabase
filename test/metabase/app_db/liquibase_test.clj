@@ -298,6 +298,17 @@
               (liquibase/backfill-databasechangelog-versions! conn db)
               (is (= 1 (count (jdbc/query {:connection conn} [(format "SELECT deployment_id FROM %s" versions-table)])))))))))))
 
+(defn- age-changelog-rows!
+  "Rewind every existing changelog row's dateexecuted to one fixed minute-old timestamp (their relative order is
+  preserved by the `orderexecuted` tiebreak). Required before layering fabricated rows or a second migration run on
+  top of rows Liquibase just wrote: MySQL's second-precision DATEEXECUTED **rounds** sub-second JDBC timestamps, so a
+  row Liquibase wrote at xx.5s is stored one second in the FUTURE -- a row written shortly after it (CURRENT_TIMESTAMP
+  truncates; a subsequent run's rows can tie) can then sort at-or-before it and fall outside the rollback window.
+  Real deployments are separated by real wall-clock time; this restores that separation for back-to-back test writes."
+  [spec changelog-table]
+  (jdbc/execute! spec [(format "UPDATE %s SET dateexecuted = ?" changelog-table)
+                       (java.sql.Timestamp/from (.minus (java.time.Instant/now) (java.time.Duration/ofMinutes 1)))]))
+
 (deftest backfill-uses-highest-version-not-latest-executed-test
   (testing "backfill stamps the highest major present, even when a lower-version changeset ran last (e.g. a back-ported patch)"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -310,6 +321,7 @@
             (liquibase/ensure-databasechangelog-versions-table! conn)
             (liquibase/with-scope-locked liquibase (.update liquibase ""))
             (jdbc/execute! {:connection conn} [(format "DELETE FROM %s" versions-table)])
+            (age-changelog-rows! {:connection conn} changelog-table)
             ;; the real history (up to latest-major) ran first, in deployment 'main'
             (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'main'" changelog-table)])
             ;; now simulate a back-ported patch: a much lower-version changeset that EXECUTED LAST (latest dateexecuted),
@@ -392,6 +404,7 @@
               ago             (fn [mins] (.minus now (java.time.Duration/ofMinutes mins)))]
           (liquibase/ensure-databasechangelog-versions-table! conn)
           (liquibase/with-scope-locked liquibase (.update liquibase ""))
+          (age-changelog-rows! {:connection conn} changelog-table)
           ;; Layer three synthetic version-less deployments on top of the real (version-prefixed) history: a prior-major
           ;; deployment d100 at x.100.5.0, then two current-major deployments d101a (x.101.1.0) and d101b (x.101.2.3).
           ;; Their changesets are not in the changelog file, so rolling them back exercises the deployment-based
@@ -502,6 +515,7 @@
                 stop-id (nth all-ids (- (count all-ids) 2))]
             ;; install everything except the last changeset, as a pre-version-tracking binary would have left it
             (schema-migrations.impl/run-migrations-in-range! conn ["v00.00-000" stop-id])
+            (age-changelog-rows! {:datasource (mdb/data-source)} ct)
             ;; ... which had no version rows at all. The DELETE and all later reads use fresh autocommit connections:
             ;; on MySQL the shared non-autocommit `conn` would leave the DELETE invisible to the migration's own
             ;; connection and serve later reads from a stale REPEATABLE READ snapshot.
@@ -575,6 +589,7 @@
                 ago (fn [m] (.minus now (java.time.Duration/ofMinutes m)))]
             (liquibase/ensure-databasechangelog-versions-table! conn)
             (liquibase/with-scope-locked liquibase (.update liquibase ""))
+            (age-changelog-rows! {:connection conn} ct)
             ;; this binary's own history: one deployment, recorded as v0.64
             (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'd64'" ct)])
             (insert-version-row! conn vt "d64" "x.64.0" (ago 20))
@@ -951,6 +966,7 @@
               (mdb/migrate! (mdb/data-source) :up))
             (is (true? (applied? "dev_run_a")))
             (is (= ["x.1000.0.0"] (versions)))
+            (age-changelog-rows! {:datasource (mdb/data-source)} ct)
             ;; the developer adds a migration and runs `migrate up` again in the same process
             (with-redefs [liquibase/changelog-file "versionless-dev-run2.yaml"]
               (mdb/migrate! (mdb/data-source) :up)
@@ -1051,6 +1067,7 @@
                         liquibase/changelog-file "versionless-roc-run1.yaml"]
             (mdb/migrate! (mdb/data-source) :up))
           (is (= 1 (view-x)))
+          (age-changelog-rows! {:datasource (mdb/data-source)} ct)
           (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.66.0")
                         liquibase/changelog-file "versionless-roc-run2.yaml"]
             (mdb/migrate! (mdb/data-source) :up)
@@ -1096,6 +1113,7 @@
             (with-redefs [liquibase/changelog-file "versionless-roc-run1.yaml"]
               (mdb/migrate! (mdb/data-source) :up))
             (is (= ["x.1000.0.0"] (versions)))
+            (age-changelog-rows! {:datasource (mdb/data-source)} ct)
             (with-redefs [liquibase/changelog-file "versionless-roc-run3.yaml"]
               (mdb/migrate! (mdb/data-source) :up)
               (is (= ["x.1000.0.0" "x.1001.0.0"] (versions)))
