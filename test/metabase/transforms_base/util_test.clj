@@ -108,7 +108,9 @@
       (is (= (t/local-date-time 2026 1 31 19 0 4)
              (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 2 :unit "hour"})))
       (is (= (t/local-date 2026 1 24)
-             (apply-lookback (t/local-date 2026 1 31) :type/Date {:value 1 :unit "week"}))))
+             (apply-lookback (t/local-date 2026 1 31) :type/Date {:value 1 :unit "week"})))
+      (is (= (t/local-time 19 0 4)
+             (apply-lookback (t/local-time 21 0 4) :type/Time {:value 2 :unit "hour"}))))
     (testing "a lookback on a non-temporal checkpoint throws a user-facing error"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
