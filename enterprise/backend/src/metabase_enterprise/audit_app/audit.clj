@@ -83,12 +83,9 @@
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
   ;;
-  ;; KNOWN WINDOW (accepted): under the detached cluster lock this engine flip commits immediately, so on
-  ;; a multi-node mysql/h2 cluster other nodes can read engine="postgres" for the duration of the serdes
-  ;; load and compile audit-dashboard queries with the wrong dialect. This restores the visibility
-  ;; semantics that held before the cluster lock made the whole pipeline one transaction (#76551);
-  ;; postgres hosts never flip. The real fix is to stop round-tripping the flip through a committed
-  ;; value (resolve serialized names against an overlay instead) — follow-up work, not attempted here.
+  ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
+  ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
+  ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
   (t2/update! :model/Database audit-db-id {:engine "postgres"})
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
