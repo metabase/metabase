@@ -197,12 +197,17 @@ const addMetricInputSequence = (
     runFormula();
     if (!skipRunCompletionWait) {
       // Running the expression fires /api/metric/dataset; the edit-mode UI is
-      // only torn down once that query resolves. Wait on the alias so the
-      // assertions below don't race the request against the 4s retry budget,
-      // which the query can exceed under load / network throttling.
-      cy.wait("@dataset");
+      // only torn down once that query resolves, which can outlive the default
+      // 4s retry budget under load / network throttling (the original flake).
+      // Give the gating "search input is gone" assertion a generous budget so it
+      // waits out a slow query against the live DOM. We can't wait on the
+      // @dataset alias here: dataset requests don't map 1:1 to Run clicks (a
+      // re-run with an unchanged result may fire no new request), so waiting on
+      // "the next request" is nondeterministic.
       // It is expected that the elements below do not exist after the expression ran successfully
-      cy.findByTestId("metrics-viewer-search-input").should("not.exist");
+      cy.findByTestId("metrics-viewer-search-input", { timeout: 30000 }).should(
+        "not.exist",
+      );
       cy.findByTestId("run-expression-button").should("not.exist");
       cy.findByTestId("loading-indicator").should("not.exist");
     }
