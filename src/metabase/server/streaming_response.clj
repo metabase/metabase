@@ -246,6 +246,9 @@
                      (a/>!! finished-chan :unexpected-error)
                      (write-error! os e nil))
                    (finally
+                     ;; Close os before completing the context: a gzip stream's trailer is only
+                     ;; written on close, so leaving it open truncates the response.
+                     (try (.close os) (catch Throwable _))
                      ;; Clear the interrupted flag to prevent the thread from
                      ;; carrying stale interrupted state to the next task.
                      (Thread/interrupted)

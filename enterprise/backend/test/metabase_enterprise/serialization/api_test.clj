@@ -525,3 +525,22 @@
       (is (= "real_dir"
              (.getName ^File (#'api.serialization/find-serialization-dir dst))))
       (run! io/delete-file (reverse (file-seq dst))))))
+
+(deftest export-gzip-encoded-archive-is-complete-test
+  (testing "a gzip-encoded export download is a complete, non-truncated archive"
+    ;; test-helpers-set-global-values! puts with-premium-features into global (with-redefs) mode so the
+    ;; real Jetty handler threads see the :serialization feature; a plain thread-local binding wouldn't
+    ;; reach them and the request would 402 before reaching the streaming response.
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:serialization}
+        ;; Must use user-real-request (real Jetty + clj-http): the mock client hands the handler a
+        ;; plain ByteArrayOutputStream, so it never wraps the response in a GZIPOutputStream and
+        ;; cannot exercise the close-on-success path. accept-encoding gzip makes the server wrap the
+        ;; response body in a (transport) GZIPOutputStream; when that stream is left open its trailer
+        ;; is never written, so the client's decompression hits a truncated stream and throws. We let
+        ;; clj-http strip the transport encoding (as any real client does), leaving the inner .tar.gz
+        ;; for open-tar to read.
+        (let [resp (mt/user-real-request :crowberto :post 200 "ee/serialization/export"
+                                         {:request-options {:headers {"accept-encoding" "gzip"}
+                                                            :as      :byte-array}})]
+          (is (seq (entry-names resp))))))))
