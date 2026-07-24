@@ -88,12 +88,21 @@
           model-name   (volatile! nil)
           payload      (volatile! {})
           ;; Track the latest usage we've seen (from any event) and whether we
-          ;; already emitted it. Claude reports usage at message_start and
-          ;; message_delta with cumulative values — we only emit at message_delta
-          ;; normally, but if the stream is interrupted we flush the last known
-          ;; usage in the completion arity so we don't lose data entirely.
+          ;; already emitted it. Claude splits usage across message_start and
+          ;; message_delta — we only emit after the delta normally, but if the
+          ;; stream is interrupted we flush the last known usage through an
+          ;; internal event so we don't complete a partial block.
           last-usage   (volatile! nil)
           stop-reason  (volatile! nil)
+          usage-part   (fn []
+                         (cond-> {:type  :usage
+                                  :usage (claude-usage->aisdk-usage @last-usage)
+                                  :id    @message-id
+                                  :model @model-name}
+                           @stop-reason
+                           (assoc :finish-reason
+                                  (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                                  :raw-finish-reason @stop-reason)))
           close!       (fn [result]
                          (u/prog1 (if-let [end-type (case @current-type
                                                       :text              :text-end
@@ -112,18 +121,16 @@
            ;; close up latest type if incomplete
            @current-type (close!)
            ;; flush last-known usage if stream ended before message_delta.
-           @last-usage   (rf (cond-> {:type  :usage
-                                      :usage (claude-usage->aisdk-usage @last-usage)
-                                      :id    @message-id
-                                      :model @model-name}
-                               @stop-reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
-                                                   :raw-finish-reason @stop-reason)))
+           @last-usage   (rf (usage-part))
            true          (rf)))
         ([result {t :type :keys [message content_block delta error index] :as chunk}]
          (let [block-type (when content_block
                             (keyword (:type content_block)))
                chunk-id   (or (:id content_block) @current-id (some-> index str) (core/mkid))]
            (cond-> result
+             ;; Exceptional source termination must preserve billed usage without normal transducer
+             ;; completion: completing a partial tool_use block would mark it executable.
+             (= chunk core/interrupted-stream-event) (cond-> @last-usage (rf (usage-part)))
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
                                              (u/prog1
@@ -174,13 +181,13 @@
 
              ;; end of content block
              (= t "content_block_stop") (close!)
-             ;; Claude reports usage at both message_start and message_delta,
-             ;; but message_delta values are cumulative and include the earlier
-             ;; counts.
+             ;; message_start carries input/cache counts, while message_delta
+             ;; normally carries only the final output count. Merge the latter
+             ;; instead of dropping the billed input fields.
              ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
              ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
              (= t "message_delta")      (u/prog1
-                                          (vreset! last-usage (:usage chunk))
+                                          (vswap! last-usage merge (:usage chunk))
                                           (vreset! stop-reason (:stop_reason delta)))
              ;; end of message
              (= t "message_stop")       identity
@@ -523,11 +530,18 @@
         (catch Exception e
           (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))))
 
+(defn- completion-safe-eduction
+  "Apply `xform` to `coll`, flushing Claude's last reported usage when the source throws without invoking
+  normal transducer completion. Normal completion could close a partial tool block and make it executable.
+  The original source exception remains the one callers see; a usage-flush failure is suppressed onto it."
+  [xform coll]
+  (core/completion-safe-eduction xform coll))
+
 (defn claude
   "Call Claude API, return AISDK stream"
   [& args]
   (let [raw (apply claude-raw args)]
-    (eduction (claude->aisdk-chunks-xf) raw)))
+    (completion-safe-eduction (claude->aisdk-chunks-xf) raw)))
 
 (comment
   ;; Now just use standard `into` - no core.async needed!

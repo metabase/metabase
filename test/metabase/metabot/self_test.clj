@@ -1186,7 +1186,8 @@
       (reduce rf init [{:type :start :messageId "m1"}
                        {:type :tool-input-start :toolCallId "c1" :toolName "json"}
                        {:type :tool-input-delta :toolCallId "c1" :inputTextDelta "{not valid json"}
-                       {:type :tool-input-available :toolCallId "c1" :toolName "json"}]))))
+                       {:type :tool-input-available :toolCallId "c1" :toolName "json"}
+                       {:type :usage :usage {:promptTokens 11 :completionTokens 7}}]))))
 
 (deftest call-llm-structured-rejects-malformed-json-test
   (llm.tu/with-default-connections
@@ -1202,7 +1203,8 @@
                     (catch clojure.lang.ExceptionInfo e e))]
             (is (instance? clojure.lang.ExceptionInfo e)
                 "malformed JSON must throw, not return the {:_raw_arguments ...} sentinel as a result")
-            (is (= "structured-output-invalid" (:error-code (ex-data e))))))))))
+            (is (= "structured-output-invalid" (:error-code (ex-data e))))
+            (is (= {:input-tokens 11, :output-tokens 7} (:usage (ex-data e))))))))))
 
 (deftest call-llm-structured-surfaces-provider-error-test
   (llm.tu/with-default-connections
@@ -1210,7 +1212,8 @@
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms      (constantly 0)
                                   openrouter/openrouter    (constantly
                                                             (test-util/mock-llm-response
-                                                             [{:type :error :errorText "content policy violation"}]))]
+                                                             [{:type :usage :usage {:promptTokens 5 :completionTokens 2}}
+                                                              {:type :error :errorText "content policy violation"}]))]
         (mt/with-log-level [metabase.metabot.self :fatal]
           (let [e (try
                     (self/call-llm-structured "openrouter/test-model"
@@ -1221,7 +1224,8 @@
             (is (instance? clojure.lang.ExceptionInfo e))
             (is (re-find #"content policy violation" (ex-message e))
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
-            (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+            (is (= "llm-stream-error" (:error-code (ex-data e))))
+            (is (= {:input-tokens 5, :output-tokens 2} (:usage (ex-data e))))))))))
 
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
@@ -2024,3 +2028,57 @@
             "a warn with provider and status is still emitted for server-side debugging")
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
+
+;;; structured call usage extraction (the osi-generation seam)
+
+(deftest call-llm-structured+usage-test
+  (let [parts [{:type :tool-input :id "c1" :function "json" :arguments {:answer "yes"}}
+               {:type :usage :usage {:promptTokens 11 :completionTokens 7}}]]
+    (testing "the streamed usage is returned beside the parsed result"
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (constantly (test-util/mock-llm-response parts))]
+        (is (= {:result {:answer "yes"}
+                :usage {:input-tokens 11, :output-tokens 7}}
+               (self/call-llm-structured+usage
+                "openrouter/test-model" [] {:type "object"} 0.3 1024 {:tag "osi-generation"})))))
+    (testing "a provider that omits usage produces explicit zero totals"
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (constantly (test-util/mock-llm-response (butlast parts)))]
+        (is (= {:input-tokens 0, :output-tokens 0}
+               (:usage (self/call-llm-structured+usage
+                        "openrouter/test-model" [] {:type "object"} 0.3 1024
+                        {:tag "osi-generation"}))))))))
+
+(deftest call-llm-structured-usage-survives-stream-failure-and-retry-test
+  (testing "usage emitted before a retryable stream failure is accumulated with the successful retry"
+    (let [calls         (atom 0)
+          failed-stream (reify clojure.lang.IReduceInit
+                          (reduce [_ rf init]
+                            (rf init {:type :usage :usage {:promptTokens 5 :completionTokens 2}})
+                            (throw (ex-info "retry me" {:status 429}))))]
+      (mt/with-dynamic-fn-redefs
+        [self/retry-delay-ms (constantly 0)
+         openrouter/openrouter
+         (fn [_]
+           (if (= 1 (swap! calls inc))
+             failed-stream
+             (test-util/mock-llm-response
+              [{:type :tool-input :id "c1" :function "json" :arguments {:answer "yes"}}
+               {:type :usage :usage {:promptTokens 11 :completionTokens 7}}])))]
+        (is (= {:result {:answer "yes"}
+                :usage  {:input-tokens 16, :output-tokens 9}}
+               (self/call-llm-structured+usage
+                "openrouter/test-model" [] {:type "object"} 0.3 1024 {:tag "osi-generation"})))))))
+
+(deftest call-llm-structured-final-error-carries-streamed-usage-test
+  (testing "a final exception retains usage that arrived earlier in the failed stream"
+    (let [failed-stream (reify clojure.lang.IReduceInit
+                          (reduce [_ rf init]
+                            (rf init {:type :usage :usage {:promptTokens 5 :completionTokens 2}})
+                            (throw (ex-info "not retryable" {:status 400}))))]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly failed-stream)]
+        (let [e (is (thrown? clojure.lang.ExceptionInfo
+                             (self/call-llm-structured+usage
+                              "openrouter/test-model" [] {:type "object"} 0.3 1024
+                              {:tag "osi-generation"})))]
+          (is (= {:input-tokens 5, :output-tokens 2} (:usage (ex-data e)))))))))

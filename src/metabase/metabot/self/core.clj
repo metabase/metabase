@@ -1018,6 +1018,40 @@
         (catch Exception e
           (rethrow-api-error! provider res->message e))))))
 
+(def interrupted-stream-event
+  "Internal transducer input used to flush buffered billing data after exceptional stream termination."
+  ::interrupted-stream)
+
+(defn completion-safe-eduction
+  "Apply `xform` to `coll`. If the source throws, feed [[interrupted-stream-event]] through the
+  transducer without invoking normal completion, allowing adapters to emit their last reported usage
+  without closing a partial content or tool block. The source exception remains primary; a flush error
+  is attached as suppressed."
+  [xform coll]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (let [last-result (volatile! init)
+            rf*         (fn
+                          ([result]
+                           ;; `xrf` owns provider-side completion (including buffered usage), while
+                           ;; the outer reduction owns downstream completion. Keep this arity neutral
+                           ;; so a transient downstream accumulator is never finalized twice.
+                           (vreset! last-result result)
+                           result)
+                          ([result input]
+                           (let [next-result (rf result input)]
+                             (vreset! last-result next-result)
+                             next-result)))
+            xrf         (xform rf*)]
+        (try
+          (xrf (reduce xrf init coll))
+          (catch Throwable source-error
+            (try
+              (xrf @last-result interrupted-stream-event)
+              (catch Throwable flush-error
+                (.addSuppressed source-error flush-error)))
+            (throw source-error)))))))
+
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."
   [llm-type]

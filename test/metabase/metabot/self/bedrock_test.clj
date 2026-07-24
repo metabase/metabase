@@ -297,6 +297,22 @@
             {:type "message_delta" :delta {:stop_reason "end_turn"} :usage {:input_tokens 3 :output_tokens 2}}
             {:type "message_stop"}]))))
 
+(deftest ^:parallel interrupted-anthropic-stream-flushes-usage-test
+  (let [parts (atom [])
+        raw   (reify clojure.lang.IReduceInit
+                (reduce [_ rf init]
+                  (rf init {:type "message_start"
+                            :message {:id "msg-bedrock" :model "claude-haiku-4-5"
+                                      :usage {:input_tokens 13 :output_tokens 0}}})
+                  (throw (ex-info "bedrock stream interrupted" {}))))]
+    (mt/with-dynamic-fn-redefs [bedrock/bedrock-raw (constantly raw)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bedrock stream interrupted"
+                            (reduce (fn [acc part] (swap! parts conj part) acc)
+                                    nil
+                                    (bedrock/bedrock {:model "anthropic.claude-haiku-4-5"}))))
+      (is (=? {:type :usage :usage {:promptTokens 13 :completionTokens 0}}
+              (last @parts))))))
+
 (deftest openai-model-uses-openai-stream-translation-test
   (is (=? [{:type :start :id "resp_1"}
            {:type :text :text "pong"}

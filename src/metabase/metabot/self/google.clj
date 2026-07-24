@@ -548,7 +548,7 @@
         raw (apply google-raw args)]
     ;; Keep this dispatch in sync with `google-raw`, which independently uses
     ;; `model->family` to select the request protocol.
-    (eduction (case (model->family model)
-                :anthropic (raw-predict/->aisdk-chunks-xf)
-                :google    (stream-generate-content/->aisdk-chunks-xf))
-              raw)))
+    (core/completion-safe-eduction (case (model->family model)
+                                     :anthropic (raw-predict/->aisdk-chunks-xf)
+                                     :google    (stream-generate-content/->aisdk-chunks-xf))
+                                   raw)))

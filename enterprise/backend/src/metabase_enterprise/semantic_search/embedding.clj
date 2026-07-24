@@ -238,6 +238,21 @@
   {:connection-timeout 10000
    :socket-timeout     60000})
 
+(def ^:dynamic *embedding-request-source*
+  "Bound to \"osi-generation\" around an OSI metadata-generation run's trailing reconcile so its embedding
+  volume is distinguishable from other embedding traffic; nil (the default) records \"unknown\".
+  A call-site binding, not per-request state."
+  nil)
+
+(defn- record-embedding-request!
+  "Count an attempted embedding-service request before I/O -- including failures and timeouts -- labelled by
+  provider, model, and the ambient request source, so OSI generation volume stays separable from reconcile."
+  [provider model-name]
+  (analytics/inc! :metabase-search/semantic-embedding-requests
+                  {:provider provider
+                   :model    model-name
+                   :source   (or *embedding-request-source* "unknown")}))
+
 (defonce ^{:doc "Insertion-ordered set of `(fn [state])` hooks run on every breaker state change.
   Health namespaces `conj` a hook here (inverting the dep -- they require this module) to re-persist their
   embedder-dependent check on a transition, so an outage or recovery surfaces in minutes, not the next daily report.
@@ -411,7 +426,8 @@
   (try
     ;; TODO count ollama tokens into :metabase-search/semantic-embedding-tokens?
     (log/debug "Generating Ollama embedding for text of length:" (count text))
-    (let [embedding (-> (http/post ollama-embeddings-endpoint
+    (let [_         (record-embedding-request! "ollama" model-name)
+          embedding (-> (http/post ollama-embeddings-endpoint
                                    (merge embedding-http-timeouts
                                           {:headers {"Content-Type" "application/json"}
                                            :body    (json/encode {:model model-name
@@ -503,7 +519,8 @@
           start-ms             (u/start-timer)
           {:keys [usage embeddings]}
           (call-through-embedder-breaker
-           #(let [{:keys [usage data]} (-> (http/post endpoint request)
+           #(let [_                    (record-embedding-request! provider model-name)
+                  {:keys [usage data]} (-> (http/post endpoint request)
                                            :body
                                            (json/decode true))]
               {:usage usage
