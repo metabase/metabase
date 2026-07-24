@@ -28,8 +28,11 @@
     stage
     (let [f        (case (:lib/type stage)
                      :mbql.stage/mbql   qp.mbql/expand
-                     :mbql.stage/native (fn [query _path stage]
-                                          (qp.native/expand-stage query stage)))
+                     :mbql.stage/native (mu/fn :- ::lib.schema/stage.native
+                                          [query path _stage]
+                                          (let [{query* :query, :keys [stage-number]} (lib.walk/query-for-path query path)]
+                                            (-> (qp.native/expand-stage query* stage-number)
+                                                (lib/query-stage stage-number)))))
           expanded (f query path stage)]
       (dissoc expanded :parameters :template-tags))))
 

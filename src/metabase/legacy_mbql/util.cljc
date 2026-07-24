@@ -72,7 +72,7 @@
   Throws an Exception when it encounters a unresolved source query (i.e., the `:source-table \"card__id\"`
   form), because it cannot return an accurate result for a query that has not yet been preprocessed.
 
-  Prefer [[metabase.lib.core/source-table-id]] going forward."
+  Prefer [[metabase.lib.core/primary-source-table-id]] going forward."
   {:arglists '([outer-query]), :deprecated "0.57.0"}
   [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe :map]]
   (cond

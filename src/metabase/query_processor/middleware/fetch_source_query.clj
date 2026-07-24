@@ -25,22 +25,23 @@
 
 ;;; TODO -- consider whether [[normalize-card-query]] should be moved into [[metabase.lib.card]], seems like it would
 ;;; make sense but it would involve teasing out some QP-specific stuff to make it work.
-(defn- fix-mongodb-first-stage
+(mu/defn- fix-mongodb-first-stage :- ::lib.schema/stages
   "MongoDB native queries consist of a collection and a pipelne (query).
 
   TODO -- it's not great that this code lives here. This should be part of the MongoDB driver. We should NOT be
   hardcoding driver-specific behavior in generic QP middleware."
-  [[first-stage & more]]
-  (let [first-stage (cond-> first-stage
-                      (and (= driver/*driver* :mongo)
-                           (= (:lib/type first-stage) :mbql.stage/native))
-                      (update :native (fn [x]
-                                        (if (map? x)
-                                          x
-                                          {:collection  (:collection first-stage)
-                                           :projections (:projections first-stage)
-                                           :query       x}))))]
-    (cons first-stage more)))
+  [stages :- ::lib.schema/stages]
+  (letfn [(update-first-stage [first-stage]
+            (cond-> first-stage
+              (and (= driver/*driver* :mongo)
+                   (= (:lib/type first-stage) :mbql.stage/native))
+              (update :native (fn [x]
+                                (if (map? x)
+                                  x
+                                  {:collection  (:collection first-stage)
+                                   :projections (:projections first-stage)
+                                   :query       x})))))]
+    (update (vec stages) 0 update-first-stage)))
 
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
   "Convert Card's query (`:dataset-query`) to MBQL 5 as needed; splice in stage metadata and some extra keys."

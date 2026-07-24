@@ -49,6 +49,12 @@ title: Driver interface changelog
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
 
+- `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
+  `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+
+- The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
+  changed; please update your implementations accordingly.
+
 ## Metabase 0.63.0
 
 - `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` -- refreshes table

@@ -329,11 +329,6 @@
        lib.convert/->mbql5
        (query metadata-providerable)))
 
-(defn ->legacy-MBQL
-  "Convert the MBQL 5 `a-query` into a legacy MBQL query."
-  [a-query]
-  (-> a-query lib.convert/->legacy-MBQL))
-
 (mu/defn with-different-table :- ::lib.schema/query
   "Changes an existing query to use a different source table or card.
    Can be passed an integer table id or a legacy `card__<id>` string."

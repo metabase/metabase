@@ -18,10 +18,12 @@
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some mapv empty? get-in]]
    [taoensso.nippy :as nippy])
   (:import
@@ -517,8 +519,9 @@
   [_driver _feature _db]
   false)
 
-(defmethod driver/mbql->native :mongo
-  [_ query]
+(mu/defmethod driver/mbql->native :mongo :- :metabase.query-processor.compile/compiled
+  [_driver :- :keyword
+   query   :- ::lib.schema/query]
   (mongo.qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :mongo
@@ -528,8 +531,8 @@
     (mongo.execute/execute-reducible-query query respond)))
 
 (defmethod driver/substitute-native-parameters-in-stage-method :mongo
-  [driver metadata-providerable stage]
-  (mongo.params/substitute-native-parameters driver metadata-providerable stage))
+  [driver query stage-number]
+  (mongo.params/substitute-native-parameters driver query stage-number))
 
 (defmethod driver/db-start-of-week :mongo
   [_]

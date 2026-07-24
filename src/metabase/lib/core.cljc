@@ -122,6 +122,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
+   [metabase.lib.value]
    [metabase.lib.walk.util]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]))
@@ -224,6 +225,7 @@
          lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
          lib.util/keep-me
+         metabase.lib.value/keep-me
          metabase.lib.util.unique-name-generator/keep-me
          metabase.lib.walk.util/keep-me)
 
@@ -337,6 +339,11 @@
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.expression/with-expression-name an-expression-clause new-name))
+
+;; TODO (Cam 2026-07-13) Give this a wrapper like the other functions here
+(shared.ns/import-fns
+ [lib.expression
+  resolve-expression])
 
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of
@@ -557,7 +564,8 @@
 (shared.ns/import-fns
  [lib.aggregation
   aggregation-clause
-  aggregations-metadata])
+  aggregations-metadata
+  resolve-aggregation])
 
 ;;; ## Breakouts
 ;;; Breakouts (equivalent to SQL `GROUP BY`) divide the rows into 1 or more subsets of rows, where each set has the
@@ -1649,6 +1657,8 @@
   missing-table-error
   syntax-error
   validation-exception-error]
+ [metabase.lib.value
+  value]
  [metabase.lib.walk.util
   all-field-ids
   all-referenced-entity-ids
