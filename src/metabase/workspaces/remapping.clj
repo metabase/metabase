@@ -34,13 +34,13 @@
 (mu/defn remapped-entity-id :- pos-int?
   "Forward ID remapping: the ID to use in place of source entity `id` for the current user.
   Returns the workspace copy's ID when the active workspace has a remapping for
-  (`entity-type`, `id`); otherwise returns `id` unchanged."
-  [entity-type :- ::workspaces.schema/entity-type
-   id          :- pos-int?]
+  (`model`, `id`); otherwise returns `id` unchanged."
+  [model :- ::workspaces.schema/entity-type
+   id    :- pos-int?]
   (or (when-let [workspace-id (current-workspace-id)]
         (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
                           :workspace_id workspace-id
-                          :entity_type entity-type
+                          :entity_type model
                           :source_entity_id id))
       id))
 
@@ -48,12 +48,12 @@
   "Reverse ID remapping: given `id` of an entity that may be a workspace copy, return the
   source (production) entity ID it was copied from, or `id` unchanged when it is not a copy
   in the current user's active workspace."
-  [entity-type :- ::workspaces.schema/entity-type
-   id          :- pos-int?]
+  [model :- ::workspaces.schema/entity-type
+   id    :- pos-int?]
   (or (when-let [workspace-id (current-workspace-id)]
         (t2/select-one-fn :source_entity_id :model/WorkspaceEntityRemapping
                           :workspace_id workspace-id
-                          :entity_type entity-type
+                          :entity_type model
                           :target_entity_id id))
       id))
 

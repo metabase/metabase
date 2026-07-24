@@ -10,26 +10,26 @@
                  :model/User      user {:workspace_id (:id ws)}]
     (t2/insert! :model/WorkspaceEntityRemapping
                 {:workspace_id     (:id ws)
-                 :entity_type      :card
+                 :entity_type      :model/Card
                  :source_entity_id 111
                  :target_entity_id 222})
     (testing "with an active workspace"
       (mt/with-current-user (:id user)
         (is (= (:id ws) (workspaces/current-workspace-id)))
         (testing "mapped IDs are remapped in both directions"
-          (is (= 222 (workspaces/remapped-entity-id :card 111)))
-          (is (= 111 (workspaces/source-entity-id :card 222))))
+          (is (= 222 (workspaces/remapped-entity-id :model/Card 111)))
+          (is (= 111 (workspaces/source-entity-id :model/Card 222))))
         (testing "unmapped IDs pass through"
-          (is (= 333 (workspaces/remapped-entity-id :card 333)))
-          (is (= 333 (workspaces/source-entity-id :card 333))))
+          (is (= 333 (workspaces/remapped-entity-id :model/Card 333)))
+          (is (= 333 (workspaces/source-entity-id :model/Card 333))))
         (testing "entity types do not collide"
-          (is (= 111 (workspaces/remapped-entity-id :dashboard 111)))
-          (is (= 222 (workspaces/source-entity-id :segment 222))))))
+          (is (= 111 (workspaces/remapped-entity-id :model/Dashboard 111)))
+          (is (= 222 (workspaces/source-entity-id :model/Segment 222))))))
     (testing "without an active workspace both directions are identity"
       (mt/with-current-user (mt/user->id :rasta)
         (is (nil? (workspaces/current-workspace-id)))
-        (is (= 111 (workspaces/remapped-entity-id :card 111)))
-        (is (= 222 (workspaces/source-entity-id :card 222)))))))
+        (is (= 111 (workspaces/remapped-entity-id :model/Card 111)))
+        (is (= 222 (workspaces/source-entity-id :model/Card 222)))))))
 
 (deftest check-workspace-enabled-test
   (mt/with-temp [:model/Workspace ws   {:name "CoW overlay"}
