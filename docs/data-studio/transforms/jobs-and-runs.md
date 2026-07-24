@@ -108,7 +108,7 @@ To delete a job:
 
 If one transform depends on another, Metabase adds the dependency to the job and runs it first, even if that transform isn't tagged in the job. So if transform B depends on A, Metabase makes sure A is up to date before running B.
 
-### Metabase skips dependencies that are already up to date
+## Jobs skip dependencies that are already up to date
 
 Metabase won't re-run a dependency that's still fresh. That way, a transform pulled into a frequent job doesn't get rebuilt more often than its own schedule calls for. So, for example, if you tag transform A `daily`, and transform B `hourly`, and hourly B depends on daily A, then A runs on its own daily schedule. The hourly job that runs B won't rerun A every hour.
 
@@ -117,7 +117,7 @@ Metabase skips a dependency when the dependency:
 - Has its own tags and jobs, and none of those jobs' schedules have come due since the dependency last ran successfully.
 - Has no tags at all, and it's already run successfully at least once.
 
-### See which transforms a job will run
+## See which transforms a job will run
 
 The job's page in **Data Studio > Jobs** lists every transform the job will run and in which order. The **Notes** column tells you when Metabase will skip a dependency, and flags dependencies that have no schedule of their own.
 
