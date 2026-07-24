@@ -16,7 +16,9 @@
    [metabase.search.in-place.legacy :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -33,6 +35,35 @@
         (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                     (constantly semantic.tu/mock-embedding-model)]
           (is (true? (semantic.core/supported?))))))))
+
+(deftest ^:sequential build-hnsw-index-async-deduplicates-local-builds-test
+  (let [started        (CountDownLatch. 1)
+        release        (CountDownLatch. 1)
+        reset-complete (CountDownLatch. 1)
+        build-running? (atom false)
+        calls          (atom 0)]
+    (add-watch build-running? ::reset-complete
+               (fn [_ _ previous current]
+                 (when (and previous (not current))
+                   (.countDown reset-complete))))
+    (with-redefs-fn {#'semantic.core/hnsw-index-build-running? build-running?}
+      #(mt/with-dynamic-fn-redefs
+         [semantic.util/semantic-search-active?            (constantly true)
+          semantic.env/get-pgvector-datasource!             (constantly ::pgvector)
+          semantic.env/get-index-metadata                   (constantly ::index-metadata)
+          semantic.pgvector-api/ensure-active-hnsw-index!
+          (fn [& _]
+            (swap! calls inc)
+            (.countDown started)
+            (.await release))]
+         (try
+           (semantic.core/build-hnsw-index-async!)
+           (is (.await started 5 TimeUnit/SECONDS) "the first build started")
+           (semantic.core/build-hnsw-index-async!)
+           (is (= 1 @calls) "the overlapping request did not start another future")
+           (finally
+             (.countDown release)))
+         (is (.await reset-complete 5 TimeUnit/SECONDS) "the build future reset its local gate")))))
 
 (deftest ^:sequential repair-snapshot-precedes-canonical-document-read-test
   (let [events       (atom [])
