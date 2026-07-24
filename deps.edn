@@ -848,6 +848,12 @@
   :build/verify-driver
   {:exec-fn verify-driver/verify-driver}
 
+  ;; Build the separately installed in-process embedder plugin jar.
+  ;;
+  ;;    clojure -X:build:build/embedder-plugin
+  :build/embedder-plugin
+  {:exec-fn build-embedder-plugin/build-plugin!}
+
   ;; Build i18n artifacts.
   ;;
   ;;    clojure -X:build:build/i18n

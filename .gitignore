@@ -75,6 +75,9 @@ cypress.env.json
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
+# Generated in-process embedder model bundles and build outputs.
+/modules/embedder/resources/metabase-embedder
+/modules/embedder/target
 /plugins
 /process.yml
 /reset-password-artifacts
