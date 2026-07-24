@@ -1,5 +1,7 @@
 import {
   dataStudio,
+  dataStudioCleanup,
+  dataStudioCleanupTable,
   dataStudioData,
   dataStudioDataModelSegment,
   dataStudioDataModelSegmentDependencies,
@@ -104,6 +106,38 @@ describe("urls > data-studio", () => {
   describe("dataStudioLibrary", () => {
     it("should return library URL", () => {
       expect(dataStudioLibrary()).toBe("/data-studio/library");
+    });
+  });
+
+  describe("dataStudioCleanup", () => {
+    it("should return the cleanup queue URL", () => {
+      expect(dataStudioCleanup()).toBe("/data-studio/cleanup");
+    });
+
+    it("should serialize URL-backed cleanup state", () => {
+      expect(
+        dataStudioCleanup({
+          page: 2,
+          search: "order total",
+          databaseId: 1,
+          schema: "analytics",
+          candidateType: "measure",
+          modelingStatus: "partially-modeled",
+          signal: "verified",
+          dismissed: "only",
+          sort: "view-count",
+          direction: "desc",
+          candidateId: 17,
+        }),
+      ).toBe(
+        "/data-studio/cleanup?page=2&search=order+total&database=1&schema=analytics&type=measure&status=partially-modeled&signal=verified&dismissed=only&sort=view-count&direction=desc&candidate=17",
+      );
+    });
+
+    it("should return a table cleanup URL", () => {
+      expect(dataStudioCleanupTable(42, { candidateType: "segment" })).toBe(
+        "/data-studio/cleanup/tables/42?type=segment",
+      );
     });
   });
 

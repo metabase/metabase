@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
+import { trackDataStudioCleanupOpened } from "metabase/common/data-studio/analytics";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   canAccessDataModel as canAccessDataModelSelector,
@@ -13,9 +14,10 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
@@ -36,6 +38,7 @@ export function DataStudioLayout() {
   const { pathname } = useLocation();
   const canAccessDataModel = useSelector(canAccessDataModelSelector);
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
+  const isAdmin = useSelector(getUserIsAdmin);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -96,6 +99,16 @@ export function DataStudioLayout() {
       </AreaTabGroup>
 
       <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
+        {isAdmin && hasLibraryFeature && PLUGIN_LIBRARY.isEnabled && (
+          <AreaTab
+            label={t`Cleanup`}
+            icon="search_check"
+            to={Urls.dataStudioCleanup()}
+            isSelected={currentTab === "cleanup"}
+            showLabel={isNavbarOpened}
+            onClick={trackDataStudioCleanupOpened}
+          />
+        )}
         <AreaTab
           label={t`Semantic layer`}
           icon="repository"

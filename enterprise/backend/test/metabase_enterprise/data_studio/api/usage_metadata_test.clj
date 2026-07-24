@@ -65,6 +65,7 @@
         (is (=? {:total 1
                  :data [{:id (:id candidate)
                          :candidate_type "segment"
+                         :definition {:lib/type "mbql/query"}
                          :modeling_status "missing"
                          :dismissed false}]}
                 (mt/user-http-request :crowberto :get 200

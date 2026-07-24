@@ -93,6 +93,7 @@
                                    :database (:database table))
      :suggested_name        (:suggested_name candidate)
      :suggested_description (:suggested_description candidate)
+     :definition            (:definition candidate)
      :modeling_status       (:modeling_status candidate)
      :dismissed             (dismissed? dismissals candidate)
      :evidence              {:verified_source_count (:verified_source_count candidate)

@@ -144,6 +144,37 @@ describe("DataStudioLayout", () => {
 
       expect(screen.getByTestId("content")).toBeInTheDocument();
     });
+
+    it("shows Cleanup for a superuser with the Library feature", async () => {
+      setup(DEFAULT_EE_SETTINGS);
+
+      expect(await screen.findByLabelText("Cleanup")).toBeInTheDocument();
+    });
+
+    it("hides Cleanup from non-superusers", async () => {
+      setup({ ...DEFAULT_EE_SETTINGS, isAdmin: false });
+
+      await screen.findByTestId("data-studio-nav");
+
+      expect(screen.queryByLabelText("Cleanup")).not.toBeInTheDocument();
+    });
+
+    it("hides Cleanup when the Library feature is unavailable", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        enterprisePlugins: DEFAULT_EE_SETTINGS.enterprisePlugins?.filter(
+          (plugin) => plugin !== "library",
+        ),
+        tokenFeatures: {
+          ...DEFAULT_EE_SETTINGS.tokenFeatures,
+          library: false,
+        },
+      });
+
+      await screen.findByTestId("data-studio-nav");
+
+      expect(screen.queryByLabelText("Cleanup")).not.toBeInTheDocument();
+    });
   });
 
   describe("transform dirty indicator", () => {
