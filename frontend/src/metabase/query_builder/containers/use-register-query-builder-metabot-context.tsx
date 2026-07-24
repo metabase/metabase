@@ -256,25 +256,26 @@ export const registerQueryBuilderMetabotContextFn = async ({
   const hasDataSource = isNative
     ? Lib.databaseID(query) != null
     : Lib.sourceTableOrCardId(query) != null;
-  if (!hasDataSource) {
-    return {};
-  }
 
-  const queryCtx = {
-    query: question.datasetQuery(),
-    sql_engine: isNative ? Lib.engine(query) : undefined,
-    // Coerce to string to avoid passing objects with circular references
-    // (e.g. Metadata ↔ Database) that would break JSON.stringify in the
-    // streaming request body.
-    error: queryResult?.error?.toString(),
-  };
+  const queryCtx = hasDataSource
+    ? {
+        query: question.datasetQuery(),
+        sql_engine: isNative ? Lib.engine(query) : undefined,
+        // Coerce to string to avoid passing objects with circular references
+        // (e.g. Metadata ↔ Database) that would break JSON.stringify in the
+        // streaming request body.
+        error: queryResult?.error?.toString(),
+      }
+    : {};
 
-  const chart_configs = await getChartConfigs({
-    question,
-    series,
-    visualizationSettings,
-    timelineEvents,
-  });
+  const chart_configs = hasDataSource
+    ? await getChartConfigs({
+        question,
+        series,
+        visualizationSettings,
+        timelineEvents,
+      })
+    : [];
 
   return {
     user_is_viewing: [
