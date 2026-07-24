@@ -1362,6 +1362,7 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
+              metabase.metabot.provider-util
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}
@@ -3503,6 +3504,14 @@
            sso
            util}
    :model-imports #{:model/AuthIdentity :model/User}}
+
+  enterprise/osi-generation
+  {:team "Metabot"
+   :uses #{llm
+           metabot
+           settings
+           util}
+   :api #{metabase-enterprise.osi-generation.init}}
 
   enterprise/permission-debug
   {:team "UX West"
