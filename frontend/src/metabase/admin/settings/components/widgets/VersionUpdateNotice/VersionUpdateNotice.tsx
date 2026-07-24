@@ -7,7 +7,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
-import { Tabs } from "metabase/ui";
+import { Loader, Tabs, Text } from "metabase/ui";
 import { newVersionAvailable, versionIsLatest } from "metabase/utils/version";
 
 import S from "./VersionUpdateNotice.module.css";
@@ -103,7 +103,7 @@ function NewVersionAvailable({
 }
 
 export function NewVersionInfo() {
-  const { data: versionInfo } = useGetVersionInfoQuery();
+  const { data: versionInfo, isLoading, isError } = useGetVersionInfoQuery();
   const latestMajorVersion = getLatestMajorVersion(
     versionInfo?.latest?.version,
   );
@@ -122,13 +122,43 @@ export function NewVersionInfo() {
         />
       </Tabs.Panel>
       <Tabs.Panel value="changelog">
-        <iframe
-          data-testid="changelog-iframe"
-          src={`https://www.metabase.com/changelog/${latestMajorVersion}${embedQueryParams}`}
-          className={S.iframe}
+        <ChangelogPanel
+          isLoading={isLoading}
+          isError={isError}
+          latestMajorVersion={latestMajorVersion}
         />
       </Tabs.Panel>
     </Tabs>
+  );
+}
+
+export function ChangelogPanel({
+  isLoading,
+  isError,
+  latestMajorVersion,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  latestMajorVersion: string;
+}) {
+  if (isLoading) {
+    return <Loader data-testid="changelog-loader" />;
+  }
+
+  if (isError || !latestMajorVersion) {
+    return (
+      <Text data-testid="changelog-unavailable" p="md" c="text-secondary">
+        {t`Version information is unavailable. Try to refresh the page.`}
+      </Text>
+    );
+  }
+
+  return (
+    <iframe
+      data-testid="changelog-iframe"
+      src={`https://www.metabase.com/changelog/${latestMajorVersion}${embedQueryParams}`}
+      className={S.iframe}
+    />
   );
 }
 
