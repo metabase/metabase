@@ -473,18 +473,23 @@
    (into #{} (mapcat (comp collect-updated-columns :where))
          (get (model-hooks) model))))
 
-(defn- instance->db-values
-  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
-  [instance]
+(defn- values->db-values
+  "Apply a model's input transforms to values so they can be used in a query."
+  [model values]
   (let [xforms (try
-                 (#'t2.transformed/in-transforms (t2/model instance))
+                 (#'t2.transformed/in-transforms model)
                  (catch Exception _     ; this happens for :model/ModelIndexValue, which has no transforms
                    nil))]
     (reduce-kv
      (fn [m k v]
        (assoc m k (if-let [f (get xforms k)] (f v) v)))
      {}
-     instance)))
+     values)))
+
+(defn- instance->db-values
+  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
+  [instance]
+  (values->db-values (t2/model instance) instance))
 
 (defn search-models-to-update
   "Given an updated or created instance, return a description of which search-models to (re)index."
@@ -495,6 +500,43 @@
            (fn [{:keys [search-model fields where]}]
              (when (or always? (and fields (some fields (keys (or (t2/changes instance) instance)))))
                [search-model (insert-values where :updated @raw-values)])))
+          (get (model-hooks) (t2/model instance)))))
+
+(defn- non-scalar-expression?
+  [x]
+  ((some-fn coll? symbol?) x))
+
+(defn- honeysql-expression?
+  [x]
+  (or (non-scalar-expression? x) (keyword? x)))
+
+(defn search-models-to-update-with-changes
+  "Statement-level variant of [[search-models-to-update]]: `instance` is one pre-image row of an update
+  statement and `changes` is the changes map that statement applied to every row it matched.
+  A hook fires only when the statement touched something it reads: a content field (the hook's `:fields`) or
+  a join-topology column (its where-clause's `:updated.*` columns, e.g. `revision.most_recent`).
+  Each firing hook emits messages for both the pre-image and the post-image, so re-derivation covers a
+  row's old and new join targets (e.g. both sides of a foreign-key move)."
+  [instance changes]
+  (let [model           (t2/model instance)
+        changed-keys    (set (keys changes))
+        ;; Collections and symbols are expressions regardless of the column transform, so never pass them through
+        ;; scalar input transforms. Transform the remaining candidates so a keyword-backed column turns :dashboard
+        ;; into the literal "dashboard", while an untransformed :%now remains an expression.
+        db-changes      (delay (->> changes
+                                    (remove (comp non-scalar-expression? val))
+                                    (into {})
+                                    (values->db-values model)))
+        literal-changes (delay (into {} (remove (comp honeysql-expression? val)) @db-changes))
+        pre-vals        (delay (instance->db-values instance))
+        post-vals       (delay (merge @pre-vals @literal-changes))]
+    (into #{}
+          (mapcat
+           (fn [{:keys [search-model fields where]}]
+             (let [gate (into (or fields #{}) (collect-updated-columns where))]
+               (when (some gate changed-keys)
+                 [[search-model (insert-values where :updated @pre-vals)]
+                  [search-model (insert-values where :updated @post-vals)]]))))
           (get (model-hooks) (t2/model instance)))))
 
 (comment

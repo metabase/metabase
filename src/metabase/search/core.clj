@@ -218,15 +218,19 @@
     (doseq [e (search.engine/active-engines)]
       (search.engine/sync-from-restored-db! e))))
 
+(defn- enqueue-updates!
+  [updates]
+  (when-let [updates (->> updates
+                          (remove (comp search.util/impossible-condition? second))
+                          seq)]
+    (search.ingestion/ingest-maybe-async! updates)))
+
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]
   (when (supports-index?)
-    (when-let [updates (->> (search.spec/search-models-to-update instance always?)
-                            (remove (comp search.util/impossible-condition? second))
-                            seq)]
-      ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
-      (search.ingestion/ingest-maybe-async! updates))))
+    ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
+    (enqueue-updates! (search.spec/search-models-to-update instance always?))))
 
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows.
@@ -234,11 +238,16 @@
   satisfy their spec's query are purged by ingestion's asked-for-but-not-indexed diff."
   [instances]
   (when (supports-index?)
-    (when-let [updates (->> instances
-                            (into #{} (mapcat #(search.spec/search-models-to-update % true)))
-                            (remove (comp search.util/impossible-condition? second))
-                            seq)]
-      (search.ingestion/ingest-maybe-async! updates))))
+    (enqueue-updates!
+     (into #{} (mapcat #(search.spec/search-models-to-update % true)) instances))))
+
+(defn bulk-update-with-changes!
+  "Enqueue re-indexing for the pre-image rows of an update statement that applied `changes` to each of them.
+  Hooks are filtered on the changed columns; see [[search.spec/search-models-to-update-with-changes]]."
+  [instances changes]
+  (when (supports-index?)
+    (enqueue-updates!
+     (into #{} (mapcat #(search.spec/search-models-to-update-with-changes % changes)) instances))))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."
