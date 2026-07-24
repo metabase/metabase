@@ -371,7 +371,13 @@
   (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
-    (swap! @*user-local-values* u/assoc-dissoc setting-name value)
+    ;;
+    ;; The atom normally holds a map, but if the user's `settings` column could not be decoded (e.g. it was
+    ;; encrypted with an encryption key that is no longer set) [[metabase.models.interface/encrypted-json-out]]
+    ;; returns the raw, undecodable string, which ends up here. Treat a non-map value as empty so we don't try to
+    ;; `assoc` onto a String and throw a ClassCastException; the undecodable value is unreadable anyway. (#69264)
+    (swap! @*user-local-values* (fn [current]
+                                  (u/assoc-dissoc (if (map? current) current {}) setting-name value)))
     (t2/update! 'User api/*current-user-id* {:settings (json/encode @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*
