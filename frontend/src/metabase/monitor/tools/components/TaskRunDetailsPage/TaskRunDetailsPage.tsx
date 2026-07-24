@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useGetTaskRunQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
@@ -11,7 +12,7 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { useDispatch } from "metabase/redux";
-import { Link, push } from "metabase/router";
+import { push } from "metabase/router";
 import { Anchor, Box, Flex, Grid, Stack, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";

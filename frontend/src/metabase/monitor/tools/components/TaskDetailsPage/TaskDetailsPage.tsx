@@ -6,12 +6,12 @@ import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogsViewer } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
-import { Link } from "metabase/router";
 import {
   Anchor,
   Box,

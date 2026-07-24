@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import type { UtmProps } from "metabase/selectors/settings";
 import {
   Alert,

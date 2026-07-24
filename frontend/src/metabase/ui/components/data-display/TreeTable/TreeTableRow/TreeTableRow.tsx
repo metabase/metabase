@@ -5,8 +5,8 @@ import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-// eslint-disable-next-line boundaries/element-types -- this UI-library row renders a routing Link; it predates the metabase/router facade and should move out of metabase/ui
-import { Link } from "metabase/router";
+// eslint-disable-next-line boundaries/element-types -- this UI-library row renders the app's styled Link, which is not a metabase/ui concern; the row should move out of metabase/ui
+import { Link } from "metabase/common/components/Link";
 import { Flex, Loader } from "metabase/ui";
 
 import { ExpandButton } from "../ExpandButton";

@@ -4,10 +4,10 @@ import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import { Link } from "metabase/common/components/Link";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import type { Query } from "metabase/router";
-import { Link } from "metabase/router";
 import {
   Flex,
   Group,

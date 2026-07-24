@@ -6,12 +6,12 @@ import {
   DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import CS from "metabase/css/core/index.css";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,

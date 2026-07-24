@@ -1,6 +1,7 @@
 import { type MouseEvent, forwardRef, useState } from "react";
 import { c, t } from "ttag";
 
+import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
@@ -10,7 +11,7 @@ import { DashboardSubscriptionMenuItem } from "metabase/notifications/Notificati
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Link, type LinkProps, useRouter } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {

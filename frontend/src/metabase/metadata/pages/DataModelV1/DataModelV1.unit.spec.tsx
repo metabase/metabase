@@ -20,8 +20,9 @@ import {
   within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { Link } from "metabase/common/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Link, Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";

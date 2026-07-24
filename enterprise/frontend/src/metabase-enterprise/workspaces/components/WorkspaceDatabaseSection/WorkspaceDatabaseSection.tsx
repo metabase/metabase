@@ -7,6 +7,7 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useUpdateDatabaseMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
 import {
@@ -17,7 +18,6 @@ import {
   isDbModifiable,
 } from "metabase/common/utils/database";
 import type { WorkspaceDatabaseSectionProps } from "metabase/plugins/oss/workspaces";
-import { Link } from "metabase/router";
 import {
   Alert,
   Box,

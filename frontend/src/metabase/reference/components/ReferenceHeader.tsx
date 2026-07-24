@@ -2,10 +2,10 @@ import cx from "classnames";
 import { memo } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import L from "metabase/reference/components/List/List.module.css";
-import { Link } from "metabase/router";
 import { Ellipsified, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 

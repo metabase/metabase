@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { Link, Outlet, Route, useLocation, useNavigate } from "metabase/router";
+import {
+  RouterLink as Link,
+  Outlet,
+  Route,
+  useLocation,
+  useNavigate,
+} from "metabase/router";
 
 function Home() {
   const { pathname, key } = useLocation();
