@@ -130,6 +130,20 @@
        (remove str/blank?)
        first))
 
+(defn- clickhouse-settings->spec-keys
+  "Parse the `clickhouse-settings` details string (comma-separated `key=value` pairs) into
+  individual `clickhouse_setting_*` spec entries. These used to ride on `custom_http_params`,
+  which is deprecated as of JDBC driver 0.10. Malformed entries (blank, or missing `=`) are
+  skipped."
+  [clickhouse-settings]
+  (into {}
+        (keep (fn [entry]
+                (let [[k v] (str/split entry #"=" 2)
+                      k     (str/trim k)]
+                  (when-not (or (str/blank? k) (nil? v))
+                    [(keyword (str "clickhouse_setting_" k)) (str/trim v)]))))
+        (str/split (or clickhouse-settings "") #",")))
+
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
   (let [;; ensure defaults merge on top of nils
@@ -148,18 +162,18 @@
          :password                       (or password "")
          :user                           user
          :ssl                            (boolean ssl)
-         :use_server_time_zone_for_dates true
          :product_name                   (format "metabase/%s" (:tag driver-api/mb-version-info))
          :remember_last_set_roles        true
-         :http_connection_provider       "HTTP_URL_CONNECTION"
          :jdbc_ignore_unsupported_values "true"
          :jdbc_schema_term               "schema"
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
          ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-         :custom_http_params             (cond-> "select_sequential_consistency=1"
-                                           (not (str/blank? clickhouse-settings))
-                                           (str "," clickhouse-settings))}
+         :clickhouse_setting_select_sequential_consistency "1"
+         ;; as of 0.10 the JDBC driver no longer forces async_insert=0; pin it so inserts stay
+         ;; synchronous (accurate row counts, errors surface on the insert statement)
+         :clickhouse_setting_async_insert "0"}
+        (merge (clickhouse-settings->spec-keys clickhouse-settings))
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]

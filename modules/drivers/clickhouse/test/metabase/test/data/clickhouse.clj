@@ -49,15 +49,14 @@
    :user                           "default"
    :password                       ""
    :ssl                            false
-   :use_server_time_zone_for_dates true
    :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term               "schema",
    :ignore_unknown_config_key      true
    :max_open_connections           100
    :remember_last_set_roles        true
-   :http_connection_provider       "HTTP_URL_CONNECTION"
-   :custom_http_params             "select_sequential_consistency=1"})
+   :clickhouse_setting_select_sequential_consistency "1"
+   :clickhouse_setting_async_insert "0"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]         [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger]      [_ _] "Int64")

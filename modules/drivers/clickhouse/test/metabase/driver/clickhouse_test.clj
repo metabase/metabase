@@ -80,7 +80,8 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
+             :clickhouse_setting_max_threads "42"
+             :clickhouse_setting_allow_experimental_analyzer "0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -189,7 +190,7 @@
            (is (true? (driver/can-connect? :clickhouse details)))))))))
 
 (deftest ^:parallel clickhouse-additional-options-test
-  (testing "additional options not prefixed with `clickhouse_setting_` are moved to custom_http_params (#70777)"
+  (testing "additional options are kept in the subname; `clickhouse-settings` become `clickhouse_setting_*` keys (#70777)"
     (mt/test-driver :clickhouse
       (let [details (assoc (:details (mt/db))
                            :additional-options "clickhouse_setting_max_threads=5&max_block_size=50"
@@ -198,8 +199,9 @@
         (is (true? (driver/can-connect? :clickhouse details)))
         (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&max_block_size=50"
                (:subname spec)))
-        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20"
-               (:custom_http_params spec)))
+        (is (not (contains? spec :custom_http_params)))
+        (is (= "10" (:clickhouse_setting_max_result_rows spec)))
+        (is (= "20" (:clickhouse_setting_max_columns_to_read spec)))
         (is (= {:max_threads 5
                 :max_block_size 65409 ;; unknown key is ignored
                 :max_results_rows 10
