@@ -37,18 +37,22 @@ export function useLibraryBulkSelection(
 
   const selectedKeys = useMemo(() => getSelectedKeySet(selected), [selected]);
 
-  // Each row's parent key, so coverage can walk the tree's ancestor chain.
-  const parentByKey = useMemo(() => {
-    const map = new Map<string, string | null>();
+  const childrenByKey = useMemo(() => {
+    const map = new Map<string, string[]>();
     for (const row of rows) {
-      map.set(row.id, row.getParentRow()?.id ?? null);
+      if (row.subRows.length > 0) {
+        map.set(
+          row.id,
+          row.subRows.map((child) => child.id),
+        );
+      }
     }
     return map;
   }, [rows]);
 
   const coveredKeys = useMemo(
-    () => getCoveredKeys(parentByKey, selectedKeys),
-    [parentByKey, selectedKeys],
+    () => getCoveredKeys(childrenByKey, selectedKeys),
+    [childrenByKey, selectedKeys],
   );
 
   const getRowCovered = useCallback(

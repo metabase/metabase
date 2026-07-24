@@ -332,8 +332,11 @@ export function useLibraryTreeTableInstance({
     emptyMessage = t`No results for "${searchQuery}"`;
   }
 
+  const allRows = treeTableInstance.table.getCoreRowModel().flatRows;
+
   return {
     treeTableInstance,
+    allRows,
     isChildrenLoading,
     isLoading,
     emptyMessage,

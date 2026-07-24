@@ -282,16 +282,13 @@ describe("library-bulk-selection.utils", () => {
 
   describe("getCoveredKeys", () => {
     // Tree: collection:10 ⊃ { table:1, collection:20 ⊃ table:2 }; table:3 is a sibling.
-    const parentByKey = new Map<string, string | null>([
-      ["collection:10", null],
-      ["table:1", "collection:10"],
-      ["collection:20", "collection:10"],
-      ["table:2", "collection:20"],
-      ["table:3", null],
+    const childrenByKey = new Map<string, string[]>([
+      ["collection:10", ["table:1", "collection:20"]],
+      ["collection:20", ["table:2"]],
     ]);
 
     it("covers every descendant of a selected collection, tables and nested folders included", () => {
-      const covered = getCoveredKeys(parentByKey, new Set(["collection:10"]));
+      const covered = getCoveredKeys(childrenByKey, new Set(["collection:10"]));
       expect([...covered].sort()).toEqual([
         "collection:20",
         "table:1",
@@ -300,13 +297,13 @@ describe("library-bulk-selection.utils", () => {
     });
 
     it("does not cover the selected collection itself or unrelated siblings", () => {
-      const covered = getCoveredKeys(parentByKey, new Set(["collection:10"]));
+      const covered = getCoveredKeys(childrenByKey, new Set(["collection:10"]));
       expect(covered.has("collection:10")).toBe(false);
       expect(covered.has("table:3")).toBe(false);
     });
 
     it("is empty when nothing is selected", () => {
-      expect(getCoveredKeys(parentByKey, new Set()).size).toBe(0);
+      expect(getCoveredKeys(childrenByKey, new Set()).size).toBe(0);
     });
   });
 

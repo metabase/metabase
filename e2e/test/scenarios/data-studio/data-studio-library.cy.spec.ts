@@ -657,8 +657,15 @@ describe("scenarios > data studio > library", () => {
       // The count reflects only the top level items selected
       bulkBar().findByText("1 item selected").should("be.visible");
 
+      cy.log("Collapsing the parent keeps its subsumed selection intact");
+      H.DataStudio.Library.collapseCollection("Parent Folder");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Orders")
+        .should("not.exist");
+      bulkBar().findByText("1 item selected").should("be.visible");
+
       cy.log(
-        "Moving the parent carries the descendants along, keeping nesting",
+        "Moving the collapsed parent carries the descendants, keeping nesting",
       );
       bulkBar().findByRole("button", { name: "Move" }).click();
       H.entityPickerModal().within(() => {

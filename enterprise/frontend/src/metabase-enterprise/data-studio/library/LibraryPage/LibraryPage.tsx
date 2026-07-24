@@ -66,6 +66,7 @@ function LibraryPageContent() {
     });
   const {
     treeTableInstance,
+    allRows,
     isChildrenLoading,
     isLoading,
     emptyMessage,
@@ -95,7 +96,7 @@ function LibraryPageContent() {
     getRowCovered,
     onCheckboxClick,
     clear: clearSelection,
-  } = useLibraryBulkSelection(treeTableInstance.rows);
+  } = useLibraryBulkSelection(allRows);
 
   // Clear selection when changing search query
   const trimmedSearch = searchQuery.trim();

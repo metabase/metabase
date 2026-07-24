@@ -164,22 +164,20 @@ export function isAllTables(selected: TreeItem[]): boolean {
 }
 
 export function getCoveredKeys(
-  parentByKey: Map<string, string | null>,
+  childrenByKey: Map<string, string[]>,
   selectedKeys: Set<string>,
 ): Set<string> {
   const covered = new Set<string>();
-  if (selectedKeys.size === 0) {
-    return covered;
-  }
-  for (const key of parentByKey.keys()) {
-    let ancestor = parentByKey.get(key) ?? null;
-    while (ancestor != null) {
-      if (selectedKeys.has(ancestor)) {
-        covered.add(key);
-        break;
+  const collectDescendants = (key: string) => {
+    for (const child of childrenByKey.get(key) ?? []) {
+      if (!covered.has(child)) {
+        covered.add(child);
+        collectDescendants(child);
       }
-      ancestor = parentByKey.get(ancestor) ?? null;
     }
+  };
+  for (const key of selectedKeys) {
+    collectDescendants(key);
   }
   return covered;
 }

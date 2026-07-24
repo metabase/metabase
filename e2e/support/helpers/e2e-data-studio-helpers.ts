@@ -168,6 +168,10 @@ export const DataStudio = {
       DataStudio.Library.result(name)
         .findByRole("button", { name: "Expand" })
         .click(),
+    collapseCollection: (name: string) =>
+      DataStudio.Library.result(name)
+        .findByRole("button", { name: "Collapse" })
+        .click(),
     emptyStateRow: (description: string | RegExp) =>
       libraryPage().contains('[data-testid="empty-state-row"]', description),
   },
