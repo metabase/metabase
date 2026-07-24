@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
@@ -63,6 +64,11 @@
       (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
                      (deferred-tru "A target schema is required for this database.")))))
 
+(defn- field->column
+  "Adapt a t2 Field row to the kebab-case column shape `lib.types.isa` predicates expect."
+  [field]
+  {:base-type (:base_type field), :effective-type (:effective_type field)})
+
 (defn validate-incremental-column-type!
   "Validates that the checkpoint column for an incremental transform has a supported type.
 
@@ -73,10 +79,25 @@
     (let [checkpoint-filter-field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
           field (t2/select-one :model/Field checkpoint-filter-field-id)]
       (api/check-400 field (deferred-tru "Checkpoint field not found."))
-      (api/check-400 (transforms-base.u/supported-incremental-filter-type? (:base_type field))
-                     (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
-                                   (:name field)
-                                   (pr-str (:base_type field)))))))
+      (let [column (field->column field)]
+        (api/check-400 (transforms-base.u/supported-checkpoint-column? column)
+                       (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
+                                     (:name field)
+                                     (pr-str (lib.types.isa/column-type column))))))))
+
+(defn validate-lookback!
+  "Validates a configured lookback window: only date and datetime checkpoint columns support one
+  (time-only columns wrap at midnight), and date-only columns need a day-or-coarser unit."
+  [{:keys [source] :as transform}]
+  (let [{:keys [lookback checkpoint-filter-field-id]} (:source-incremental-strategy source)]
+    (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform) lookback)]
+      (when-let [field (t2/select-one :model/Field checkpoint-filter-field-id)]
+        (let [column (field->column field)]
+          (api/check-400 (lib.types.isa/date-or-datetime? column)
+                         (deferred-tru "A lookback window is only supported for date or datetime checkpoint columns."))
+          (when (lib.types.isa/date-without-time? column)
+            (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
+                           (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit."))))))))
 
 (defn validate-incremental-table-tag!
   "Reject a table-incremental native-query transform whose source query has no table template tag for
@@ -142,6 +163,7 @@
      (validate-transform-query! body))
    (validate-target-schema! body)
    (validate-incremental-table-tag! body)
+   (validate-lookback! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -180,7 +202,8 @@
                       (when (contains? body :source)
                         (validate-incremental-column-type! new))
                       (when (or (contains? body :source) (contains? body :target))
-                        (validate-incremental-table-tag! new))
+                        (validate-incremental-table-tag! new)
+                        (validate-lookback! new))
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
