@@ -3,7 +3,7 @@
    [build.plugin-uberjar :as plugin-uberjar]
    [clojure.test :refer :all]))
 
-(deftest ^:parallel prune-provided-libs-test
+(deftest prune-provided-libs-test
   (let [basis {:classpath-roots ["core.jar" "plugin.jar"]
                :classpath       {"core.jar" {:path-key :core}
                                  "plugin.jar" {:path-key :plugin}}
