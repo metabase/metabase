@@ -2,7 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.search.spec :as search.spec]
+   [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel test-qualify-column
   (is (= [:table.column :column] (#'search.spec/qualify-column :table :column)))
@@ -145,6 +148,63 @@
           (is (actual-models em))))
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
+
+(deftest ^:synchronized model-hooks-cache-invalidates-on-spec-redefinition-test
+  (testing "replacing a spec method invalidates the single-entry model-hooks cache"
+    (let [spec-multifn search.spec/spec*]
+      ;; Load lazily resolved models and warm the cache before replacing the method, which is the REPL/test-reload
+      ;; path this guards.
+      (search.spec/model-hooks)
+      (let [original (get-method spec-multifn "card")]
+        (try
+          (.addMethod ^clojure.lang.MultiFn spec-multifn
+                      "card"
+                      (fn [_]
+                        (update (original "card") :render-terms assoc :cache-probe :cache_probe)))
+          (is (contains? (->> (get (search.spec/model-hooks) :model/Card)
+                              (filter #(= "card" (:search-model %)))
+                              first
+                              :fields)
+                         :cache_probe))
+          (finally
+            (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original)
+            ;; Do not leave the private cache holding the temporary method table for later tests.
+            (search.spec/model-hooks)))))))
+
+(deftest ^:synchronized model-hooks-cache-records-post-resolution-methods-test
+  (testing "model hooks are cached only after collection sees one stable post-resolution method table"
+    (let [original-specifications (mt/original-fn #'search.spec/specifications)
+          spec-multifn            search.spec/spec*
+          original-card           (get-method spec-multifn "card")
+          calls                   (atom 0)
+          redefined?              (atom false)]
+      (try
+        (mt/with-dynamic-fn-redefs [search.spec/specifications
+                                    (fn []
+                                      (swap! calls inc)
+                                      (let [specs (original-specifications)]
+                                        ;; Simulate a reload after the old card specification was read but before
+                                        ;; the collection returns.
+                                        (when (compare-and-set! redefined? false true)
+                                          (.addMethod ^clojure.lang.MultiFn spec-multifn
+                                                      "card"
+                                                      (fn [_]
+                                                        (update (original-card "card")
+                                                                :render-terms assoc :cache-probe :cache_probe))))
+                                        specs))]
+          (reset! @#'search.spec/model-hooks-cache nil)
+          (let [hooks (search.spec/model-hooks)]
+            (is (contains? (->> (get hooks :model/Card)
+                                (filter #(= "card" (:search-model %)))
+                                first
+                                :fields)
+                           :cache_probe))
+            (is (identical? hooks (search.spec/model-hooks)))
+            (is (= 2 @calls))))
+        (finally
+          (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original-card)
+          (reset! @#'search.spec/model-hooks-cache nil)
+          (search.spec/model-hooks))))))
 
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"

@@ -424,14 +424,36 @@
        (derive (:model spec#) :hook/search-index)
        (defmethod spec* ~search-model [~'_] spec#))))
 
-;; TODO we should memoize this for production (based on spec values)
+(def ^:private model-hooks-cache
+  ;; Single [spec-methods hooks] entry rather than an unbounded memoize, so repeated spec redefinition
+  ;; (REPL, tests) can't accrete historical methods maps.
+  (atom nil))
+
 (defn model-hooks
-  "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
+  "Return an inverted map of data dependencies to search models, used for updating them based on underlying models.
+  Cached against the registered spec* methods: defining or redefining a spec yields a new methods map and
+  thus a fresh computation, while steady-state calls hit the cache."
   []
-  (->> (specifications)
-       vals
-       (map search-model-hooks)
-       merge-hooks))
+  (let [spec-methods    (methods spec*)
+        [cached-key v]  @model-hooks-cache]
+    (if (identical? cached-key spec-methods)
+      v
+      (do
+        ;; Resolve every model before choosing a cache key: namespace loading can register spec* methods.
+        (doseq [[_ model] search-model->toucan-model]
+          (t2/resolve-model model))
+        (loop []
+          (let [spec-methods (methods spec*)
+                v            (->> (specifications)
+                                  vals
+                                  (map search-model-hooks)
+                                  merge-hooks)]
+            ;; A REPL/test reload can redefine a method while specifications are collected or hooks are mapped.
+            ;; Retry rather than associating that mixed result with either method table.
+            (if (identical? spec-methods (methods spec*))
+              (do (reset! model-hooks-cache [spec-methods v])
+                  v)
+              (recur))))))))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
