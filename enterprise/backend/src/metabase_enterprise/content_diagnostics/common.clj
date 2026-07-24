@@ -4,22 +4,40 @@
   Requires nothing module-internal, so both `checkers/*` and `serve` can depend on it acyclically."
   (:require
    [clojure.set :as set]
+   [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def entity-type->model
   "Content Diagnostics entity-types → their Toucan models. Single source of truth: the API's display
-  hydration and each checker's candidate→finding mapping both derive from this (inverse below)."
-  {:card      :model/Card
-   :dashboard :model/Dashboard
-   :document  :model/Document
-   :transform :model/Transform})
+  hydration and each checker's candidate→finding mapping both derive from this (inverse below).
+  `:collection` is the one subject that is not *in* a collection but *is* one - it has no
+  `collection_id`/`creator_id` columns, so every consumer that touches those columns special-cases it."
+  {:card       :model/Card
+   :collection :model/Collection
+   :dashboard  :model/Dashboard
+   :document   :model/Document
+   :transform  :model/Transform})
 
 (def model->entity-type
   "Inverse of [[entity-type->model]] - some candidate sources (e.g. `find-candidates`) return `:model`
   keywords like `:model/Card`."
   (set/map-invert entity-type->model))
+
+(def eligible-collection-where
+  "The WHERE defining a collection *subject*: non-archived, default-namespace only (snippet/analytics-
+  namespace collections are internal), never the Trash collection and never instance-analytics collections.
+  Personal collections ARE included (the scan is permission-agnostic; serve-time filters handle exclusion).
+  The single definition of what a collection subject is, so no two checkers can ever scan divergent
+  collection sets."
+  [:and
+   [:= :archived false]
+   [:= :namespace nil]
+   [:or
+    [:= :type nil]
+    [:not-in :type [collection/trash-collection-type
+                    collection/instance-analytics-collection-type]]]])
 
 ;;; ----------------------------- entity-type multimethod dispatch (shared) -----------------------------
 ;;; What the serve/scan multimethods dispatch on: a module-local `hierarchy` (keeping bare entity-type
@@ -29,8 +47,10 @@
 (def hierarchy
   "Dispatch hierarchy for the module's per-entity-type multimethods (module-local, mirroring
   `metabase.driver.impl/hierarchy`). card/dashboard/document derive `::collection-item` and share one method
-  each (collection-gated read, no owner, archivable); transform diverges and carries explicit methods. Add a
-  type by deriving it here or giving it its own methods - an unregistered type throws at dispatch."
+  each (collection-gated read, no owner, column-resident display fields, archivable); transform and
+  collection diverge and carry explicit methods (transform has an owner and no collection_id column;
+  collection is not *in* a collection but *is* one). Add a type by deriving it here or giving it its own
+  methods - an unregistered type throws at dispatch."
   (-> (make-hierarchy)
       (derive :card      ::collection-item)
       (derive :dashboard ::collection-item)
@@ -38,10 +58,12 @@
 
 (def ^:private entity-spec
   "Per-entity-type column lists the serve/scan multimethods read, so column choices stay out of `defmethod`
-  bodies. Per type: `:context` = extra display cols beyond `[:id :collection_id]`; `:peer` / `:candidate` =
-  extra cols the duplicate-entity hydrate / duplicated checker select beyond `[:id :name]`. Only card carries
-  the `:card_schema` its after-select hook requires; transform has only `:context` (its peer/candidate reads
-  are explicit methods)."
+  bodies. Per type: `:context` = extra display cols `entity-context` selects beyond `[:id :collection_id]`;
+  `:peer` / `:candidate` = extra cols the duplicate-entity hydrate / duplicated checker select beyond
+  `[:id :name]`. Only card carries the `:card_schema` its after-select hook requires; transform has only
+  `:context` (its peer/candidate reads are explicit methods). `collection` is absent - it is not
+  column-resident (its breadcrumb anchor is parsed from `location`), so it carries its own `entity-context`
+  method rather than going through the shared column path; its peer/candidate reads are explicit methods too."
   {:card      {:context   [:description :view_count]
                :peer      [:view_count :type :card_schema]
                :candidate [:card_schema]}
@@ -75,16 +97,19 @@
   `:entity-creator-id`, `:entity-creator-name` - batch-resolved from each entity's own model (F ≪ N: one
   query per entity-type over just the flagged ids, plus one `creator_id → common_name` lookup over the
   distinct creators). Values a checker has already set win (e.g. the stale checker's `:entity-name` from
-  its own query), so this only fills what the checker left unset. All four covered models expose
-  `name`/`created_at`/`creator_id`."
+  its own query), so this only fills what the checker left unset. Every covered model exposes
+  `name`/`created_at`; `creator_id` is selected only where the model has it - collections have none
+  (a personal collection's owner is NOT a creator proxy), so their creator columns stay NULL."
   [findings]
   (let [attrs-by-key     (into {}
                                (for [[entity-type findings-for-type] (group-by :entity-type findings)
                                      :let  [model (entity-type->model entity-type)]
                                      :when model
-                                     :let  [id->attrs (t2/select-pk->fn
+                                     :let  [cols      (cond-> [:id :name :created_at]
+                                                        (not= entity-type :collection) (conj :creator_id))
+                                            id->attrs (t2/select-pk->fn
                                                        #(select-keys % [:name :created_at :creator_id])
-                                                       [model :id :name :created_at :creator_id]
+                                                       (into [model] cols)
                                                        :id [:in (into #{} (map :entity-id) findings-for-type)])]
                                      [id attrs] id->attrs]
                                  [[entity-type id] attrs]))

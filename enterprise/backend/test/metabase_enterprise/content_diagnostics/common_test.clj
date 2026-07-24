@@ -17,8 +17,8 @@
     (doseq [[etype model] common/entity-type->model]
       (is (= etype (common/model->entity-type model)))
       (is (= model (common/entity-type->model etype)))))
-  (testing "it covers exactly the four content-diagnostics entity types"
-    (is (= #{:card :dashboard :document :transform} (set (keys common/entity-type->model))))))
+  (testing "it covers the content-diagnostics entity types, incl. :collection (a duplicated-only subject)"
+    (is (= #{:card :collection :dashboard :document :transform} (set (keys common/entity-type->model))))))
 
 (deftest entity-type-hierarchy-and-registry-test
   (testing "card/dashboard/document derive ::collection-item; transform is an explicit outlier"
@@ -51,6 +51,13 @@
               etype        api.common/covered-entity-types]
         (is (some? (get-method mm etype))
             (format "%s has no method for covered type %s" mm-name etype))))
+    (testing ":collection (a duplicated-only subject) resolves candidate-rows/read-entity-rows/entity-context,
+              but is intentionally NOT a hydrate-owner subject (collections have no owner column)"
+      (doseq [[mm-name mm] (dissoc mm-by-name "hydrate-owner")]
+        (is (some? (get-method mm :collection))
+            (format "%s must resolve :collection" mm-name)))
+      (is (nil? (get-method @#'api.common/hydrate-owner :collection))
+          "hydrate-owner must stay collection-free - collection context comes from entity-context"))
     (testing "an unregistered entity-type resolves no method (no catch-all :default)"
       (doseq [[mm-name mm] mm-by-name]
         (is (nil? (get-method mm :not-an-entity-type))
