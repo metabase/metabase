@@ -491,6 +491,45 @@
           (is (= 1 @exec-count)
               "the second concurrent request should coalesce onto the first, not run the query again"))))))
 
+(deftest cold-miss-does-not-wait-when-freshness-is-indeterminable-test
+  (testing (str "a concurrent cold-miss request must not wait on an in-flight computation when the strategy has no "
+                "freshness boundary: nothing can ever be served from cache for such a strategy, so waiting can only "
+                "serialize the two requests. Reachable in production with a `:schedule` strategy that has not been "
+                "invalidated yet, or a `:duration` strategy missing `:duration`/`:unit`; reproduced here with a "
+                "`:ttl` strategy that has no recorded average execution time.")
+    (with-mock-cache! []
+      (let [strategy {:type :ttl, :multiplier 60, :min-duration-ms *query-caching-min-ttl*}]
+        (is (nil? (backend.db/strategy->invalidated-at strategy))
+            "precondition: this strategy has no freshness boundary")
+        (let [exec-count    (atom 0)
+              first-entered (promise)
+              release       (promise)
+              execute       (fn [_driver _query respond]
+                              (when (= 1 (swap! exec-count inc))
+                                ;; hold the first execution in flight so the second request arrives while the first
+                                ;; still holds the compute lease
+                                (deliver first-entered true)
+                                (u/deref-with-timeout release 10000))
+                              (respond {} *rows*))
+              request-1     (future (run-query-with-execute* execute :cache-strategy strategy))]
+          (u/deref-with-timeout first-entered 10000)
+          (let [request-2 (future (run-query-with-execute* execute :cache-strategy strategy))]
+            (try
+              ;; give the second request ~1 second to run the query for itself
+              (loop [attempts-remaining 100]
+                (when (and (pos? attempts-remaining)
+                           (< @exec-count 2))
+                  (Thread/sleep 10)
+                  (recur (dec attempts-remaining))))
+              (is (= 2 @exec-count)
+                  "the second request must compute for itself rather than wait for results it could never be served")
+              (finally
+                ;; unblock the first request before awaiting either one: while it holds the lease, a waiting second
+                ;; request cannot make progress
+                (deliver release true)
+                (is (partial= {:status :completed} (u/deref-with-timeout request-1 10000)))
+                (is (partial= {:status :completed} (u/deref-with-timeout request-2 10000)))))))))))
+
 (deftest concurrent-waiters-share-one-poller-test
   (testing "any number of local requests waiting on the same query share a single deduplicated DB-polling loop"
     (with-mock-cache! []
