@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:refer-clojure :exclude [some mapv empty? get-in])
+  (:refer-clojure :exclude [some mapv empty? get-in update-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -28,11 +28,13 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -40,7 +42,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [empty? get-in mapv some]])
+   [metabase.util.performance :as perf :refer [empty? get-in mapv some update-keys]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -59,10 +61,13 @@
    [:= "$project"]
    [:map-of ::lib.schema.common/non-blank-string :any]])
 
+(mr/def ::sort-spec
+  [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]])
+
 (mr/def ::$sort-stage
   [:map-of
    [:= "$sort"]
-   [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])
+   [:ref ::sort-spec]])
 
 (mr/def ::$match-stage
   [:map-of
@@ -115,7 +120,32 @@
 (mr/def ::$set-window-fields-stage
   [:map-of
    [:= "$setWindowFields"]
-   [:map-of ::lib.schema.common/non-blank-string :any]])
+   [:map
+    {:closed true} ; add more stuff as needed
+    ["sortBy"      [:ref ::sort-spec]]
+    ["output"      [:map-of
+                    ::lib.schema.common/non-blank-string
+                    [:map-of ::lib.schema.common/non-blank-string :any]]]
+    ["partitionBy" {:optional true} [:map-of
+                                     ::lib.schema.common/non-blank-string
+                                     ::lib.schema.common/non-blank-string]]]])
+
+(defn- contains-uncompiled-mbql-clause? [x]
+  (cond
+    (map? x)
+    (or (contains? x :lib/uuid)
+        (some contains-uncompiled-mbql-clause? (vals x)))
+
+    (sequential? x)
+    (some contains-uncompiled-mbql-clause? x)
+
+    :else
+    false))
+
+(mr/def ::no-uncompiled-mbql
+  [:fn
+   {:error/message "Should not contain uncompiled MBQL clauses"}
+   (complement contains-uncompiled-mbql-clause?)])
 
 (mr/def ::stage
   [:multi
@@ -144,7 +174,8 @@
       ["$match"           ::$match-stage]
       ["$limit"           ::$limit-stage]
       ["$skip"            ::$skip-stage]
-      ["$setWindowFields" ::$set-window-fields-stage]]]]])
+      ["$setWindowFields" ::$set-window-fields-stage]]
+     [:ref ::no-uncompiled-mbql]]]])
 
 (mr/def ::pipeline
   [:sequential ::stage])
@@ -190,7 +221,9 @@
    ;;
    ;; Let's standardize on one or the other and update the Lib schema to enforce the key being in the right
    ;; place (normalizing if needed).
-   [:collection {:optional true} :string]])
+   [:collection {:optional true} :string]
+   ;; whether this was compiled from MBQL or not (`false` means the query was native and never compiled from MBQL)
+   [:mbql? {:optional true} [:maybe :boolean]]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |
@@ -208,26 +241,27 @@
   []
   (vswap! *next-alias-index* inc))
 
+;; TODO (Cam 2026-07-24) get rid of this dynamic var and attach the mappings directly to the `query` itself
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
   by the nested query."
   {})
 
-(defn- find-mapped-field-name
+(mu/defn- find-mapped-field-name
   "Finds the name of a mapped field, if any.
   First it does a quick exact match and if the field is not found, it searches for a field with the same ID/name and
   the same join alias.
   Note that during the compilation of joins, the field :join-alias is renamed to ::join-local to prevent prefixing the
   fields of the current join to be prefixed with the join alias."
-  [[_ field-id params :as field]]
-  (or (get *field-mappings* field)
-      (some (fn [[e n]]
-              (when (and (vector? e)
-                         (= (subvec e 0 2) [:field field-id])
-                         (= (:join-alias (e 2)) (:join-alias params))
-                         (= (::join-local (e 2)) (::join-local params)))
-                n))
-            *field-mappings*)))
+  [[_ opts field-id :as _field-ref] :- :mbql.clause/field]
+  (some (fn [[a-ref mapped-name]]
+          (when (and (vector? a-ref)
+                     (= (first a-ref) :field)
+                     (= (last a-ref) field-id)
+                     (= (:join-alias (lib/options a-ref)) (:join-alias opts))
+                     (= (::join-local (lib/options a-ref)) (::join-local opts)))
+            mapped-name))
+        *field-mappings*))
 
 (defn- get-join-alias
   "Calculates the name of the join field used for `join-alias`, if any.
@@ -510,7 +544,11 @@ function(bin) {
 (mu/defn- with-rvalue-temporal-bucketing
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column
-   unit                  :- ::lib.schema.temporal-bucketing/unit]
+   ;; TODO (Cam 2026-07-24) apparently there's no complete schema with all the valid bucketing and truncation
+   ;; units (!) fix this
+   unit                  :- [:or
+                             ::lib.schema.temporal-bucketing/unit
+                             ::lib.schema.expression.temporal/temporal-extract.unit]]
   {:style/indent [:form]}
   (if (= unit :default)
     column
@@ -1376,12 +1414,19 @@ function(bin) {
    join-or-query         :- [:or
                              ::lib.schema/query
                              ::lib.schema.join/join]]
-  (or (-> join-or-query :collection)
-      (let [table-id (case (:lib/type join-or-query)
-                       :mbql/query (lib/primary-source-table-id join-or-query)
-                       ;; TODO (Cam 2026-07-13) -- need a better way to do this for joins...
-                       :mbql/join  (get-in join-or-query [:stages 0 :source-table]))]
-        (:name (driver-api/table metadata-providerable table-id)))))
+  ;; TODO (Cam 2026-07-24) it's REALLY unclear where the hecc `:collection` is supposed
+  ;; to live, it seems to show up all over the place.
+  (or (:collection join-or-query)
+      (let [first-stage (first (:stages join-or-query))]
+        (or (:collection first-stage)
+            (get-in first-stage [:native :collection])))
+      (when-let [table-id (case (:lib/type join-or-query)
+                            :mbql/query (lib/primary-source-table-id join-or-query)
+                            ;; TODO (Cam 2026-07-13) -- need a better way to do this for joins...
+                            :mbql/join  (get-in join-or-query [:stages 0 :source-table]))]
+        (:name (driver-api/table metadata-providerable table-id)))
+      (throw (ex-info "Failed to find source collection"
+                      {:join-or-query join-or-query}))))
 
 (defn- localize-join-alias
   "Rename `:join-alias` properties in `:field` ref options to `::join-local`.
@@ -1395,7 +1440,7 @@ function(bin) {
 (mu/defn- get-field-mappings :- [:map-of ::lib.schema.mbql-clause/clause ::projection]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   projections]
+   projections  :- [:maybe ::projections]]
   (let [stage (lib/query-stage query stage-number)]
     (zipmap (mapcat stage [:fields :breakout :aggregation])
             projections)))
@@ -1420,27 +1465,32 @@ function(bin) {
   (let [join-query (assoc query :stages stages)
         {:keys [projections], pipeline :query, :or {projections [], pipeline []}} (mbql->native-rec join-query)
         ;; Get the mappings introduced by the source query.
-        source-field-mappings (get-field-mappings query stage-number projections)
+        source-field-mappings (-> (get-field-mappings join-query -1 projections)
+                                  (update-keys #(lib/update-options % assoc ::join-local join-alias)))
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
         own-fields (match/match-many conditions
                      [:field (opts :guard (not= (:join-alias opts) join-alias)) _id-or-name] &match)
         ;; Map the own fields to a fresh alias and to its rvalue.
-        mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue query stage-number f))
-                                             ;; Mongo `$lookup` let variable names allow ASCII letters, digits,
-                                             ;; underscores, and non-ASCII characters; any other ASCII character
-                                             ;; (e.g. `~`, `.`, space, `-`, `:`) trips a parser error. Match only
-                                             ;; disallowed ASCII characters so non-ASCII chars in source names are
-                                             ;; preserved (#32182, #52807, #76722).
-                                             (str/replace #"[\p{ASCII}&&[^A-Za-z0-9_]]" "_")
-                                             (str "__" (next-alias-index)))]
-                               {:field f, :rvalue (->rvalue query stage-number f), :alias alias}))
+        mapping (map (fn [field-ref]
+                       (let [alias (-> (format "let_%s_" (->lvalue query stage-number field-ref))
+                                       ;; Mongo `$lookup` let variable names allow ASCII letters, digits,
+                                       ;; underscores, and non-ASCII characters; any other ASCII character
+                                       ;; (e.g. `~`, `.`, space, `-`, `:`) trips a parser error. Match only
+                                       ;; disallowed ASCII characters so non-ASCII chars in source names are
+                                       ;; preserved (#32182, #52807, #76722).
+                                       (str/replace #"[\p{ASCII}&&[^A-Za-z0-9_]]" "_")
+                                       (str "__" (next-alias-index)))]
+                         {:field  field-ref
+                          :rvalue (->rvalue query stage-number field-ref)
+                          :alias  alias
+                          :$alias (str \$ alias)}))
                      own-fields)]
     ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
     ;; In the join pipeline the let bindings have to referenced with the prefix $$, so we add $ to the name.
     (binding [*field-mappings* (merge *field-mappings*
                                       source-field-mappings
-                                      (into {} (map (juxt :field #(str \$ (:alias %)))) mapping))]
+                                      (into {} (map (juxt :field :$alias)) mapping))]
       (let [filters   (localize-join-alias conditions join-alias)
             pipeline  (-> (handle-filters query -1 {:query pipeline} filters)
                           :query)
@@ -1552,7 +1602,7 @@ function(bin) {
   :string)
 
 (mr/def ::expanded-aggregation.rhs-definition
-  :any)
+  ::no-uncompiled-mbql)
 
 (mr/def ::expanded-aggregation.lhs->rhs
   [:map-of
@@ -1572,8 +1622,7 @@ function(bin) {
     [:sequential ::expanded-aggregation.lhs->rhs]]
    ;; TODO (Cam 2026-07-16) document this! William added window function support to MongoDB but didn't document this
    ;; stuff.
-   [:window {:optional true}
-    ::expanded-aggregation.lhs->rhs]])
+   [:window {:optional true} ::expanded-aggregation.lhs->rhs]])
 
 (mu/defmethod expand-aggregation :share :- ::expanded-aggregation
   [query stage-number [_ _opts pred :as ag] :- :mbql.clause/share]
@@ -1589,15 +1638,15 @@ function(bin) {
 ;; MongoDB doesn't have a variance operator, but you calculate it by taking the square of the standard deviation.
 ;; However, `$pow` is not allowed in the `$group` stage. So calculate standard deviation in the
 (mu/defmethod expand-aggregation :var :- ::expanded-aggregation
-  [query stage-number ag :- :mbql.clause/var]
+  [query stage-number [_tag _opts expr :as ag] :- :mbql.clause/var]
   (let [stddev-expr (name (gensym "$stddev-"))]
-    {:group {(subs stddev-expr 1) (aggregation->rvalue query stage-number (lib/stddev ag))}
+    {:group {(subs stddev-expr 1) (aggregation->rvalue query stage-number (lib/stddev expr))}
      :post  [{(driver-api/mbql-5-aggregation-name query stage-number ag) {:$pow [stddev-expr 2]}}]}))
 
 (mu/defmethod expand-aggregation :cum-sum :- ::expanded-aggregation
-  [query stage-number ag :- :mbql.clause/cum-sum]
+  [query stage-number [_tag _opts expr :as ag] :- :mbql.clause/cum-sum]
   (let [sum-expr (name (gensym "$sum-"))]
-    {:group {(subs sum-expr 1) (aggregation->rvalue query stage-number (lib/sum ag))}
+    {:group  {(subs sum-expr 1) (aggregation->rvalue query stage-number (lib/sum expr))}
      :window {(driver-api/mbql-5-aggregation-name query stage-number ag) sum-expr}}))
 
 (mu/defmethod expand-aggregation :cum-count :- ::expanded-aggregation
@@ -1773,27 +1822,41 @@ function(bin) {
   {$sum input-name
    "window" {"documents" ["unbounded" "current"]}})
 
-(defn- sort-lookup
-  "Generates a lookup string for a particular field"
-  [id name]
-  (if (id name)
-    (str "_id." name)
-    name))
+(mr/def ::window-id
+  "TODO (Cam 2026-07-24) determine actual types of keys + values"
+  [:maybe
+   [:map-of
+    ::lib.schema.common/non-blank-string
+    :any]])
 
-(defn- window-sort
+(mu/defn- sort-lookup
+  "Generates a lookup string for a particular field"
+  [id       :- ::window-id
+   col-name :- ::lib.schema.common/non-blank-string]
+  (if (id col-name)
+    (str "_id." col-name)
+    col-name))
+
+(mu/defn- window-sort
   "Converts a `$sort` body to something that can be used in a `sortBy` clause in a
   `$setWindowFields` stage."
-  [id pairs]
-  (when-let [pair-seq (seq pairs)]
+  [id :- ::window-id
+   pairs]
+  (when (seq pairs)
     (into (ordered-map/ordered-map)
           (map (fn [[name dir]] [(sort-lookup id name) dir]))
-          pair-seq)))
+          pairs)))
 
-(defn- window-sort-and-partitions
+(mu/defn- window-sort-and-partitions :- [:map
+                                         {:closed true}
+                                         [:sort-expr      :any] ; TODO (Cam 2026-07-24) determine actual return types
+                                         [:partition-expr :any]]
   "Calculates the appropriate sort and partition fields for a `$setWindowFields` stage."
-  [query stage-number id]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   id           :- ::window-id]
   (let [breakouts             (lib/breakouts query stage-number)
-        finest-temporal-index (driver-api/finest-temporal-breakout-index breakouts 2)
+        finest-temporal-index (driver-api/finest-temporal-breakout-index breakouts 1)
         order-bys             (lib/order-bys query stage-number)
         sort-index            (or finest-temporal-index
                                   (dec (count breakouts)))
@@ -1802,7 +1865,10 @@ function(bin) {
         user-sort             (when order-bys
                                 (binding [*field-mappings*
                                           (merge *field-mappings*
-                                                 (into {} (map (juxt identity field-alias)) breakouts))]
+                                                 (into {}
+                                                       (map (juxt identity
+                                                                  (partial field-alias query stage-number)))
+                                                       breakouts))]
                                   (order-by->$sort query stage-number)))
         sort-expr             (or
                                ;; if there is only one breakout, always use the user's sort order
@@ -1822,10 +1888,13 @@ function(bin) {
     {:sort-expr      sort-expr
      :partition-expr partition-expr}))
 
-(defn- window-accumulators
+(mu/defn- window-accumulators :- ::pipeline
   "Takes a map of {output-name input-name ...} and generates a `$setWindowFields` stage that
   produces a cumulative sum of those fields."
-  [query stage-number window-vals id]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   window-vals  :- [:map-of ::lib.schema.common/non-blank-string :any]
+   id           :- ::window-id]
   ;; if id is empty, we don't have any breakouts and so don't need to fiddle around with $setWindowFields
   (if (empty? id)
     [{$addFields window-vals}]
@@ -1835,7 +1904,7 @@ function(bin) {
                  "output" (update-vals window-vals window-output-clause)}
           (seq partition-expr) (assoc "partitionBy" partition-expr))}])))
 
-(defn- group-and-post-aggregations
+(mu/defn- group-and-post-aggregations :- ::pipeline
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
    though [:/ [:count-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
    more complex aggregations are split in two: the reductions are done in `$group` stage after which
@@ -1846,10 +1915,10 @@ function(bin) {
    The intermittent results accrued in `$group` stage are discarded in the final `$project` stage.
    Meanwhile, cumulative aggregations cannot be done in either a `$group` or a `$addFields` stage
    and instead need their own `$setWindowFields` stage."
-  [query stage-number id]
-  (let [breakouts     (lib/breakouts query stage-number)
-        aggregations  (lib/aggregations query stage-number)
-        order-bys     (lib/order-bys query stage-number)
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   id           :- ::window-id]
+  (let [aggregations  (lib/aggregations query stage-number)
         expanded-ags  (map (partial expand-aggregations query stage-number) aggregations)
         group-ags     (mapcat :group expanded-ags)
         post-ags      (order-postprocessing (map :post expanded-ags))
@@ -1857,11 +1926,13 @@ function(bin) {
     (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
           cat
           [(when (seq window-values)
-             (window-accumulators window-values id breakouts order-bys))
+             (window-accumulators query stage-number window-values id))
            (keep (fn [p] (when (seq p) {$addFields p}))
                  post-ags)])))
 
-(defn- projection-group-map [query stage-number]
+(mu/defn- projection-group-map
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
   (reduce
    (fn [m breakout]
      (assoc-in
@@ -2017,7 +2088,7 @@ function(bin) {
         (when-let [finest-temporal-index
                    (and (seq (filter (fn [[agg-type :as _ag-clause]] (#{:cum-sum :cum-count} agg-type))
                                      aggregations))
-                        (driver-api/finest-temporal-breakout-index breakouts 2))]
+                        (driver-api/finest-temporal-breakout-index breakouts 1))]
           (let [id (projection-group-map query stage-number)]
             (as-> (keys id) lst
               (m/remove-nth finest-temporal-index lst)
@@ -2177,7 +2248,8 @@ function(bin) {
 ;;; by [[driver-api/add-alias-info]]. Fixing all the busted code above is more work than I want to take on right now, so
 ;;; until we get around to fixing that let's just walk the query and replace all the non-add-alias-info keys with the
 ;;; values added by add-alias-info.
-(defn- HACK-update-aliases [form]
+(defn- HACK-update-aliases-in-field-refs
+  [query]
   (letfn [(prepend-nfc-path [{nfc-path      driver-api/qp.add.nfc-path,
                               source-alias  driver-api/qp.add.source-alias
                               desired-alias driver-api/qp.add.desired-alias
@@ -2219,24 +2291,45 @@ function(bin) {
                 (and (string? id-or-name)
                      source-alias)
                 (assoc 2 source-alias))))]
-    (match/replace form
-      [:field & _]
-      (update-field-ref &match)
+    ;; disable enforcement as the query won't be fully valid until finishing [[HACK-update-aliases-in-joins]]
+    (mu/disable-enforcement
+      (lib.walk/walk-clauses
+       query
+       (fn [_query _path-type _stage-or-join-path clause]
+         (cond-> clause
+           (and (vector? clause)
+                (= (first clause) :field))
+           update-field-ref))))))
 
-      (:and join
-            {:lib/type               :mbql/join
-             driver-api/qp.add.alias (add-alias :guard (and add-alias (not= add-alias (:alias join))))})
-      (&recur (-> join
-                  (assoc :alias add-alias)
-                  (m/update-existing :fields (fn [fields]
-                                               (mapv (fn [field]
-                                                       (lib/with-join-alias field add-alias))
-                                                     fields))))))))
+(defn- HACK-update-aliases-in-joins
+  [query]
+  ;; disable enforcement as the query won't be fully valid until finishing this step
+  (mu/disable-enforcement
+    (lib.walk/walk
+     query
+     (fn [_query path-type _path join]
+       (when (= path-type :lib.walk/join)
+         (let [add-alias (driver-api/qp.add.alias join)]
+           (when (and add-alias
+                      (not= add-alias (:alias join)))
+             (letfn [(update-field [field]
+                       (lib/with-join-alias field add-alias))
+                     (update-fields [fields]
+                       (mapv update-field fields))]
+               (-> join
+                   (assoc :alias add-alias)
+                   (m/update-existing :fields update-fields))))))))))
+
+(mu/defn- HACK-update-aliases :- ::lib.schema/query
+  [query :- ::lib.schema/query]
+  (-> query
+      HACK-update-aliases-in-field-refs
+      HACK-update-aliases-in-joins))
 
 (mu/defn- preprocess :- ::lib.schema/query
   [query :- ::lib.schema/query]
   (-> query
-      (driver-api/add-alias-info {:globally-unique-join-aliases? true}) ; NOCOMMIT
+      (driver-api/add-alias-info {:globally-unique-join-aliases? true})
       HACK-update-aliases))
 
 (mr/def ::compiled
@@ -2244,7 +2337,7 @@ function(bin) {
    :metabase.query-processor.compile/compiled
    [:map
     [:collection  :string]
-    [:projections {:optional true} ::projections]
+    [:projections {:optional true} [:ref ::projections]]
     [:mbql?       {:optional true} :boolean]]])
 
 (mu/defn mbql->native :- ::compiled
@@ -2258,5 +2351,6 @@ function(bin) {
             compiled (mbql->native-rec query)]
         (log-aggregation-pipeline (:query compiled))
         (assoc compiled
-               :collection (or source-table-name (:collection compiled))
+               :collection (or source-table-name
+                               (find-source-collection query query))
                :mbql?       true)))))
