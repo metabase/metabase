@@ -361,12 +361,14 @@
        (some? finished)))
 
 (defn conversation-state
-  "Merge state values of all replayable messages"
+  "Merge state values of all replayable messages, normalized back out of their at-rest
+  JSON form (see [[metabase.metabot.schema/normalize-state]])."
   [messages]
   (->> messages
        (filter replayable-assistant-row?)
        (keep :state)
-       (reduce memory/merge-states {})))
+       (reduce memory/merge-states {})
+       metabot.schema/normalize-state))
 
 (defn finalize-assistant-turn!
   "UPDATE the placeholder assistant row created by [[start-turn!]] with the final

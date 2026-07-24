@@ -2,13 +2,16 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel initialize-test
   (testing "seeds the working state and starts an empty turn-state"
@@ -64,19 +67,66 @@
                                                         (:charts state))
                             "/question#")))))
 
+(defn- degrade
+  "Round-trip `x` through JSON the way the `metabot_message.state` column does."
+  [x]
+  (json/decode (json/encode x) true))
+
+(defn- rehydrated-queries
+  "`state` holding `query` at each location [[memory/initialize]] canonicalizes,
+  returned as location → the query a reader gets back."
+  [query]
+  (let [mem (memory/initialize [] {:queries    {"q1" query}
+                                   :charts     {"c1" {:queries [query]}}
+                                   :transforms {"1" {:source {:query query}}}})]
+    {:queries    (memory/find-query mem "q1")
+     :charts     (first (:queries (memory/find-chart mem "c1")))
+     :transforms (get-in (memory/find-transform mem "1") [:source :query])}))
+
 (deftest ^:parallel initialize-canonicalizes-round-tripped-queries-test
-  (testing "a pMBQL query degraded by a JSON round-trip is re-canonicalized on rehydration"
-    (let [mp      (mt/metadata-provider)
-          query   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-          degrade #(json/decode (json/encode %) true)
-          state   {:queries    {"q1" (degrade query)}
-                   :charts     {"c1" {:queries [(degrade query)]}}
-                   :transforms {"1" {:source {:query (degrade query)}}}}
-          mem     (memory/initialize [] state)]
-      (is (= :mbql/query (:lib/type (memory/find-query mem "q1"))))
-      (is (= :mbql/query (:lib/type (first (:queries (memory/find-chart mem "c1"))))))
-      (is (= :mbql/query (get-in (memory/find-transform mem "1")
-                                 [:source :query :lib/type]))))))
+  (let [mp        (mt/metadata-provider)
+        query     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :total)) 100))
+                      (lib/aggregate (lib/count)))
+        canonical (dissoc query :lib/metadata)]
+    (doseq [[location q] (rehydrated-queries (degrade query))]
+      (testing location
+        (testing "the whole query is restored, not just its top-level :lib/type"
+          (is (= canonical (dissoc q :lib/metadata))))
+        (is (mr/validate ::lib.schema/query (dissoc q :lib/metadata)))
+        (is (= (lib/->legacy-MBQL query) (links/->legacy-mbql q)))))))
+
+(deftest ^:parallel initialize-canonicalizes-legacy-queries-test
+  (let [legacy {:database (mt/id)
+                :type     :query
+                :query    {:source-table (mt/id :orders)
+                           :filter       [:> [:field (mt/id :orders :total) nil] 100]
+                           :aggregation  [[:count]]}}]
+    (doseq [[location q] (rehydrated-queries (degrade legacy))]
+      (testing location
+        (is (mr/validate ::lib.schema/query (dissoc q :lib/metadata)))
+        (testing "converting back to legacy recovers the stored query"
+          (is (= (mbql.normalize/normalize legacy) (links/->legacy-mbql q))))))))
+
+(deftest ^:parallel initialize-canonicalization-is-idempotent-test
+  (let [mp    (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+    (doseq [[location q] (rehydrated-queries (degrade query))]
+      (testing location
+        (is (= (dissoc q :lib/metadata)
+               (dissoc (get (rehydrated-queries q) location) :lib/metadata)))))))
+
+(deftest ^:parallel initialize-leaves-non-queries-alone-test
+  (testing "a native query's SQL survives verbatim even when it contains JSON"
+    (let [sql   "SELECT '{\"lib/type\": \"mbql/query\", \"stages\": []}' AS payload"
+          query (lib/native-query (mt/metadata-provider) sql)]
+      (doseq [[location q] (rehydrated-queries (degrade query))]
+        (testing location
+          (is (= sql (lib/raw-native-query q)))))))
+  (testing "values with no query type tag pass through untouched"
+    (doseq [v [{:id "q1"} {:type "question" :id 5} {:database 1 :nested/value "kept"}]]
+      (is (= {:queries v :charts v :transforms v}
+             (rehydrated-queries v))))))
 
 (deftest ^:parallel add-step-test
   (testing "adds step to memory"

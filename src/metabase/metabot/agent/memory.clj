@@ -9,7 +9,6 @@
   into both."
   (:require
    [clojure.string :as str]
-   [metabase.lib-be.core :as lib-be]
    [metabase.metabot.schema :as metabot.schema]))
 
 (defn merge-states
@@ -18,48 +17,17 @@
   [a b]
   (merge-with (fn [x y] (if (every? map? [x y]) (merge x y) y)) a b))
 
-(defn- canonicalize-query
-  "Return `query` as a canonical MBQL 5 query, repairing the string-valued enums that a
-  JSON round-trip through persisted state leaves behind (e.g. `:lib/type \"mbql/query\"`).
-  Accepts legacy or pMBQL; returns `query` unchanged when it is not a type-tagged query
-  map or normalization fails, so bad stored data never breaks a reader."
-  [query]
-  (or (when (and (map? query)
-                 (or (:lib/type query) (:type query)))
-        (try
-          (not-empty (lib-be/normalize-query query))
-          (catch Exception _ nil)))
-      query))
-
-(defn- canonicalize-state-queries
-  "Re-canonicalize the MBQL queries embedded in `state`, which a JSON round-trip through
-  persisted state degrades to string enum values. Queries live under `:queries`
-  (id → query), `:charts` (id → {:queries [query]}), and `:transforms`
-  (id → {:source {:query query}})."
-  [state]
-  (cond-> state
-    (:queries state)    (update :queries update-vals canonicalize-query)
-    (:charts state)     (update :charts update-vals
-                                #(cond-> % (:queries %)
-                                         (update :queries (partial mapv canonicalize-query))))
-    (:transforms state) (update :transforms update-vals
-                                #(cond-> % (get-in % [:source :query])
-                                         (update-in [:source :query] canonicalize-query)))))
-
 (defn initialize
   "Initialize memory from input messages and the incoming baseline `state` (prior
-  turns merged, plus seeded viewing context). Rehydrates the embedded MBQL queries to
-  canonical MBQL 5, undoing the string-enum degradation of the state JSON round-trip so
-  readers can assume canonical queries."
+  turns merged, plus seeded viewing context)."
   ([messages state]
    (initialize messages state nil))
   ([messages state context]
    {:input-messages messages
     :steps-taken    []
     :context        context
-    :state          (-> (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}})
-                        metabot.schema/normalize-state
-                        canonicalize-state-queries)
+    :state          (metabot.schema/normalize-state
+                     (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}))
     :turn-state     {}}))
 
 (defn add-step
