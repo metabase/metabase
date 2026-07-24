@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { isValidElementType } from "react-is";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -53,7 +54,9 @@ export function setDefaultVisualization(
 export function isVisualizationComponent(
   visualization: RegisteredVisualization | null | undefined,
 ): visualization is Visualization {
-  return typeof visualization === "function";
+  // Components are plain functions or exotic objects (memo, forwardRef, connect),
+  // while the static-viz bundle registers plain definition objects.
+  return isValidElementType(visualization);
 }
 
 export function registerVisualization(visualization: RegisteredVisualization) {

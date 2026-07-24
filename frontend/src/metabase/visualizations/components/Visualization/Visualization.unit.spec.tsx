@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import { type ComponentProps, memo } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -49,6 +49,30 @@ const MockedVisualization = Object.assign(
 );
 
 registerVisualization(MockedVisualization);
+
+// Unjustified type cast. FIXME
+const MEMOIZED_DISPLAY = "memoized-visualization" as VisualizationDisplay;
+
+// Map, PivotTable and ActionViz are memo/connect-wrapped, so the registry holds
+// exotic objects rather than plain functions for them.
+const MemoizedVisualization = Object.assign(
+  memo(function MemoizedVisualizationInner() {
+    return <div>Hello, I am memoized</div>;
+  }),
+  {
+    getUiName: () => "Memoized Visualization",
+    identifier: MEMOIZED_DISPLAY,
+    iconName: "unknown" as const,
+    noHeader: true,
+    minSize: { width: 1, height: 1 },
+    defaultSize: { width: 4, height: 4 },
+    settings: {},
+    isSensible: () => false,
+    checkRenderable: () => undefined,
+  },
+);
+
+registerVisualization(MemoizedVisualization);
 
 describe("Visualization", () => {
   const renderViz = async (
@@ -123,6 +147,25 @@ describe("Visualization", () => {
         "Products, Count, Grouped by Category and Vendor",
       );
     });
+  });
+
+  it("renders visualizations registered as memoized components", async () => {
+    await renderViz([
+      {
+        data: {
+          ...createMockDatasetData({
+            cols: [
+              createMockCategoryColumn({ name: "CATEGORY" }),
+              createMockNumericColumn({ name: "count" }),
+            ],
+            rows: [["Doohickey", 1]],
+          }),
+        },
+        card: createMockCard({ display: MEMOIZED_DISPLAY }),
+      },
+    ]);
+
+    expect(screen.getByText("Hello, I am memoized")).toBeInTheDocument();
   });
 
   it("should render a watermark when in development mode", async () => {
