@@ -42,7 +42,8 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced
+                                    :table-user-settings :field-user-settings}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -50,7 +51,8 @@
 
 (deftest all-specs-have-valid-events-test
   (testing "Every spec has valid events configuration"
-    (doseq [[model-key spec] spec/remote-sync-specs]
+    (doseq [[model-key spec] spec/remote-sync-specs
+            :when (:events spec)]
       (testing (str "Spec for " model-key)
         (is (keyword? (get-in spec [:events :prefix]))
             "events :prefix should be a keyword")
@@ -61,7 +63,8 @@
 
 (deftest all-specs-have-valid-tracking-test
   (testing "Every spec has valid tracking configuration"
-    (doseq [[model-key spec] spec/remote-sync-specs]
+    (doseq [[model-key spec] spec/remote-sync-specs
+            :when (:tracking spec)]
       (testing (str "Spec for " model-key)
         (let [tracking (:tracking spec)]
           (is (or (contains? tracking :select-fields)
@@ -72,7 +75,8 @@
 
 (deftest all-specs-have-valid-removal-test
   (testing "Every spec has valid removal configuration"
-    (doseq [[model-key spec] spec/remote-sync-specs]
+    (doseq [[model-key spec] spec/remote-sync-specs
+            :when (:removal spec)]
       (testing (str "Spec for " model-key)
         (is (set? (get-in spec [:removal :statuses]))
             "removal :statuses should be a set")
@@ -129,7 +133,9 @@
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 13 (count types))))))
+      (is (contains? types "TableUserSettings"))
+      (is (contains? types "FieldUserSettings"))
+      (is (= 15 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -573,3 +579,54 @@
             "the warning covers only the unsynced subset (the potential data loss)")
         (is (set/subset? flagged would-delete)
             "everything the warning flags would indeed be removed")))))
+
+;;; --------------------------------------------- *UserSettings Spec Tests -------------------------------------------
+
+(deftest table-user-settings-export-roots-test
+  (testing "TableUserSettings export roots are settings rows of published tables in synced collections"
+    (mt/with-temp [:model/Collection coll      {:is_remote_synced true :name "Synced" :type "library-data"}
+                   :model/Database   db        {}
+                   :model/Table      published {:db_id (:id db) :is_published true :collection_id (:id coll)}
+                   :model/Table      unpub     {:db_id (:id db)}]
+      (t2/insert! :model/TableUserSettings {:table_id (:id published) :description "curated"})
+      (t2/insert! :model/TableUserSettings {:table_id (:id unpub) :description "not exported"})
+      (let [roots (set (spec/query-export-roots (spec/spec-for-model-key :model/TableUserSettings)))]
+        (is (contains? roots ["TableUserSettings" (:id published)]))
+        (is (not (contains? roots ["TableUserSettings" (:id unpub)])))))))
+
+(deftest ^:parallel extract-imported-entities-user-settings-test
+  (testing "side-car serdes paths extract to path identities under the settings model keys"
+    (let [paths [[{:model "Database" :id "DB"} {:model "Schema" :id "PUBLIC"}
+                  {:model "Table" :id "T"} {:model "TableUserSettings" :id "1"}]
+                 [{:model "Database" :id "DB"} {:model "Table" :id "T2"}
+                  {:model "Field" :id "F"} {:model "FieldUserSettings" :id "1"}]]
+          {:keys [by-path]} (spec/extract-imported-entities paths)]
+      (is (= [{:db_name "DB" :schema "PUBLIC" :table_name "T"}]
+             (get by-path :model/TableUserSettings)))
+      (is (= [{:db_name "DB" :table_name "T2" :field_name "F"}]
+             (get by-path :model/FieldUserSettings))))))
+
+(deftest sync-all-entities-user-settings-test
+  (testing "the RemoteSyncObject rebuild resolves imported side-car paths to settings rows"
+    (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Synced" :type "library-data"}
+                   :model/Database   db    {:name "DB"}
+                   :model/Table      table {:db_id (:id db) :name "T" :schema "PUBLIC"
+                                            :is_published true :collection_id (:id coll)}
+                   :model/Field      field {:table_id (:id table) :name "F" :base_type :type/Text}]
+      (t2/insert! :model/TableUserSettings {:table_id (:id table) :description "curated"})
+      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (let [rows (spec/sync-all-entities!
+                  (t/offset-date-time)
+                  {:by-entity-id {}
+                   :by-path      {:model/TableUserSettings [{:db_name "DB" :schema "PUBLIC" :table_name "T"}]
+                                  :model/FieldUserSettings [{:db_name "DB" :schema "PUBLIC" :table_name "T" :field_name "F"}]}})]
+        (is (=? {:model_type     "TableUserSettings"
+                 :model_id       (:id table)
+                 :model_table_id (:id table)
+                 :status         "synced"}
+                (first (filter #(= "TableUserSettings" (:model_type %)) rows))))
+        (is (=? {:model_type     "FieldUserSettings"
+                 :model_id       (:id field)
+                 :model_table_id (:id table)
+                 :status         "synced"}
+                (first (filter #(= "FieldUserSettings" (:model_type %)) rows))))))))

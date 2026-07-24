@@ -83,6 +83,47 @@
       ;; No predicate (global model, no imported ids or conditions) — delete all
       :else          (t2/delete! model-key))))
 
+(defn- settings-path-identity
+  "The path-identity map for a *UserSettings row (or an imported side-car path), shaped exactly like
+  [[spec/extract-identity-from-serdes-path]]'s `:path` output so the two compare with `=`."
+  [{:keys [db_name schema table_name field_name]}]
+  (cond-> {:db_name db_name :table_name table_name}
+    (some? schema)     (assoc :schema schema)
+    (some? field_name) (assoc :field_name field_name)))
+
+(defn- remove-unsynced-user-settings!
+  "Deletes TableUserSettings/FieldUserSettings rows in remote-sync scope whose side-car file was not
+  part of the import. The scope mirrors what an export would write (settings of published tables in
+  synced collections), so a side-car deleted in the remote repo deletes the local settings row on
+  pull. The parent Table/Field rows are never touched — sync owns them."
+  [synced-collection-ids {:keys [by-path]}]
+  (when (seq synced-collection-ids)
+    (let [tus-imported (into #{} (map settings-path-identity) (get by-path :model/TableUserSettings))
+          tus-rows     (t2/query {:select [[:tus.table_id :id] [:db.name :db_name]
+                                           [:t.schema :schema] [:t.name :table_name]]
+                                  :from   [[:metabase_table_user_settings :tus]]
+                                  :join   [[:metabase_table :t] [:= :t.id :tus.table_id]
+                                           [:metabase_database :db] [:= :db.id :t.db_id]]
+                                  :where  [:and
+                                           [:= :t.is_published true]
+                                           [:in :t.collection_id synced-collection-ids]]})
+          stale-tus    (into [] (comp (remove #(tus-imported (settings-path-identity %))) (map :id)) tus-rows)
+          fus-imported (into #{} (map settings-path-identity) (get by-path :model/FieldUserSettings))
+          fus-rows     (t2/query {:select [[:fus.field_id :id] [:db.name :db_name] [:t.schema :schema]
+                                           [:t.name :table_name] [:f.name :field_name]]
+                                  :from   [[:metabase_field_user_settings :fus]]
+                                  :join   [[:metabase_field :f] [:= :f.id :fus.field_id]
+                                           [:metabase_table :t] [:= :t.id :f.table_id]
+                                           [:metabase_database :db] [:= :db.id :t.db_id]]
+                                  :where  [:and
+                                           [:= :t.is_published true]
+                                           [:in :t.collection_id synced-collection-ids]]})
+          stale-fus    (into [] (comp (remove #(fus-imported (settings-path-identity %))) (map :id)) fus-rows)]
+      (when (seq stale-tus)
+        (t2/delete! :model/TableUserSettings :table_id [:in stale-tus]))
+      (when (seq stale-fus)
+        (t2/delete! :model/FieldUserSettings :field_id [:in stale-fus])))))
+
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
   [s]
@@ -256,18 +297,18 @@
   [rows repo-paths]
   (let [storage-opts (serdes/storage-base-context)
         repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)
-        serialize    (fn [model-type opts id->eid instance]
+        serialize    (fn [model-type opts pk-col id->eid instance]
                        (try
                          (let [fspec     (source/entity->file-spec storage-opts (serdes/extract-one model-type opts instance))
-                               repo-path (some->> (some-> id->eid (get (:id instance)))
+                               repo-path (some->> (some-> id->eid (get (get instance pk-col)))
                                                   (vector model-type)
                                                   repo-by-eid)]
                            {:model_type   model-type
-                            :model_id     (:id instance)
+                            :model_id     (get instance pk-col)
                             :path         (or repo-path (:path fspec))
                             :content_hash (source/content-hash (:content fspec))})
                          (catch Exception e
-                           (log/warnf e "Skipping %s %s: failed to serialize for content hash" model-type (:id instance))
+                           (log/warnf e "Skipping %s %s: failed to serialize for content hash" model-type (get instance pk-col))
                            nil)))]
     ;; One transduction over the model groups: stream each model's extract-query through `serialize` via an
     ;; eduction — extract-one runs while the ResultSet is open, with no intermediate per-model sequence.
@@ -275,11 +316,12 @@
           (mapcat (fn [[model-type model-rows]]
                     (let [spec      (spec/spec-for-model-type model-type)
                           model-key (:model-key spec)
-                          opts      {:where [:in :id (mapv :model_id model-rows)] :skip-archived true}
+                          pk-col    (serdes/primary-key model-type)
+                          opts      {:where [:in pk-col (mapv :model_id model-rows)] :skip-archived true}
                           ;; entity-id models: map local id -> entity_id so we can look up the repo path
                           id->eid   (when (and model-key (= :entity-id (:identity spec)))
                                       (t2/select-pk->fn :entity_id model-key :id [:in (mapv :model_id model-rows)]))]
-                      (eduction (keep #(serialize model-type opts id->eid %))
+                      (eduction (keep #(serialize model-type opts pk-col id->eid %))
                                 (serdes/extract-query model-type opts)))))
           (group-by :model_type rows))))
 
@@ -353,7 +395,9 @@
       (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! true))
     (t2/with-transaction [_conn]
-      (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
+      (let [synced-collection-ids (spec/all-syncable-collection-ids)]
+        (remove-unsynced! synced-collection-ids imported-data)
+        (remove-unsynced-user-settings! synced-collection-ids imported-data))
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
       ;; insert. Chunked so insert/IN params and memory stay bounded.
@@ -845,7 +889,7 @@
   Return:
     - [[row entity]] (if no entity, then omit)"
   [{:keys [model_type rows]}]
-  (let [pk-col  (spec/pk-col model_type)
+  (let [pk-col  (serdes/primary-key model_type)
         id->row (u/index-by :model_id rows)
         opts    {:where [:in pk-col (mapv :model_id rows)] :skip-archived true}]
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open

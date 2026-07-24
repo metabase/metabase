@@ -1,5 +1,6 @@
 name: ORDERS
 display_name: Orders
+description: Hand-written description of the Orders table
 created_at: '2024-08-28T14:38:42.774331Z'
 db_id: Sample Database
 schema: PUBLIC

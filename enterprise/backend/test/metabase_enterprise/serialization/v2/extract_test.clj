@@ -1132,6 +1132,48 @@
                  (t2/count :model/FieldUserSettings)
                  (count (filter #{"FieldUserSettings"} models)))))))))
 
+(deftest table-user-settings-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
+                       :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
+                       :model/TableUserSettings {description :description}
+                       {:table_id    no-schema-id
+                        :description "Some custom Description"}]
+      (testing "table user settings"
+        (let [ser (serdes/extract-one "TableUserSettings" {} (t2/select-one :model/TableUserSettings :table_id no-schema-id))]
+          (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
+                                 {:model "Table"    :id "Schemaless Table"}
+                                 {:model "TableUserSettings" :id "1"}] ; Always 1.
+                   :created_at  string?
+                   :description description}
+                  ser))
+          (is (not (contains? ser :table_id))
+              ":table_id is dropped; its implied by the path")
+          (testing "depend only on the Database; the parent Table is synthesized on import if missing"
+            (is (= #{[{:model "Database"   :id "My Database"}]}
+                   (set (serdes/deserialization-dependencies ser)))))))
+      (testing "extract-metabase behavior"
+        (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
+          (is (= 1
+                 (t2/count :model/TableUserSettings)
+                 (count (filter #{"TableUserSettings"} models)))))))))
+
+(deftest table-user-settings-collection-dependency-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database   {db-id    :id} {:name "My Database"}
+                       :model/Collection {coll-id  :id
+                                          coll-eid :entity_id} {:name "Library Data"}
+                       :model/Table      {table-id :id} {:name "T" :db_id db-id}
+                       :model/TableUserSettings _
+                       {:table_id      table-id
+                        :collection_id coll-id}]
+      (let [ser (serdes/extract-one "TableUserSettings" {} (t2/select-one :model/TableUserSettings :table_id table-id))]
+        (testing "a recorded collection_id is exported portably and adds a Collection dependency"
+          (is (= coll-eid (:collection_id ser)))
+          (is (= #{[{:model "Database"   :id "My Database"}]
+                   [{:model "Collection" :id coll-eid}]}
+                 (set (serdes/deserialization-dependencies ser)))))))))
+
 (deftest table-descendants-user-edits-only-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id    :id} {:name "DB"}

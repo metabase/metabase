@@ -9,6 +9,7 @@
    "Measure"
    "Segment"
    "Table"
+   "TableUserSettings"
    "Channel"])
 
 (def data-model-in-collection
@@ -16,6 +17,7 @@
    These are extracted by ID when discovered via descendants, even if no-data-model is set.
    Includes both Field (full serdes) and FieldUserSettings (user-edits-only / git sync)."
   ["Table"
+   "TableUserSettings"
    "Field"
    "FieldUserSettings"
    "Segment"])

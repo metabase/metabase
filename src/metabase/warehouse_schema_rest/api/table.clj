@@ -32,6 +32,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -199,6 +200,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
+    (schema.table-user-settings/upsert-user-settings! [id] changes)
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]

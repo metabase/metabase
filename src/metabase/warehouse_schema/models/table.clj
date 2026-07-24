@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as mdb.query]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
@@ -16,7 +17,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -95,7 +97,8 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
-(def ^:private transform-data-authority
+(def transform-table-data-authority
+  "Toucan transform for `data_authority`, shared with `:model/TableUserSettings`."
   {:out (fn [value]
           (let [kw (some-> value keyword)]
             (if (contains? writable-data-authority-types kw)
@@ -119,20 +122,28 @@
    :silver :final
    :gold   :final})
 
+(def transform-table-data-layer
+  "Toucan transform for `data_layer`, shared with `:model/TableUserSettings`."
+  (mi/transform-validator-with-fixes
+   mi/transform-keyword
+   (partial mi/assert-optional-enum data-layers)
+   (some-fn legacy-data-layer->current identity)))
+
+(def transform-table-data-source
+  "Toucan transform for `data_source`, shared with `:model/TableUserSettings`."
+  (mi/transform-validator-with-fixes
+   mi/transform-keyword
+   (partial mi/assert-optional-enum data-sources)
+   (some-fn keyword identity)))
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-layers)
-                     (some-fn legacy-data-layer->current identity))
+   :data_layer      transform-table-data-layer
    :field_order     mi/transform-keyword
-   :data_source     (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-sources)
-                     (some-fn keyword identity))
+   :data_source     transform-table-data-source
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority  transform-data-authority})
+   :data_authority  transform-table-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -188,9 +199,32 @@
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :table_id (:id table)))
 
+(def table-user-settings
+  "Set of user-settable values for a Table, mirrored in `:model/TableUserSettings`."
+  #{:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
+    :show_in_getting_started :collection_id :is_published :data_layer :data_authority :data_source
+    :owner_email :owner_user_id})
+
+(def ^:private sync-overridable-user-settings
+  "The subset of [[table-user-settings]] the sync process writes; the merge-back overlay protects
+  only these — force-merging the rest would fight legitimate system writes (e.g. collection
+  archival nulling collection_id)."
+  #{:description :entity_type :visibility_type :data_layer})
+
+(defn- merge-user-settings
+  "Merge non-nil user-set values over a pending update so sync cannot override them. Must run before
+  the visibility_type/data_layer pair sync, and must be skipped during serdes import, where the
+  incoming values are authoritative regardless of Table/TableUserSettings load order."
+  [table]
+  (let [user-settings (t2/select-one :model/TableUserSettings (:id table))
+        updated-table (merge table (u/select-keys-when user-settings :non-nil sync-overridable-user-settings))]
+    (t2.protocols/with-current table updated-table)))
+
 (t2/define-before-update :model/Table
   [table]
-  (let [changes        (t2/changes table)
+  (let [table          (cond-> table
+                         (not mi/*deserializing?*) merge-user-settings)
+        changes        (t2/changes table)
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
@@ -203,6 +237,14 @@
                (= (keyword (:data_authority changes)) :unconfigured))
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
+    ;; mirror system unpublish writes (collection archival etc.) into any existing settings row
+    (when-let [unpublish-mirror (not-empty
+                                 (cond-> {}
+                                   (and (contains? changes :collection_id) (nil? (:collection_id changes)))
+                                   (assoc :collection_id nil)
+                                   (false? (:is_published changes))
+                                   (assoc :is_published false)))]
+      (t2/update! :model/TableUserSettings (:id table) unpublish-mirror))
     ;; Prevent changing data_source to/from metabase-transform.
     ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
     ;; can be migrated to a transform-managed table via serdes.
@@ -459,10 +501,12 @@
      (set field-ordering)))
 
 (defn custom-order-fields!
-  "Set field order to `field-order`."
+  "Set field order to `field-order`, recording the reorder as a user edit in TableUserSettings."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
+    (mdb.query/update-or-insert! :model/TableUserSettings {:table_id (u/the-id table)}
+                                 (constantly {:field_order :custom}))
     (t2/update! :model/Table (u/the-id table) {:field_order :custom})
     (dorun
      (map-indexed (fn [position field-id]

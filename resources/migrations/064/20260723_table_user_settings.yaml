@@ -1,0 +1,153 @@
+## Adds metabase_table_user_settings, a mirror table of metabase_table that records the values a
+## user has explicitly set through the UI (as opposed to values authored by sync). Follows the
+## pattern of metabase_field_user_settings (v55.2025-06-23T11:29:00).
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-23T10:00:00
+      author: ranquild
+      comment: Add metabase_table_user_settings
+      changes:
+        - createTable:
+            tableName: metabase_table_user_settings
+            remarks: Mirror table of metabase_table to keep track of user-set values (only settable fields are mirrored)
+            columns:
+              - column:
+                  remarks: The related Table
+                  name: table_id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_user_settings_table_id
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the user setting was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the user setting was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: User-set display_name for the Table
+                  name: display_name
+                  type: varchar(254)
+              - column:
+                  remarks: User-set description for the Table
+                  name: description
+                  type: ${text.type}
+              - column:
+                  remarks: User-set entity_type for the Table
+                  name: entity_type
+                  type: varchar(254)
+              - column:
+                  remarks: User-set visibility_type for the Table
+                  name: visibility_type
+                  type: varchar(254)
+              - column:
+                  remarks: User-set field_order for the Table
+                  name: field_order
+                  type: varchar(254)
+              - column:
+                  remarks: User-set caveats for the Table
+                  name: caveats
+                  type: ${text.type}
+              - column:
+                  remarks: User-set points_of_interest for the Table
+                  name: points_of_interest
+                  type: ${text.type}
+              - column:
+                  remarks: User-set show_in_getting_started for the Table
+                  name: show_in_getting_started
+                  type: ${boolean.type}
+              - column:
+                  remarks: User-set collection_id for the Table
+                  name: collection_id
+                  type: int
+              - column:
+                  remarks: User-set is_published for the Table
+                  name: is_published
+                  type: ${boolean.type}
+              - column:
+                  remarks: User-set data_layer for the Table
+                  name: data_layer
+                  type: varchar(254)
+              - column:
+                  remarks: User-set data_authority for the Table
+                  name: data_authority
+                  type: varchar(20)
+              - column:
+                  remarks: User-set data_source for the Table
+                  name: data_source
+                  type: varchar(254)
+              - column:
+                  remarks: User-set owner_email for the Table
+                  name: owner_email
+                  type: ${text.type}
+              - column:
+                  remarks: User-set owner_user_id for the Table
+                  name: owner_user_id
+                  type: int
+
+  ## The indexes are created before the FK constraints: MySQL/MariaDB require an index to back
+  ## every FK and reuse an existing one, so this keeps rollback working (the FK is dropped before
+  ## the index it would otherwise still need). Postgres doesn't auto-index FKs, which is what
+  ## fks-are-indexed-test checks for.
+  - changeSet:
+      id: v64.2026-07-23T10:00:01
+      author: ranquild
+      comment: Index metabase_table_user_settings.collection_id
+      changes:
+        - createIndex:
+            tableName: metabase_table_user_settings
+            indexName: idx_table_user_settings_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v64.2026-07-23T10:00:02
+      author: ranquild
+      comment: Add FK constraint on metabase_table_user_settings.collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_table_user_settings_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-07-23T10:00:03
+      author: ranquild
+      comment: Index metabase_table_user_settings.owner_user_id
+      changes:
+        - createIndex:
+            tableName: metabase_table_user_settings
+            indexName: idx_table_user_settings_owner_user_id
+            columns:
+              - column:
+                  name: owner_user_id
+
+  - changeSet:
+      id: v64.2026-07-23T10:00:04
+      author: ranquild
+      comment: Add FK constraint on metabase_table_user_settings.owner_user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: owner_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_table_user_settings_owner_user_id
+            onDelete: SET NULL
