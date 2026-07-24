@@ -45,7 +45,7 @@
 
 (doseq [[feature supported?] {:actions                          false
                               :convert-timezone                 false
-                              :database-routing                 false
+                              :database-routing                 true
                               :datetime-diff                    true
                               :describe-default-expr            true
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata

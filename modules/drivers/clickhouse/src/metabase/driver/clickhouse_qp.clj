@@ -7,6 +7,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -669,3 +670,17 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
   [_driver this]
   {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
+
+(defmethod sql.qp/->honeysql [:clickhouse ::h2x/identifier]
+  [_driver [_identifier identifier-type components :as identifier]]
+  (let [database            (when (driver-api/initialized?)
+                              (driver-api/database (driver-api/metadata-provider)))
+        enable-multiple-db? (some-> database driver.conn/effective-details :enable-multiple-db)
+        ;; check for `false?` because legacy clickhouse details don't have this key
+        strip-db-name?      (and (false? enable-multiple-db?)
+                                 (driver-api/db-routing-enabled? database)
+                                 (#{:table :field} identifier-type)
+                                 (> (count components) 1))]
+    (if strip-db-name?
+      (apply h2x/identifier identifier-type (rest components))
+      identifier)))
