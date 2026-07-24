@@ -71,8 +71,11 @@
   [index index-metadata]
   ;; if created databases for namespacing in tests we could probably remove this whole idea.
   (let [{:keys [index-table-qualifier]} index-metadata
+        ;; Re-apply the 63-byte hash: the qualifier can push an already-fit name over Postgres's limit,
+        ;; and a name silently truncated on CREATE would no longer match table-exists? lookups.
         qualify (fn [table-name]
-                  (format index-table-qualifier table-name))]
+                  (semantic.index/hash-identifier-if-exceeds-pg-limit
+                   (format index-table-qualifier table-name)))]
     (-> index
         (update :table-name qualify))))
 
