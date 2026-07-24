@@ -104,41 +104,46 @@
   (let [apply-lookback @#'transforms-base.u/apply-lookback]
     (testing "temporal checkpoints are pushed back by value units"
       (is (= (t/local-date-time 2026 1 27 21 0 4)
-             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 4 :unit "day"})))
+             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 4 :unit "day"})))
       (is (= (t/local-date-time 2026 1 31 19 0 4)
-             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 2 :unit "hour"})))
+             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 2 :unit "hour"})))
       (is (= (t/local-date 2026 1 24)
-             (apply-lookback (t/local-date 2026 1 31) :type/Date {:value 1 :unit "week"}))))
+             (apply-lookback (t/local-date 2026 1 31) {:base-type :type/Date} {:value 1 :unit "week"}))))
+    (testing "a coerced numeric column (e.g. a unix timestamp) is temporal via its effective type"
+      (is (= (u.date/parse "2026-01-30T21:00:04Z")
+             (apply-lookback (u.date/parse "2026-01-31T21:00:04Z")
+                             {:base-type :type/BigInteger :effective-type :type/Instant}
+                             {:value 1 :unit "day"}))))
     (testing "a lookback on a non-temporal checkpoint throws a user-facing error"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"only supported for date or datetime"
-           (apply-lookback (biginteger 42) :type/Integer {:value 4 :unit "day"}))))
+           (apply-lookback (biginteger 42) {:base-type :type/Integer} {:value 4 :unit "day"}))))
     (testing "a lookback on a time-only checkpoint throws a user-facing error"
       ;; time-only watermarks wrap at midnight, and day-based units would throw inside u.date/add
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"only supported for date or datetime"
-           (apply-lookback (t/local-time 21 0 4) :type/Time {:value 2 :unit "hour"})))
+           (apply-lookback (t/local-time 21 0 4) {:base-type :type/Time} {:value 2 :unit "hour"})))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"only supported for date or datetime"
-           (apply-lookback (t/offset-time 21 0 4) :type/TimeWithTZ {:value 1 :unit "day"}))))
+           (apply-lookback (t/offset-time 21 0 4) {:base-type :type/TimeWithTZ} {:value 1 :unit "day"}))))
     (testing "a lookback without a unit throws a user-facing error"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"requires a unit"
-           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 4}))))
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 4}))))
     (testing "a lookback with a non-positive value throws instead of silently skipping data"
       ;; a negative window would move `lo` forward past the watermark, permanently skipping rows
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"positive integer value"
-           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value 0 :unit "day"})))
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 0 :unit "day"})))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"positive integer value"
-           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) :type/DateTime {:value -4 :unit "day"}))))))
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value -4 :unit "day"}))))))
 
 (deftest ^:parallel checkpoint-compare-test
   (let [checkpoint-compare @#'transforms-base.u/checkpoint-compare]

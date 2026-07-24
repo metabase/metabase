@@ -421,9 +421,6 @@
             db-id             (transforms-base.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (checkpoint-column metadata-provider checkpoint-filter-field-id)
-            ;; Coerced columns (e.g. a unix-timestamp integer with an effective type of
-            ;; :type/Instant) filter and return values as their effective type, so all
-            ;; parsing/encoding of checkpoint values must key off it, not the storage type.
             base-type         (lib.types.isa/column-type column)
             ;; `checkpoint-lo` is the stored watermark; `lo` is the scan bound, pushed back by any lookback.
             checkpoint-lo     (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
