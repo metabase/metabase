@@ -109,7 +109,17 @@
   missing property key, add the defsetting's namespace here. Everything else loads lazily via
   [[route-map]]."
   '[metabase.appearance.settings
-    metabase.embedding.settings])
+    metabase.embedding.settings
+    ;; Derives nearly every :event/* topic (and defines their audit publish-event!
+    ;; methods). Without it, publish-event!'s topic-derived assertion 500s the first
+    ;; code path that publishes: login publishes :event/user-joined, and the site-url
+    ;; middleware publishes :event/setting-update on any request — so this must load
+    ;; at boot, not per-route.
+    metabase.audit-app.events.audit-log
+    ;; :event/card-read and :event/dashboard-read derive here — published by the
+    ;; very GETs a reviewer starts with.
+    metabase.view-log.events.view-log
+    metabase.activity-feed.events.recent-views])
 
 (defn- shutdown! []
   (log/info "Preview Metabase shutting down ...")
