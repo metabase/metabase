@@ -200,7 +200,7 @@
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
-  [{:keys [server-url code request-id run-id source-tables shared-storage timeout-secs]}]
+  [{:keys [server-url code request-id run-id source-tables shared-storage timeout-secs secrets state]}]
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
         url-for-path             (fn [path] (:url (get objects path)))
@@ -210,15 +210,18 @@
         table-name->manifest-url (into {} (map (fn [{:keys [alias table_id]}]
                                                  [alias (url-for-path [:table table_id :manifest])]))
                                        source-tables)
-        payload                  {:code                code
-                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
-                                  :request_id          (or request-id run-id)
-                                  :output_url          (:url output)
-                                  :output_manifest_url (:url output-manifest)
-                                  :events_url          (:url events)
-                                  :table_mapping       table-name->url
-                                  :manifest_mapping    table-name->manifest-url}
+        payload                  (cond-> {:code                code
+                                          :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
+                                          :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                          :request_id          (or request-id run-id)
+                                          :output_url          (:url output)
+                                          :output_manifest_url (:url output-manifest)
+                                          :events_url          (:url events)
+                                          :table_mapping       table-name->url
+                                          :manifest_mapping    table-name->manifest-url}
+                                   ;; decrypted from the transform row; keys are keywordized by the model transform
+                                   (seq secrets) (assoc :secrets (update-keys secrets name))
+                                   (some? state) (assoc :state state))
         response                 (with-python-api-timing [run-id]
                                    (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)

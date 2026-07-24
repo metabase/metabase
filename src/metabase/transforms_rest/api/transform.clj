@@ -101,6 +101,9 @@
    [:owner_email {:optional true} [:maybe :string]]
    [:owner {:optional true} [:maybe OwnerResponse]]
    [:last_checkpoint_value {:optional true} [:maybe :string]]
+   ;; Secret values never leave the server; responses carry the configured names only.
+   [:secret_keys {:optional true} [:sequential :string]]
+   [:sync_state {:optional true} [:maybe :any]]
    [:can_read {:optional true} :boolean]
    [:can_write {:optional true} :boolean]
    [:can_execute {:optional true} :boolean]
@@ -177,7 +180,9 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
-            [:owner_email {:optional true} [:maybe :string]]]]
+            [:owner_email {:optional true} [:maybe :string]]
+            ;; env-var map for python transforms; write-only (responses expose :secret_keys)
+            [:secrets {:optional true} [:maybe [:map-of ms/NonBlankString :string]]]]]
   (transforms.core/check-feature-enabled! body)
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature body)
@@ -186,7 +191,8 @@
              403
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
-      transforms.u/add-source-readable))
+      transforms.u/add-source-readable
+      transforms.u/present-secrets))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
@@ -204,7 +210,8 @@
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
-         transforms.u/add-source-readable)))
+         transforms.u/add-source-readable
+         transforms.u/present-secrets)))
 
 (api.macros/defendpoint :get "/run" :- [:map {:closed true}
                                         [:data [:sequential TransformRunResponse]]
@@ -303,7 +310,9 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
-            [:owner_email {:optional true} [:maybe :string]]]]
+            [:owner_email {:optional true} [:maybe :string]]
+            ;; env-var map for python transforms; write-only (responses expose :secret_keys)
+            [:secrets {:optional true} [:maybe [:map-of ms/NonBlankString :string]]]]]
   (api/write-check :model/Transform id)
   (transforms.core/update-transform! id body))
 

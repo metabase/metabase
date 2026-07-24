@@ -106,7 +106,8 @@
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms-base.u/present-run))
-                       (map transforms.u/add-source-readable)))))))
+                       (map transforms.u/add-source-readable)
+                       (map transforms.u/present-secrets)))))))
 
 (defn- requestable-indexes
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
@@ -130,7 +131,8 @@
         (u/update-some :last_run transforms-base.u/present-run)
         (assoc :table target-table)
         (assoc :requestable_indexes (requestable-indexes transform))
-        transforms.u/add-source-readable)))
+        transforms.u/add-source-readable
+        transforms.u/present-secrets)))
 
 (defn create-transform!
   "Create new transform in the appdb.
@@ -151,7 +153,7 @@
                             transform     (t2/insert-returning-instance!
                                            :model/Transform
                                            (assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                     :collection_id :owner_email])
+                                                                     :collection_id :owner_email :secrets])
                                                   :creator_id creator-id
                                                   :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided
@@ -197,7 +199,8 @@
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
-        transforms.u/add-source-readable)))
+        transforms.u/add-source-readable
+        transforms.u/present-secrets)))
 
 (defn delete-transform!
   "Delete a transform and publish the delete event."
