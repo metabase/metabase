@@ -196,14 +196,11 @@ const addMetricInputSequence = (
   if (runExpression) {
     runFormula();
     if (!skipRunCompletionWait) {
-      // Running the expression fires /api/metric/dataset; the edit-mode UI is
-      // only torn down once that query resolves, which can outlive the default
-      // 4s retry budget under load / network throttling (the original flake).
-      // Give the gating "search input is gone" assertion a generous budget so it
-      // waits out a slow query against the live DOM. We can't wait on the
-      // @dataset alias here: dataset requests don't map 1:1 to Run clicks (a
-      // re-run with an unchanged result may fire no new request), so waiting on
-      // "the next request" is nondeterministic.
+      // A committed Run collapses the editor synchronously — commitAndCollapse
+      // flips isFocused → false, unmounting the CodeMirror search input — so
+      // these disappear promptly once Run actually commits. The real flake was
+      // the Run click failing to commit (see runFormula), not a slow teardown.
+      // Keep a generous budget here purely as a cheap safety net against CI jank.
       // It is expected that the elements below do not exist after the expression ran successfully
       cy.findByTestId("metrics-viewer-search-input", { timeout: 30000 }).should(
         "not.exist",
@@ -235,12 +232,15 @@ const addMetric = (
 const runFormula = () => {
   cy.log("Make sure mini picker is closed before clicking Run");
   H.MetricsViewer.runButton().should("be.visible");
-  cy.get("body").then(($body) => {
-    if ($body.find('[data-testid="mini-picker"]').length > 0) {
-      cy.realPress("Escape");
-      cy.get('[data-testid="mini-picker"]').should("not.exist");
-    }
-  });
+  // After a metric is chosen, handleSelect refocuses the editor and reopens the
+  // suggestion dropdown on a setTimeout(0). Under load that async reopen can land
+  // *after* a one-shot presence check, leaving the dropdown portal over the Run
+  // button — the click then never commits (commitAndCollapse never runs) and the
+  // editor stays in edit mode, so the later "search input is gone" assertion
+  // times out (the flake). Close the dropdown deterministically and wait for it
+  // to be gone before clicking, instead of sampling its presence once.
+  cy.realPress("Escape");
+  cy.findByTestId("mini-picker").should("not.exist");
 
   H.MetricsViewer.runButton().should("not.be.disabled").click();
 };
