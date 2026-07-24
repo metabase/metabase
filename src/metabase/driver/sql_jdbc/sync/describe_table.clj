@@ -244,14 +244,20 @@
                 :preview-display false})))))))
 
 (defn describe-table-fields-xf
-  "Returns a transducer for computing metadata about the fields in a table"
-  [driver table]
-  (let [table-info (merge {:table-name (:name table)}
-                          (when (:schema table)
-                            {:table-schema (:schema table)}))]
-    (comp
-     (describe-fields-xf driver (driver-api/table->database table) table-info)
-     (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema))))))
+  "Returns a transducer for computing metadata about the fields in a table.
+
+  Accepts `database` explicitly so sync code that already has the Database instance does not
+  need to repeatedly resolve it from `table`."
+  ([driver table]
+   (describe-table-fields-xf driver (driver-api/table->database table) table))
+
+  ([driver database table]
+   (let [table-info (merge {:table-name (:name table)}
+                           (when (:schema table)
+                             {:table-schema (:schema table)}))]
+     (comp
+      (describe-fields-xf driver database table-info)
+      (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema)))))))
 
 (defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
@@ -264,7 +270,16 @@
   [driver conn table db-name-or-nil]
   (into
    #{}
-   (describe-table-fields-xf driver table)
+   (describe-table-fields-xf driver (driver-api/table->database table) table)
+   (fields-metadata driver conn table db-name-or-nil)))
+
+(defn- describe-table-field-set
+  "Return the described field set for `table`, reusing the already-loaded `database`
+  when the caller has it instead of resolving it again from `table`."
+  [driver database conn table db-name-or-nil]
+  (into
+   #{}
+   (describe-table-fields-xf driver database table)
    (fields-metadata driver conn table db-name-or-nil)))
 
 ;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
@@ -327,10 +342,10 @@
                                       (assoc field :pk? true)))))))))
 
 (defn- describe-table*
-  [driver ^Connection conn table]
+  [driver database ^Connection conn table]
   {:pre [(instance? Connection conn)]}
   (->> (assoc (select-keys table [:name :schema])
-              :fields (describe-table-fields driver conn table nil))
+              :fields (describe-table-field-set driver database conn table nil))
        ;; find PKs and mark them
        (add-table-pks driver conn)))
 
@@ -342,7 +357,7 @@
    db
    nil
    (fn [^Connection conn]
-     (describe-table* driver conn table))))
+     (describe-table* driver db conn table))))
 
 (defmulti describe-fields-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
@@ -753,7 +768,7 @@
 
 (defn- table->unfold-json-fields
   "Given a table return a list of json fields that need to unfold."
-  [driver conn table]
+  [driver database conn table]
   (let [fields-with-json-unfolding-disabled
         (->> (t2/select-fn-set :name [:model/Field :name]
                                :table_id (u/the-id table)
@@ -765,7 +780,7 @@
           (comp
            (filter #(isa? (:base-type %) :type/JSON))
            (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
-           (describe-table-fields-xf driver table))
+           (describe-table-fields-xf driver database table))
           (describe-table-fields driver conn table nil))))
 
 (defn- sample-json-row-honey-sql
@@ -845,7 +860,7 @@
                                   jdbc-spec
                                   nil
                                   (fn [^Connection conn]
-                                    (let [unfold-json-fields (table->unfold-json-fields driver conn table)
+                                    (let [unfold-json-fields (table->unfold-json-fields driver database conn table)
                                           ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
                                           ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
                                           ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
