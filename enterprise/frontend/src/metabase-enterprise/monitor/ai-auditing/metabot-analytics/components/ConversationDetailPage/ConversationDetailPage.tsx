@@ -55,15 +55,13 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedToolCall, setSelectedToolCall] =
     useState<MetabotDebugToolCallMessage | null>(null);
-  // The element that opened the sidebar, so focus can return to it on close.
-  const triggerElementRef = useRef<HTMLElement | null>(null);
 
-  // React Router reuses this component across `:convoId` changes; drop any open
-  // tool call so the sidebar can't reappear with the previous conversation's data.
   useEffect(() => {
     setSelectedToolCall(null);
   }, [convoId]);
 
+  // The element that opened the sidebar, so focus can return to it on close.
+  const triggerElementRef = useRef<HTMLElement | null>(null);
   const handleToolCallSelect = (message: MetabotDebugToolCallMessage) => {
     const isClosing = selectedToolCall?.id === message.id;
     if (!isClosing) {

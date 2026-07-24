@@ -117,7 +117,6 @@ function renderCell(column: EventColumn, value: RowValue): ReactNode {
   return value == null || value === "" ? EMPTY_CELL_PLACEHOLDER : String(value);
 }
 
-/** A result row projected onto the curated columns, keyed by column name. */
 type EventRow = { id: string } & Record<string, RowValue>;
 
 type PaginationProps = {
@@ -217,10 +216,6 @@ function McpEventsTableInner({
     [hasTenants, hasPii],
   );
 
-  // `tenant_name`/`ip_address`/`error_message` are only sortable while their columns are visible
-  // (tenants/PII on). A bookmarked or shared URL can still carry one of those as the active sort
-  // after the setting is turned off, which would order by an invisible (and possibly PII) column
-  // with no sort indicator — fall back to the default sort when the column isn't currently shown.
   const effectiveSorting = useMemo(() => {
     const visibleSortColumns = new Set(
       columns.map((column) => column.sort).filter(Boolean),
@@ -283,9 +278,6 @@ function McpEventsTableInner({
           return [column.key, index != null ? rawRow[index] : null];
         }),
       );
-      // Key by the stable backend tool_call_id (always in the curated columns) so a row's
-      // React/virtualizer key and active-row state don't carry to a different tool call after a
-      // page/sort refetch. Fall back to a page-aware index if the id is somehow absent.
       const id = String(values.tool_call_id ?? `${page}-${rowIndex}`);
       return { id, ...values };
     });
