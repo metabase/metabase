@@ -41,14 +41,9 @@
                    (lib/primary-source-table-id normalized-definition))
                  (tru "Measure definition must specify a source table.")))
 
-(api.macros/defendpoint :post "/" :- ::measure
-  "Create a new `Measure`. The Measure's table is derived from its `definition`."
-  [_route-params
-   _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ::measures.schema/definition]
-                                                       [:description {:optional true} [:maybe :string]]]]
+(defn create-measure!
+  "Create and return a hydrated Measure using the same permission, normalization, and event path as the REST endpoint."
+  [{:keys [name description definition], :as body}]
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Measure (assoc body :table_id table-id))
     (let [measure (api/check-500
@@ -59,6 +54,16 @@
                                                           :definition  definition)))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
+
+(api.macros/defendpoint :post "/" :- ::measure
+  "Create a new `Measure`. The Measure's table is derived from its `definition`."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:name        ms/NonBlankString]
+            [:definition  ::measures.schema/definition]
+            [:description {:optional true} [:maybe :string]]]]
+  (create-measure! body))
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]

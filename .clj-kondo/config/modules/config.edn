@@ -2660,7 +2660,9 @@
 
   usage-metadata
   {:team "UX West"
-   :api  #{metabase.usage-metadata.init}
+   :api  #{metabase.usage-metadata.candidates
+           metabase.usage-metadata.init
+           metabase.usage-metadata.task.process}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -2676,6 +2678,7 @@
            lib
            lib-be
            models
+           premium-features
            settings
            task
            util}}
@@ -3237,14 +3240,25 @@
    :uses #{api
            collections
            events
+           measures
            models
            permissions
            premium-features
+           request
+           segments
+           usage-metadata
            util}
    :model-imports #{:model/Collection
+                    :model/Database
                     :model/Dimension
                     :model/Field
-                    :model/Table}}
+                    :model/Measure
+                    :model/Segment
+                    :model/Table
+                    :model/UsageMetadataCandidate
+                    :model/UsageMetadataCandidateDismissal
+                    :model/UsageMetadataCandidateMatch
+                    :model/UsageMetadataCandidateSource}}
 
   enterprise/database-replication
   {:team "Cloud"

@@ -2,9 +2,11 @@
   "`/api/ee/data-studio/` routes"
   (:require
    [metabase-enterprise.data-studio.api.table]
+   [metabase-enterprise.data-studio.api.usage-metadata]
    [metabase.api.util.handlers :as handlers]))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-studio` routes."
   (handlers/route-map-handler
-   {"/table" metabase-enterprise.data-studio.api.table/routes}))
+   {"/table"          metabase-enterprise.data-studio.api.table/routes
+    "/usage-metadata" metabase-enterprise.data-studio.api.usage-metadata/routes}))

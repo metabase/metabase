@@ -2,6 +2,7 @@
   "Read-side helpers over usage-metadata rollups — consumer of the batch pipeline."
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.lib-be.core :as lib-be]
@@ -253,7 +254,7 @@
        node))
    x))
 
-(defn- canonical-signature
+(defn canonical-signature
   "Canonical JSON used for deterministic candidate grouping and semantic collision checks.
 
   Custom aggregation/filter labels are evidence about how people describe a computation, not part of
@@ -323,19 +324,81 @@
       true
       vec)))
 
+(defn qualified-card-ids
+  "Return the default persisted-cleanup population without loading query definitions."
+  ([] (qualified-card-ids candidate-default-min-view-count))
+  ([min-view-count]
+   (let [cards          (t2/select [:model/Card :id :collection_id :view_count]
+                                   :archived false
+                                   :type [:in [:question :model]])
+         card-ids       (into #{} (map :id) cards)
+         collection-ids (into #{} (keep :collection_id) cards)
+         verified-ids   (if (seq card-ids)
+                          (t2/select-fn-set :moderated_item_id :model/ModerationReview
+                                            :moderated_item_id [:in card-ids]
+                                            :moderated_item_type "card"
+                                            :most_recent true
+                                            :status "verified")
+                          #{})
+         official-ids   (if (seq collection-ids)
+                          (t2/select-pks-set :model/Collection
+                                             :id [:in collection-ids]
+                                             :authority_level "official")
+                          #{})]
+     (->> cards
+          (keep (fn [{:keys [id collection_id view_count]}]
+                  (when (or (contains? verified-ids id)
+                            (contains? official-ids collection_id)
+                            (>= (long (or view_count 0)) min-view-count))
+                    id)))
+          sort
+          vec))))
+
+(defn- referenced-card-ids
+  [dataset-query]
+  (let [ids (volatile! #{})]
+    (walk/postwalk
+     (fn [node]
+       (when (map? node)
+         (when (pos-int? (:source-card node))
+           (vswap! ids conj (:source-card node)))
+         (when-let [source-table (:source-table node)]
+           (when (and (string? source-table)
+                      (str/starts-with? source-table "card__"))
+             (when-let [id (parse-long (subs source-table 6))]
+               (vswap! ids conj id)))))
+       node)
+     dataset-query)
+    @ids))
+
+(defn- select-lineage-cards
+  [ids allowed-types]
+  (into []
+        (mapcat (fn [batch]
+                  (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+                             :id [:in batch]
+                             :archived false
+                             :type [:in allowed-types])))
+        (partition-all 200 ids)))
+
+(defn- candidate-lineage-index
+  [cards allowed-types]
+  (loop [pending (into #{} (mapcat (comp referenced-card-ids :dataset_query)) cards)
+         index   {}]
+    (let [pending (set/difference pending (set (keys index)))]
+      (if (empty? pending)
+        index
+        (let [rows (select-lineage-cards pending allowed-types)]
+          (recur (into #{} (mapcat (comp referenced-card-ids :dataset_query)) rows)
+                 (into index (map (juxt :id identity)) rows)))))))
+
 (defn- candidate-model-index
-  []
-  (u/index-by :id
-              (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
-                         :archived false
-                         :type :model)))
+  [cards]
+  (candidate-lineage-index cards #{:model}))
 
 (defn- candidate-lineage-card-index
-  []
-  (u/index-by :id
-              (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
-                         :archived false
-                         :type [:in [:question :model]])))
+  [cards]
+  (candidate-lineage-index cards #{:question :model}))
 
 (defn- clauses-of-type
   [clause-type x]
@@ -872,7 +935,7 @@
    (lib-be/with-metadata-provider-cache
      (let [limit        (or limit candidate-default-limit)
            cards        (candidate-source-cards opts)
-           models       (candidate-model-index)
+           models       (candidate-model-index cards)
            analysis     (raw-table-candidate-analysis cards models)
            by-table     (group-by :table-id (:table-source-items analysis))
            table-index  (candidate-table-index (keys by-table))
@@ -1129,15 +1192,13 @@
         cards))
 
 (defn- existing-metric-definition-signatures
-  [card-index]
+  [metric-cards card-index]
   (into #{}
         (keep (fn [card]
                 (some-> (prepare-metric-definition card card-index)
                         :definition
                         canonical-signature)))
-        (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
-                   :type :metric
-                   :archived false)))
+        metric-cards))
 
 (defn- metric-source-sort-key
   [{source-item ::source-item}]
@@ -1223,9 +1284,12 @@
    (lib-be/with-metadata-provider-cache
      (let [limit               (or limit candidate-default-limit)
            cards               (candidate-source-cards opts)
-           card-index          (candidate-lineage-card-index)
+           metric-cards        (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+                                          :type :metric
+                                          :archived false)
+           card-index          (candidate-lineage-card-index (concat cards metric-cards))
            raw-candidates      (raw-metric-candidates cards card-index)
-           existing-signatures (existing-metric-definition-signatures card-index)
+           existing-signatures (existing-metric-definition-signatures metric-cards card-index)
            table-index         (metric-required-table-index (into #{} (mapcat ::table-ids) raw-candidates))]
        (merge-metric-candidates raw-candidates existing-signatures table-index limit)))))
 
@@ -1249,6 +1313,26 @@
         (sort-by candidate-sort-key)
         (take limit)
         (mapv #(dissoc % ::signature)))))
+
+(defn- merge-cleanup-candidates
+  [candidate-type raw-candidates source-index keep-candidate?]
+  (->> raw-candidates
+       (group-by ::signature)
+       (keep (fn [[signature candidates]]
+               (let [candidate (first candidates)]
+                 (when-let [source (source-index [:table (::table-id candidate)])]
+                   (let [candidate (-> candidate
+                                       (assoc :candidate-type candidate-type
+                                              :source source
+                                              :evidence (candidate-evidence (map ::source-item candidates))
+                                              :signature (canonical-signature signature)
+                                              ::signature signature)
+                                       (dissoc ::table-id ::source-item))]
+                     (when (keep-candidate? candidate)
+                       candidate))))))
+       (sort-by candidate-sort-key)
+       (mapv #(dissoc % ::signature))
+       vec))
 
 (defn- raw-measure-candidates
   [cards model-index]
@@ -1385,6 +1469,31 @@
        (pos? (:official-source-count evidence))
        (>= (:distinct-source-count evidence) 2))))
 
+(defn cleanup-candidates
+  "Return reconciliation-ready Measure and Segment observations for persistence.
+
+  Unlike `candidate-measures` and `candidate-segments`, exact existing Library definitions are
+  deliberately retained. This is an internal materialization boundary: callers receive stable
+  semantic signatures and the same eligibility, evidence, naming, and ordering used by the public
+  candidate APIs."
+  ([] (cleanup-candidates {}))
+  ([{:keys [include-ineligible?] :as opts}]
+   (lib-be/with-metadata-provider-cache
+     (let [cards        (candidate-source-cards opts)
+           models       (candidate-model-index cards)
+           raw-measures (raw-measure-candidates cards models)
+           raw-segments (raw-segment-candidates cards models)
+           source-idx   (build-source-index
+                         (into #{}
+                               (map (comp #(vector :table %) ::table-id))
+                               (concat raw-measures raw-segments)))
+           measure-keep (if include-ineligible? (constantly true) eligible-measure-candidate?)
+           segment-keep (if include-ineligible? (constantly true) eligible-segment-candidate?)
+           measures     (merge-cleanup-candidates :measure raw-measures source-idx measure-keep)
+           segments     (merge-cleanup-candidates :segment raw-segments source-idx segment-keep)]
+       {:measures (mapv add-measure-suggestions measures)
+        :segments (mapv add-segment-suggestions segments)}))))
+
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
   "Creation-ready Measure candidates mined from selected questions and models.
 
@@ -1402,7 +1511,7 @@
    (lib-be/with-metadata-provider-cache
      (let [limit      (or limit candidate-default-limit)
            cards      (candidate-source-cards opts)
-           models     (candidate-model-index)
+           models     (candidate-model-index cards)
            candidates (raw-measure-candidates cards models)
            source-idx (build-source-index (into #{} (map (comp #(vector :table %) ::table-id)) candidates))]
        (mapv add-measure-suggestions
@@ -1431,7 +1540,7 @@
    (lib-be/with-metadata-provider-cache
      (let [limit       (or limit candidate-default-limit)
            cards       (candidate-source-cards opts)
-           models      (candidate-model-index)
+           models      (candidate-model-index cards)
            candidates  (raw-segment-candidates cards models)
            source-idx  (build-source-index (into #{} (map (comp #(vector :table %) ::table-id)) candidates))]
        (mapv add-segment-suggestions

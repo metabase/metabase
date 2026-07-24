@@ -52,3 +52,12 @@
   "Analyze saved questions and models that have a Card view-log entry in the last `days` days."
   [days :- ms/PositiveInt]
   (->RecentViewLogQuerySource days))
+
+(defrecord CardIdsQuerySource [ids]
+  CandidateQuerySource
+  (card-ids [_] ids))
+
+(defn card-id-set
+  "Analyze exactly `ids`. Intended for bounded internal processing of a prequalified Card population."
+  [ids]
+  (->CardIdsQuerySource (set ids)))
