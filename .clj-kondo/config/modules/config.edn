@@ -1274,6 +1274,7 @@
            lib
            lib-be
            llm
+           measures
            metabot
            metrics
            models
@@ -1286,6 +1287,7 @@
            queries
            query-processor
            request
+           segments
            server
            session
            settings

@@ -45,13 +45,21 @@
     (is (contains? scopes "agent:sql:*"))
     (is (contains? scopes "agent:transforms:*"))
     (is (contains? scopes "agent:snippets:*"))
-    (is (contains? scopes "agent:search"))))
+    (is (contains? scopes "agent:search"))
+    (testing "segment/measure/metric are MBQL macros gated by NLQ, not SQL generation"
+      (is (not (contains? scopes "agent:metric:*")))
+      (is (not (contains? scopes "agent:segment:*")))
+      (is (not (contains? scopes "agent:measure:*"))))))
 
 (deftest ^:parallel perms->scopes-nql-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
     (is (contains? scopes "agent:notebook:*"))
     (is (contains? scopes "agent:query:*"))
-    (is (contains? scopes "agent:question:*"))))
+    (is (contains? scopes "agent:question:*"))
+    (testing "segment/measure write is gated by NLQ, alongside metric"
+      (is (contains? scopes "agent:metric:*"))
+      (is (contains? scopes "agent:segment:*"))
+      (is (contains? scopes "agent:measure:*")))))
 
 (deftest ^:parallel perms->scopes-other-tools-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]

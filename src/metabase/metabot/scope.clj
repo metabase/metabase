@@ -60,6 +60,14 @@
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
   (deferred-tru "View SQL snippets"))
 
+;; Segments
+(api-scope/defscope agent-segment-write "agent:segment:write"
+  (deferred-tru "Create and edit segments"))
+
+;; Measures
+(api-scope/defscope agent-measure-write "agent:measure:write"
+  (deferred-tru "Create and edit measures"))
+
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
@@ -181,9 +189,20 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
-                                        "agent:notification:*" "agent:collection:*"}})
+   ;; segment/measure are MBQL query macros authored while building queries, like metric — the NLQ
+   ;; bucket, not the raw-SQL one.
+   :permission/metabot-nlq            #{"agent:notebook:*"
+                                        "agent:query:*"
+                                        "agent:question:*"
+                                        "agent:metric:*"
+                                        "agent:segment:*"
+                                        "agent:measure:*"}
+   :permission/metabot-other-tools    #{"agent:viz:*"
+                                        "agent:dashboard:*"
+                                        "agent:document:*"
+                                        "agent:alert:*"
+                                        "agent:notification:*"
+                                        "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
