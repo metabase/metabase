@@ -63,21 +63,28 @@
   - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since these IDs are sequential."
   [engine id]
-  (t2/insert! :model/Database {:is_audit         true
-                               :id               id
-                               :name             default-db-name
-                               :description      "Internal Audit DB used to power metabase analytics."
-                               :engine           engine
-                               :is_full_sync     true
-                               :is_on_demand     false
-                               :creator_id       nil
-                               :auto_run_queries true})
-  ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-  (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" id "/%")]}))
+  ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
+  ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
+  (t2/with-transaction [_conn]
+    (t2/insert! :model/Database {:is_audit         true
+                                 :id               id
+                                 :name             default-db-name
+                                 :description      "Internal Audit DB used to power metabase analytics."
+                                 :engine           engine
+                                 :is_full_sync     true
+                                 :is_on_demand     false
+                                 :creator_id       nil
+                                 :auto_run_queries true})
+    ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
+    (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" id "/%")]})))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
+  ;;
+  ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
+  ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
+  ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
   (t2/update! :model/Database audit-db-id {:engine "postgres"})
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
@@ -332,25 +339,31 @@
       (directory-content-checksum views-dir ".sql"))))
 
 (defn- maybe-sync-audit-db!
-  "One-shot synchronous `:scan :schema` sync of the audit DB. Fires when either trigger is true:
+  "One-shot synchronous `:scan :schema` sync of the audit DB. Fires when any trigger is true:
      - `engine-changed?` — `maybe-load-analytics-content!` swapped the audit DB engine and
        field metadata needs to be refreshed for the new dialect.
      - the `instance_analytics_views` SQL files have changed since the last successful sync,
        meaning a migration may have added a new view that isn't yet in `metabase_table`.
-   The two triggers share one sync because they both want the same operation. Runs synchronously
-   (not in a background future) so it stays inside the caller's cross-node cluster lock and
-   transaction — a sync on another thread would escape the lock and, on a transactional appdb,
-   deadlock against the caller's uncommitted `metabase_table` writes."
+     - a previous engine-changed sync failed or was interrupted, recorded durably in
+       [[audit-app.settings/audit-db-dialect-sync-pending]].
+   The triggers share one sync because they all want the same operation. Runs synchronously
+   (not in a background future) so it stays serialized under the caller's cross-node cluster lock."
   [audit-db engine-changed?]
-  (let [current      (views-checksum)
-        views-stale? (and current (not= current (audit-app.settings/last-analytics-views-checksum)))]
-    (when (or engine-changed? views-stale?)
-      (log/infof "Syncing Audit DB schema (engine-changed? %s, views-stale? %s)"
-                 engine-changed? views-stale?)
+  (let [current       (views-checksum)
+        views-stale?  (and current (not= current (audit-app.settings/last-analytics-views-checksum)))
+        sync-pending? (audit-app.settings/audit-db-dialect-sync-pending)]
+    ;; record the debt durably BEFORE attempting the sync: the content checksum has already advanced, so
+    ;; a failed or interrupted sync would otherwise never be retried — no other path syncs the audit DB
+    (when engine-changed?
+      (audit-app.settings/audit-db-dialect-sync-pending! true))
+    (when (or engine-changed? views-stale? sync-pending?)
+      (log/infof "Syncing Audit DB schema (engine-changed? %s, views-stale? %s, sync-pending? %s)"
+                 engine-changed? views-stale? sync-pending?)
       (try
         (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
         (when current
           (audit-app.settings/last-analytics-views-checksum! current))
+        (audit-app.settings/audit-db-dialect-sync-pending! false)
         (log/info "Audit DB sync complete.")
         (catch Exception e
           (log/error e "Audit DB sync failed."))))))
@@ -435,27 +448,30 @@
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
-      (let [referenced-ids    (into #{}
-                                    (map :table_id)
-                                    (t2/query {:select-distinct [:table_id]
-                                               :from            [(t2/table-name :model/Card)]
-                                               :where           [:in :table_id (map :id rows)]}))
-            survivor          (or (first (filter (comp referenced-ids :id) rows))
-                                  (first (filter :active rows))
-                                  (first rows))
-            [c-name c-schema] (host-canonical-table (:name survivor))
-            orphans           (remove #(= (:id %) (:id survivor)) rows)]
-        ;; move content off each orphan, then delete it before re-canonicalizing the survivor so the survivor's
-        ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
-        (doseq [{orphan-id :id} orphans]
-          (repoint-cards-to-survivor! orphan-id (:id survivor))
-          (t2/delete! :model/Table orphan-id))
-        ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
-        ;; NULL — and thus excluded from the index — while the flag is set)
-        (t2/update! :model/Table (:id survivor)
-                    {:active true :name c-name :schema c-schema :is_defective_duplicate false})
-        (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
-                   (count orphans) (:id survivor))))))
+      ;; one transaction per group so a crash can't delete the orphans yet skip the survivor update —
+      ;; the shrunken group would no longer register as duplicates, stranding the survivor's flags
+      (t2/with-transaction [_conn]
+        (let [referenced-ids    (into #{}
+                                      (map :table_id)
+                                      (t2/query {:select-distinct [:table_id]
+                                                 :from            [(t2/table-name :model/Card)]
+                                                 :where           [:in :table_id (map :id rows)]}))
+              survivor          (or (first (filter (comp referenced-ids :id) rows))
+                                    (first (filter :active rows))
+                                    (first rows))
+              [c-name c-schema] (host-canonical-table (:name survivor))
+              orphans           (remove #(= (:id %) (:id survivor)) rows)]
+          ;; move content off each orphan, then delete it before re-canonicalizing the survivor so the survivor's
+          ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
+          (doseq [{orphan-id :id} orphans]
+            (repoint-cards-to-survivor! orphan-id (:id survivor))
+            (t2/delete! :model/Table orphan-id))
+          ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
+          ;; NULL — and thus excluded from the index — while the flag is set)
+          (t2/update! :model/Table (:id survivor)
+                      {:active true :name c-name :schema c-schema :is_defective_duplicate false})
+          (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
+                     (count orphans) (:id survivor)))))))
 
 (def ^:private audit-db-cluster-lock
   "Cluster lock serializing the audit DB load/adjust/sync/reconcile across nodes (GHY-3974 1b)."
@@ -478,11 +494,16 @@
   ;; serialize install+adjust+load+sync+reconcile across nodes so a rolling upgrade can't run an adjust or sync
   ;; against a half-adjusted schema (`with-duplicate-ops-prevented` is per-process only). The install runs inside the
   ;; lock too, so a node that acquires it after the installer committed sees the DB already exists and falls through
-  ;; to a no-op rather than colliding on the audit DB primary key. The sync runs synchronously inside the lock so it
-  ;; stays in the lock's transaction. If another node already holds the lock it is doing this same work, so we skip
-  ;; rather than fail the boot.
+  ;; to a no-op rather than colliding on the audit DB primary key. The sync runs synchronously so it stays serialized
+  ;; under the lock. If another node already holds the lock it is doing this same work, so we skip rather than fail
+  ;; the boot.
+  ;;
+  ;; :detached? keeps the pipeline off the lock's transaction — its work commits incrementally in small
+  ;; transactions (#78238). That is safe here because the pipeline self-heals: the checksum only advances
+  ;; on completion and reconcile runs every boot, so a crash mid-pipeline is repaired by the next boot.
   (try
-    (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
+    (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}
+                                     :detached? true}
       (u/prog1 (maybe-install-audit-db!)
         (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
           ((sync-util/with-duplicate-ops-prevented
