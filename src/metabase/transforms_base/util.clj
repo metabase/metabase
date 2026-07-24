@@ -314,19 +314,23 @@
 
 (defn- apply-lookback
   "Push a checkpoint lower bound back by the lookback window (`value` `unit`s). Only supported
-  for temporal checkpoint columns."
+  for date and datetime checkpoint columns: time-only columns wrap at midnight, so a window
+  behind the watermark is meaningless (and day-based units don't apply to them)."
   [checkpoint base-type {:keys [value unit] :as lookback}]
-  (cond
-    (not (isa? base-type :type/Temporal))
-    (let [msg (i18n/tru "A lookback window is only supported for temporal checkpoint columns.")]
-      (throw (ex-info msg {:transform-message msg, :lookback lookback})))
+  (let [invalid! (fn [msg] (throw (ex-info msg {:transform-message msg, :lookback lookback})))]
+    (cond
+      (or (not (isa? base-type :type/Temporal))
+          (isa? base-type :type/Time))
+      (invalid! (i18n/tru "A lookback window is only supported for date or datetime checkpoint columns."))
 
-    (nil? unit)
-    (let [msg (i18n/tru "A lookback window requires a unit.")]
-      (throw (ex-info msg {:transform-message msg, :lookback lookback})))
+      (nil? unit)
+      (invalid! (i18n/tru "A lookback window requires a unit."))
 
-    :else
-    (u.date/add checkpoint (keyword unit) (- value))))
+      (not (pos-int? value))
+      (invalid! (i18n/tru "A lookback window requires a positive integer value."))
+
+      :else
+      (u.date/add checkpoint (keyword unit) (- value)))))
 
 (defn- checkpoint-compare
   "Compare two parsed checkpoint values. Temporal values compare as instants, since the stored

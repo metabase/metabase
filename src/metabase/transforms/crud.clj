@@ -79,15 +79,16 @@
                                    (pr-str (:base_type field)))))))
 
 (defn validate-lookback!
-  "Validates a configured lookback window: only temporal checkpoint columns support one, and
-  date-only columns need a day-or-coarser unit."
+  "Validates a configured lookback window: only date and datetime checkpoint columns support one
+  (time-only columns wrap at midnight), and date-only columns need a day-or-coarser unit."
   [{:keys [source] :as transform}]
   (let [{:keys [lookback checkpoint-filter-field-id]} (:source-incremental-strategy source)]
     (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform) lookback)]
       (when-let [field (t2/select-one :model/Field checkpoint-filter-field-id)]
         (let [base-type (:base_type field)]
-          (api/check-400 (isa? base-type :type/Temporal)
-                         (deferred-tru "A lookback window is only supported for temporal checkpoint columns."))
+          (api/check-400 (and (isa? base-type :type/Temporal)
+                              (not (isa? base-type :type/Time)))
+                         (deferred-tru "A lookback window is only supported for date or datetime checkpoint columns."))
           (when-not (isa? base-type :type/DateTime)
             (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
                            (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit."))))))))
