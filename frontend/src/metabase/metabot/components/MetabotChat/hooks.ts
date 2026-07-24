@@ -1,6 +1,6 @@
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 
-function calculateFillerHeight(
+export function calculateFillerHeight(
   scrollContainerEl: HTMLElement,
   fillerEl: HTMLElement,
 ): number {
@@ -49,7 +49,6 @@ function resizeFillerArea(
 
 export function useScrollManager(hasMessages: boolean) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
   const fillerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottomRafRef = useRef<number>();
@@ -129,8 +128,12 @@ export function useScrollManager(hasMessages: boolean) {
           const latestPrompt = userMessages[userMessages.length - 1];
 
           const promptOffsetTop = latestPrompt?.offsetTop ?? 0;
-          const headerHeight = headerRef.current?.clientHeight ?? 64;
-          const top = promptOffsetTop - headerHeight;
+          // the gap left above the prompt has to match the padding
+          // calculateFillerHeight reserves, or the prompt can't reach the top
+          const topOffset = parseFloat(
+            getComputedStyle(scrollContainerEl).paddingTop,
+          );
+          const top = promptOffsetTop - topOffset;
 
           // put in a RAF so it happens after filler resize
           scrollToPromptRafRef.current = requestAnimationFrame(() => {
@@ -145,7 +148,6 @@ export function useScrollManager(hasMessages: boolean) {
         characterData: true,
       });
 
-      // react to resize updates
       const resizeObserver = new ResizeObserver(scheduleFillerResize);
       resizeObserver.observe(scrollContainerEl);
 
@@ -159,7 +161,6 @@ export function useScrollManager(hasMessages: boolean) {
 
   return {
     scrollContainerRef,
-    headerRef,
     fillerRef,
   };
 }
