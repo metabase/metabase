@@ -1,0 +1,181 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.product-notifications1
+      author: metabase
+      comment: Create the product notification table
+      changes:
+        - createTable:
+            tableName: product_notification
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_product_notification_notification_id
+              - column:
+                  name: schema_version
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: icon
+                  type: varchar(255)
+              - column:
+                  name: audience
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deployment
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: edition
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: min_version
+                  type: varchar(64)
+              - column:
+                  name: max_version
+                  type: varchar(64)
+              - column:
+                  name: starts_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ends_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: retired_at
+                  type: ${timestamp_type}
+              - column:
+                  name: last_seen_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.product-notifications2
+      author: metabase
+      comment: Index active product notifications in display order
+      changes:
+        - createIndex:
+            tableName: product_notification
+            indexName: idx_product_notification_active_position
+            columns:
+              - column:
+                  name: active
+              - column:
+                  name: position
+
+  - changeSet:
+      id: v64.product-notifications3
+      author: metabase
+      comment: Create per-user product notification dismissals
+      changes:
+        - createTable:
+            tableName: product_notification_dismissal
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: product_notification_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dismissed_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: product_notification_dismissal
+            columnNames: product_notification_id, user_id
+            constraintName: uq_product_notification_dismissal_notification_user
+        - createIndex:
+            tableName: product_notification_dismissal
+            indexName: idx_product_notification_dismissal_user_id
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: product_notification_dismissal
+            indexName: idx_product_notification_dismissal_notification_id
+            columns:
+              - column:
+                  name: product_notification_id
+
+  - changeSet:
+      id: v64.product-notifications4
+      author: metabase
+      comment: Add product notification dismissal foreign keys
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: product_notification_dismissal
+            baseColumnNames: product_notification_id
+            referencedTableName: product_notification
+            referencedColumnNames: id
+            constraintName: fk_product_notification_dismissal_notification
+        - addForeignKeyConstraint:
+            baseTableName: product_notification_dismissal
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_product_notification_dismissal_user
+            onDelete: CASCADE
