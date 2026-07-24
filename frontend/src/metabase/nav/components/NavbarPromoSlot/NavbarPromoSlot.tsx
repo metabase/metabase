@@ -1,4 +1,4 @@
-import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { ProductNotifications } from "metabase/nav/components/ProductNotifications";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 
 import S from "./NavbarPromoSlot.module.css";
@@ -9,7 +9,7 @@ export function NavbarPromoSlot() {
   return (
     <div className={S.PromoSlot}>
       <SecurityCenterPromoCard />
-      <WhatsNewNotification />
+      <ProductNotifications />
     </div>
   );
 }

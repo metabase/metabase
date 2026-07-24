@@ -1688,6 +1688,17 @@
                     :model/Database
                     :model/User}}
 
+  product-notifications
+  {:team "UX West"
+   :api  #{metabase.product-notifications.init}
+   :uses #{api
+           config
+           premium-features
+           settings
+           task
+           util
+           version}}
+
   public-sharing
   {:team "UX West"
    :api  #{metabase.public-sharing.core
