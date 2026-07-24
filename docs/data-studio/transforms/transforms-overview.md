@@ -228,7 +228,9 @@ _Data Studio > Transforms > Settings_
 
 Incremental transforms only process the data that's new since the previous transform run. For example, you might have new transaction data coming in every day, and run the transform nightly. With each run, the incremental transform would only handle the rows added after the previous run the night before.
 
-By default, Metabase appends those rows to the target table. If your source tables track changes to a record over time, you can set a [merge key](#add-merge-keys-to-upsert-rows) so that Metabase updates the existing rows instead of adding duplicate rows.
+By default, Metabase appends those rows to the target table. If your source tables track changes to a record over time, you can use an incremental strategy by setting a [merge key](#add-merge-keys-to-upsert-rows) so that Metabase updates the existing rows instead of adding duplicate rows.
+
+In this case, the checkpoint field decides which rows count as new, and the merge key decides whether Metabase appends those rows or updates the matching ones.
 
 ### Prerequisites for incremental transforms
 
