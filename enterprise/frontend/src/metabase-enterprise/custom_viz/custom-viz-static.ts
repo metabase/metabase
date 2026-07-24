@@ -10,11 +10,7 @@ import { formatValue as internalFormatValue } from "metabase/visualizations/lib/
 import type { VisualizationDefinition } from "metabase/visualizations/types/visualization";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
-import type {
-  ColumnSettings,
-  CustomVizPluginId,
-  VisualizationDisplay,
-} from "metabase-types/api";
+import type { ColumnSettings, VisualizationDisplay } from "metabase-types/api";
 
 import {
   brandSettingDefinition,
@@ -40,10 +36,6 @@ function formatValue(value: unknown, options?: ColumnSettings): string {
   return String(result ?? "");
 }
 
-// The main registry entry is never rendered in the static bundle —
-// CustomStaticVisualization takes the component from customVizRegistry. It
-// only backs getVisualizationTransformed / getComputedSettingsForSeries, so a
-// bare definition is all that needs registering.
 function buildStaticVisualizationDefinition(
   vizDef: CustomVisualization<Record<string, unknown>>,
   identifier: VisualizationDisplay,
@@ -52,8 +44,7 @@ function buildStaticVisualizationDefinition(
   return {
     identifier,
     getUiName,
-    // Icons never render in the headless static-viz (GraalJS) context;
-    // "unknown" mirrors getIconForVisualizationType's fallback.
+    // Icons never render in the headless static-viz (GraalJS) context; matches getIconForVisualizationType fallbackh
     iconName: "unknown",
     settings: toHostSettingsDefinitions(vizDef.settings),
     checkRenderable: vizDef.checkRenderable,
@@ -65,7 +56,6 @@ function buildStaticVisualizationDefinition(
 export function registerCustomVizPlugin(
   factory: CreateCustomVisualization<Record<string, unknown>>,
   identifier: string,
-  _pluginId: CustomVizPluginId,
 ) {
   // Text measurement is unavailable in the GraalJS context, so the API object
   // assigned here omits the measure-text functions the global Window
@@ -85,8 +75,6 @@ export function registerCustomVizPlugin(
   const display: VisualizationDisplay = `custom:${identifier}`;
   customVizRegistry.set(display, vizDef);
 
-  // Guarded because re-registering a definition over a definition throws;
-  // repeat registration (e.g. repeated GraalJS calls) must stay a no-op.
   if (!visualizations.has(display)) {
     registerVisualization(
       buildStaticVisualizationDefinition(vizDef, display, () => identifier),
