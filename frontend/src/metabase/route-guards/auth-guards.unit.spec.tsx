@@ -1,22 +1,15 @@
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, waitFor } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { setBasename } from "metabase/utils/basename";
 import { replaceLocation } from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import {
-  CanAccessAlertsManagement,
-  CanAccessMonitor,
-  IsAdmin,
-  IsAuthenticated,
-  IsNotAuthenticated,
-  isBackendOnlyPath,
-} from "./guards";
-import { Route } from "./route";
+import { IsAdmin, IsAuthenticated, IsNotAuthenticated } from "./auth-guards";
 
 jest.mock("metabase/utils/dom", () => ({
   ...jest.requireActual("metabase/utils/dom"),
@@ -274,162 +267,6 @@ describe("route-guards", () => {
         });
         expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
       });
-    });
-  });
-
-  describe("CanAccessMonitor", () => {
-    interface SetupOpts {
-      currentUser?: ReturnType<typeof createMockUser>;
-    }
-
-    const setup = ({ currentUser }: SetupOpts = {}) => {
-      return renderWithProviders(
-        <>
-          <Route element={<CanAccessMonitor />}>
-            <Route path="/monitor" element={<div>monitor page</div>} />
-          </Route>
-          <Route path="/auth/login" element={<div>login page</div>} />
-          <Route path="/unauthorized" element={<div>unauthorized</div>} />
-        </>,
-        {
-          storeInitialState: createMockState({
-            currentUser,
-            settings: createMockSettingsState({ "has-user-setup": true }),
-          }),
-          withRouter: true,
-          initialRoute: "/monitor",
-        },
-      );
-    };
-
-    it("redirects unauthenticated users to login with redirect back", async () => {
-      const { history } = setup({ currentUser: undefined });
-
-      await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
-      });
-
-      expect(history?.getCurrentLocation().query).toEqual(
-        expect.objectContaining({ redirect: "/monitor" }),
-      );
-    });
-
-    it("redirects users without monitor access to unauthorized", async () => {
-      const { history } = setup({
-        currentUser: createMockUser({
-          is_data_analyst: false,
-          is_superuser: false,
-        }),
-      });
-
-      await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
-      });
-
-      expect(history?.getCurrentLocation().query).toEqual({});
-    });
-
-    it("renders for analysts", () => {
-      setup({
-        currentUser: createMockUser({
-          is_data_analyst: true,
-          is_superuser: false,
-        }),
-      });
-
-      expect(screen.getByText("monitor page")).toBeInTheDocument();
-    });
-  });
-
-  describe("CanAccessAlertsManagement", () => {
-    interface SetupOpts {
-      currentUser?: ReturnType<typeof createMockUser>;
-    }
-
-    const setup = ({ currentUser }: SetupOpts = {}) => {
-      return renderWithProviders(
-        <>
-          <Route element={<CanAccessAlertsManagement />}>
-            <Route
-              path="/monitor/notifications"
-              element={<div>alerts page</div>}
-            />
-          </Route>
-          <Route path="/unauthorized" element={<div>unauthorized</div>} />
-        </>,
-        {
-          storeInitialState: createMockState({
-            currentUser,
-            settings: createMockSettingsState({ "has-user-setup": true }),
-          }),
-          withRouter: true,
-          initialRoute: "/monitor/notifications",
-        },
-      );
-    };
-
-    it("renders the page for superusers", async () => {
-      setup({ currentUser: createMockUser({ is_superuser: true }) });
-
-      expect(await screen.findByText("alerts page")).toBeInTheDocument();
-    });
-
-    it("redirects a non-admin with monitoring permission to unauthorized without redirect-back", async () => {
-      const { history } = setup({
-        currentUser: createMockUser({
-          is_superuser: false,
-          is_data_analyst: false,
-          permissions: { can_access_monitoring: true },
-        }),
-      });
-
-      await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
-      });
-
-      expect(history?.getCurrentLocation().query).toEqual({});
-      expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
-    });
-
-    it("redirects an analyst to unauthorized without redirect-back", async () => {
-      const { history } = setup({
-        currentUser: createMockUser({
-          is_superuser: false,
-          is_data_analyst: true,
-        }),
-      });
-
-      await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
-      });
-
-      expect(history?.getCurrentLocation().query).toEqual({});
-      expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("isBackendOnlyPath", () => {
-    it("should return true for /oauth/ paths", () => {
-      expect(isBackendOnlyPath("/oauth/authorize")).toBe(true);
-      expect(isBackendOnlyPath("/oauth/authorize/decision")).toBe(true);
-      expect(isBackendOnlyPath("/oauth/token")).toBe(true);
-    });
-
-    it("should return true for /auth/sso/ paths", () => {
-      expect(isBackendOnlyPath("/auth/sso/slack-connect")).toBe(true);
-      expect(isBackendOnlyPath("/auth/sso/slack-connect/callback")).toBe(true);
-      expect(isBackendOnlyPath("/auth/sso/my-provider")).toBe(true);
-    });
-
-    it("should return false for frontend paths", () => {
-      expect(isBackendOnlyPath("/")).toBe(false);
-      expect(isBackendOnlyPath("/auth/login")).toBe(false);
-      expect(isBackendOnlyPath("/collection/root")).toBe(false);
-      expect(isBackendOnlyPath("/question/1")).toBe(false);
-    });
-
-    it("should not match partial prefixes", () => {
-      expect(isBackendOnlyPath("/oauthx/foo")).toBe(false);
     });
   });
 });
