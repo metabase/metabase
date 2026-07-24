@@ -1539,7 +1539,8 @@
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms      (constantly 0)
                                   openrouter/openrouter    (constantly
                                                             (test-util/mock-llm-response
-                                                             [{:type :error :errorText "content policy violation"}]))]
+                                                             [{:type :usage :usage {:promptTokens 5 :completionTokens 2}}
+                                                              {:type :error :errorText "content policy violation"}]))]
         (mt/with-log-level [metabase.metabot.self :fatal]
           (let [e (try
                     (self/call-llm-structured "openrouter/test-model"
@@ -1550,7 +1551,8 @@
             (is (instance? clojure.lang.ExceptionInfo e))
             (is (re-find #"content policy violation" (ex-message e))
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
-            (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+            (is (= "llm-stream-error" (:error-code (ex-data e))))
+            (is (= {:input-tokens 5, :output-tokens 2} (:usage (ex-data e))))))))))
 
 (deftest call-llm-structured-text-reply-test
   (llm.tu/with-default-connections
