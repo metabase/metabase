@@ -1,7 +1,6 @@
 import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
-
 import L from "leaflet";
 import { Component, createRef } from "react";
 import _ from "underscore";

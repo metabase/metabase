@@ -14,6 +14,7 @@ import {
   jwtDefaultRefreshTokenFunction,
   validateSession,
 } from "embedding/auth-common";
+
 import type { MetabaseProviderPropsStoreExternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import * as MetabaseError from "embedding-sdk-shared/errors";
 import type { MetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";

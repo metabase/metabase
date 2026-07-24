@@ -93,7 +93,7 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
       return css`
         .${DashboardS.DashCard}:hover &,
         .${DashboardS.DashCard}:focus-within & {
-          ${BORDER_ADJUSTED_SMALL_PADDING}/* adjust for border on preview/no entered content */
+          ${BORDER_ADJUSTED_SMALL_PADDING} /* adjust for border on preview/no entered content */
         }
 
         ${borderActive &&
