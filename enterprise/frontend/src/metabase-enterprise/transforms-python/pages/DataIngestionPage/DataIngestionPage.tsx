@@ -20,6 +20,7 @@ import { useListIngestionConnectorsQuery } from "metabase-enterprise/api/transfo
 import type { IngestionConnector } from "metabase-types/api";
 
 import { ConnectConnectorModal } from "./ConnectConnectorModal";
+import { ConnectionsSection } from "./ConnectionsSection";
 
 export function DataIngestionPage() {
   const {
@@ -66,6 +67,8 @@ export function DataIngestionPage() {
       {connectors.length === 0 && (
         <Text c="text-secondary">{t`No connectors are available.`}</Text>
       )}
+      <ConnectionsSection connectors={connectors} />
+
       {selectedConnector != null && (
         <ConnectConnectorModal
           connector={selectedConnector}

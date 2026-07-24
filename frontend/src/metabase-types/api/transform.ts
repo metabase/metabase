@@ -111,12 +111,21 @@ export type PythonTransformSourceDraft = {
   "source-tables": PythonTransformTableAliases;
 };
 
+export type TransformSourceConnector = {
+  id: string;
+  stream: string;
+  config: Record<string, string>;
+  "connection-id": string;
+};
+
 export type PythonTransformSource = {
   type: "python";
   body: string;
   "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
   "source-incremental-strategy"?: SourceIncrementalStrategy;
+  /** Provenance for transforms created by an ingestion connector. */
+  connector?: TransformSourceConnector;
 };
 
 export type QueryTransformSource = {
@@ -528,6 +537,20 @@ export type CreateConnectorConnectionRequest = {
     "table-name"?: string;
   };
   name?: string;
+};
+
+export type UpdateConnectorConnectionRequest = {
+  transformId: TransformId;
+  config?: Record<string, string>;
+  auth?: {
+    token?: string;
+    "oauth-state"?: string;
+  };
+};
+
+export type AddConnectorStreamsRequest = {
+  transformId: TransformId;
+  streams: string[];
 };
 
 export type InspectorFieldStats = {

@@ -1,4 +1,5 @@
 import type {
+  AddConnectorStreamsRequest,
   ConnectorOauthStatusResponse,
   ConnectorOauthUrlResponse,
   CreateConnectorConnectionRequest,
@@ -6,9 +7,11 @@ import type {
   TestPythonTransformRequest,
   TestPythonTransformResponse,
   Transform,
+  UpdateConnectorConnectionRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
+import { invalidateTags, listTag } from "./tags";
 
 export const pythonRunnerApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -56,6 +59,32 @@ export const pythonRunnerApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         body,
       }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform")]),
+    }),
+    updateConnectorConnection: builder.mutation<
+      Transform[],
+      UpdateConnectorConnectionRequest
+    >({
+      query: ({ transformId, ...body }) => ({
+        url: `/api/ee/transforms-python/connector/connection/${transformId}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform")]),
+    }),
+    addConnectorStreams: builder.mutation<
+      Transform[],
+      AddConnectorStreamsRequest
+    >({
+      query: ({ transformId, streams }) => ({
+        url: `/api/ee/transforms-python/connector/connection/${transformId}/streams`,
+        method: "POST",
+        body: { streams },
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform")]),
     }),
   }),
   overrideExisting: true,
@@ -67,4 +96,6 @@ export const {
   useLazyGetConnectorOauthUrlQuery,
   useLazyGetConnectorOauthStatusQuery,
   useCreateConnectorConnectionMutation,
+  useUpdateConnectorConnectionMutation,
+  useAddConnectorStreamsMutation,
 } = pythonRunnerApi;
