@@ -58,7 +58,7 @@ type PermissionsPageLayoutProps = {
   route: Route;
   navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
-  showSplitPermsModal?: boolean;
+  canShowSplitPermsModal?: boolean;
 };
 
 const CloseSidebarButtonWithDefault = ({
@@ -78,13 +78,13 @@ export function PermissionsPageLayout({
   onLoad,
   route,
   helpContent,
-  showSplitPermsModal: _showSplitPermsModal = false,
+  canShowSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
   const [showModalSetting, setShowModalSetting] = useUserSetting(
     "show-updated-permission-modal",
     { shouldDebounce: false },
   );
-  const showSplitPermsModal = _showSplitPermsModal && !!showModalSetting;
+  const showSplitPermsModal = canShowSplitPermsModal && !!showModalSetting;
 
   const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);

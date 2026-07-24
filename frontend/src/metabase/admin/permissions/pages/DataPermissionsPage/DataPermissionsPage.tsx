@@ -100,7 +100,7 @@ function DataPermissionsPage({ route, params }: DataPermissionsPageProps) {
       isDirty={isDirty}
       route={route}
       helpContent={<DataPermissionsHelp />}
-      showSplitPermsModal
+      canShowSplitPermsModal
     >
       <Outlet />
     </PermissionsPageLayout>

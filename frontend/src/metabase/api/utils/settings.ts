@@ -177,9 +177,6 @@ export const useAdminSettings = <
   );
 
   type Values = { [K in SettingNames[number]]: EnterpriseSettings[K] };
-  // Pick from `getSettings` (cache with bootstrap fallback) rather than raw
-  // `useGetSettingsQuery` data, which is an empty bag mid-fetch — making
-  // `Object.values({}).every(...)` checks vacuously true.
   const values = useSelector(
     // Unjustified type cast. FIXME
     (state) => _.pick(getSettings(state), ...settingNames) as Values,

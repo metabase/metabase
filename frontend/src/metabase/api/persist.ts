@@ -46,8 +46,7 @@ export const persistApi = Api.injectEndpoints({
       providesTags: (model) => (model ? providePersistedModelTags(model) : []),
     }),
     // These three change settings server-side (`persisted-models-enabled`,
-    // `persisted-model-refresh-cron-schedule`), so they also invalidate
-    // session-properties — same as the other settings-affecting mutations.
+    // `persisted-model-refresh-cron-schedule`), so they also invalidate session-properties
     enablePersist: builder.mutation<void, void>({
       query: () => ({
         method: "POST",

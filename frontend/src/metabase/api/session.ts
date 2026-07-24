@@ -114,17 +114,13 @@ export const sessionApi = Api.injectEndpoints({
         url: sessionPropertiesPath,
       }),
       providesTags: ["session-properties"],
-      // Never evict the single (no-arg) settings entry, mirroring the redux
-      // slice this replaced: it keeps `getSettings` on the live cache instead of
-      // the stale page-load bootstrap, and keeps optimistic patches targetable
-      // between subscriptions. Only disables GC, not refresh — invalidation and
-      // `refetchSiteSettings()` still refetch.
+      // Subscriptions keep the entry fresh and invalidation-safe
+      // Infinity keeps it from aging out if the subscriptions happen to be gone
       keepUnusedDataFor: Infinity,
       onQueryStarted: (_, { queryFulfilled }) =>
         handleQueryFulfilled(queryFulfilled, (data) => {
           // Keep the non-redux settings consumers in sync. `MetabaseSettings`
-          // is read by code that runs outside the store/React (i18n, dom
-          // helpers, theming).
+          // is read by code that runs outside the store/React (i18n, dom helpers, theming).
           MetabaseSettings.setAll(data);
 
           // Sync color-scheme setting to window.MetabaseUserColorScheme
@@ -158,8 +154,8 @@ export const useLazyGetSettingsQuery = useLazyGetSessionPropertiesQuery;
 
 /**
  * Force a refetch of the session properties (settings) from non-React code.
- * Dispatch it: `dispatch(refetchSiteSettings())`. In React, prefer
- * `useLazyGetSettingsQuery()`'s trigger instead.
+ * Dispatch it: `dispatch(refetchSiteSettings())`.
+ *  In React, prefer `useLazyGetSettingsQuery()`'s trigger instead.
  */
 export const refetchSiteSettings = () =>
   sessionApi.endpoints.getSessionProperties.initiate(undefined, {
