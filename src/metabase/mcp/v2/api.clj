@@ -14,6 +14,7 @@
    [metabase.mcp.v2.tools.browse]
    [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.definitions]
+   [metabase.mcp.v2.tools.parameters]
    [metabase.mcp.v2.tools.query]
    [metabase.mcp.v2.tools.question]
    [metabase.mcp.v2.tools.search]
