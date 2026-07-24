@@ -1,5 +1,9 @@
-import {$} from 'zx';
+import { $ } from "zx";
 
+// Trace every commit that landed on a newly-cut release branch since the
+// previous major was cut from master. We find where the *previous* major's
+// branch split off master (its merge-base) and list everything on this major's
+// branch after that point — i.e. the commits unique to this release.
 export async function getReleaseBranchCommits(
   { versionNumber }: { versionNumber: number }
 ) {
@@ -11,9 +15,3 @@ export async function getReleaseBranchCommits(
 
   return commitMessages.split('\n')
 }
-
-const versionNumber = Number(process.argv[2]);
-
-const commits = await getReleaseBranchCommits({ versionNumber });
-
-console.log(JSON.stringify(commits, null, 2));
