@@ -1,0 +1,79 @@
+;; OSI-generation benchmark baseline ai_context — the hand-written arm.
+;;
+;; Written LAST, by a human, as a curator would write it in the product: a handful of synonyms, two or
+;; three example questions, short instructions. The queries were frozen before this file was written.
+;;
+;; Two rules keep it honest, both enforced by tests:
+;;   1. It may not quote the queries — no synonym or example, normalized (case-folded,
+;;      punctuation-stripped, whitespace-collapsed), equals any benchmark query string. A baseline that
+;;      is the query set measures nothing (baseline-does-not-quote-the-queries-test).
+;;   2. Every entry validates against the CRUD write API's ai_context schema
+;;      (src/metabase/osi/ai_context/api.clj), so it is something a human could have typed into the
+;;      product (baseline-fits-the-write-api-test).
+;; A third rule cannot be enforced mechanically (stated here and in corpus :meta): the baseline is
+;; meant to be ordinary-good, not adversarially optimised. The LLM arm's job is to clear that bar.
+;;
+;; instructions are never indexed, so they do not move retrieval metrics; they are written anyway for
+;; realism (the tool surfaces them on matches) but carry no score weight.
+
+{:baseline
+ ;; corpus-key -> ai_context map (the object form the write API stores).
+ {:customers
+  {:synonyms     ["accounts" "signups" "users"]
+   :examples     ["customer count by plan" "signups per month"]
+   :instructions "One row per registered account; join subscriptions on customer_id."}
+
+  :subscriptions
+  {:synonyms     ["plans" "recurring contracts"]
+   :examples     ["active subscription count" "churn rate by plan"]
+   :instructions "status is one of active, past_due, canceled; canceled_at stays null while active."}
+
+  :subscription-events
+  {:synonyms     ["subscription lifecycle log" "plan change history"]
+   :examples     ["upgrades per month" "cancellation events last quarter"]
+   :instructions "Append-only; one row per lifecycle event, event_type in created/upgraded/downgraded/canceled."}
+
+  :invoices
+  {:synonyms     ["bills" "billing statements"]
+   :examples     ["billed amount per month" "unpaid invoice total"]
+   :instructions "Amounts are in cents; paid_at is null until payment lands."}
+
+  :mrr-ledger
+  {:synonyms     ["monthly recurring revenue" "mrr movements" "revenue retention ledger"]
+   :examples     ["mrr growth by month" "churned mrr last quarter"]
+   :instructions "One row per subscription per month; movement_type in new/expansion/contraction/churn; amounts in cents."}
+
+  :coupons
+  {:synonyms     ["discount codes" "promo codes" "vouchers"]
+   :examples     ["redemptions by code" "active discounts right now"]
+   :instructions "Expired coupons remain for history; filter on expires_at for live ones."}
+
+  :support-tickets
+  {:synonyms     ["helpdesk tickets" "support requests" "customer issues"]
+   :examples     ["ticket volume per week" "open tickets by subject"]
+   :instructions "status in open/pending/solved; opened_at is the intake time."}
+
+  :net-revenue-retention
+  {:synonyms     ["nrr" "net dollar retention" "expansion revenue"]
+   :examples     ["nrr by month" "is expansion outpacing churn"]
+   :instructions "Computed from the monthly revenue movements; expressed as a percentage of starting recurring revenue."}
+
+  :active-subscribers
+  {:synonyms     ["paying customers" "subscriber count"]
+   :examples     ["subscriber growth by month"]
+   :instructions "Counts subscriptions with status active at month end."}
+
+  :customer-health
+  {:synonyms     ["customer 360" "account overview"]
+   :examples     ["customers at risk" "health by plan"]
+   :instructions "One row per customer; refreshed nightly; open_tickets counts unresolved helpdesk tickets."}
+
+  :invoice-revenue
+  {:synonyms     ["billed revenue" "invoice total"]
+   :examples     ["revenue billed per quarter"]
+   :instructions "Sums invoice amount_cents; divide by 100 for dollars."}
+
+  :big-invoices
+  {:synonyms     ["large invoices" "high value bills"]
+   :examples     ["count of big invoices per month"]
+   :instructions "Invoices with amount over $500 (50000 cents)."}}}

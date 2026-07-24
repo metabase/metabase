@@ -1,0 +1,145 @@
+;; OSI-generation benchmark corpus — the synthetic library the three arms are scored over.
+;;
+;; Order of work is the safeguard: entities first (named as an engineer would, blind to search),
+;; queries second (queries.edn, analyst voice), judgments third (in queries.edn, from the entity list
+;; only), baseline last (baseline.edn). Once the queries were written, no entity was renamed to suit
+;; them and no query was edited to suit the baseline.
+;;
+;; Deliberately included retrieval-breakers:
+;;   - two tables differing by one word (subscriptions / subscription_events)
+;;   - an abbreviation-only table name (mrr_ledger)
+;;   - a table with no description (coupons)
+;;   - a metric whose name is a business term absent from the table names (Net Revenue Retention)
+
+{:meta
+ {:schema-version 1
+  :business       "subscription-commerce warehouse (synthetic)"
+  :authored-by    "PR author (entities, queries, judgments, baseline); second reader reviews judgments + baseline in the PR"
+  :notes          "Baseline is meant to be ordinary-good (competent curator, ~10 min/entity), not adversarially optimised. The LLM arm's job is to clear that bar."}
+
+ ;; Each entry keys a corpus entity by a stable corpus-key (used by queries.edn judgments and
+ ;; baseline.edn). :entity is the with-temp fragment the materializer consumes; tables/cards name a
+ ;; library :collection, measures/segments name their parent :table.
+ :entities
+ [{:corpus-key :customers
+   :model      :model/Table
+   :collection :data
+   :entity     {:name         "customers"
+                :display_name "Customers"
+                :description  "One row per registered customer account."
+                :fields       [{:name "id" :base_type :type/BigInteger}
+                               {:name "email" :base_type :type/Text}
+                               {:name "country" :base_type :type/Text}
+                               {:name "plan_id" :base_type :type/Integer}
+                               {:name "created_at" :base_type :type/DateTime}]}}
+
+  {:corpus-key :subscriptions
+   :model      :model/Table
+   :collection :data
+   :entity     {:name         "subscriptions"
+                :display_name "Subscriptions"
+                :description  "One row per customer subscription: plan, status, seats and billing period."
+                :fields       [{:name "id" :base_type :type/BigInteger}
+                               {:name "customer_id" :base_type :type/BigInteger}
+                               {:name "plan_id" :base_type :type/Integer}
+                               {:name "status" :base_type :type/Text}
+                               {:name "seats" :base_type :type/Integer}
+                               {:name "started_at" :base_type :type/DateTime}
+                               {:name "canceled_at" :base_type :type/DateTime}]}}
+
+  {:corpus-key :subscription-events
+   :model      :model/Table
+   :collection :data
+   :entity     {:name         "subscription_events"
+                :display_name "Subscription Events"
+                :description  "Append-only log of subscription lifecycle events: created, upgraded, downgraded, canceled."
+                :fields       [{:name "id" :base_type :type/BigInteger}
+                               {:name "subscription_id" :base_type :type/BigInteger}
+                               {:name "event_type" :base_type :type/Text}
+                               {:name "occurred_at" :base_type :type/DateTime}]}}
+
+  {:corpus-key :invoices
+   :model      :model/Table
+   :collection :data
+   :entity     {:name         "invoices"
+                :display_name "Invoices"
+                :description  "One invoice per subscription per billing period."
+                :fields       [{:name "id" :base_type :type/BigInteger}
+                               {:name "subscription_id" :base_type :type/BigInteger}
+                               {:name "amount_cents" :base_type :type/Integer}
+                               {:name "currency" :base_type :type/Text}
+                               {:name "issued_at" :base_type :type/DateTime}
+                               {:name "paid_at" :base_type :type/DateTime}]}}
+
+  ;; abbreviation-only name: nothing in the name or fields spells out what MRR is.
+  {:corpus-key :mrr-ledger
+   :model      :model/Table
+   :collection :data
+   :entity     {:name         "mrr_ledger"
+                :display_name "MRR Ledger"
+                :description  "Monthly movements by subscription and month."
+                :fields       [{:name "id" :base_type :type/BigInteger}
+                               {:name "subscription_id" :base_type :type/BigInteger}
+                               {:name "month" :base_type :type/Date}
+                               {:name "movement_type" :base_type :type/Text}
+                               {:name "amount_cents" :base_type :type/Integer}]}}
+
+  ;; no description at all — name/display name are its only indexed docs under the :none arm.
+  {:corpus-key :coupons
+   :model      :model/Table
+   :collection :data
+   :entity     {:name         "coupons"
+                :display_name "Coupons"
+                :fields       [{:name "id" :base_type :type/BigInteger}
+                               {:name "code" :base_type :type/Text}
+                               {:name "discount_percent" :base_type :type/Integer}
+                               {:name "expires_at" :base_type :type/DateTime}]}}
+
+  {:corpus-key :support-tickets
+   :model      :model/Table
+   :collection :data
+   :entity     {:name         "support_tickets"
+                :display_name "Support Tickets"
+                :description  "Customer support tickets from the helpdesk."
+                :fields       [{:name "id" :base_type :type/BigInteger}
+                               {:name "customer_id" :base_type :type/BigInteger}
+                               {:name "status" :base_type :type/Text}
+                               {:name "subject" :base_type :type/Text}
+                               {:name "opened_at" :base_type :type/DateTime}]}}
+
+  ;; business-term metric: "net revenue retention" appears in no table or field name.
+  {:corpus-key :net-revenue-retention
+   :model      :model/Card
+   :collection :metrics
+   :entity     {:type        "metric"
+                :name        "Net Revenue Retention"
+                :description "Expansion minus contraction and churn as a share of starting recurring revenue, by month."}}
+
+  {:corpus-key :active-subscribers
+   :model      :model/Card
+   :collection :metrics
+   :entity     {:type        "metric"
+                :name        "Active Subscribers"
+                :description "Count of subscriptions in status active, by month."}}
+
+  {:corpus-key :customer-health
+   :model      :model/Card
+   :collection :metrics
+   :entity     {:type        "model"
+                :name        "Customer Health"
+                :description "One row per customer with plan, tenure and open ticket counts."}}
+
+  {:corpus-key :invoice-revenue
+   :model      :model/Measure
+   :table      :invoices
+   :entity     {:name            "Invoice Revenue"
+                :description     "Sum of invoice amounts."
+                :aggregate-field "amount_cents"}}
+
+  {:corpus-key :big-invoices
+   :model      :model/Segment
+   :table      :invoices
+   :entity     {:name         "Big Invoices"
+                :description  "Invoices over $500."
+                :filter-field "amount_cents"
+                :filter-value 50000}}]}
