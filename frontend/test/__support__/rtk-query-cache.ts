@@ -24,9 +24,28 @@ export function seedApiQueryCache(
   currentApiState: ApiState | undefined,
   entries: QueryCacheSeed[],
 ): ApiState {
+  // Skip entries that are already seeded. Upserting an existing entry leaves
+  // it stuck `pending` (the second upsert keeps the first requestId, so the
+  // fulfilled write is rejected), and under the default "delayed"
+  // invalidation behaviour one forever-pending query silently defers every
+  // tag invalidation in the store.
+  const existingQueries = Object.values(currentApiState?.queries ?? {});
+  const newEntries = entries.filter(
+    ({ endpointName, arg }) =>
+      !existingQueries.some(
+        (query) =>
+          query?.endpointName === endpointName &&
+          JSON.stringify(query?.originalArgs) === JSON.stringify(arg),
+      ),
+  );
+
+  if (newEntries.length === 0 && currentApiState) {
+    return currentApiState;
+  }
+
   // endpointName/value are validated at runtime by RTK against the injected
   // endpoint registry. The cast keeps this helper endpoint-agnostic.
-  const upsertEntries = entries.map(({ endpointName, arg, value }) => ({
+  const upsertEntries = newEntries.map(({ endpointName, arg, value }) => ({
     endpointName,
     arg,
     value,

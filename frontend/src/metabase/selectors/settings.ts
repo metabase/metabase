@@ -36,7 +36,7 @@ const EMPTY_SETTINGS = {};
 export const getSettings = (state: State): EnterpriseSettings =>
   // Unjustified type cast. FIXME
   (selectSessionProperties(state).data ??
-    window.MetabaseBootstrap ??
+    (typeof window !== "undefined" ? window.MetabaseBootstrap : undefined) ??
     EMPTY_SETTINGS) as EnterpriseSettings;
 
 export const getSettingsLoading = (state: State): boolean =>
