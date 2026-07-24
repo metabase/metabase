@@ -3,6 +3,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import type { FieldFingerprint, FieldId } from "metabase-types/api";
@@ -76,7 +77,10 @@ const setupLib = (
 
   const provider = Lib.metadataProvider(SAMPLE_DB_ID, getMetadata(state));
   const tableMetadata = Lib.tableOrCardMetadata(provider, PRODUCTS_ID);
-  const query = Lib.queryFromTableOrCardMetadata(provider, tableMetadata!);
+  const query = Lib.queryFromTableOrCardMetadata(
+    provider,
+    checkNotNull(tableMetadata),
+  );
   const findColumn = columnFinder(query, Lib.returnedColumns(query, -1));
 
   return renderWithProviders(
@@ -93,16 +97,36 @@ const setupLib = (
 };
 
 describe("QueryColumnFingerprintInfo", () => {
-  it("should render the number fingerprint for a non-ID numeric column", async () => {
-    setupLib("RATING");
+  describe("numeric column", () => {
+    const state = createFingerprintedState(PRODUCTS.RATING, NUMBER_FINGERPRINT);
 
-    expect(await screen.findByText("Average")).toBeInTheDocument();
-  });
+    it("should render avg, min and max for a non-ID numeric column", async () => {
+      setupLib("RATING", state);
 
-  it("should not render the number fingerprint for a numeric ID column", () => {
-    setupLib("ID");
+      expect(await screen.findByText("Average")).toBeInTheDocument();
+      expect(screen.getByText("Min")).toBeInTheDocument();
+      expect(screen.getByText("Max")).toBeInTheDocument();
+      expect(screen.getByText("5000")).toBeInTheDocument();
+      expect(screen.getByText("1")).toBeInTheDocument();
+      expect(screen.getByText("10000")).toBeInTheDocument();
+    });
 
-    expect(screen.queryByText("Average")).not.toBeInTheDocument();
+    it("should render nothing for an empty type/Number fingerprint", () => {
+      const emptyState = createFingerprintedState(
+        PRODUCTS.RATING,
+        createMockFingerprint({ type: { "type/Number": {} } }),
+      );
+
+      setupLib("RATING", emptyState);
+
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
+    });
+
+    it("should not render the number fingerprint for a numeric ID column", () => {
+      setupLib("ID");
+
+      expect(screen.queryByText("Average")).not.toBeInTheDocument();
+    });
   });
 
   describe("temporal column", () => {

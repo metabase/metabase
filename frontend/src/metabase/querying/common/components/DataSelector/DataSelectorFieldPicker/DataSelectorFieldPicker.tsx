@@ -85,21 +85,18 @@ export const DataSelectorFieldPicker = ({
 
   const renderItemIcon = (item: FieldWithName) => {
     const columnQuery = columnQueries.get(item.field.getPlainObject());
-
-    if (!columnQuery) {
-      return null;
-    }
-
     return (
-      <QueryColumnInfoIcon
-        query={columnQuery.query}
-        stageIndex={STAGE_INDEX}
-        column={columnQuery.column}
-        position="top-end"
-        size={18}
-        // Unjustified type cast. FIXME
-        icon={item.field.icon() as unknown as IconName}
-      />
+      columnQuery && (
+        <QueryColumnInfoIcon
+          query={columnQuery.query}
+          stageIndex={STAGE_INDEX}
+          column={columnQuery.column}
+          position="top-end"
+          size={18}
+          // Unjustified type cast. FIXME
+          icon={item.field.icon() as unknown as IconName}
+        />
+      )
     );
   };
 
