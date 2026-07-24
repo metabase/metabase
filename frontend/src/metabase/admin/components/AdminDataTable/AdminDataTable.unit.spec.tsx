@@ -95,16 +95,31 @@ describe("AdminDataTable", () => {
   });
 
   it("renders sortable headers as buttons and non-sortable ones as plain headers", () => {
-    setup();
+    setup({
+      // "Sortable" has a sortKey; "Static" doesn't. (Sort on an unrelated column so
+      // "Sortable" isn't the active one — an active header also renders a sort icon.)
+      sortingOptions: { sort_column: "name", sort_direction: "asc" },
+      columns: [
+        {
+          key: "sortable",
+          title: "Sortable",
+          sortKey: "count",
+          render: () => "x",
+        },
+        { key: "static", title: "Static", render: () => "y" },
+      ],
+    });
 
-    // the two sortable columns each expose an interactive control...
-    expect(screen.getAllByRole("button")).toHaveLength(2);
-    // ...while the column without a sortKey stays a static header, not a button.
+    // the column with a sortKey exposes an interactive control...
     expect(
-      screen.getByRole("columnheader", { name: "ID" }),
+      screen.getByRole("button", { name: "Sortable" }),
+    ).toBeInTheDocument();
+    // ...while the column without one stays a static header, not a button.
+    expect(
+      screen.getByRole("columnheader", { name: "Static" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /ID/ }),
+      screen.queryByRole("button", { name: "Static" }),
     ).not.toBeInTheDocument();
   });
 

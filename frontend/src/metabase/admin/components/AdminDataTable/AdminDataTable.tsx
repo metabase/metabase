@@ -54,18 +54,13 @@ export type AdminDataTableProps<Row, SortColumn extends string = string> = {
   /** Message shown when there are no rows (and not loading/erroring). */
   emptyText?: ReactNode;
   onRowClick?: (row: Row) => void;
-  /** Wrap the table in the bordered admin `Card` surface (defaults to true). */
-  withCard?: boolean;
   /**
    * Cap the table body's height (any CSS length, e.g. `calc(100vh - 23rem)`) so it scrolls
    * internally with sticky headers, keeping the pagination controls in view.
    */
   maxBodyHeight?: string;
-  /** Class applied to the scrolling container wrapping the table. */
-  className?: string;
   /** Class applied to the `<table>` itself. */
   tableClassName?: string;
-  "data-testid"?: string;
 };
 
 /**
@@ -84,11 +79,8 @@ export function AdminDataTable<Row, SortColumn extends string = string>({
   error,
   emptyText = t`No results found`,
   onRowClick,
-  withCard = true,
   maxBodyHeight,
-  className,
   tableClassName,
-  "data-testid": dataTestId,
 }: AdminDataTableProps<Row, SortColumn>) {
   // While an initial load or an error is in flight there is nothing to show, so hand the whole body
   // to LoadingAndErrorWrapper. Once we have rows, keep showing them and overlay a spinner instead,
@@ -102,13 +94,10 @@ export function AdminDataTable<Row, SortColumn extends string = string>({
       <LoadingOverlay visible={showOverlay} />
       <Box
         data-testid="admin-data-table-body"
-        className={cx(maxBodyHeight != null && S.scrollBox, className)}
+        className={maxBodyHeight != null ? S.scrollBox : undefined}
         style={maxBodyHeight != null ? { maxHeight: maxBodyHeight } : undefined}
       >
-        <table
-          data-testid={dataTestId}
-          className={cx(AdminS.ContentTable, S.table, tableClassName)}
-        >
+        <table className={cx(AdminS.ContentTable, S.table, tableClassName)}>
           <thead>
             <tr>
               {columns.map((column) => {
@@ -177,13 +166,9 @@ export function AdminDataTable<Row, SortColumn extends string = string>({
 
   return (
     <>
-      {withCard ? (
-        <Card withBorder shadow="none" p={0}>
-          {table}
-        </Card>
-      ) : (
-        table
-      )}
+      <Card withBorder shadow="none" p={0}>
+        {table}
+      </Card>
 
       {pagination && (
         <Flex justify="flex-end" mt="md">

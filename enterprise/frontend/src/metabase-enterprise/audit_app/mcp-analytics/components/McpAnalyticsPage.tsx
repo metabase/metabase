@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -66,14 +66,6 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   };
 
   const chartFilters = { dateFilter, userId, groupId, tenantId };
-
-  // Keep this referentially stable: it feeds the events query's `useMemo`, and each rebuild mints
-  // fresh metabase-lib UUIDs, which change the query's serialized RTK cache key and trigger a
-  // redundant refetch (and loader flash) on every incidental re-render.
-  const sortingOptions = useMemo(
-    () => ({ sort_column, sort_direction }),
-    [sort_column, sort_direction],
-  );
 
   const { isInitialLoading, isRefetching, hasData, count } = useMcpHasData({
     ...dataSources,
@@ -215,7 +207,7 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
                   page={page}
                   total={count}
                   onPageChange={(newPage) => patchUrlState({ page: newPage })}
-                  sortingOptions={sortingOptions}
+                  sortingOptions={{ sort_column, sort_direction }}
                   onSortingOptionsChange={(newSorting) =>
                     patchUrlState({
                       sort_column: newSorting.sort_column,

@@ -193,6 +193,9 @@ function McpEventsTableInner({
         sortColumn: sortingOptions.sort_column,
         sortDirection: sortingOptions.sort_direction,
       }),
+    // Depend on the primitive sort values, not the `sortingOptions` object: the object identity
+    // changes on every render of the parent, but rebuilding the query mints fresh metabase-lib
+    // UUIDs, which churn the RTK cache key and cause a redundant refetch on incidental re-renders.
     [
       provider,
       table,
@@ -201,7 +204,8 @@ function McpEventsTableInner({
       userId,
       groupId,
       tenantId,
-      sortingOptions,
+      sortingOptions.sort_column,
+      sortingOptions.sort_direction,
     ],
   );
 
