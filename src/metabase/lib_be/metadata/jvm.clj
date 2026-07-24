@@ -560,8 +560,8 @@
                                           e))))]
     (if-let [target->source (some->> id->target (into {} (map (juxt val key))))]
       (perf/mapv (fn [instance]
-              (update instance :id #(get target->source % %)))
-            results)
+                   (update instance :id #(get target->source % %)))
+                 results)
       results)))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
