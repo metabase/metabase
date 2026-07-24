@@ -150,6 +150,36 @@
             (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
 
+(deftest new-table-in-granted-schema-test
+  ;; Grant the "public" schema, block the "blocked" schema -- exactly the upload setup. The group
+  ;; therefore has a :blocked table in the DB, so the EE DB-wide override returns :blocked for any
+  ;; brand-new table (verified below). Uses the *real* enterprise functions, no redefs.
+  (mt/with-additional-premium-features #{:advanced-permissions}
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/Database         {db-id :id}      {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "public"}
+                   :model/Table            {table-id-2 :id} {:db_id db-id :schema "blocked"}]
+      (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :blocked)
+      (is (= {group-id :blocked}
+             (advanced-permissions.common/new-table-view-data-permission-levels db-id [group-id]))
+          "precondition: the DB-wide override would block a new table for this group")
+      (testing "Sync (default): a synced table in the granted schema fails safe to :blocked"
+        (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "public"}]
+          (is (= :blocked
+                 (t2/select-one-fn :perm_value :model/DataPermissions
+                                   :db_id db-id :group_id group-id
+                                   :table_id table-id-3 :perm_type :perms/view-data)))))
+      (testing "Upload (binding true): an uploaded table in the granted schema inherits :unrestricted (UXW-3217)"
+        (data-perms/do-with-schema-consistent-new-table-perms
+         (fn []
+           (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "public"}]
+             (is (= :unrestricted
+                    (t2/select-one-fn :perm_value :model/DataPermissions
+                                      :db_id db-id :group_id group-id
+                                      :table_id table-id-3 :perm_type :perms/view-data))
+                 "new table in the granted schema must inherit :unrestricted, not :blocked"))))))))
+
 (deftest new-group-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/Database {db-id :id} {}]
@@ -932,6 +962,42 @@
             (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
                                                          :create-queries :query-builder-and-native}}
               (is (some? (upload-csv!))))))))))
+
+(deftest upload-csv-keeps-permissions-on-granted-schema-test
+  (testing "Upload to fully `:unrestricted` schema doesn't get `:blocked`, so uploads keep working (UXW-3217)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
+      (mt/with-additional-premium-features #{:advanced-permissions}
+        (let [db-id        (mt/id)
+              schema-name  (sql.tx/session-schema driver/*driver*)
+              all-users-id (u/the-id (perms-group/all-users))]
+          (mt/with-restored-data-perms-for-group! all-users-id
+            ;; Grant the whole DB, then carve out a :blocked table in a *different* schema. This is the corrupting
+            ;; condition in UXW-3217: the group now has a blocked view-data row *anywhere* in the DB, so any new table
+            ;; would be forced to `:blocked`, except for the special handling of uploads being tested here.
+            (data-perms/set-database-permission! all-users-id db-id :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! all-users-id db-id :perms/create-queries :query-builder)
+            (mt/with-temp [:model/Table {blocked-table :id} {:db_id  db-id
+                                                             :schema "uxw3217_other_schema"
+                                                             :active true}]
+              (data-perms/set-table-permission! all-users-id blocked-table :perms/view-data :blocked)
+              (is (= {all-users-id :blocked}
+                     (advanced-permissions.common/new-table-view-data-permission-levels db-id [all-users-id]))
+                  "precondition: the DB-wide override would block a new table for All Users")
+              (upload-test/do-with-uploaded-example-csv!
+               {:grant-permission? false
+                :schema-name       schema-name
+                :table-prefix      "uxw3217_"}
+               (fn [model]
+                 (let [uploaded-table  (t2/select-one [:model/Table :id :schema] :id (:table_id model))
+                       uploaded-schema (:schema uploaded-table)]
+                   (is (= :unrestricted
+                          (data-perms/table-permission-for-groups [all-users-id] :perms/view-data
+                                                                  db-id (:id uploaded-table)))
+                       "uploaded table in the granted schema must stay :unrestricted")
+                   (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
+                     (is (= :unrestricted
+                            (data-perms/full-schema-permission-for-user
+                             (mt/user->id :rasta) :perms/view-data db-id uploaded-schema))))))))))))))
 
 (deftest update-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
