@@ -31,19 +31,13 @@
   "Default implementation that extracts common fields from an entity.
    Used as the base for type-specific implementations.
 
-   `:display-name` and friends are read from snake_case keys (`:display_name`,
-   `:effective_type`, `:semantic_type`) — that's the canonical shape for the
-   metadata-dimension entities this multimethod is most often invoked on. The
-   kebab-case fallbacks keep older callers (metric / measure metadata that has
-   `:display-name`) working unchanged.
-
    `:long-display-name` defaults to `:display-name`; type-specific methods that
    compute a fancier name (e.g. the group-prefixed dimension name) or a fallback
    `:display-name` are expected to override both keys together."
   [_definition x]
-  (let [display-name   (or (:display_name x) (:display-name x) (:name x))
-        effective-type (or (:effective_type x) (:effective-type x))
-        semantic-type  (or (:semantic_type x) (:semantic-type x))]
+  (let [display-name   (or (:display-name x) (:name x))
+        effective-type (:effective-type x)
+        semantic-type  (:semantic-type x)]
     (cond-> {}
       display-name              (assoc :display-name display-name
                                        :long-display-name display-name)
@@ -106,12 +100,12 @@
 
 (defmethod display-info-method :metadata/dimension
   [definition dimension]
-  (let [display-name (or (:display_name dimension)
+  (let [display-name (or (:display-name dimension)
                          (:name dimension)
                          (i18n/tru "Dimension"))
         group        (:group dimension)
         long-name    (if (and group (not= "main" (:type group)))
-                       (str (:display_name group) " → " display-name)
+                       (str (:display-name group) " → " display-name)
                        display-name)]
     (merge (default-display-info definition dimension)
            {:display-name display-name
@@ -167,7 +161,7 @@
   (case strategy
     :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
     :bin-width (str (format-number-simple bin-width)
-                    (when (isa? (:semantic_type dimension) :type/Coordinate)
+                    (when (isa? (:semantic-type dimension) :type/Coordinate)
                       "\u00B0"))
     :default   (i18n/tru "Auto binned")))
 
@@ -213,7 +207,7 @@
   [definition dim-ref]
   (let [uuid (dimension-uuid dim-ref)]
     (if-let [dim (lookup-dimension definition uuid)]
-      (or (:display_name dim) (:name dim) uuid)
+      (or (:display-name dim) (:name dim) uuid)
       uuid)))
 
 (defn- format-filter-value

@@ -23,10 +23,10 @@
   [:field (mt/id :products :category) nil])
 
 (def ^:private category-dim
-  {:dimension_id   "d-category"
-   :display_name   "Category"
-   :effective_type :type/Text
-   :semantic_type  :type/Category})
+  {:dimension-id   "d-category"
+   :display-name   "Category"
+   :effective-type :type/Text
+   :semantic-type  :type/Category})
 
 (defn- run-top-n-other [{:keys [card-id k]}]
   (let [ctx {:mp      (mt/metadata-provider)
@@ -74,11 +74,11 @@
                                          :month))))}))
 
 (def ^:private created-at-dim
-  {:dimension_id   "d-created-at"
-   :display_name   "Created At"
-   :base_type      :type/DateTimeWithLocalTZ
-   :effective_type :type/DateTimeWithLocalTZ
-   :semantic_type  :type/CreationTimestamp})
+  {:dimension-id   "d-created-at"
+   :display-name   "Created At"
+   :base-type      :type/DateTimeWithLocalTZ
+   :effective-type :type/DateTimeWithLocalTZ
+   :semantic-type  :type/CreationTimestamp})
 
 (defn- orders-category-target []
   [:field (mt/id :products :category) {:source-field (mt/id :orders :product_id)}])

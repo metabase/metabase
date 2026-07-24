@@ -2,11 +2,87 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
+
+;;; ------------------------------------------------- API Shape -------------------------------------------------
+
+(deftest ->api-dimension-test
+  (testing "snake_case keys, stringified type keywords, sources keep the kebab :field-id key"
+    (is (= {:id                        "aaaaaaaa-0000-0000-0000-000000000000"
+            :name                      "CATEGORY"
+            :display_name              "Category"
+            :effective_type            "type/Text"
+            :semantic_type             "type/Category"
+            :has_field_values          "list"
+            :status                    :status/active
+            :dimension_interestingness 0.5
+            :group                     {:id "g1" :type "main" :display_name "Venues"}
+            :sources                   [{:type :field :field-id 123}]}
+           (metrics.dimension/->api-dimension
+            {:id                        "aaaaaaaa-0000-0000-0000-000000000000"
+             :name                      "CATEGORY"
+             :display-name              "Category"
+             :effective-type            :type/Text
+             :semantic-type             :type/Category
+             :has-field-values          :list
+             :status                    :status/active
+             :dimension-interestingness 0.5
+             :group                     {:id "g1" :type "main" :display-name "Venues"}
+             :sources                   [{:type :field :field-id 123}]}))))
+  (testing ":display_name falls back to :name; the always-on-the-wire keys are present even when nil"
+    (is (= {:id "d2" :name "FOO" :display_name "FOO" :effective_type nil :semantic_type nil}
+           (metrics.dimension/->api-dimension {:id "d2" :name "FOO"}))))
+  (testing "internal keys and annotated Field columns other than :dimension-interestingness are stripped"
+    (is (= {:id "d3" :name "BAR" :display_name "BAR" :effective_type nil :semantic_type nil}
+           (metrics.dimension/->api-dimension
+            {:id "d3" :name "BAR" :lib/source :source/table-defaults :source-type :metric :description "field col"}))))
+  (testing "a zero :dimension-interestingness is kept, nil is dropped"
+    (is (= 0 (:dimension_interestingness (metrics.dimension/->api-dimension {:id "d4" :dimension-interestingness 0}))))
+    (is (not (contains? (metrics.dimension/->api-dimension {:id "d5" :dimension-interestingness nil})
+                        :dimension_interestingness))))
+  (testing "source entries always carry :field-id (nil when missing) and drop other keys"
+    (is (= [{:type :field :field-id nil}]
+           (:sources (metrics.dimension/->api-dimension {:id "d8" :sources [{:type :field :binning true}]}))))))
+
+(deftest ->api-dimension-mapping-test
+  (testing "snake_case keys; the MBQL :target ref passes through untouched"
+    (is (= {:dimension_id "m1"
+            :type         :table
+            :table_id     7
+            :target       [:field {:source-field 1 :lib/uuid "u"} 2]}
+           (metrics.dimension/->api-dimension-mapping
+            {:dimension-id "m1"
+             :type         :table
+             :table-id     7
+             :target       [:field {:source-field 1 :lib/uuid "u"} 2]}))))
+  (testing "nil :type/:table-id are dropped; :dimension_id and :target are always present"
+    (is (= {:dimension_id "m2" :target [:field {} 9]}
+           (metrics.dimension/->api-dimension-mapping {:dimension-id "m2" :target [:field {} 9]})))))
+
+(defn- entry-form
+  "The declared form of `k`'s entry in map schema `schema`."
+  [schema k]
+  (some (fn [[entry-k _props entry-schema]]
+          (when (= k entry-k)
+            (mc/form entry-schema)))
+        (mc/children (mc/deref-all (mc/schema schema)))))
+
+(deftest wire-schemas-keep-named-references-test
+  (testing "wire annotation preserves registry references instead of inlining them, so a change to a
+           referenced schema propagates and OpenAPI/error output keeps the schema names"
+    (is (= [:maybe :metabase.metrics.dimension/group]
+           (entry-form ::metrics.dimension/dimension :group)))
+    (is (= [:maybe [:sequential :metabase.metrics.dimension/source]]
+           (entry-form ::metrics.dimension/dimension :sources)))
+    (is (= :metabase.lib-metric.schema/dimension-id
+           (entry-form ::metrics.dimension/dimension :id)))
+    (is (= :metabase.lib-metric.schema/dimension-id
+           (entry-form ::metrics.dimension/dimension-mapping :dimension-id)))))
 
 (defn- metric
   "A metric-shaped map with one dimension per `[dim-id field-id]` pair."

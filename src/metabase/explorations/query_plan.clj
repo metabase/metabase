@@ -57,7 +57,7 @@
   (let [metric    (get metric-by-key [(:block_id item) (:metric_id item)])
         appl      (get-in metric [:applicability (:dimension_id item)])
         dim       (:dim appl)
-        dim-label (or (:display_name dim) (:dimension_id dim))
+        dim-label (or (:display-name dim) (:dimension-id dim))
         item-seg  (segment-for metric (get-in item [:params :segment_id]))
         plan-ctx  {:segment item-seg :params (:params item)}]
     (mapv (fn [recipe]

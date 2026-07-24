@@ -484,10 +484,10 @@
       (let [ctx      {:mp              (mt/metadata-provider)
                       :card            (products-count-card 9100001)
                       :target          [:field (mt/id :products :category) nil]
-                      :dim             {:dimension_id   "d-category"
-                                        :display_name   "Category"
-                                        :effective_type :type/Text
-                                        :semantic_type  :type/Category}
+                      :dim             {:dimension-id   "d-category"
+                                        :display-name   "Category"
+                                        :effective-type :type/Text
+                                        :semantic-type  :type/Category}
                       :segment         nil
                       :params          {:k 10}
                       :explore-filters nil}

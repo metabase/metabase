@@ -12,21 +12,21 @@
 (set! *warn-on-reflection* true)
 
 (defn index-dimension-targets
-  "Map of `{dimension_id → target}` from a metric's `dimension_mappings`. Prefer this when
+  "Map of `{dimension-id → target}` from a metric's `dimension_mappings`. Prefer this when
   resolving many dims against the same mappings; [[find-dimension-target]] for a single id."
   [dimension-mappings]
-  (into {} (map (juxt :dimension_id :target)) dimension-mappings))
+  (into {} (map (juxt :dimension-id :target)) dimension-mappings))
 
 (defn find-dimension-target
   "Look up the MBQL `target` for a dimension by ID inside a metric's snapshotted
   `dimension_mappings`. Returns nil when the dim has no mapping on this metric."
   [dimension-id dimension-mappings]
-  (some #(when (= (:dimension_id %) dimension-id)
+  (some #(when (= (:dimension-id %) dimension-id)
            (:target %))
         dimension-mappings))
 
 (defn dim-type-isa?
-  "True if the dim's snapshot effective_type / base_type / semantic_type derives from `parent`."
+  "True if the dim's snapshot effective-type / base-type / semantic-type derives from `parent`."
   [dim parent]
   (lib-metric/type-isa? dim parent))
 

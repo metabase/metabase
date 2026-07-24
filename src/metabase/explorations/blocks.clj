@@ -32,14 +32,14 @@
 
 (defn- dimension-base-name
   [dim]
-  (or (:display_name dim) (:dimension_id dim) ""))
+  (or (:display-name dim) (:dimension-id dim) ""))
 
 (defn- dimension-long-name
   "Disambiguated dimension label `<source> - <name>` when the dim carries a source (`:group`)
    label, else the plain base name."
   [dim]
   (let [base   (dimension-base-name dim)
-        source (some-> dim :group :display_name)]
+        source (some-> dim :group :display-name)]
     (if (str/blank? source)
       base
       (tru "{0} - {1}" source base))))

@@ -849,7 +849,7 @@
    dimension (computed during sync). Falls back to resolving the underlying field
    for backward compatibility with older dimensions that lack the key."
   [definition dimension]
-  (let [raw-hfv (:has_field_values dimension)
+  (let [raw-hfv (:has-field-values dimension)
         dim-hfv (when raw-hfv (keyword raw-hfv))]
     (if dim-hfv
       (display-info->js
@@ -886,18 +886,22 @@
                (update :type name)
                (update-keys (comp u/->kebab-case-en name)))))
 
-(defn- dimension-group->js [group]
-  (clj->js group))
+(defn- dimension-group->js
+  "Emit the snake_case API shape (`display_name`) from the internal kebab-case group."
+  [group]
+  (clj->js (update-keys group (comp u/->snake_case_en name))))
 
 (defn ^:export toMetricDimension
-  "Convert a CLJS DimensionMetadata map to a plain JS MetricDimension object."
+  "Convert a CLJS DimensionMetadata map to a plain JS MetricDimension object.
+   Emits the snake_case API shape the TS `MetricDimension` type describes (internal
+   lib-metric keys are kebab-case)."
   [dimension]
   (let [obj #js {}]
     (doseq [[k v] dimension
             :when (not (qualified-keyword? k))]
       (let [js-key (u/->snake_case_en (name k))
             js-val (case k
-                     (:effective_type :semantic_type :has_field_values)
+                     (:effective-type :semantic-type :has-field-values)
                      (u/qualified-name v)
 
                      :sources

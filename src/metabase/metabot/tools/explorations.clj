@@ -110,7 +110,8 @@
      of metrics by one dimension — it reads as one \"by <dimension>\" block rather than several
      loose metrics."
   [{:keys [groups]} :- add-research-groups-schema]
-  {:output (json/encode (explorations/research-groups {:groups groups}))})
+  {:output (json/encode (explorations/exploration-data->api
+                         (explorations/research-groups {:groups groups})))})
 
 (def ^:private remove-from-research-plan-schema
   [:map {:closed true}

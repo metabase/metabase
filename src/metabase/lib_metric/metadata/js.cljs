@@ -99,17 +99,18 @@
 ;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
 
 (defn parse-dimension
-  "Parse a single dimension from JS, converting keys to snake_case keywords and type values
-   to keywords. Accepts either a plain JS object or a CLJS map (no-ops on the latter)."
+  "Parse a single dimension, converting keys to kebab-case keywords and type values to keywords.
+   Similar to how metabase.lib.js.metadata parses fields."
   [dim]
   (let [m         (if (map? dim) dim (js->clj dim :keywordize-keys true))
-        converted (update-keys m (comp keyword u/->snake_case_en))]
+        converted (update-keys m (comp keyword u/->kebab-case-en))]
     (cond-> converted
-      (:effective_type converted)   (update :effective_type keyword)
-      (:semantic_type converted)    (update :semantic_type keyword)
+      (:effective-type converted)   (update :effective-type keyword)
+      (:semantic-type converted)    (update :semantic-type keyword)
       (:base-type converted)        (update :base-type keyword)
-      (:has_field_values converted) (update :has_field_values keyword)
-      (:sources converted)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs))))))
+      (:has-field-values converted) (update :has-field-values keyword)
+      (:sources converted)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))
+      (:group converted)            (update :group u/normalize-map))))
 
 (defn- derive-sources-from-mapping
   "Derive sources from a dimension mapping's target field ID.
@@ -119,11 +120,13 @@
     [{:type :field, :field-id field-id}]))
 
 (defn- extract-dimensions-from-entity
-  "Extract dimensions from a parsed metric or measure, annotating with source info."
+  "Extract dimensions from a parsed metric or measure, annotating with source info.
+   Mappings are normalized to the canonical kebab-case shape; `:target` (an MBQL ref)
+   passes through untouched."
   [entity source-type]
   (let [dims     (:dimensions entity)
-        mappings (:dimension-mappings entity)
-        mappings-by-dim-id (into {} (map (juxt :dimension_id identity) mappings))]
+        mappings (mapv u/normalize-map (:dimension-mappings entity))
+        mappings-by-dim-id (into {} (map (juxt :dimension-id identity) mappings))]
     (for [dim dims
           :let [parsed-dim (parse-dimension dim)
                 mapping    (get mappings-by-dim-id (:id parsed-dim))]]
@@ -153,7 +156,7 @@
                               (= metric-id (:source-id %))))
     measure-id  (filter #(and (= :measure (:source-type %))
                               (= measure-id (:source-id %))))
-    table-id    (filter #(= table-id (get-in % [:dimension-mapping :table_id])))
+    table-id    (filter #(= table-id (get-in % [:dimension-mapping :table-id])))
     true        vec))
 
 (defn metadata-provider

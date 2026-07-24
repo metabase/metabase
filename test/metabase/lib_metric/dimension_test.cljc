@@ -22,7 +22,7 @@
     :mapping   {:type :table :target target}})
   ([name target table-id]
    {:dimension {:id nil :name name}
-    :mapping   {:type :table :table_id table-id :target target}}))
+    :mapping   {:type :table :table-id table-id :target target}}))
 
 ;;; -------------------------------------------------- Target Comparison --------------------------------------------------
 
@@ -67,12 +67,12 @@
     (is (every? #(re-matches #"[a-f0-9-]{36}" (:id %)) dimensions))
     (is (= 2 (count dimension-mappings)))
     (is (= (set (map :id dimensions))
-           (set (map :dimension_id dimension-mappings))))))
+           (set (map :dimension-id dimension-mappings))))))
 
 (deftest ^:parallel reconcile-matched-dimensions-preserve-id-test
   (let [computed-pairs [(make-computed-pair "col1" target-1)]
         persisted-dims [{:id uuid-1 :name "col1" :status :status/active}]
-        persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}]
+        persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
         {:keys [dimensions]}
         (lib-metric.dimension/reconcile-dimensions-and-mappings
          computed-pairs persisted-dims persisted-mappings)]
@@ -80,48 +80,48 @@
 
 (deftest ^:parallel reconcile-matched-dimensions-preserve-modifications-test
   (let [computed-pairs [(make-computed-pair "col1" target-1)]
-        persisted-dims [{:id uuid-1 :name "col1" :display_name "Custom Name"
-                         :semantic_type :type/Category :status :status/active}]
-        persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}]
+        persisted-dims [{:id uuid-1 :name "col1" :display-name "Custom Name"
+                         :semantic-type :type/Category :status :status/active}]
+        persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
         {:keys [dimensions]}
         (lib-metric.dimension/reconcile-dimensions-and-mappings
          computed-pairs persisted-dims persisted-mappings)
         dim (first dimensions)]
-    (is (= "Custom Name" (:display_name dim)))
-    (is (= :type/Category (:semantic_type dim)))
+    (is (= "Custom Name" (:display-name dim)))
+    (is (= :type/Category (:semantic-type dim)))
     (is (= :status/active (:status dim)))))
 
 (deftest ^:parallel reconcile-matching-ignores-lib-uuid-test
   (let [target-different-uuid [:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} 1]
         computed-pairs [(make-computed-pair "col1" target-different-uuid)]
-        persisted-dims [{:id uuid-1 :name "col1" :display_name "Persisted Name" :status :status/active}]
-        persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}]
+        persisted-dims [{:id uuid-1 :name "col1" :display-name "Persisted Name" :status :status/active}]
+        persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
         {:keys [dimensions]}
         (lib-metric.dimension/reconcile-dimensions-and-mappings
          computed-pairs persisted-dims persisted-mappings)]
     (is (= uuid-1 (:id (first dimensions))) "should match despite different lib/uuid")
-    (is (= "Persisted Name" (:display_name (first dimensions))))))
+    (is (= "Persisted Name" (:display-name (first dimensions))))))
 
 (deftest ^:parallel reconcile-orphaned-dimensions-detected-test
   (let [computed-pairs [(make-computed-pair "col1" target-1)]
         persisted-dims [{:id uuid-1 :name "col1" :status :status/active}
                         {:id uuid-orphaned :name "old_column" :status :status/active}]
-        persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}
-                            {:type :table :table_id 1 :dimension_id uuid-orphaned :target target-99}]
+        persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}
+                            {:type :table :table-id 1 :dimension-id uuid-orphaned :target target-99}]
         {:keys [dimensions dimension-mappings]}
         (lib-metric.dimension/reconcile-dimensions-and-mappings
          computed-pairs persisted-dims persisted-mappings)
         orphaned (first (filter #(= uuid-orphaned (:id %)) dimensions))]
     (is (= 2 (count dimensions)) "should have 2 dimensions")
     (is (= :status/orphaned (:status orphaned)))
-    (is (= "Column 'old_column' no longer exists in the data source" (:status_message orphaned)))
+    (is (= "Column 'old_column' no longer exists in the data source" (:status-message orphaned)))
     (is (= 1 (count dimension-mappings)) "orphaned dimensions have no mappings")))
 
 (deftest ^:parallel reconcile-non-persisted-dims-tracked-as-orphaned-test
   (testing "Persisted dims without :status whose target no longer matches computed pairs are orphaned"
     (let [computed-pairs [(make-computed-pair "col1" target-1)]
           persisted-dims [{:id uuid-2 :name "col2"}]
-          persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-2 :target target-2}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-2 :target target-2}]
           {:keys [dimensions]}
           (lib-metric.dimension/reconcile-dimensions-and-mappings
            computed-pairs persisted-dims persisted-mappings)
@@ -131,10 +131,10 @@
 
 (deftest ^:parallel reconcile-orphaned-becomes-active-if-target-reappears-test
   (let [computed-pairs [(make-computed-pair "col1" target-1)]
-        persisted-dims [{:id uuid-1 :name "col1" :display_name "Custom Name"
+        persisted-dims [{:id uuid-1 :name "col1" :display-name "Custom Name"
                          :status :status/orphaned
-                         :status_message "Column 'col1' no longer exists"}]
-        persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}]
+                         :status-message "Column 'col1' no longer exists"}]
+        persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
         {:keys [dimensions]}
         (lib-metric.dimension/reconcile-dimensions-and-mappings
          computed-pairs persisted-dims persisted-mappings)
@@ -142,8 +142,8 @@
     (is (= 1 (count dimensions)))
     (is (= uuid-1 (:id dim)))
     (is (= :status/active (:status dim)))
-    (is (nil? (:status_message dim)))
-    (is (= "Custom Name" (:display_name dim)))))
+    (is (nil? (:status-message dim)))
+    (is (= "Custom Name" (:display-name dim)))))
 
 ;;; -------------------------------------------------- FK Dimension Reconciliation --------------------------------------------------
 
@@ -152,7 +152,7 @@
     (let [fk-target      [:field {:lib/uuid "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
                                   :source-field 42} 123]
           computed-pairs [{:dimension {:id nil :name "fk_col" :lib/source :source/implicitly-joinable}
-                           :mapping   {:type :table :table_id 200 :target fk-target}}]
+                           :mapping   {:type :table :table-id 200 :target fk-target}}]
           {:keys [dimensions dimension-mappings]}
           (lib-metric.dimension/reconcile-dimensions-and-mappings computed-pairs nil nil)
           mapping (first dimension-mappings)]
@@ -167,14 +167,14 @@
     (let [fk-target-a    [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :source-field 42} 123]
           fk-target-b    [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :source-field 42} 123]
           computed-pairs [{:dimension {:id nil :name "fk_col"}
-                           :mapping   {:type :table :table_id 200 :target fk-target-a}}]
-          persisted-dims [{:id uuid-1 :name "fk_col" :display_name "FK Column" :status :status/active}]
-          persisted-mappings [{:type :table :table_id 200 :dimension_id uuid-1 :target fk-target-b}]
+                           :mapping   {:type :table :table-id 200 :target fk-target-a}}]
+          persisted-dims [{:id uuid-1 :name "fk_col" :display-name "FK Column" :status :status/active}]
+          persisted-mappings [{:type :table :table-id 200 :dimension-id uuid-1 :target fk-target-b}]
           {:keys [dimensions]}
           (lib-metric.dimension/reconcile-dimensions-and-mappings
            computed-pairs persisted-dims persisted-mappings)]
       (is (= uuid-1 (:id (first dimensions))))
-      (is (= "FK Column" (:display_name (first dimensions)))))))
+      (is (= "FK Column" (:display-name (first dimensions)))))))
 
 ;;; -------------------------------------------------- Persistence Helpers --------------------------------------------------
 
@@ -240,20 +240,20 @@
 
 (deftest ^:parallel mappings-changed?-true-when-mappings-differ-test
   (is (lib-metric.dimension/mappings-changed?
-       [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}]
-       [{:type :table :table_id 1 :dimension_id uuid-1 :target target-2}])))
+       [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
+       [{:type :table :table-id 1 :dimension-id uuid-1 :target target-2}])))
 
 (deftest ^:parallel mappings-changed?-false-when-only-lib-uuid-differs-test
   (let [target-a [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 1]
         target-b [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 1]]
     (is (not (lib-metric.dimension/mappings-changed?
-              [{:type :table :table_id 1 :dimension_id uuid-1 :target target-a}]
-              [{:type :table :table_id 1 :dimension_id uuid-1 :target target-b}])))))
+              [{:type :table :table-id 1 :dimension-id uuid-1 :target target-a}]
+              [{:type :table :table-id 1 :dimension-id uuid-1 :target target-b}])))))
 
 (deftest ^:parallel mappings-changed?-handles-nil-old-mappings-test
   (is (lib-metric.dimension/mappings-changed?
        nil
-       [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}])))
+       [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}])))
 
 ;;; -------------------------------------------------- Always Save Behavior --------------------------------------------------
 
@@ -295,14 +295,14 @@
 
 (deftest ^:parallel get-dimension-mapping-or-throw-test
   (testing "finds mapping by dimension id"
-    (let [mappings [{:dimension_id "dim-1" :target [:field {} 123]}
-                    {:dimension_id "dim-2" :target [:field {} 456]}]]
-      (is (= {:dimension_id "dim-1" :target [:field {} 123]}
+    (let [mappings [{:dimension-id "dim-1" :target [:field {} 123]}
+                    {:dimension-id "dim-2" :target [:field {} 456]}]]
+      (is (= {:dimension-id "dim-1" :target [:field {} 123]}
              (lib-metric.dimension/get-dimension-mapping-or-throw mappings "dim-1")))
-      (is (= {:dimension_id "dim-2" :target [:field {} 456]}
+      (is (= {:dimension-id "dim-2" :target [:field {} 456]}
              (lib-metric.dimension/get-dimension-mapping-or-throw mappings "dim-2")))))
   (testing "throws for missing mapping"
-    (let [mappings [{:dimension_id "dim-1" :target [:field {} 123]}]]
+    (let [mappings [{:dimension-id "dim-1" :target [:field {} 123]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Dimension mapping not found"
                             (lib-metric.dimension/get-dimension-mapping-or-throw mappings "nonexistent"))))))
@@ -320,13 +320,13 @@
 (deftest ^:parallel resolve-dimension-to-field-id-test
   (testing "resolves active dimension to field ID"
     (let [dimensions [{:id "dim-1" :name "Dimension 1" :status "status/active"}]
-          mappings   [{:dimension_id "dim-1" :target [:field {} 123]}]]
+          mappings   [{:dimension-id "dim-1" :target [:field {} 123]}]]
       (is (= 123 (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
 
 (deftest ^:parallel resolve-dimension-to-field-id-throws-for-orphaned-test
   (testing "throws for orphaned dimension"
     (let [dimensions [{:id "dim-1" :name "Dimension 1" :status :status/orphaned}]
-          mappings   [{:dimension_id "dim-1" :target [:field {} 123]}]]
+          mappings   [{:dimension-id "dim-1" :target [:field {} 123]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Cannot use orphaned dimension"
                             (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
@@ -334,7 +334,7 @@
 (deftest ^:parallel resolve-dimension-to-field-id-throws-for-missing-dimension-test
   (testing "throws for missing dimension"
     (let [dimensions []
-          mappings   [{:dimension_id "dim-1" :target [:field {} 123]}]]
+          mappings   [{:dimension-id "dim-1" :target [:field {} 123]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Dimension not found"
                             (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
@@ -350,7 +350,7 @@
 (deftest ^:parallel resolve-dimension-to-field-id-throws-for-unresolvable-target-test
   (testing "throws when target cannot be resolved to field ID"
     (let [dimensions [{:id "dim-1" :name "Dimension 1" :status "status/active"}]
-          mappings   [{:dimension_id "dim-1" :target [:field {} "field_name"]}]]
+          mappings   [{:dimension-id "dim-1" :target [:field {} "field_name"]}]]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Cannot resolve dimension target to field ID"
                             (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
@@ -362,55 +362,55 @@
             via the base-type fallback, so type predicates like isDateOrDateTime work."
     (let [;; Simulate what column->computed-pair now produces for a column that has
           ;; :base-type but no :effective-type (as seen with H2)
-          computed-pairs [{:dimension {:id nil :name "created_at" :effective_type :type/DateTimeWithLocalTZ}
+          computed-pairs [{:dimension {:id nil :name "created_at" :effective-type :type/DateTimeWithLocalTZ}
                            :mapping   {:type :table :target target-1}}]
           {:keys [dimensions]}
           (lib-metric.dimension/reconcile-dimensions-and-mappings computed-pairs nil nil)
           dim (first dimensions)]
-      (is (= :type/DateTimeWithLocalTZ (:effective_type dim))
+      (is (= :type/DateTimeWithLocalTZ (:effective-type dim))
           "effective-type should be present on the reconciled dimension"))))
 
 (deftest ^:parallel reconcile-persisted-nil-effective-type-does-not-clobber-computed-test
   (testing "When a persisted dimension has nil :effective-type, it should not overwrite
             the freshly computed :effective-type during reconciliation."
-    (let [computed-pairs [{:dimension {:id nil :name "created_at" :effective_type :type/DateTimeWithLocalTZ}
+    (let [computed-pairs [{:dimension {:id nil :name "created_at" :effective-type :type/DateTimeWithLocalTZ}
                            :mapping   {:type :table :target target-1}}]
           ;; Persisted dimension was saved before effective-type was populated (H2 scenario)
-          persisted-dims [{:id uuid-1 :name "created_at" :effective_type nil :status :status/active}]
-          persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}]
+          persisted-dims [{:id uuid-1 :name "created_at" :effective-type nil :status :status/active}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
           {:keys [dimensions]}
           (lib-metric.dimension/reconcile-dimensions-and-mappings
            computed-pairs persisted-dims persisted-mappings)
           dim (first dimensions)]
-      (is (= :type/DateTimeWithLocalTZ (:effective_type dim))
+      (is (= :type/DateTimeWithLocalTZ (:effective-type dim))
           "computed effective-type should not be overwritten by nil from persisted dimension"))))
 
 (deftest ^:parallel reconcile-persisted-effective-type-overrides-computed-test
   (testing "When a persisted dimension has a non-nil :effective-type, it should be used."
-    (let [computed-pairs [{:dimension {:id nil :name "created_at" :effective_type :type/DateTimeWithLocalTZ}
+    (let [computed-pairs [{:dimension {:id nil :name "created_at" :effective-type :type/DateTimeWithLocalTZ}
                            :mapping   {:type :table :target target-1}}]
-          persisted-dims [{:id uuid-1 :name "created_at" :effective_type :type/Date :status :status/active}]
-          persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}]
+          persisted-dims [{:id uuid-1 :name "created_at" :effective-type :type/Date :status :status/active}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
           {:keys [dimensions]}
           (lib-metric.dimension/reconcile-dimensions-and-mappings
            computed-pairs persisted-dims persisted-mappings)
           dim (first dimensions)]
-      (is (= :type/Date (:effective_type dim))
+      (is (= :type/Date (:effective-type dim))
           "persisted non-nil effective-type should override computed value"))))
 
 ;;; ----------------------------------------- merge-persisted-modifications -----------------------------------------
 
 (deftest ^:parallel merge-persisted-nil-display-name-does-not-override-computed-test
-  (testing "A persisted dimension with nil :display_name should not override the computed display-name"
-    (let [computed-pairs [{:dimension {:id nil :name "col1" :display_name "Computed Name"}
+  (testing "A persisted dimension with nil :display-name should not override the computed display-name"
+    (let [computed-pairs [{:dimension {:id nil :name "col1" :display-name "Computed Name"}
                            :mapping   {:type :table :target target-1}}]
-          persisted-dims [{:id uuid-1 :name "col1" :display_name nil :status :status/active}]
-          persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}]
+          persisted-dims [{:id uuid-1 :name "col1" :display-name nil :status :status/active}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
           {:keys [dimensions]}
           (lib-metric.dimension/reconcile-dimensions-and-mappings
            computed-pairs persisted-dims persisted-mappings)
           dim (first dimensions)]
-      (is (= "Computed Name" (:display_name dim))
+      (is (= "Computed Name" (:display-name dim))
           "nil display-name from persisted dim should not clobber the computed value"))))
 
 ;;; ----------------------------------------- find-orphaned-dimensions -----------------------------------------
@@ -420,15 +420,15 @@
     (let [computed-pairs [(make-computed-pair "col1" target-1)]
           persisted-dims [{:id uuid-1 :name "col1" :status :status/active}
                           {:id uuid-orphaned :name "old_column"}]  ;; no :status key
-          persisted-mappings [{:type :table :table_id 1 :dimension_id uuid-1 :target target-1}
-                              {:type :table :table_id 1 :dimension_id uuid-orphaned :target target-99}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}
+                              {:type :table :table-id 1 :dimension-id uuid-orphaned :target target-99}]
           {:keys [dimensions]}
           (lib-metric.dimension/reconcile-dimensions-and-mappings
            computed-pairs persisted-dims persisted-mappings)
           orphaned (first (filter #(= uuid-orphaned (:id %)) dimensions))]
       (is (some? orphaned) "dimension without :status should appear in results")
       (is (= :status/orphaned (:status orphaned)))
-      (is (string? (:status_message orphaned))))))
+      (is (string? (:status-message orphaned))))))
 
 ;;; -------------------------------------------------- Normalization --------------------------------------------------
 
@@ -437,17 +437,17 @@
     (let [raw        {:id               "dim-1"
                       :name             "category"
                       :status           "status/active"
-                      :has_field_values "search"
+                      :has-field-values "search"
                       :sources          [{:type "field" :field-id 42}]}
           normalized (lib-metric.dimension/normalize-persisted-dimension raw)]
       (is (= :status/active (:status normalized)))
-      (is (= :search (:has_field_values normalized)))
+      (is (= :search (:has-field-values normalized)))
       (is (= :field (get-in normalized [:sources 0 :type])))))
   (testing "leaves already-keywordized values unchanged"
-    (let [dim        {:id "dim-2" :name "col" :status :status/active :has_field_values :list}
+    (let [dim        {:id "dim-2" :name "col" :status :status/active :has-field-values :list}
           normalized (lib-metric.dimension/normalize-persisted-dimension dim)]
       (is (= :status/active (:status normalized)))
-      (is (= :list (:has_field_values normalized)))))
+      (is (= :list (:has-field-values normalized)))))
   (testing "no-op when optional fields are absent"
     (let [dim {:id "dim-3" :name "col"}]
       (is (= dim (lib-metric.dimension/normalize-persisted-dimension dim))))))
@@ -484,12 +484,12 @@
                        (lib-metric.dimension/group-by-source [dim-a dim-b dim-c]))))))))
 
 (deftest ^:parallel group-by-source-deduplicates-by-id-test
-  (let [dim-1a {:id "d1" :display_name "Version A" :sources [{:type :field :field-id 1}]}
-        dim-1b {:id "d1" :display_name "Version B" :sources [{:type :field :field-id 1}]}
+  (let [dim-1a {:id "d1" :display-name "Version A" :sources [{:type :field :field-id 1}]}
+        dim-1b {:id "d1" :display-name "Version B" :sources [{:type :field :field-id 1}]}
         groups (lib-metric.dimension/group-by-source [dim-1a dim-1b])]
     (is (= 1 (count groups)))
     (is (= 1 (count (first groups))))
-    (is (= "Version A" (:display_name (ffirst groups))))))
+    (is (= "Version A" (:display-name (ffirst groups))))))
 
 (deftest ^:parallel group-by-source-no-sources-get-own-group-test
   (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}

@@ -12,15 +12,15 @@
                    :model/ExplorationThread t {:exploration_id (:id e)}
                    :model/ExplorationBlock g
                    {:exploration_thread_id (:id t)
-                    :metrics               [{:card_id 7 :dimension_mappings [{:dimension_id "d1"}]}]
-                    :dimensions            [{:dimension_id "d1" :display_name "Price"
-                                             :effective_type "type/Number"}]}]
+                    :metrics               [{:card_id 7 :dimension_mappings [{:dimension-id "d1"}]}]
+                    :dimensions            [{:dimension-id "d1" :display-name "Price"
+                                             :effective-type "type/Number"}]}]
       (let [reloaded (t2/select-one :model/ExplorationBlock :id (:id g))]
-        (is (= [{:card_id 7 :dimension_mappings [{:dimension_id "d1"}]}]
+        (is (= [{:card_id 7 :dimension_mappings [{:dimension-id "d1"}]}]
                (:metrics reloaded)))
-        (is (= [{:dimension_id "d1" :display_name "Price" :effective_type :type/Number}]
+        (is (= [{:dimension-id "d1" :display-name "Price" :effective-type :type/Number}]
                (:dimensions reloaded))
-            "effective_type is keywordized on read by the model transform")
+            "effective-type is keywordized on read by the model transform")
         (testing "timestamps populated"
           (is (some? (:created_at reloaded)))
           (is (some? (:updated_at reloaded))))))))

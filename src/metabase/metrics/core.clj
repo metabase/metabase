@@ -10,6 +10,7 @@
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.metrics.transforms :as metrics.transforms]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.namespaces :as shared.ns]
    [toucan2.core :as t2]))
 
@@ -20,7 +21,11 @@
   annotate-dimensions-with-field-data
   dimension-values
   dimension-search-values
-  dimension-remapped-value]
+  dimension-remapped-value
+  ->api-dimension
+  ->api-dimensions
+  ->api-dimension-mapping
+  ->api-dimension-mappings]
  [metrics.perms
   filter-dimensions-for-user
   filter-dimensions-for-user-batch]
@@ -30,6 +35,23 @@
   normalize-dimension-mapping
   transform-dimensions
   transform-dimension-mappings])
+
+;;; ------------------------------------------------- Re-exported schemas -------------------------------------------
+
+;;; The wire-annotated dimension schemas, re-exported so other modules can reference them without
+;;; reaching past this module's `:api` namespaces into `metabase.metrics.dimension`. Referencing
+;;; these by keyword is what makes `defendpoint` apply the snake_case/kebab-case conversion at the
+;;; edge, so a consumer must `require` this namespace to guarantee the definitions are registered.
+
+(mr/def ::dimension
+  "A metric dimension in its internal kebab-case shape, annotated with the rules that convert it to
+   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension]]."
+  ::metrics.dimension/dimension)
+
+(mr/def ::dimension-mapping
+  "A dimension mapping in its internal kebab-case shape, annotated with the rules that convert it to
+   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension-mapping]]."
+  ::metrics.dimension/dimension-mapping)
 
 ;;; ------------------------------------------------- Query Utilities -------------------------------------------------
 

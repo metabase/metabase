@@ -115,8 +115,8 @@
 (def ^:private plan-source {:source 2})
 
 (defn- dim [id display interestingness sources]
-  {:id id :name id :display_name display :effective_type "type/Text" :semantic_type nil
-   :dimension_interestingness interestingness :sources sources})
+  {:id id :name id :display-name display :effective-type "type/Text" :semantic-type nil
+   :dimension-interestingness interestingness :sources sources})
 
 (def ^:private synthetic-metrics
   [{:id 1 :name "Revenue" :description "rev" :result_column_name "count"
@@ -136,7 +136,7 @@
         (is (= [{:id 1 :name "Revenue"} {:id 2 :name "Churn"}]
                (mapv #(select-keys % [:id :name]) metrics)))
         (is (= ["region-1" "plan-1"] (mapv :id (:dimensions (first metrics)))))
-        (is (= 0.9 (:dimension_interestingness (first (:dimensions (first metrics)))))))
+        (is (= 0.9 (:dimension-interestingness (first (:dimensions (first metrics)))))))
       (testing "dimension groups carry their member dimension ids and the metrics they slice"
         (let [by-name (u/index-by :name dimension_groups)]
           (is (= #{"region-1" "region-2"} (set (:dimension_ids (get by-name "Region")))))
@@ -235,6 +235,12 @@
 
 ;;; --------------------------------------- missing-dimension self-healing (UXW-4475) ---------------------------------------
 
+(defn- table-query
+  "Model dataset_query selecting everything from `table-kw`."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
+
 (defn- metric-on-card-query
   "Metric dataset_query whose source is `card-id` (a model)."
   [card-id]
@@ -254,7 +260,7 @@
                                          :type          :model
                                          :database_id   (mt/id)
                                          :table_id      (mt/id :venues)
-                                         :dataset_query (mt/mbql-query venues)}
+                                         :dataset_query (table-query :venues)}
                      :model/Card metric {:name          "Metric on MBQL model"
                                          :type          :metric
                                          :database_id   (mt/id)
@@ -317,8 +323,8 @@
   (testing "search matches the '<group> - <dimension>' combination the picker displays"
     (let [matches? #(#'explorations.impl/metric-matches-search? %1 %2)
           metric   {:name       "Revenue"
-                    :dimensions [{:display_name "Created At"
-                                  :group        {:display_name "Orders"}}]}]
+                    :dimensions [{:display-name "Created At"
+                                  :group        {:display-name "Orders"}}]}]
       (testing "metric name still matches"
         (is (matches? metric "revenue")))
       (testing "the raw dimension name still matches"

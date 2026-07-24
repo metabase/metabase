@@ -16,14 +16,14 @@
 (def ^:private expr-uuid "550e8400-e29b-41d4-a716-446655440099")
 
 (defn- sample-dimensions []
-  [{:id uuid-1 :name "category" :display_name "Category" :status :status/active}
-   {:id uuid-2 :name "created_at" :display_name "Created At" :status :status/active}])
+  [{:id uuid-1 :name "category" :display-name "Category" :status :status/active}
+   {:id uuid-2 :name "created_at" :display-name "Created At" :status :status/active}])
 
 (defn- sample-mappings []
   (let [venues-id (meta/id :venues)]
-    [{:type :table :table_id venues-id :dimension_id uuid-1
+    [{:type :table :table-id venues-id :dimension-id uuid-1
       :target [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} (meta/id :venues :category-id)]}
-     {:type :table :table_id venues-id :dimension_id uuid-2
+     {:type :table :table-id venues-id :dimension-id uuid-2
       :target [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} (meta/id :venues :id)]}]))
 
 (defn- sample-metric-query []

@@ -119,9 +119,9 @@
   (testing ":metadata/dimension returns expected fields"
     (let [dimension {:lib/type :metadata/dimension
                      :name "category"
-                     :display_name "Category"
-                     :effective_type :type/Text
-                     :semantic_type :type/Category
+                     :display-name "Category"
+                     :effective-type :type/Text
+                     :semantic-type :type/Category
                      :filter-positions [0 1]
                      :projection-positions [2]}
           result (display-info/display-info nil dimension)]

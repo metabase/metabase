@@ -6,6 +6,7 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
@@ -32,12 +33,15 @@
                                              [:name :string]]]]])
 
 (mr/def ::MetricWithDimensions
-  "Schema for a Metric with hydrated dimensions (returned from GET /:id)."
+  "Schema for a Metric with hydrated dimensions (returned from GET /:id). Dimensions and mappings
+  reference the wire-annotated schemas in [[metabase.metrics.dimension]]: the handler returns them
+  in the internal kebab-case shape, is validated against it, and `defendpoint` encodes them to the
+  snake_case wire shape on the way out."
   [:merge
    ::Metric
    [:map
-    [:dimensions           [:sequential :map]]
-    [:dimension_mappings   [:sequential :map]]
+    [:dimensions           [:sequential ::metrics.dimension/dimension]]
+    [:dimension_mappings   [:sequential ::metrics.dimension/dimension-mapping]]
     [:dataset_query        {:optional true} :map]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
@@ -85,7 +89,8 @@
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
-  Returns the metric with hydrated dimensions and dimension mappings."
+  Returns the metric with hydrated dimensions and dimension mappings; the `::MetricWithDimensions`
+  schema encodes them to the snake_case wire shape at the `defendpoint` edge."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [metric (hydrated-metric id)]
     (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))

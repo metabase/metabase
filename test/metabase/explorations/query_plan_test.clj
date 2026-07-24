@@ -38,13 +38,13 @@
 (defn- mk-block!
   "Insert a one-metric, one-dimension block on `tid` and return its instance."
   [tid cid dim-id disp etype]
-  (let [mappings [{:dimension_id dim-id :table_id (mt/id :venues)
+  (let [mappings [{:dimension-id dim-id :table-id (mt/id :venues)
                    :target ["field" {} (mt/id :venues :price)]}]]
     (first (t2/insert-returning-instances!
             :model/ExplorationBlock
             {:exploration_thread_id tid
              :metrics               [{:card_id cid :dimension_mappings mappings}]
-             :dimensions            [{:dimension_id dim-id :display_name disp :effective_type etype}]
+             :dimensions            [{:dimension-id dim-id :display-name disp :effective-type etype}]
              :position              0}))))
 
 (defn- block-of
@@ -392,12 +392,12 @@
                         {:exploration_thread_id (:id t)
                          :metrics    [{:card_id cid
                                        :dimension_mappings
-                                       [{:dimension_id "d1" :table_id (mt/id :venues)
+                                       [{:dimension-id "d1" :table-id (mt/id :venues)
                                          :target ["field" {} (mt/id :venues :price)]}
-                                        {:dimension_id "d2" :table_id (mt/id :venues)
+                                        {:dimension-id "d2" :table-id (mt/id :venues)
                                          :target ["field" {} (mt/id :venues :name)]}]}]
-                         :dimensions [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}
-                                      {:dimension_id "d2" :display_name "Name" :effective_type "type/Text"}]
+                         :dimensions [{:dimension-id "d1" :display-name "Price" :effective-type "type/Number"}
+                                      {:dimension-id "d2" :display-name "Name" :effective-type "type/Text"}]
                          :position   0}))
             b   (mk-block! (:id t) cid "d1" "Price" "type/Number")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))

@@ -39,7 +39,12 @@
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))
         ;; Each row should have [dim-value, sum] where sum is a+b for that dimension value
-        (is (every? #(= 2 (count %)) (get-in response [:data :rows])))))))
+        (is (every? #(= 2 (count %)) (get-in response [:data :rows])))
+        (testing "the computed column is QP result metadata: snake_case keys, generic Expression name"
+          (let [agg-col (last (get-in response [:data :cols]))]
+            (is (= "expression" (:name agg-col)))
+            (is (= "Expression" (:display_name agg-col)))
+            (is (not (contains? agg-col :display-name)))))))))
 
 (deftest arithmetic-subtraction-test
   (testing "POST /api/metric/dataset with metric_A - metric_B"

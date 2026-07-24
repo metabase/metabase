@@ -20,7 +20,7 @@
   (derive :hook/timestamped?))
 
 (defn- keywordize-dim-types
-  "The dim snapshot stores `effective_type`/`semantic_type` as JSON strings (`\"type/Date\"`),
+  "The dim snapshot stores `effective-type`/`semantic-type` as JSON strings (`\"type/Date\"`),
    but every reader (the variant planner, the LLM context, `dim-type-isa?`) needs them as
    fully-qualified keywords. Normalize at the model boundary so downstream code can trust the
    shape."
@@ -28,8 +28,8 @@
   (when dimensions
     (mapv (fn [dim]
             (cond-> dim
-              (:effective_type dim) (update :effective_type keyword)
-              (:semantic_type dim)  (update :semantic_type keyword)))
+              (:effective-type dim) (update :effective-type keyword)
+              (:semantic-type dim)  (update :semantic-type keyword)))
           dimensions)))
 
 (def ^:private transform-dimensions
@@ -61,7 +61,7 @@
   Card's dimension; it doesn't live on the snapshot, so any consumer that wants to render it
   needs this lookup."
   [dim card-dim-by-id]
-  (if-let [group (get-in card-dim-by-id [(:dimension_id dim) :group])]
+  (if-let [group (get-in card-dim-by-id [(:dimension-id dim) :group])]
     (assoc dim :group group)
     dim))
 
@@ -79,10 +79,10 @@
     (keep names card-ids)))
 
 (defn selected-dimension-names
-  "Distinct display names (falling back to the raw `dimension_id`) of the dimensions
+  "Distinct display names (falling back to the raw `dimension-id`) of the dimensions
   selected across `thread-id`'s blocks, in authoring order."
   [thread-id]
   (->> (thread-blocks thread-id)
        (mapcat :dimensions)
-       (keep (fn [d] (or (:display_name d) (:dimension_id d))))
+       (keep (fn [d] (or (:display-name d) (:dimension-id d))))
        distinct))

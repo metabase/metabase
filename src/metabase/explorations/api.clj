@@ -18,6 +18,7 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
+   [metabase.metrics.core :as metrics]
    [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -57,8 +58,8 @@
   (matches `metabase.lib.display-name/separator`). Otherwise falls back to the dim's display name
   (or id when missing)."
   [dim ambiguous?]
-  (let [dn       (or (:display_name dim) (:dimension_id dim))
-        group-dn (some-> dim :group :display_name)]
+  (let [dn       (or (:display-name dim) (:dimension-id dim))
+        group-dn (some-> dim :group :display-name)]
     (if (and ambiguous? (not (str/blank? group-dn)))
       (str group-dn " → " dn)
       dn)))
@@ -90,19 +91,20 @@
   metadata lives), then `exploration-query-dim-label` is applied with ambiguity scoped to the
   thread's dimensions."
   [thread blocks card-dim-by-id]
-  (let [thread-dims   (vals (u/index-by :dimension_id (mapcat :dimensions blocks)))
+  (let [thread-dims   (vals (u/index-by :dimension-id (mapcat :dimensions blocks)))
         enriched-dims (mapv #(block/enrich-with-card-group % card-dim-by-id)
                             thread-dims)
-        dim-by-id     (u/index-by :dimension_id enriched-dims)
-        name-counts   (frequencies (keep :display_name enriched-dims))]
+        dim-by-id     (u/index-by :dimension-id enriched-dims)
+        name-counts   (frequencies (keep :display-name enriched-dims))]
     (update thread :queries
             (fn [queries]
               (some->> queries
                        (mapv (fn [q]
+                               ;; `:dimension_id` on a query is the exploration_query DB column.
                                (let [dim-id     (:dimension_id q)
                                      dim        (or (get dim-by-id dim-id)
-                                                    {:dimension_id dim-id})
-                                     ambiguous? (> (get name-counts (:display_name dim) 0) 1)]
+                                                    {:dimension-id dim-id})
+                                     ambiguous? (> (get name-counts (:display-name dim) 0) 1)]
                                  (assoc q :dimension_name
                                         (exploration-query-dim-label dim ambiguous?))))))))))
 
@@ -208,10 +210,12 @@
                rows))
 
 (defn- insert-blocks!
-  "Persist the FE's Research-plan blocks verbatim — one `ExplorationBlock` row per
-   block, in payload order. Each block keeps its own `:metrics`/`:dimensions` selection;
-   the planners cross metrics with dimensions only within a block. No dedup across blocks:
-   a metric or dimension appearing in two blocks is stored on both."
+  "Persist the FE's Research-plan blocks — one `ExplorationBlock` row per block, in payload
+   order. Dimension snapshots and mapping objects arrive already converted to the internal
+   kebab-case shape (the request schemas carry the `:decode/api` rules `defendpoint` applies).
+   Each block keeps its own `:metrics`/`:dimensions` selection; the planners cross metrics with
+   dimensions only within a block. No dedup across blocks: a metric or dimension appearing
+   in two blocks is stored on both."
   [thread-id blocks]
   (when (seq blocks)
     (t2/insert! :model/ExplorationBlock
@@ -266,14 +270,14 @@
       true)))
 
 (defn- stringify-dim-types
-  "Turn a block's `:dimensions` back into wire form for re-insertion. The model's read transform
-  keywordizes `:effective_type`/`:semantic_type` (e.g. `:type/Date`); the JSON write transform
-  would otherwise drop the namespace on a bare keyword, so stringify them first."
+  "Prepare a block's `:dimensions` for re-insertion. The model's read transform keywordizes
+  `:effective-type`/`:semantic-type` (e.g. `:type/Date`); the JSON write transform would
+  otherwise drop the namespace on a bare keyword, so stringify them first."
   [dimensions]
   (mapv (fn [dim]
           (cond-> dim
-            (keyword? (:effective_type dim)) (update :effective_type u/qualified-name)
-            (keyword? (:semantic_type dim))  (update :semantic_type u/qualified-name)))
+            (keyword? (:effective-type dim)) (update :effective-type u/qualified-name)
+            (keyword? (:semantic-type dim))  (update :semantic-type u/qualified-name)))
         dimensions))
 
 (defn- format-explore-filter-for-thread-name
@@ -306,16 +310,22 @@
 ;;; ----------------------------------------- schemas -----------------------------------------
 
 (def ^:private MetricSelection
+  ;; Mapping objects are decoded from the snake_case wire shape to the internal kebab-case shape
+  ;; at the `defendpoint` edge by the wire-annotated schema (see [[metabase.metrics.core]]);
+  ;; the envelope `:dimension_mappings` key itself stays snake_case, matching storage.
   [:map
    [:card_id ms/PositiveInt]
-   [:dimension_mappings {:optional true} [:maybe [:sequential :map]]]])
+   [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
 
 (def ^:private DimensionSelection
-  [:map
-   [:dimension_id   ms/NonBlankString]
-   [:display_name   {:optional true} [:maybe :string]]
-   [:effective_type {:optional true} [:maybe :string]]
-   [:semantic_type  {:optional true} [:maybe :string]]])
+  ;; The FE sends snake_case dimension snapshots; the `:decode/api` rule kebab-cases them at the
+  ;; `defendpoint` edge, so entries here are declared in the internal kebab-case shape the
+  ;; handler receives and persists. Open map: snapshot keys beyond these pass through kebab-cased.
+  [:map {:decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
+   [:dimension-id   ms/UUIDString]
+   [:display-name   {:optional true} [:maybe :string]]
+   [:effective-type {:optional true} [:maybe :string]]
+   [:semantic-type  {:optional true} [:maybe :string]]])
 
 (def ^:private BlockSelection
   "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
@@ -545,7 +555,7 @@
                                              [:id [:maybe ms/PositiveInt]]
                                              [:name :string]]]]
    [:dimension_ids        [:sequential :any]]
-   [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
+   [:dimension_mappings   {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]
    [:database_id          {:optional true} [:maybe ms/PositiveInt]]
    [:result_column_name   {:optional true} [:maybe :string]]
    [:in_library           {:optional true} :boolean]])
@@ -557,7 +567,7 @@
   [:map
    [:name                       :string]
    [:dimension_interestingness  [:maybe number?]]
-   [:dimensions                 [:sequential :map]]])
+   [:dimensions                 [:sequential ::metrics/dimension]]])
 
 (mr/def ::DimensionsResponse
   "Schema for GET /dimensions: metrics referencing dimensions by id, plus the grouped dimension list."
@@ -697,6 +707,10 @@
   Optional `q` filters case-insensitively across metric name and dimension display-name."
   [_route-params
    {:keys [q]} :- [:maybe [:map [:q {:optional true} [:maybe ms/NonBlankString]]]]]
+  ;; Returned in the internal kebab-case shape; the `::DimensionsResponse` schema encodes
+  ;; dimensions and mappings to the snake_case wire shape at the `defendpoint` edge. (The
+  ;; `add_research_groups` metabot tool serves the same payload outside `defendpoint` and
+  ;; converts explicitly via [[explorations/exploration-data->api]].)
   (explorations/exploration-data {:q q}))
 
 (defn- my-explorations-honeysql

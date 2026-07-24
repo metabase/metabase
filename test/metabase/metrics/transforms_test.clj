@@ -1,5 +1,6 @@
 (ns metabase.metrics.transforms-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.metrics.transforms :as metrics.transforms]
    [metabase.util.json :as json]))
@@ -27,29 +28,78 @@
     (is (= 7 (nth (metrics.transforms/normalize-target-ref ["field" 7 nil]) 2)))
     (is (= 7 (nth (metrics.transforms/normalize-target-ref ["field" {} 7]) 2)))))
 
+(deftest ^:parallel transform-dimensions-round-trip-test
+  (testing "dimensions are kebab-case everywhere — in memory AND in the JSON at rest (matching master/metric-dimensions)"
+    (let [dim-id    (str (random-uuid))
+          canonical {:id                dim-id
+                     :name              "category"
+                     :display-name      "Category"
+                     :effective-type    :type/Text
+                     :semantic-type     :type/Category
+                     :has-field-values  :list
+                     :status            :status/active
+                     :group             {:id "g1" :type "main" :display-name "Venues"}
+                     :sources           [{:type :field :field-id 1}]}
+          stored    ((:in metrics.transforms/transform-dimensions) [canonical])]
+      (testing "the JSON at rest uses the same kebab-case keys (pass-through, no conversion)"
+        (is (string? stored))
+        (is (str/includes? stored "display-name"))
+        (is (str/includes? stored "has-field-values"))
+        (is (not (str/includes? stored "display_name"))))
+      (testing ":out returns the canonical kebab-case shape with keywordized type values"
+        (is (= [{:id               dim-id
+                 :name             "category"
+                 :display-name     "Category"
+                 :effective-type   :type/Text
+                 :semantic-type    :type/Category
+                 :has-field-values :list
+                 :status           :status/active
+                 :group            {:id "g1" :type "main" :display-name "Venues"}
+                 :sources          [{:type :field :field-id 1}]}]
+               ((:out metrics.transforms/transform-dimensions) stored)))))))
+
+(deftest ^:parallel transform-dimension-mappings-round-trip-test
+  (testing "mappings are kebab-case at rest and in memory; :target rides untouched"
+    (let [canonical {:dimension-id "d1"
+                     :type         :table
+                     :table-id     5
+                     :target       ["field" {:base-type "type/Text"} 9]}
+          stored    ((:in metrics.transforms/transform-dimension-mappings) [canonical])]
+      (is (str/includes? stored "dimension-id"))
+      (is (str/includes? stored "table-id"))
+      (is (not (str/includes? stored "dimension_id")))
+      (let [[mapping] ((:out metrics.transforms/transform-dimension-mappings) stored)
+            [tag opts field-id] (:target mapping)]
+        (is (= "d1" (:dimension-id mapping)))
+        (is (= 5 (:table-id mapping)))
+        (is (= :table (:type mapping)))
+        (is (= :field tag))
+        (is (= :type/Text (:base-type opts)))
+        (is (= 9 field-id))))))
+
 (defn- dimensions-out
-  "Run `dims` through the `:out` side of [[metrics.transforms/transform-dimensions]] the way a
-  Toucan select would: JSON-encode then parse + normalize."
+  "Run stored-shape `dims` through the `:out` side of [[metrics.transforms/transform-dimensions]]
+  the way a Toucan select would: JSON-encode then parse + normalize."
   [dims]
   ((:out metrics.transforms/transform-dimensions) (json/encode dims)))
 
 (deftest ^:parallel transform-dimensions-out-normalizes-test
-  (testing ":out keywordizes type values and renames legacy kebab-case keys"
+  (testing ":out keywordizes type values on stored kebab-case rows"
     (let [dim-id (str (random-uuid))
           [dim]  (dimensions-out [{:id               dim-id
                                    :name             "category"
                                    :display-name     "Category"
-                                   :effective_type   "type/Text"
-                                   :semantic_type    "type/Category"
-                                   :has_field_values "list"
+                                   :effective-type   "type/Text"
+                                   :semantic-type    "type/Category"
+                                   :has-field-values "list"
                                    :status           "status/active"
                                    :sources          [{:type "field" :field-id 1}]}])]
       (is (= {:id               dim-id
               :name             "category"
-              :display_name     "Category"
-              :effective_type   :type/Text
-              :semantic_type    :type/Category
-              :has_field_values :list
+              :display-name     "Category"
+              :effective-type   :type/Text
+              :semantic-type    :type/Category
+              :has-field-values :list
               :status           :status/active
               :sources          [{:type :field :field-id 1}]}
              dim)))))

@@ -138,7 +138,7 @@
   the model made a judgement that isn't otherwise visible."
   [metric dim]
   (let [metric-id   (:metric-id metric)
-        dim-id      (:dimension_id dim)
+        dim-id      (:dimension-id dim)
         item        (fn [variant]
                       {:metric_id    metric-id
                        :dimension_id dim-id

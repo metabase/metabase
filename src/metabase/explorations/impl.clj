@@ -69,8 +69,8 @@
   "Combination name shown in the UI for a dimension: '<group display name> - <dimension display name>'
    when the dimension has a group, otherwise just the dimension's display name."
   [d]
-  (let [dn       (or (:display_name d) (:name d) "")
-        group-dn (some-> d :group :display_name)]
+  (let [dn       (or (:display-name d) (:name d) "")
+        group-dn (some-> d :group :display-name)]
     (if (str/blank? group-dn)
       dn
       (str group-dn " - " dn))))
@@ -97,14 +97,14 @@
         ;; the threshold
         all-dims (->> (mapcat :dimensions metrics)
                       (filter (fn [d]
-                                (let [score (:dimension_interestingness d)]
+                                (let [score (:dimension-interestingness d)]
                                   (or (nil? score)
                                       (>= score min-interestingness))))))
         groups   (lib-metric/group-by-source all-dims)]
     (->> groups
          (mapv (fn [dims]
                  (let [head   (first dims)
-                       scores (keep :dimension_interestingness dims)]
+                       scores (keep :dimension-interestingness dims)]
                    {:name                      (dimension-display-name head)
                     :dimension_interestingness (when (seq scores) (apply max scores))
                     :dimensions                (vec dims)})))
@@ -231,7 +231,7 @@
   [metric query breakoutable]
   (if-not (:dataset_query metric)
     metric
-    (let [mappings-by-id (u/index-by :dimension_id (:dimension_mappings metric))
+    (let [mappings-by-id (u/index-by :dimension-id (:dimension_mappings metric))
           keep?          (fn [dim]
                            (if-let [target (get-in mappings-by-id [(:id dim) :target])]
                              (and (some? query) (target-resolvable? query breakoutable target))
@@ -241,7 +241,7 @@
       (-> metric
           (assoc :dimensions kept-dims)
           (update :dimension_mappings
-                  (fn [ms] (filterv #(contains? kept-ids (:dimension_id %)) ms)))))))
+                  (fn [ms] (filterv #(contains? kept-ids (:dimension-id %)) ms)))))))
 
 (defn- slim-metric
   "Drop a hydrated metric's inline `:dimensions`, exposing just their ids as `:dimension_ids`
@@ -290,7 +290,7 @@
    [[min-interestingness]], or it didn't score (nil). Mirrors the filter [[group-dimensions]]
    applies, so a metric's candidate dimensions match the dimension groups exactly."
   [d]
-  (let [score (:dimension_interestingness d)]
+  (let [score (:dimension-interestingness d)]
     (or (nil? score) (>= score min-interestingness))))
 
 (defn- with-candidate-dimensions
@@ -319,6 +319,26 @@
     {:metrics          (mapv slim-metric filtered)
      :dimension_groups (group-dimensions filtered)}))
 
+(defn exploration-data->api
+  "Convert an [[exploration-data]]/[[research-groups]]-shaped payload's dimension and mapping
+   objects from the internal kebab-case shape to the snake_case API shape (see
+   [[metabase.metrics.dimension/->api-dimension]]). Applied by FE-facing edges — the
+   `GET /api/exploration/dimensions` endpoint and the `add_research_groups` metabot tool
+   (whose `:output` the exploration chat FE parses). Envelope keys are snake_case already;
+   LLM-only payloads ([[research-candidates]]) are not converted."
+  [payload]
+  (-> payload
+      (update :metrics
+              (fn [metrics]
+                (mapv (fn [metric]
+                        (cond-> metric
+                          (:dimension_mappings metric)
+                          (update :dimension_mappings metrics/->api-dimension-mappings)))
+                      metrics)))
+      (update :dimension_groups
+              (fn [groups]
+                (mapv #(update % :dimensions metrics/->api-dimensions) groups)))))
+
 (defn- dimension-id->metric-ids
   "Map of dimension id -> set of metric ids exposing that dimension, across `metrics` (each
    carrying inline `:dimensions`)."
@@ -334,7 +354,7 @@
 
 (def ^:private llm-dimension-cols
   "Dimension fields surfaced to Metabot in the research catalog."
-  [:id :name :display_name :effective_type :semantic_type :dimension_interestingness])
+  [:id :name :display-name :effective-type :semantic-type :dimension-interestingness])
 
 (defn research-candidates
   "Metabot-facing research catalog: each metric with its candidate dimensions inlined

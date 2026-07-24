@@ -84,14 +84,14 @@
         (t2/update! :model/Card (:id metric)
                     {:dimensions [{:id dim-id
                                    :name (:name first-dim)
-                                   :display_name "My Custom Metric Dimension"
+                                   :display-name "My Custom Metric Dimension"
                                    :status :status/active}]})
         ;; Sync again
         (metrics/sync-dimensions! :metadata/metric (:id metric))
         (let [reloaded (t2/select-one :model/Card :id (:id metric))
               matching-dim (first (filter #(= dim-id (:id %)) (:dimensions reloaded)))]
-          (is (= "My Custom Metric Dimension" (:display_name matching-dim))
-              "User's custom display_name should be preserved"))))))
+          (is (= "My Custom Metric Dimension" (:display-name matching-dim))
+              "User's custom display-name should be preserved"))))))
 
 (deftest metric-sync-dimensions-no-op-without-query-test
   (testing "sync-dimensions! is a no-op when dataset_query is empty for metrics"
@@ -187,14 +187,14 @@
         (t2/update! :model/Measure (:id measure)
                     {:dimensions [{:id dim-id
                                    :name (:name first-dim)
-                                   :display_name "My Custom Name"
+                                   :display-name "My Custom Name"
                                    :status :status/active}]})
         ;; Sync again
         (metrics/sync-dimensions! :metadata/measure (:id measure))
         (let [reloaded (t2/select-one :model/Measure :id (:id measure))
               matching-dim (first (filter #(= dim-id (:id %)) (:dimensions reloaded)))]
-          (is (= "My Custom Name" (:display_name matching-dim))
-              "User's custom display_name should be preserved"))))))
+          (is (= "My Custom Name" (:display-name matching-dim))
+              "User's custom display-name should be preserved"))))))
 
 ;; Note: There's no test for "no-op without definition" for measures
 ;; because measures have a NOT NULL constraint on the definition column - they must always have a definition.
