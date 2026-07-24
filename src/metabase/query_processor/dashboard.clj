@@ -59,16 +59,17 @@
                                        (not= :status/orphaned (:status %)))
                                  dimensions)]
       (when-let [mapping (u/seek #(= (:id dimension) (:dimension-id %)) mappings)]
-        (when (and (permissions.metric/can-use-dimension-mapping? mapping)
-                   (current-dimension-mapping? provider query mapping))
-          (let [field-id (lib-metric/dimension-target->field-id (:target mapping))]
-            (cond-> (assoc dimension
-                           :lib/type :metadata/dimension
-                           :source-type :metric
-                           :source-id (:id card)
-                           :dimension-mapping mapping)
-              (and (not (seq (:sources dimension))) field-id)
-              (assoc :sources [{:type :field, :field-id field-id}]))))))))
+        (when (current-dimension-mapping? provider query mapping)
+          (when-let [database-provider (lib-metric/database-provider-for-table provider (:table-id mapping))]
+            (when (permissions.metric/can-use-dimension-mapping? database-provider (:database_id card) mapping)
+              (let [field-id (lib-metric/dimension-target->field-id (:target mapping))]
+                (cond-> (assoc dimension
+                               :lib/type :metadata/dimension
+                               :source-type :metric
+                               :source-id (:id card)
+                               :dimension-mapping mapping)
+                  (and (not (seq (:sources dimension))) field-id)
+                  (assoc :sources [{:type :field, :field-id field-id}]))))))))))
 
 (defn card-with-default-metric-dimension
   "Replace a metric card's final-stage breakouts with its active default dimension when the current user can access it."

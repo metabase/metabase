@@ -338,6 +338,19 @@
           (is (= [default-id] (mapv :id (filter :default resp)))
               "the existing default is preserved"))))))
 
+(deftest add-dimension-validation-test
+  (testing "POST /api/metric/:id/dimension/add validates names and descriptions"
+    (with-seeded-metric [metric]
+      (let [path    (str "metric/" (:id metric) "/dimension/add")
+            addable (-> (mt/user-http-request :crowberto :get 200
+                                              (str "metric/" (:id metric) "/dimension") :with-addable true)
+                        :addable first :dimensions first)]
+        (doseq [display-name [nil "" " "]]
+          (mt/user-http-request :crowberto :post 400 path
+                                {:dimensions [(assoc addable :display_name display-name)]}))
+        (mt/user-http-request :crowberto :post 400 path
+                              {:dimensions [(assoc addable :description 42)]})))))
+
 (deftest add-dimension-through-one-of-multiple-foreign-key-paths-test
   (testing "adding a dimension reached through duplicate foreign key paths preserves the selected path"
     (let [product-id-field-id (mt/id :orders :product_id)
@@ -412,6 +425,18 @@
         (is (= "Cost" (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
                            :added (m/find-first #(= price-id (:id %))) :display_name))
             "the rename is persisted")))))
+
+(deftest update-dimension-validation-test
+  (testing "POST /api/metric/:id/dimension/:id validates names and descriptions"
+    (with-seeded-metric [metric]
+      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+            path     (str "metric/" (:id metric) "/dimension/" price-id)]
+        (doseq [display-name [nil "" " "]]
+          (mt/user-http-request :crowberto :post 400 path {:display_name display-name}))
+        (mt/user-http-request :crowberto :post 400 path {:description 42})
+        (is (= "A price"
+               (:description (mt/user-http-request :crowberto :post 200 path {:description "A price"}))))
+        (is (nil? (:description (mt/user-http-request :crowberto :post 200 path {:description nil}))))))))
 
 (deftest update-dimension-source-type-mismatch-test
   (testing "POST /api/metric/:id/dimension/:id rejects a source column of a different type"

@@ -434,7 +434,7 @@
                                   [:dimension-key ms/UUIDString]]
    _query-params
    body :- [:map
-            [:display_name {:optional true} [:maybe ms/NonBlankString]]
+            [:display_name {:optional true} ms/NonBlankString]
             [:description  {:optional true} [:maybe :string]]
             [:source       {:optional true} [:maybe [:map [:field-id ms/PositiveInt]]]]]]
   (write-check-metric! id)

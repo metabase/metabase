@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.permissions.metric :as permissions.metric]
@@ -197,21 +198,41 @@
                (into #{} (map :dimension-id) (:dimension_mappings result))))))))
 
 (deftest dimension-mapping-source-field-permissions-test
-  (testing "A dimension mapping requires access to its FK source field (UXW-4769)"
+  (testing "A dimension mapping requires access to its FK source field"
     (let [mapping {:target [:field {:source-field (mt/id :orders :user_id)}
                             (mt/id :people :state)]}]
       (mt/with-test-user :rasta
-        (is (true? (permissions.metric/can-use-dimension-mapping? mapping))))
+        (is (true? (permissions.metric/can-use-dimension-mapping? (mt/metadata-provider) (mt/id) mapping))))
       (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:visibility_type :sensitive}
         (mt/with-test-user :rasta
-          (is (false? (permissions.metric/can-use-dimension-mapping? mapping))))))))
+          (is (false? (permissions.metric/can-use-dimension-mapping? (mt/metadata-provider) (mt/id) mapping)))))
+      (mt/with-temp-vals-in-db :model/Field (mt/id :people :state) {:visibility_type :hidden}
+        (mt/with-test-user :rasta
+          (is (false? (permissions.metric/can-use-dimension-mapping? (mt/metadata-provider) (mt/id) mapping))))))))
 
 (deftest invalid-dimension-mapping-targets-test
-  (testing "Unresolved and malformed field targets fail closed (UXW-4769)"
+  (testing "Unresolved and malformed field targets fail closed"
     (let [field-id (mt/id :orders :user_id)]
       (doseq [target [[:field {} "USER_ID"]
                       [:field {:source-field field-id} "USER_ID"]
+                      [:field {} Integer/MAX_VALUE]
                       [:field {} field-id :extra]
                       [:field {}]
                       [:field [] field-id]]]
-        (is (false? (permissions.metric/can-use-dimension-mapping? {:target target})))))))
+        (is (false? (permissions.metric/can-use-dimension-mapping?
+                     (mt/metadata-provider)
+                     (mt/id)
+                     {:target target})))))))
+
+(deftest dimension-mapping-permission-uses-metadata-provider-cache-test
+  (testing "Permission checks reuse cached field metadata"
+    (let [provider        (mt/metadata-provider)
+          source-field-id (mt/id :orders :user_id)
+          target-field-id (mt/id :people :state)
+          mapping         {:target [:field {:source-field source-field-id} target-field-id]}]
+      (lib.metadata/field provider source-field-id)
+      (lib.metadata/field provider target-field-id)
+      (mt/with-test-user :crowberto
+        (t2/with-call-count [call-count]
+          (is (true? (permissions.metric/can-use-dimension-mapping? provider (mt/id) mapping)))
+          (is (zero? (call-count))))))))

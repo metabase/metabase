@@ -7,6 +7,7 @@
    3. Column-level sandbox restrictions (EE, via defenterprise)"
   (:require
    [metabase.api.common :as api]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
@@ -72,9 +73,17 @@
                  (pos-int? id-or-name))
         id-or-name))))
 
+(defn- metadata-field-info [metadata-provider field-ids]
+  (into {}
+        (keep (fn [field-id]
+                (when-let [field (lib.metadata/field metadata-provider field-id)]
+                  [field-id field])))
+        field-ids))
+
 (defn can-use-dimension-mapping?
-  "Whether the current user can use a dimension mapping as a query breakout."
-  [{:keys [target]}]
+  "Whether the current user can use a dimension mapping as a query breakout. Metadata is resolved through the
+   database-scoped provider so callers can reuse its cache."
+  [metadata-provider database-id {:keys [target]}]
   (let [[_ options]              target
         target-field-id         (target->field-id target)
         source-field-id         (:source-field options)
@@ -83,25 +92,23 @@
         field-ids               (cond-> #{}
                                   target-field-id           (conj target-field-id)
                                   (pos-int? source-field-id) (conj source-field-id))]
-    (and (pos-int? target-field-id)
+    (and (pos-int? database-id)
+         (pos-int? target-field-id)
          source-field-valid?
-         (let [field-info  (batch-field-info field-ids)
-               table-ids   (into #{} (keep :table_id) (vals field-info))
-               table->db    (batch-table-db-ids table-ids)
+         (let [field-info  (metadata-field-info metadata-provider field-ids)
+               table-ids   (into #{} (keep :table-id) (vals field-info))
                sandbox-map (when (and (not api/*is-superuser?*) (seq table-ids))
                              (sandbox-restricted-fields table-ids))]
-           (every? (fn [field-id]
-                     (let [{:keys [visibility_type table_id] :as field} (get field-info field-id)
-                           db-id (get table->db table_id)]
-                       (and field
-                            db-id
-                            (or api/*is-superuser?*
-                                (and (not (hidden-field? visibility_type))
-                                     (user-can-access-table? api/*current-user-id* db-id table_id)
-                                     (or (nil? sandbox-map)
-                                         (nil? (get sandbox-map table_id))
-                                         (contains? (get sandbox-map table_id) field-id)))))))
-                   field-ids)))))
+           (and (= field-ids (set (keys field-info)))
+                (every? (fn [[field-id {:keys [visibility-type table-id]}]]
+                          (and (pos-int? table-id)
+                               (or api/*is-superuser?*
+                                   (and (not (hidden-field? visibility-type))
+                                        (user-can-access-table? api/*current-user-id* database-id table-id)
+                                        (or (nil? sandbox-map)
+                                            (nil? (get sandbox-map table-id))
+                                            (contains? (get sandbox-map table-id) field-id))))))
+                        field-info))))))
 
 (defn- build-dim->field-id
   "Build a map of {dimension-id -> field-id} from dimensions and their mappings."
