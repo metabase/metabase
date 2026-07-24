@@ -1033,7 +1033,9 @@
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
                                                  :parameter_mappings (or parameter_mappings [])
-                                                 :entity_id (u/generate-nano-id))
+                                                 ;; workspace copy-on-write clones pass the source's entity_id so the
+                                                 ;; copy keeps its git identity (uniqueness is per workspace)
+                                                 :entity_id (or (:entity_id input-card-data) (u/generate-nano-id)))
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
                                                 ;; Strict so a malformed query throws here instead of being silently
