@@ -12,7 +12,8 @@
   how many contexts there are, which makes raising the pool's max from 1 to 2 or 3 a one-line change. A
   context is held exclusively per render (so renders serialize per context); the utilization controller
   has min 0, so when idle the pool shrinks to 0 and the last `destroy` closes the engine (GraalVM reclaims
-  neither context nor engine on GC). The first render after an idle gap rebuilds them."
+  neither context nor engine on GC). The first render after an idle gap rebuilds them. The untrusted
+  custom-viz isolate engine follows the same ref-counted lifecycle (see [[ref-counted-engine]])."
   (:require
    [clojure.java.io :as io]
    [metabase.channel.render.js.common :as common]
@@ -22,6 +23,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
@@ -102,57 +104,84 @@
   (assert (.canExecute fn-ref) "cannot execute function reference")
   (.execute fn-ref (object-array args)))
 
-;;; ---------------------------------------- shared engine + contexts -------------------------------------
+;;; ------------------------------------- ref-counted engine holder ---------------------------------------
+;;;
+;;; Generic lifecycle tool: a lazily-created `Engine` shared by pooled contexts, closed again when the last
+;;; context is destroyed. Used by both the trusted and the untrusted-isolate pool below.
 
-(def ^:private engine-lock (Object.))
+(def ^:private CreateEngineState
+  "Schema for a [[ref-counted-engine]] `create` fn: builds the shared state"
+  [:=> [:cat] [:map [:engine (ms/InstanceOfClass Engine)]]])
 
-(def ^:private shared-engine
-  "Atom holding `{:engine <Engine>, :source <Source>, :refs <live context count>}`, or nil when no context
-  is live. Guarded by [[engine-lock]]. The engine and parsed bundle are shared by every pooled context;
-  they're created with the first context ([[acquire-engine!]]) and closed with the last
-  ([[release-engine!]])."
-  (atom nil))
+(def ^:private EngineState
+  "What lives inside a [[RefCountedEngine]]'s `:state` atom while the engine is live: the map its `create`
+  returned plus `:refs`, the count of live contexts holding the engine open. nil when no engine is live."
+  [:map
+   [:engine (ms/InstanceOfClass Engine)]
+   [:refs   pos-int?]])
 
-(defn- acquire-engine!
-  "Return the shared `{:engine, :source}`, creating them (parsing the bundle) with the first context.
-  Bumps the ref count."
-  []
-  (locking engine-lock
-    (let [state (or @shared-engine
-                    {:source (build-source common/bundle-resource-path)
-                     :engine (create-engine)
-                     :refs   0})]
-      (reset! shared-engine (update state :refs inc))
-      state)))
+(def ^:private RefCountedEngine
+  "Schema for the holder built by [[ref-counted-engine]]. `:state` holds [[EngineState]] or nil."
+  [:map
+   [:lock   some?]
+   [:state  (ms/InstanceOfClass clojure.lang.Atom)]
+   [:create CreateEngineState]])
 
-(defn- release-engine!
-  "Drop a ref on the shared engine, closing it once the last context is gone."
-  []
-  (locking engine-lock
-    (let [{:keys [^Engine engine refs]} @shared-engine]
+(mu/defn- ref-counted-engine :- RefCountedEngine
+  "A ref-counted holder for an `Engine` shared by pooled contexts, plus any extra state `create` returns
+  alongside it (e.g. a parsed `Source`). `create` runs under the first [[acquire-engine!]]; the engine is
+  closed by the [[release-engine!]] that drops the last ref. Needed because GraalVM reclaims neither
+  engines nor contexts on GC — an idle-shrunk pool must close its engine explicitly to get the memory back."
+  [create :- CreateEngineState]
+  {:lock (Object.), :state (atom nil), :create create})
+
+(mu/defn- acquire-engine! :- EngineState
+  "Return `engine-ref`'s shared state (`{:engine <Engine>}` plus whatever its `create` returned), creating
+  it with the first acquire. Bumps the ref count."
+  [{:keys [lock state create]} :- RefCountedEngine]
+  (locking lock
+    (let [current (update (or @state (assoc (create) :refs 0)) :refs inc)]
+      (reset! state current)
+      current)))
+
+(mu/defn- release-engine!
+  "Drop a ref on `engine-ref`'s shared engine, closing it once the last ref is gone."
+  [{:keys [lock state]} :- RefCountedEngine]
+  (locking lock
+    (let [{:keys [^Engine engine refs]} @state]
       (if (<= refs 1)
         (do (try (.close engine) (catch Exception _))
-            (reset! shared-engine nil))
-        (swap! shared-engine update :refs dec)))))
+            (reset! state nil))
+        (swap! state update :refs dec)))))
+
+;;; ------------------------------------ trusted engine + contexts ----------------------------------------
+
+(def ^:private shared-engine
+  "Ref-counted `Engine` + parsed bundle `Source` shared by every pooled trusted context: created with the
+  first context ([[generate-context!]]) and closed with the last ([[destroy-context!]])."
+  (ref-counted-engine
+   (fn []
+     {:source (build-source common/bundle-resource-path)
+      :engine (create-engine)})))
 
 (defn- generate-context!
   "Build a context on the shared engine and evaluate the bundle into it (creating the engine + parsing the
   bundle if this is the first context)."
   ^Context []
   (common/assert-tests-not-initializing!)
-  (let [{:keys [^Engine engine ^Source source]} (acquire-engine!)]
+  (let [{:keys [^Engine engine ^Source source]} (acquire-engine! shared-engine)]
     (try
       (doto (create-context engine)
         (eval-source source))
       (catch Throwable t
-        (release-engine!)
+        (release-engine! shared-engine)
         (throw t)))))
 
 (defn- destroy-context!
   "Close a context and drop its ref on the shared engine (closing the engine if it was the last context)."
   [^Context context]
   (try (.close context true) (catch Exception _))
-  (release-engine!))
+  (release-engine! shared-engine))
 
 ;;; ------------------------------------------------ context pool -----------------------------------------
 
@@ -202,7 +231,6 @@
 ;;;
 ;;; The isolate is a separate heap but runs in the *same OS process* as the JVM, so its native memory counts
 ;;; against the same pod/container.
-
 (def ^:private max-isolate-memory
   "`engine.MaxIsolateMemory`: hard cap on the untrusted isolate's whole heap. Should cover the slim
   custom-viz bundle plus a real render."
@@ -228,12 +256,14 @@
       (err discarding-output-stream)
       (build)))
 
-(defonce ^:private
-  ^{:doc "GraalVM isolate `Engine` shared by every untrusted custom-viz plugin context. Contexts on a shared
-          engine still get isolated global scopes (one plugin can't see another's globals), while sharing the
-          isolate's parsed-source cache."}
-  shared-untrusted-plugin-engine
-  (delay (new-untrusted-plugin-engine)))
+(def ^:private shared-untrusted-plugin-engine
+  "Ref-counted GraalVM isolate `Engine` shared by every untrusted custom-viz plugin context: created with
+  the first context ([[generate-untrusted-context!]]) and closed with the last
+  ([[destroy-untrusted-context!]]), so an idle-shrunk pool frees the isolate's native heap (up to
+  [[max-isolate-memory]]) instead of pinning it for the process lifetime. Contexts on a shared engine
+  still get isolated global scopes (one plugin can't see another's globals), while sharing the isolate's
+  parsed-source cache."
+  (ref-counted-engine (fn [] {:engine (new-untrusted-plugin-engine)})))
 
 (def render-max-cpu-time
   "`sandbox.MaxCPUTime` for a *non-pooled* untrusted context (the dev fresh-context path). Covers a cold parse
@@ -248,13 +278,14 @@
   "180s")
 
 (defn untrusted-plugin-context
-  "Create a `SandboxPolicy/UNTRUSTED` GraalVM isolate `Context` for running untrusted custom-viz plugin JS.
-  The guest runs in a separate isolate heap with VM-enforced CPU/heap/AST limits; like [[create-context]] it
-  has no host access and no IO, so data must cross the boundary as JSON strings."
-  (^Context [] (untrusted-plugin-context render-max-cpu-time))
-  (^Context [^String max-cpu-time]
+  "Create a `SandboxPolicy/UNTRUSTED` GraalVM isolate `Context` on `engine` (which must itself declare
+  `SandboxPolicy/UNTRUSTED` — see [[new-untrusted-plugin-engine]]) for running untrusted custom-viz plugin
+  JS. The guest runs in a separate isolate heap with VM-enforced CPU/heap/AST limits; like
+  [[create-context]] it has no host access and no IO, so data must cross the boundary as JSON strings."
+  (^Context [^Engine engine] (untrusted-plugin-context engine render-max-cpu-time))
+  (^Context [^Engine engine ^String max-cpu-time]
    (.. (Context/newBuilder (into-array String ["js"]))
-       (engine ^Engine @shared-untrusted-plugin-engine)
+       (engine engine)
        (sandbox SandboxPolicy/UNTRUSTED)
        ;; HostAccess/UNTRUSTED, not /NONE: the UNTRUSTED policy rejects /NONE (it still permits mutable
        ;; target-type mappings). /UNTRUSTED is the policy's purpose-built strictest host-access mode.
@@ -265,7 +296,7 @@
        ;; allowNativeAccess is false by default under SandboxPolicy/UNTRUSTED.
        ;; allowEnvironmentAccess is NONE (no host env vars) by default under SandboxPolicy/UNTRUSTED.
        ;; allowExperimentalOptions left at default false
-       ;; MaxCPUTimeCheckInterval left at its ~10ms default — negligible overshoot vs a multi-second budget.
+       ;; MaxCPUTimeCheckInterval left at its ~10ms default
        (option "sandbox.MaxCPUTime" max-cpu-time)
        (option "sandbox.MaxHeapMemory" max-heap-memory)
        (option "sandbox.MaxASTDepth" "5000")
@@ -281,28 +312,37 @@
 ;;; ------------------------------------------- untrusted context pool ------------------------------------
 
 (defn- destroy-untrusted-context!
-  "Close an untrusted isolate context reaped or disposed by the pool. The shared untrusted engine is a
-  process-lifetime singleton, so unlike [[destroy-context!]] there is no engine ref to drop."
+  "Close an untrusted isolate context reaped or disposed by the pool and drop its ref on the shared
+  untrusted engine (closing the engine — and freeing its isolate heap — with the last context)."
   [^Context context]
   (log/debug "custom-viz: disposing untrusted static-viz isolate context")
-  (try (.close context true) (catch Exception _)))
+  (try (.close context true) (catch Exception _))
+  (release-engine! shared-untrusted-plugin-engine))
 
 (defn- generate-untrusted-context!
-  "Cold-parse the slim custom-viz bundle into a fresh isolate context; logged with timing because this is the
-  dominant per-context cost and explains slow first/regenerated renders."
-  ^Context []
-  (common/assert-tests-not-initializing!)
-  (let [start   (System/nanoTime)
-        context (untrusted-plugin-context pool-max-cpu-time)]
-    (try
-      ;; a bundle-load failure would otherwise leak the freshly-built isolate; close it and rethrow
-      (load-resource context common/custom-viz-bundle-resource-path)
-      (log/infof "custom-viz: generated untrusted static-viz isolate context (cold-parsed slim bundle) in %.0fms"
-                 (/ (- (System/nanoTime) start) 1e6))
-      context
-      (catch Throwable t
-        (destroy-untrusted-context! context)
-        (throw t)))))
+  "Cold-parse the slim custom-viz bundle into a fresh isolate context on the shared untrusted engine
+  (creating the engine with the first context); logged with timing because this is the dominant
+  per-context cost and explains slow first/regenerated renders."
+  (^Context [] (generate-untrusted-context! pool-max-cpu-time))
+  (^Context [^String max-cpu-time]
+   (common/assert-tests-not-initializing!)
+   (let [start (System/nanoTime)
+         {:keys [^Engine engine]} (acquire-engine! shared-untrusted-plugin-engine)]
+     (try
+       (let [context (untrusted-plugin-context engine max-cpu-time)]
+         (try
+           (load-resource context common/custom-viz-bundle-resource-path)
+           (log/infof "custom-viz: generated untrusted static-viz isolate context (cold-parsed slim bundle) in %.0fms"
+                      (/ (- (System/nanoTime) start) 1e6))
+           context
+           (catch Throwable t
+             ;; a bundle-load failure would otherwise leak the freshly-built isolate; close it and rethrow
+             ;; (the engine ref is dropped by the outer catch)
+             (try (.close context true) (catch Exception _))
+             (throw t))))
+       (catch Throwable t
+         (release-engine! shared-untrusted-plugin-engine)
+         (throw t))))))
 
 (def ^:private ^Pool untrusted-static-viz-context-pool
   "Pool of `SandboxPolicy/UNTRUSTED` isolate contexts for rendering untrusted custom-viz plugin JS. Mirrors
@@ -313,10 +353,10 @@
   "Acquire a pooled `SandboxPolicy/UNTRUSTED` isolate context"
   [f]
   (if config/is-dev?
-    (let [^Context context (untrusted-plugin-context)]
+    ;; a throwaway context per call, like [[do-with-static-viz-context]]'s dev path — with the tighter
+    ;; single-render [[render-max-cpu-time]] budget
+    (let [^Context context (generate-untrusted-context! render-max-cpu-time)]
       (try
-        ;; parse inside the try so a bundle-load failure still hits the finally and closes the isolate
-        (load-resource context common/custom-viz-bundle-resource-path)
         (f context)
         (finally
           (destroy-untrusted-context! context))))
