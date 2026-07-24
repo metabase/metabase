@@ -112,6 +112,22 @@
       (is (= (set (map (fn [pk] {:id pk, :group_id 81}) pks))
              (set (:rows (first (events)))))))))
 
+(deftest explicit-honeysql-delete-syntax-test
+  (testing "an explicit :delete-from map is restated as a select, so the snapshot compiles and the delete runs"
+    (reset-capture!)
+    (let [pks (t2/insert-returning-pks! ::bird [(bird 82 0 "a") (bird 82 0 "b")])]
+      (reset! captured [])
+      (is (= 2 (t2/delete! ::bird {:delete-from (keyword table-name) :where [:= :group_id 82]})))
+      (is (= (set (map (fn [pk] {:id pk, :group_id 82}) pks))
+             (set (:rows (first (events))))))))
+  (testing "so is the :delete/:from spelling"
+    (reset-capture!)
+    (let [pks (t2/insert-returning-pks! ::bird [(bird 83 0 "a") (bird 83 0 "b")])]
+      (reset! captured [])
+      (is (= 2 (t2/delete! ::bird {:delete [] :from [(keyword table-name)] :where [:= :group_id 83]})))
+      (is (= (set (map (fn [pk] {:id pk, :group_id 83}) pks))
+             (set (:rows (first (events)))))))))
+
 (deftest delete-statement-counts-test
   (testing "a captured delete runs two statements (narrow select + delete)"
     (reset-capture!)
