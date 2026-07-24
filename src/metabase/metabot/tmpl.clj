@@ -27,9 +27,10 @@
     :else                      (str label ": " value "\n")))
 
 (defn link
-  "[{label}]({(join link)})"
+  "[{label}]({(join link)}); square brackets are stripped from the label — they
+  break markdown link parsing (the label can't contain `]`)"
   [label & bits]
-  (format "[%s](%s)" label (apply str bits)))
+  (format "[%s](%s)" (str/replace (str label) #"[\[\]]" "") (apply str bits)))
 
 (defn markdown-table
   "Render a sequence of maps as a markdown table.

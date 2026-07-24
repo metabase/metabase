@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.search-models :as metabot.search-models]
@@ -87,7 +88,9 @@
                   :verified    verified?
                   :official    official?
                   :collection  collection-info})
-          (m/assoc-some :curated curated)))))
+          (m/assoc-some :curated curated
+                        :display (:display result)
+                        :moderated_status moderated_status)))))
 
 (defn- enrich-with-collection-descriptions
   "Fetch and merge collection descriptions for all search results that have collection IDs."
@@ -522,6 +525,16 @@
   (str "Maximum number of results (default " default-search-limit ", max " max-search-limit "). "
        "Use a larger value (20–50) for broad or generic queries; keep the default for narrow, specific ones."))
 
+(defn- search-result->item
+  "Trim a search result to the fields the chain-of-thought results card renders.
+  `:display` (a question's viz type) and `:moderated_status` let the client pick the
+  exact entity icon, matching the app's search/command-palette icons."
+  [r]
+  (-> (select-keys r [:id :type :name :display_name :database_id :database_schema :database_name])
+      (m/assoc-some :display (some-> (:display r) name)
+                    :moderated_status (:moderated_status r)
+                    :collection (some-> (:collection r) (select-keys [:id :name])))))
+
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
@@ -538,7 +551,10 @@
         {:output (format-search-output results)
          :structured-output {:result-type :search
                              :data results
-                             :total_count (count results)}})
+                             :total_count (count results)}
+         :data-parts [(streaming/search-results-part
+                       {:total_count (count results)
+                        :results (mapv search-result->item results)})]})
       (catch Exception e
         (log/error e (str "Error in " label))
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
@@ -551,8 +567,17 @@
     [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "document" "question"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(defn- search-display
+  [{:keys [keyword_queries semantic_queries]}]
+  (let [queries (distinct (concat keyword_queries semantic_queries))]
+    (when (seq queries)
+      ;; just the object (the queries) — the client wraps it in the verb + tense
+      ;; ("Searching for …" while active, "Searched for …" once finished)
+      (str/join ", " queries))))
+
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   search-tool
   "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
@@ -567,8 +592,9 @@
     [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   sql-search-tool
   "Find SQL-queryable data sources (tables and models) within a specific database by topic."
   [{:keys [database_id] :as args} :- sql-search-schema]
@@ -583,8 +609,9 @@
                           "table" "model" "metric" "question" "dashboard" "document"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   nlq-search-tool
   "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
   [{:keys [entity_types] :as args} :- nlq-search-schema]
@@ -603,8 +630,9 @@
     [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "transform"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   transform-search-tool
   "Find transforms, plus the tables and models around them, by topic."
   [{:keys [search_native_query] :as args} :- transform-search-schema]
