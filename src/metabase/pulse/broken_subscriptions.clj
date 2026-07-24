@@ -15,31 +15,33 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)]
+  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)
+        bad-pulse-channels (t2/select [:model/PulseChannel :id :channel_type :details]
+                                      :pulse_id [:= bad-pulse-id])]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
      :pulse-creator  creator
-     :affected-users (flatten
-                      (for [{pulse-channel-id  :id
-                             channel-type      :channel_type
-                             {:keys [channel]} :details} (t2/select [:model/PulseChannel :id :channel_type :details]
-                                                                    :pulse_id [:= bad-pulse-id])]
-                        (case channel-type
-                          :email (let [pulse-channel-recipients (t2/select :model/PulseChannelRecipient
-                                                                           :pulse_channel_id pulse-channel-id)]
-                                   (if (seq pulse-channel-recipients)
-                                     (map
-                                      (fn [{:keys [common_name] :as recipient}]
-                                        (assoc recipient
-                                               :notification-type channel-type
-                                               :recipient common_name))
-                                      (t2/select [:model/User :first_name :last_name :email]
-                                                 :id [:in (map :user_id pulse-channel-recipients)]))
-                                     []))
-                          :slack {:notification-type channel-type
-                                  :recipient         channel}
-                          [])))}))
+     :affected-users (into []
+                           (comp
+                            (filter #(contains? #{:email :slack} (:channel_type %)))
+                            (mapcat (fn [{pulse-channel-id  :id
+                                          channel-type      :channel_type
+                                          {:keys [channel]} :details}]
+                                      (case channel-type
+                                        :email (let [pulse-channel-recipient-ids (map :user_id (t2/select [:model/PulseChannelRecipient :user_id]
+                                                                                                          :pulse_channel_id pulse-channel-id))
+                                                     pulse-channel-recipients (when (seq pulse-channel-recipient-ids)
+                                                                                (t2/select [:model/User :first_name :last_name :email]
+                                                                                           :id [:in pulse-channel-recipient-ids]))]
+                                                 (map (fn [{:keys [common_name] :as recipient}]
+                                                        (assoc recipient
+                                                               :notification-type channel-type
+                                                               :recipient common_name))
+                                                      pulse-channel-recipients))
+                                        :slack [{:notification-type channel-type
+                                                 :recipient         channel}]))))
+                           bad-pulse-channels)}))
 
 (defn- broken-pulses
   "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
