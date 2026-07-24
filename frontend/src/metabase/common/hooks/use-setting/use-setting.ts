@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import {
+  type UpdateSettingArg,
   useUpdateSettingMutation,
   useUpdateUserSettingMutation,
 } from "metabase/api";
@@ -30,15 +31,18 @@ export const useUserSetting = <T extends keyof UserSettings>(
   } = {},
 ): [UserSettings[T], (value: UserSettings[T]) => void] => {
   const currentValue = useSetting(key);
-  // `shouldRefresh` chooses the mutation: pessimistic (invalidate + refetch all
-  // settings) vs optimistic (patch the one value, no refetch).
+  // `shouldRefresh` chooses between pessimistic (invalidate + refetch all settings)
+  //  vs optimistic (patch the one value, no refetch).
   const [updateSetting] = useUpdateSettingMutation();
   const [updateUserSetting] = useUpdateUserSettingMutation();
   const setter = useCallback(
     (value: UserSettings[T]) => {
       const mutate = shouldRefresh ? updateSetting : updateUserSetting;
-      // Unjustified type cast. FIXME
-      mutate({ key, value } as Parameters<typeof updateSetting>[0]);
+      // Annotate the argument with the mutations' concrete input type. Passing
+      // the object literal directly would make TypeScript infer through the
+      // generic RTK trigger types, which hits the instantiation depth limit (TS2589).
+      const args: UpdateSettingArg = { key, value };
+      mutate(args);
     },
     [updateSetting, updateUserSetting, key, shouldRefresh],
   );

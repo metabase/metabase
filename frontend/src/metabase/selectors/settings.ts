@@ -221,9 +221,7 @@ export const getUpgradeUrl = createSelector(
       utm_content: utmTags.utm_content,
       source_plan: plan,
     };
-    for (const key in searchParams) {
-      // Unjustified type cast. FIXME
-      const utmValue = searchParams[key as keyof typeof searchParams];
+    for (const [key, utmValue] of Object.entries(searchParams)) {
       if (utmValue) {
         url.searchParams.append(key, utmValue);
       }

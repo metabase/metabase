@@ -12,7 +12,11 @@ import {
 import { Api, sessionApi } from "metabase/api";
 import { collectionApi } from "metabase/api/collection";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
-import { createMockCollection } from "metabase-types/api/mocks";
+import type { EnterpriseSettings } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 
 import {
   type SyncTaskState,
@@ -26,7 +30,9 @@ interface TestState {
   remoteSyncPlugin: SyncTaskState;
 }
 
-const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
+const createTestStore = (
+  settingsOverrides: Partial<EnterpriseSettings> = {},
+) => {
   const store = configureStore({
     reducer: combineReducers({
       remoteSyncPlugin: remoteSyncReducer,
@@ -53,11 +59,10 @@ const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
       {
         endpointName: "getSessionProperties",
         arg: undefined,
-        // Unjustified type cast. FIXME
-        value: {
+        value: createMockSettings({
           "remote-sync-transforms": false,
           ...settingsOverrides,
-        } as any,
+        }),
       },
     ]),
   );
