@@ -657,3 +657,91 @@
     (is (= #{{:table (meta/id :orders)}}
            (lib.native/native-query-table-references
             (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)}))))))
+
+(defn- card-tag-query [sql tag]
+  (lib/query meta/metadata-provider
+             {:lib/type :mbql/query
+              :database (meta/id)
+              :stages   [{:lib/type      :mbql.stage/native
+                          :native        sql
+                          :template-tags [tag]}]}))
+
+(deftest ^:parallel replace-template-tag-names-test
+  (testing "renamed tags get their name, default display name, and {{...}} text rewritten; other tags untouched"
+    (let [query (card-tag-query "select * from {{ #133-bh-population-model }} where {{ state }}"
+                                {:type         :card
+                                 :name         "#133-bh-population-model"
+                                 :display-name "#133 Bh Population Model"
+                                 :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                 :card-id      1206})]
+      (is (=? {:stages [{:native        "select * from {{#1206-bh-population-model}} where {{ state }}"
+                         :template-tags [{:type         :card
+                                          :name         "#1206-bh-population-model"
+                                          :display-name "#1206 Bh Population Model"
+                                          :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                          :card-id      1206}]}]}
+              (lib.native/replace-template-tag-names
+               query
+               {"#133-bh-population-model" "#1206-bh-population-model"}))))))
+
+(deftest ^:parallel replace-template-tag-names-noop-test
+  (let [query (card-tag-query "select * from {{#133-some-old-slug}}"
+                              {:type         :card
+                               :name         "#133-some-old-slug"
+                               :display-name "#133 Some Old Slug"
+                               :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                               :card-id      133})]
+    (testing "an empty renames map is a no-op"
+      (is (= query
+             (lib.native/replace-template-tag-names query {}))))
+    (testing "renames that match no tag are a no-op"
+      (is (= query
+             (lib.native/replace-template-tag-names query {"#999-not-here" "#1-nope"}))))))
+
+(deftest ^:parallel replace-template-tag-names-custom-display-name-test
+  (testing "a customized display name is preserved through the rename"
+    (is (=? {:stages [{:template-tags [{:name         "#1206-new-card"
+                                        :display-name "My Custom Label"}]}]}
+            (lib.native/replace-template-tag-names
+             (card-tag-query "select * from {{#133-old-card}}"
+                             {:type         :card
+                              :name         "#133-old-card"
+                              :display-name "My Custom Label"
+                              :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                              :card-id      1206})
+             {"#133-old-card" "#1206-new-card"})))))
+
+(deftest ^:parallel replace-template-tag-names-optional-block-test
+  (testing "tag refs inside [[optional]] blocks are rewritten without disturbing the rest of the text"
+    (is (=? {:stages [{:native "select * from x [[ where id in (select id from {{#1206-new-card}}) ]]"}]}
+            (lib.native/replace-template-tag-names
+             (card-tag-query "select * from x [[ where id in (select id from {{#133-old-card}}) ]]"
+                             {:type         :card
+                              :name         "#133-old-card"
+                              :display-name "#133 Old Card"
+                              :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                              :card-id      1206})
+             {"#133-old-card" "#1206-new-card"})))))
+
+(deftest ^:parallel replace-template-tag-names-collision-test
+  (testing "tags renamed onto the same name collapse into one; the first occurrence wins"
+    (let [query (lib/query meta/metadata-provider
+                           {:lib/type :mbql/query
+                            :database (meta/id)
+                            :stages   [{:lib/type      :mbql.stage/native
+                                        :native        "select * from {{#133-foo}} a, {{#133-bar}} b"
+                                        :template-tags [{:type         :card
+                                                         :name         "#133-foo"
+                                                         :display-name "Foo"
+                                                         :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                                         :card-id      1206}
+                                                        {:type         :card
+                                                         :name         "#133-bar"
+                                                         :display-name "Bar"
+                                                         :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                                         :card-id      1206}]}]})]
+      (is (=? {:stages [{:native        "select * from {{#1206-foo}} a, {{#1206-foo}} b"
+                         :template-tags [{:name "#1206-foo", :display-name "Foo"}]}]}
+              (lib.native/replace-template-tag-names
+               query
+               {"#133-foo" "#1206-foo", "#133-bar" "#1206-foo"}))))))
