@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.agent-api.usage :as agent-api.usage]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
@@ -1809,6 +1810,35 @@
 (def ^:private base-routes
   (api.macros/ns-handler *ns* +auth))
 
+(defn- error-message-from-response
+  "Best-effort human-readable error string from an agent-api error `response`, for the gated
+  `error_message` column. Keyword lookups are nil-safe, so a streaming/opaque body just yields nil."
+  [response]
+  (let [body (:body response)]
+    (or (:message body) (:error body))))
+
+(defn- record-agent-api-usage!
+  "Record one `agent_api_call_log` row for a completed direct Agent API HTTP call (EE-only).
+  Best-effort: the EE writer wraps the insert in try/catch, so a failure to record is logged and
+  swallowed — analytics never fails the request. Skips the synthetic in-process requests MCP
+  dispatches through here — those are already counted in `mcp_tool_call_log`, so recording them
+  again would double-count. `status`, `duration_ms`, IP, and User-Agent are all in scope here, and
+  `+auth` has bound `*current-user-id*` by the time this respond fires so direct HTTP callers get
+  attributed."
+  [request response timer]
+  (when-not (:agent-api-internal-request? request)
+    (let [status-code (:status response)
+          error?      (or (nil? status-code) (>= status-code 400))]
+      (agent-api.usage/record-agent-api-call!
+       {:user-id       (or (:metabase-user-id request) api/*current-user-id*)
+        :tenant-id     (some-> api/*current-user* deref :tenant_id)
+        :user-agent    (get-in request [:headers "user-agent"])
+        :operation     (str (some-> (:request-method request) name u/upper-case-en) " " (:uri request))
+        :status        (if error? "error" "success")
+        :duration-ms   (long (u/since-ms timer))
+        :ip-address    (request/ip-address request)
+        :error-message (when error? (error-message-from-response response))}))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
   ;; Wrapped in `handler-with-open-api-spec` so the handler still implements `OpenAPISpec` for
@@ -1820,33 +1850,37 @@
    ;; Agent-API endpoints are synchronous, so `respond` fires inside the span and the span
    ;; closes after the handler returns.
    (fn [request respond raise]
-     (ait/with-eval-session nil
-       (ait/eval-span (str "agent-api." (some-> (:request-method request) name) " " (:uri request))
-                      {:http/method  (some-> (:request-method request) name)
-                       :http/uri     (:uri request)
-                       :http/request (:body request)
-                       :http/user-id (or (:metabase-user-id request) api/*current-user-id*)}
-                      (base-routes request
-                                   ;; Relies on `respond` firing synchronously on this thread (see
-                                   ;; above): if an endpoint ever responds async, `*parent*` is
-                                   ;; unbound there and this `record!` no-ops, so the span captures
-                                   ;; no status/response. Both fail soft; the trace is just incomplete
-                                   ;; for async agent-api responses.
-                                   (fn eval-traced-respond [response]
-                                     (when (ait/capture-active?)
-                                       ;; `+auth` binds `*current-user-id*` inside `base-routes`, so it
-                                       ;; is unbound when the span opened above but set by the time this
-                                       ;; respond fires — record the user id here so direct HTTP callers
-                                       ;; (not just the MCP path, which carries `:metabase-user-id`) get it.
-                                       (ait/record! {:http/status   (:status response)
-                                                     ;; Only record a plain data body. A streaming/opaque
-                                                     ;; body (not a coll) would otherwise be stringified
-                                                     ;; by the log sink into a useless `#object[…]`, so
-                                                     ;; skip it — the trace just omits the response there.
-                                                     :http/response (when (coll? (:body response))
-                                                                      (:body response))
-                                                     :http/user-id  (or (:metabase-user-id request)
-                                                                        api/*current-user-id*)}))
-                                     (respond response))
-                                   raise))))
+     (let [timer (u/start-timer)]
+       (ait/with-eval-session nil
+         (ait/eval-span (str "agent-api." (some-> (:request-method request) name) " " (:uri request))
+                        {:http/method  (some-> (:request-method request) name)
+                         :http/uri     (:uri request)
+                         :http/request (:body request)
+                         :http/user-id (or (:metabase-user-id request) api/*current-user-id*)}
+                        (base-routes request
+                                     ;; Relies on `respond` firing synchronously on this thread (see
+                                     ;; above): if an endpoint ever responds async, `*parent*` is
+                                     ;; unbound there and this `record!` no-ops, so the span captures
+                                     ;; no status/response. Both fail soft; the trace is just incomplete
+                                     ;; for async agent-api responses.
+                                     (fn eval-traced-respond [response]
+                                       (when (ait/capture-active?)
+                                         ;; `+auth` binds `*current-user-id*` inside `base-routes`, so it
+                                         ;; is unbound when the span opened above but set by the time this
+                                         ;; respond fires — record the user id here so direct HTTP callers
+                                         ;; (not just the MCP path, which carries `:metabase-user-id`) get it.
+                                         (ait/record! {:http/status   (:status response)
+                                                       ;; Only record a plain data body. A streaming/opaque
+                                                       ;; body (not a coll) would otherwise be stringified
+                                                       ;; by the log sink into a useless `#object[…]`, so
+                                                       ;; skip it — the trace just omits the response there.
+                                                       :http/response (when (coll? (:body response))
+                                                                        (:body response))
+                                                       :http/user-id  (or (:metabase-user-id request)
+                                                                          api/*current-user-id*)}))
+                                       ;; CLI usage analytics: one lean row per direct HTTP call, on the
+                                       ;; same synchronous thread so identity/PII/duration are all in scope.
+                                       (record-agent-api-usage! request response timer)
+                                       (respond response))
+                                     raise)))))
    (fn [prefix] (open-api/open-api-spec base-routes prefix))))

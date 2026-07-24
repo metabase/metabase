@@ -313,6 +313,7 @@ export const getRoutes = (
         >
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
           {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
+          {PLUGIN_AUDIT.getCliAnalyticsRoutes()}
           <Route key="index-layout" element={<MetabotAdminLayout />}>
             <Route index key="index" element={<AISettingsPage />} />
             <Route key="mcp" path="mcp" element={<McpSettingsPage />} />

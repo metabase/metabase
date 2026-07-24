@@ -1,0 +1,33 @@
+## Create the v_agent_api_calls view for CLI (Agent API) usage analytics.
+##
+## Filename intentionally sorts after 20260717_cli_usage_analytics.yaml (the table-creation
+## migration) so Liquibase — which processes change-log files alphabetically — creates the
+## agent_api_call_log table before this view references it.
+##
+## Client identity + PII are stored on each call row, so v_agent_api_calls reads them straight
+## off agent_api_call_log and only LEFT JOINs core_user (for the display name) and the tenant
+## table (for tenant_name).
+
+databaseChangeLog:
+  - logicalFilePath: migrations/064_update_migrations.yaml
+
+  - changeSet:
+      id: v64.2026-07-17T00:00:10
+      author: sfragnaud
+      runOnChange: true
+      comment: Create v_agent_api_calls view for CLI usage analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/agent_api_calls/v1/postgres-agent_api_calls.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/agent_api_calls/v1/mysql-agent_api_calls.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/agent_api_calls/v1/h2-agent_api_calls.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql: DROP VIEW IF EXISTS v_agent_api_calls

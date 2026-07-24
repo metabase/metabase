@@ -10,6 +10,7 @@ import { Menu } from "metabase/ui";
 import { isInternalUser } from "metabase/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { getCliAnalyticsRoutes } from "./cli-analytics/routes";
 import { InsightsLink } from "./components/InsightsLink";
 import { InsightsMenuItem } from "./components/InsightsMenuItem";
 import { getMcpAnalyticsRoutes } from "./mcp-analytics/routes";
@@ -49,6 +50,7 @@ export function initializePlugin() {
     PLUGIN_AUDIT.InsightsLink = InsightsLink;
     PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
     PLUGIN_AUDIT.getMcpAnalyticsRoutes = getMcpAnalyticsRoutes;
+    PLUGIN_AUDIT.getCliAnalyticsRoutes = getCliAnalyticsRoutes;
     // Nav is registered for audit_app and decides Metabot (ai_controls) vs MCP (audit_app)
     // children internally; only the routes split on ai_controls.
     PLUGIN_AUDIT.getMetabotAnalyticsNavItems = getMetabotAnalyticsNavItems;

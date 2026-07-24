@@ -13,6 +13,7 @@
 
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
+    :model/AgentApiCallLog                   metabase.agent-api.models.agent-api-call-log
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
     :model/ApiKey                            metabase.api-keys.models.api-key
