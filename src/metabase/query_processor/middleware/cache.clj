@@ -253,39 +253,39 @@
   (if ignore-cache?
     [::miss nil]
     (try
-      (or (i/with-cached-results *backend* query-hash [is updated-at]
-                                 (if-not is
-                                   ;; no cache entry at all: elect a single computer across processes via the lease;
-                                   ;; losers wait for the winner's results rather than stampeding the warehouse
-                                   (when-not (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
-                                     [::wait nil])
-                                   (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
-                                     (cond
-                                       ;; can't determine freshness for this strategy -> don't serve from cache
-                                       (nil? invalidated-at)
-                                       nil
+      (or (i/with-cached-results *backend* query-hash nil [is updated-at]
+            (if-not is
+              ;; no cache entry at all: elect a single computer across processes via the lease;
+              ;; losers wait for the winner's results rather than stampeding the warehouse
+              (when-not (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+                [::wait nil])
+              (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
+                (cond
+                  ;; can't determine freshness for this strategy -> don't serve from cache
+                  (nil? invalidated-at)
+                  nil
 
-                                       ;; within its TTL -> serve the fresh entry
-                                       (cache-fresh? updated-at invalidated-at)
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         [::fresh result])
+                  ;; within its TTL -> serve the fresh entry
+                  (cache-fresh? updated-at invalidated-at)
+                  (when-let [result (reduce-cached-stream is rff query-hash)]
+                    [::fresh result])
 
-                                       ;; expired, and we won the refresh lease -> recompute (don't serve stale)
-                                       (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
-                                       nil
+                  ;; expired, and we won the refresh lease -> recompute (don't serve stale)
+                  (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+                  nil
 
-                                       ;; expired, another process is refreshing, and the entry is only slightly
-                                       ;; stale -> serve it stale while that process refreshes
-                                       (stale-within-grace? updated-at invalidated-at)
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         (log/debugf "Serving cached results written at %s for hash '%s' while another process refreshes"
-                                                     updated-at (i/short-hex-hash query-hash))
-                                         [::stale result])
+                  ;; expired, another process is refreshing, and the entry is only slightly
+                  ;; stale -> serve it stale while that process refreshes
+                  (stale-within-grace? updated-at invalidated-at)
+                  (when-let [result (reduce-cached-stream is rff query-hash)]
+                    (log/debugf "Serving cached results written at %s for hash '%s' while another process refreshes"
+                                updated-at (i/short-hex-hash query-hash))
+                    [::stale result])
 
-                                       ;; expired beyond the grace period -> too old to serve to anyone (#78339);
-                                       ;; wait for the in-flight refresh instead
-                                       :else
-                                       [::wait nil]))))
+                  ;; expired beyond the grace period -> too old to serve to anyone (#78339);
+                  ;; wait for the in-flight refresh instead
+                  :else
+                  [::wait nil]))))
           [::miss nil])
       (catch EofException _
         (log/debug "Request is closed; no one to return cached results to")
@@ -329,17 +329,24 @@
   (or (config/config-int :mb-query-caching-coalescing-poll-interval-ms)
       100))
 
+(defn- servable-since
+  "The oldest `updated-at` an entry can have and still be servable under `strategy`: fresh entries and entries stale
+  within [[*stale-grace-period-ms*]] are exactly those written at or after this instant. Recomputed per poll tick --
+  for a `:ttl` strategy the boundary slides with the clock. Nil when freshness can't be determined for `strategy`, in
+  which case nothing is servable."
+  [strategy]
+  (when-let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
+    (t/minus (t/instant invalidated-at) (t/millis *stale-grace-period-ms*))))
+
 (defn- entry-servable?
   "Side-effect-free check of whether the cache holds something servable (fresh, or stale within the grace period) for
-  `query-hash` under `strategy`."
+  `query-hash` under `strategy`. The freshness boundary goes to the backend as the query's minimum, so a tick that
+  finds nothing costs nothing proportional to the size of the stored results."
   [query-hash strategy]
   (boolean
-   (i/with-cached-results *backend* query-hash [is updated-at]
-                          (when is
-                            (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
-                              (and invalidated-at
-                                   (or (cache-fresh? updated-at invalidated-at)
-                                       (stale-within-grace? updated-at invalidated-at))))))))
+   (when-let [since (servable-since strategy)]
+     (i/with-cached-results *backend* query-hash since [is _updated-at]
+       (some? is)))))
 
 (defn- poll-for-cross-process-results
   "Body of the deduplicated polling loop: watch the cache until another process's results become servable, until its
@@ -406,8 +413,8 @@
     (case status
       (::fresh ::stale) result
       ::canceled        ::canceled
-      ::wait            (await-cross-process-results qp query query-hash cache-strategy rff)
-      ::miss            (run-and-cache! qp query query-hash cache-strategy rff))))
+      ::miss            (run-and-cache! qp query query-hash cache-strategy rff)
+      ::wait            (await-cross-process-results qp query query-hash cache-strategy rff))))
 
 (defn- has-cache-strategy? [cache-strategy]
   (some? cache-strategy))

@@ -14,14 +14,18 @@
    cache entry key. `results` are passed as a compressed byte array.
 
   The implementation is responsible for purging old cache entries when appropriate."
-  (cached-results [this ^bytes query-hash respond]
-    "Call `(respond is updated-at)` with the most recent cache entry for `query-hash` *regardless of TTL* -- the results
-  as an `InputStream` to the raw bytes, plus the entry's `updated-at` timestamp -- or `(respond nil nil)` if there's no
-  entry at all. The caller compares `updated-at` against the strategy's freshness boundary to decide whether to serve
-  the entry, serve it stale while a single process refreshes, or recompute. This method *must* return the result of
-  `respond`.
+  (cached-results-since [this ^bytes query-hash min-updated-at respond]
+    "Call `(respond is updated-at)` with the cache entry for `query-hash` whose results were written at or after
+  `min-updated-at` -- the results as an `InputStream` to the raw bytes, plus the entry's `updated-at` timestamp -- or
+  `(respond nil nil)` when there is no such entry. A nil `min-updated-at` means no minimum: the entry is returned
+  regardless of TTL, and the caller compares `updated-at` against the strategy's freshness boundary itself to decide
+  whether to serve it, serve it stale while a single process refreshes, or recompute.
 
-    (cached-results [_ hash respond]
+  Implementations must apply the minimum where the entry is stored rather than fetching and filtering: a caller
+  waiting on another process's computation polls with the oldest timestamp it could still serve, and each miss must
+  not cost a transfer of the stored results. This method *must* return the result of `respond`.
+
+    (cached-results-since [_ hash min-updated-at respond]
       (if-let [entry (...)]
         (with-open [is (...)]
           (respond is (:updated-at entry)))
@@ -54,18 +58,18 @@
   across processes can no-op."))
 
 (defmacro with-cached-results
-  "Macro version for consuming `cached-results` from a `backend`.
+  "Macro version for consuming `cached-results-since` from a `backend`.
 
-    (with-cached-results backend query-hash [is updated-at]
+    (with-cached-results backend query-hash min-updated-at [is updated-at]
       ...)
 
-  InputStream `is` (and `updated-at`) will be `nil` if there is no cache entry at all. `is` is only valid within
-  `body`."
-  {:style/indent 3}
-  [backend query-hash [is-binding updated-at-binding] & body]
-  `(cached-results ~backend ~query-hash
-                   (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream) ~updated-at-binding]
-                     ~@body)))
+  InputStream `is` (and `updated-at`) will be `nil` if there is no entry written at or after `min-updated-at` (nil
+  means no minimum: the entry, whenever it was written). `is` is only valid within `body`."
+  {:style/indent 4}
+  [backend query-hash min-updated-at [is-binding updated-at-binding] & body]
+  `(cached-results-since ~backend ~query-hash ~min-updated-at
+                         (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream) ~updated-at-binding]
+                           ~@body)))
 
 (defmulti cache-backend
   "Return an instance of a cache backend, which is any object that implements `QueryProcessorCacheBackend`.

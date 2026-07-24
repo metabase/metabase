@@ -58,6 +58,14 @@
   "Gets a message whenever old entries are purged from the test backend."
   nil)
 
+(defn- entry-since
+  "The `store` entry for `hex-hash`, unless it was written before `min-updated-at` (nil means no minimum)."
+  [store hex-hash min-updated-at]
+  (when-let [{:keys [created] :as entry} (get store hex-hash)]
+    (when (or (nil? min-updated-at)
+              (not (t/before? created (t/instant min-updated-at))))
+      entry)))
+
 (defn- do-with-test-backend!
   "Runs `thunk` with an in-memory cache backend bound, along with its own poller context, so its polling loops and
   waiters can't cross-talk with those of another test's backend (or of the real cache). Shuts the context down
@@ -76,10 +84,10 @@
 
                        i/CacheBackend
 
-                       (cached-results [this query-hash respond]
+                       (cached-results-since [this query-hash min-updated-at respond]
                          (let [hex-hash (codecs/bytes->hex query-hash)]
                            (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
-                           (if-let [{:keys [^bytes results created]} (get @store hex-hash)]
+                           (if-let [{:keys [^bytes results created]} (entry-since @store hex-hash min-updated-at)]
                              (with-open [is (java.io.ByteArrayInputStream. results)]
                                (respond is created))
                              (respond nil nil))))
@@ -279,8 +287,8 @@
         (testing "a concurrent caller loses while the claim is live"
           (is (false? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
         (testing "the placeholder row is not a cache entry"
-          (is (true? (i/with-cached-results backend query-hash [is _updated-at]
-                                            (nil? is)))))
+          (is (true? (i/with-cached-results backend query-hash nil [is _updated-at]
+                       (nil? is)))))
         (testing "release-refresh-lease! frees the claim without creating an entry"
           (backend.db/release-refresh-lease! query-hash)
           (is (nil? (t2/select-one-fn :refresh_started_at :model/QueryCache :query_hash query-hash)))
@@ -288,8 +296,35 @@
         (testing "saving results replaces the placeholder and releases the claim"
           (#'backend.db/save-results! query-hash (byte-array [1 2 3]))
           (is (nil? (t2/select-one-fn :refresh_started_at :model/QueryCache :query_hash query-hash)))
-          (is (true? (i/with-cached-results backend query-hash [is _updated-at]
-                                            (some? is)))))
+          (is (true? (i/with-cached-results backend query-hash nil [is _updated-at]
+                       (some? is)))))
+        (finally
+          (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash))))))
+
+(deftest cached-results-since-test
+  (testing "cached-results-since (the db backend) applies both the minimum write time and the lease-only exclusion in
+            the query, so a caller polling for another process's results never fetches results it can't use"
+    (let [query-hash (byte-array (map #(mod (+ % 43) 256) (range 32)))
+          backend    (i/cache-backend :db)
+          entry      (fn [min-updated-at]
+                       (i/with-cached-results backend query-hash min-updated-at [is updated-at]
+                         (when is [(vec (.readAllBytes is)) updated-at])))]
+      (try
+        (testing "no row at all"
+          (is (nil? (entry nil))))
+        (testing "a cold-miss lease claim holds no results, so it is not an entry"
+          (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
+          (is (nil? (entry nil))))
+        (#'backend.db/save-results! query-hash (byte-array [1 2 3]))
+        (let [written-at (t2/select-one-fn :updated_at :model/QueryCache :query_hash query-hash)]
+          (testing "with no minimum, the saved results come back"
+            (is (= [1 2 3] (first (entry nil))))
+            (is (= (t/instant written-at) (t/instant (second (entry nil))))))
+          (testing "a minimum at or before the write time matches"
+            (is (some? (entry written-at)))
+            (is (some? (entry (t/minus (t/instant written-at) (t/seconds 60))))))
+          (testing "a minimum after the write time excludes the entry"
+            (is (nil? (entry (t/plus (t/instant written-at) (t/seconds 60)))))))
         (finally
           (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash))))))
 
@@ -626,8 +661,8 @@
       (let [query-hash (qp.util/query-hash (test-query nil))]
         (testing "Cached results should exist"
           (is (true?
-               (i/cached-results cache/*backend* query-hash
-                                 (fn [is _updated-at] (some? is))))))
+               (i/with-cached-results cache/*backend* query-hash nil [is _updated-at]
+                 (some? is)))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
@@ -1042,7 +1077,7 @@
 
 (def stub-no-op-cache-backend
   (reify i/CacheBackend
-    (cached-results [_ _ respond] (respond nil nil))
+    (cached-results-since [_ _ _ respond] (respond nil nil))
     (save-results! [_ _ _])
     (purge-old-entries! [_ _])
     (delete-entry! [_ _])

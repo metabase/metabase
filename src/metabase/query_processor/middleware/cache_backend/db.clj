@@ -33,21 +33,29 @@
   [{:keys [results]}]
   results)
 
-(defn select-latest-cache-entry
-  "The most recent cache entry for `query-hash` *regardless of TTL* (`query_hash` is the PK, so there's at most one):
-  `{:results <raw bytes>, :updated-at <timestamp>}`, or nil if there's no entry. The caller compares `:updated-at`
-  against the strategy's freshness boundary to decide whether to serve the entry, serve it stale while refreshing, or
-  recompute (see [[strategy->invalidated-at]]).
+(defn select-cache-entry-since
+  "The cache entry for `query-hash` written at or after `min-updated-at`: `{:results <raw bytes>, :updated-at
+  <timestamp>}`, or nil if there is none (`query_hash` is the PK, so there's at most one row to consider). A nil
+  `min-updated-at` matches the entry regardless of TTL; the caller then compares `:updated-at` against the strategy's
+  freshness boundary itself (see [[strategy->invalidated-at]]).
+
+  Both conditions are part of the query rather than checks on the returned row: a caller polling for another process's
+  results would otherwise pay a full transfer of the stored blob on every miss. A row holding only a compute lease is
+  not an entry, so `has_results` excludes it here too.
 
   Reads the `results` blob *inside* the query reduction (via `select-one-fn`): an H2 `JdbcBlob` is only valid while
   its result set is open, so materializing the row first and reading the blob afterwards throws \"object is already
   closed\"."
-  [query-hash]
+  [query-hash min-updated-at]
   (t2/select-one-fn (fn [row]
                       {:results    (results-as-bytes row)
                        :updated-at (:updated_at row)})
                     [:model/QueryCache :results :updated_at]
-                    :query_hash query-hash))
+                    {:where [:and
+                             [:= :query_hash query-hash]
+                             [:= :has_results true]
+                             (when min-updated-at
+                               [:>= :updated_at min-updated-at])]}))
 
 (defn invalidated-at-ttl
   "Freshness boundary for a `:ttl` strategy: cache entries with `updated_at` older than this are stale. Returns nil when
@@ -80,10 +88,11 @@
   another process is already computing it. A lease older than `lease-ms` is considered abandoned (e.g. the claimer
   crashed) and can be taken over.
 
-  When no row exists at all (a cold miss), the claim is an INSERT of a placeholder row -- zero-length `results` with
-  the lease held -- so concurrent cold-miss callers across processes can coordinate too; of two processes racing the
-  INSERT, the loser hits the primary-key constraint and returns false. Placeholder rows are reported as no-entry by
-  `cached-results` and are replaced by the first successful [[save-results!]].
+  When no row exists at all (a cold miss), the claim is an INSERT of a lease-only row -- `has_results` false, with the
+  lease held -- so concurrent cold-miss callers across processes can coordinate too; of two processes racing the
+  INSERT, the loser hits the primary-key constraint and returns false. Every read filters lease-only rows out on
+  `has_results`, and the first successful [[save-results!]] turns one into a real entry. Their `results` is a
+  zero-length blob only because the column is NOT NULL; nothing reads it.
 
   Updates the raw table, not the `:model/QueryCache` model: the model's `:hook/updated-at-timestamped?` before-update
   hook makes toucan2 run a non-atomic SELECT-then-UPDATE-by-PK, which would move the conditional lease check into the
@@ -101,6 +110,7 @@
              (t2/insert! (t2/table-name :model/QueryCache)
                          {:query_hash         query-hash
                           :results            (byte-array 0)
+                          :has_results        false
                           :updated_at         (t/offset-date-time)
                           :refresh_started_at (t/offset-date-time)})
              true
@@ -147,8 +157,8 @@
   nil)
 
 (defn- save-results!
-  "Save the `results` of query with `query-hash`, updating an existing QueryCache entry (including a cold-miss claim
-  placeholder) if one already exists, otherwise creating a new entry. Also releases any held refresh lease.
+  "Save the `results` of query with `query-hash`, updating an existing QueryCache entry (including a cold-miss
+  lease-only row) if one already exists, otherwise creating a new entry. Also releases any held refresh lease.
 
   Writes the raw table, not the `:model/QueryCache` model: the model's `:hook/updated-at-timestamped?` hook can
   override `updated_at` with the database's `now()`, but `updated_at` must come from the JVM clock -- freshness
@@ -157,6 +167,7 @@
   (log/debugf "Caching results for query with hash %s." (pr-str (i/short-hex-hash query-hash)))
   (let [row {:updated_at         (t/offset-date-time)
              :results            (encryption/maybe-encrypt-for-stream results)
+             :has_results        true
              :refresh_started_at nil}]
     (try
       (when (zero? (t2/update! (t2/table-name :model/QueryCache) {:query_hash query-hash} row))
@@ -172,14 +183,10 @@
 (defmethod i/cache-backend :db
   [_]
   (reify i/CacheBackend
-    (cached-results [_ query-hash respond]
-      (if-let [{:keys [^bytes results updated-at]} (select-latest-cache-entry query-hash)]
-        ;; a zero-length results blob is a cold-miss claim placeholder (see [[try-acquire-refresh-lease!]]), not a
-        ;; cache entry; real serialized results are never empty
-        (if (zero? (alength results))
-          (respond nil nil)
-          (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. results))]
-            (respond is updated-at)))
+    (cached-results-since [_ query-hash min-updated-at respond]
+      (if-let [{:keys [^bytes results updated-at]} (select-cache-entry-since query-hash min-updated-at)]
+        (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. results))]
+          (respond is updated-at))
         (respond nil nil)))
 
     (save-results! [_ query-hash is]

@@ -472,7 +472,9 @@
 (defn- cache-metrics
   "Metrics based on use of the QueryCache."
   []
-  (let [{:keys [length count]} (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
+  ;; only rows that hold results: a row with has_results false is a compute lease, not a cached query
+  (let [{:keys [length count]} (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]]
+                                              :has_results true)]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)
      ;; this value gets used in the snowplow ping 'metrics' section.
