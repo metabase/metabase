@@ -137,9 +137,9 @@
 (defn- load-plugin-manifest! [path]
   (some-> (slurp (str path)) yaml/parse-string plugins.init/register-plugin-with-info!))
 
-(defn- bundled-driver-manifest-paths
-  "Return a sequence of paths (URIs when running from a jar, Paths in dev) for `metabase-plugin.yaml` plugin manifests
-  for drivers on the classpath. Driver manifests live at `metabase/<driver-name>/metabase-plugin.yaml` on the classpath."
+(defn- bundled-manifest-paths
+  "Paths (URIs when running from a jar, `Path`s in dev) for every `metabase-plugin.yaml` on the classpath.
+  Bundled plugins -- drivers and non-drivers alike -- live at `metabase/<plugin-name>/metabase-plugin.yaml`."
   []
   (if (u.files/running-from-jar?)
     (u.files/find-in-current-jar "glob:/metabase/*/metabase-plugin.yaml")
@@ -155,14 +155,16 @@
             f founds]
         f))))
 
-(defn- load-bundled-driver-plugin-manifests!
-  "Find and load driver plugin manifests from the classpath. In the uberjar, driver classes are flattened directly into
-  the jar (rather than shipped as nested JARs in a `modules/` directory) and their manifests live at
-  `metabase/<driver>/metabase-plugin.yaml`. In dev, the same manifests are found via the driver resource directories on
-  the classpath."
+(defn- load-bundled-plugin-manifests!
+  "Register plugin manifests bundled on the classpath.
+  Bundled plugin code -- driver or not -- is compiled into the uberjar, so its classes are already on the
+  classpath and these manifests carry no `add-to-classpath!`: their bytes never come from the writable plugins
+  directory. Classes are flattened into the uberjar (rather than shipped as nested JARs under `modules/`) with
+  manifests at `metabase/<plugin>/metabase-plugin.yaml`; in dev the same manifests are found via the resource
+  directories on the classpath."
   []
-  (doseq [manifest-path (bundled-driver-manifest-paths)]
-    (log/infof "Loading driver plugin manifest at %s" (str manifest-path))
+  (doseq [manifest-path (bundled-manifest-paths)]
+    (log/infof "Loading bundled plugin manifest at %s" (str manifest-path))
     (load-plugin-manifest! manifest-path)))
 
 (defn- has-manifest? ^Boolean [^Path path]
@@ -182,12 +184,12 @@
 
 (defn- load! []
   ;; Load any user-supplied plugin JARs from the plugins directory (e.g. Oracle JDBC driver).
-  ;; System/bundled drivers are no longer extracted to disk — they are flattened into the uberjar
-  ;; and their manifests are loaded from the classpath via load-driver-plugin-manifests! below.
+  ;; System/bundled plugins are no longer extracted to disk — they are flattened into the uberjar
+  ;; and their manifests are loaded from the classpath via load-bundled-plugin-manifests! below.
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))
   (let [paths (plugins-paths)]
     (register-plugins! paths))
-  (load-bundled-driver-plugin-manifests!))
+  (load-bundled-plugin-manifests!))
 
 (defonce ^:private loaded? (atom false))
 

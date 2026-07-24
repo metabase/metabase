@@ -18,12 +18,14 @@
     (binding [deps.dir/*the-dir* (io/file dir)]
       (deps/calc-basis edn))))
 
+;; Delayed so merely requiring this namespace doesn't pay for a full dependency-tree resolution; the basis is
+;; only needed when a plugin uberjar is actually built.
 (defonce ^:private metabase-core-basis
-  (project-basis u/project-root-directory))
+  (delay (project-basis u/project-root-directory)))
 
-(defonce ^{:doc "Map of core-provided library symbol to the `metabase-core` provider label."}
+(defonce ^{:doc "Delayed map of core-provided library symbol to the `metabase-core` provider label."}
   metabase-core-provided-libs
-  (into {} (map (fn [lib] [lib 'metabase-core])) (keys (:libs metabase-core-basis))))
+  (delay (zipmap (keys (:libs @metabase-core-basis)) (repeat 'metabase-core))))
 
 (defn prune-provided-libs!
   "Remove `lib->provider`'s libraries and classpath entries from `basis`.
