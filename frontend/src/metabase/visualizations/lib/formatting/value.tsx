@@ -219,6 +219,10 @@ export function formatValueRaw(
       return options.collapseNewlines ? removeNewLines(value) : value;
     }
     return formatStringFallback(value, options);
+  } else if (typeof value === "number" && isBoolean(column)) {
+    // Databases often return boolean values as 0/1 integers; coerce to
+    // true/false so the cell renders consistently with native JS booleans.
+    return JSON.stringify(Boolean(value));
   } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, column);
     if (range && !options.noRange) {
