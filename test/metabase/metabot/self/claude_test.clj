@@ -162,10 +162,9 @@
                   {:type "content_block_stop" :index 0}
                   {:type "message_delta"
                    :delta {:stop_reason "end_turn"}
-                   :usage {:input_tokens                100
-                           :output_tokens               7
-                           :cache_creation_input_tokens 250
-                           :cache_read_input_tokens     4200}}
+                   ;; Anthropic's actual stream shape splits the billed input/cache fields onto
+                   ;; message_start and the final output count onto message_delta.
+                   :usage {:output_tokens 7}}
                   {:type "message_stop"}]
           chunks (into [] (claude/claude->aisdk-chunks-xf) events)
           usage  (first (filter #(= :usage (:type %)) chunks))]
@@ -185,7 +184,7 @@
                              :usage {:input_tokens 10 :output_tokens 0}}}
                   {:type "message_delta"
                    :delta {:stop_reason "end_turn"}
-                   :usage {:input_tokens 10 :output_tokens 3}}
+                   :usage {:output_tokens 3}}
                   {:type "message_stop"}]
           chunks (into [] (claude/claude->aisdk-chunks-xf) events)
           usage  (first (filter #(= :usage (:type %)) chunks))]
@@ -272,6 +271,51 @@
                     (comp (claude/claude->aisdk-chunks-xf)
                           (m/distinct-by :type))
                     events))))))
+
+(deftest ^:parallel interrupted-stream-flushes-provider-usage-test
+  (let [parts  (atom [])
+        raw    (reify clojure.lang.IReduceInit
+                 (reduce [_ rf init]
+                   (rf init {:type "message_start"
+                             :message {:id "msg-usage" :model "claude-haiku-4-5"
+                                       :usage {:input_tokens 37 :output_tokens 0}}})
+                   (throw (ex-info "stream interrupted" {}))))
+        stream (#'claude/completion-safe-eduction (claude/claude->aisdk-chunks-xf) raw)]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stream interrupted"
+                          (reduce (fn [acc part] (swap! parts conj part) acc) nil stream)))
+    (is (=? {:type :usage :usage {:promptTokens 37 :completionTokens 0}}
+            (last @parts))
+        "completion flushes the billed prompt usage before the stream exception escapes")))
+
+(deftest ^:parallel interrupted-tool-stream-never-executes-partial-tool-test
+  (let [invoked? (atom false)
+        parts    (atom [])
+        tools    {"mutate" {:fn     (fn [_] (reset! invoked? true))
+                            :doc    "Must not run from partial input"
+                            :schema [:=> [:cat :map] :any]}}
+        raw      (reify clojure.lang.IReduceInit
+                   (reduce [_ rf init]
+                     (let [result (rf init {:type "message_start"
+                                            :message {:id "msg-tool" :model "claude-haiku-4-5"
+                                                      :usage {:input_tokens 41 :output_tokens 0}}})
+                           result (rf result {:type "content_block_start"
+                                              :index 0
+                                              :content_block {:type "tool_use" :id "tool-1"
+                                                              :name "mutate"}})]
+                       (rf result {:type "content_block_delta"
+                                   :index 0
+                                   :delta {:type "input_json_delta" :partial_json "{\"x\":"}}))
+                     (throw (ex-info "stream interrupted" {}))))
+        stream   (->> raw
+                      (#'claude/completion-safe-eduction (claude/claude->aisdk-chunks-xf))
+                      (eduction (self.core/tool-executor-xf tools)))]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stream interrupted"
+                          (reduce (fn [acc part] (swap! parts conj part) acc) nil stream)))
+    (is (false? @invoked?) "an interrupted tool block is never submitted for execution")
+    (is (not-any? #(= :tool-input-available (:type %)) @parts))
+    (is (=? {:type :usage :usage {:promptTokens 41 :completionTokens 0}}
+            (last @parts))
+        "usage still flushes through the non-completing interruption path")))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->claude-messages tests

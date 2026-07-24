@@ -123,6 +123,33 @@
              #"OpenAI API key not configured"
              (embedding/get-embeddings-batch embedding-model ["test text"])))))))
 
+(deftest ollama-embedding-has-timeout-and-source-labelled-request-metric-test
+  (let [request    (atom nil)
+        increments (atom [])
+        model      {:provider "ollama" :model-name "mxbai-embed-large" :vector-dimensions 3}]
+    (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
+                                            (reset! request opts)
+                                            {:body (json/encode {:embedding [1.0 2.0 3.0]})})
+                                analytics/inc! (fn [& args] (swap! increments conj (vec args)))]
+      (binding [embedding/*embedding-request-source* "osi-generation"]
+        (is (= [1.0 2.0 3.0] (embedding/get-embedding model "orders")))))
+    (is (= (:socket-timeout @#'embedding/embedding-http-timeouts) (:socket-timeout @request)))
+    (is (= (:connection-timeout @#'embedding/embedding-http-timeouts) (:connection-timeout @request)))
+    (is (= [[:metabase-search/semantic-embedding-requests
+             {:provider "ollama" :model "mxbai-embed-large" :source "osi-generation"}]]
+           @increments))))
+
+(deftest failed-ollama-embedding-still-counts-the-request-test
+  (let [increments (atom [])
+        model      {:provider "ollama" :model-name "mxbai-embed-large" :vector-dimensions 3}]
+    (mt/with-dynamic-fn-redefs [http/post (fn [& _] (throw (java.net.SocketTimeoutException. "timed out")))
+                                analytics/inc! (fn [& args] (swap! increments conj (vec args)))]
+      (is (thrown? java.net.SocketTimeoutException
+                   (embedding/get-embedding model "orders"))))
+    (is (= [[:metabase-search/semantic-embedding-requests
+             {:provider "ollama" :model "mxbai-embed-large" :source "unknown"}]]
+           @increments))))
+
 (deftest test-token-counting
   (testing "count-tokens returns reasonable counts for text"
     (is (= 2 (#'embedding/count-tokens "Hello world")))
@@ -256,6 +283,28 @@
         (let [encoder        (Base64/getEncoder)
               invalid-base64 (.encodeToString encoder (byte-array [1 2 3 5 6]))]
           (is (thrown? Exception (decode [{:embedding invalid-base64}]))))))))
+
+(deftest openai-compatible-embedding-goes-through-the-request-boundary-test
+  (testing "the OpenAI-compatible path carries the same per-request timeout and labelled request counter
+           as the Ollama path — record-embedding-request! runs at both sites, before I/O"
+    (mt/with-temporary-setting-values [llm-openai-api-key "sk-mock"]
+      (let [request    (atom nil)
+            increments (atom [])
+            model      {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 4}]
+        (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
+                                                (reset! request opts)
+                                                {:status 200
+                                                 :body   (json/encode
+                                                          {:data  [{:embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0])}]
+                                                           :usage {:total_tokens 1}})})
+                                    analytics/inc! (fn [& args] (swap! increments conj (vec args)))]
+          (embedding/get-embeddings-batch model ["orders"] {:record-tokens? false}))
+        (is (= (:socket-timeout @#'embedding/embedding-http-timeouts) (:socket-timeout @request)))
+        (is (= (:connection-timeout @#'embedding/embedding-http-timeouts) (:connection-timeout @request)))
+        (is (= [:metabase-search/semantic-embedding-requests
+                {:provider "openai" :model "text-embedding-3-small" :source "unknown"}]
+               (first @increments))
+            "the request is counted before I/O, under the ambient source label")))))
 
 (deftest test-get-embedding
   (mt/with-temporary-setting-values [llm-openai-api-key              "sk-mock-openai-api-key"

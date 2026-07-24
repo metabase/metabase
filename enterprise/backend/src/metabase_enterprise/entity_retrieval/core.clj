@@ -297,7 +297,9 @@
   (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
         waited-ms (elapsed-ms scheduled)
         started   (u/start-timer)
-        diff      (reconcile/reconcile! ds resolved-configured-model)
+        diff      (binding [embedding/*embedding-request-source*
+                            (or embedding/*embedding-request-source* "reconcile")]
+                    (reconcile/reconcile! ds resolved-configured-model))
         ran-ms    (elapsed-ms started)]
     (record-run! "full" diff ran-ms)
     {:index     (select-keys diff [:inserted :deleted :unchanged])
@@ -316,7 +318,10 @@
     (doseq [[entity-type entity-local-id :as entity-key] dirty]
       (try
         (let [started (u/start-timer)
-              diff    (reconcile/reconcile-entity! ds resolved-configured-model entity-type entity-local-id)]
+              diff    (binding [embedding/*embedding-request-source*
+                                (or embedding/*embedding-request-source* "reconcile")]
+                        (reconcile/reconcile-entity! ds resolved-configured-model
+                                                     entity-type entity-local-id))]
           (record-run! "targeted" diff (elapsed-ms started)))
         (catch Throwable e
           (log/error "library entity index: targeted reconcile failed; re-queuing"

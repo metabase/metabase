@@ -672,6 +672,36 @@
               {:candidates    [{:content {:role "model" :parts []} :finishReason "STOP"}]
                :usageMetadata {:promptTokenCount 5 :candidatesTokenCount 2 :totalTokenCount 7}}])))))
 
+(deftest ^:parallel interrupted-stream-flushes-usage-without-completing-text-test
+  (let [parts (atom [])
+        raw   (reify clojure.lang.IReduceInit
+                (reduce [_ rf init]
+                  (rf init {:responseId    "r-interrupted"
+                            :modelVersion  "gemini-3.5-flash"
+                            :candidates    [{:content {:parts [{:text "partial"}]}}]
+                            :usageMetadata {:promptTokenCount 17 :candidatesTokenCount 2}})
+                  (throw (ex-info "google stream interrupted" {}))))]
+    (mt/with-dynamic-fn-redefs [google/google-raw (constantly raw)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"google stream interrupted"
+                            (reduce (fn [acc part] (swap! parts conj part) acc)
+                                    nil
+                                    (google/google {:model "google/gemini-3.5-flash"}))))
+      (is (not-any? #(= :text-end (:type %)) @parts))
+      (is (=? {:type :usage :usage {:promptTokens 17 :completionTokens 2}}
+              (last @parts))))))
+
+(deftest ^:parallel interrupted-before-first-event-emits-nothing-test
+  (let [parts (atom [])
+        raw   (reify clojure.lang.IReduceInit
+                (reduce [_ _rf _init]
+                  (throw (ex-info "google stream interrupted before output" {}))))]
+    (mt/with-dynamic-fn-redefs [google/google-raw (constantly raw)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"interrupted before output"
+                            (reduce (fn [acc part] (swap! parts conj part) acc)
+                                    nil
+                                    (google/google {:model "google/gemini-3.5-flash"}))))
+      (is (empty? @parts) "no synthetic :start suppresses the caller's retry"))))
+
 (deftest google-tool-call-stream-test
   (testing "a streamed functionCall off the wire arrives as a tool-input part with parsed arguments"
     (is (=? [{:type :start :id "r2"}

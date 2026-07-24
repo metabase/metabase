@@ -255,6 +255,11 @@
           text-id     (volatile! nil) ; Non-nil while a text block is open.
           usage-acc   (volatile! nil)
           stop-reason (volatile! nil)
+          usage-part  (fn []
+                        {:type  :usage
+                         :usage @usage-acc
+                         :id    @message-id
+                         :model @model-name})
           close-text! (fn [result]
                         (if-let [id @text-id]
                           (do (vreset! text-id nil)
@@ -324,26 +329,31 @@
                        reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons reason)
                                      :raw-finish-reason reason))))
                (rf))))
-        ([result {:keys [candidates usageMetadata responseId modelVersion promptFeedback error] :as _event}]
-         (when (some? usageMetadata)
-           (vreset! usage-acc (usage->aisdk-usage usageMetadata)))
-         ;; modelVersion can appear on any event. Keep the last one for the :usage chunk.
-         (when (some? modelVersion)
-           (vreset! model-name modelVersion))
-         (let [{:keys [content finishReason]} (first candidates)
-               block-reason                   (:blockReason promptFeedback)]
-           (cond-> result
-             ;; Emit :start on the first event.
-             (not @message-id)    (-> (u/prog1
-                                        (vreset! message-id (or responseId (core/mkid))))
-                                      (rf {:type :start :messageId @message-id}))
-             (seq (:parts content)) (as-> res (reduce emit-part res (:parts content)))
-             (some? finishReason) (finish! finishReason)
-             ;; A blocked prompt ends the stream with no candidates, only promptFeedback.
-             (some? block-reason) (-> (close-text!)
-                                      (rf {:type      :error
-                                           :errorText (str "Prompt blocked by Google: " block-reason)}))
-             ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
-             (some? error)        (-> (close-text!)
-                                      (rf {:type      :error
-                                           :errorText (or (:message error) (pr-str error))})))))))))
+        ([result event]
+         ;; This is deliberately an exclusive branch. If the source failed before its first event there
+         ;; is no usage to flush and, critically, no provider output that should suppress a retry.
+         (if (= event core/interrupted-stream-event)
+           (cond-> result @usage-acc (rf (usage-part)))
+           (let [{:keys [candidates usageMetadata responseId modelVersion promptFeedback error]} event]
+             (when (some? usageMetadata)
+               (vreset! usage-acc (usage->aisdk-usage usageMetadata)))
+             ;; modelVersion can appear on any event. Keep the last one for the :usage chunk.
+             (when (some? modelVersion)
+               (vreset! model-name modelVersion))
+             (let [{:keys [content finishReason]} (first candidates)
+                   block-reason                   (:blockReason promptFeedback)]
+               (cond-> result
+                 ;; Emit :start on the first provider event.
+                 (not @message-id)      (-> (u/prog1
+                                              (vreset! message-id (or responseId (core/mkid))))
+                                            (rf {:type :start :messageId @message-id}))
+                 (seq (:parts content)) (as-> res (reduce emit-part res (:parts content)))
+                 (some? finishReason)   (finish! finishReason)
+                 ;; A blocked prompt ends the stream with no candidates, only promptFeedback.
+                 (some? block-reason)   (-> (close-text!)
+                                            (rf {:type      :error
+                                                 :errorText (str "Prompt blocked by Google: " block-reason)}))
+                 ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
+                 (some? error)          (-> (close-text!)
+                                            (rf {:type      :error
+                                                 :errorText (or (:message error) (pr-str error))})))))))))))

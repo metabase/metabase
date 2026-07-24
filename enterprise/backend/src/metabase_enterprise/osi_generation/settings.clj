@@ -7,6 +7,7 @@
   connection model. Spend is attributed with [[usage-source]] either way."
   (:require
    [metabase.llm.provider :as llm.provider]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
@@ -21,6 +22,17 @@
   "osi-generation")
 
 ;;; ------------------------------------------------- Settings --------------------------------------------------
+
+(defsetting osi-generation-enabled
+  (deferred-tru "Whether to automatically generate library metadata with AI.")
+  :type       :boolean
+  :default    false
+  :getter     #(and (llm.settings/ai-features-enabled?)
+                    (setting/get-value-of-type :boolean :osi-generation-enabled))
+  :visibility :admin
+  :encryption :no
+  :export?    false
+  :doc        false)
 
 (defn- -osi-generation-model
   "Generation runs on whatever Metabot runs on until an admin points it somewhere else, so an instance that
@@ -112,4 +124,71 @@
   :setter     :none
   :export?    false
   :getter     #(configured?)
+  :doc        false)
+
+;;; ------------------------------------------------- Run caps --------------------------------------------------
+
+;; The per-run caps are *soft* thresholds: the loop checks them between candidates, so one call may
+;; overshoot and a wedged call is never interrupted. Conservative defaults keep an
+;; accidentally enabled job bounded on its first production run; operators tune them off the emitted
+;; run metrics. The hard per-call ceiling lives elsewhere — the LLM call's max output tokens and the
+;; embedding request timeout — not in these advisory numbers.
+
+(defsetting osi-generation-max-entities-per-run
+  (deferred-tru "Soft cap on how many library entities one automatic metadata-generation run will process. Unset means no limit.")
+  :type       :positive-integer
+  :default    100
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting osi-generation-max-tokens-per-run
+  (deferred-tru "Soft cap on the LLM tokens (input plus output) one automatic metadata-generation run will spend. Checked between calls, so the run in flight may overshoot. Unset means no limit.")
+  :type       :positive-integer
+  :default    500000
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting osi-generation-max-run-duration-minutes
+  (deferred-tru "Soft cap on how long an automatic metadata-generation run may run before it stops taking new candidates. The deadline spans selection, generation, write-back and the final reconcile. Unset means no limit.")
+  :type       :positive-integer
+  :default    30
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+;; Persistent quota machinery: a per-run cap bounds one run, not spend over time — a
+;; superuser re-triggering multiplies it. These hourly/daily token quotas are summed from
+;; `ai_usage_log` across every run and node. They intentionally ship unset while the feature is disabled:
+;; the query mechanism is live, but a useful deployment-wide number requires a measured backlog run.
+
+(defsetting osi-generation-max-tokens-per-hour
+  (deferred-tru "Persistent quota on OSI generation LLM tokens spent in the trailing hour, across all runs. Unset means no limit.")
+  :type       :positive-integer
+  :default    nil
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting osi-generation-max-tokens-per-day
+  (deferred-tru "Persistent quota on OSI generation LLM tokens spent in the trailing day, across all runs. Unset means no limit.")
+  :type       :positive-integer
+  :default    nil
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting osi-generation-candidate-offset
+  (deferred-tru "Persistent fairness offset for rotating OSI generation candidates and the tier that starts each run.")
+  :type       :integer
+  :default    0
+  :visibility :internal
+  :encryption :no
+  :export?    false
   :doc        false)
